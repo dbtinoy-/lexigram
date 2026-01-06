@@ -1,0 +1,155 @@
+"""Cache serializer with automatic compression for large values.
+
+Compresses values over threshold to save memory and bandwidth.
+"""
+
+from __future__ import annotations
+
+import pickle
+from typing import Any
+import zlib
+
+from lexigram.cache import constants as const
+from lexigram.cache.exceptions import CacheSerializationError
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class CompressingSerializer:
+    """AsyncStringSerializerProtocol with automatic compression for large values.
+
+    Compresses values above size threshold to save memory.
+    """
+
+    # Compression markers
+    MARKER_UNCOMPRESSED = const.COMPRESSION_MARKER_UNCOMPRESSED
+    MARKER_COMPRESSED = const.COMPRESSION_MARKER_COMPRESSED
+
+    def __init__(
+        self,
+        compression_threshold: int = const.DEFAULT_COMPRESSION_THRESHOLD,
+        compression_level: int = const.DEFAULT_COMPRESSION_LEVEL,
+    ) -> None:
+        """Initialize serializer.
+
+        Args:
+            compression_threshold: Compress values larger than this (bytes)
+            compression_level: Compression level (1-9, higher = more compression)
+        """
+        self._threshold = compression_threshold
+        self._level = compression_level
+
+    async def serialize(self, value: Any) -> str:
+        """Serialize and optionally compress value.
+
+        Args:
+            value: Value to serialize
+
+        Returns:
+            Serialized string (possibly compressed)
+        """
+        import asyncio
+
+        try:
+            # Pickle first
+            pickled = await asyncio.to_thread(
+                pickle.dumps,
+                value,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
+
+            original_size = len(pickled)
+
+            # Check if should compress
+            if original_size <= self._threshold:
+                # Too small, don't compress
+                compressed_data = self.MARKER_UNCOMPRESSED + pickled
+            else:
+                # Compress
+                compressed = await asyncio.to_thread(
+                    zlib.compress,
+                    pickled,
+                    level=self._level,
+                )
+                compressed_size = len(compressed)
+
+                # Check if compression helped
+                if compressed_size >= original_size:
+                    # Compression made it bigger (or same), don't use
+                    logger.debug(
+                        "Compression ineffective: %s -> %s bytes",
+                        original_size,
+                        compressed_size,
+                    )
+                    compressed_data = self.MARKER_UNCOMPRESSED + pickled
+                else:
+                    # Use compressed version
+                    compression_ratio = compressed_size / original_size
+
+                    logger.debug(
+                        "Compressed: %s -> %s bytes (%s of original)",
+                        original_size,
+                        compressed_size,
+                        f"{compression_ratio:.2%}",
+                    )
+                    compressed_data = self.MARKER_COMPRESSED + compressed
+
+            # Convert to hex string for storage
+            return compressed_data.hex()
+
+        except (pickle.PicklingError, TypeError, AttributeError, zlib.error) as e:
+            raise CacheSerializationError(f"Failed to serialize value: {e}") from e
+
+    async def deserialize(self, value: str) -> Any:
+        """Deserialize and decompress if needed.
+
+        Args:
+            value: Serialized string
+
+        Returns:
+            Original value
+
+        Raises:
+            SerializationError: If deserialization fails
+        """
+        import asyncio
+
+        try:
+            # Decode from hex back to bytes
+            data = bytes.fromhex(value)
+
+            if not data:
+                raise CacheSerializationError("Empty data")
+
+            # Check compression marker
+            marker = data[:1]
+            payload = data[1:]
+
+            if marker == self.MARKER_UNCOMPRESSED:
+                # Not compressed
+                return await asyncio.to_thread(pickle.loads, payload)
+
+            if marker == self.MARKER_COMPRESSED:
+                # Decompress first
+                decompressed = await asyncio.to_thread(zlib.decompress, payload)
+                return await asyncio.to_thread(pickle.loads, decompressed)
+
+            raise CacheSerializationError(f"Invalid compression marker: {marker!r}")
+
+        except (ValueError, pickle.UnpicklingError, TypeError, zlib.error) as e:
+            raise CacheSerializationError(f"Failed to deserialize value: {e}") from e
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get serializer statistics.
+
+        Returns:
+            Stats dict
+        """
+        return {
+            "compression_threshold": self._threshold,
+            "compression_level": self._level,
+        }
+
+
+__all__ = ["CompressingSerializer"]

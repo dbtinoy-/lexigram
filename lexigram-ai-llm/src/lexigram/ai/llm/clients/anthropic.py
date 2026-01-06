@@ -1,0 +1,510 @@
+"""Anthropic Claude LLM client implementation.
+
+Production-ready implementation with Anthropic API integration.
+"""
+
+from __future__ import annotations
+
+from collections.abc import AsyncGenerator, AsyncIterator
+from datetime import UTC, datetime
+from typing import Any
+
+from lexigram.ai.llm.clients._message_utils import serialize_content_for_anthropic
+from lexigram.ai.llm.clients.base import AbstractLLMClient
+from lexigram.ai.llm.config import ClientConfig
+from lexigram.ai.llm.exceptions import (
+    LLMAuthenticationError,
+    LLMContentFilterError,
+    LLMError,
+    LLMModelNotFoundError,
+    LLMQuotaExceededError,
+    LLMRateLimitError,
+)
+from lexigram.ai.llm.types import (
+    AIError,
+    ChatMessage,
+    Completion,
+    FunctionCall,
+    Role,
+    StreamChunk,
+    ThinkingResult,
+    TokenUsage,
+    ToolCall,
+)
+from lexigram.contracts.core import HealthCheckResult, HealthStatus
+from lexigram.result import Err, Ok, Result
+from lexigram.serialization import dumps_str
+
+
+class AnthropicClient(AbstractLLMClient):
+    """Anthropic Claude LLM client implementation.
+
+    Conforms to: :class:`~lexigram.contracts.ai.LLMClientProtocol` protocol via structural typing.
+
+    Supports Claude 3 (Opus, Sonnet, Haiku) models with:
+    - Streaming responses
+    - Tool calling
+    - Vision capabilities
+    - Automatic retry and error handling
+
+    Example:
+        >>> from lexigram.ai import ClientConfig
+        >>> config = ClientConfig(provider="anthropic", model="claude-3-sonnet-20240229")
+        >>> client = AnthropicClient(config)
+        >>> completion = await client.complete([
+        ...     ChatMessage(role="user", content="Hello!")
+        ... ])
+    """
+
+    def __init__(self, config: ClientConfig):
+        """Initialize Anthropic client.
+
+        Args:
+            config: LLM configuration
+
+        Raises:
+            ImportError: If anthropic package is not installed
+        """
+        super().__init__(config=config)
+
+        try:
+            from anthropic import AsyncAnthropic
+        except ImportError as e:
+            raise ImportError(
+                "Anthropic client requires 'anthropic' package. "
+                "Install with: pip install lexigram-intelligence[anthropic]",
+            ) from e
+
+        api_key = config.api_key.get_secret_value() if config.api_key else None
+        self.client = AsyncAnthropic(
+            api_key=api_key,
+            base_url=config.api_base,
+            timeout=config.timeout,
+        )
+
+    async def _do_complete(
+        self,
+        messages: list[ChatMessage],
+        **kwargs,
+    ) -> Result[Completion, LLMError]:
+        """Generate completion from messages.
+
+        Args:
+            messages: Chat messages
+            **kwargs: Additional Anthropic API parameters
+
+        Returns:
+            ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
+            failures (rate limit, quota, content filter, model not found).
+
+        Raises:
+            LLMAuthenticationError: If API key is invalid.
+            AIError: For unexpected infrastructure failures.
+        """
+        try:
+            # Extract system message if present
+            system_msg = None
+            conv_messages = []
+            for msg in messages:
+                if msg.role == Role.SYSTEM:
+                    system_msg = msg.content
+                else:
+                    conv_messages.append(self._convert_message(msg))
+
+            # Build thinking param; suppress temperature (incompatible with thinking)
+            params = {
+                "model": kwargs.pop("model", self.config.model),
+                "messages": conv_messages,
+                "max_tokens": kwargs.pop("max_tokens", self.config.max_tokens or 1024),
+                **kwargs,
+            }
+            self._apply_thinking(params)
+            if "thinking" not in params:
+                params["temperature"] = kwargs.pop(
+                    "temperature", self.config.temperature
+                )
+
+            if system_msg:
+                params["system"] = system_msg
+
+            # Make API call
+            response = await self.client.messages.create(**params)
+
+            # Parse content blocks: separate thinking blocks from text blocks
+            content = ""
+            thinking: ThinkingResult | None = None
+            thinking_parts: list[str] = []
+            thinking_signature: str | None = None
+            for block in response.content:
+                block_type = getattr(block, "type", None)
+                if block_type == "thinking":
+                    thinking_parts.append(getattr(block, "thinking", "") or "")
+                    thinking_signature = getattr(block, "signature", None)
+                elif block_type == "text" or (
+                    block_type is None and hasattr(block, "text")
+                ):
+                    content = getattr(block, "text", "")
+            if thinking_parts:
+                thinking = ThinkingResult(
+                    content="".join(thinking_parts),
+                    signature=thinking_signature,
+                )
+
+            return Ok(
+                Completion(
+                    content=content,
+                    model=response.model,
+                    finish_reason=response.stop_reason,
+                    thinking=thinking,
+                    usage=TokenUsage(
+                        prompt_tokens=response.usage.input_tokens,
+                        completion_tokens=response.usage.output_tokens,
+                        total_tokens=response.usage.input_tokens
+                        + response.usage.output_tokens,
+                    ),
+                    metadata={
+                        "id": response.id,
+                        "type": response.type,
+                    },
+                    timestamp=datetime.now(UTC),
+                )
+            )
+
+        except (ValueError, RuntimeError, OSError, ConnectionError) as e:
+            return self._handle_error_as_result(e)
+
+    async def _do_stream_chat(
+        self,
+        messages: list[ChatMessage],
+        **kwargs,
+    ) -> Result[AsyncIterator[StreamChunk], LLMError]:
+        """Start a streaming completion.
+
+        Args:
+            messages: Chat messages
+            **kwargs: Additional Anthropic API parameters
+
+        Returns:
+            ``Ok(AsyncIterator[StreamChunk])`` on successful setup.
+            ``Err(LLMError)`` for recoverable connection failures.
+        """
+        try:
+            # Extract system message if present
+            system_msg = None
+            conv_messages = []
+            for msg in messages:
+                if msg.role == Role.SYSTEM:
+                    system_msg = msg.content
+                else:
+                    conv_messages.append(self._convert_message(msg))
+
+            # Build thinking param; suppress temperature (incompatible with thinking)
+            params = {
+                "model": kwargs.pop("model", self.config.model),
+                "messages": conv_messages,
+                "max_tokens": kwargs.pop("max_tokens", self.config.max_tokens or 1024),
+                **kwargs,
+            }
+            self._apply_thinking(params)
+            if "thinking" not in params:
+                params["temperature"] = kwargs.pop(
+                    "temperature", self.config.temperature
+                )
+
+            if system_msg:
+                params["system"] = system_msg
+
+            import asyncio
+
+            stream_ctx = self.client.messages.stream(**params)
+            if asyncio.iscoroutine(stream_ctx):
+                stream_ctx = await stream_ctx
+
+            return Ok(self._stream_impl(stream_ctx))
+
+        except (ValueError, RuntimeError, OSError, ConnectionError) as e:
+            return self._handle_error_as_result(e)
+
+    async def _stream_impl(self, stream_ctx: Any) -> AsyncGenerator[StreamChunk, None]:
+        """Yield StreamChunk objects from an established Anthropic stream context.
+
+        When ``thinking`` config is set on the config, uses the raw event
+        stream to capture ``thinking_delta`` events alongside ``text_delta``
+        events.  Otherwise falls back to the simpler ``text_stream`` path.
+        """
+        index = 0
+        use_thinking = self.config.thinking is not None
+        try:
+            async with stream_ctx as stream:
+                if use_thinking:
+                    # Raw event iteration to capture thinking and text deltas
+                    async for event in stream:
+                        event_type = getattr(event, "type", None)
+                        if event_type != "content_block_delta":
+                            continue
+                        delta = event.delta
+                        delta_type = getattr(delta, "type", None)
+                        if delta_type == "thinking_delta":
+                            yield StreamChunk(
+                                thinking_delta=getattr(delta, "thinking", None),
+                                is_thinking=True,
+                                model=self.config.model,
+                                finish_reason=None,
+                                index=index,
+                            )
+                            index += 1
+                        elif delta_type == "text_delta":
+                            yield StreamChunk(
+                                delta=getattr(delta, "text", None),
+                                is_thinking=False,
+                                model=self.config.model,
+                                finish_reason=None,
+                                index=index,
+                            )
+                            index += 1
+                else:
+                    iter_source = getattr(stream, "text_stream", stream)
+                    async for raw_text in iter_source:
+                        text = (
+                            raw_text.decode()
+                            if isinstance(raw_text, bytes)
+                            else raw_text
+                        )
+                        yield StreamChunk(
+                            delta=text,
+                            model=self.config.model,
+                            finish_reason=None,
+                            index=index,
+                        )
+                        index += 1
+        except (ValueError, RuntimeError, OSError, ConnectionError) as e:
+            err = self._handle_error_as_result(e)
+            raise err if isinstance(err, BaseException) else LLMError(str(err)) from e
+
+    async def _do_chat(
+        self,
+        messages: list[ChatMessage],
+        tools: list[ToolCall] | None = None,
+        **kwargs,
+    ) -> Result[Completion, LLMError]:
+        """Generate completion with Anthropic tool/function calling.
+
+        Converts tool descriptors to Anthropic ``tool_use`` format and parses
+        ``tool_use`` content blocks from the response back into
+        :class:`ToolCall` objects.
+
+        Args:
+            messages: Chat messages.
+            tools: Optional tool/function descriptors.
+            **kwargs: Additional Anthropic API parameters.
+
+        Returns:
+            ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
+            failures.
+
+        Raises:
+            LLMAuthenticationError: If API key is invalid.
+            AIError: For unexpected infrastructure failures.
+        """
+        if not tools:
+            return await self._do_complete(messages, **kwargs)
+
+        try:
+            system_msg = None
+            conv_messages = []
+            for msg in messages:
+                if msg.role == Role.SYSTEM:
+                    system_msg = msg.content
+                else:
+                    conv_messages.append(self._convert_message(msg))
+
+            params = {
+                "model": kwargs.pop("model", self.config.model),
+                "messages": conv_messages,
+                "max_tokens": kwargs.pop("max_tokens", self.config.max_tokens or 1024),
+                "temperature": kwargs.pop("temperature", self.config.temperature),
+                "tools": [_tool_to_anthropic(t) for t in tools],
+                **kwargs,
+            }
+            if system_msg:
+                params["system"] = system_msg
+
+            response = await self.client.messages.create(**params)
+
+            text_parts: list[str] = []
+            tool_calls: list[ToolCall] = []
+
+            for block in response.content:
+                block_type = getattr(block, "type", None)
+                if block_type == "text":
+                    text_parts.append(getattr(block, "text", ""))
+                elif block_type == "tool_use":
+                    tool_calls.append(
+                        ToolCall(
+                            id=getattr(block, "id", ""),
+                            type="function",
+                            function=FunctionCall(
+                                name=getattr(block, "name", ""),
+                                arguments=dumps_str(getattr(block, "input", {})),
+                            ),
+                        )
+                    )
+
+            return Ok(
+                Completion(
+                    content="".join(text_parts),
+                    model=response.model,
+                    finish_reason=response.stop_reason,
+                    usage=TokenUsage(
+                        prompt_tokens=response.usage.input_tokens,
+                        completion_tokens=response.usage.output_tokens,
+                        total_tokens=response.usage.input_tokens
+                        + response.usage.output_tokens,
+                    ),
+                    tool_calls=tool_calls or None,
+                )
+            )
+
+        except (ValueError, RuntimeError, OSError, ConnectionError) as e:
+            return self._handle_error_as_result(e)
+
+    def _apply_thinking(self, params: dict[str, Any]) -> None:
+        """Inject Anthropic extended-thinking parameters into the API payload.
+
+        When ``suppress`` is set, returns immediately — Anthropic's default is
+        no thinking, so suppression simply means not injecting the parameter.
+
+        Args:
+            params: Mutable API payload dict.
+        """
+        if self.config.thinking is None:
+            return
+        if self.config.thinking.suppress:
+            return
+        params["thinking"] = {
+            "type": "enabled",
+            "budget_tokens": self.config.thinking.budget_tokens,
+        }
+        params.pop("temperature", None)
+
+    def _convert_message(self, msg: ChatMessage) -> dict[str, Any]:
+        """Convert ChatMessage to Anthropic format.
+
+        Uses ``serialize_content_for_anthropic`` to convert multimodal message
+        content to Anthropic-compatible block format. When ``thinking_blocks``
+        is populated (multi-turn with extended thinking), prepends thinking blocks
+        to the serialized content.
+
+        Args:
+            msg: ChatMessage to convert
+
+        Returns:
+            Anthropic message dict with ``role`` and ``content`` keys
+        """
+        role = "user" if msg.role == Role.USER else "assistant"
+        serialized_content = serialize_content_for_anthropic(msg.content)
+
+        if msg.thinking_blocks:
+            # Only include serialized_content if it's non-trivially empty
+            # (empty string content produces [{"type": "text", "text": ""}] which Anthropic rejects)
+            if msg.content in ("", []):
+                content: list[dict[str, Any]] = list(msg.thinking_blocks)
+            else:
+                content = list(msg.thinking_blocks) + serialized_content
+            return {"role": role, "content": content}
+
+        return {
+            "role": role,
+            "content": serialized_content,
+        }
+
+    def _handle_error_as_result(self, error: Exception) -> Result[Any, LLMError]:
+        """Map a caught exception to ``Err`` (recoverable) or re-raise (infra)."""
+        err_str = str(error).lower()
+        if "authentication" in err_str or "api key" in err_str:
+            raise LLMAuthenticationError(
+                f"Anthropic authentication failed: {error}"
+            ) from error
+        if "rate limit" in err_str:
+            return Err(LLMRateLimitError(f"Anthropic rate limit exceeded: {error}"))
+        if "quota" in err_str or "billing" in err_str or "credit" in err_str:
+            return Err(LLMQuotaExceededError(f"Anthropic quota exceeded: {error}"))
+        if "content" in err_str and ("filter" in err_str or "policy" in err_str):
+            return Err(LLMContentFilterError(f"Anthropic content filter: {error}"))
+        if "model" in err_str and (
+            "not found" in err_str or "does not exist" in err_str
+        ):
+            return Err(LLMModelNotFoundError(f"Anthropic model not found: {error}"))
+        raise AIError(f"Anthropic infrastructure error: {error}") from error
+
+    async def close(self) -> None:
+        """Close the Anthropic client."""
+        if getattr(self, "client", None) and not self._closed:
+            await self.client.close()
+        await super().close()
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Perform health check.
+
+        Returns:
+            Structured health check result.
+        """
+        if self._closed:
+            return HealthCheckResult(
+                component="llm.anthropic",
+                status=HealthStatus.UNHEALTHY,
+                error="Client is closed",
+            )
+
+        return HealthCheckResult(
+            component="llm.anthropic",
+            status=HealthStatus.HEALTHY,
+            details={
+                "provider": "anthropic",
+                "model": self.config.model,
+            },
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Private helpers
+# ──────────────────────────────────────────────────────────────────────
+
+
+def _tool_to_anthropic(tool: Any) -> dict[str, Any]:
+    """Convert a tool descriptor to Anthropic ``tool_use`` format.
+
+    Supports objects that expose a ``__tool_schema__`` class attribute
+    (Lexigram tool convention) as well as plain dicts in OpenAI tool format.
+
+    Args:
+        tool: A class with ``__tool_schema__``, or a dict with a ``function``
+            key in OpenAI tool format.
+
+    Returns:
+        Anthropic tool dict with ``name``, ``description``, and
+        ``input_schema`` keys.
+    """
+    if hasattr(tool, "__tool_schema__"):
+        schema: dict[str, Any] = tool.__tool_schema__
+        return {
+            "name": schema["name"],
+            "description": schema.get("description", ""),
+            "input_schema": schema.get(
+                "parameters", {"type": "object", "properties": {}}
+            ),
+        }
+    if isinstance(tool, dict):
+        func = tool.get("function", tool)
+        return {
+            "name": func.get("name", ""),
+            "description": func.get("description", ""),
+            "input_schema": func.get(
+                "parameters", {"type": "object", "properties": {}}
+            ),
+        }
+    return {
+        "name": getattr(tool, "name", str(tool)),
+        "description": getattr(tool, "description", ""),
+        "input_schema": {"type": "object", "properties": {}},
+    }

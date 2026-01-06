@@ -1,0 +1,234 @@
+"""Lexigram — Async-first DI application framework for Python.
+
+This package exposes a curated root API while avoiding import-time circular
+imports via lazy attribute loading.
+"""
+
+from __future__ import annotations
+
+import importlib
+import importlib.metadata
+import pkgutil
+from typing import Any, Final
+
+# Critical: enable namespace-package discovery for lexigram-* distributions.
+__path__ = pkgutil.extend_path(__path__, __name__)
+
+from lexigram.constants import __version__
+
+_ExportSpec = tuple[str, str | None]
+_EXPORTS: Final[dict[str, _ExportSpec]] = {
+    "AbstractBuilder": ("lexigram.primitives.builder", "AbstractBuilder"),
+    "ActionHandler": ("lexigram.types", "ActionHandler"),
+    "AppState": ("lexigram.app.base", "AppState"),
+    "Application": ("lexigram.app.base", "Application"),
+    "AsyncServiceFactory": ("lexigram.types", "AsyncServiceFactory"),
+    "BaseConfig": ("lexigram.config", "BaseConfig"),
+    "CacheBackendProtocol": ("lexigram.contracts.infra.cache", "CacheBackendProtocol"),
+    "ClockProtocol": ("lexigram.contracts.core.clock", "ClockProtocol"),
+    "clock": ("lexigram.primitives.clock", None),
+    "ConfigProtocol": ("lexigram.contracts.core.config", "ConfigProtocol"),
+    "ConfigProvider": ("lexigram.config.di.provider", "ConfigProvider"),
+    "ConfigurationError": ("lexigram.exceptions", "ConfigurationError"),
+    "Container": ("lexigram.di.container", "Container"),
+    "ContainerBuilder": ("lexigram.di.builder", "ContainerBuilder"),
+    "ContainerError": ("lexigram.contracts.exceptions.container", "ContainerError"),
+    "Context": ("lexigram.primitives.context", "Context"),
+    "ContextKey": ("lexigram.primitives.context", "ContextKey"),
+    "CoreInfrastructureProvider": (
+        "lexigram.primitives.di.provider",
+        "CoreInfrastructureProvider",
+    ),
+    "CoreModule": ("lexigram.app.module", "CoreModule"),
+    "CoreProvider": ("lexigram.app.di.provider", "CoreProvider"),
+    "DomainModelError": ("lexigram.exceptions", "DomainModelError"),
+    "DomainError": ("lexigram.contracts.exceptions.domain", "DomainError"),
+    "DynamicModule": ("lexigram.di.module", "DynamicModule"),
+    "Err": ("lexigram.result", "Err"),
+    "ErrorHandler": ("lexigram.types", "ErrorHandler"),
+    "FilterHandler": ("lexigram.types", "FilterHandler"),
+    "EventMiddlewareProtocol": ("lexigram.contracts.events", "EventMiddlewareProtocol"),
+    "GuardFunction": ("lexigram.types", "GuardFunction"),
+    "hashing": ("lexigram.security.hashing.ambient", None),
+    "HookPriority": ("lexigram.hooks", "HookPriority"),
+    "HookRegistry": ("lexigram.hooks", "HookRegistry"),
+    "HookRegistryProtocol": ("lexigram.hooks", "HookRegistryProtocol"),
+    "identity": ("lexigram.identity.ambient", None),
+    "Injectable": ("lexigram.di.decorators", "Injectable"),
+    "InjectionError": ("lexigram.exceptions", "InjectionError"),
+    "IdGeneratorProtocol": ("lexigram.contracts.core.identity", "IdGeneratorProtocol"),
+    "IdentityProvider": ("lexigram.identity.di.provider", "IdentityProvider"),
+    "InfrastructureError": (
+        "lexigram.contracts.exceptions.infra",
+        "InfrastructureError",
+    ),
+    "Invoker": ("lexigram.app.invoker", "Invoker"),
+    "LexigramConfig": ("lexigram.config", "LexigramConfig"),
+    "LexigramError": ("lexigram.contracts.exceptions", "LexigramError"),
+    "LexigramException": ("lexigram.exceptions", "LexigramException"),
+    "LoggingConfig": ("lexigram.config", "LoggingConfig"),
+    "LoggingProvider": ("lexigram.logging.di.provider", "LoggingProvider"),
+    "MiddlewareChain": ("lexigram.middleware.core.chain", "MiddlewareChain"),
+    "MiddlewareConfig": ("lexigram.middleware.config", "MiddlewareConfig"),
+    "MiddlewareFactory": ("lexigram.types", "MiddlewareFactory"),
+    "MiddlewareModule": ("lexigram.middleware.module", "MiddlewareModule"),
+    "MiddlewareProvider": ("lexigram.middleware.di.provider", "MiddlewareProvider"),
+    "MiddlewareRegistry": ("lexigram.middleware.core.registry", "MiddlewareRegistry"),
+    "Module": ("lexigram.di.module", "Module"),
+    "ModuleBase": ("lexigram.di.module", "ModuleBase"),
+    "ModuleError": ("lexigram.di.module", "ModuleError"),
+    "Ok": ("lexigram.result", "Ok"),
+    "NotFoundError": ("lexigram.contracts.exceptions.domain", "NotFoundError"),
+    "Provider": ("lexigram.di.provider", "Provider"),
+    "ProviderError": ("lexigram.contracts.exceptions.provider", "ProviderError"),
+    "ProviderPriority": ("lexigram.contracts.core.provider", "ProviderPriority"),
+    "ProviderState": ("lexigram.di.provider", "ProviderState"),
+    "Registry": ("lexigram.primitives.registry", "Registry"),
+    "RequestContext": ("lexigram.primitives.context", "RequestContext"),
+    "Result": ("lexigram.result", "Result"),
+    "ResultHandler": ("lexigram.types", "ResultHandler"),
+    "ResultPipeline": ("lexigram.result", "ResultPipeline"),
+    "SamplingConfig": ("lexigram.config", "SamplingConfig"),
+    "Scope": ("lexigram.di.container", "Scope"),
+    "SerializationError": ("lexigram.exceptions", "SerializationError"),
+    "SystemClock": ("lexigram.primitives.clock", "current"),
+    "as_result": ("lexigram.result", "as_result"),
+    "as_result_sync": ("lexigram.result", "as_result_sync"),
+    "buildable": ("lexigram.primitives.builder", "buildable"),
+    "builder_field": ("lexigram.primitives.builder", "builder_field"),
+    "collect": ("lexigram.result", "collect"),
+    "configure_logging": ("lexigram.logging", "configure_logging"),
+    "create_app": ("lexigram.app.factory", "create_app"),
+    "create_module": ("lexigram.di.module", "create_module"),
+    "get_logger": ("lexigram.logging", "get_logger"),
+    "inject": ("lexigram.di.decorators", "inject"),
+    "injectable": ("lexigram.di.decorators", "injectable"),
+    "module": ("lexigram.di.module", "module"),
+    "partition": ("lexigram.result", "partition"),
+    "provide": ("lexigram.di.function_provider", "provide"),
+    "request_context": ("lexigram.primitives.context", "request_scope"),
+    "run_application": ("lexigram.app.runner", "run_application"),
+    "scoped": ("lexigram.di.decorators", "scoped"),
+    "singleton": ("lexigram.di.decorators", "singleton"),
+    "transient": ("lexigram.di.decorators", "transient"),
+    "try_catch": ("lexigram.result", "try_catch"),
+    "try_catch_sync": ("lexigram.result", "try_catch_sync"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy-load exports to avoid circular imports during package init."""
+    try:
+        module_path, attr_name = _EXPORTS[name]
+    except KeyError as exc:
+        raise AttributeError(f"module 'lexigram' has no attribute {name!r}") from exc
+
+    if attr_name is None:
+        module = importlib.import_module(module_path)
+        globals()[name] = module
+        return module
+
+    module = importlib.import_module(module_path)
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    """Return eager and lazy exports for introspection tools."""
+    return sorted(set(globals()) | set(_EXPORTS) | {"__version__"})
+
+
+__all__ = [
+    "AbstractBuilder",
+    "ActionHandler",
+    "AppState",
+    "Application",
+    "AsyncServiceFactory",
+    "BaseConfig",
+    "CacheBackendProtocol",
+    "ClockProtocol",
+    "ClockProvider",
+    "ConfigProtocol",
+    "ConfigProvider",
+    "ConfigurationError",
+    "Container",
+    "ContainerBuilder",
+    "ContainerError",
+    "Context",
+    "ContextKey",
+    "CoreInfrastructureProvider",
+    "CoreModule",
+    "CoreProvider",
+    "DomainError",
+    "DomainModelError",
+    "DynamicModule",
+    "Err",
+    "ErrorHandler",
+    "EventMiddlewareProtocol",
+    "FilterHandler",
+    "GuardFunction",
+    "HookPriority",
+    "HookRegistry",
+    "HookRegistryProtocol",
+    "IdGeneratorProtocol",
+    "IdentityProvider",
+    "InfrastructureError",
+    "Injectable",
+    "InjectionError",
+    "Invoker",
+    "LexigramConfig",
+    "LexigramError",
+    "LexigramException",
+    "LoggingConfig",
+    "LoggingProvider",
+    "MiddlewareChain",
+    "MiddlewareConfig",
+    "MiddlewareFactory",
+    "MiddlewareModule",
+    "MiddlewareProvider",
+    "MiddlewareRegistry",
+    "Module",
+    "ModuleBase",
+    "ModuleError",
+    "NotFoundError",
+    "Ok",
+    "Provider",
+    "ProviderError",
+    "ProviderPriority",
+    "ProviderState",
+    "Registry",
+    "RequestContext",
+    "Result",
+    "ResultHandler",
+    "ResultPipeline",
+    "SamplingConfig",
+    "Scope",
+    "SerializationError",
+    "SystemClock",
+    "__version__",
+    "as_result",
+    "as_result_sync",
+    "buildable",
+    "builder_field",
+    "clock",
+    "collect",
+    "configure_logging",
+    "create_app",
+    "create_module",
+    "get_logger",
+    "hashing",
+    "identity",
+    "inject",
+    "injectable",
+    "module",
+    "partition",
+    "provide",
+    "request_context",
+    "run_application",
+    "scoped",
+    "singleton",
+    "transient",
+    "try_catch",
+    "try_catch_sync",
+]

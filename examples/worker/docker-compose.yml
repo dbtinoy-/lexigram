@@ -1,0 +1,18 @@
+services:
+  redis:
+    image: redis:7
+    ports:
+      - "26379:6379"
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "25672:5672"
+      - "25672:15672"
+  worker:
+    build: .
+    command: python -m lexigram_example_worker.main
+    depends_on:
+      - redis
+      - rabbitmq
+
+

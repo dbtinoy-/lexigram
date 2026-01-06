@@ -1,0 +1,13 @@
+# Copy to application.yaml and adjust to your environment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: cli:
+# Environment variable prefix: LEX_CLI__
+
+cli:
+  # Scaffolding Defaults
+  default_template: "web-api"   # Template used by `lex new` (LEX_CLI__DEFAULT_TEMPLATE)
+  default_database: "postgres"  # Database driver scaffold uses (LEX_CLI__DEFAULT_DATABASE)
+
+  # Output
+  color: true    # Enable coloured terminal output (LEX_CLI__COLOR)
+  verbose: false # Print verbose/debug output (LEX_CLI__VERBOSE)

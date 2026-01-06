@@ -1,0 +1,145 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: vector:
+# Environment variable prefix: LEX_VECTOR__
+
+vector:
+  enabled: true
+  backend: "memory"  # memory, pgvector, pinecone, qdrant, chroma, weaviate  (LEX_VECTOR__BACKEND)
+
+  # Collection Defaults
+  default_distance_metric: "cosine"  # cosine, dot_product, euclidean
+  default_index_type: "hnsw"         # hnsw, ivfflat, flat
+  default_dimension: 1536            # Default vector dimension (1536 = OpenAI text-embedding-3-small)
+
+  # Operation Settings
+  upsert_batch_size: 100             # Vectors per upsert batch
+
+  # Retry Policy
+  max_retries: 3
+  retry_delay: 0.5  # Seconds between retries
+
+  # AI-Layer Fields (used by VectorStoreAdapter and EmbeddingCache)
+  collection_name: "default"           # Default collection for AI-layer operations
+  enable_cache: false                  # Enable embedding caching (requires CacheBackend)
+  cache_ttl: 86400                     # Cache TTL in seconds (24 hours)
+  embedding_model: "text-embedding-3-small"  # Model used for AI-layer embedding generation
+
+  # pgvector Configuration (used when backend='pgvector')
+  pgvector:
+    database: "primary"              # Named db backend from db.backends (LEX_VECTOR__PGVECTOR__DATABASE)
+    schema: "public"
+    default_lists: 100               # IVFFlat index lists
+    default_probes: 10               # IVFFlat index probes at query time
+    default_ef_search: 64            # HNSW ef_search
+    table_prefix: "vec_"
+    create_extension: true           # Auto-create pgvector extension if missing
+
+  # Pinecone Configuration (used when backend='pinecone')
+  pinecone:
+    api_key: ""                      # LEX_VECTOR__PINECONE__API_KEY
+    environment: ""                  # e.g. "us-west1-gcp"
+    index_name: ""
+    namespace: ""
+    timeout: 30.0
+    pool_threads: 4
+
+  # Qdrant Configuration (used when backend='qdrant')
+  qdrant:
+    url: "http://localhost:6333"     # LEX_VECTOR__QDRANT__URL
+    api_key: null                    # LEX_VECTOR__QDRANT__API_KEY
+    grpc_port: 6334
+    prefer_grpc: true
+    timeout: 30.0
+
+  # ChromaDB Configuration (used when backend='chroma')
+  chroma:
+    host: "localhost"
+    port: 8000
+    use_http_client: true            # false = in-memory EphemeralClient (no server needed)
+    api_key: null                    # Optional — for ChromaDB Cloud or auth-enabled servers
+    collection_name: "default"
+    timeout: 30.0
+
+  # Weaviate Configuration (used when backend='weaviate')
+  weaviate:
+    url: "http://localhost:8080"     # LEX_VECTOR__WEAVIATE__URL
+    api_key: null                    # LEX_VECTOR__WEAVIATE__API_KEY
+    grpc_port: 50051
+    timeout: 30.0
+
+  # In-Memory Configuration (used when backend='memory', for dev/testing)
+  memory:
+    max_collections: 100
+    max_vectors_per_collection: 100000
+
+  # Named Multi-Backend Support
+  # Each backend is registered under Named(entry.name).
+  # The first entry (or primary: true) also receives the unnamed VectorStoreProtocol binding.
+  backends: []
+  # Example:
+  # backends:
+  #   - name: primary
+  #     primary: true
+  #     backend: qdrant
+  #     qdrant:
+  #       url: "http://qdrant-primary:6333"
+  #       api_key: null
+  #       grpc_port: 6334
+  #       prefer_grpc: true
+  #       timeout: 30.0
+  #     pgvector:
+  #       database: "primary"
+  #       schema: "public"
+  #       default_lists: 100
+  #       default_probes: 10
+  #       default_ef_search: 64
+  #       table_prefix: "vec_"
+  #       create_extension: true
+  #     pinecone:
+  #       api_key: ""
+  #       environment: ""
+  #       index_name: ""
+  #       namespace: ""
+  #       timeout: 30.0
+  #       pool_threads: 4
+  #     weaviate:
+  #       url: "http://localhost:8080"
+  #       api_key: null
+  #       grpc_port: 50051
+  #       timeout: 30.0
+  #     memory:
+  #       max_collections: 100
+  #       max_vectors_per_collection: 100000
+  #
+  #   - name: rag
+  #     backend: pgvector
+  #     pgvector:
+  #       database: "rag"
+  #       schema: "public"
+  #       default_lists: 100
+  #       default_probes: 10
+  #       default_ef_search: 64
+  #       table_prefix: "vec_"
+  #       create_extension: true
+  #     qdrant:
+  #       url: "http://localhost:6333"
+  #       api_key: null
+  #       grpc_port: 6334
+  #       prefer_grpc: true
+  #       timeout: 30.0
+  #     pinecone:
+  #       api_key: ""
+  #       environment: ""
+  #       index_name: ""
+  #       namespace: ""
+  #       timeout: 30.0
+  #       pool_threads: 4
+  #     weaviate:
+  #       url: "http://localhost:8080"
+  #       api_key: null
+  #       grpc_port: 50051
+  #       timeout: 30.0
+  #     memory:
+  #       max_collections: 100
+  #       max_vectors_per_collection: 100000

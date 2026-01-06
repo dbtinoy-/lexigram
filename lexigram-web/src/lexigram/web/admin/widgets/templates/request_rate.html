@@ -1,0 +1,35 @@
+<div class="card h-100">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{{ title }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="text-center">
+                    <p class="text-muted small mb-1">Requests/Second</p>
+                    <h4 class="mb-0">{{ requests_per_second }}</h4>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-center">
+                    <p class="text-muted small mb-1">Error Rate</p>
+                    <h4 class="mb-0">
+                        {% if error_rate_pct > 5 %}
+                            <span class="text-danger">{{ error_rate_pct }}%</span>
+                        {% elif error_rate_pct > 1 %}
+                            <span class="text-warning">{{ error_rate_pct }}%</span>
+                        {% else %}
+                            <span class="text-success">{{ error_rate_pct }}%</span>
+                        {% endif %}
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <hr>
+        <dl class="row">
+            <dt class="col-sm-6">Total Requests:</dt>
+            <dd class="col-sm-6">{{ total_requests }}</dd>
+        </dl>
+    </div>
+</div>
+

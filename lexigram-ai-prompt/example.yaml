@@ -1,0 +1,18 @@
+# prompt.yaml.example
+# Lexigram AI Prompt Configuration Template
+# YAML key: ai_prompt:
+# Environment variable prefix: LEX_AI_PROMPT__
+
+ai_prompt:
+  # Master on/off switch for the prompt management subsystem.
+  enabled: true
+
+  # -- Template Rendering ----------------------------------------------------
+
+  default_format: "f_string"    # Default template format: "f_string", "jinja2", "dollar", "simple"
+
+  # -- Input Sanitization ----------------------------------------------------
+
+  sanitize_inputs: true         # Sanitize template variable values before rendering
+  strict_sanitizer: true        # Raise an error on injection attempt (false = log a warning only)
+  max_variable_length: 0        # Maximum length of a single template variable value (0 = unlimited)

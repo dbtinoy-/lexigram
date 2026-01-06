@@ -1,0 +1,192 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+
+admin:
+  # Core Settings
+  name: "admin"
+  enabled: true
+  title: "Lexigram Admin"
+  prefix: "/admin"
+  htmx_prefix: "/admin/htmx"
+  api_prefix: "/admin/api"
+  static_prefix: "/admin/static"
+
+  # Security
+  require_auth: true
+  debug: false
+
+  # Paths (null = use package defaults)
+  templates_dir: null
+  static_dir: null
+
+  # Authentication
+  auth:
+    enabled: true
+    session_secret: "change-me-in-production"  # LEX_ADMIN__AUTH__SESSION_SECRET
+    login_url: "/admin/login"
+    logout_url: "/admin/logout"
+    session_lifetime: 86400       # Seconds (24 hours)
+    session_cookie_name: "admin_session"
+    session_cookie_secure: true
+    session_cookie_httponly: true
+    session_cookie_samesite: "lax"  # strict, lax, none
+    permission_cache_ttl: 300       # Seconds (5 minutes)
+    idle_timeout: 3600              # Session idle timeout in seconds
+    csrf_token_lifetime: 3600       # CSRF token expiry in seconds
+
+    # Password Policy (NIST SP 800-63B)
+    password_policy:
+      min_length: 12
+      max_length: 128
+      require_uppercase: true
+      require_lowercase: true
+      require_digit: true
+      require_special: true
+      reject_common_passwords: true
+      reject_containing_email: true
+
+    # Security Hardening
+    security:
+      ip_rate_limit_enabled: true
+      ip_rate_limit_per_minute: 10
+      ip_rate_limit_per_15_minutes: 30
+      ip_rate_limit_per_hour: 60
+      # Progressive lockout: [[failure_count, lockout_minutes], ...]
+      lockout_thresholds:
+        - [5, 15]
+        - [10, 60]
+        - [15, 240]
+        - [20, 1440]
+      permanent_lockout_threshold: 50
+      setup_token: null  # Set via LEX_ADMIN__AUTH__SECURITY__SETUP_TOKEN for first-run
+
+    # Static users/roles (sync — override with OAuth for production)
+    users: []
+    roles: {}
+
+    # OAuth / SSO (optional)
+    oauth_enabled: false
+    oauth_providers: []
+
+  # Feature Flags
+  features:
+    # UI Features
+    command_palette: true
+    keyboard_shortcuts: true
+    theme_toggle: true
+    search: true
+    # UX Features
+    optimistic_updates: true
+    undo_redo: true
+    autosave: false
+    # Advanced Features
+    audit_logging: true
+    activity_feed: false
+    notifications: true
+    webhooks: false
+    api_docs: true
+
+  # UI / Theme
+  ui:
+    theme: "system"             # light, dark, system
+    primary_color: "#3B82F6"
+    sidebar_width: 256          # px
+    sidebar_collapsed_width: 64 # px
+    content_max_width: null     # px (null = unlimited)
+    logo_url: null
+    favicon_url: null
+
+  # Rate Limiting
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+    requests_per_hour: 1000
+    burst_size: 10
+    # Per-action limits
+    create_per_minute: 30
+    update_per_minute: 60
+    delete_per_minute: 20
+    bulk_per_minute: 5
+
+  # Resource Defaults
+  resource_defaults:
+    per_page: 20
+    enable_search: true
+    enable_export: true
+    enable_bulk_actions: true
+    action_layout: "horizontal"  # horizontal, vertical, dropdown
+    soft_delete: true
+    timestamp_fields: true
+
+  # DataTable Defaults
+  table_defaults:
+    reorderable_columns: false
+    enable_column_visibility: true
+    sticky_header: true
+    virtualized: false
+    row_height: 48
+    zebra_stripes: true
+    hover_highlight: true
+
+  # Form Defaults
+  form_defaults:
+    show_required_indicator: true
+    autosave_enabled: false
+    autosave_interval_ms: 30000
+    confirm_unsaved_changes: true
+    inline_validation: true
+
+  # Dashboard Layout
+  dashboard_layout:
+    widget_refresh_default: 30   # Seconds
+    max_widgets: 20
+    layout: "grid"               # grid, masonry
+
+  # Framework Management Pages
+  framework_pages:
+    enabled: true
+    require_permission: "admin:framework:access"
+
+  # Per-resource overrides (keyed by resource name)
+  resources: {}
+  # Example:
+  # resources:
+  #   users:
+  #     enabled: true
+  #     icon: "users"
+  #     label: "User"
+  #     label_plural: "Users"
+  #     per_page: 25
+  #     searchable_fields: ["email", "name"]
+  #     default_sort: "created_at"
+  #     default_sort_order: "desc"
+  #     permissions:
+  #       view: ["admin"]
+  #       create: ["admin"]
+  #       delete: ["superadmin"]
+
+  # Navigation Groups (keyed by group name)
+  navigation_groups: {}
+  # Example:
+  # navigation_groups:
+  #   content:
+  #     label: "Content"
+  #     icon: "file-text"
+  #     order: 10
+  #     resources: ["posts", "pages"]
+  #     permission: null
+  #     collapsible: true
+  #     collapsed_by_default: false
+
+  # Custom commands and extensions
+  commands: []
+  extensions: {}
+
+  # Contributor system
+  contributors: {}
+  # Example:
+  # contributors:
+  #   my_plugin:
+  #     enabled: true
+  #     options:
+  #       key: value

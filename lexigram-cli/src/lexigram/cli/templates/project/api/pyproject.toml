@@ -1,0 +1,14 @@
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = "Minimal API built with Lexigram"
+requires-python = ">=3.11"
+dependencies = [
+    "lexigram",
+    "lexigram-web",
+    "uvicorn[standard]",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

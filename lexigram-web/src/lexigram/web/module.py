@@ -1,0 +1,103 @@
+"""Web module for dependency injection."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from lexigram.contracts.web import WebRateLimiterProtocol
+from lexigram.di.module import DynamicModule, Module, module
+from lexigram.web.config import ServerConfig, WebConfig  # ServerConfig used in stub()
+from lexigram.web.di.provider import WebProvider
+
+
+@module()
+class WebModule(Module):
+    """Web module with HTTP provider."""
+
+    @classmethod
+    def configure(
+        cls,
+        controllers: list[type] | None = None,
+        discover: list[str] | tuple[str, ...] | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        **kwargs: Any,
+    ) -> DynamicModule:
+        """Create a WebModule with explicit configuration.
+
+        Configuration (CORS, CSRF, server host/port, etc.) is loaded from the
+        ``[web]`` section of ``application.yaml`` by the orchestrator and injected
+        into the provider at registration time.  Pass a ``web_config`` kwarg
+        only if you need to bypass YAML entirely.
+
+        Args:
+            controllers: Controller classes to register with the web server.
+            discover: Package paths to scan for controllers and merge with
+                any explicitly provided controller classes.
+            host: Override the server host (builds a ``WebConfig`` internally).
+            port: Override the server port (builds a ``WebConfig`` internally).
+            **kwargs: Additional keyword arguments forwarded to
+                :class:`~lexigram.web.di.provider.WebProvider`.
+        """
+        resolved_controllers = list(controllers or [])
+        if discover:
+            from lexigram.web.routing.discovery import discover_controllers
+
+            for controller in discover_controllers(list(discover)):
+                if controller not in resolved_controllers:
+                    resolved_controllers.append(controller)
+
+        if (host is not None or port is not None) and "web_config" not in kwargs:
+            server_kwargs: dict[str, Any] = {}
+            if host is not None:
+                server_kwargs["host"] = host
+            if port is not None:
+                server_kwargs["port"] = port
+            kwargs["web_config"] = WebConfig(server=ServerConfig(**server_kwargs))
+
+        from lexigram.web.admin.contributor import WebAdminContributor
+        from lexigram.web.admin.handlers.active_connections import (
+            ActiveConnectionsWidgetHandler,
+        )
+        from lexigram.web.admin.handlers.request_rate import RequestRateWidgetHandler
+        from lexigram.web.admin.handlers.server_status import ServerStatusWidgetHandler
+        from lexigram.web.admin.renderer import PackageWidgetRenderer
+
+        return DynamicModule(
+            module=cls,
+            providers=[WebProvider(controllers=resolved_controllers, **kwargs)],
+            is_global=True,
+            exports=[
+                WebProvider,
+                WebRateLimiterProtocol,
+                WebAdminContributor,
+                PackageWidgetRenderer,
+                ServerStatusWidgetHandler,
+                ActiveConnectionsWidgetHandler,
+                RequestRateWidgetHandler,
+            ],
+        )
+
+    @classmethod
+    def stub(cls, config: Any = None) -> DynamicModule:
+        """Return a no-op WebModule suitable for unit testing.
+
+        Registers WebProvider with no controllers and test-safe
+        configuration. No real HTTP server is started.
+
+        Args:
+            config: Optional test configuration override.
+
+        Returns:
+            A DynamicModule with in-memory web configuration.
+        """
+        web_config = WebConfig(server=ServerConfig(host="127.0.0.1", port=0))
+        return DynamicModule(
+            module=cls,
+            providers=[WebProvider(web_config=web_config, controllers=[])],
+            is_global=True,
+            exports=[WebProvider, WebRateLimiterProtocol],
+        )
+
+
+__all__ = ["WebModule"]

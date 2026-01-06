@@ -1,0 +1,24 @@
+<div class="card h-100">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{{ title }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <p class="text-muted small mb-1">Server Status</p>
+                {% if is_running %}
+                    <span class="badge bg-success">Running</span>
+                {% else %}
+                    <span class="badge bg-danger">Offline</span>
+                {% endif %}
+            </div>
+        </div>
+        <hr>
+        <dl class="row">
+            <dt class="col-sm-6">Uptime:</dt>
+            <dd class="col-sm-6">{{ (uptime_seconds / 3600) | round(2) }} hours</dd>
+            <dt class="col-sm-6">Version:</dt>
+            <dd class="col-sm-6">{{ server_version }}</dd>
+        </dl>
+    </div>
+</div>

@@ -1,0 +1,36 @@
+# guard.yaml.example
+# Lexigram AI Guard Configuration Template
+# YAML key: ai_guard:
+# Environment variable prefix: LEX_AI_GUARD__
+
+ai_guard:
+  # Master on/off switch for the input/output guard pipeline.
+  enabled: true
+
+  # -- Prompt Injection Detection ---------------------------------------------
+
+  injection_detection: true     # Detect prompt injection patterns in user input
+  injection_action: "block"     # Action on detection: "block" or "warn"
+
+  # -- PII Detection & Redaction ---------------------------------------------
+
+  pii_detection: true           # Detect Personally Identifiable Information in content
+  pii_action: "redact"          # Action on detection: "redact", "block", or "warn"
+  pii_entities: []              # PII entity types to target; empty list = all types
+                                # e.g. ["EMAIL_ADDRESS", "PHONE_NUMBER", "PERSON"]
+  pii_redaction_output: true    # Apply PII redaction to model output as well as input
+
+  # -- Length Limits ---------------------------------------------------------
+
+  max_input_chars: 0            # Maximum input character count (0 = unlimited)
+  max_output_chars: 0           # Maximum output character count (0 = unlimited)
+  length_action: "block"        # Action when a length limit is exceeded: "block" or "warn"
+
+  # -- Topic Restrictions ----------------------------------------------------
+
+  restricted_topics: []         # Topics to block, e.g. ["violence", "adult_content"]
+
+  # -- LLM-Based Guards ------------------------------------------------------
+
+  enable_llm_guards: false      # Use an LLM for advanced injection/jailbreak detection
+                                # Increases latency and cost; enable only when needed

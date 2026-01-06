@@ -1,0 +1,11 @@
+<div class="card h-100">
+  <div class="card-body">
+    <h6 class="card-title text-muted">Query Stats</h6>
+    <dl class="row mb-0">
+      <dt class="col-8 small">Total Queries</dt><dd class="col-4 text-end small">{{ total_queries }}</dd>
+      <dt class="col-8 small">Avg Duration</dt><dd class="col-4 text-end small">{{ avg_duration_ms }}ms</dd>
+      <dt class="col-8 small">Slow Queries</dt><dd class="col-4 text-end small text-warning">{{ slow_queries }}</dd>
+      <dt class="col-8 small">Errors</dt><dd class="col-4 text-end small text-danger">{{ error_count }}</dd>
+    </dl>
+  </div>
+</div>

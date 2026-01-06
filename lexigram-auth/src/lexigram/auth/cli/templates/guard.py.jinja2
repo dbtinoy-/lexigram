@@ -1,0 +1,187 @@
+"""{{ guard_name }} authorization guard.
+
+This module provides a custom authorization guard for Lexigram.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from lexigram.auth.web.guards import Guard, GuardContext
+
+if TYPE_CHECKING:
+    from lexigram.auth.providers import AuthorizationProvider
+
+
+class {{ guard_name }}Guard(Guard):
+    """Custom authorization guard for {{ guard_name }}.
+    
+    This guard checks if the user has the required authorization
+    to access a resource or perform an action.
+    """
+    
+    def __init__(
+        self,
+        authorization_provider: AuthorizationProvider | None = None,
+    ):
+        """Initialize the guard.
+        
+        Args:
+            authorization_provider: Optional authorization service.
+        """
+        self.authorization_provider = authorization_provider
+    
+    async def check(self, context: GuardContext) -> bool:
+        """Check if the request is authorized.
+        
+        Args:
+            context: The guard context containing request and user info.
+            
+        Returns:
+            True if authorized, False otherwise.
+        """
+        # Get user from context
+        user = context.user
+        
+        if user is None:
+            return False
+        
+        # Add your authorization logic here
+        # Example for role guard:
+        # return await self._check_role(user, context)
+        
+        # Example for permission guard:
+        # return await self._check_permission(user, context)
+        
+        # Example for custom logic:
+        # return await self._check_custom(user, context)
+        
+        return await self._check_{{ guard_name_snake }}(user, context)
+    
+    async def _check_{{ guard_name_snake }}(
+        self,
+        user: Any,
+        context: GuardContext,
+    ) -> bool:
+        """Custom authorization check for {{ guard_name }}.
+        
+        Args:
+            user: The authenticated user.
+            context: The guard context.
+            
+        Returns:
+            True if authorized.
+        """
+        # Implement your custom logic here
+        # Example:
+        # if not user.is_active:
+        #     return False
+        #
+        # Check specific conditions
+        # return user.has_permission("{{ guard_name_snake }}:access")
+        
+        return True
+    
+    def get_error_message(self) -> str:
+        """Get the error message to show when authorization fails."""
+        return "{{ guard_name }} authorization failed. You don't have permission to access this resource."
+
+
+# =============================================================================
+# Role Guard Variant
+# =============================================================================
+
+{% if guard_type == 'role' %}
+class {{ guard_name }}RoleGuard({{ guard_name }}Guard):
+    """Role-based guard for {{ guard_name }}.
+    
+    Checks if the user has one of the required roles.
+    """
+    
+    def __init__(
+        self,
+        roles: list[str],
+        authorization_provider: AuthorizationProvider | None = None,
+    ):
+        """Initialize the role guard.
+        
+        Args:
+            roles: List of allowed roles.
+            authorization_provider: Optional authorization service.
+        """
+        super().__init__(authorization_provider)
+        self.roles = roles
+    
+    async def _check_{{ guard_name_snake }}(
+        self,
+        user: Any,
+        context: GuardContext,
+    ) -> bool:
+        """Check if user has required role."""
+        if not hasattr(user, "roles"):
+            return False
+        
+        user_roles = user.roles if isinstance(user.roles, list) else []
+        return any(role in user_roles for role in self.roles)
+{% endif %}
+
+
+# =============================================================================
+# Permission Guard Variant
+# =============================================================================
+
+{% if guard_type == 'permission' %}
+class {{ guard_name }}PermissionGuard({{ guard_name }}Guard):
+    """Permission-based guard for {{ guard_name }}.
+    
+    Checks if the user has one of the required permissions.
+    """
+    
+    def __init__(
+        self,
+        permissions: list[str],
+        authorization_provider: AuthorizationProvider | None = None,
+    ):
+        """Initialize the permission guard.
+        
+        Args:
+            permissions: List of required permissions.
+            authorization_provider: Optional authorization service.
+        """
+        super().__init__(authorization_provider)
+        self.permissions = permissions
+    
+    async def _check_{{ guard_name_snake }}(
+        self,
+        user: Any,
+        context: GuardContext,
+    ) -> bool:
+        """Check if user has required permission."""
+        if not hasattr(user, "permissions"):
+            return False
+        
+        user_permissions = user.permissions if isinstance(user.permissions, list) else []
+        return any(perm in user_permissions for perm in self.permissions)
+{% endif %}
+
+
+# =============================================================================
+# Usage
+# =============================================================================
+
+# In routes:
+#
+# from lexigram import Router
+# from {{ package_name }}.{{ guard_name_snake }}_guard import {{ guard_name }}Guard
+#
+# router = Router()
+#
+# @router.get("/{{ guard_name_snake }}", guards=[{{ guard_name }}Guard()])
+# async def protected_endpoint(request):
+#     return {"message": "Authorized!"}
+#
+# Or with roles:
+#
+# @router.get("/admin", guards=[{{ guard_name }}RoleGuard(roles=["admin"])])
+# async def admin_endpoint(request):
+#     return {"message": "Admin only!"}

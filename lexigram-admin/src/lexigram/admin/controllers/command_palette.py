@@ -1,0 +1,72 @@
+"""Controller for the command palette endpoint."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
+from lexigram.admin.services.search_service import SearchService
+from lexigram.di.decorators import inject
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
+
+_STATIC_COMMANDS: list[dict[str, Any]] = [
+    {"label": "Go to Dashboard", "href": "/admin/", "icon": "home", "shortcut": "G D"},
+    {
+        "label": "Manage Users",
+        "href": "/admin/users",
+        "icon": "users",
+        "shortcut": "G U",
+    },
+    {
+        "label": "Toggle Dark Mode",
+        "action": "darkMode = !darkMode",
+        "icon": "moon",
+        "shortcut": "T D",
+    },
+    {"label": "Settings", "href": "#", "icon": "settings", "shortcut": ","},
+]
+
+_MIN_QUERY_LENGTH = 2
+
+
+@inject
+class CommandPaletteController:
+    """Handles the command palette search endpoint.
+
+    Returns JSON commands that the frontend merges with static commands.
+    """
+
+    def __init__(self, search_service: SearchService) -> None:
+        self._search_service = search_service
+
+    async def search(self, request: Request) -> JSONResponse:
+        """Handle GET /admin/command-palette?q=..."""
+        query = (request.query_params.get("q") or "").strip()
+        commands: list[dict[str, Any]] = []
+
+        # Filter static commands by query
+        for cmd in _STATIC_COMMANDS:
+            if not query or query.lower() in cmd["label"].lower():
+                commands.append(cmd)
+
+        # Dynamic search results from backend
+        if len(query) >= _MIN_QUERY_LENGTH:
+            try:
+                results = await self._search_service.search(query)
+                for r in results.results:
+                    commands.append(
+                        {
+                            "label": f"{r.resource_label}: {r.title}",
+                            "href": r.url,
+                            "icon": "search",
+                            "subtitle": r.subtitle,
+                        }
+                    )
+            except Exception:
+                logger.exception("Command palette search failed for query=%s", query)
+
+        return JSONResponse(commands)

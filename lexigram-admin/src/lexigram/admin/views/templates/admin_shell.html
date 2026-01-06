@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% if site_name %} — {{ site_name }}{% endif %}{% endblock %}
+
+{% block meta %}
+{% if csrf_token %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% endif %}
+{% endblock %}
+
+{% block body_attrs %}
+{% if csrf_token %}hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}
+{% endblock %}
+
+{% block content %}
+{{ content | safe }}
+{% endblock %}

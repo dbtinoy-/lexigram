@@ -1,0 +1,31 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: features:
+# Environment variable prefix: LEX_FEATURES__
+
+features:
+
+  # Enable the feature flags subsystem.
+  enabled: true                        # LEX_FEATURES__ENABLED
+
+  # ── Flag Evaluation ─────────────────────────────────────────────────────────
+
+  # Seconds to cache flag evaluations (0 = disabled).
+  cache_ttl: 300                       # LEX_FEATURES__CACHE_TTL
+
+  # Default evaluation result when a flag is not found in the provider.
+  default_enabled: false               # LEX_FEATURES__DEFAULT_ENABLED
+
+  # Env var prefix used by EnvProvider when reading individual flag values.
+  # E.g. LEX_FLAG_MY_FEATURE=true enables the "my-feature" flag.
+  flag_env_prefix: "LEX_FLAG_"        # LEX_FEATURES__FLAG_ENV_PREFIX
+
+  # ── In-Memory Seed Flags ────────────────────────────────────────────────────
+
+  # Seed flags for the in-memory provider (name -> enabled).
+  # Useful for local dev or testing without a remote flag store.
+  initial_flags: {}
+  # Example:
+  # initial_flags:
+  #   my-new-feature: true
+  #   legacy-mode: false

@@ -1,0 +1,13 @@
+<div class="card h-100">
+  <div class="card-body">
+    <h6 class="card-title text-muted">Dead Letters</h6>
+    {% if count > 0 %}
+    <div class="metric-value fs-4 fw-bold text-danger">{{ count }}</div>
+    {% if oldest_age_minutes is not none %}
+    <div class="text-muted small mt-2">Oldest: {{ oldest_age_minutes }}m ago</div>
+    {% endif %}
+    {% else %}
+    <div class="text-success fw-bold">✓ Queue clear</div>
+    {% endif %}
+  </div>
+</div>

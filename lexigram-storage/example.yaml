@@ -1,0 +1,91 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: storage:
+# Environment variable prefix: LEX_STORAGE__
+
+storage:
+  # Environment: development, staging, production
+  env: development
+
+  # Default Backend
+  backend: "s3"  # Options: local, s3, gcs, azure, r2, memory
+  
+  # Local Filesystem Storage
+  local:
+    root_dir: "./data/uploads"
+    base_url: "http://localhost:8000/files"
+    
+  # AWS S3
+  s3:
+    bucket: "lexigram-files"
+    region: "us-east-1"
+    access_key: "${AWS_ACCESS_KEY_ID}"
+    secret_key: "${AWS_SECRET_ACCESS_KEY}"
+    endpoint_url: null  # For S3-compatible (MinIO, etc.)
+    
+    # Server-side Encryption
+    encryption:
+      enabled: true
+      type: "AES256"  # AES256 or aws:kms
+      kms_key_id: null  # Required for aws:kms
+      
+  # Google Cloud Storage
+  gcs:
+    bucket: "lexigram-files"
+    project_id: "${GCP_PROJECT_ID}"
+    credentials_path: "./config/gcs-credentials.json"
+    
+    encryption:
+      enabled: true
+      type: "AES256"
+      kms_key_id: null
+      
+  # Azure Blob Storage
+  azure:
+    account_name: "${AZURE_STORAGE_ACCOUNT}"
+    account_key: "${AZURE_STORAGE_KEY}"
+    container: "lexigram-files"
+    
+  # Cloudflare R2
+  r2:
+    bucket: "lexigram-files"
+    account_id: "${CF_ACCOUNT_ID}"
+    access_key: "${CF_ACCESS_KEY_ID}"
+    secret_key: "${CF_SECRET_ACCESS_KEY}"
+    endpoint_url: "https://<account-id>.r2.cloudflarestorage.com"
+    
+  # In-Memory Storage (Testing)
+  memory:
+    max_size: 1000  # Number of files
+    
+  # File Operations
+  operations:
+    max_file_size_mb: 100
+    
+    # Allowed MIME Types
+    allowed_mime_types:
+      - "image/jpeg"
+      - "image/png"
+      - "image/webp"
+      - "image/gif"
+      - "application/pdf"
+      - "text/plain"
+      - "application/json"
+      - "application/xml"
+      
+    # Virus Scanning
+    virus_scan:
+      enabled: false
+      backend: "clamav"  # clamav
+      endpoint: "http://localhost:3310"
+      
+    # Automatic Cleanup
+    cleanup:
+      enabled: true
+      delete_after_days: 30
+      
+  # Caching
+  cache:
+    enabled: true
+    ttl: 3600
+    backend: "redis"

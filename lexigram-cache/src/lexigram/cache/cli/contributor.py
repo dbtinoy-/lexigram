@@ -1,0 +1,92 @@
+"""Cache CLI contributor definitions."""
+
+from __future__ import annotations
+
+from lexigram.contracts.cli.contributions import (
+    CommandContribution,
+    DoctorCheckContribution,
+    HealthCheckContribution,
+    ShellContextContribution,
+)
+from lexigram.contracts.cli.types import GeneratorDefinition
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
+    GeneratorDefinition(
+        name="cache_repo",
+        title="Generate Cache Repository",
+        description="Generate a cache-backed repository with TTL support",
+        contributor="cache",
+        generator_path="lexigram.cache.cli.generators.cache_repository:CacheRepositoryGenerator",
+        default_output_dir="src/repositories",
+        category="cache",
+    ),
+)
+
+
+class CacheCliContributor:
+    """CLI contributor for the lexigram-cache package."""
+
+    @property
+    def contributor_id(self) -> str:
+        """Return the contributor identifier."""
+        return "cache"
+
+    def get_generators(self) -> list[GeneratorDefinition]:
+        """Return generator definitions for cache."""
+        return list(_GENERATOR_DEFINITIONS)
+
+    def get_commands(self) -> list[CommandContribution]:
+        """Return the contributed `cache` command group."""
+        return [
+            CommandContribution(
+                name="cache",
+                help="Cache inspection and management commands",
+                app_factory_path="lexigram.cache.cli.commands:create_cache_app",
+                contributor="cache",
+                category="infrastructure",
+                requires_app_context=True,
+            ),
+        ]
+
+    def get_health_checks(self) -> list[HealthCheckContribution]:
+        """Return cache connectivity health check."""
+        return [
+            HealthCheckContribution(
+                name="cache_connection",
+                description="Verify cache backend connectivity",
+                check_path="lexigram.cache.cli.checks:check_cache_connection",
+                contributor="cache",
+                category="infrastructure",
+                timeout=5.0,
+            ),
+        ]
+
+    def get_doctor_checks(self) -> list[DoctorCheckContribution]:
+        """Return cache configuration doctor checks."""
+        return [
+            DoctorCheckContribution(
+                name="cache_backend_configured",
+                description="Check cache backend is configured in application.yaml",
+                check_path="lexigram.cache.cli.doctor:check_cache_configured",
+                contributor="cache",
+                category="infrastructure",
+            ),
+        ]
+
+    def get_shell_context(self) -> list[ShellContextContribution]:
+        """Return cache shell context."""
+        return [
+            ShellContextContribution(
+                name="cache",
+                description="Cache backend for interactive use",
+                factory_path="lexigram.cache.cli.shell:provide_cache",
+                contributor="cache",
+            ),
+        ]
+
+    def get_hooks(self) -> list:
+        """Return no hook contributions."""
+        return []
+
+
+__all__ = ["CacheCliContributor"]

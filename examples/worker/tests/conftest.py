@@ -1,0 +1,11 @@
+"""Shared pytest fixtures for lexigram-example-worker tests."""
+
+from __future__ import annotations
+
+import pytest
+
+
+@pytest.fixture()
+def anyio_backend() -> str:
+    """Use asyncio as the anyio backend."""
+    return "asyncio"

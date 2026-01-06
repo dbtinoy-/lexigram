@@ -1,0 +1,226 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "lexigram-admin"
+version = "0.1.2"
+description = "Modern Python-first admin framework for Lexigram - HTMX, CRUD, dashboards, and extensions"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "admin",
+    "dashboard",
+    "crud",
+    "htmx",
+    "starlette",
+    "htpy",
+    "backoffice",
+    "framework",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.0",
+    "lexigram-ui>=0.1.0",
+    "aiofiles>=23.0.0",
+    "htpy>=0.9",
+    "orjson>=3.9.0",
+    "pydantic>=2.10.0",
+    "python-multipart>=0.0.9",
+    "itsdangerous>=2.2.0",
+    "pyyaml>=6.0.3",
+]
+authors = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+maintainers = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+auth = [
+    "lexigram-auth",
+    "pysaml2>=7.0.0",
+    "xmlsec>=1.3.0",
+]
+saml = [
+    "pysaml2>=7.0.0",
+    "xmlsec>=1.3.0",
+]
+ldap = [
+    "ldap3>=2.9.0",
+]
+oauth2 = [
+    "authlib>=1.0.0",
+]
+export = [
+    "openpyxl>=3.0.0",
+    "reportlab>=4.0.0",
+]
+cache = [
+    "lexigram-cache>=0.1.1",
+]
+events = [
+    "lexigram-events>=0.1.1",
+]
+web = [
+    "lexigram-web>=0.1.1",
+]
+storage = []
+tenancy = [
+    "lexigram-tenancy>=0.1.1",
+]
+monitor = [
+    "lexigram-monitor>=0.1.1",
+]
+search = [
+    "lexigram-search>=0.1.1",
+]
+full = [
+    "lexigram-auth",
+    "lexigram-cache>=0.1.1",
+    "lexigram-events>=0.1.1",
+    "lexigram-web>=0.1.1",
+    "pysaml2>=7.0.0",
+    "xmlsec>=1.3.0",
+    "ldap3>=2.9.0",
+    "authlib>=1.0.0",
+    "openpyxl>=3.0.0",
+    "reportlab>=4.0.0",
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram-admin-experimental"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.entry-points."lexigram.providers"]
+admin = "lexigram.admin.di.bundle_provider:AdminProvider"
+
+[project.entry-points."lexigram.admin.contributors"]
+core = "lexigram.admin.contributors.core:CoreAdminContributor"
+
+[project.entry-points."lexigram.modules"]
+AdminModule = "lexigram.admin.module:AdminModule"
+
+[project.entry-points."lexigram.config"]
+admin = "lexigram.admin.config:AdminConfig"
+
+[project.entry-points."lexigram.web.contributors"]
+admin = "lexigram.admin.web.contributor:AdminWebContributor"
+
+[dependency-groups]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-ignore = [
+    "S301",  # pickle: not used in admin; broad ignore to reduce noise
+    "S704",  # markupsafe.Markup used intentionally in template rendering
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "TID252"]
+"src/lexigram/admin/ui/atoms/*" = ["N802"]
+"src/lexigram/admin/ui/molecules/*" = ["N802"]
+"src/lexigram/admin/ui/organisms/*" = ["N802"]
+"src/lexigram/admin/ui/columns/*" = ["N802"]
+"src/lexigram/admin/ui/layouts/*" = ["N802"]
+"tools/**/*" = ["T201", "S", "ERA001", "ANN", "INP001"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = "examples.*", ignore_errors = true },
+    { module = "docs.*", ignore_errors = true },
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = ["--cov=lexigram.admin", "--cov-report=html", "--cov-report=term", "--cov-fail-under=60"]
+testpaths = ["tests"]
+markers = [
+    "integration: mark a test as an integration test",
+    "scenario: marks cross-package scenario integration tests",
+    "requires_redis: marks tests that require a live Redis connection",
+    "requires_postgres: marks tests that require a live PostgreSQL connection",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/lexigram",
+]
+
+[project.entry-points."lexigram.cli.contributors"]
+admin = "lexigram.admin.cli.contributor:AdminCliContributor"

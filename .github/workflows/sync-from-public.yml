@@ -1,0 +1,39 @@
+name: Sync from Public
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch public main
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_DEPLOY_KEY }}
+        run: |
+          git remote add public https://x-access-token:${GH_TOKEN}@github.com/dbtinoy-/lexigram.git
+          git fetch public main
+
+      - name: Create sync branch
+        run: |
+          git checkout -b sync/public main
+          git merge public/main --no-edit --allow-unrelated-histories
+          git push origin sync/public
+
+      - name: Open or update PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --base main \
+            --head sync/public \
+            --title "Sync from public" \
+            --body "Automated sync from dbtinoy-/lexigram" \
+            --label sync \
+          || gh pr edit sync/public \
+            --title "Sync from public" \
+            --body "Automated sync from github.com/dbtinoy-/lexigram"

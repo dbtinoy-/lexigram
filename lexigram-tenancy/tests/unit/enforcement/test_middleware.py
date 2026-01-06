@@ -1,0 +1,95 @@
+"""Tests for TenantContextMiddleware."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from lexigram.contracts.tenancy.types import TenantInfo, TenantStatus
+from lexigram.primitives.context import TENANT_ID, DEFAULT_KEYS, Context, ContextVarRegistry
+from lexigram.tenancy.enforcement.middleware import TenantContextMiddleware
+
+def make_context() -> Context:
+    registry = ContextVarRegistry()
+    for key in DEFAULT_KEYS:
+        registry.register_key(key)
+    return Context(registry)
+
+
+def _make_scope(
+    *,
+    path: str = "/api/test",
+    headers: list[tuple[bytes, bytes]] | None = None,
+    host: str = "acme.app.com",
+) -> dict:
+    h = headers or [(b"host", host.encode())]
+    return {"type": "http", "path": path, "headers": h}
+
+
+def _make_active_tenant() -> TenantInfo:
+    return TenantInfo(
+        tenant_id="tenant-abc",
+        slug="acme",
+        name="ACME",
+        status=TenantStatus.ACTIVE,
+    )
+
+
+@pytest.mark.asyncio
+async def test_sets_tenant_id_in_context_when_resolved() -> None:
+    """Middleware sets TENANT_ID in context when resolver returns a tenant_id."""
+    resolver = MagicMock()
+    resolver.resolve = AsyncMock(return_value="tenant-abc")
+    validator = MagicMock()
+    validator.validate = AsyncMock(return_value=_make_active_tenant())
+    ctx = make_context()
+
+    called_with: list = []
+
+    async def app(scope: object, receive: object, send: object) -> None:
+        called_with.append(scope)
+
+    middleware = TenantContextMiddleware(app=app, resolver=resolver, validator=validator, ctx=ctx)
+    scope = _make_scope()
+    await middleware(scope, AsyncMock(), AsyncMock())
+
+    assert ctx.get(TENANT_ID) == "tenant-abc"
+    assert scope["state"]["tenant"].tenant_id == "tenant-abc"
+
+
+@pytest.mark.asyncio
+async def test_does_not_set_context_when_resolver_returns_none() -> None:
+    """Middleware does nothing when resolver returns None."""
+    resolver = MagicMock()
+    resolver.resolve = AsyncMock(return_value=None)
+    validator = MagicMock()
+    ctx = make_context()
+
+    async def app(scope: object, receive: object, send: object) -> None:
+        pass
+
+    middleware = TenantContextMiddleware(app=app, resolver=resolver, validator=validator, ctx=ctx)
+    scope = _make_scope()
+    await middleware(scope, AsyncMock(), AsyncMock())
+
+    assert ctx.get(TENANT_ID) is None
+
+
+@pytest.mark.asyncio
+async def test_passes_through_non_http_scopes() -> None:
+    """Non-HTTP scope types are passed through without resolution."""
+    resolver = MagicMock()
+    resolver.resolve = AsyncMock()
+    validator = MagicMock()
+    ctx = make_context()
+    app_called = []
+
+    async def app(scope: object, receive: object, send: object) -> None:
+        app_called.append(True)
+
+    middleware = TenantContextMiddleware(app=app, resolver=resolver, validator=validator, ctx=ctx)
+    await middleware({"type": "lifespan"}, AsyncMock(), AsyncMock())
+
+    assert len(app_called) == 1
+    resolver.resolve.assert_not_called()

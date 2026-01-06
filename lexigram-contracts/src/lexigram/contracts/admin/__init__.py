@@ -1,0 +1,98 @@
+"""Admin contracts — protocols and types for the admin contributor system."""
+
+from __future__ import annotations
+
+from lexigram.contracts.admin.audit_entry import AuditEntry, AuditOutcome
+from lexigram.contracts.admin.audit_logger import AdminAuditLoggerProtocol
+from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
+from lexigram.contracts.admin.cache_provider import CacheProviderProtocol
+from lexigram.contracts.admin.contributor import BaseAdminContributor
+from lexigram.contracts.admin.cqrs import AdminCommand, AdminQuery
+from lexigram.contracts.admin.errors import (
+    AdminError,
+    HealthCheckNotFoundError,
+    WidgetNotFoundError,
+)
+from lexigram.contracts.admin.operations import (
+    AdminSearchableProtocol,
+    AggregatableProtocol,
+    AuditableProtocol,
+    BulkOperationsProtocol,
+    CacheAwareProtocol,
+    ExportableProtocol,
+    RelationLoaderProtocol,
+    TransactionalProtocol,
+    ValidatableProtocol,
+)
+from lexigram.contracts.admin.page_handler import AdminPageHandlerProtocol, ManagementPageHandler
+from lexigram.contracts.admin.pii_redactor import PiiRedactorProtocol
+from lexigram.contracts.admin.protocols import (
+    AdminContributorProtocol,
+    AdminContributorRegistryProtocol,
+    AdminDashboardProtocol,
+)
+from lexigram.contracts.admin.repository import AdminRepositoryProtocol
+from lexigram.contracts.admin.route_spec import AdminRouteSpec
+from lexigram.contracts.admin.types import (
+    AdminActionDefinition,
+    AdminHealthDefinition,
+    DashboardWidgetDefinition,
+    ManagementPageDefinition,
+    NavigationContribution,
+    PageCategory,
+    SettingsPanelDefinition,
+    WidgetCategory,
+    WidgetParams,
+    WidgetSize,
+    WidgetViewModel,
+)
+from lexigram.contracts.admin.widget_protocols import (
+    WidgetHandlerProtocol,
+    WidgetRendererProtocol,
+)
+from lexigram.contracts.data.data_source import DataSourceProtocol
+
+__all__ = [
+    "AdminActionDefinition",
+    "AdminAuditLoggerProtocol",
+    "AdminAuthorizerProtocol",
+    "AdminCommand",
+    "AdminContributorProtocol",
+    "AdminContributorRegistryProtocol",
+    "AdminDashboardProtocol",
+    "AdminError",
+    "AdminHealthDefinition",
+    "AdminPageHandlerProtocol",
+    "AdminQuery",
+    "AdminRepositoryProtocol",
+    "AdminRouteSpec",
+    "AdminSearchableProtocol",
+    "AggregatableProtocol",
+    "AuditEntry",
+    "AuditOutcome",
+    "AuditableProtocol",
+    "BaseAdminContributor",
+    "BulkOperationsProtocol",
+    "CacheAwareProtocol",
+    "CacheProviderProtocol",
+    "DashboardWidgetDefinition",
+    "DataSourceProtocol",
+    "ExportableProtocol",
+    "HealthCheckNotFoundError",
+    "ManagementPageDefinition",
+    "ManagementPageHandler",
+    "NavigationContribution",
+    "PageCategory",
+    "PiiRedactorProtocol",
+    "RelationLoaderProtocol",
+    "SettingsPanelDefinition",
+    "TransactionalProtocol",
+    "ValidatableProtocol",
+    "WidgetCategory",
+    "WidgetHandlerProtocol",
+    "WidgetNotFoundError",
+    "WidgetParams",
+    "WidgetRendererProtocol",
+    "WidgetSize",
+    "WidgetViewModel",
+]

@@ -1,0 +1,102 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: queue:
+# Environment variable prefix: LEX_QUEUE__
+
+queue:
+  # Named queue backends.
+  # Each backend is registered under Named(entry.name).
+  # The first entry (or primary: true) also receives the unnamed QueueProtocol binding.
+  backends: []
+  # Supported drivers: memory, redis, rabbitmq, kafka, sqs, azure_servicebus, gcp_pubsub
+  #
+  # Example:
+  # backends:
+  #   - name: default
+  #     primary: true
+  #     driver: redis                          # LEX_QUEUE__BACKENDS__0__DRIVER
+  #     delivery_guarantee: "at_least_once"   # at_least_once, at_most_once, exactly_once
+  #     max_retries: 3                         # Retries before routing to DLQ
+  #     redis:
+  #       url: "redis://localhost:6379/0"     # LEX_QUEUE__BACKENDS__0__REDIS__URL
+  #       max_connections: 10
+  #       socket_timeout: 5.0                 # Seconds
+  #     rabbitmq: null
+  #     kafka: null
+  #     sqs: null
+  #     azure_servicebus: null
+  #     gcp_pubsub: null
+  #
+  #   - name: events
+  #     driver: kafka
+  #     delivery_guarantee: "at_least_once"
+  #     max_retries: 3
+  #     kafka:
+  #       bootstrap_servers: "localhost:9092"  # Comma-separated host:port pairs
+  #       client_id: "lexigram"
+  #       group_id: "lexigram-consumers"
+  #       auto_offset_reset: "latest"          # earliest, latest
+  #     redis: null
+  #     rabbitmq: null
+  #     sqs: null
+  #     azure_servicebus: null
+  #     gcp_pubsub: null
+  #
+  #   - name: tasks
+  #     driver: rabbitmq
+  #     delivery_guarantee: "at_least_once"
+  #     max_retries: 3
+  #     rabbitmq:
+  #       url: "amqp://guest:guest@localhost:5672/"  # LEX_QUEUE__BACKENDS__2__RABBITMQ__URL
+  #       exchange: "lexigram"
+  #       prefetch_count: 10
+  #     redis: null
+  #     kafka: null
+  #     sqs: null
+  #     azure_servicebus: null
+  #     gcp_pubsub: null
+  #
+  #   - name: aws-jobs
+  #     driver: sqs
+  #     delivery_guarantee: "at_least_once"
+  #     max_retries: 3
+  #     sqs:
+  #       region: "us-east-1"
+  #       queue_url: "https://sqs.us-east-1.amazonaws.com/123456789/my-queue"
+  #       visibility_timeout: 30             # Seconds
+  #     redis: null
+  #     rabbitmq: null
+  #     kafka: null
+  #     azure_servicebus: null
+  #     gcp_pubsub: null
+  #
+  #   - name: azure-jobs
+  #     driver: azure_servicebus
+  #     delivery_guarantee: "at_least_once"
+  #     max_retries: 3
+  #     azure_servicebus:
+  #       connection_str: "Endpoint=sb://..."  # LEX_QUEUE__BACKENDS__4__AZURE_SERVICEBUS__CONNECTION_STR
+  #       queue_name: "my-queue"
+  #       max_message_count: 10
+  #       max_wait_time: 5.0                  # Seconds
+  #     redis: null
+  #     rabbitmq: null
+  #     kafka: null
+  #     sqs: null
+  #     gcp_pubsub: null
+  #
+  #   - name: gcp-jobs
+  #     driver: gcp_pubsub
+  #     delivery_guarantee: "at_least_once"
+  #     max_retries: 3
+  #     gcp_pubsub:
+  #       project_id: "my-gcp-project"       # LEX_QUEUE__BACKENDS__5__GCP_PUBSUB__PROJECT_ID
+  #       topic_id: "my-topic"
+  #       subscription_id: "my-subscription"
+  #       max_messages: 10
+  #       max_wait_time: 5.0                  # gRPC call timeout in seconds
+  #     redis: null
+  #     rabbitmq: null
+  #     kafka: null
+  #     sqs: null
+  #     azure_servicebus: null

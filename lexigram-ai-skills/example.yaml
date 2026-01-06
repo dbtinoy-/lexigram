@@ -1,0 +1,67 @@
+# skills.yaml.example
+# Lexigram AI Skills Configuration Template
+# YAML key: ai_skills:
+# Environment variable prefix: LEX_AI_SKILLS__
+
+ai_skills:
+  # Logical name used for DI registration keys.
+  name: "ai-skills"
+
+  # -- Execution -------------------------------------------------------------
+
+  default_timeout_seconds: 30.0  # Default per-skill execution timeout in seconds
+  max_retries: 2                  # Default maximum retry attempts on transient failures
+  max_concurrent_executions: 10  # Semaphore cap on simultaneous skill executions
+
+  # -- Result Caching --------------------------------------------------------
+
+  cache_enabled: true            # Enable skill result caching globally
+  cache_ttl_seconds: 3600        # Default TTL for cached results in seconds (1 hour)
+  cache_backend: "in_memory"     # Cache backend: "in_memory" or "cache" (framework CacheBackend)
+
+  # -- Permissions -----------------------------------------------------------
+
+  enforce_permissions: true      # Enforce permission checks before executing a skill
+
+  # -- Discovery -------------------------------------------------------------
+
+  auto_discover: false           # Auto-scan declared packages for skill definitions on boot
+  scan_packages: []              # Fully-qualified package names to scan, e.g. ["myapp.skills"]
+
+  # -- Built-in Skills -------------------------------------------------------
+
+  enable_builtin: true           # Register built-in skills on boot
+  builtin_skills:                # Which built-in skills to activate
+    - "current_datetime"
+    - "math_calculate"
+    - "text_summarize"
+
+  # -- Skill Sources (SKILL.md / .mdc files) ---------------------------------
+
+  enable_skill_sources: true     # Scan for external skill-source files on boot
+  skill_paths:                   # Directories to scan for skill source files
+    - "~/.claude/skills"
+    - "~/.opencode/skills"
+    - "./skills"
+  enabled_directories:           # Named skill-directory presets to enable
+    - "claude_code"              # ~/.claude/skills
+    - "opencode"                 # ~/.opencode/skills
+    - "codex"                    # ~/.codex/skills
+    - "gemini_cli"               # ~/.gemini/skills
+    - "aider"                    # ~/.aider/skills
+    - "cursor"                   # ~/.cursor/skills
+    - "copilot"                  # ~/.github/skills
+    - "windsurf"                 # ~/.windsurf/skills
+    - "custom"                   # ./skills
+
+  # -- Script Execution ------------------------------------------------------
+
+  script_timeout_seconds: 30     # Timeout for executing skill scripts in seconds
+  allowed_script_types:          # Script file extensions permitted to execute
+    - "py"
+    - "sh"
+    - "js"
+
+  # -- Progressive Disclosure ------------------------------------------------
+
+  lazy_load_context: true        # Lazily load skill context files on first access

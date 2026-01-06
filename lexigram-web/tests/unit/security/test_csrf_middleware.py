@@ -1,0 +1,232 @@
+"""Tests for the CSRFProtectionMiddleware.
+
+Adapted from lexigram-security test suite; imports updated to
+lexigram.web.security.* after HTTP middleware absorption in Task 3.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+from unittest.mock import AsyncMock
+
+import pytest
+
+from lexigram.web.security.config import CSRFConfig
+from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_scope(
+    method: str = "GET",
+    path: str = "/",
+    headers: list[tuple[bytes, bytes]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "type": "http",
+        "method": method,
+        "path": path,
+        "headers": headers or [],
+    }
+
+
+def _cookie_header(pairs: dict[str, str]) -> tuple[bytes, bytes]:
+    cookie_str = "; ".join(f"{k}={v}" for k, v in pairs.items())
+    return (b"cookie", cookie_str.encode())
+
+
+def _make_app(*, called: list[bool] | None = None) -> AsyncMock:
+    """Return a no-op ASGI app that records whether it was called."""
+    store: list[bool] = called if called is not None else []
+
+    async def _app(scope: Any, receive: Any, send: Any) -> None:  # noqa: ARG001
+        store.append(True)
+
+    return _app  # type: ignore[return-value]
+
+
+async def _run(
+    middleware: CSRFProtectionMiddleware, scope: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Run the middleware and collect sent messages."""
+    messages: list[dict[str, Any]] = []
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.disconnect"}
+
+    async def send(msg: dict[str, Any]) -> None:
+        messages.append(msg)
+
+    await middleware(scope, receive, send)
+    return messages
+
+
+# ---------------------------------------------------------------------------
+# Non-HTTP passthrough
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_non_http_scope_passes_through() -> None:
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app)
+    scope = {"type": "websocket", "path": "/ws"}
+    await _run(middleware, scope)
+    assert inner_called
+
+
+# ---------------------------------------------------------------------------
+# Excluded paths
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_excluded_path_skips_validation_on_post() -> None:
+    config = CSRFConfig(excluded_paths=["/api/"])
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(method="POST", path="/api/data")
+    await _run(middleware, scope)
+    assert inner_called, "Excluded path should bypass CSRF validation"
+
+
+@pytest.mark.asyncio
+async def test_non_excluded_post_without_token_returns_403() -> None:
+    config = CSRFConfig(excluded_paths=["/api/"])
+    app = _make_app()
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(method="POST", path="/form")
+    messages = await _run(middleware, scope)
+    start = next(m for m in messages if m.get("type") == "http.response.start")
+    assert start["status"] == 403
+
+
+# ---------------------------------------------------------------------------
+# Content-type exclusion
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_json_content_type_skips_csrf_validation() -> None:
+    config = CSRFConfig(exclude_content_types=["application/json"])
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(
+        method="POST",
+        headers=[(b"content-type", b"application/json")],
+    )
+    await _run(middleware, scope)
+    assert inner_called, "JSON requests should bypass CSRF validation"
+
+
+@pytest.mark.asyncio
+async def test_form_post_without_token_returns_403() -> None:
+    config = CSRFConfig()
+    app = _make_app()
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(
+        method="POST",
+        headers=[(b"content-type", b"application/x-www-form-urlencoded")],
+    )
+    messages = await _run(middleware, scope)
+    start = next(m for m in messages if m.get("type") == "http.response.start")
+    assert start["status"] == 403
+
+
+# ---------------------------------------------------------------------------
+# Auth scheme exclusion
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_bearer_auth_skips_csrf_validation() -> None:
+    config = CSRFConfig(exclude_auth_schemes=["bearer"])
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(
+        method="POST",
+        headers=[(b"authorization", b"Bearer token123")],
+    )
+    await _run(middleware, scope)
+    assert inner_called, "Bearer auth requests should bypass CSRF validation"
+
+
+# ---------------------------------------------------------------------------
+# Safe methods issue token cookie
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_without_csrf_cookie_sets_cookie() -> None:
+    config = CSRFConfig(cookie_name="csrf_token")
+
+    # App must actually send a response so the CSRF cookie injection fires
+    async def _responding_app(scope: Any, receive: Any, send: Any) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    middleware = CSRFProtectionMiddleware(_responding_app, config=config)
+
+    scope = _make_scope(method="GET")
+    messages = await _run(middleware, scope)
+    start = next(m for m in messages if m.get("type") == "http.response.start")
+    headers_list = start.get("headers", [])
+    header_names = {name for name, _ in headers_list}
+    # Should have set a CSRF cookie
+    assert b"set-cookie" in header_names, (
+        "GET without cookie should set a CSRF cookie"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Double-submit cookie validation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_post_with_matching_cookie_and_header_passes() -> None:
+    config = CSRFConfig(cookie_name="csrf_token", header_name="X-CSRF-Token")
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    token = "test-token-abc123"
+    scope = _make_scope(
+        method="POST",
+        headers=[
+            _cookie_header({"csrf_token": token}),
+            (b"x-csrf-token", token.encode()),
+        ],
+    )
+    await _run(middleware, scope)
+    assert inner_called, "POST with matching CSRF cookie and header should pass"
+
+
+@pytest.mark.asyncio
+async def test_post_with_mismatched_tokens_returns_403() -> None:
+    config = CSRFConfig(cookie_name="csrf_token", header_name="X-CSRF-Token")
+    app = _make_app()
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(
+        method="POST",
+        headers=[
+            _cookie_header({"csrf_token": "cookie-token"}),
+            (b"x-csrf-token", b"different-header-token"),
+        ],
+    )
+    messages = await _run(middleware, scope)
+    start = next(m for m in messages if m.get("type") == "http.response.start")
+    assert start["status"] == 403

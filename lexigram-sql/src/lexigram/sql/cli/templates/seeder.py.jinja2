@@ -1,0 +1,53 @@
+"""Database seeder for {{ model_name }}."""
+
+from datetime import datetime, timezone
+from typing import Any
+
+from lexigram.sql import UnitOfWork
+
+
+SEED_DATA: list[dict[str, Any]] = [
+    {
+        {%- for field in fields %}
+        "{{ field.name }}": {{ field.sample_value }},
+        {%- endfor %}
+    },
+]
+
+
+async def run(provider: Any) -> None:
+    async with UnitOfWork(provider) as uow:
+        existing = await uow.execute(
+            "SELECT COUNT(*) as count FROM {{ table_name }}",
+        )
+        if existing.rows and existing.rows[0]["count"] > 0:
+            return
+
+        for data in SEED_DATA:
+            await uow.execute(
+                """
+                INSERT INTO {{ table_name }} (
+                    {%- for field in fields %}
+                    {{ field.name }},
+                    {%- endfor %}
+                    created_at,
+                    updated_at
+                ) VALUES (
+                    {%- for field in fields %}
+                    :{{ field.name }},
+                    {%- endfor %}
+                    :created_at,
+                    :updated_at
+                )
+                """,
+                {
+                    **data,
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc),
+                },
+            )
+
+        await uow.commit()
+
+
+__all__ = ["run", "SEED_DATA"]

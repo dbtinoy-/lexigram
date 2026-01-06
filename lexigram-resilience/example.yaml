@@ -1,0 +1,94 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: resilience:
+# Environment variable prefix: LEX_RESILIENCE__
+
+resilience:
+  # -------------------------------------------------------------------------
+  # Circuit Breaker
+  # -------------------------------------------------------------------------
+  circuit_breaker:
+    # Number of failures required to open (trip) the circuit.
+    failure_threshold: 5
+
+    # Seconds to wait in open state before allowing a single half-open probe.
+    recovery_timeout: 60.0
+
+    # Consecutive successes required in half-open state to close the circuit.
+    success_threshold: 3
+
+    # Per-call execution timeout (seconds).
+    timeout: 30.0
+
+    # Sliding window duration used to compute the failure rate (seconds).
+    sliding_window_seconds: 60.0
+
+    # Fraction of calls that must fail within the window to trip the breaker (0.0–1.0).
+    failure_rate_threshold: 0.5
+
+    # State persistence backend.
+    # Options: "memory" (single-process), "redis" (distributed), "consul"
+    backend: "memory"
+
+    # Human-readable identifier for this breaker instance (appears in logs/metrics).
+    name: ""
+
+  # -------------------------------------------------------------------------
+  # Retry
+  # -------------------------------------------------------------------------
+  retry:
+    # Total number of attempts including the initial call.
+    # A value of 3 means: 1 initial attempt + 2 retries.
+    max_attempts: 3
+
+    # Base delay between retries (seconds).
+    base_delay: 1.0
+
+    # Maximum delay cap between retries (seconds).
+    max_delay: 60.0
+
+    # Exponential backoff multiplier applied to base_delay after each attempt.
+    backoff_factor: 2.0
+
+    # Add random jitter to retry delays to prevent thundering-herd.
+    # true = full jitter, false = no jitter, float = jitter fraction (0.0–1.0).
+    jitter: true
+
+  # -------------------------------------------------------------------------
+  # Timeout
+  # -------------------------------------------------------------------------
+  timeout:
+    # Maximum execution time per call (seconds).
+    timeout: 30.0
+
+    # Message included in the TimeoutError when the limit is exceeded.
+    timeout_message: "Operation timed out"
+
+  # -------------------------------------------------------------------------
+  # Bulkhead (concurrency isolation)
+  # -------------------------------------------------------------------------
+  bulkhead:
+    # Maximum number of concurrent calls allowed through this bulkhead.
+    max_concurrent: 10
+
+    # Size of the waiting queue for calls that arrive when at capacity.
+    # Calls exceeding max_concurrent + queue_size are rejected immediately.
+    queue_size: 100
+
+    # Maximum time (seconds) a call waits in the queue before being rejected.
+    timeout: 30.0
+
+    # Human-readable identifier for this bulkhead instance.
+    name: ""
+
+  # -------------------------------------------------------------------------
+  # Idempotency
+  # -------------------------------------------------------------------------
+  idempotency:
+    # IdempotencyConfig — env prefix: LEX_RESILIENCE__IDEMPOTENCY__
+    ttl: 3600             # TTL for cached results in seconds
+    max_entries: 10000    # Maximum in-memory entries before FIFO eviction
+    cleanup_interval: 300.0  # Seconds between background cleanup sweeps
+    auto_cleanup: true    # Start background cleanup task on init
+    key_prefix: "idempotency:"  # Prefix for all keys in backing stores
+    max_key_length: 512   # Maximum allowed idempotency key length

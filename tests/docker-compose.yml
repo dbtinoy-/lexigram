@@ -1,0 +1,204 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lexigram_test_postgres
+    ports:
+      - "15432:5432"
+    profiles:
+      - core
+      - full
+    environment:
+      POSTGRES_USER: lexigram
+      POSTGRES_PASSWORD: lexigram
+      POSTGRES_DB: lexigram_test
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lexigram -d lexigram_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: lexigram_test_redis
+    ports:
+      - "16379:6379"
+    profiles:
+      - core
+      - full
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: lexigram_test_kafka
+    ports:
+      - "19092:9092"
+    profiles:
+      - messaging
+      - full
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:19092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: lexigram_test_zookeeper
+    profiles:
+      - messaging
+      - full
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: lexigram_test_minio
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    profiles:
+      - storage
+      - full
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: lexigram_test_elasticsearch
+    ports:
+      - "19200:9200"
+    profiles:
+      - search
+      - full
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: lexigram_test_rabbitmq
+    ports:
+      - "15672:5672"
+      - "15673:15672"
+    profiles:
+      - messaging
+      - full
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7.0
+    container_name: lexigram_test_mongodb
+    ports:
+      - "17017:27017"
+    profiles:
+      - nosql
+      - full
+    environment:
+      MONGO_INITDB_DATABASE: lexigram_test
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.9.0
+    container_name: lexigram_test_qdrant
+    ports:
+      - "16333:6333"
+    profiles:
+      - vector
+      - full
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5.18-community
+    container_name: lexigram_test_neo4j
+    ports:
+      - "17474:7474"
+      - "17687:7687"
+    profiles:
+      - graph
+      - full
+    environment:
+      NEO4J_AUTH: neo4j/testpassword
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p testpassword 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  postgres_data:
+    name: lexigram_test_postgres_data
+  redis_data:
+    name: lexigram_test_redis_data
+  kafka_data:
+    name: lexigram_test_kafka_data
+  minio_data:
+    name: lexigram_test_minio_data
+  mongodb_data:
+    name: lexigram_test_mongodb_data
+  qdrant_data:
+    name: lexigram_test_qdrant_data
+  neo4j_data:
+    name: lexigram_test_neo4j_data

@@ -1,0 +1,104 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+
+events:
+  # Environment: development, staging, production
+  env: development
+
+  # Event Store Backend
+  event_store:
+    backend: "postgres"  # postgres, mongodb, memory
+    
+    # Postgres Configuration
+    postgres:
+      connection_string: "${DATABASE_URL}"
+      schema: "event_store"
+      events_table: "events"
+      snapshots_table: "snapshots"
+      batch_size: 1000
+      
+    # MongoDB Configuration
+    mongodb:
+      uri: "mongodb://localhost:27017"
+      database: "lexigram"
+      collection: "events"
+      
+  # Event Bus
+  event_bus:
+    backend: "redis"  # redis, memory, rabbitmq, kafka
+    
+    redis:
+      url: "redis://localhost:6379/0"
+      key_prefix: "events:"
+      
+    kafka:
+      bootstrap_servers:
+        - "localhost:9092"
+      topic: "lexigram-events"
+      consumer_group: "lexigram-service"
+      
+  # Command Bus
+  command_bus:
+    backend: "memory"  # memory, redis
+    timeout: 30  # Seconds
+    
+  # Query Bus
+  query_bus:
+    backend: "memory"
+    timeout: 10
+    cache_results: true
+    cache_ttl: 3600
+    
+  # Event Snapshots
+  snapshots:
+    enabled: true
+    frequency: 100  # Create snapshot every N events
+    strategy: "count"  # count, time-based
+    
+  # Event Projections
+  projections:
+    enabled: true
+    
+    # Projection types
+    read_models:
+      - name: "user_summary"
+        enabled: true
+        rebuild_on_startup: false
+        
+      - name: "activity_feed"
+        enabled: true
+        rebuild_on_startup: true
+        
+  # Event Sourcing Options
+  event_sourcing:
+    versioning: true  # Support event migrations
+    aggregate_cache_enabled: true
+    aggregate_cache_ttl: 300
+    
+  # Saga Pattern
+  sagas:
+    enabled: true
+    timeout: 300  # Seconds per saga
+    
+  # Transactional Outbox (Event Reliability)
+  outbox:
+    enabled: true
+    table: "outbox"
+    poll_interval: 5  # Seconds
+    batch_size: 100
+    
+  # Event Handlers (Subscribers)
+  handlers:
+    enabled: true
+    max_parallel: 10
+    
+  # Middleware
+  middleware:
+    logging: true
+    metrics: true
+    validation: true
+    transaction: true
+    retry:
+      enabled: true
+      max_attempts: 3
+      backoff: "exponential"

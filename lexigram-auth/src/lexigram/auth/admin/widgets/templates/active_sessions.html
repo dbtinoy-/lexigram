@@ -1,0 +1,10 @@
+{# Active Sessions Widget Template #}
+<div class="card">
+  <div class="card-body">
+    <h6 class="card-subtitle mb-3 text-muted">Currently Active</h6>
+    <h3 class="card-title">{{ count }}</h3>
+    {% if peak_today > 0 %}
+    <p class="small text-muted mb-0">Peak today: <strong>{{ peak_today }}</strong></p>
+    {% endif %}
+  </div>
+</div>

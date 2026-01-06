@@ -1,0 +1,172 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lexigram-secrets"
+version = "0.1.2"
+description = "Secret vaults with rotation, tenant scoping, and audit for Lexigram Framework"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["secrets", "vault", "rotation", "credentials", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "botocore>=1.40.61",
+    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.0",
+    "typing-extensions>=4.0.0",
+]
+authors = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+maintainers = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+vault = [
+    "hvac>=2.0.0",
+]
+aws = [
+    "aioboto3>=10.0.0",
+]
+gcp = [
+    "google-cloud-secret-manager>=2.0.0",
+]
+azure = [
+    "azure-keyvault-secrets>=4.0.0",
+    "azure-identity>=1.0.0",
+]
+all = [
+    "lexigram-secrets[vault,aws,gcp,azure]",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.entry-points."lexigram.modules"]
+secrets = "lexigram.secrets.module:SecretsModule"
+
+[project.entry-points."lexigram.config"]
+secrets = "lexigram.secrets.config:SecretsConfig"
+
+[project.entry-points."lexigram.secrets.backends"]
+memory = "lexigram.testing.fakes:FakeRotatableSecretStore"
+vault = "lexigram.secrets.backends.vault:HashicorpVaultStore"
+aws = "lexigram.secrets.backends.aws:AWSSecretsManagerStore"
+gcp = "lexigram.secrets.backends.gcp:GCPSecretManagerStore"
+azure = "lexigram.secrets.backends.azure:AzureKeyVaultStore"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "TID252"]
+"tests/**" = ["S101"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+]
+
+[tool.uv.sources.lexigram]
+workspace = true
+
+[tool.uv.sources.lexigram-testing]
+workspace = true
+
+[tool.uv.sources.lexigram-contracts]
+workspace = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = ["--cov=lexigram.secrets", "--cov-report=term", "--cov-fail-under=55"]
+testpaths = ["tests"]
+markers = [
+    "integration: mark a test as an integration test",
+    "vault: marks tests that require a live Vault instance",
+    "aws: marks tests that require AWS credentials",
+    "gcp: marks tests that require GCP credentials",
+    "azure: marks tests that require Azure credentials",
+]
+
+[tool.coverage.run]
+omit = [
+    "src/lexigram/secrets/backends/vault.py",
+    "src/lexigram/secrets/backends/aws.py",
+    "src/lexigram/secrets/backends/gcp.py",
+    "src/lexigram/secrets/backends/azure.py",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lexigram"]

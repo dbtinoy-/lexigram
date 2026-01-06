@@ -1,0 +1,320 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/lexigram",
+]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-ignore = [
+    "PYI063",  # `exit()` in protocol stubs — intentional for Protocol return types
+    "S301",    # pickle: used intentionally in ML model serialization (registry.py)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"src/lexigram/ai/governance/audit.py" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = "examples.*", ignore_errors = true },
+    { module = "docs.*", ignore_errors = true },
+]
+
+[tool.black]
+line-length = 88
+target-version = [
+    "py311",
+]
+include = "\\.pyi?$"
+extend-exclude = "/(\n  # directories\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | build\n  | dist\n  | htmlcov\n  | .coverage\n)/\n"
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = [
+    "lexigram",
+]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.uv.sources.lexigram]
+workspace = true
+
+[tool.uv.sources.lexigram-contracts]
+workspace = true
+
+[tool.uv.sources.lexigram-ai-llm]
+workspace = true
+
+[tool.uv.sources.lexigram-ai-rag]
+workspace = true
+
+[tool.uv.sources.lexigram-testing]
+workspace = true
+
+[tool.uv.sources.lexigram-ai-feedback]
+workspace = true
+
+[tool.uv.sources.lexigram-ai-session]
+workspace = true
+
+[tool.uv.sources.lexigram-ai-skills]
+workspace = true
+
+[tool.uv.sources.lexigram-ai-workers]
+workspace = true
+
+[tool.uv.sources.lexigram-ai-observability]
+workspace = true
+
+[tool.uv.sources.lexigram-vector]
+workspace = true
+
+[tool.pytest.ini_options]
+addopts = ["--cov=src/lexigram/ai", "--cov-report=html", "--cov-report=term", "--cov-fail-under=60"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: mark a test as an integration test",
+    "scenario: marks cross-package scenario integration tests",
+]
+
+[project]
+name = "lexigram-ai"
+version = "0.1.2"
+description = "AI Layer for Lexigram Framework - Native LLM, Vector, RAG integration"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "ai",
+    "llm",
+    "rag",
+    "vector",
+    "agents",
+    "framework",
+    "intelligence",
+    "artificial-intelligence",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.0",
+    "lexigram-ai-llm>=0.1.0",
+    "lexigram-ai-rag>=0.1.0",
+    "lexigram-ai-feedback>=0.1.0",
+    "lexigram-ai-observability>=0.1.0",
+    "numpy>=1.25.0",
+]
+authors = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+maintainers = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+llm = [
+    "lexigram-ai-llm>=0.1.0",
+    "openai>=1.0.0",
+    "anthropic>=0.20.0",
+    "ollama>=0.1.0",
+    "openrouter>=0.1.0",
+]
+vector = [
+    "lexigram-vector>=0.2.0",
+    "chromadb>=0.4.0",
+    "qdrant-client>=1.7.0",
+    "pgvector>=0.2.0",
+    "psycopg[binary]>=3.1.0",
+    "weaviate-client>=3.20.0",
+    "pinecone-client>=2.2.0",
+    "milvus>=2.3.0",
+]
+rag = [
+    "lexigram-ai-rag>=0.1.0",
+    "pypdf>=3.0.0",
+    "beautifulsoup4>=4.12.0",
+    "markdown>=3.5.0",
+    "sentence-transformers>=2.2.0",
+    "Pillow>=10.0.0",
+    "opencv-python-headless>=4.8.0",
+]
+observability = [
+    "lexigram-ai-observability>=0.1.0",
+]
+feedback = [
+    "lexigram-ai-feedback>=0.1.0",
+]
+llm-utils = [
+    "tiktoken>=0.5.0",
+    "jinja2>=3.1.0",
+    "redis>=5.0.0",
+]
+ai = [
+    "tiktoken>=0.5.0",
+    "jinja2>=3.1.0",
+    "chromadb>=0.4.0",
+    "qdrant-client>=1.7.0",
+    "pgvector>=0.2.0",
+    "pypdf>=3.0.0",
+    "scikit-learn>=1.3.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "jsonschema>=4.0.0",
+    "pyyaml>=6.0",
+]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "types-Pillow>=9.0.0",
+    "types-beautifulsoup4>=4.12.0",
+    "types-PyYAML>=6.0",
+    "types-requests>=2.31.0",
+]
+docs = [
+    "mkdocs>=1.4.0",
+    "mkdocs-material>=9.0.0",
+]
+all = [
+    "lexigram-ai-llm>=0.1.0",
+    "lexigram-ai-rag>=0.1.0",
+    "lexigram-vector>=0.2.0",
+    "lexigram-ai-feedback>=0.1.0",
+    "lexigram-ai-observability>=0.1.0",
+    "openai>=1.0.0",
+    "anthropic>=0.20.0",
+    "ollama>=0.1.0",
+    "chromadb>=0.4.0",
+    "qdrant-client>=1.7.0",
+    "pgvector>=0.2.0",
+    "psycopg[binary]>=3.1.0",
+    "weaviate-client>=3.20.0",
+    "pinecone-client>=2.2.0",
+    "milvus>=2.3.0",
+    "pypdf>=3.0.0",
+    "beautifulsoup4>=4.12.0",
+    "markdown>=3.5.0",
+    "sentence-transformers>=2.2.0",
+    "scikit-learn>=1.3.0",
+    "xgboost>=2.0.0",
+    "joblib>=1.3.0",
+    "numpy>=1.25.0",
+    "scipy>=1.11.0",
+    "tiktoken>=0.5.0",
+    "jinja2>=3.1.0",
+    "redis>=5.0.0",
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "jsonschema>=4.0.0",
+    "pyyaml>=6.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "mkdocs>=1.4.0",
+    "mkdocs-material>=9.0.0",
+]
+
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.entry-points."lexigram.modules"]
+ai = "lexigram.ai.module:AIModule"
+
+[project.entry-points."lexigram.config"]
+ai = "lexigram.ai.config:AIConfig"
+
+[project.entry-points."lexigram.cli.contributors"]
+ai = "lexigram.ai.cli.contributor:AICliContributor"
+
+[project.entry-points."lexigram.admin.contributors"]
+ai-pipeline = "lexigram.ai.admin.contributor:AIPipelineAdminContributor"
+
+[dependency-groups]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "types-Pillow>=9.0.0",
+    "types-beautifulsoup4>=4.12.0",
+    "types-PyYAML>=6.0",
+    "types-requests>=2.31.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "jsonschema>=4.0.0",
+    "pyyaml>=6.0",
+]

@@ -1,0 +1,26 @@
+"""Health Check for {{ name }}."""
+
+from lexigram.contracts.core import HealthStatus
+from lexigram.monitor.health import HealthCheck, HealthCheckResult
+
+
+class {{ name }}(HealthCheck):
+    """Health check for {{ name }}."""
+
+    def __init__(self) -> None:
+        super().__init__(name="{{ snake_name }}", critical={{ critical }})
+
+    async def check(self) -> HealthCheckResult:
+        try:
+            return HealthCheckResult(
+                name=self.name,
+                status=HealthStatus.HEALTHY,
+                message="{{ name }} is healthy",
+                metadata={},
+            )
+        except RuntimeError as error:
+            return HealthCheckResult(
+                name=self.name,
+                status=HealthStatus.UNHEALTHY,
+                message=f"{{ name }} check failed: {error}",
+            )

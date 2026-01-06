@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+from lexigram.ui.styles import shadcn_css
+
+
+def test_shadcn_css_contains_root_block() -> None:
+    css = shadcn_css()
+    assert ":root {" in css
+
+
+def test_shadcn_css_contains_dark_block() -> None:
+    css = shadcn_css()
+    assert ".dark {" in css
+
+
+def test_shadcn_css_contains_default_variables() -> None:
+    css = shadcn_css()
+    assert "--background: oklch(1 0 0)" in css
+    assert "--foreground: oklch(0.145 0 0)" in css
+    assert "--primary: oklch(0.546 0.245 262.881)" in css
+
+
+def test_shadcn_css_contains_utility_classes() -> None:
+    css = shadcn_css()
+    assert ".bg-background" in css
+    assert ".text-foreground" in css
+    assert ".bg-primary" in css
+
+
+def test_shadcn_css_overrides_primary() -> None:
+    css = shadcn_css(primary="oklch(0.6 0.2 180)")
+    assert "--primary: oklch(0.6 0.2 180)" in css
+    assert "--ring: oklch(0.6 0.2 180)" in css
+
+
+def test_shadcn_css_overrides_background() -> None:
+    css = shadcn_css(background="#fff")
+    assert "--background: #fff" in css
+
+
+def test_shadcn_css_overrides_foreground() -> None:
+    css = shadcn_css(foreground="#111")
+    assert "--foreground: #111" in css
+
+
+def test_shadcn_css_overrides_radius() -> None:
+    css = shadcn_css(radius="0.75rem")
+    assert "--radius: 0.75rem" in css
+
+
+def test_shadcn_css_overrides_success() -> None:
+    css = shadcn_css(success="#22c55e")
+    assert "--color-success: #22c55e" in css
+
+
+def test_shadcn_css_overrides_warning() -> None:
+    css = shadcn_css(warning="#f59e0b")
+    assert "--color-warning: #f59e0b" in css
+
+
+def test_shadcn_css_overrides_info() -> None:
+    css = shadcn_css(info="#3b82f6")
+    assert "--color-info: #3b82f6" in css

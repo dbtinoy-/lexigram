@@ -1,0 +1,221 @@
+"""Admin contract types — shared value types for the admin contributor system.
+
+These frozen dataclasses cross package boundaries and are used by any
+lexigram extension that contributes admin dashboard surfaces.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import StrEnum
+from typing import TYPE_CHECKING
+
+from lexigram.contracts.admin.route_spec import AdminRouteSpec
+
+if TYPE_CHECKING:
+    from lexigram.contracts.admin.page_handler import AdminPageHandlerProtocol
+
+
+class WidgetSize(StrEnum):
+    """Dashboard widget size."""
+
+    SMALL = "small"
+    MEDIUM = "medium"
+    LARGE = "large"
+    FULL = "full"
+
+
+class WidgetCategory(StrEnum):
+    """Dashboard widget category for grouping."""
+
+    HEALTH = "health"
+    METRICS = "metrics"
+    ACTIVITY = "activity"
+    RESOURCES = "resources"
+    CUSTOM = "custom"
+
+
+class PageCategory(StrEnum):
+    """Management page category."""
+
+    INFRASTRUCTURE = "infrastructure"
+    SECURITY = "security"
+    AI = "ai"
+    DATA = "data"
+    MONITORING = "monitoring"
+    CONFIGURATION = "configuration"
+
+
+@dataclass(frozen=True)
+class DashboardWidgetDefinition:
+    """Definition for a dashboard widget contributed by a package.
+
+    The ``render_endpoint`` is an HTMX endpoint that the dashboard shell
+    will fetch via ``hx-get``.  Each contributor owns its own rendering.
+    """
+
+    name: str
+    title: str
+    contributor: str
+    render_endpoint: str
+    size: WidgetSize = WidgetSize.MEDIUM
+    category: WidgetCategory = WidgetCategory.CUSTOM
+    refresh_interval_seconds: int = 30
+    order: int = 100
+    permission: str | None = None
+    icon: str | None = None
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class NavigationContribution:
+    """Navigation entry contributed by a package."""
+
+    label: str
+    url: str
+    icon: str = "box"
+    group: str = "framework"
+    order: int = 100
+    permission: str | None = None
+    badge_endpoint: str | None = None
+    children: tuple[NavigationContribution, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class ManagementPageDefinition:
+    """Full management page contributed by a package.
+
+    The ``handler`` is a dotted path to an async handler function,
+    resolved at boot time to avoid import coupling.
+    """
+
+    name: str
+    title: str
+    contributor: str
+    route_path: str
+    handler: str | AdminPageHandlerProtocol
+    category: PageCategory = PageCategory.INFRASTRUCTURE
+    icon: str = "settings"
+    permission: str | None = None
+    description: str = ""
+    order: int = 100
+
+
+@dataclass(frozen=True)
+class SettingsPanelDefinition:
+    """Settings panel contributed by a package."""
+
+    name: str
+    title: str
+    contributor: str
+    route_path: str
+    handler: str | AdminPageHandlerProtocol
+    icon: str = "sliders"
+    category: str = "General"
+    order: int = 100
+    permission: str | None = None
+
+
+@dataclass(frozen=True)
+class AdminHealthDefinition:
+    """Health check to surface in the admin dashboard."""
+
+    name: str
+    contributor: str
+    component: str
+    check_endpoint: str | None = None
+    icon: str = "heart-pulse"
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class ActionParameterField:
+    """A single parameter accepted by an admin action handler.
+
+    Used for auto-generated action forms and server-side input validation.
+    """
+
+    name: str
+    type_hint: str  # string repr e.g. "str", "int", "bool", "list[str]"
+    required: bool = True
+    default: object | None = None
+    description: str = ""
+    choices: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class ActionParameterSchema:
+    """Schema describing the parameter surface of an admin action.
+
+    Enables auto-generated action forms in the admin UI and server-side
+    validation before the handler is called.
+    """
+
+    fields: tuple[ActionParameterField, ...]
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class AdminActionDefinition:
+    """Framework-level action (flush cache, reset circuit breaker, etc.).
+
+    The ``handler`` is a dotted path to an async function accepting
+    ``(container, **params)``.
+    """
+
+    name: str
+    title: str
+    contributor: str
+    handler: str
+    icon: str = "zap"
+    confirmation_message: str | None = None
+    permission: str | None = None
+    destructive: bool = False
+    category: str = "operations"
+    parameter_schema: ActionParameterSchema | None = None
+
+
+@dataclass(frozen=True)
+class WidgetViewModel:
+    """Typed return value for widget rendering.
+
+    Provides a standard contract that all widget renderers follow.
+    The ``body`` field contains the rendered HTML. If ``error`` is set,
+    the widget is in an error state and ``body`` should be an error card.
+    """
+
+    body: str
+    title: str | None = None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class WidgetParams:
+    """Typed query parameters passed to a widget handler.
+
+    Pure value object — no parsing, no validation logic, no I/O.
+    Parsing belongs in ``lexigram.admin.params.parse_widget_params``.
+    """
+
+    page: int = 1
+    page_size: int = 20
+    time_window_minutes: int = 60
+    raw: tuple[tuple[str, str], ...] = field(default_factory=tuple)
+
+
+__all__ = [
+    "ActionParameterField",
+    "ActionParameterSchema",
+    "AdminActionDefinition",
+    "AdminHealthDefinition",
+    "AdminRouteSpec",
+    "DashboardWidgetDefinition",
+    "ManagementPageDefinition",
+    "NavigationContribution",
+    "PageCategory",
+    "SettingsPanelDefinition",
+    "WidgetCategory",
+    "WidgetParams",
+    "WidgetSize",
+    "WidgetViewModel",
+]

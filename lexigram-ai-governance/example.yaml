@@ -1,0 +1,33 @@
+# governance.yaml.example
+# Lexigram AI Governance Configuration Template
+# YAML key: ai_governance:
+# Environment variable prefix: LEX_AI_GOVERNANCE__
+#
+# NOTE: When using AIConfig (lexigram-ai), this config is nested under the `ai:` key:
+#   ai:
+#     governance:
+#       ...fields...
+
+ai_governance:
+  # Master on/off switch for AI governance controls.
+  enabled: true
+
+  # -- Budget Controls --------------------------------------------------------
+
+  monthly_budget: null          # Monthly budget cap in dollars (null = unlimited)
+  enforce_budget: true          # Hard-stop when monthly_budget is reached
+  soft_limit_pct: null          # Warn at this fraction of monthly_budget (e.g. 0.8 = 80%)
+  max_request_cost: null        # Maximum cost allowed per single request in dollars (null = unlimited)
+
+  # -- Rate Limiting ----------------------------------------------------------
+
+  rpm_limit: null               # Requests Per Minute cap across all users (null = unlimited)
+  tpm_limit: null               # Tokens Per Minute cap across all users (null = unlimited)
+  max_tokens_per_request: null  # Hard token ceiling per individual request (null = unlimited)
+
+  # -- Model Access Control ---------------------------------------------------
+
+  restricted_models: []         # Models blocked for all users, e.g. ["gpt-4o", "claude-opus-4-5"]
+
+  model_allowlist: {}           # Per-user/role allowlist, e.g. {"admin": ["gpt-4o"]}
+  model_denylist: {}            # Per-user/role denylist, e.g. {"free_tier": ["claude-opus-4-5"]}

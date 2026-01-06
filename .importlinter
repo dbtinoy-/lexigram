@@ -1,0 +1,386 @@
+# =============================================================================
+# Lexigram Monorepo — Import-Linter Boundary Contracts
+# =============================================================================
+#
+# IMPORTANT: Run via the namespace-aware wrapper, NOT the bare lint-imports
+# binary.  The standard lint-imports/grimp binary cannot traverse
+# pkgutil.extend_path namespace packages and will fail to discover extension
+# packages (lexigram.contracts, lexigram.cache, etc.).
+#
+#   ✅  uv run lint-boundaries        (Makefile target / uv script)
+#   ✅  uv run python tools/lint_imports.py
+#   ❌  uv run lint-imports           (misses namespace extension dirs)
+#
+# Package boundary rules (from AGENTS.md)
+# ----------------------------------------
+#
+#   lexigram-contracts  → zero dependencies; Protocols, types, exceptions only
+#            ↑   ↑
+#            ↑  lexigram (core)  → depends ONLY on lexigram.contracts
+#            ↑   ↑
+#            lexigram-*  → extension packages; depend on lexigram +
+#                          lexigram.contracts and the four Phase-8
+#                          foundational packages; NEVER on each other
+#
+# Foundational packages (Phase 8)
+# --------------------------------
+# lexigram.domain, lexigram.serialization, lexigram.validation,
+# lexigram.concurrency are mid-tier foundations that ALL extensions
+# are permitted to import.  They must NOT import from non-foundational
+# extension packages (verified by contract: foundational-no-high-level).
+#
+# Composite packages (by design, broad access)
+# ----------------------------------------------
+# lexigram.admin, lexigram.cli, lexigram.testing are high-level composite
+# packages that intentionally import from many extensions and are therefore
+# excluded from the extension-independence contract.  lexigram.ai is the
+# AI orchestrator/facade and is excluded for the same reason.
+#
+# Documented cross-extension allowances
+# ---------------------------------------
+# • lexigram.admin  → lexigram.ui    (same-subsystem UI components)
+# • lexigram.web    → lexigram.ui    (same-subsystem UI rendering)
+# • lexigram.web    → lexigram.security  [TRACKED VIOLATION — web's security
+#   middleware depends on lexigram.security; should be refactored to use
+#   lexigram.contracts for the interface boundary]
+# • lexigram.ai     → lexigram.ai.* + lexigram.vector (orchestrator imports
+#   sub-packages and vector store for composition)
+# • lexigram.vector → * (unrestricted; foundational data structure)
+#
+# =============================================================================
+
+[importlinter]
+root_packages =
+    lexigram
+include_typechecking_imports = True
+
+# =============================================================================
+# Contract 1 — lexigram.contracts has zero ecosystem dependencies
+# =============================================================================
+# The contracts layer is a pure-protocol layer.  It must never import from
+# the core framework, any extension package, or any AI sub-package.
+
+[importlinter:contract:contracts-zero-deps]
+name = lexigram.contracts has no ecosystem imports
+type = forbidden
+source_modules =
+    lexigram.contracts
+forbidden_modules =
+    # Core package sub-modules
+    lexigram.app
+    lexigram.config
+    lexigram.core
+    lexigram.di
+    lexigram.logging
+    lexigram.result
+    # Non-AI extension packages
+    lexigram.admin
+    lexigram.auth
+    lexigram.cache
+    lexigram.cli
+    lexigram.concurrency
+    lexigram.domain
+    lexigram.events
+    lexigram.features
+    lexigram.graph
+    lexigram.graphql
+    lexigram.http
+    lexigram.idempotency
+    lexigram.mailer
+    lexigram.mapping
+    lexigram.middleware
+    lexigram.monitor
+    lexigram.nosql
+    lexigram.notification
+    lexigram.plugins
+    lexigram.queue
+    lexigram.resilience
+    lexigram.search
+    lexigram.security
+    lexigram.serialization
+    lexigram.sql
+    lexigram.storage
+    lexigram.tasks
+    lexigram.testing
+    lexigram.ui
+    lexigram.validation
+    lexigram.vector
+    lexigram.web
+    lexigram.workflow
+    # AI family
+    lexigram.ai
+
+# =============================================================================
+# Contract 2 — Core framework does not import from extension packages
+# =============================================================================
+# The core lexigram package (app, config, core, di, logging, result) may
+# ONLY import from lexigram.contracts and the Python standard library.
+
+[importlinter:contract:core-no-extensions]
+name = Core (lexigram) does not import from extension packages
+type = forbidden
+source_modules =
+    lexigram.app
+    lexigram.config
+    lexigram.core
+    lexigram.di
+    lexigram.logging
+    lexigram.result
+forbidden_modules =
+    # Non-AI extension packages
+    lexigram.admin
+    lexigram.auth
+    lexigram.cache
+    lexigram.cli
+    lexigram.concurrency
+    lexigram.domain
+    lexigram.events
+    lexigram.features
+    lexigram.graph
+    lexigram.graphql
+    lexigram.http
+    lexigram.idempotency
+    lexigram.mailer
+    lexigram.mapping
+    lexigram.middleware
+    lexigram.monitor
+    lexigram.nosql
+    lexigram.notification
+    lexigram.plugins
+    lexigram.queue
+    lexigram.resilience
+    lexigram.search
+    lexigram.security
+    lexigram.serialization
+    lexigram.sql
+    lexigram.storage
+    lexigram.tasks
+    lexigram.testing
+    lexigram.ui
+    lexigram.validation
+    lexigram.vector
+    lexigram.web
+    lexigram.workflow
+    # AI family
+    lexigram.ai
+# ---------------------------------------------------------------------------
+# TRACKED VIOLATIONS — to be fixed in feat/core-cleanup
+# ---------------------------------------------------------------------------
+# These imports violate the core/extension boundary but exist because
+# core-draft-refactor.md explicitly identified them as coupling to resolve:
+#
+#   1. lexigram.config.base / lexigram.config.main / lexigram.logging.*
+#      → lexigram.domain / lexigram.validation
+#      Root cause: BaseConfig extends DomainModel; config.main + logging
+#      config models use Field/ConfigDict/model_validator from validation.
+#      Fix: Detangle BaseConfig from DomainModel; use pydantic directly
+#      in logging/config models.
+#      Tracked: cc-p3-transport-coupling
+#
+#   2. lexigram.app.standard → lexigram.serialization / lexigram.concurrency
+#      Root cause: StandardApplication is the batteries-included module
+#      that intentionally bundles SerializationProvider + ConcurrencyProvider.
+#      Fix: Move StandardApplication to a wrapper package, or document as
+#      the canonical batteries-included entry point.
+#      Tracked: cc-p5-core-module
+ignore_imports =
+    # config coupling (tracked: cc-p3-transport-coupling)
+    lexigram.config.base -> lexigram.domain
+    lexigram.config.base -> lexigram.validation
+    lexigram.config.main -> lexigram.validation
+    # logging coupling (tracked: cc-p3-transport-coupling)
+    lexigram.logging.config.sampling -> lexigram.domain
+    lexigram.logging.config.sampling -> lexigram.validation
+    lexigram.logging.config.models -> lexigram.validation
+    # StandardApplication batteries-included bundle (tracked: cc-p5-core-module)
+    lexigram.app.standard -> lexigram.serialization.di.provider
+    lexigram.app.standard -> lexigram.concurrency.di.provider
+unmatched_ignore_imports_alerting = warn
+
+# =============================================================================
+# Contract 3 — Foundational packages do not import from higher-level extensions
+# =============================================================================
+# The four Phase-8 foundational packages form a mid-tier that other extensions
+# may depend on.  They must themselves remain clean — no imports from
+# non-foundational extension packages, the AI family, or composite packages.
+
+[importlinter:contract:foundational-no-high-level]
+name = Foundational packages (domain/serialization/validation/concurrency) do not import from non-foundational extensions
+type = forbidden
+source_modules =
+    lexigram.domain
+    lexigram.serialization
+    lexigram.validation
+    lexigram.concurrency
+forbidden_modules =
+    lexigram.admin
+    lexigram.auth
+    lexigram.cache
+    lexigram.cli
+    lexigram.events
+    lexigram.features
+    lexigram.graph
+    lexigram.graphql
+    lexigram.http
+    lexigram.idempotency
+    lexigram.mailer
+    lexigram.mapping
+    lexigram.middleware
+    lexigram.monitor
+    lexigram.nosql
+    lexigram.notification
+    lexigram.plugins
+    lexigram.queue
+    lexigram.resilience
+    lexigram.search
+    lexigram.security
+    lexigram.sql
+    lexigram.storage
+    lexigram.tasks
+    lexigram.testing
+    lexigram.ui
+    lexigram.vector
+    lexigram.web
+    lexigram.workflow
+    lexigram.ai
+
+# =============================================================================
+# Contract 4 — Regular extension packages are independent of each other
+# =============================================================================
+# Extension packages (excluding composite packages, foundational packages,
+# and the AI family — which have separate contracts) must not import from
+# one another.
+#
+# Excluded from this independence check:
+#   • Foundational (domain, serialization, validation, concurrency) — any
+#     extension may import from them; they are not peers.
+#   • Composite (admin, cli, testing, ai) — high-level packages that are
+#     intentionally designed to compose multiple extensions.
+#
+# Documented ignore_imports:
+#   • lexigram.web.** -> lexigram.ui.**  — documented exception (web renders
+#     HTML using the UI layout components)
+#   • lexigram.web.** -> lexigram.security.**  — TRACKED VIOLATION; web's
+#     middleware.security imports lexigram.security config directly; this
+#     should be refactored to route through lexigram.contracts so that
+#     web has no direct extension dependency on security.
+#   • lexigram.ai.** -> lexigram.ai.*  — orchestrator is allowed to import
+#     sub-packages for composition and wiring.
+
+[importlinter:contract:regular-extensions-independence]
+name = Regular extension packages are independent of each other
+type = independence
+modules =
+    lexigram.auth
+    lexigram.cache
+    lexigram.events
+    lexigram.features
+    lexigram.graph
+    lexigram.graphql
+    lexigram.http
+    lexigram.idempotency
+    lexigram.mailer
+    lexigram.mapping
+    lexigram.middleware
+    lexigram.monitor
+    lexigram.nosql
+    lexigram.notification
+    lexigram.plugins
+    lexigram.queue
+    lexigram.resilience
+    lexigram.search
+    lexigram.security
+    lexigram.sql
+    lexigram.storage
+    lexigram.tasks
+    lexigram.ui
+    lexigram.vector
+    lexigram.web
+    lexigram.workflow
+ignore_imports =
+    # Documented exception: web renders HTML using UI layout components
+    lexigram.web.** -> lexigram.ui.**
+    # Tracked violation: web security middleware imports security config
+    # directly.  Refactor target: route through lexigram.contracts.
+    # Filed as tech-debt: replace with a contracts-based interface boundary.
+    lexigram.web.** -> lexigram.security.**
+    # Tracked violation: events/middleware/tasks use lexigram.resilience for
+    # retry and rate-limiting utilities.  These were moved from lexigram.core
+    # to lexigram.resilience (cc-p1).  Refactor target: promote retry and
+    # TokenBucket to a foundational package (or contracts) so these extension
+    # packages can remain independent.
+    lexigram.events.** -> lexigram.resilience.**
+    lexigram.middleware.** -> lexigram.resilience.**
+    lexigram.tasks.** -> lexigram.resilience.**
+    # Documented allowance: lexigram.ai is the orchestrator and is intentionally
+    # allowed to import from its sub-packages for composition and wiring.
+    lexigram.ai.** -> lexigram.ai.agents.**
+    lexigram.ai.** -> lexigram.ai.feedback.**
+    lexigram.ai.** -> lexigram.ai.governance.**
+    lexigram.ai.** -> lexigram.ai.guard.**
+    lexigram.ai.** -> lexigram.ai.llm.**
+    lexigram.ai.** -> lexigram.ai.mcp.**
+    lexigram.ai.** -> lexigram.ai.memory.**
+    lexigram.ai.** -> lexigram.ai.observability.**
+    lexigram.ai.** -> lexigram.ai.prompt.**
+    lexigram.ai.** -> lexigram.ai.rag.**
+    lexigram.ai.** -> lexigram.ai.session.**
+    lexigram.ai.** -> lexigram.ai.skills.**
+    lexigram.ai.** -> lexigram.ai.vector.**
+    lexigram.ai.** -> lexigram.ai.workers.**
+    lexigram.ai.** -> lexigram.ai.workflow.**
+    # Documented allowance: lexigram.ai imports lexigram.vector for
+    # vector store integration and composition.
+    lexigram.ai.** -> lexigram.vector.**
+unmatched_ignore_imports_alerting = warn
+
+# =============================================================================
+# Contract 5 — AI sub-packages are independent of each other
+# =============================================================================
+# Per AGENTS.md: "lexigram.ai.* packages do NOT import from each other".
+# The AI parent package (lexigram.ai) acts as the orchestrator/facade and
+# is intentionally excluded from this independence list — it IS allowed to
+# import from sub-packages to wire them together.
+
+[importlinter:contract:ai-sub-independence]
+name = AI sub-packages do not import from each other
+type = independence
+modules =
+    lexigram.ai.agents
+    lexigram.ai.feedback
+    lexigram.ai.governance
+    lexigram.ai.guard
+    lexigram.ai.llm
+    lexigram.ai.mcp
+    lexigram.ai.memory
+    lexigram.ai.observability
+    lexigram.ai.prompt
+    lexigram.ai.rag
+    lexigram.ai.session
+    lexigram.ai.skills
+    lexigram.ai.vector
+    lexigram.ai.workers
+    lexigram.ai.workflow
+
+# =============================================================================
+# Contract 6 — AI sub-packages do not import from the AI parent (lexigram.ai)
+# =============================================================================
+# Per AGENTS.md: "lexigram.ai.* packages … do NOT import from lexigram.ai".
+# Sub-packages must not reach back up to the orchestrator layer.
+#
+# NOTE: A dedicated forbidden contract cannot be expressed here due to a
+# grimp limitation: when checking "lexigram.ai.agents cannot import from
+# lexigram.ai", grimp raises "Modules have shared descendants" because
+# lexigram.ai.agents is itself a descendant of lexigram.ai — grimp cannot
+# perform ancestor-as-forbidden checks.
+#
+# Enforcement strategy:
+#   1. Verified clean at Phase 8 setup — grep confirms zero sub→parent imports.
+#   2. Contract 5 (ai-sub-independence) already prevents cross-sub-package
+#      pollution which would be the main surface for back-channel parent access.
+#   3. Any future lexigram.ai.* → lexigram.ai import will be caught by code
+#      review and the mypy --no-implicit-reexport discipline.
+#
+# To manually verify:
+#   grep -rn "from lexigram.ai import\|import lexigram.ai$" \
+#     lexigram-ai-*/src/lexigram/ai/

@@ -1,0 +1,182 @@
+"""{{ class_name }} middleware module.
+
+{% if doc %}
+{{ doc }}
+{% endif %}
+"""
+from __future__ import annotations
+
+import time
+from typing import Any, Callable
+
+from lexigram.web.protocols import ASGIApp, Request, Response
+from lexigram.logging import get_logger
+
+
+logger = get_logger("{{ class_name }}Middleware")
+
+
+class {{ class_name }}Middleware:
+    """{{ class_name }} middleware for request/response processing.
+    
+    This middleware performs the following operations:
+    1. Pre-request: Process request before it reaches the handler
+    2. Request: Pass request to the next middleware/handler
+    3. Post-response: Process response before returning to client
+    
+    Add your custom logic in the appropriate methods.
+    """
+    
+    def __init__(
+        self,
+        app: ASGIApp,
+        {% if options %}options: dict[str, Any] | None = None,
+        {% endif %}
+    ):
+        """Initialize the middleware.
+        
+        Args:
+            app: The ASGI application.
+            {% if options %}options: Optional configuration options.{% endif %}
+        """
+        self.app = app
+        {% if options %}
+        self.options = options or {}
+        # Configure middleware behavior from options
+        self.enabled = self.options.get("enabled", True)
+        self.timeout = self.options.get("timeout", 30)
+        {% else %}
+        self.enabled = True
+        {% endif %}
+    
+    async def __call__(self, request: Request, call_next: Callable) -> Response:
+        """Process the request and response.
+        
+        Args:
+            request: The incoming request.
+            call_next: The next middleware or handler.
+            
+        Returns:
+            The response.
+        """
+        if not self.enabled:
+            return await call_next(request)
+        
+        # Pre-request processing
+        request = await self._pre_request(request)
+        
+        # Track timing
+        start_time = time.perf_counter()
+        
+        try:
+            # Process request
+            response = await call_next(request)
+            
+            # Post-response processing
+            response = await self._post_request(request, response)
+            
+            return response
+            
+        except Exception as e:  # noqa: BLE001
+            # Exception handling
+            await self._handle_exception(request, e)
+            raise
+        finally:
+            # Always log request duration
+            duration = time.perf_counter() - start_time
+            await self._log_request(request, duration)
+    
+    async def _pre_request(self, request: Request) -> Request:
+        """Process request before it reaches the handler.
+        
+        Args:
+            request: The incoming request.
+            
+        Returns:
+            The processed request.
+        """
+        # Add custom pre-request logic here:
+        # - Add request ID for tracing
+        # - Validate headers
+        # - Check rate limits
+        # - Authenticate request
+        
+        # Example:
+        # request.state.request_id = str(uuid.uuid4())
+        
+        return request
+    
+    async def _post_request(
+        self,
+        request: Request,
+        response: Response,
+    ) -> Response:
+        """Process response before returning to client.
+        
+        Args:
+            request: The original request.
+            response: The response from the handler.
+            
+        Returns:
+            The processed response.
+        """
+        # Add custom post-response logic here:
+        # - Add custom headers
+        # - Modify response body
+        # - Cache response
+        
+        # Example:
+        # response.headers["X-Request-ID"] = request.state.request_id
+        
+        return response
+    
+    async def _handle_exception(self, request: Request, exc: Exception) -> None:
+        """Handle exceptions that occur during request processing.
+        
+        Args:
+            request: The request that caused the exception.
+            exc: The exception that occurred.
+        """
+        # Add custom exception handling here:
+        # - Log error details
+        # - Send error notifications
+        # - Clean up resources
+        
+        logger.exception(
+            f"Error processing {request.url.path}: {exc}",
+            extra={"path": request.url.path},
+        )
+    
+    async def _log_request(self, request: Request, duration: float) -> None:
+        """Log request details for monitoring.
+        
+        Args:
+            request: The completed request.
+            duration: Request processing duration in seconds.
+        """
+        # Add custom logging here:
+        # - Log to metrics service
+        # - Log slow requests
+        # - Log error rates
+        
+        if duration > 1.0:  # Log slow requests
+            logger.warning(
+                f"Slow request: {request.method} {request.url.path} took {duration:.3f}s"
+            )
+
+
+# Factory function for creating middleware with options
+def create_{{ name | lower }}_middleware(
+    app: ASGIApp,
+    **options: Any,
+) -> {{ class_name }}Middleware:
+    """Factory function to create {{ class_name }}Middleware with options.
+    
+    Args:
+        app: The ASGI application.
+        **options: Middleware configuration options.
+        
+    Returns:
+        Configured middleware instance.
+    """
+    return {{ class_name }}Middleware(app, options=options)
