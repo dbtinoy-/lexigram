@@ -131,3 +131,59 @@ class MultimediaProvider(Provider):
             if sub_result.status != HealthStatus.HEALTHY:
                 overall = HealthStatus.DEGRADED
         return HealthCheckResult(component=self.name, status=overall, details=details)
+
+    @property
+    def tts(self) -> Any:
+        from lexigram.multimedia.accessors import SubsystemAccessor
+
+        sub = self._sub_providers["audio-tts"]
+        return SubsystemAccessor(
+            backend=sub._backend,
+            task_manager=self._task_manager,
+            task_name="tts_generation",
+            storage=self._storage,
+            path_prefix=f"{self._multimedia_config.storage_path_prefix}tts/",
+            idempotency_manager=self._idempotency_manager,
+        )
+
+    @property
+    def music(self) -> Any:
+        from lexigram.multimedia.accessors import SubsystemAccessor
+
+        sub = self._sub_providers["audio-music"]
+        return SubsystemAccessor(
+            backend=sub._backend,
+            task_manager=self._task_manager,
+            task_name="music_generation",
+            storage=self._storage,
+            path_prefix=f"{self._multimedia_config.storage_path_prefix}music/",
+            idempotency_manager=self._idempotency_manager,
+        )
+
+    @property
+    def video(self) -> Any:
+        from lexigram.multimedia.accessors import SubsystemAccessor
+
+        sub = self._sub_providers["video"]
+        return SubsystemAccessor(
+            backend=sub._backend,
+            task_manager=self._task_manager,
+            task_name="video_generation",
+            storage=self._storage,
+            path_prefix=f"{self._multimedia_config.storage_path_prefix}video/",
+            idempotency_manager=self._idempotency_manager,
+        )
+
+    @property
+    def image(self) -> Any:
+        from lexigram.multimedia.accessors import SubsystemAccessor
+
+        sub = self._sub_providers["image"]
+        return SubsystemAccessor(
+            backend=sub._backend,
+            task_manager=self._task_manager,
+            task_name="image_generation",
+            storage=self._storage,
+            path_prefix=f"{self._multimedia_config.storage_path_prefix}image/",
+            idempotency_manager=self._idempotency_manager,
+        )
