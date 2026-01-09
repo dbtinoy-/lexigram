@@ -38,6 +38,7 @@ class SubsystemAccessor(Generic[_Req]):
 
         from lexigram.contracts.core.result import Result
         from lexigram.contracts.multimedia.exceptions import MultimediaError
+        from lexigram.contracts.multimedia.types import MediaAsset
 
         result = await self._backend.generate(request)
         return cast(Result[MediaAsset, MultimediaError], result)
