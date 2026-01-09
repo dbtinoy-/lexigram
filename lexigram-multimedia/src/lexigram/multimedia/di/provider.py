@@ -163,7 +163,7 @@ class MultimediaProvider(Provider):
                 self._path_prefix = path_prefix
 
             async def run(self, params: dict[str, Any]) -> dict[str, Any]:
-                asset_dict = await self._inner.run(params)
+                asset_dict: dict[str, Any] = await self._inner.run(params)
                 if self._storage is None:
                     return asset_dict
                 ext = asset_dict.get("mime_type", "application/octet-stream").split("/")[-1]

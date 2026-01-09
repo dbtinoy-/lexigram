@@ -34,7 +34,10 @@ class SubsystemAccessor(Generic[_Req]):
         self._idempotency_manager = idempotency_manager
 
     async def generate(self, request: _Req) -> Result[MediaAsset, MultimediaError]:
-        return await self._backend.generate(request)
+        from typing import cast
+
+        result = await self._backend.generate(request)
+        return cast(Result[MediaAsset, MultimediaError], result)
 
     async def submit(self, request: _Req, idempotency_key: str | None = None) -> JobHandle:
         from dataclasses import asdict
