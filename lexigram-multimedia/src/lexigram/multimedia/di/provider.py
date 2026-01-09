@@ -227,6 +227,7 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}tts/",
             idempotency_manager=self._idempotency_manager,
+            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
         )
 
     @property
@@ -241,6 +242,7 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}music/",
             idempotency_manager=self._idempotency_manager,
+            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
         )
 
     @property
@@ -255,6 +257,7 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}video/",
             idempotency_manager=self._idempotency_manager,
+            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
         )
 
     @property
@@ -269,4 +272,5 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}image/",
             idempotency_manager=self._idempotency_manager,
+            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
         )
