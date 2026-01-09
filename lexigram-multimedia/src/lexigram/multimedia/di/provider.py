@@ -115,6 +115,90 @@ class MultimediaProvider(Provider):
             self._cache_backend = None
             logger.debug("multimedia_no_cache_backend_bound; result caching disabled")
 
+        await self._wire_task_manager(container)
+
+    async def _wire_task_manager(self, container: ContainerResolverProtocol) -> None:
+        from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
+        from lexigram.contracts.infra.tasks import TaskQueueProtocol
+        from lexigram.multimedia.idempotency_store import (
+            InMemoryIdempotencyStoreFallback,
+        )
+        from lexigram.tasks.di.provider import TaskProvider
+        from lexigram.tasks.execution.manager import (
+            IdempotencyManager,
+            IdempotentTaskManager,
+        )
+
+        try:
+            task_provider = await container.resolve(TaskProvider)
+            task_queue = await container.resolve(TaskQueueProtocol)
+        except (LookupError, KeyError, ValueError, TypeError):
+            logger.warning(
+                "multimedia_no_task_provider_bound",
+                reason="lexigram-tasks not configured — submit() will be unavailable, "
+                "only the synchronous generate() path will work",
+            )
+            return
+
+        idempotency_store: Any
+        try:
+            idempotency_store = await container.resolve(IdempotencyStoreProtocol)
+        except (LookupError, KeyError, ValueError, TypeError):
+            idempotency_store = InMemoryIdempotencyStoreFallback()
+
+        idempotency_manager = IdempotencyManager(storage=idempotency_store)
+        self._idempotency_manager = idempotency_manager
+        self._task_manager = IdempotentTaskManager(
+            queue_client=task_queue, idempotency_manager=idempotency_manager
+        )
+
+        import uuid
+
+        from lexigram.multimedia.storage_normalize import normalize_asset_dict
+
+        class _WrappedTaskHandler:
+            def __init__(self, inner: Any, storage: Any, path_prefix: str) -> None:
+                self._inner = inner
+                self._storage = storage
+                self._path_prefix = path_prefix
+
+            async def run(self, params: dict[str, Any]) -> dict[str, Any]:
+                asset_dict = await self._inner.run(params)
+                if self._storage is None:
+                    return asset_dict
+                ext = asset_dict.get("mime_type", "application/octet-stream").split("/")[-1]
+                return await normalize_asset_dict(
+                    asset_dict,
+                    store=self._storage,
+                    path_prefix=self._path_prefix,
+                    path_key=f"{uuid.uuid4()}.{ext}",
+                )
+
+        def _make_handler_adapter(wrapped: _WrappedTaskHandler) -> Any:
+            # HandlerRegistry.execute() invokes `await handler(*task.args, **task.kwargs)` —
+            # handlers receive unpacked kwargs, not a single params dict. Adapt back to
+            # the existing `run(self, params: dict)` handler shape.
+            async def _adapter(**kwargs: Any) -> Any:
+                return await wrapped.run(kwargs)
+
+            return _adapter
+
+        _TASK_NAMES = {
+            "audio-tts": ("tts_generation", "tts/"),
+            "audio-music": ("music_generation", "music/"),
+            "video": ("video_generation", "video/"),
+            "image": ("image_generation", "image/"),
+        }
+        for key, (task_name, segment) in _TASK_NAMES.items():
+            sub = self._sub_providers[key]
+            wrapped = _WrappedTaskHandler(
+                inner=sub._task_handler,
+                storage=self._storage,
+                path_prefix=f"{self._multimedia_config.storage_path_prefix}{segment}",
+            )
+            self._wrapped_task_handlers[task_name] = wrapped
+            task_provider.register_handler(task_name, _make_handler_adapter(wrapped))
+
     async def shutdown(self) -> None:
         for sub in self._sub_providers.values():
             shutdown = getattr(sub, "shutdown", None)
