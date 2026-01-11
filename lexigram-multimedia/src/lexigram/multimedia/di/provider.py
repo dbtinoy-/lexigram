@@ -114,6 +114,14 @@ class MultimediaProvider(Provider):
             self._cache_backend = None
             logger.debug("multimedia_no_cache_backend_bound; result caching disabled")
 
+        from lexigram.contracts.events.protocols import EventBusProtocol
+
+        try:
+            self._event_bus = await container.resolve(EventBusProtocol)
+        except (LookupError, KeyError, ValueError, TypeError):
+            self._event_bus = None
+            logger.debug("multimedia_no_event_bus_bound; generation events disabled")
+
         await self._wire_task_manager(container)
 
     async def _wire_task_manager(self, container: ContainerResolverProtocol) -> None:
@@ -228,6 +236,8 @@ class MultimediaProvider(Provider):
             path_prefix=f"{self._multimedia_config.storage_path_prefix}tts/",
             idempotency_manager=self._idempotency_manager,
             cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            event_bus=self._event_bus,
+            media_type="tts",
         )
 
     @property
@@ -243,6 +253,8 @@ class MultimediaProvider(Provider):
             path_prefix=f"{self._multimedia_config.storage_path_prefix}music/",
             idempotency_manager=self._idempotency_manager,
             cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            event_bus=self._event_bus,
+            media_type="music",
         )
 
     @property
@@ -258,6 +270,8 @@ class MultimediaProvider(Provider):
             path_prefix=f"{self._multimedia_config.storage_path_prefix}video/",
             idempotency_manager=self._idempotency_manager,
             cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            event_bus=self._event_bus,
+            media_type="video",
         )
 
     @property
@@ -273,4 +287,6 @@ class MultimediaProvider(Provider):
             path_prefix=f"{self._multimedia_config.storage_path_prefix}image/",
             idempotency_manager=self._idempotency_manager,
             cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            event_bus=self._event_bus,
+            media_type="image",
         )
