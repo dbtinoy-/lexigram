@@ -57,6 +57,11 @@ dependencies = [
     "botocore>=1.40.61",
     "pyyaml>=6.0.3",
     "openai>=2.33.0",
+    "lexigram-multimedia",
+    "lexigram-multimedia-audio-tts",
+    "lexigram-multimedia-audio-music",
+    "lexigram-multimedia-video",
+    "lexigram-multimedia-image",
 ]
 
 
@@ -167,6 +172,11 @@ lexigram-tenancy = { workspace = true }
 lexigram-audit = { workspace = true }
 lexigram-webhook = { workspace = true }
 lexigram-ai-evaluation = { workspace = true }
+lexigram-multimedia = { workspace = true }
+lexigram-multimedia-audio-tts = { workspace = true }
+lexigram-multimedia-audio-music = { workspace = true }
+lexigram-multimedia-video = { workspace = true }
+lexigram-multimedia-image = { workspace = true }
 
 [project.urls]
 Homepage = "https://lexigram.dev"
