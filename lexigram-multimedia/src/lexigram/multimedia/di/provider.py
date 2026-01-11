@@ -53,7 +53,9 @@ class MultimediaProvider(Provider):
         from lexigram.multimedia.image.di.provider import ImageGenerationProvider
         from lexigram.multimedia.video.di.provider import VideoGenerationProvider
 
-        self._sub_providers["audio-tts"] = AudioTTSProvider(config=self._multimedia_config.tts)
+        self._sub_providers["audio-tts"] = AudioTTSProvider(
+            config=self._multimedia_config.tts
+        )
         self._sub_providers["audio-music"] = AudioMusicProvider(
             config=self._multimedia_config.music
         )
@@ -72,7 +74,9 @@ class MultimediaProvider(Provider):
         # "lexigram.ai.subsystems" loop, including skipping the core names.
         # ------------------------------------------------------------------
         try:
-            for _ep in importlib.metadata.entry_points(group="lexigram.multimedia.subsystems"):
+            for _ep in importlib.metadata.entry_points(
+                group="lexigram.multimedia.subsystems"
+            ):
                 if _ep.name in _CORE_SUBSYSTEMS:
                     continue
                 _provider_cls = _ep.load()
@@ -86,7 +90,9 @@ class MultimediaProvider(Provider):
         except ImportError:
             logger.debug("importlib.metadata unavailable; skipping subsystem discovery")
 
-        logger.info("multimedia_services_registered", subsystems=list(self._sub_providers))
+        logger.info(
+            "multimedia_services_registered", subsystems=list(self._sub_providers)
+        )
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         # BlobStoreProtocol and other peer-provider singletons are resolved
@@ -173,7 +179,9 @@ class MultimediaProvider(Provider):
                 asset_dict: dict[str, Any] = await self._inner.run(params)
                 if self._storage is None:
                     return asset_dict
-                ext = asset_dict.get("mime_type", "application/octet-stream").split("/")[-1]
+                ext = asset_dict.get("mime_type", "application/octet-stream").split(
+                    "/"
+                )[-1]
                 return await normalize_asset_dict(
                     asset_dict,
                     store=self._storage,
@@ -235,7 +243,9 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}tts/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            cache_backend=self._cache_backend
+            if self._multimedia_config.cache_results
+            else None,
             event_bus=self._event_bus,
             media_type="tts",
         )
@@ -252,7 +262,9 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}music/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            cache_backend=self._cache_backend
+            if self._multimedia_config.cache_results
+            else None,
             event_bus=self._event_bus,
             media_type="music",
         )
@@ -269,7 +281,9 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}video/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            cache_backend=self._cache_backend
+            if self._multimedia_config.cache_results
+            else None,
             event_bus=self._event_bus,
             media_type="video",
         )
@@ -286,7 +300,9 @@ class MultimediaProvider(Provider):
             storage=self._storage,
             path_prefix=f"{self._multimedia_config.storage_path_prefix}image/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend if self._multimedia_config.cache_results else None,
+            cache_backend=self._cache_backend
+            if self._multimedia_config.cache_results
+            else None,
             event_bus=self._event_bus,
             media_type="image",
         )

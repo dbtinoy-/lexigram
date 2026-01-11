@@ -32,7 +32,9 @@ class JobHandle:
         # submission always comes back "submitted".
         if is_duplicate is None:
             is_duplicate = result.status == "completed"
-        return cls(job_id=result.task_id, status=result.status, is_duplicate=is_duplicate)
+        return cls(
+            job_id=result.task_id, status=result.status, is_duplicate=is_duplicate
+        )
 
 
 __all__ = ["JobHandle"]
