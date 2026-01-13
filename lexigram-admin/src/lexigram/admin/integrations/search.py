@@ -28,7 +28,9 @@ class SearchableSpec:
 
 
 class _NoOpSearch:
-    async def search(self, index_name: str, query: str, **kwargs: Any) -> dict[str, Any]:
+    async def search(
+        self, index_name: str, query: str, **kwargs: Any
+    ) -> dict[str, Any]:
         return {"results": [], "total": 0}
 
 
@@ -69,7 +71,9 @@ class SearchIntegration:
 
     async def health_check(self) -> dict[str, Any]:
         return {
-            "status": "healthy" if self._search is not None and not isinstance(self._search, _NoOpSearch) else "noop"
+            "status": "healthy"
+            if self._search is not None and not isinstance(self._search, _NoOpSearch)
+            else "noop"
         }
 
     async def query(

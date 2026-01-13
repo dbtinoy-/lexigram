@@ -275,9 +275,7 @@ class AdminRouter:
             ),
             Route(
                 f"{prefix}/{{id}}/delete",
-                ResourceHandler(
-                    self._config, name, "delete", resources=resources_dict
-                ),
+                ResourceHandler(self._config, name, "delete", resources=resources_dict),
                 name=f"admin_{name}_delete",
                 methods=["DELETE", "POST"],
             ),

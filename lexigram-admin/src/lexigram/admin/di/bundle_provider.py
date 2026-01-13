@@ -281,7 +281,9 @@ class AdminProvider(Provider):
                 bypass_visibility=True,
             )
             controller_instances.append(widget_controller)
-            if admin_settings_service is not None and hasattr(widget_controller, "_settings_service"):
+            if admin_settings_service is not None and hasattr(
+                widget_controller, "_settings_service"
+            ):
                 widget_controller._settings_service = admin_settings_service
         except Exception as exc:
             _log.error(
@@ -752,6 +754,7 @@ class AdminProvider(Provider):
         # render_widget() implementations can resolve their service dependencies.
         try:
             from lexigram.admin.controllers.widgets import WidgetController
+
             wc = await container.resolve(WidgetController, bypass_visibility=True)
             wc._resolver = container
         except Exception:

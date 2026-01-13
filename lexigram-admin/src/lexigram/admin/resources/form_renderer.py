@@ -565,21 +565,32 @@ class FormRenderer:
                 for field_schema in schema.fields:
                     if field_schema.type == FieldType.BELONGS_TO:
                         related_resource_name = field_schema.related_resource
-                        if related_resource_name and hasattr(resource, "_admin_registry"):
+                        if related_resource_name and hasattr(
+                            resource, "_admin_registry"
+                        ):
                             try:
-                                related_resource_cls = resource._admin_registry.get(related_resource_name)
+                                related_resource_cls = resource._admin_registry.get(
+                                    related_resource_name
+                                )
                                 if related_resource_cls:
                                     related_instance = related_resource_cls()
-                                    if hasattr(related_instance, "_data_source") and related_instance._data_source:
+                                    if (
+                                        hasattr(related_instance, "_data_source")
+                                        and related_instance._data_source
+                                    ):
                                         ds = related_instance._data_source
                                         if hasattr(ds, "list_all"):
                                             records = await ds.list_all()
                                             field_schema.options = [
-                                                {"value": str(getattr(r, "id", r)), "label": str(r)}
+                                                {
+                                                    "value": str(getattr(r, "id", r)),
+                                                    "label": str(r),
+                                                }
                                                 for r in records
                                             ]
                             except Exception:
                                 import logging
+
                                 logging.getLogger(__name__).debug(
                                     "Failed to load options for %s.%s",
                                     self.resource_name,

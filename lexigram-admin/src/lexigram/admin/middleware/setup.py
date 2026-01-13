@@ -56,10 +56,8 @@ class SetupMiddleware:
         if (
             path == "/setup"
             or path.endswith("/setup")
-            or path == "/login"
-            or path == "/login/"
-            or path == "/logout"
-            or path == "/logout/"
+            or path in ("/login", "/login/")
+            or path in ("/logout", "/logout/")
             or path.startswith("/static")
             or "/static/" in path
         ):

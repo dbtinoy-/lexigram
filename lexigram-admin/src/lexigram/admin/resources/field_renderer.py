@@ -201,6 +201,7 @@ class BelongsToFieldRenderer:
 
     def can_render(self, field_type: Any, field_schema: Any) -> bool:
         from lexigram.admin.forms.fields import FieldType
+
         return field_type == FieldType.BELONGS_TO
 
     def render_field(
@@ -223,6 +224,7 @@ class HasManyFieldRenderer:
 
     def can_render(self, field_type: Any, field_schema: Any) -> bool:
         from lexigram.admin.forms.fields import FieldType
+
         return field_type == FieldType.HAS_MANY
 
     def render_field(

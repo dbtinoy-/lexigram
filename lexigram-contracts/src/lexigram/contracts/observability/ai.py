@@ -8,7 +8,13 @@ from lexigram.contracts.exceptions import LexigramError
 
 
 # Observability Errors
-class MetricsCollectionError(LexigramError):
+class MonitoringError(LexigramError):
+    """Base error raised during AI observability monitoring."""
+
+    _code: str = "LEX_ERR_AI_005"
+
+
+class MetricsCollectionError(MonitoringError):
     """Error raised during metrics collection."""
 
     _code: str = "LEX_ERR_AI_003"
@@ -146,6 +152,7 @@ __all__ = [
     "AIMetricsProtocol",
     "AITracerProtocol",
     "MetricsCollectionError",
+    "MonitoringError",
     "ObservabilityProtocol",
     "TracingError",
 ]

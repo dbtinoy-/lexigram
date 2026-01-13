@@ -108,7 +108,9 @@ class AdminSettingsService:
 
     async def get(self, tenant_id: str, name: str) -> Any:
         if self._provider is None:
-            return self._memory.get(tenant_id, {}).get(name) or DEFAULT_SETTINGS.get(name)
+            return self._memory.get(tenant_id, {}).get(name) or DEFAULT_SETTINGS.get(
+                name
+            )
         raw = await self._provider.get_config(tenant_id, self._key(name))
         if raw is not None:
             return raw

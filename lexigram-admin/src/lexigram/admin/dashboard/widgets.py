@@ -444,7 +444,9 @@ def render_widget_config_popup(
     )
 
 
-def _render_field_input(field: ConfigField, current: Any, widget_name: str | None = None) -> str:
+def _render_field_input(
+    field: ConfigField, current: Any, widget_name: str | None = None
+) -> str:
     prefix = f"param__{widget_name}__" if widget_name else "param_"
     if field.type == "select" and field.options:
         opts = [

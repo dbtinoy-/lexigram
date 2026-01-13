@@ -48,8 +48,7 @@ class AuditedAction(Action[_RT, _OT], Generic[_RT, _OT]):
     @abstractmethod
     async def execute_audited(
         self, record_or_records: _RT, ctx: ActionContext
-    ) -> Result[_OT, ActionError]:
-        ...
+    ) -> Result[_OT, ActionError]: ...
 
     def capture_before(self, record: _RT) -> dict[str, Any] | None:
         return None

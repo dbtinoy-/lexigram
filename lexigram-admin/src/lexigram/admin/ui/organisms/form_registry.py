@@ -82,6 +82,7 @@ class CheckboxRenderer:
 class BelongsToFormRenderer:
     def can_render(self, field_type: FieldType) -> bool:
         from lexigram.admin.forms import FieldType
+
         return field_type == FieldType.BELONGS_TO
 
     def render(self, field: AbstractField, current_value: Any) -> Any:
@@ -98,6 +99,7 @@ class BelongsToFormRenderer:
 class HasManyFormRenderer:
     def can_render(self, field_type: FieldType) -> bool:
         from lexigram.admin.forms import FieldType
+
         return field_type == FieldType.HAS_MANY
 
     def render(self, field: AbstractField, current_value: Any) -> Any:

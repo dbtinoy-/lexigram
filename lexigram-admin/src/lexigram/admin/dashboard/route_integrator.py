@@ -100,9 +100,7 @@ class AdminPageHandler:
         title = self._page_cls.__name__.removesuffix("Page")
 
         user = (
-            getattr(request.state, "user", None)
-            if hasattr(request, "state")
-            else None
+            getattr(request.state, "user", None) if hasattr(request, "state") else None
         )
         nav_items, system_menu_items = resolve_admin_nav(request)
 
@@ -115,9 +113,7 @@ class AdminPageHandler:
         )
         shell_html = render_to_string(shell)
 
-        templates_dir = (
-            Path(__file__).resolve().parent.parent / "views" / "templates"
-        )
+        templates_dir = Path(__file__).resolve().parent.parent / "views" / "templates"
         templates = Jinja2Templates(directory=str(templates_dir))
         return templates.TemplateResponse(
             request,
@@ -141,7 +137,10 @@ class AdminPageHandler:
         for name, param in sig.parameters.items():
             if name == "self":
                 continue
-            if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+            if param.kind in (
+                inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+            ):
                 continue
             param_type = hints.get(name)
             if param_type is not None:
@@ -209,9 +208,7 @@ async def _placeholder_page(request: Any) -> HTMLResponse:
         )
         shell_html = render_to_string(shell)
 
-        templates_dir = (
-            Path(__file__).resolve().parent.parent / "views" / "templates"
-        )
+        templates_dir = Path(__file__).resolve().parent.parent / "views" / "templates"
         templates = Jinja2Templates(directory=str(templates_dir))
         return templates.TemplateResponse(
             request,
@@ -341,7 +338,13 @@ class RouteIntegrator:
                     if not internal.startswith("/"):
                         internal = f"/{internal}"
                     registered_internal_paths.add(internal)
-                _register_pages(self._router, self._naming, self._prefix, pages, container=self._container)  # type: ignore[arg-type]
+                _register_pages(
+                    self._router,
+                    self._naming,
+                    self._prefix,
+                    pages,  # type: ignore[arg-type]
+                    container=self._container,
+                )
 
             # Settings panels
             panels = c.get_settings_panels()
@@ -351,7 +354,13 @@ class RouteIntegrator:
                     if not internal.startswith("/"):
                         internal = f"/{internal}"
                     registered_internal_paths.add(internal)
-                _register_settings(self._router, self._naming, self._prefix, panels, container=self._container)  # type: ignore[arg-type]
+                _register_settings(
+                    self._router,
+                    self._naming,
+                    self._prefix,
+                    panels,  # type: ignore[arg-type]
+                    container=self._container,
+                )
 
         # Auto-register placeholder routes for nav items without handlers.
         for c in contributors:
