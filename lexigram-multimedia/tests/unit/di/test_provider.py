@@ -56,3 +56,54 @@ async def test_tts_accessor_generate_delegates_to_backend() -> None:
 
     assert result.is_ok()
     fake_backend.generate.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_boot_without_optional_services_is_tolerated() -> None:
+    provider = MultimediaProvider(config=MultimediaConfig())
+    container = _FakeContainer()
+
+    await provider.register(container)
+    await provider.boot(container)
+
+    assert provider._storage is None
+    assert provider._cache_backend is None
+    assert provider._event_bus is None
+    assert provider._task_manager is None
+    assert provider._idempotency_manager is None
+
+
+@pytest.mark.asyncio
+async def test_register_tolerates_metadata_import_failure() -> None:
+    from unittest.mock import patch
+
+    provider = MultimediaProvider(config=MultimediaConfig())
+    container = _FakeContainer()
+
+    with patch(
+        "lexigram.multimedia.di.provider.importlib.metadata.entry_points",
+        side_effect=ImportError("no metadata"),
+    ):
+        await provider.register(container)
+
+    assert set(provider._sub_providers) == {"audio-tts", "audio-music", "video", "image"}
+
+
+@pytest.mark.asyncio
+async def test_all_four_accessors_are_exposed_with_task_names() -> None:
+    from lexigram.multimedia.accessors import SubsystemAccessor
+
+    provider = MultimediaProvider(config=MultimediaConfig())
+    container = _FakeContainer()
+    await provider.register(container)
+
+    for name, task_name in (
+        ("tts", "tts_generation"),
+        ("music", "music_generation"),
+        ("video", "video_generation"),
+        ("image", "image_generation"),
+    ):
+        accessor = getattr(provider, name)
+        assert isinstance(accessor, SubsystemAccessor)
+        assert accessor._task_name == task_name
+        assert accessor._media_type == name

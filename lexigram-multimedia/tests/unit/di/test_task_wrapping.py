@@ -73,3 +73,38 @@ async def test_boot_registers_wrapped_handlers_with_task_provider() -> None:
     fake_store.upload.assert_awaited_once()
     assert result["uri"] == "https://cdn.example/x.mp3"
     assert result["bytes_data"] is None
+
+
+@pytest.mark.asyncio
+async def test_wrapped_handler_passthrough_without_storage() -> None:
+    from lexigram.contracts.core.result import Ok
+    from lexigram.contracts.infra.tasks import TaskQueueProtocol
+    from lexigram.contracts.multimedia.types import MediaAsset
+    from lexigram.tasks.di.provider import TaskProvider
+
+    provider = MultimediaProvider(config=MultimediaConfig())
+    container = _FakeContainer()
+
+    fake_task_provider = _FakeTaskProvider()
+    container.singleton(TaskProvider, fake_task_provider)
+    container.singleton(TaskQueueProtocol, AsyncMock())
+
+    await provider.register(container)
+    await provider.boot(container)
+
+    assert provider._storage is None
+
+    fake_backend = AsyncMock()
+    fake_backend.generate.return_value = Ok(
+        MediaAsset(mime_type="audio/mpeg", provider="elevenlabs", bytes_data=b"x")
+    )
+    provider._sub_providers["audio-tts"]._backend = fake_backend
+    provider._sub_providers["audio-tts"]._task_handler._backend = fake_backend
+
+    adapter = fake_task_provider.handlers["tts_generation"]
+    result = await adapter(text="hi", voice=None, format="mp3")
+
+    # Without storage, the raw handler output passes through unchanged:
+    # bytes stay inline rather than being uploaded.
+    assert result["uri"] is None
+    assert result["bytes_data"] == b"x"
