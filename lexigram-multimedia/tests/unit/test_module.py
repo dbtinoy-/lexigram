@@ -31,3 +31,21 @@ def test_stub_returns_dynamic_module_with_exports() -> None:
 
     assert module.module is MultimediaModule
     assert set(module.exports) == {TTSProvider, MusicProvider, VideoProvider, ImageProvider}
+
+
+def test_stub_tolerates_failing_entry_point_loads() -> None:
+    from unittest.mock import MagicMock, patch
+
+    broken_ep = MagicMock()
+    broken_ep.load.side_effect = ImportError("broken")
+    good_ep = MagicMock()
+    good_ep.load.side_effect = AttributeError("no stub")
+
+    with patch(
+        "importlib.metadata.entry_points",
+        return_value=[broken_ep, good_ep],
+    ):
+        module = MultimediaModule.stub()
+
+    assert module.module is MultimediaModule
+    assert module.imports == []
