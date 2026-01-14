@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
+
+
+@dataclass
+class VideoProcessingConfig:
+    ffmpeg_binary: str = "ffmpeg"
+    max_concurrent_jobs: int = 2
+    temp_dir: str | None = None
+    timeout: float = 300.0
 
 
 @dataclass
@@ -13,3 +21,4 @@ class VideoConfig:
     runway_api_key_secret_name: str = "runway_api_key"
     openai_api_key_secret_name: str = "openai_api_key"
     timeout: float = 60.0
+    processing: VideoProcessingConfig = field(default_factory=VideoProcessingConfig)
