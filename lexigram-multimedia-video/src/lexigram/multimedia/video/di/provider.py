@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
-from lexigram.contracts.multimedia.protocols import VideoProvider
+from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 from lexigram.multimedia.video.config import VideoConfig
-from lexigram.multimedia.video.tasks import VideoGenerationTask
+from lexigram.multimedia.video.processing.ffmpeg import FFmpegVideoProcessor
+from lexigram.multimedia.video.tasks import (
+    VideoGenerationTask,
+    VideoProcessingTask,
+)
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -38,6 +43,8 @@ class VideoGenerationProvider(Provider):
         self._video_config = config or VideoConfig()
         self._backend: VideoProvider | None = None
         self._task_handler: VideoGenerationTask | None = None
+        self._processing_backend: VideoProcessor | None = None
+        self._processing_task_handler: VideoProcessingTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
@@ -110,6 +117,19 @@ class VideoGenerationProvider(Provider):
 
         self._task_handler = VideoGenerationTask(backend=self._backend)
         container.singleton(VideoGenerationTask, self._task_handler)
+
+        if shutil.which(self._video_config.processing.ffmpeg_binary) is None:
+            raise ProviderNotInstalledError(
+                "ffmpeg not found on PATH — install it: `apt install ffmpeg` / `brew install ffmpeg`"
+            )
+        self._processing_backend = FFmpegVideoProcessor(
+            config=self._video_config.processing
+        )
+        container.singleton(VideoProcessor, self._processing_backend)
+        self._processing_task_handler = VideoProcessingTask(
+            backend=self._processing_backend
+        )
+        container.singleton(VideoProcessingTask, self._processing_task_handler)
         logger.info("video_registered", backend=self._video_config.backend)
 
     async def _resolve_credential(self, secret_name: str) -> str | None:
