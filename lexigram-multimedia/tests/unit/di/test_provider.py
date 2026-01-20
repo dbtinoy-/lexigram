@@ -86,7 +86,12 @@ async def test_register_tolerates_metadata_import_failure() -> None:
     ):
         await provider.register(container)
 
-    assert set(provider._sub_providers) == {"audio-tts", "audio-music", "video", "image"}
+    assert set(provider._sub_providers) == {
+        "audio-tts",
+        "audio-music",
+        "video",
+        "image",
+    }
 
 
 @pytest.mark.asyncio
@@ -100,10 +105,18 @@ async def test_all_four_accessors_are_exposed_with_task_names() -> None:
     for name, task_name in (
         ("tts", "tts_generation"),
         ("music", "music_generation"),
-        ("video", "video_generation"),
         ("image", "image_generation"),
     ):
         accessor = getattr(provider, name)
         assert isinstance(accessor, SubsystemAccessor)
         assert accessor._task_name == task_name
         assert accessor._media_type == name
+
+    # .video is now a VideoAccessor composing generation + processing
+    # SubsystemAccessors (video-processing spec).
+    from lexigram.multimedia.video_accessor import VideoAccessor
+
+    video = provider.video
+    assert isinstance(video, VideoAccessor)
+    assert video._generation._task_name == "video_generation"
+    assert video._processing._task_name == "video_processing"
