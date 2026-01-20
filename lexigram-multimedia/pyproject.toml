@@ -114,7 +114,24 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = [
     "--cov=lexigram.multimedia",
+    "--cov-config=pyproject.toml",
     "--cov-report=term",
     "--cov-report=html",
     "--cov-fail-under=40",
+]
+
+# The lexigram.multimedia import name is a namespace shared with the sibling
+# wheel packages (lexigram-multimedia-audio-tts/-audio-music/-image/-video,
+# installed into the same site-packages tree). Without scoping, coverage
+# measures the siblings' sources too — which this package's test suite does
+# not own. The siblings enforce their own coverage gates (see their
+# pyprojects, e.g. --cov=lexigram.multimedia.video); this one measures only
+# the umbrella's own code. (include is ignored by coverage when --source is
+# set, so this uses omit.)
+[tool.coverage.run]
+omit = [
+    "*/lexigram-multimedia-audio-music/src/*",
+    "*/lexigram-multimedia-audio-tts/src/*",
+    "*/lexigram-multimedia-image/src/*",
+    "*/lexigram-multimedia-video/src/*",
 ]

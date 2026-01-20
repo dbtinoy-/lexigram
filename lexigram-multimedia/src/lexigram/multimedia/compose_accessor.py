@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.result import Result
-    from lexigram.contracts.multimedia.exceptions import MultimediaError
+    from lexigram.contracts.multimedia.exceptions import VideoGenerationError
     from lexigram.contracts.multimedia.types import MediaAsset
     from lexigram.multimedia.jobs import JobHandle
     from lexigram.multimedia.timeline import Timeline
@@ -30,7 +30,9 @@ class ComposeAccessor:
         self._path_prefix = path_prefix
         self._idempotency_manager = idempotency_manager
 
-    async def render(self, timeline: Timeline) -> Result[MediaAsset, MultimediaError]:
+    async def render(
+        self, timeline: Timeline
+    ) -> Result[MediaAsset, VideoGenerationError]:
         return await timeline.render(self._processor)
 
     async def submit_render(

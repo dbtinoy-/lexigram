@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.multimedia.protocols import VideoProcessor
 from lexigram.contracts.multimedia.types import (
     BurnSubtitles,
     Concat,
@@ -12,6 +13,10 @@ from lexigram.contracts.multimedia.types import (
     SubtitleCue,
     TransitionSpec,
 )
+
+if TYPE_CHECKING:
+    from lexigram.contracts.core.result import Result
+    from lexigram.contracts.multimedia.exceptions import VideoGenerationError
 
 
 class Timeline:
@@ -52,7 +57,9 @@ class Timeline:
         self._captions.extend(cues)
         return self
 
-    async def render(self, processor: Any) -> Any:
+    async def render(
+        self, processor: VideoProcessor
+    ) -> Result[MediaAsset, VideoGenerationError]:
         from lexigram.contracts.core.result import Ok
 
         result = await processor.process(

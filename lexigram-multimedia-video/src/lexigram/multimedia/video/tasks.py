@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.multimedia.types import MediaAsset
+
 if TYPE_CHECKING:
     from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
     from lexigram.contracts.multimedia.types import VideoOperation
@@ -77,8 +79,6 @@ class VideoProcessingTask:
 
 
 def _asset_from_params(data: dict[str, Any]) -> MediaAsset:
-    from lexigram.contracts.multimedia.types import MediaAsset
-
     return MediaAsset(
         mime_type=data["mime_type"],
         provider=data["provider"],
