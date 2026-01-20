@@ -4,9 +4,8 @@ import pytest
 
 from lexigram.contracts.infra.tasks import TaskQueueProtocol
 from lexigram.multimedia.config import MultimediaConfig
-from lexigram.multimedia.compose_accessor import ComposeAccessor
+from lexigram.multimedia.accessors import ComposeAccessor, VideoAccessor
 from lexigram.multimedia.di.provider import MultimediaProvider
-from lexigram.multimedia.video_accessor import VideoAccessor
 from lexigram.tasks.di.provider import TaskProvider
 
 
