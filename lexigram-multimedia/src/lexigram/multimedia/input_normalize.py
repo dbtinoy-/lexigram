@@ -63,4 +63,45 @@ async def normalize_operation_assets(
     return dataclasses.replace(operation, **updates)
 
 
-__all__ = ["normalize_operation_assets"]
+async def normalize_timeline_assets(
+    timeline: Any, *, storage: Any, path_prefix: str
+) -> Any:
+    if storage is None:
+        return timeline
+
+    from lexigram.multimedia.timeline import Timeline
+
+    normalized = Timeline()
+    transitions = timeline.transitions
+    for i, clip in enumerate(timeline.clips):
+        # add_clip()'s transition_in describes the transition joining this
+        # clip to the previous one, so it only applies from the second clip
+        # onward — mirrors Timeline.from_params()'s own indexing. Without
+        # this, every rebuilt clip would default to a hard cut and silently
+        # discard whatever transitions the caller configured.
+        transition_in = (
+            transitions[i - 1] if i > 0 and i - 1 < len(transitions) else None
+        )
+        normalized.add_clip(
+            await _upload_if_bytes(clip, storage=storage, path_prefix=path_prefix),
+            transition_in=transition_in,
+        )
+    if timeline.narration is not None:
+        normalized.set_narration(
+            await _upload_if_bytes(
+                timeline.narration, storage=storage, path_prefix=path_prefix
+            )
+        )
+    if timeline.music is not None:
+        normalized.set_music(
+            await _upload_if_bytes(
+                timeline.music, storage=storage, path_prefix=path_prefix
+            ),
+            duck_under_narration=timeline.duck_under_narration,
+        )
+    if timeline.captions:
+        normalized.add_captions(timeline.captions)
+    return normalized
+
+
+__all__ = ["normalize_operation_assets", "normalize_timeline_assets"]
