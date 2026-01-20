@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.contracts.multimedia.types import MediaAsset, SubtitleCue, TransitionSpec
+from lexigram.contracts.multimedia.types import (
+    BurnSubtitles,
+    Concat,
+    MediaAsset,
+    MuxAudio,
+    SubtitleCue,
+    TransitionSpec,
+)
 
 
 class Timeline:
@@ -44,6 +51,47 @@ class Timeline:
     def add_captions(self, cues: list[SubtitleCue]) -> Timeline:
         self._captions.extend(cues)
         return self
+
+    async def render(self, processor: Any) -> Any:
+        from lexigram.contracts.core.result import Ok
+
+        result = await processor.process(
+            Concat(assets=self._clips, transitions=self._transitions or None)
+        )
+        if result.is_err():
+            return result
+        current = result.unwrap()
+
+        if self._narration is not None:
+            result = await processor.process(
+                MuxAudio(asset=current, audio_asset=self._narration, mode="replace")
+            )
+            if result.is_err():
+                return result
+            current = result.unwrap()
+
+        if self._music is not None:
+            result = await processor.process(
+                MuxAudio(
+                    asset=current,
+                    audio_asset=self._music,
+                    mode="mix",
+                    duck_under_existing=self._duck_under_narration,
+                )
+            )
+            if result.is_err():
+                return result
+            current = result.unwrap()
+
+        if self._captions:
+            result = await processor.process(
+                BurnSubtitles(asset=current, cues=self._captions)
+            )
+            if result.is_err():
+                return result
+            current = result.unwrap()
+
+        return Ok(current)
 
     @property
     def clips(self) -> list[MediaAsset]:
