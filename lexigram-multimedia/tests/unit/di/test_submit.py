@@ -4,7 +4,7 @@ import pytest
 
 from lexigram.contracts.multimedia.types import TTSRequest
 from lexigram.multimedia.accessors import SubsystemAccessor
-from lexigram.multimedia.jobs import JobHandle
+from lexigram.multimedia.types import JobHandle
 
 
 def _fake_idempotency_manager(check_returns: object | None) -> AsyncMock:

@@ -9,6 +9,7 @@ from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 from lexigram.multimedia.config import MultimediaConfig
+from lexigram.multimedia.constants import CORE_SUBSYSTEMS
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -23,8 +24,6 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 __all__ = ["MultimediaProvider"]
-
-_CORE_SUBSYSTEMS = ("audio-tts", "audio-music", "video", "image")
 
 
 class MultimediaProvider(Provider):
@@ -80,7 +79,7 @@ class MultimediaProvider(Provider):
             for _ep in importlib.metadata.entry_points(
                 group="lexigram.multimedia.subsystems"
             ):
-                if _ep.name in _CORE_SUBSYSTEMS:
+                if _ep.name in CORE_SUBSYSTEMS:
                     continue
                 _provider_cls = _ep.load()
                 _sub_provider = _provider_cls()

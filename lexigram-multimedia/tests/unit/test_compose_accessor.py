@@ -36,7 +36,7 @@ async def test_submit_render_normalizes_and_submits() -> None:
     from datetime import UTC, datetime
 
     from lexigram.contracts.infra.storage.models import FileInfo
-    from lexigram.multimedia.jobs import JobHandle
+    from lexigram.multimedia.types import JobHandle
 
     fake_store = AsyncMock()
     fake_store.upload.return_value = FileInfo(

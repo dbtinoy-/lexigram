@@ -20,10 +20,10 @@ from lexigram.multimedia.accessors import (
 from lexigram.multimedia.config import MultimediaConfig
 from lexigram.multimedia.di.provider import MultimediaProvider
 from lexigram.multimedia.events import MultimediaGenerationEvent
-from lexigram.multimedia.jobs import JobHandle
 from lexigram.multimedia.module import MultimediaModule
 from lexigram.multimedia.tasks import TimelineRenderTask
 from lexigram.multimedia.timeline import Timeline
+from lexigram.multimedia.types import JobHandle
 
 __all__ = [
     "ComposeAccessor",

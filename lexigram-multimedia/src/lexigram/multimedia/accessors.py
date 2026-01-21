@@ -21,8 +21,8 @@ if TYPE_CHECKING:
         VideoOperation,
         VideoRequest,
     )
-    from lexigram.multimedia.jobs import JobHandle
     from lexigram.multimedia.timeline import Timeline
+    from lexigram.multimedia.types import JobHandle
 
 _Req = TypeVar("_Req")
 
@@ -113,7 +113,7 @@ class SubsystemAccessor(Generic[_Req]):
     ) -> JobHandle:
         from dataclasses import asdict
 
-        from lexigram.multimedia.jobs import JobHandle
+        from lexigram.multimedia.types import JobHandle
 
         params = asdict(request)  # type: ignore[call-overload]
 
@@ -178,7 +178,7 @@ class VideoAccessor:
         import dataclasses
 
         from lexigram.multimedia.input_normalize import normalize_operation_assets
-        from lexigram.multimedia.jobs import JobHandle
+        from lexigram.multimedia.types import JobHandle
 
         normalized = await normalize_operation_assets(
             operation, storage=self._storage, path_prefix=self._path_prefix
@@ -231,7 +231,7 @@ class ComposeAccessor:
         self, timeline: Timeline, idempotency_key: str | None = None
     ) -> JobHandle:
         from lexigram.multimedia.input_normalize import normalize_timeline_assets
-        from lexigram.multimedia.jobs import JobHandle
+        from lexigram.multimedia.types import JobHandle
 
         normalized = await normalize_timeline_assets(
             timeline, storage=self._storage, path_prefix=self._path_prefix
