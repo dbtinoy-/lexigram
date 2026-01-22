@@ -1,17 +1,28 @@
-"""Upload bytes-carrying MediaAssets to blob storage before task submission.
+"""Normalize MediaAssets across the input/output boundary.
 
-Mirrors storage_normalize.py's output-side normalization, but operates on
-input VideoOperation/Timeline dataclasses instead of output dicts — assets
-with inline bytes get uploaded and swapped for a URI reference so task
-payloads stay small enough to cross the task-queue boundary.
+Input side (submission): upload bytes-carrying MediaAssets to blob storage
+before task submission — mirrors normalize_asset_dict's output-side
+normalization but operates on VideoOperation/Timeline dataclasses instead of
+output dicts, so task payloads stay small enough to cross the task-queue
+boundary.
+
+Output side (results): normalizes a MediaAsset-shaped dict to always carry a
+URI before it reaches lexigram-tasks' JSON-serializing result store. Checks
+the asset's actual shape (bytes vs URI), not the provider category —
+ElevenLabs, OpenAI TTS, Stability, and local/in-process backends all return
+bytes; Runway and local video/image servers may return either. See design
+spec 'Async job model & error handling'.
 """
 
 from __future__ import annotations
 
 import dataclasses
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.multimedia.types import MediaAsset, VideoOperation
+
+if TYPE_CHECKING:
+    from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
 
 
 async def _upload_if_bytes(
@@ -104,4 +115,29 @@ async def normalize_timeline_assets(
     return normalized
 
 
-__all__ = ["normalize_operation_assets", "normalize_timeline_assets"]
+async def normalize_asset_dict(
+    asset_dict: dict[str, Any],
+    *,
+    store: BlobStoreProtocol,
+    path_prefix: str,
+    path_key: str,
+) -> dict[str, Any]:
+    if asset_dict.get("bytes_data") is None:
+        return asset_dict
+
+    path = f"{path_prefix}{path_key}"
+    await store.upload(
+        path,
+        data=asset_dict["bytes_data"],
+        content_type=asset_dict.get("mime_type"),
+    )
+    url = await store.get_url(path)
+
+    return {**asset_dict, "bytes_data": None, "uri": url}
+
+
+__all__ = [
+    "normalize_asset_dict",
+    "normalize_operation_assets",
+    "normalize_timeline_assets",
+]

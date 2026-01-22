@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
     from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
     from lexigram.multimedia.accessors import ComposeAccessor, VideoAccessor
-    from lexigram.multimedia.tasks import TimelineRenderTask
+    from lexigram.multimedia.timeline import TimelineRenderTask
 
 logger = get_logger(__name__)
 
@@ -135,7 +135,7 @@ class MultimediaProvider(Provider):
     async def _wire_task_manager(self, container: ContainerResolverProtocol) -> None:
         from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
         from lexigram.contracts.infra.tasks import TaskQueueProtocol
-        from lexigram.multimedia.idempotency_store import (
+        from lexigram.multimedia.stores import (
             InMemoryIdempotencyStoreFallback,
         )
         from lexigram.tasks.di.provider import TaskProvider
@@ -169,7 +169,7 @@ class MultimediaProvider(Provider):
 
         import uuid
 
-        from lexigram.multimedia.storage_normalize import normalize_asset_dict
+        from lexigram.multimedia.storage import normalize_asset_dict
 
         class _WrappedTaskHandler:
             def __init__(self, inner: Any, storage: Any, path_prefix: str) -> None:
@@ -223,7 +223,7 @@ class MultimediaProvider(Provider):
             self._wrapped_task_handlers[task_name] = wrapped
             task_provider.register_handler(task_name, _make_handler_adapter(wrapped))
 
-        from lexigram.multimedia.tasks import TimelineRenderTask
+        from lexigram.multimedia.timeline import TimelineRenderTask
 
         video_sub = self._sub_providers["video"]
         self._timeline_task_handler = TimelineRenderTask(

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.multimedia.timeline import Timeline
-
 
 class TimelineRenderTask:
     def __init__(self, processor: Any) -> None:
         self._processor = processor
 
     async def run(self, params: dict[str, Any]) -> dict[str, Any]:
+        from lexigram.multimedia.timeline import Timeline
+
         timeline = Timeline.from_params(params)
         result = await timeline.render(self._processor)
         if result.is_err():
