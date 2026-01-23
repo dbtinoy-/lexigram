@@ -1,3 +1,5 @@
+import inspect
+
 from lexigram.contracts.core.result import Ok, Result
 from lexigram.contracts.multimedia.exceptions import VideoGenerationError
 from lexigram.contracts.multimedia.protocols import VideoProcessor
@@ -21,3 +23,9 @@ async def test_fake_processor_satisfies_protocol():
 
 def test_isinstance_check_via_runtime_checkable():
     assert isinstance(_FakeProcessor(), VideoProcessor)
+
+
+def test_process_accepts_progress_callback():
+    sig = inspect.signature(VideoProcessor.process)
+    param = sig.parameters["progress_callback"]
+    assert param.default is None

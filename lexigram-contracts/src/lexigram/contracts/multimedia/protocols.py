@@ -8,6 +8,7 @@ signature would need to be typed loosely (``Any``) to fit all four.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -55,10 +56,16 @@ class VideoProvider(Protocol):
 
 @runtime_checkable
 class VideoProcessor(Protocol):
-    """Protocol for ffmpeg-backed video processing/editing backends."""
+    """Protocol for ffmpeg-backed video processing/editing backends.
+
+    Implementations must be frozen dataclasses (copied before mutation) so
+    the original caller-held operation is never modified.
+    """
 
     async def process(
-        self, operation: VideoOperation
+        self,
+        operation: VideoOperation,
+        progress_callback: Callable[[float], Awaitable[None]] | None = None,
     ) -> Result[MediaAsset, VideoGenerationError]: ...
 
 
