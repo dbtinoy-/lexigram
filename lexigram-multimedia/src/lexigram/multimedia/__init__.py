@@ -9,7 +9,7 @@ from __future__ import annotations
 import pkgutil
 
 # Critical: enable namespace-package discovery for lexigram.multimedia.*
-# sibling distributions (audio_tts, audio_music, video, image).
+# sibling distributions (tts, music, video, image).
 __path__ = pkgutil.extend_path(__path__, __name__)
 
 from lexigram.multimedia.accessors import (

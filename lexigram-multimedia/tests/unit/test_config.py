@@ -1,4 +1,4 @@
-from lexigram.multimedia.audio_tts.config import TTSConfig
+from lexigram.multimedia.tts.config import TTSConfig
 from lexigram.multimedia.config import MultimediaConfig
 
 

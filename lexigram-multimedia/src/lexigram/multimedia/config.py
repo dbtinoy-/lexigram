@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from lexigram.multimedia.audio_music.config import MusicConfig
-from lexigram.multimedia.audio_tts.config import TTSConfig
 from lexigram.multimedia.image.config import ImageConfig
+from lexigram.multimedia.music.config import MusicConfig
+from lexigram.multimedia.tts.config import TTSConfig
 from lexigram.multimedia.video.config import VideoConfig
 
 
