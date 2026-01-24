@@ -18,7 +18,7 @@ async def test_timeline_render_task_runs_and_returns_dict() -> None:
     )
     task = TimelineRenderTask(processor=processor)
 
-    timeline = Timeline().add_clip(CLIP)
+    timeline = Timeline().add_clip(CLIP).set_fade_in(0.5)
     result = await task.run(timeline.to_params())
 
     assert result["bytes_data"] == b"out"

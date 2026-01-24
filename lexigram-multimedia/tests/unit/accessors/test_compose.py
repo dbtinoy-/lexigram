@@ -24,7 +24,7 @@ async def test_render_calls_timeline_render_directly() -> None:
         path_prefix="video/composed/",
     )
 
-    timeline = Timeline().add_clip(CLIP)
+    timeline = Timeline().add_clip(CLIP).add_clip(CLIP)
     result = await accessor.render(timeline)
 
     assert result.is_ok()
