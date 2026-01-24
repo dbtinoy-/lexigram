@@ -41,6 +41,42 @@ async def test_materialize_asset_downloads_uri(tmp_path):
         assert f.read() == b"downloaded-bytes"
 
 
+@pytest.mark.asyncio
+async def test_materialize_file_uri_passthrough(tmp_path):
+    target = tmp_path / "clip.mov"
+    target.write_bytes(b"x" * 64)
+    asset = MediaAsset(
+        mime_type="video/quicktime", provider="local-http", uri=f"file://{target}"
+    )
+    path = await materialize_asset(asset)
+    assert path == str(target)
+
+
+@pytest.mark.asyncio
+async def test_materialize_file_uri_missing_raises():
+    asset = MediaAsset(
+        mime_type="video/mp4", provider="local-http", uri="file:///nonexistent/x.mp4"
+    )
+    with pytest.raises(FileNotFoundError):
+        await materialize_asset(asset)
+
+
+@pytest.mark.asyncio
+async def test_materialize_bytes_win_over_file_uri(tmp_path):
+    target = tmp_path / "clip.mov"
+    target.write_bytes(b"on-disk")
+    asset = MediaAsset(
+        mime_type="video/quicktime",
+        provider="local-http",
+        uri=f"file://{target}",
+        bytes_data=b"in-memory",
+    )
+    path = await materialize_asset(asset)
+    assert path != str(target)
+    with open(path, "rb") as f:
+        assert f.read() == b"in-memory"
+
+
 def test_read_output_asset_reads_bytes(tmp_path):
     out_path = tmp_path / "out.mp4"
     out_path.write_bytes(b"result-bytes")
