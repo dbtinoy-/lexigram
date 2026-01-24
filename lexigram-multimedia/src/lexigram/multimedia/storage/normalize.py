@@ -19,7 +19,11 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, Any
 
-from lexigram.contracts.multimedia.types import MediaAsset, VideoOperation
+from lexigram.contracts.multimedia.types import (
+    ComposeVideo,
+    MediaAsset,
+    VideoOperation,
+)
 
 if TYPE_CHECKING:
     from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
@@ -46,6 +50,41 @@ async def normalize_operation_assets(
 ) -> VideoOperation:
     if storage is None:
         return operation
+
+    if isinstance(operation, ComposeVideo):
+        new_asset = await _upload_if_bytes(
+            operation.asset, storage=storage, path_prefix=path_prefix
+        )
+        new_layers = [
+            dataclasses.replace(
+                layer,
+                asset=await _upload_if_bytes(
+                    layer.asset, storage=storage, path_prefix=path_prefix
+                ),
+            )
+            for layer in operation.layers
+        ]
+        new_audio_layers = [
+            dataclasses.replace(
+                layer,
+                asset=await _upload_if_bytes(
+                    layer.asset, storage=storage, path_prefix=path_prefix
+                ),
+            )
+            for layer in operation.audio_layers
+        ]
+        if (
+            new_asset is operation.asset
+            and new_layers == operation.layers
+            and new_audio_layers == operation.audio_layers
+        ):
+            return operation
+        return dataclasses.replace(
+            operation,
+            asset=new_asset,
+            layers=new_layers,
+            audio_layers=new_audio_layers,
+        )
 
     fields = dataclasses.fields(operation)
     updates: dict[str, Any] = {}
@@ -112,6 +151,32 @@ async def normalize_timeline_assets(
         )
     if timeline.captions:
         normalized.add_captions(timeline.captions)
+    for layer in timeline.overlays:
+        normalized.add_overlay(
+            await _upload_if_bytes(
+                layer.asset, storage=storage, path_prefix=path_prefix
+            ),
+            start=layer.start,
+            end=layer.end,
+            fade_in=layer.fade_in,
+            fade_out=layer.fade_out,
+        )
+    for audio in timeline.audio_layers:
+        normalized.add_audio(
+            await _upload_if_bytes(
+                audio.asset, storage=storage, path_prefix=path_prefix
+            ),
+            start=audio.start,
+            volume=audio.volume,
+        )
+    if timeline.fade_in:
+        normalized.set_fade_in(timeline.fade_in)
+    if timeline.fade_out:
+        normalized.set_fade_out(timeline.fade_out)
+    if timeline.base_fade_out:
+        normalized.set_base_fade_out(timeline.base_fade_out)
+    if timeline.encode is not None:
+        normalized.set_encode(timeline.encode)
     return normalized
 
 
