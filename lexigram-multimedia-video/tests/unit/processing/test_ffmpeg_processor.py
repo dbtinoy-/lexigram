@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -28,13 +29,45 @@ def _exec_writing_output(captured: list[list[str]]) -> AsyncMock:
     proc = _fake_proc()
 
     async def fake_exec(*args, **kwargs):
-        argv = list(args[0])
+        argv = list(args)
         captured.append(argv)
         with open(argv[-1], "wb") as f:
             f.write(b"rendered")
         return proc
 
     return fake_exec
+
+
+def _make_stream(*lines: bytes) -> asyncio.StreamReader:
+    stream = asyncio.StreamReader()
+    for line in lines:
+        stream.feed_data(line)
+    stream.feed_eof()
+    return stream
+
+
+class _FakeProc:
+    def __init__(
+        self,
+        stdout: asyncio.StreamReader,
+        stderr: asyncio.StreamReader,
+        *,
+        exited: bool = True,
+    ) -> None:
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = 0
+        self.killed = False
+        self._exited = exited
+
+    def kill(self) -> None:
+        self.killed = True
+
+    async def wait(self) -> int:
+        if self.killed or self._exited:
+            return self.returncode
+        await asyncio.sleep(10)
+        return self.returncode
 
 
 @pytest.mark.asyncio
@@ -181,3 +214,75 @@ async def test_compose_probes_durations_and_builds_fades(tmp_path):
     assert "[0:v]fade=t=out:st=29.25:d=0.75[b0]" in fc
     assert "fade=t=out:st=2.7:d=0.3[l0]" in fc
     assert "[v0]fade=t=out:st=29.5:d=0.5[v]" in fc
+
+
+@pytest.mark.asyncio
+async def test_progress_callback_streams_out_time(tmp_path):
+    config = VideoProcessingConfig(temp_dir=str(tmp_path))
+    processor = FFmpegVideoProcessor(config=config)
+
+    out_lines = [
+        b"out_time_us=500000\n",
+        b"out_time_us=1500000\n",
+        b"out_time_us=9500000\n",
+        b"progress=end\n",
+    ]
+    stderr = _make_stream(b"")
+    stdout = _make_stream(*out_lines)
+    seen: list[float] = []
+    captured: list[list[str]] = []
+
+    async def fake_exec(*args, **kwargs):
+        argv = list(args)
+        captured.append(argv)
+        with open(argv[-1], "wb") as f:
+            f.write(b"rendered")
+        return _FakeProc(stdout, stderr)
+
+    with (
+        patch(
+            "lexigram.multimedia.video.processing.ffmpeg.probe_duration",
+            AsyncMock(return_value=10.0),
+        ),
+        patch("asyncio.create_subprocess_exec", side_effect=fake_exec),
+    ):
+        result = await processor.process(
+            Trim(asset=ASSET, start=0.0, end=1.0), progress_callback=seen.append
+        )
+
+    assert result.is_ok()
+    assert seen == [0.05, 0.15, 0.95, 1.0]
+    argv = captured[0]
+    assert "-nostats" in argv
+    assert "-progress" in argv
+
+
+@pytest.mark.asyncio
+async def test_progress_timeout_kills_process(tmp_path):
+    config = VideoProcessingConfig(temp_dir=str(tmp_path), timeout=0.05)
+    processor = FFmpegVideoProcessor(config=config)
+
+    stdout = asyncio.StreamReader()
+    stderr = _make_stream(b"")
+    proc = _FakeProc(stdout, stderr, exited=False)
+    captured: list[list[str]] = []
+
+    async def fake_exec(*args, **kwargs):
+        argv = list(args)
+        captured.append(argv)
+        return proc
+
+    with (
+        patch(
+            "lexigram.multimedia.video.processing.ffmpeg.probe_duration",
+            AsyncMock(return_value=10.0),
+        ),
+        patch("asyncio.create_subprocess_exec", side_effect=fake_exec),
+    ):
+        result = await processor.process(
+            Trim(asset=ASSET, start=0.0, end=1.0), progress_callback=lambda p: None
+        )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), VideoProcessingError)
+    assert proc.killed

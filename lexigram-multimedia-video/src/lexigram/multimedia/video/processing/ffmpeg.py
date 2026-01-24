@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 import os
 import shutil
 import tempfile
@@ -39,12 +40,19 @@ class FFmpegVideoProcessor:
         self._semaphore = asyncio.Semaphore(config.max_concurrent_jobs)
 
     async def process(
-        self, operation: VideoOperation
+        self,
+        operation: VideoOperation,
+        *,
+        progress_callback: Callable[[float], None] | None = None,
     ) -> Result[MediaAsset, VideoProcessingError]:
         async with self._semaphore:
             workdir = tempfile.mkdtemp(dir=self._config.temp_dir)
             try:
-                return await self._process(operation, workdir=workdir)
+                if progress_callback is None:
+                    return await self._process(operation, workdir=workdir)
+                return await self._process_streaming(
+                    operation, workdir=workdir, progress_callback=progress_callback
+                )
             except (OSError, ValueError) as exc:
                 return Err(
                     VideoProcessingError(f"ffmpeg processing failed: {exc}", cause=exc)
@@ -55,6 +63,54 @@ class FFmpegVideoProcessor:
     async def _process(
         self, operation: VideoOperation, *, workdir: str
     ) -> Result[MediaAsset, VideoProcessingError]:
+        _input_paths, output_path, argv = await self._prepare(
+            operation, workdir=workdir
+        )
+
+        result = await self._run(argv)
+        if result.is_err():
+            return Err(result.unwrap_err())
+
+        # Read bytes into memory now — the workdir (including this output
+        # file) is removed by process()'s finally block once we return.
+        asset = read_output_asset(
+            output_path,
+            mime_type=self._output_mime_type(operation),
+            provider="ffmpeg",
+        )
+        return Ok(asset)
+
+    async def _process_streaming(
+        self,
+        operation: VideoOperation,
+        *,
+        workdir: str,
+        progress_callback: Callable[[float], None],
+    ) -> Result[MediaAsset, VideoProcessingError]:
+        input_paths, output_path, argv = await self._prepare(operation, workdir=workdir)
+
+        duration_hint = await probe_duration(
+            input_paths[0], ffprobe_binary=self._ffprobe_binary()
+        )
+
+        result = await self._run_streaming(
+            argv,
+            duration_hint=duration_hint,
+            progress_callback=progress_callback,
+        )
+        if result.is_err():
+            return Err(result.unwrap_err())
+
+        asset = read_output_asset(
+            output_path,
+            mime_type=self._output_mime_type(operation),
+            provider="ffmpeg",
+        )
+        return Ok(asset)
+
+    async def _prepare(
+        self, operation: VideoOperation, *, workdir: str
+    ) -> tuple[list[str], str, list[str]]:
         input_paths = await self._materialize_inputs(operation, workdir=workdir)
         output_path = f"{workdir}/{os.urandom(8).hex()}{self._output_suffix(operation)}"
 
@@ -102,19 +158,7 @@ class FFmpegVideoProcessor:
                 ffmpeg_binary=self._config.ffmpeg_binary,
                 **extra_kwargs,
             )
-
-        result = await self._run(argv)
-        if result.is_err():
-            return Err(result.unwrap_err())
-
-        # Read bytes into memory now — the workdir (including this output
-        # file) is removed by process()'s finally block once we return.
-        asset = read_output_asset(
-            output_path,
-            mime_type=self._output_mime_type(operation),
-            provider="ffmpeg",
-        )
-        return Ok(asset)
+        return input_paths, output_path, argv
 
     async def _materialize_inputs(
         self, operation: VideoOperation, *, workdir: str
@@ -172,6 +216,83 @@ class FFmpegVideoProcessor:
             return Err(
                 VideoProcessingError(f"ffmpeg error: {stderr.decode(errors='replace')}")
             )
+        return Ok(None)
+
+    async def _run_streaming(
+        self,
+        argv: list[str],
+        *,
+        duration_hint: float,
+        progress_callback: Callable[[float], None],
+    ) -> Result[None, VideoProcessingError]:
+        stream_argv = argv[:]
+        # Global ffmpeg options; position is irrelevant, but keeping them
+        # right after the binary leaves the trailing output-path slot intact.
+        stream_argv[1:1] = ["-nostats", "-progress", "pipe:1"]
+        proc = await asyncio.create_subprocess_exec(
+            *stream_argv,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        assert proc.stdout is not None
+        assert proc.stderr is not None
+        stdout = proc.stdout
+        stderr = proc.stderr
+
+        stderr_chunks: list[bytes] = []
+
+        async def _drain_stderr() -> None:
+            while True:
+                line = await stderr.readline()
+                if not line:
+                    break
+                stderr_chunks.append(line)
+
+        stderr_task = asyncio.create_task(_drain_stderr())
+
+        async def _stream() -> int:
+            last = 0.0
+            while True:
+                line = await stdout.readline()
+                if not line:
+                    break
+                text = line.decode(errors="replace").strip()
+                if not text.startswith("out_time"):
+                    continue
+                key, _, raw = text.partition("=")
+                try:
+                    value = float(raw)
+                except ValueError:
+                    continue
+                seconds = (
+                    value / 1000.0 if key == "out_time_ms" else value / 1_000_000.0
+                )
+                pct = min(1.0, seconds / duration_hint)
+                if pct >= last + 0.01 or pct == 1.0:
+                    progress_callback(pct)
+                    last = pct
+            await proc.wait()
+            return proc.returncode or 0
+
+        try:
+            returncode = await asyncio.wait_for(_stream(), timeout=self._config.timeout)
+        except TimeoutError:
+            proc.kill()
+            await proc.wait()
+            stderr_task.cancel()
+            return Err(
+                VideoProcessingError(f"ffmpeg timed out after {self._config.timeout}s")
+            )
+
+        await stderr_task
+        stderr_data = b"".join(stderr_chunks)
+        if returncode != 0:
+            return Err(
+                VideoProcessingError(
+                    f"ffmpeg error: {stderr_data.decode(errors='replace')}"
+                )
+            )
+        progress_callback(1.0)
         return Ok(None)
 
     def _ffprobe_binary(self) -> str:
