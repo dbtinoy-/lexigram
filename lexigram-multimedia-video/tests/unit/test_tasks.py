@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from lexigram.contracts.core.result import Ok
-from lexigram.contracts.multimedia.types import MediaAsset
+from lexigram.contracts.multimedia.types import ComposeVideo, MediaAsset
 from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessingTask
 
 
@@ -54,3 +54,85 @@ async def test_video_processing_task_trim() -> None:
     called_op = fake_backend.process.call_args[0][0]
     assert called_op.start == 1.0
     assert called_op.end == 2.0
+
+
+@pytest.mark.asyncio
+async def test_video_processing_task_compose_video_roundtrip() -> None:
+    fake_backend = AsyncMock()
+    fake_backend.process.return_value = Ok(
+        MediaAsset(mime_type="video/mp4", provider="ffmpeg", bytes_data=b"out")
+    )
+    task = VideoProcessingTask(backend=fake_backend)
+
+    result = await task.run(
+        {
+            "operation_type": "ComposeVideo",
+            "asset": {
+                "mime_type": "video/mp4",
+                "provider": "local-http",
+                "uri": "b.mp4",
+            },
+            "layers": [
+                {
+                    "asset": {
+                        "mime_type": "video/quicktime",
+                        "provider": "local-http",
+                        "uri": "l.mov",
+                    },
+                    "start": 1.0,
+                    "end": None,
+                    "fade_in": 0.0,
+                    "fade_out": 0.0,
+                }
+            ],
+            "audio_layers": [],
+            "fade_in": 0.0,
+            "fade_out": 0.0,
+            "base_fade_out": 0.75,
+            "encode": {
+                "codec": "hevc_nvenc",
+                "bitrate": "10M",
+                "resolution": "1080x1920",
+                "fps": 30,
+            },
+        }
+    )
+
+    assert result["bytes_data"] == b"out"
+    fake_backend.process.assert_awaited_once()
+    called_op = fake_backend.process.call_args[0][0]
+    assert isinstance(called_op, ComposeVideo)
+    assert called_op.base_fade_out == 0.75
+    assert called_op.layers[0].start == 1.0
+    assert called_op.encode is not None and called_op.encode.codec == "hevc_nvenc"
+
+
+@pytest.mark.asyncio
+async def test_video_processing_task_compose_video_encode_none() -> None:
+    fake_backend = AsyncMock()
+    fake_backend.process.return_value = Ok(
+        MediaAsset(mime_type="video/mp4", provider="ffmpeg", bytes_data=b"out")
+    )
+    task = VideoProcessingTask(backend=fake_backend)
+
+    result = await task.run(
+        {
+            "operation_type": "ComposeVideo",
+            "asset": {
+                "mime_type": "video/mp4",
+                "provider": "local-http",
+                "uri": "b.mp4",
+            },
+            "layers": [],
+            "audio_layers": [],
+            "fade_in": 0.0,
+            "fade_out": 0.0,
+            "base_fade_out": 0.0,
+            "encode": None,
+        }
+    )
+
+    assert result["bytes_data"] == b"out"
+    called_op = fake_backend.process.call_args[0][0]
+    assert isinstance(called_op, ComposeVideo)
+    assert called_op.encode is None
