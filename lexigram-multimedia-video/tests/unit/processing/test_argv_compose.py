@@ -47,7 +47,7 @@ def test_single_layer_basic():
         "-i",
         "layer.mov",
         "-filter_complex",
-        "[1:v]setpts=PTS-STARTPTS,format=auto[l0];"
+        "[1:v]setpts=PTS-STARTPTS,format=yuva420p[l0];"
         "[0:v][l0]overlay=0:0:enable='gte(t,1.0)'[v0]",
         "-map",
         "[v0]",
@@ -74,9 +74,9 @@ def test_two_layers_windows():
         "-i",
         "l2.mov",
         "-filter_complex",
-        "[1:v]setpts=PTS-STARTPTS,format=auto[l0];"
+        "[1:v]setpts=PTS-STARTPTS,format=yuva420p[l0];"
         "[0:v][l0]overlay=0:0:enable='gte(t,1.0)'[v0];"
-        "[2:v]setpts=PTS-STARTPTS,format=auto[l1];"
+        "[2:v]setpts=PTS-STARTPTS,format=yuva420p[l1];"
         "[v0][l1]overlay=0:0:enable='between(t,2.0,4.0)'[v1]",
         "-map",
         "[v1]",
@@ -96,7 +96,7 @@ def test_layer_fades_with_end_set():
         op, input_paths=["base.mp4", "layer.mov"], output_path="out.mp4"
     )
     assert (
-        "[1:v]setpts=PTS-STARTPTS,format=auto,fade=t=in:st=0:d=0.2,"
+        "[1:v]setpts=PTS-STARTPTS,format=yuva420p,fade=t=in:st=0:d=0.2,"
         "fade=t=out:st=2.7:d=0.3[l0]" in _fc(argv)
     )
 

@@ -410,7 +410,7 @@ def build_compose_argv(
 
     for j, layer in enumerate(operation.layers):
         i = j + 1
-        chain = f"[{i}:v]setpts=PTS-STARTPTS,format=auto"
+        chain = f"[{i}:v]setpts=PTS-STARTPTS,format=yuva420p"
         if layer.end is not None:
             dur = layer.end - layer.start
         elif layer_durations is not None:
