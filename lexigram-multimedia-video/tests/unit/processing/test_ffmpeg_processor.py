@@ -168,7 +168,13 @@ async def test_compose_materializes_base_layers_audio_in_order(tmp_path):
             f.write(b"rendered")
         return _fake_proc()
 
-    with patch("asyncio.create_subprocess_exec", side_effect=fake_exec):
+    with (
+        patch(
+            "lexigram.multimedia.video.processing.ffmpeg.probe_duration",
+            AsyncMock(return_value=3.0),
+        ),
+        patch("asyncio.create_subprocess_exec", side_effect=fake_exec),
+    ):
         result = await processor.process(op)
 
     assert result.is_ok()
@@ -212,7 +218,7 @@ async def test_compose_probes_durations_and_builds_fades(tmp_path):
     argv = captured[0]
     fc = argv[argv.index("-filter_complex") + 1]
     assert "[0:v]fade=t=out:st=29.25:d=0.75[b0]" in fc
-    assert "fade=t=out:st=2.7:d=0.3[l0]" in fc
+    assert "fade=t=out:st=3.7:d=0.3[l0]" in fc
     assert "[v0]fade=t=out:st=29.5:d=0.5[v]" in fc
 
 

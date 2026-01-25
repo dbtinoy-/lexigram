@@ -47,8 +47,8 @@ def test_single_layer_basic():
         "-i",
         "layer.mov",
         "-filter_complex",
-        "[1:v]setpts=PTS-STARTPTS,format=yuva420p[l0];"
-        "[0:v][l0]overlay=0:0:enable='gte(t,1.0)'[v0]",
+        "[1:v]setpts=PTS-STARTPTS+1.0/TB,format=yuva420p[l0];"
+        "[0:v][l0]overlay=0:0:eof_action=pass:enable='gte(t,1.0)'[v0]",
         "-map",
         "[v0]",
         "-pix_fmt",
@@ -74,10 +74,10 @@ def test_two_layers_windows():
         "-i",
         "l2.mov",
         "-filter_complex",
-        "[1:v]setpts=PTS-STARTPTS,format=yuva420p[l0];"
-        "[0:v][l0]overlay=0:0:enable='gte(t,1.0)'[v0];"
-        "[2:v]setpts=PTS-STARTPTS,format=yuva420p[l1];"
-        "[v0][l1]overlay=0:0:enable='between(t,2.0,4.0)'[v1]",
+        "[1:v]setpts=PTS-STARTPTS+1.0/TB,format=yuva420p[l0];"
+        "[0:v][l0]overlay=0:0:eof_action=pass:enable='gte(t,1.0)'[v0];"
+        "[2:v]setpts=PTS-STARTPTS+2.0/TB,format=yuva420p[l1];"
+        "[v0][l1]overlay=0:0:eof_action=pass:enable='between(t,2.0,4.0)'[v1]",
         "-map",
         "[v1]",
         "-pix_fmt",
@@ -96,8 +96,8 @@ def test_layer_fades_with_end_set():
         op, input_paths=["base.mp4", "layer.mov"], output_path="out.mp4"
     )
     assert (
-        "[1:v]setpts=PTS-STARTPTS,format=yuva420p,fade=t=in:st=0:d=0.2,"
-        "fade=t=out:st=2.7:d=0.3[l0]" in _fc(argv)
+        "[1:v]setpts=PTS-STARTPTS+1.0/TB,format=yuva420p,fade=t=in:st=1.0:d=0.2,"
+        "fade=t=out:st=3.7:d=0.3[l0]" in _fc(argv)
     )
 
 
@@ -109,7 +109,7 @@ def test_layer_fade_out_with_probed_duration():
         output_path="out.mp4",
         layer_durations=[3.0],
     )
-    assert "fade=t=out:st=2.7:d=0.3[l0]" in _fc(argv)
+    assert "fade=t=out:st=3.7:d=0.3[l0]" in _fc(argv)
 
 
 def test_layer_fade_out_probed_missing_raises():
@@ -144,7 +144,7 @@ def test_global_and_base_fades():
         base_duration=30.0,
     )
     assert "[0:v]fade=t=out:st=29.25:d=0.75[b0]" in _fc(argv)
-    assert "[b0][l0]overlay=0:0:enable='gte(t,1.0)'[v0]" in _fc(argv)
+    assert "[b0][l0]overlay=0:0:eof_action=pass:enable='gte(t,1.0)'[v0]" in _fc(argv)
     assert "[v0]fade=t=in:st=0:d=0.5,fade=t=out:st=29.5:d=0.5[v]" in _fc(argv)
     assert ("-map", "[v]") in _pairs(argv)
 
@@ -206,6 +206,17 @@ def test_encode_tail():
         "+faststart",
         "out.mp4",
     ]
+
+
+def test_compose_trims_to_base_duration():
+    op = ComposeVideo(asset=_base(), layers=[_layer(start=1.0, end=4.0)])
+    argv = build_compose_argv(
+        op,
+        input_paths=["base.mp4", "layer.mov"],
+        output_path="out.mp4",
+        base_duration=12.3,
+    )
+    assert ("-t", "12.3") in _pairs(argv)
 
 
 def test_empty_compose_is_copy_fast_path():
