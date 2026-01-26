@@ -55,11 +55,18 @@ class ProviderNotInstalledError(MultimediaError):
     _code = "LEX_ERR_MM_006"
 
 
+class UpscaleError(MultimediaError):
+    """Base for image/video super-resolution errors."""
+
+    _code = "LEX_ERR_MM_007"
+
+
 __all__ = [
     "ImageGenerationError",
     "MultimediaError",
     "MusicGenerationError",
     "ProviderNotInstalledError",
     "TTSError",
+    "UpscaleError",
     "VideoGenerationError",
 ]

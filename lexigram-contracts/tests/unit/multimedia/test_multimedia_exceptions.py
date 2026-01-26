@@ -5,6 +5,7 @@ from lexigram.contracts.multimedia.exceptions import (
     MusicGenerationError,
     ProviderNotInstalledError,
     TTSError,
+    UpscaleError,
     VideoGenerationError,
 )
 
@@ -14,7 +15,7 @@ def test_multimedia_error_extends_domain_error() -> None:
 
 
 def test_media_type_errors_extend_multimedia_error() -> None:
-    for exc_cls in (TTSError, MusicGenerationError, VideoGenerationError, ImageGenerationError):
+    for exc_cls in (TTSError, MusicGenerationError, VideoGenerationError, ImageGenerationError, UpscaleError):
         assert issubclass(exc_cls, MultimediaError)
 
 
