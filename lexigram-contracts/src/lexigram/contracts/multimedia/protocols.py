@@ -70,6 +70,14 @@ class VideoProcessor(Protocol):
         progress_callback: Callable[[float], None] | None = None,
     ) -> Result[MediaAsset, VideoGenerationError]: ...
 
+    async def extract_frames(
+        self, asset: MediaAsset, *, fps: float | None = None
+    ) -> Result[list[MediaAsset], VideoGenerationError]: ...
+
+    async def assemble_frames(
+        self, frames: list[MediaAsset], *, fps: float
+    ) -> Result[MediaAsset, VideoGenerationError]: ...
+
 
 @runtime_checkable
 class ImageProvider(Protocol):
