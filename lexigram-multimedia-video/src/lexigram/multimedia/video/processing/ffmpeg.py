@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 import os
+from pathlib import Path
 import shutil
 import tempfile
 
@@ -28,6 +29,7 @@ from lexigram.multimedia.video.processing.argv import (
 from lexigram.multimedia.video.processing.media_io import (
     materialize_asset,
     probe_duration,
+    probe_fps,
     read_output_asset,
 )
 
@@ -56,6 +58,53 @@ class FFmpegVideoProcessor:
             except (OSError, ValueError) as exc:
                 return Err(
                     VideoProcessingError(f"ffmpeg processing failed: {exc}", cause=exc)
+                )
+            finally:
+                shutil.rmtree(workdir, ignore_errors=True)
+
+    async def extract_frames(
+        self, asset: MediaAsset, *, fps: float | None = None
+    ) -> Result[list[MediaAsset], VideoProcessingError]:
+        async with self._semaphore:
+            workdir = tempfile.mkdtemp(dir=self._config.temp_dir)
+            try:
+                input_path = await materialize_asset(asset, temp_dir=workdir)
+                used_fps = fps
+                if used_fps is None:
+                    used_fps = await probe_fps(
+                        input_path, ffprobe_binary=self._ffprobe_binary()
+                    )
+                framedir = f"{workdir}/frames"
+                Path(framedir).mkdir()
+                argv = [self._config.ffmpeg_binary, "-y", "-i", input_path]
+                if fps is not None:
+                    argv += ["-vf", f"fps={fps}"]
+                argv += [f"{framedir}/frame%06d.png"]
+
+                result = await self._run(argv)
+                if result.is_err():
+                    return Err(result.unwrap_err())
+
+                frame_paths = sorted(
+                    str(p) for p in Path(framedir).glob("frame*.png")
+                )
+                frames = [
+                    read_output_asset(p, mime_type="image/png", provider="ffmpeg")
+                    for p in frame_paths
+                ]
+                frames = [
+                    MediaAsset(
+                        mime_type=f.mime_type,
+                        provider=f.provider,
+                        bytes_data=f.bytes_data,
+                        metadata={"source_fps": used_fps},
+                    )
+                    for f in frames
+                ]
+                return Ok(frames)
+            except (OSError, ValueError) as exc:
+                return Err(
+                    VideoProcessingError(f"ffmpeg frame extraction failed: {exc}", cause=exc)
                 )
             finally:
                 shutil.rmtree(workdir, ignore_errors=True)
