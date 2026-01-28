@@ -28,8 +28,8 @@ _model: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _model
-    import torch
     from realesrgan import RealESRGANer
+    import torch
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _model = RealESRGANer(device=device)
