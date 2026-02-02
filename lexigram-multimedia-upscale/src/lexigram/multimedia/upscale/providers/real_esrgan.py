@@ -72,19 +72,13 @@ class RealEsrganUpscaleProvider:
             else:
                 status, body, content_type = await self._post(payload)
         except (aiohttp.ClientError, TimeoutError) as exc:
-            return Err(
-                UpscaleError(f"Real-ESRGAN request failed: {exc}", cause=exc)
-            )
+            return Err(UpscaleError(f"Real-ESRGAN request failed: {exc}", cause=exc))
 
         if status != 200:
-            return Err(
-                UpscaleError(f"Real-ESRGAN server returned {status}: {body!r}")
-            )
+            return Err(UpscaleError(f"Real-ESRGAN server returned {status}: {body!r}"))
 
         return Ok(
-            MediaAsset(
-                mime_type=content_type, provider="real-esrgan", bytes_data=body
-            )
+            MediaAsset(mime_type=content_type, provider="real-esrgan", bytes_data=body)
         )
 
 
