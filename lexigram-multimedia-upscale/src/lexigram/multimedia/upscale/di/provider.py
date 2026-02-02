@@ -100,29 +100,25 @@ class UpscaleGenerationProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        base_url = None
         if self._upscale_config.backend == "real-esrgan":
             base_url = self._upscale_config.real_esrgan_base_url
         elif self._upscale_config.backend == "hat":
             base_url = self._upscale_config.hat_base_url
 
-        if base_url is not None:
-            import aiohttp
+        import aiohttp
 
-            try:
-                async with (
-                    aiohttp.ClientSession(
-                        timeout=aiohttp.ClientTimeout(total=timeout)
-                    ) as session,
-                    session.get(f"{base_url}/health") as resp,
-                ):
-                    status = (
-                        HealthStatus.HEALTHY
-                        if resp.status == 200
-                        else HealthStatus.DEGRADED
-                    )
-            except (TimeoutError, OSError, aiohttp.ClientError):
-                status = HealthStatus.DEGRADED
-            return HealthCheckResult(component=self.name, status=status)
-
-        return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
+        try:
+            async with (
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
+                session.get(f"{base_url}/health") as resp,
+            ):
+                status = (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
+        except (TimeoutError, OSError, aiohttp.ClientError):
+            status = HealthStatus.DEGRADED
+        return HealthCheckResult(component=self.name, status=status)
