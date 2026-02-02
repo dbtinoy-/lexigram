@@ -85,3 +85,36 @@ async def test_hat_health_check(mocker) -> None:
     from lexigram.contracts.core.health import HealthStatus
 
     assert result.status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_register_binds_video_upscale_service_when_video_processor_present() -> (
+    None
+):
+    from unittest.mock import AsyncMock
+
+    from lexigram.contracts.multimedia.protocols import VideoProcessor
+    from lexigram.multimedia.upscale.video_upscale_service import VideoUpscaleService
+
+    provider = UpscaleGenerationProvider(config=UpscaleConfig())
+    container = _FakeContainer()
+    container.singleton(VideoProcessor, AsyncMock())
+
+    await provider.register(container)
+
+    bound = container.bindings[VideoUpscaleService]
+    assert isinstance(bound, VideoUpscaleService)
+
+
+@pytest.mark.asyncio
+async def test_video_upscale_service_not_registered_without_video_processor() -> None:
+    from lexigram.multimedia.upscale.video_upscale_service import VideoUpscaleService
+
+    provider = UpscaleGenerationProvider(config=UpscaleConfig())
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    assert VideoUpscaleService not in container.bindings
+    with pytest.raises(LookupError):
+        await container.resolve(VideoUpscaleService)
