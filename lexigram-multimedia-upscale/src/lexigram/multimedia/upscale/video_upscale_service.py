@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from lexigram.contracts.core.result import Err, Result
+from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.multimedia.exceptions import MultimediaError
 from lexigram.contracts.multimedia.types import MediaAsset, UpscaleRequest
 
@@ -57,8 +57,13 @@ class VideoUpscaleService:
             if frames
             else _DEFAULT_FPS
         )
-        return await self._video_processor.assemble_frames(
+        assembled = await self._video_processor.assemble_frames(
             upscaled_frames, fps=source_fps
+        )
+        return (
+            Err(assembled.unwrap_err())
+            if assembled.is_err()
+            else Ok(assembled.unwrap())
         )
 
 
