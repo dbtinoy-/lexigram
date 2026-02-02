@@ -72,6 +72,18 @@ class UpscaleGenerationProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._upscale_config.backend == "hat":
+            from lexigram.multimedia.upscale.providers.hat import HatUpscaleProvider
+
+            self._backend = cast(
+                "UpscaleProvider",
+                HatUpscaleProvider(
+                    base_url=self._upscale_config.hat_base_url,
+                    timeout=self._upscale_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented upscale backend: {self._upscale_config.backend!r}"
@@ -91,6 +103,8 @@ class UpscaleGenerationProvider(Provider):
         base_url = None
         if self._upscale_config.backend == "real-esrgan":
             base_url = self._upscale_config.real_esrgan_base_url
+        elif self._upscale_config.backend == "hat":
+            base_url = self._upscale_config.hat_base_url
 
         if base_url is not None:
             import aiohttp
