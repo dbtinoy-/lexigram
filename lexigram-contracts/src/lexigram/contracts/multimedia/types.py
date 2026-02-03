@@ -66,6 +66,13 @@ class ImageRequest:
 
 
 @dataclass(frozen=True)
+class InterpolationRequest:
+    frame_a: MediaAsset
+    frame_b: MediaAsset
+    extra: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class UpscaleRequest:
     asset: MediaAsset
     scale_factor: Literal[2, 4] = 4
@@ -289,6 +296,7 @@ __all__ = [
     "EncodeSpec",
     "ExtractThumbnail",
     "ImageRequest",
+    "InterpolationRequest",
     "MediaAsset",
     "MusicRequest",
     "MuxAudio",
