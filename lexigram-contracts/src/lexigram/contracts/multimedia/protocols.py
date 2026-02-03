@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     )
     from lexigram.contracts.multimedia.types import (
         ImageRequest,
+        InterpolationRequest,
         MediaAsset,
         MusicRequest,
         TTSRequest,
@@ -34,6 +35,15 @@ class TTSProvider(Protocol):
 
     async def generate(
         self, request: TTSRequest
+    ) -> Result[MediaAsset, MultimediaError]: ...
+
+
+@runtime_checkable
+class InterpolationProvider(Protocol):
+    """Protocol for two-frame midpoint interpolation backends."""
+
+    async def interpolate(
+        self, request: InterpolationRequest
     ) -> Result[MediaAsset, MultimediaError]: ...
 
 
@@ -99,6 +109,7 @@ class UpscaleProvider(Protocol):
 
 __all__ = [
     "ImageProvider",
+    "InterpolationProvider",
     "MusicProvider",
     "TTSProvider",
     "UpscaleProvider",
