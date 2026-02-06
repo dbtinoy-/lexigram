@@ -39,7 +39,7 @@ Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 
 [project.optional-dependencies]
 elevenlabs = []
-openai = ["openai>=1.0.0"]
+openai = []
 local-inproc = []
 test = [
     "lexigram-testing>=0.1.1",
