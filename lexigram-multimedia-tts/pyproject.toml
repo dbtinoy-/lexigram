@@ -41,6 +41,7 @@ Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 elevenlabs = []
 openai = []
 local-inproc = []
+chatterbox-server = ["torch", "chatterbox-tts", "torchaudio"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -59,6 +60,9 @@ test = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
 ]
+
+[project.scripts]
+lexigram-tts-chatterbox-serve = "lexigram.multimedia.tts.servers.chatterbox_server:main"
 
 [project.entry-points."lexigram.multimedia.subsystems"]
 tts = "lexigram.multimedia.tts.di.provider:AudioTTSProvider"
