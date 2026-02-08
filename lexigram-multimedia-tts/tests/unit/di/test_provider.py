@@ -105,3 +105,33 @@ async def test_openai_health_check_degraded_without_key() -> None:
     result = await provider.health_check()
 
     assert result.status == HealthStatus.DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_register_binds_chatterbox_backend() -> None:
+    provider = AudioTTSProvider(config=TTSConfig(backend="chatterbox"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.tts.providers.chatterbox import ChatterboxTTSProvider
+
+    bound = container.bindings[TTSProvider]
+    assert isinstance(bound, ChatterboxTTSProvider)
+
+
+@pytest.mark.asyncio
+async def test_chatterbox_health_check_uses_shared_http_helper(mocker) -> None:
+    provider = AudioTTSProvider(config=TTSConfig(backend="chatterbox"))
+    container = _FakeContainer()
+    await provider.register(container)
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    mocker.patch("aiohttp.ClientSession.get", return_value=mock_cm)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.HEALTHY
