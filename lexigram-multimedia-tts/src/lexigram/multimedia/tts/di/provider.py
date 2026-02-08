@@ -147,6 +147,19 @@ class AudioTTSProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._tts_config.backend == "kokoro":
+            from lexigram.multimedia.tts.providers.kokoro import KokoroTTSProvider
+
+            self._backend = cast(
+                "TTSProvider",
+                KokoroTTSProvider(
+                    base_url=self._tts_config.kokoro_base_url,
+                    default_voice=self._tts_config.kokoro_default_voice,
+                    timeout=self._tts_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented TTS backend: {self._tts_config.backend!r}"
