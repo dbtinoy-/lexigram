@@ -148,3 +148,16 @@ async def test_register_binds_kokoro_backend() -> None:
 
     bound = container.bindings[TTSProvider]
     assert isinstance(bound, KokoroTTSProvider)
+
+
+@pytest.mark.asyncio
+async def test_register_binds_f5_tts_backend() -> None:
+    provider = AudioTTSProvider(config=TTSConfig(backend="f5-tts"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.tts.providers.f5_tts import F5TTSProvider
+
+    bound = container.bindings[TTSProvider]
+    assert isinstance(bound, F5TTSProvider)

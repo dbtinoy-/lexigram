@@ -160,6 +160,18 @@ class AudioTTSProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._tts_config.backend == "f5-tts":
+            from lexigram.multimedia.tts.providers.f5_tts import F5TTSProvider
+
+            self._backend = cast(
+                "TTSProvider",
+                F5TTSProvider(
+                    base_url=self._tts_config.f5_tts_base_url,
+                    timeout=self._tts_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented TTS backend: {self._tts_config.backend!r}"
