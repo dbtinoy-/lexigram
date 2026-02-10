@@ -29,6 +29,7 @@ class ImageGenerationTask:
             width=int(params.get("width", 1024)),
             height=int(params.get("height", 1024)),
             format=params.get("format", "png"),
+            extra=params.get("extra", {}),
         )
         result = await self._backend.generate(request)
         if result.is_err():
