@@ -34,6 +34,7 @@ class VideoGenerationTask:
             resolution=params.get("resolution", "1280x720"),
             image_uri=params.get("image_uri"),
             format=params.get("format", "mp4"),
+            extra=params.get("extra", {}),
         )
         result = await self._backend.generate(request)
         if result.is_err():
