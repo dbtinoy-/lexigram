@@ -41,6 +41,7 @@ class ImageGenerationProvider(Provider):
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
+        self._credential_resolved: bool = False
 
     async def _resolve_optional(self, container: Any, protocol: type) -> Any:
         resolver = getattr(container, "resolve_optional", None)
@@ -85,21 +86,55 @@ class ImageGenerationProvider(Provider):
                 StabilityImageProvider,
             )
 
-            api_key = (
-                await self._resolve_credential(
-                    self._image_config.stability_api_key_secret_name
-                )
-                or ""
+            api_key = await self._resolve_credential(
+                self._image_config.stability_api_key_secret_name
             )
+            self._credential_resolved = bool(api_key)
             self._backend = cast(
                 "ImageProvider",
                 StabilityImageProvider(
-                    api_key=api_key,
+                    api_key=api_key or "",
                     timeout=self._image_config.timeout,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._image_config.backend == "openai":
+            from lexigram.multimedia.image.providers.openai import OpenAIImageProvider
+
+            api_key = await self._resolve_credential(
+                self._image_config.openai_api_key_secret_name
+            )
+            self._credential_resolved = bool(api_key)
+            self._backend = cast(
+                "ImageProvider",
+                OpenAIImageProvider(
+                    api_key=api_key or "",
+                    model=self._image_config.openai_model,
+                    base_url=self._image_config.openai_base_url,
+                    timeout=self._image_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
+        elif self._image_config.backend == "comfyui":
+            from lexigram.multimedia.image.providers.comfyui import ComfyUiImageProvider
+
+            self._backend = cast(
+                "ImageProvider",
+                ComfyUiImageProvider(
+                    base_url=self._image_config.comfyui_base_url,
+                    checkpoint=self._image_config.comfyui_checkpoint,
+                    workflow_path=self._image_config.comfyui_workflow_path,
+                    steps=self._image_config.comfyui_steps,
+                    cfg_scale=self._image_config.comfyui_cfg_scale,
+                    poll_interval=self._image_config.comfyui_poll_interval,
+                    timeout=self._image_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
+            self._credential_resolved = True
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented image backend: {self._image_config.backend!r}"
@@ -132,29 +167,42 @@ class ImageGenerationProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._image_config.backend == "local-http":
-            import aiohttp
-
-            try:
-                async with (
-                    aiohttp.ClientSession(
-                        timeout=aiohttp.ClientTimeout(total=timeout)
-                    ) as session,
-                    session.get(
-                        f"{self._image_config.local_http_base_url}/health"
-                    ) as resp,
-                ):
-                    status = (
-                        HealthStatus.HEALTHY
-                        if resp.status == 200
-                        else HealthStatus.DEGRADED
-                    )
-            except (TimeoutError, OSError, aiohttp.ClientError):
-                status = HealthStatus.DEGRADED
+        http_backends = {
+            "local-http": self._image_config.local_http_base_url,
+            "comfyui": self._image_config.comfyui_base_url,
+        }
+        if self._image_config.backend in http_backends:
+            status = await self._check_http_health(
+                http_backends[self._image_config.backend], timeout
+            )
             return HealthCheckResult(component=self.name, status=status)
 
-        has_key = bool(self._image_config.stability_api_key_secret_name)
         return HealthCheckResult(
             component=self.name,
-            status=HealthStatus.HEALTHY if has_key else HealthStatus.DEGRADED,
+            status=HealthStatus.HEALTHY
+            if self._credential_resolved
+            else HealthStatus.DEGRADED,
         )
+
+    async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
+        import aiohttp
+
+        endpoint = (
+            "/system_stats"
+            if base_url == self._image_config.comfyui_base_url
+            else "/health"
+        )
+        try:
+            async with (
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
+                session.get(f"{base_url}{endpoint}") as resp,
+            ):
+                return (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
+        except (TimeoutError, OSError, aiohttp.ClientError):
+            return HealthStatus.DEGRADED
