@@ -1,5 +1,9 @@
+from unittest.mock import AsyncMock, MagicMock
+
+import aiohttp
 import pytest
 
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
 from lexigram.multimedia.video.config import VideoConfig
 from lexigram.multimedia.video.di.provider import VideoGenerationProvider
@@ -87,3 +91,72 @@ async def test_register_binds_video_processor() -> None:
     assert VideoProcessor in container.bindings
     assert provider._processing_backend is not None
     assert provider._processing_task_handler is not None
+
+
+@pytest.mark.asyncio
+async def test_check_http_health_returns_healthy_on_200(mocker) -> None:
+    provider = VideoGenerationProvider(config=VideoConfig())
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    mocker.patch("aiohttp.ClientSession.get", return_value=mock_cm)
+
+    status = await provider._check_http_health("http://localhost:5200", 5.0)
+
+    assert status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_check_http_health_returns_degraded_on_connection_error(mocker) -> None:
+    provider = VideoGenerationProvider(config=VideoConfig())
+    mocker.patch("aiohttp.ClientSession.get", side_effect=aiohttp.ClientError())
+
+    status = await provider._check_http_health("http://localhost:5200", 5.0)
+
+    assert status == HealthStatus.DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_check_http_health_uses_system_stats_for_comfyui(mocker) -> None:
+    provider = VideoGenerationProvider(config=VideoConfig())
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    mock_get = mocker.patch("aiohttp.ClientSession.get", return_value=mock_cm)
+
+    await provider._check_http_health(provider._video_config.comfyui_base_url, 5.0)
+
+    called_url = mock_get.call_args.args[0]
+    assert called_url == f"{provider._video_config.comfyui_base_url}/system_stats"
+
+
+@pytest.mark.asyncio
+async def test_runway_health_check_degraded_without_resolved_credential(
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("RUNWAY_API_KEY", raising=False)
+    provider = VideoGenerationProvider(config=VideoConfig(backend="runway"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_runway_health_check_healthy_with_resolved_credential(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("RUNWAY_API_KEY", "test-key")
+    provider = VideoGenerationProvider(config=VideoConfig(backend="runway"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.HEALTHY

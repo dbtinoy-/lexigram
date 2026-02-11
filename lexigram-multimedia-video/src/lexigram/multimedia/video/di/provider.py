@@ -48,6 +48,7 @@ class VideoGenerationProvider(Provider):
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
+        self._credential_resolved: bool = False
 
     async def _resolve_optional(self, container: Any, protocol: type) -> Any:
         resolver = getattr(container, "resolve_optional", None)
@@ -98,6 +99,7 @@ class VideoGenerationProvider(Provider):
                 )
                 or ""
             )
+            self._credential_resolved = bool(api_key)
             self._backend = cast(
                 "VideoProvider",
                 RunwayVideoProvider(
@@ -152,29 +154,45 @@ class VideoGenerationProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._video_config.backend == "local-http":
-            import aiohttp
-
-            try:
-                async with (
-                    aiohttp.ClientSession(
-                        timeout=aiohttp.ClientTimeout(total=timeout)
-                    ) as session,
-                    session.get(
-                        f"{self._video_config.local_http_base_url}/health"
-                    ) as resp,
-                ):
-                    status = (
-                        HealthStatus.HEALTHY
-                        if resp.status == 200
-                        else HealthStatus.DEGRADED
-                    )
-            except (TimeoutError, OSError, aiohttp.ClientError):
-                status = HealthStatus.DEGRADED
+        http_backends = {
+            "local-http": self._video_config.local_http_base_url,
+            "wan22": self._video_config.wan22_base_url,
+            "cogvideox": self._video_config.cogvideox_base_url,
+            "svd": self._video_config.svd_base_url,
+            "comfyui": self._video_config.comfyui_base_url,
+        }
+        if self._video_config.backend in http_backends:
+            status = await self._check_http_health(
+                http_backends[self._video_config.backend], timeout
+            )
             return HealthCheckResult(component=self.name, status=status)
 
-        has_key = bool(self._video_config.runway_api_key_secret_name)
         return HealthCheckResult(
             component=self.name,
-            status=HealthStatus.HEALTHY if has_key else HealthStatus.DEGRADED,
+            status=HealthStatus.HEALTHY
+            if self._credential_resolved
+            else HealthStatus.DEGRADED,
         )
+
+    async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
+        import aiohttp
+
+        endpoint = (
+            "/system_stats"
+            if base_url == self._video_config.comfyui_base_url
+            else "/health"
+        )
+        try:
+            async with (
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
+                session.get(f"{base_url}{endpoint}") as resp,
+            ):
+                return (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
+        except (TimeoutError, OSError, aiohttp.ClientError):
+            return HealthStatus.DEGRADED
