@@ -15,6 +15,7 @@ from lexigram.multimedia.video.providers import (
     LocalHttpVideoProvider,
     OpenAIVideoProvider,
     RunwayVideoProvider,
+    Wan22VideoProvider,
 )
 from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessingTask
 
@@ -32,4 +33,5 @@ __all__ = [
     "VideoProcessingConfig",
     "VideoProcessingTask",
     "VideoTimeoutError",
+    "Wan22VideoProvider",
 ]
