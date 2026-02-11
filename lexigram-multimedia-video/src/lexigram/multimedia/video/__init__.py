@@ -13,6 +13,7 @@ from lexigram.multimedia.video.module import VideoModule
 from lexigram.multimedia.video.processing import FFmpegVideoProcessor
 from lexigram.multimedia.video.providers import (
     LocalHttpVideoProvider,
+    OpenAIVideoProvider,
     RunwayVideoProvider,
 )
 from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessingTask
@@ -20,6 +21,7 @@ from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessing
 __all__ = [
     "FFmpegVideoProcessor",
     "LocalHttpVideoProvider",
+    "OpenAIVideoProvider",
     "RunwayVideoProvider",
     "VideoConfig",
     "VideoGenerationAuthenticationError",
