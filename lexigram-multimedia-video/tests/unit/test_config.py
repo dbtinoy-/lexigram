@@ -29,3 +29,24 @@ def test_video_processing_config_defaults() -> None:
 def test_video_config_has_processing_field() -> None:
     cfg = VideoConfig()
     assert isinstance(cfg.processing, VideoProcessingConfig)
+
+
+def test_new_backends_have_working_defaults() -> None:
+    cfg = VideoConfig()
+    assert cfg.openai_model == "sora-2"
+    assert cfg.openai_base_url == "https://api.openai.com"
+    assert cfg.wan22_base_url == "http://localhost:5200"
+    assert cfg.cogvideox_base_url == "http://localhost:5201"
+    assert cfg.svd_base_url == "http://localhost:5202"
+    assert cfg.comfyui_base_url == "http://localhost:8188"
+    assert cfg.comfyui_checkpoint == "svd_xt_1_1.safetensors"
+    assert cfg.comfyui_workflow_path is None
+    assert cfg.comfyui_fps == 6
+    assert cfg.comfyui_motion_bucket_id == 127
+    assert cfg.comfyui_poll_interval == 1.0
+
+
+def test_backend_literal_accepts_all_new_engines() -> None:
+    for backend in ("openai", "wan22", "cogvideox", "svd", "comfyui"):
+        cfg = VideoConfig(backend=backend)  # type: ignore[arg-type]
+        assert cfg.backend == backend
