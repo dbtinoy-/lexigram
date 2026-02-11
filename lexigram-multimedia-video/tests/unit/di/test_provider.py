@@ -160,3 +160,41 @@ async def test_runway_health_check_healthy_with_resolved_credential(
     result = await provider.health_check()
 
     assert result.status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_register_binds_openai_backend(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    provider = VideoGenerationProvider(config=VideoConfig(backend="openai"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.video.providers.openai import OpenAIVideoProvider
+
+    bound = container.bindings[VideoProvider]
+    assert isinstance(bound, OpenAIVideoProvider)
+
+
+@pytest.mark.asyncio
+async def test_openai_health_check_degraded_without_key(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    provider = VideoGenerationProvider(config=VideoConfig(backend="openai"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_openai_health_check_healthy_with_key(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    provider = VideoGenerationProvider(config=VideoConfig(backend="openai"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.HEALTHY
