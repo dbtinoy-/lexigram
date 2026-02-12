@@ -130,6 +130,19 @@ class VideoGenerationProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._video_config.backend == "wan22":
+            from lexigram.multimedia.video.providers.wan22 import Wan22VideoProvider
+
+            self._credential_resolved = True
+            self._backend = cast(
+                "VideoProvider",
+                Wan22VideoProvider(
+                    base_url=self._video_config.wan22_base_url,
+                    timeout=self._video_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented video backend: {self._video_config.backend!r}"
