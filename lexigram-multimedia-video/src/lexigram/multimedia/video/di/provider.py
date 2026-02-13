@@ -158,6 +158,19 @@ class VideoGenerationProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._video_config.backend == "svd":
+            from lexigram.multimedia.video.providers.svd import SVDVideoProvider
+
+            self._credential_resolved = True
+            self._backend = cast(
+                "VideoProvider",
+                SVDVideoProvider(
+                    base_url=self._video_config.svd_base_url,
+                    timeout=self._video_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented video backend: {self._video_config.backend!r}"

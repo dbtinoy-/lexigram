@@ -241,3 +241,16 @@ async def test_register_binds_cogvideox_backend() -> None:
 
     bound = container.bindings[VideoProvider]
     assert isinstance(bound, CogVideoXVideoProvider)
+
+
+@pytest.mark.asyncio
+async def test_register_binds_svd_backend() -> None:
+    provider = VideoGenerationProvider(config=VideoConfig(backend="svd"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.video.providers.svd import SVDVideoProvider
+
+    bound = container.bindings[VideoProvider]
+    assert isinstance(bound, SVDVideoProvider)
