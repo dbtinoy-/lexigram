@@ -171,6 +171,26 @@ class VideoGenerationProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._video_config.backend == "comfyui":
+            from lexigram.multimedia.video.providers.comfyui import (
+                ComfyUiVideoProvider,
+            )
+
+            self._credential_resolved = True
+            self._backend = cast(
+                "VideoProvider",
+                ComfyUiVideoProvider(
+                    base_url=self._video_config.comfyui_base_url,
+                    checkpoint=self._video_config.comfyui_checkpoint,
+                    workflow_path=self._video_config.comfyui_workflow_path,
+                    fps=self._video_config.comfyui_fps,
+                    motion_bucket_id=self._video_config.comfyui_motion_bucket_id,
+                    poll_interval=self._video_config.comfyui_poll_interval,
+                    timeout=self._video_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented video backend: {self._video_config.backend!r}"
