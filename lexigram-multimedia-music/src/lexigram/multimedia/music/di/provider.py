@@ -118,25 +118,33 @@ class AudioMusicProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._music_config.backend == "local-http":
-            import aiohttp
-
-            try:
-                async with (
-                    aiohttp.ClientSession(
-                        timeout=aiohttp.ClientTimeout(total=timeout)
-                    ) as session,
-                    session.get(
-                        f"{self._music_config.local_http_base_url}/health"
-                    ) as resp,
-                ):
-                    status = (
-                        HealthStatus.HEALTHY
-                        if resp.status == 200
-                        else HealthStatus.DEGRADED
-                    )
-            except (TimeoutError, OSError, aiohttp.ClientError):
-                status = HealthStatus.DEGRADED
+        http_backends = {
+            "local-http": self._music_config.local_http_base_url,
+            "ace-step": self._music_config.ace_step_base_url,
+            "stable-audio-open": self._music_config.stable_audio_open_base_url,
+        }
+        if self._music_config.backend in http_backends:
+            status = await self._check_http_health(
+                http_backends[self._music_config.backend], timeout
+            )
             return HealthCheckResult(component=self.name, status=status)
 
         return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
+
+    async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
+        import aiohttp
+
+        try:
+            async with (
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
+                session.get(f"{base_url}/health") as resp,
+            ):
+                return (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
+        except (TimeoutError, OSError, aiohttp.ClientError):
+            return HealthStatus.DEGRADED
