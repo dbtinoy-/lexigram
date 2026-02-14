@@ -31,6 +31,7 @@ class MusicGenerationTask:
                 float(raw_duration) if raw_duration is not None else 30.0
             ),
             format=params.get("format", "mp3"),
+            extra=params.get("extra", {}),
         )
         result = await self._backend.generate(request)
         if result.is_err():
