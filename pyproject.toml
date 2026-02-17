@@ -64,6 +64,7 @@ dependencies = [
     "lexigram-multimedia-image",
     "lexigram-multimedia-upscale",
     "lexigram-multimedia-interpolate",
+    "lexigram-multimedia-beat",
     "ollama>=0.6.1",
 ]
 
@@ -130,6 +131,7 @@ members = [
     "lexigram-multimedia-image",
     "lexigram-multimedia-upscale",
     "lexigram-multimedia-interpolate",
+    "lexigram-multimedia-beat",
 ]
 
 [tool.uv.sources]
@@ -184,6 +186,7 @@ lexigram-multimedia-video = { workspace = true }
 lexigram-multimedia-image = { workspace = true }
 lexigram-multimedia-upscale = { workspace = true }
 lexigram-multimedia-interpolate = { workspace = true }
+lexigram-multimedia-beat = { workspace = true }
 
 [project.urls]
 Homepage = "https://lexigram.dev"
