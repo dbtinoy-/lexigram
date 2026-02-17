@@ -196,6 +196,18 @@ class ComposeVideo:
 
 
 @dataclass(frozen=True)
+class BeatAnalysisRequest:
+    asset: MediaAsset
+    extra: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class BeatAnalysisResult:
+    tempo_bpm: float
+    beat_timestamps: list[float]
+
+
+@dataclass(frozen=True)
 class BurnSubtitles:
     asset: MediaAsset
     cues: list[SubtitleCue]
@@ -285,6 +297,8 @@ VideoOperation = (
 
 
 __all__ = [
+    "BeatAnalysisRequest",
+    "BeatAnalysisResult",
     "BurnSubtitles",
     "ChangeSpeed",
     "ColorFilter",

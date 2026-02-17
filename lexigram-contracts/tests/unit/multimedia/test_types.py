@@ -1,6 +1,8 @@
 import pytest
 
 from lexigram.contracts.multimedia.types import (
+    BeatAnalysisRequest,
+    BeatAnalysisResult,
     ImageRequest,
     InterpolationRequest,
     MediaAsset,
@@ -67,3 +69,18 @@ def test_interpolation_request_has_no_factor_field() -> None:
     assert req.frame_b is frame_b
     assert req.extra == {}
     assert not hasattr(req, "factor")
+
+
+def test_beat_analysis_request_defaults() -> None:
+    asset = MediaAsset(mime_type="audio/mpeg", provider="test", bytes_data=b"audio")
+    req = BeatAnalysisRequest(asset=asset)
+    assert req.asset is asset
+    assert req.extra == {}
+
+
+def test_beat_analysis_result_is_not_a_media_asset() -> None:
+    result = BeatAnalysisResult(tempo_bpm=120.0, beat_timestamps=[0.5, 1.0, 1.5])
+    assert result.tempo_bpm == 120.0
+    assert result.beat_timestamps == [0.5, 1.0, 1.5]
+    assert not hasattr(result, "bytes_data")
+    assert not hasattr(result, "uri")
