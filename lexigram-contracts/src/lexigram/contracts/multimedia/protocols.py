@@ -18,6 +18,8 @@ if TYPE_CHECKING:
         VideoGenerationError,
     )
     from lexigram.contracts.multimedia.types import (
+        BeatAnalysisRequest,
+        BeatAnalysisResult,
         ImageRequest,
         InterpolationRequest,
         MediaAsset,
@@ -90,6 +92,15 @@ class VideoProcessor(Protocol):
 
 
 @runtime_checkable
+class BeatAnalysisProvider(Protocol):
+    """Protocol for audio tempo/beat-detection backends."""
+
+    async def analyze(
+        self, request: BeatAnalysisRequest
+    ) -> Result[BeatAnalysisResult, MultimediaError]: ...
+
+
+@runtime_checkable
 class ImageProvider(Protocol):
     """Protocol for still-image generation backends."""
 
@@ -108,6 +119,7 @@ class UpscaleProvider(Protocol):
 
 
 __all__ = [
+    "BeatAnalysisProvider",
     "ImageProvider",
     "InterpolationProvider",
     "MusicProvider",
