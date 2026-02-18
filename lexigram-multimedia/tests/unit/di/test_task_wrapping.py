@@ -127,3 +127,23 @@ async def test_video_processing_and_timeline_render_tasks_registered() -> None:
 
     assert "video_processing" in fake_task_provider.handlers
     assert "timeline_render" in fake_task_provider.handlers
+
+
+@pytest.mark.asyncio
+async def test_upscale_and_interpolate_tasks_registered() -> None:
+    from lexigram.contracts.infra.tasks import TaskQueueProtocol
+    from lexigram.tasks.di.provider import TaskProvider
+
+    provider = MultimediaProvider(config=MultimediaConfig())
+    container = _FakeContainer()
+
+    fake_task_provider = _FakeTaskProvider()
+    container.singleton(TaskProvider, fake_task_provider)
+    container.singleton(TaskQueueProtocol, AsyncMock())
+
+    await provider.register(container)
+    await provider.boot(container)
+
+    assert "upscale_generation" in fake_task_provider.handlers
+    assert "interpolate_generation" in fake_task_provider.handlers
+    assert "beat_analysis" not in fake_task_provider.handlers

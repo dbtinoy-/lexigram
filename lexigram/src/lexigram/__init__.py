@@ -112,7 +112,6 @@ _EXPORTS: Final[dict[str, _ExportSpec]] = {
     "singleton": ("lexigram.di.decorators", "singleton"),
     "transient": ("lexigram.di.decorators", "transient"),
     "try_catch": ("lexigram.result", "try_catch"),
-    "try_catch_sync": ("lexigram.result", "try_catch_sync"),
 }
 
 

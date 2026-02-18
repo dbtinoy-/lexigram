@@ -1,0 +1,26 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: multimedia: → upscale:
+# Environment variable prefix: LEX_MULTIMEDIA__UPSCALE__
+#
+# NOTE: lexigram-multimedia-upscale is a subsystem of the lexigram-multimedia
+# umbrella. In application.yaml its config is nested under the `multimedia:`
+# key. For standalone use, pass an UpscaleConfig directly to
+# UpscaleModule.configure(UpscaleConfig(...)).
+
+multimedia:
+  upscale:
+    # Super-resolution backend to use.
+    backend: "real-esrgan"  # real-esrgan, hat
+
+    # Real-ESRGAN reference server (backend: real-esrgan)
+    real_esrgan_base_url: "http://localhost:5400"
+
+    # HAT reference server (backend: hat)
+    hat_base_url: "http://localhost:5401"
+
+    # Default upscale factor.
+    default_scale_factor: 4  # 2 or 4
+
+    # Request timeout in seconds.
+    timeout: 30.0

@@ -10,6 +10,7 @@ from lexigram.contracts.multimedia.protocols import InterpolationProvider
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 from lexigram.multimedia.interpolate.config import InterpolationConfig
+from lexigram.multimedia.interpolate.tasks import InterpolationTask
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -35,6 +36,7 @@ class InterpolationGenerationProvider(Provider):
         super().__init__(name="interpolate")
         self._interpolation_config = config or InterpolationConfig()
         self._backend: InterpolationProvider | None = None
+        self._task_handler: InterpolationTask | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
 
@@ -80,6 +82,9 @@ class InterpolationGenerationProvider(Provider):
 
         assert self._backend is not None
         container.singleton(InterpolationProvider, self._backend)
+
+        self._task_handler = InterpolationTask(backend=self._backend)
+        container.singleton(InterpolationTask, self._task_handler)
 
         from lexigram.contracts.multimedia.protocols import VideoProcessor
 

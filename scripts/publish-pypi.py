@@ -9,11 +9,8 @@ from pathlib import Path
 
 ROOT = Path.cwd().resolve()
 
-PROPRIETARY_PKGS: frozenset[str] = frozenset({
-    "lexigram-admin",
-    "lexigram-ai-guard", "lexigram-ai-governance",
-    "lexigram-ai-evaluation", "lexigram-ai-prompt",
-})
+# NOTE: lexigram-admin and lexigram-ai-governance contain internal-IP references —
+# sanitize before ever publishing them to PyPI (the GitHub mirror script does this).
 
 PUBLISH_ORDER: tuple[tuple[str, ...], ...] = (
     ("lexigram-contracts",),
@@ -22,7 +19,6 @@ PUBLISH_ORDER: tuple[tuple[str, ...], ...] = (
         p for p in sorted(
             d.name for d in ROOT.iterdir()
             if d.is_dir() and d.name.startswith("lexigram")
-            and d.name not in PROPRIETARY_PKGS
             and d.name not in ("lexigram-contracts", "lexigram")
             and not d.name.endswith(".egg-info")
         )
@@ -35,7 +31,7 @@ def find_packages(include: list[str] | None = None) -> list[str]:
     for d in sorted(ROOT.iterdir()):
         if not d.is_dir() or not d.name.startswith("lexigram"):
             continue
-        if d.name in PROPRIETARY_PKGS or d.name.endswith(".egg-info"):
+        if d.name.endswith(".egg-info"):
             continue
         if include and d.name not in include:
             continue

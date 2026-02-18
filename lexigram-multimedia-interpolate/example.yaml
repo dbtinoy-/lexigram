@@ -1,0 +1,23 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: multimedia: → interpolate:
+# Environment variable prefix: LEX_MULTIMEDIA__INTERPOLATE__
+#
+# NOTE: lexigram-multimedia-interpolate is a subsystem of the lexigram-multimedia
+# umbrella. In application.yaml its config is nested under the `multimedia:`
+# key. For standalone use, pass an InterpolationConfig directly to
+# InterpolationModule.configure(InterpolationConfig(...)).
+
+multimedia:
+  interpolate:
+    # Frame interpolation backend to use.
+    backend: "rife"
+
+    # RIFE reference server URL.
+    rife_base_url: "http://localhost:5500"
+
+    # Interpolation factor.
+    default_factor: 2  # 2 or 4
+
+    # Request timeout in seconds.
+    timeout: 15.0

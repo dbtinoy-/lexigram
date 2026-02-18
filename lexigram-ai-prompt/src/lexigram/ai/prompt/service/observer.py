@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
+from lexigram.ai.prompt.rendering.engine import RenderFormat
+
 
 @runtime_checkable
 class PromptObserverProtocol(Protocol):
@@ -28,6 +30,7 @@ class PromptObserverProtocol(Protocol):
         version: str,
         variables: dict[str, Any],
         rendered_output: str,
+        render_format: RenderFormat,
     ) -> None:
         """Invoked after a template is successfully rendered.
 
@@ -36,6 +39,7 @@ class PromptObserverProtocol(Protocol):
             version: Concrete version that was used.
             variables: The resolved variable mapping (post-defaults).
             rendered_output: The final rendered prompt string.
+            render_format: The format used to render the template.
         """
         ...
 
@@ -49,6 +53,7 @@ class NoOpPromptObserver:
         version: str,
         variables: dict[str, Any],
         rendered_output: str,
+        render_format: RenderFormat,
     ) -> None:
         """No-op: discard all render events."""
 

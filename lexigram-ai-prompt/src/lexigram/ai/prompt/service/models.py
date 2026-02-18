@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import enum
-from typing import Any, Literal
+from typing import Any
+
+from lexigram.ai.prompt.rendering.engine import RenderFormat
 
 
 class LLMProvider(str, enum.Enum):
@@ -45,11 +47,12 @@ class PromptTemplate:
                  sentinel that always resolves to the most recently loaded
                  version.
         content: Raw template string.  Placeholder syntax depends on
-                 ``engine``.
-        engine: Template rendering engine. ``"format"`` (default) uses
-                Python ``str.format_map`` with ``{variable}`` syntax.
-                ``"jinja2"`` uses Jinja2 with ``{{ variable }}`` syntax,
-                supporting loops, filters, and conditionals.
+                 ``format``.
+        format: Render format for this template — a
+                :class:`~lexigram.ai.prompt.rendering.engine.RenderFormat`
+                value: ``f_string`` (``{variable}``), ``jinja2``
+                (``{{ variable }}``, loops/filters/conditionals), ``dollar``
+                (``$variable``), or ``simple`` (literal, no substitution).
         provider: Target LLM provider for escaping.  Defaults to GENERIC.
         required_variables: Variable names that MUST be supplied at render
                             time. Missing required variables raise.
@@ -63,7 +66,7 @@ class PromptTemplate:
     name: str
     version: str
     content: str
-    engine: Literal["format", "jinja2"] = "format"
+    format: RenderFormat = RenderFormat.F_STRING
     provider: LLMProvider = LLMProvider.GENERIC
     required_variables: tuple[str, ...] = field(default_factory=tuple)
     optional_defaults: dict[str, Any] = field(default_factory=dict)

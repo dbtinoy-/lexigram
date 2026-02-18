@@ -5,9 +5,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from lexigram.contracts.multimedia.protocols import (
+    BeatAnalysisProvider,
     ImageProvider,
+    InterpolationProvider,
     MusicProvider,
     TTSProvider,
+    UpscaleProvider,
     VideoProvider,
 )
 from lexigram.multimedia.config import MultimediaConfig
@@ -55,13 +58,21 @@ class _FakeSubsystem:
 
 
 @pytest.mark.asyncio
-async def test_full_registration_binds_all_four_protocols() -> None:
+async def test_full_registration_binds_all_seven_protocols() -> None:
     provider = MultimediaProvider(config=MultimediaConfig())
     container = _FakeContainer()
 
     await provider.register(container)
 
-    for protocol in (TTSProvider, MusicProvider, VideoProvider, ImageProvider):
+    for protocol in (
+        TTSProvider,
+        MusicProvider,
+        VideoProvider,
+        ImageProvider,
+        UpscaleProvider,
+        InterpolationProvider,
+        BeatAnalysisProvider,
+    ):
         assert protocol in container.bindings
 
 
@@ -122,6 +133,9 @@ async def test_health_check_aggregates_all_subsystems() -> None:
         "music",
         "video",
         "image",
+        "upscale",
+        "interpolate",
+        "beat",
     }
 
 
@@ -131,7 +145,7 @@ async def test_shutdown_clears_sub_providers() -> None:
     container = _FakeContainer()
 
     await provider.register(container)
-    assert len(provider._sub_providers) == 4
+    assert len(provider._sub_providers) == 7
 
     await provider.shutdown()
 

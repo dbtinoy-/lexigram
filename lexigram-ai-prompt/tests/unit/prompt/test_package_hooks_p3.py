@@ -28,9 +28,10 @@ def test_prompt_hook_payloads_are_frozen_and_keyword_only() -> None:
         PromptRenderedHook,
         PromptTemplateResolvedHook,
     )
+    from lexigram.ai.prompt.rendering.engine import RenderFormat
 
     resolved = PromptTemplateResolvedHook(template_name="welcome")
-    rendered = PromptRenderedHook(render_format="chat")
+    rendered = PromptRenderedHook(render_format=RenderFormat.JINJA2)
     sanitized = PromptInputSanitizedHook()
 
     assert is_dataclass(resolved)
@@ -44,7 +45,7 @@ def test_prompt_hook_payloads_are_frozen_and_keyword_only() -> None:
         PromptTemplateResolvedHook("welcome")  # type: ignore[misc]
 
     with pytest.raises(TypeError):
-        PromptRenderedHook("chat")  # type: ignore[misc]
+        PromptRenderedHook("jinja2")  # type: ignore[misc]
 
     with pytest.raises(TypeError):
         PromptInputSanitizedHook("value")  # type: ignore[misc]
@@ -53,7 +54,7 @@ def test_prompt_hook_payloads_are_frozen_and_keyword_only() -> None:
         resolved.template_name = "goodbye"  # type: ignore[misc]
 
     with pytest.raises(FrozenInstanceError):
-        rendered.render_format = "text"  # type: ignore[misc]
+        rendered.render_format = RenderFormat.SIMPLE  # type: ignore[misc]
 
     with pytest.raises(FrozenInstanceError):
         sanitized.new_field = "value"  # type: ignore[misc]

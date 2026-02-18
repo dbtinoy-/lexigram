@@ -1,7 +1,10 @@
 from lexigram.contracts.multimedia.protocols import (
+    BeatAnalysisProvider,
     ImageProvider,
+    InterpolationProvider,
     MusicProvider,
     TTSProvider,
+    UpscaleProvider,
     VideoProvider,
 )
 from lexigram.multimedia.di.provider import MultimediaProvider
@@ -14,7 +17,15 @@ def test_configure_builds_dynamic_module_with_provider_and_exports() -> None:
     assert module.module is MultimediaModule
     assert len(module.providers) == 1
     assert isinstance(module.providers[0], MultimediaProvider)
-    assert set(module.exports) == {TTSProvider, MusicProvider, VideoProvider, ImageProvider}
+    assert set(module.exports) == {
+        TTSProvider,
+        MusicProvider,
+        VideoProvider,
+        ImageProvider,
+        UpscaleProvider,
+        InterpolationProvider,
+        BeatAnalysisProvider,
+    }
 
 
 def test_configure_accepts_custom_config() -> None:
@@ -30,7 +41,15 @@ def test_stub_returns_dynamic_module_with_exports() -> None:
     module = MultimediaModule.stub()
 
     assert module.module is MultimediaModule
-    assert set(module.exports) == {TTSProvider, MusicProvider, VideoProvider, ImageProvider}
+    assert set(module.exports) == {
+        TTSProvider,
+        MusicProvider,
+        VideoProvider,
+        ImageProvider,
+        UpscaleProvider,
+        InterpolationProvider,
+        BeatAnalysisProvider,
+    }
 
 
 def test_stub_tolerates_failing_entry_point_loads() -> None:

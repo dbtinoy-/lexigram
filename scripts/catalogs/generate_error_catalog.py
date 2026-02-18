@@ -18,11 +18,6 @@ from pathlib import Path
 
 REPO_ROOT = Path.cwd()
 PACKAGE_PATTERN = re.compile(r"^(lexigram[-a-z]*|lexigram)$")
-PROPRIETARY_PKGS: frozenset[str] = frozenset({
-    "lexigram-admin",
-    "lexigram-ai-guard", "lexigram-ai-governance",
-    "lexigram-ai-evaluation", "lexigram-ai-prompt",
-})
 
 SRC_GLOB = "*/src/**/*.py"
 LEX_ERR_RE = re.compile(r'LEX_ERR_([A-Z0-9_]+)_(\d{3})')
@@ -51,8 +46,6 @@ def discover_packages(include_all: bool = False) -> list[Path]:
     packages: list[Path] = []
     for entry in sorted(REPO_ROOT.iterdir()):
         if entry.is_dir() and PACKAGE_PATTERN.match(entry.name):
-            if not include_all and entry.name in PROPRIETARY_PKGS:
-                continue
             src_dir = entry / "src"
             if src_dir.exists():
                 packages.append(src_dir)
@@ -267,7 +260,7 @@ def package_sort_key(pkg: str) -> tuple:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate REF_ERROR_CODES.md")
-    parser.add_argument("--all", action="store_true", help="Include proprietary packages")
+    parser.add_argument("--all", action="store_true", help="Write generated docs to repo root (publish mode)")
     args = parser.parse_args()
 
     all_entries: list[dict] = []

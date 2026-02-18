@@ -5,6 +5,7 @@ from lexigram.contracts.multimedia.protocols import InterpolationProvider
 from lexigram.multimedia.interpolate.config import InterpolationConfig
 from lexigram.multimedia.interpolate.di.provider import InterpolationGenerationProvider
 from lexigram.multimedia.interpolate.providers.rife import RifeInterpolationProvider
+from lexigram.multimedia.interpolate.tasks import InterpolationTask
 
 
 class _FakeContainer:
@@ -29,6 +30,17 @@ async def test_register_binds_rife_backend_by_default() -> None:
 
     bound = container.bindings[InterpolationProvider]
     assert isinstance(bound, RifeInterpolationProvider)
+
+
+@pytest.mark.asyncio
+async def test_register_binds_task_handler() -> None:
+    provider = InterpolationGenerationProvider(config=InterpolationConfig())
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    bound_task = container.bindings[InterpolationTask]
+    assert isinstance(bound_task, InterpolationTask)
 
 
 @pytest.mark.asyncio

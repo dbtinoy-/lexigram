@@ -10,6 +10,7 @@ from lexigram.contracts.multimedia.protocols import UpscaleProvider
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 from lexigram.multimedia.upscale.config import UpscaleConfig
+from lexigram.multimedia.upscale.tasks import UpscaleTask
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -35,6 +36,7 @@ class UpscaleGenerationProvider(Provider):
         super().__init__(name="upscale")
         self._upscale_config = config or UpscaleConfig()
         self._backend: UpscaleProvider | None = None
+        self._task_handler: UpscaleTask | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
 
@@ -91,6 +93,9 @@ class UpscaleGenerationProvider(Provider):
 
         assert self._backend is not None
         container.singleton(UpscaleProvider, self._backend)
+
+        self._task_handler = UpscaleTask(backend=self._backend)
+        container.singleton(UpscaleTask, self._task_handler)
 
         from lexigram.contracts.multimedia.protocols import VideoProcessor
 

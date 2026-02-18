@@ -67,6 +67,7 @@ expectations and is verified by boundary tests.
 | `lexigram-ai-workers` | CLI surface managed through `lexigram-ai` orchestrator. No standalone CLI. | none |
 | `lexigram-ai-observability` | CLI surface managed through `lexigram-ai` orchestrator. No standalone CLI. | none |
 | `lexigram-ai-feedback` | CLI surface managed through `lexigram-ai` orchestrator. No standalone CLI. | none |
+| `lexigram-secrets` | Secret management is runtime/API-only (backends, rotation, tenancy). No CLI surface. | none |
 | `lexigram-graph` | No CLI surface yet. Graph DB operations are managed programmatically. | none |
 | `lexigram-webhook` | No CLI surface yet. Webhook configuration is runtime-managed. | none |
 | `lexigram-ui` | HTMX/htpy UI component library. No standalone CLI surface. | none |
