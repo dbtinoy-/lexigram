@@ -40,8 +40,8 @@ Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 [project.optional-dependencies]
 stability-audio = []
 local-inproc = []
-ace-step-server = ["torch", "acestep"]
-stable-audio-open-server = ["torch", "stable-audio-tools"]
+ace-step-server = ["torch", "ace-step; python_version < '3.0'"]
+stable-audio-open-server = ["torch", "stable-audio-tools; python_version < '3.0'"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",

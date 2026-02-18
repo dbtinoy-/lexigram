@@ -39,7 +39,7 @@ Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 
 [project.optional-dependencies]
 librosa = ["librosa>=0.10.0", "soundfile>=0.12.0"]
-madmom-server = ["madmom"]
+madmom-server = ["madmom; python_version < '3.0'"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
