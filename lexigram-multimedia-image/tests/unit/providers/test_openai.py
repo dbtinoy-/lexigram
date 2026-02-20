@@ -111,3 +111,75 @@ async def test_generate_uses_configurable_base_url() -> None:
 
     called_url = mock_post.call_args.args[0]
     assert called_url == "http://gateway.internal:8080/v1/images/generations"
+
+
+@pytest.mark.asyncio
+async def test_generate_uses_edit_endpoint_when_reference_image_set() -> None:
+    provider = OpenAIImageProvider(api_key="test-key", model="dall-e-2")
+
+    raw = b"\x89PNG....edited-bytes"
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read = AsyncMock(
+        return_value=b'{"data": [{"b64_json": "' + base64.b64encode(raw) + b'"}]}'
+    )
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("aiohttp.ClientSession.post", return_value=mock_cm) as mock_post:
+        result = await provider.generate(
+            ImageRequest(
+                prompt="the same cat wearing a hat",
+                width=1024,
+                height=1024,
+                reference_image=b"reference-bytes",
+                reference_mime_type="image/png",
+            )
+        )
+
+    assert result.is_ok()
+    asset = result.unwrap()
+    assert asset.bytes_data == raw
+    called_url = mock_post.call_args.args[0]
+    assert called_url == "https://api.openai.com/v1/images/edits"
+
+
+@pytest.mark.asyncio
+async def test_generate_returns_err_when_model_not_edit_capable() -> None:
+    provider = OpenAIImageProvider(api_key="test-key", model="dall-e-3")
+
+    result = await provider.generate(
+        ImageRequest(
+            prompt="the same cat wearing a hat",
+            width=1024,
+            height=1024,
+            reference_image=b"reference-bytes",
+            reference_mime_type="image/png",
+        )
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), ImageGenerationError)
+    assert "does not support reference-image conditioning" in str(result.unwrap_err())
+
+
+@pytest.mark.asyncio
+async def test_generate_without_reference_image_still_uses_generations_endpoint() -> None:
+    provider = OpenAIImageProvider(api_key="test-key")
+
+    raw = b"bytes"
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read = AsyncMock(
+        return_value=b'{"data": [{"b64_json": "' + base64.b64encode(raw) + b'"}]}'
+    )
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("aiohttp.ClientSession.post", return_value=mock_cm) as mock_post:
+        await provider.generate(ImageRequest(prompt="hello", width=1024, height=1024))
+
+    called_url = mock_post.call_args.args[0]
+    assert called_url == "https://api.openai.com/v1/images/generations"
