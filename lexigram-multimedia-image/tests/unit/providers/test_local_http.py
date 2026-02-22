@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from lexigram.contracts.multimedia.types import ImageRequest
+from lexigram.multimedia.image.exceptions import ImageGenerationError
 from lexigram.multimedia.image.providers.local_http import LocalHttpImageProvider
 
 
@@ -46,3 +47,20 @@ async def test_generate_returns_err_on_non_200() -> None:
         result = await provider.generate(ImageRequest(prompt="a red rose"))
 
     assert result.is_err()
+
+
+@pytest.mark.asyncio
+async def test_generate_returns_err_when_reference_image_set() -> None:
+    provider = LocalHttpImageProvider(base_url="http://localhost:9000")
+
+    result = await provider.generate(
+        ImageRequest(
+            prompt="a cat",
+            reference_image=b"reference-bytes",
+            reference_mime_type="image/png",
+        )
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), ImageGenerationError)
+    assert "does not support reference-image conditioning" in str(result.unwrap_err())

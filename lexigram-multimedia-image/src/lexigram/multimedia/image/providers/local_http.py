@@ -52,6 +52,13 @@ class LocalHttpImageProvider:
     async def generate(
         self, request: ImageRequest
     ) -> Result[MediaAsset, ImageGenerationError]:
+        if request.reference_image is not None:
+            return Err(
+                ImageGenerationError(
+                    "local-http backend does not support reference-image conditioning"
+                )
+            )
+
         payload: dict[str, object] = {
             "prompt": request.prompt,
             "width": request.width,
