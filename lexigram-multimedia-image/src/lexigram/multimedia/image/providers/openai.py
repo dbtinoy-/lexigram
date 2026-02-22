@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import base64
 import binascii
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 
@@ -59,12 +60,16 @@ class OpenAIImageProvider:
         self, fn: Callable[..., Awaitable[tuple[int, bytes]]], *args: Any
     ) -> tuple[int, bytes]:
         if self._retry is not None and self._circuit_breaker is not None:
-            return await self._retry.execute(self._circuit_breaker.call, fn, *args)
-        if self._retry is not None:
-            return await self._retry.execute(fn, *args)
-        if self._circuit_breaker is not None:
-            return await self._circuit_breaker.call(fn, *args)
-        return await fn(*args)
+            result: tuple[int, bytes] = await self._retry.execute(
+                self._circuit_breaker.call, fn, *args
+            )
+        elif self._retry is not None:
+            result = await self._retry.execute(fn, *args)
+        elif self._circuit_breaker is not None:
+            result = await self._circuit_breaker.call(fn, *args)
+        else:
+            result = await fn(*args)
+        return result
 
     async def _post(self, payload: dict[str, object]) -> tuple[int, bytes]:
         url = f"{self._base_url}/v1/images/generations"
