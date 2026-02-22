@@ -245,3 +245,24 @@ async def test_generate_sends_negative_prompt_from_extra() -> None:
 
     sent_workflow = mock_post.call_args.kwargs["json"]["prompt"]
     assert sent_workflow["7"]["inputs"]["text"] == "blurry, low quality"
+
+
+@pytest.mark.asyncio
+async def test_generate_returns_err_when_reference_image_set() -> None:
+    provider = ComfyUiImageProvider(
+        base_url="http://localhost:8188",
+        checkpoint="sd_xl_base_1.0.safetensors",
+        poll_interval=0.01,
+    )
+
+    result = await provider.generate(
+        ImageRequest(
+            prompt="a cat",
+            reference_image=b"reference-bytes",
+            reference_mime_type="image/png",
+        )
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), ImageGenerationError)
+    assert "does not support reference-image conditioning" in str(result.unwrap_err())
