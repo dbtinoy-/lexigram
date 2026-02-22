@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import aiohttp
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     )
 
 _BASE_URL = "https://api.stability.ai"
+_DEFAULT_REFERENCE_STRENGTH = 0.65
 
 
 class StabilityImageProvider:
@@ -43,6 +44,17 @@ class StabilityImageProvider:
         self._retry = retry
         self._circuit_breaker = circuit_breaker
 
+    async def _dispatch(
+        self, fn: Callable[..., Awaitable[tuple[int, bytes]]], *args: Any
+    ) -> tuple[int, bytes]:
+        if self._retry is not None and self._circuit_breaker is not None:
+            return await self._retry.execute(self._circuit_breaker.call, fn, *args)
+        if self._retry is not None:
+            return await self._retry.execute(fn, *args)
+        if self._circuit_breaker is not None:
+            return await self._circuit_breaker.call(fn, *args)
+        return await fn(*args)
+
     async def _post(self, payload: dict[str, object]) -> tuple[int, bytes]:
         url = f"{_BASE_URL}/v2beta/stable-image/generate/sd3"
         headers = {
@@ -61,26 +73,56 @@ class StabilityImageProvider:
                 return resp.status, text.encode()
             return resp.status, await resp.read()
 
+    async def _post_image_to_image(
+        self, request: ImageRequest, strength: float
+    ) -> tuple[int, bytes]:
+        url = f"{_BASE_URL}/v2beta/stable-image/generate/sd3"
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Accept": "application/json",
+        }
+        form = aiohttp.FormData()
+        form.add_field("prompt", request.prompt)
+        form.add_field("mode", "image-to-image")
+        form.add_field("strength", str(strength))
+        form.add_field("output_format", request.format)
+        mime_type = request.reference_mime_type or "image/png"
+        form.add_field(
+            "image",
+            request.reference_image,
+            filename=f"reference.{mime_type.split('/')[-1]}",
+            content_type=mime_type,
+        )
+        async with (
+            aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self._timeout)
+            ) as session,
+            session.post(url, data=form, headers=headers) as resp,
+        ):
+            if resp.status != 200:
+                text = await resp.text()
+                return resp.status, text.encode()
+            return resp.status, await resp.read()
+
     async def generate(
         self, request: ImageRequest
     ) -> Result[MediaAsset, ImageGenerationError]:
-        payload: dict[str, object] = {
-            "prompt": request.prompt,
-            "width": request.width,
-            "height": request.height,
-            "format": request.format,
-        }
         try:
-            if self._retry is not None and self._circuit_breaker is not None:
-                status, body = await self._retry.execute(
-                    self._circuit_breaker.call, self._post, payload
+            if request.reference_image is not None:
+                strength = float(
+                    request.extra.get("reference_strength", _DEFAULT_REFERENCE_STRENGTH)
                 )
-            elif self._retry is not None:
-                status, body = await self._retry.execute(self._post, payload)
-            elif self._circuit_breaker is not None:
-                status, body = await self._circuit_breaker.call(self._post, payload)
+                status, body = await self._dispatch(
+                    self._post_image_to_image, request, strength
+                )
             else:
-                status, body = await self._post(payload)
+                payload: dict[str, object] = {
+                    "prompt": request.prompt,
+                    "width": request.width,
+                    "height": request.height,
+                    "format": request.format,
+                }
+                status, body = await self._dispatch(self._post, payload)
         except (aiohttp.ClientError, TimeoutError) as exc:
             return Err(
                 ImageGenerationError(f"Stability request failed: {exc}", cause=exc)
