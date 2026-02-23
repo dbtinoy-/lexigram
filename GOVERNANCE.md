@@ -166,7 +166,7 @@ See `.importlinter` for enforced contracts.
 
 ### Current Status (0.1.x — Alpha)
 - Alpha; public APIs may change before 1.0
-- ~35 open-source packages (MIT) plus several proprietary packages
+- ~40 open-source packages (MIT)
 - Test suite runs in CI across packages
 
 ### Short Term (Q2 2026)
