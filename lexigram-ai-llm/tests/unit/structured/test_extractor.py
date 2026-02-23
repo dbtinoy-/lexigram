@@ -12,6 +12,7 @@ from lexigram.ai.llm.exceptions import (
     ExtractionMaxRetriesError,
     LLMError,
 )
+from lexigram.contracts.ai.multimodal import ImageBase64Part, TextPart
 from lexigram.result import Err, Ok
 
 # ---------------------------------------------------------------------------
@@ -152,6 +153,32 @@ class TestBuildMessages:
         msg.content = "object prompt"
         msgs = StructuredExtractor._build_messages([msg], "sys")
         assert any(m.role == "user" for m in msgs)
+
+    def test_list_prompt_preserves_multimodal_content(self):
+        parts = [
+            TextPart(text="describe this"),
+            ImageBase64Part(data="Zm9v", media_type="image/png"),
+        ]
+        prompt_list = [{"role": "user", "content": parts}]
+
+        msgs = StructuredExtractor._build_messages(prompt_list, "sys")
+
+        user_msg = next(m for m in msgs if m.role == "user")
+        assert user_msg.content == parts
+
+    def test_list_prompt_with_object_message_preserves_multimodal_content(self):
+        parts = [
+            TextPart(text="describe this"),
+            ImageBase64Part(data="Zm9v", media_type="image/png"),
+        ]
+        msg = MagicMock()
+        msg.role = "user"
+        msg.content = parts
+
+        msgs = StructuredExtractor._build_messages([msg], "sys")
+
+        user_msg = next(m for m in msgs if m.role == "user")
+        assert user_msg.content == parts
 
 
 # ---------------------------------------------------------------------------

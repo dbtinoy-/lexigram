@@ -359,6 +359,8 @@ class StructuredExtractor:
                 has_system = True
                 combined = f"{content}\n\n---\n\n{system_content}"
                 messages.append(ChatMessage(role=Role.SYSTEM, content=combined))
+            elif isinstance(content, list):
+                messages.append(ChatMessage(role=str(role), content=content))
             else:
                 messages.append(ChatMessage(role=str(role), content=str(content)))
 
