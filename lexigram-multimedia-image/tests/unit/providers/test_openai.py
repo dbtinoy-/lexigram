@@ -183,3 +183,111 @@ async def test_generate_without_reference_image_still_uses_generations_endpoint(
 
     called_url = mock_post.call_args.args[0]
     assert called_url == "https://api.openai.com/v1/images/generations"
+
+
+def _mock_ok_response(raw: bytes = b"\x89PNG....image-bytes") -> MagicMock:
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read = AsyncMock(
+        return_value=b'{"data": [{"b64_json": "' + base64.b64encode(raw) + b'"}]}'
+    )
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    return mock_cm
+
+
+@pytest.mark.asyncio
+async def test_generate_aspect_ratio_9_16_resolves_size() -> None:
+    provider = OpenAIImageProvider(api_key="test-key")
+    with patch("aiohttp.ClientSession.post", return_value=_mock_ok_response()) as mock_post:
+        result = await provider.generate(
+            ImageRequest(prompt="a red rose", extra={"aspect_ratio": "9:16"})
+        )
+    assert result.is_ok()
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["size"] == "1024x1792"
+
+
+@pytest.mark.asyncio
+async def test_generate_aspect_ratio_16_9_resolves_size() -> None:
+    provider = OpenAIImageProvider(api_key="test-key")
+    with patch("aiohttp.ClientSession.post", return_value=_mock_ok_response()) as mock_post:
+        result = await provider.generate(
+            ImageRequest(prompt="a red rose", extra={"aspect_ratio": "16:9"})
+        )
+    assert result.is_ok()
+    assert mock_post.call_args.kwargs["json"]["size"] == "1792x1024"
+
+
+@pytest.mark.asyncio
+async def test_generate_aspect_ratio_normalizes_dash_and_fullwidth() -> None:
+    provider = OpenAIImageProvider(api_key="test-key")
+    with patch("aiohttp.ClientSession.post", return_value=_mock_ok_response()) as mock_post:
+        result = await provider.generate(
+            ImageRequest(prompt="a red rose", extra={"aspect_ratio": "9-16"})
+        )
+    assert result.is_ok()
+    assert mock_post.call_args.kwargs["json"]["size"] == "1024x1792"
+
+
+@pytest.mark.asyncio
+async def test_generate_unknown_aspect_ratio_returns_err() -> None:
+    provider = OpenAIImageProvider(api_key="test-key")
+    with patch("aiohttp.ClientSession.post") as mock_post:
+        result = await provider.generate(
+            ImageRequest(prompt="a red rose", extra={"aspect_ratio": "21:9"})
+        )
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), ImageGenerationError)
+    mock_post.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_generate_size_override_beats_aspect_ratio() -> None:
+    provider = OpenAIImageProvider(api_key="test-key")
+    with patch("aiohttp.ClientSession.post", return_value=_mock_ok_response()) as mock_post:
+        result = await provider.generate(
+            ImageRequest(
+                prompt="a red rose",
+                width=1024,
+                height=1024,
+                extra={"aspect_ratio": "16:9", "size": "1024x1792"},
+            )
+        )
+    assert result.is_ok()
+    assert mock_post.call_args.kwargs["json"]["size"] == "1024x1792"
+
+
+@pytest.mark.asyncio
+async def test_generate_generation_extras_passthrough() -> None:
+    provider = OpenAIImageProvider(api_key="test-key")
+    with patch("aiohttp.ClientSession.post", return_value=_mock_ok_response()) as mock_post:
+        result = await provider.generate(
+            ImageRequest(
+                prompt="a red rose",
+                extra={
+                    "quality": "high",
+                    "output_format": "png",
+                    "watermark": False,
+                },
+            )
+        )
+    assert result.is_ok()
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["quality"] == "high"
+    assert payload["output_format"] == "png"
+    assert payload["watermark"] is False
+
+
+@pytest.mark.asyncio
+async def test_generate_aspect_ratio_respects_model_supported_sizes() -> None:
+    provider = OpenAIImageProvider(api_key="test-key", model="dall-e-2")
+    with patch("aiohttp.ClientSession.post") as mock_post:
+        result = await provider.generate(
+            ImageRequest(prompt="a red rose", extra={"aspect_ratio": "9:16"})
+        )
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), ImageGenerationError)
+    assert "supported sizes" in str(result.unwrap_err())
+    mock_post.assert_not_called()
