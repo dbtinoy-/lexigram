@@ -9,6 +9,7 @@ from lexigram.contracts.multimedia.types import (
     MusicRequest,
     TTSRequest,
     UpscaleRequest,
+    VideoMode,
     VideoRequest,
 )
 
@@ -46,6 +47,43 @@ def test_video_request_defaults() -> None:
     req = VideoRequest(prompt="a cat")
     assert req.duration_seconds == 4.0
     assert req.resolution == "1280x720"
+    assert req.model is None
+    assert req.mode is None
+    assert req.last_frame_image is None
+    assert req.reference_images == []
+    assert req.reference_videos == []
+    assert req.reference_audios == []
+    assert req.generate_audio is False
+    assert req.return_last_frame is False
+    assert req.ratio is None
+    assert req.seed is None
+
+
+def test_video_request_accepts_multimodal_fields() -> None:
+    req = VideoRequest(
+        prompt="镜头跟随主角",
+        model="seedance-2.0",
+        mode=VideoMode.MULTIMODAL_REFERENCE,
+        reference_images=["https://oss.example/a/1.png", "https://oss.example/a/2.png"],
+        reference_videos=["https://oss.example/a/c.mp4"],
+        reference_audios=["https://oss.example/a/v.wav"],
+        generate_audio=True,
+        return_last_frame=True,
+        ratio="9:16",
+        seed=42,
+    )
+    assert req.model == "seedance-2.0"
+    assert req.mode is VideoMode.MULTIMODAL_REFERENCE
+    assert req.reference_images == [
+        "https://oss.example/a/1.png",
+        "https://oss.example/a/2.png",
+    ]
+    assert req.reference_videos == ["https://oss.example/a/c.mp4"]
+    assert req.reference_audios == ["https://oss.example/a/v.wav"]
+    assert req.generate_audio is True
+    assert req.return_last_frame is True
+    assert req.ratio == "9:16"
+    assert req.seed == 42
 
 
 def test_image_request_defaults() -> None:
