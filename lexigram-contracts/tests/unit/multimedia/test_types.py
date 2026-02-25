@@ -36,6 +36,21 @@ def test_tts_request_defaults() -> None:
     req = TTSRequest(text="hello")
     assert req.voice is None
     assert req.format == "mp3"
+    assert req.reference_audio_uri is None
+    assert req.emotion is None
+
+
+def test_tts_request_accepts_reference_audio_and_emotion() -> None:
+    req = TTSRequest(
+        text="hello",
+        voice="longxiaoxia_v3",
+        reference_audio_uri="https://cdn.example.com/ref.wav",
+        emotion="excited",
+        extra={"quality": "high"},
+    )
+    assert req.reference_audio_uri == "https://cdn.example.com/ref.wav"
+    assert req.emotion == "excited"
+    assert req.extra == {"quality": "high"}
 
 
 def test_music_request_defaults() -> None:
