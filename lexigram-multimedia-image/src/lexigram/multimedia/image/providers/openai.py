@@ -130,7 +130,7 @@ class OpenAIImageProvider:
         aspect_ratio = str(request.extra.get("aspect_ratio") or "").strip()
         if aspect_ratio:
             normalized = (
-                aspect_ratio.replace("：", ":").replace("-", ":").replace(" ", "")
+                aspect_ratio.replace("\uff1a", ":").replace("-", ":").replace(" ", "")
             )
             size = _ASPECT_TO_SIZE.get(normalized)
             if size is None:
