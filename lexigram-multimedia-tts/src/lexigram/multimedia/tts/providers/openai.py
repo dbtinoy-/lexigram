@@ -141,11 +141,15 @@ class OpenAITTSProvider:
                 return Err(TTSError(f"OpenAI TTS audio fetch failed: {exc}", cause=exc))
             if status != 200:
                 return Err(
-                    TTSError(f"OpenAI TTS audio fetch returned {status}: {audio_bytes!r}")
+                    TTSError(
+                        f"OpenAI TTS audio fetch returned {status}: {audio_bytes!r}"
+                    )
                 )
 
         return Ok(
-            MediaAsset(mime_type="audio/mpeg", provider="openai", bytes_data=audio_bytes)
+            MediaAsset(
+                mime_type="audio/mpeg", provider="openai", bytes_data=audio_bytes
+            )
         )
 
 

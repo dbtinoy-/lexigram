@@ -57,9 +57,7 @@ class F5TTSProvider:
         reference_text = request.extra.get("reference_text")
         if not reference_audio_uri:
             return Err(
-                TTSError(
-                    "F5-TTS requires reference_audio_uri for voice cloning"
-                )
+                TTSError("F5-TTS requires reference_audio_uri for voice cloning")
             )
         if not reference_text:
             return Err(
