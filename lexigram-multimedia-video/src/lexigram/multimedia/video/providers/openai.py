@@ -162,7 +162,28 @@ class OpenAIVideoProvider:
             payload["return_last_frame"] = True
         if request.seed is not None:
             payload["seed"] = request.seed
+        self._add_generation_extras(payload, request)
         return payload
+
+    @staticmethod
+    def _add_generation_extras(
+        payload: dict[str, object], request: VideoRequest
+    ) -> None:
+        """Add gateway generation extras from ``extra`` when explicitly set.
+
+        Strings are included stripped and only when non-empty; booleans and
+        numbers are included verbatim; ``None`` values and keys that collide
+        with core payload keys are skipped.
+        """
+        for key, value in request.extra.items():
+            if value is None or key in payload:
+                continue
+            if isinstance(value, str):
+                stripped = value.strip()
+                if stripped:
+                    payload[key] = stripped
+            elif isinstance(value, (bool, int, float)):
+                payload[key] = value
 
     @staticmethod
     def _derive_mode(request: VideoRequest) -> VideoMode:
