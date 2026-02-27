@@ -8,36 +8,39 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import UTC
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from lexigram.ai.agents.exceptions import BudgetExceededError
 from lexigram.ai.agents.executor.streaming import astream as _astream
+from lexigram.ai.agents.observability import AgentMetrics, AgentTracer
 from lexigram.contracts.ai.agents import (
     AgentError,
     AgentExecutorProtocol,
     AgentProtocol,
+    AgentResponse,
+    MemoryProtocol,
 )
-from lexigram.contracts.ai.llm import ChatMessage, Role
+from lexigram.contracts.ai.governance import AIGovernanceProtocol
+from lexigram.contracts.ai.guards import GuardPipelineProtocol
+from lexigram.contracts.ai.llm import (
+    ChatMessage,
+    CostEstimatorProtocol,
+    LLMClientProtocol,
+    Role,
+)
+from lexigram.contracts.ai.memory import WorkingMemoryProtocol
+from lexigram.contracts.ai.session import SessionManagerProtocol
+from lexigram.contracts.ai.skills import (
+    SkillExecutorProtocol,
+    SkillRegistryProtocol,
+)
+from lexigram.contracts.events.protocols import EventBusProtocol
 from lexigram.logging import (
     get_logger,
 )
 from lexigram.result import Err, Ok, Result
 
 logger = get_logger(__name__)
-
-if TYPE_CHECKING:
-    from lexigram.ai.agents.observability import AgentMetrics, AgentTracer
-    from lexigram.contracts.ai.agents import AgentResponse, MemoryProtocol
-    from lexigram.contracts.ai.governance import AIGovernanceProtocol
-    from lexigram.contracts.ai.guards import GuardPipelineProtocol
-    from lexigram.contracts.ai.llm import LLMClientProtocol
-    from lexigram.contracts.ai.memory import WorkingMemoryProtocol
-    from lexigram.contracts.ai.session import SessionManagerProtocol
-    from lexigram.contracts.ai.skills import (
-        SkillExecutorProtocol,
-        SkillRegistryProtocol,
-    )
-    from lexigram.contracts.events.protocols import EventBusProtocol
 
 
 @dataclass
@@ -96,11 +99,7 @@ class AgentExecutorImpl(AgentExecutorProtocol):
         skill_registry: SkillRegistryProtocol | None = None,
         observability: AgentObservability | None = None,
         safety: AgentSafetyInfra | None = None,
-        governance: AIGovernanceProtocol | None = None,
-        guard_pipeline: GuardPipelineProtocol | None = None,
-        metrics: AgentMetrics | None = None,
-        tracer: AgentTracer | None = None,
-        event_bus: EventBusProtocol | None = None,
+        cost_estimator: CostEstimatorProtocol | None = None,
     ) -> None:
         """Initialize the agent executor.
 
@@ -112,12 +111,11 @@ class AgentExecutorImpl(AgentExecutorProtocol):
             skill_executor: Skill executor for running skills.
             skill_registry: Skill registry for discovering available skills.
             observability: Composite for metrics, tracer, and event bus.
+                Defaults to isolated ``AgentMetrics`` and ``AgentTracer``.
             safety: Composite for governance and guard pipeline.
-            governance: Backward-compatible direct governance dependency.
-            guard_pipeline: Backward-compatible direct guard pipeline dependency.
-            metrics: Backward-compatible direct metrics dependency.
-            tracer: Backward-compatible direct tracer dependency.
-            event_bus: Backward-compatible direct event bus dependency.
+            cost_estimator: Estimates monetary cost of LLM usage for
+                governance tracking. When omitted, cost is not tracked
+                (no fabricated estimates).
         """
         self._llm = llm
         self._memory = memory
@@ -125,33 +123,21 @@ class AgentExecutorImpl(AgentExecutorProtocol):
         self._session_manager = session_manager
         self._skill_executor = skill_executor
         self._skill_registry = skill_registry
+        self._cost_estimator = cost_estimator
 
-        # Observability (lazy-initialized if not provided)
-        from lexigram.ai.agents.observability import AgentMetrics, AgentTracer
-
-        if observability:
-            resolved_metrics = observability.metrics
-            resolved_tracer = observability.tracer
-            resolved_event_bus = observability.event_bus
-        else:
-            resolved_metrics = None
-            resolved_tracer = None
-            resolved_event_bus = None
-
-        self._metrics = metrics or resolved_metrics or AgentMetrics()
-        self._tracer = tracer or resolved_tracer or AgentTracer()
-        self._event_bus = event_bus or resolved_event_bus
-
-        # Safety infrastructure
-        if safety:
-            resolved_governance = safety.governance
-            resolved_guard_pipeline = safety.guard_pipeline
-        else:
-            resolved_governance = None
-            resolved_guard_pipeline = None
-
-        self._governance = governance or resolved_governance
-        self._guard_pipeline = guard_pipeline or resolved_guard_pipeline
+        self._metrics = (
+            observability.metrics
+            if observability and observability.metrics
+            else AgentMetrics()
+        )
+        self._tracer = (
+            observability.tracer
+            if observability and observability.tracer
+            else AgentTracer()
+        )
+        self._event_bus = observability.event_bus if observability else None
+        self._governance = safety.governance if safety else None
+        self._guard_pipeline = safety.guard_pipeline if safety else None
 
     async def run(
         self,
@@ -222,7 +208,7 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                             "Agent request denied by governance policy",
                         )
                     )
-            except (RuntimeError, TypeError, ValueError, OSError) as e:
+            except (RuntimeError, OSError) as e:
                 logger.warning("governance_check_failed", error=str(e))
 
         # 1.5 Guard check for input
@@ -250,7 +236,7 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                     )
 
                 message = str(getattr(agg, "final_content", message))
-            except (RuntimeError, TypeError, ValueError, AttributeError, OSError) as e:
+            except (RuntimeError, OSError) as e:
                 logger.exception("input_guard_evaluation_failed", agent=agent.name)
                 return Err(AgentError(f"Guard evaluation failed: {e}", cause=e))
 
@@ -311,6 +297,18 @@ class AgentExecutorImpl(AgentExecutorProtocol):
 
             strategy = ReActStrategy()
 
+        if self._llm is None:
+            logger.error("agent_executor_missing_llm", agent=agent.name)
+            await self._publish_event(
+                "AgentExecutionFailed",
+                {
+                    "agent_name": agent.name,
+                    "error": "No LLM client configured",
+                    "error_type": "ConfigurationError",
+                },
+            )
+            return Err(AgentError("Agent executor has no LLM client configured"))
+
         try:
             async with self._tracer.trace_execution(
                 agent.name,
@@ -325,7 +323,7 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                     message=message,
                     tools=tools,
                     history=strategy_history,
-                    llm=self._llm,  # type: ignore[arg-type]
+                    llm=self._llm,
                     system_prompt=agent.system_prompt,
                     temperature=getattr(agent, "temperature", 0.7),
                     tool_registry=kwargs.get("tool_registry"),
@@ -343,7 +341,7 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                                 "agent.tool_calls", response.tool_call_count
                             )
 
-        except (RuntimeError, TypeError, ValueError, AttributeError, OSError) as e:
+        except (RuntimeError, OSError) as e:
             logger.exception("strategy_execution_failed", agent=agent.name)
             self._metrics.record_error(agent.name, type(e).__name__)
             await self._publish_event(
@@ -405,7 +403,7 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                     response,
                     message=str(getattr(agg, "final_content", response.message)),
                 )
-            except (RuntimeError, TypeError, ValueError, AttributeError, OSError) as e:
+            except (RuntimeError, OSError) as e:
                 logger.exception("output_guard_evaluation_failed", agent=agent.name)
                 return Err(AgentError(f"Guard evaluation failed: {e}", cause=e))
 
@@ -481,17 +479,22 @@ class AgentExecutorImpl(AgentExecutorProtocol):
             except (RuntimeError, TypeError, AttributeError, LookupError) as e:
                 logger.warning("memory_save_failed", error=str(e))
 
-        # 6. Track cost
-        if self._governance and response.total_tokens > 0:
+        # 6. Track cost (only when a real estimator is configured)
+        if self._governance and self._cost_estimator and response.total_tokens > 0:
             try:
-                estimated_cost = response.total_tokens * 0.001
+                model = getattr(self._llm, "model", "unknown")
+                estimated_cost = self._cost_estimator.estimate_cost(
+                    model=model,
+                    total_tokens=response.total_tokens,
+                    provider=getattr(self._llm, "provider", None),
+                )
                 await self._governance.track_cost(
                     cost=estimated_cost,
-                    model=getattr(self._llm, "model", "unknown"),
+                    model=model,
                     user_id=user_id,
                 )
                 response = replace(response, total_cost=estimated_cost)
-            except (RuntimeError, TypeError, ValueError, AttributeError) as e:
+            except (RuntimeError, OSError) as e:
                 logger.warning("cost_tracking_failed", error=str(e))
 
         response = replace(response, session_id=session_id)

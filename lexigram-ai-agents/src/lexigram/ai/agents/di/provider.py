@@ -83,7 +83,9 @@ class AgentsProvider(Provider):
             logger.info("agents_disabled", reason="AgentConfig.enabled=False")
             return
 
-        from lexigram.ai.agents.executor.executor import AgentExecutorImpl
+        from lexigram.ai.agents.executor.executor import (
+            AgentExecutorImpl,
+        )
         from lexigram.ai.agents.observability import AgentMetrics, AgentTracer
         from lexigram.ai.agents.tools.registry import ToolRegistryImpl
 
@@ -116,7 +118,11 @@ class AgentsProvider(Provider):
         if not self._config.enabled:
             return
 
-        from lexigram.ai.agents.executor.executor import AgentExecutorImpl
+        from lexigram.ai.agents.executor.executor import (
+            AgentExecutorImpl,
+            AgentObservability,
+            AgentSafetyInfra,
+        )
         from lexigram.ai.agents.observability import AgentMetrics, AgentTracer
         from lexigram.ai.agents.tools.registry import ToolRegistryImpl
         from lexigram.contracts.ai import AgentExecutorProtocol
@@ -144,7 +150,14 @@ class AgentsProvider(Provider):
 
             memory = await resolver.resolve(WorkingMemoryProtocol)
             logger.debug("agents_memory_initialized")
-        except (LookupError, RuntimeError, TypeError, ValueError, AttributeError, ModuleVisibilityError):
+        except (
+            LookupError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            AttributeError,
+            ModuleVisibilityError,
+        ):
             logger.debug("agents_memory_not_available")
 
         # Optional: metrics
@@ -205,7 +218,13 @@ class AgentsProvider(Provider):
 
             working_memory = await resolver.resolve(WorkingMemoryProtocol)
             logger.debug("agents_working_memory_available")
-        except (LookupError, RuntimeError, AttributeError, ImportError, ModuleVisibilityError):
+        except (
+            LookupError,
+            RuntimeError,
+            AttributeError,
+            ImportError,
+            ModuleVisibilityError,
+        ):
             logger.debug("agents_working_memory_not_available")
 
         # Optional: session manager (from lexigram-ai-session)
@@ -215,7 +234,13 @@ class AgentsProvider(Provider):
 
             session_manager = await resolver.resolve(SessionManagerProtocol)
             logger.debug("agents_session_manager_available")
-        except (LookupError, RuntimeError, AttributeError, ImportError, ModuleVisibilityError):
+        except (
+            LookupError,
+            RuntimeError,
+            AttributeError,
+            ImportError,
+            ModuleVisibilityError,
+        ):
             logger.debug("agents_session_manager_not_available")
 
         # Optional: skill executor (from lexigram-ai-skills)
@@ -225,7 +250,13 @@ class AgentsProvider(Provider):
 
             skill_executor = await resolver.resolve(SkillExecutorProtocol)
             logger.debug("agents_skill_executor_available")
-        except (LookupError, RuntimeError, AttributeError, ImportError, ModuleVisibilityError):
+        except (
+            LookupError,
+            RuntimeError,
+            AttributeError,
+            ImportError,
+            ModuleVisibilityError,
+        ):
             logger.debug("agents_skill_executor_not_available")
 
         # Optional: skill registry (from lexigram-ai-skills)
@@ -235,17 +266,25 @@ class AgentsProvider(Provider):
 
             skill_registry = await resolver.resolve(SkillRegistryProtocol)
             logger.debug("agents_skill_registry_available")
-        except (LookupError, RuntimeError, AttributeError, ImportError, ModuleVisibilityError):
+        except (
+            LookupError,
+            RuntimeError,
+            AttributeError,
+            ImportError,
+            ModuleVisibilityError,
+        ):
             logger.debug("agents_skill_registry_not_available")
 
         # Create executor with all integrations
         executor = AgentExecutorImpl(
             llm=llm,
-            governance=governance,
             memory=memory,
-            metrics=agent_metrics,
-            tracer=agent_tracer,
-            event_bus=event_bus,
+            observability=AgentObservability(
+                metrics=agent_metrics,
+                tracer=agent_tracer,
+                event_bus=event_bus,
+            ),
+            safety=AgentSafetyInfra(governance=governance),
             working_memory=working_memory,
             session_manager=session_manager,
             skill_executor=skill_executor,

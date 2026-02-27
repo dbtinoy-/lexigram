@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lexigram.ai.agents.executor import AgentExecutorImpl
+from lexigram.ai.agents.executor.executor import AgentSafetyInfra
 
 
 class MockAgent:
@@ -15,7 +14,7 @@ class MockAgent:
     def __init__(
         self,
         name: str = "test_agent",
-        tools: list = None,
+        tools: list | None = None,
         system_prompt: str = "",
     ):
         self.name = name
@@ -157,10 +156,14 @@ class TestAgentStreamingErrors:
         """astream should yield error events when governance denies."""
 
         class DenyingGovernance:
-            async def check_request(self, model: str, provider: str, user_id: str = None):
+            async def check_request(
+                self, model: str, provider: str, user_id: str | None = None
+            ):
                 return False
 
-        executor = AgentExecutorImpl(governance=DenyingGovernance())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(governance=DenyingGovernance())
+        )
         agent = MockAgent(name="test")
 
         events = [e async for e in executor.astream(agent=agent, message="Hi")]
@@ -174,10 +177,14 @@ class TestAgentStreamingErrors:
         """astream should still yield finished after error."""
 
         class DenyingGovernance:
-            async def check_request(self, model: str, provider: str, user_id: str = None):
+            async def check_request(
+                self, model: str, provider: str, user_id: str | None = None
+            ):
                 return False
 
-        executor = AgentExecutorImpl(governance=DenyingGovernance())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(governance=DenyingGovernance())
+        )
         agent = MockAgent(name="test")
 
         events = [e async for e in executor.astream(agent=agent, message="Hi")]
@@ -199,15 +206,24 @@ class TestAgentStreamingGovernance:
         checked = []
 
         class CheckingGovernance:
-            async def check_request(self, model: str, provider: str, user_id: str = None):
-                checked.append({"model": model, "provider": provider, "user_id": user_id})
+            async def check_request(
+                self, model: str, provider: str, user_id: str | None = None
+            ):
+                checked.append(
+                    {"model": model, "provider": provider, "user_id": user_id}
+                )
                 return True
 
-        executor = AgentExecutorImpl(governance=CheckingGovernance())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(governance=CheckingGovernance())
+        )
         agent = MockAgent(name="test")
         executor._llm = MockLLM(response="Response")
 
-        events = [e async for e in executor.astream(agent=agent, message="Hi", user_id="user-1")]
+        events = [
+            e
+            async for e in executor.astream(agent=agent, message="Hi", user_id="user-1")
+        ]
 
         assert len(checked) > 0
         assert checked[0]["user_id"] == "user-1"
@@ -217,14 +233,21 @@ class TestAgentStreamingGovernance:
         """astream should yield error event when governance denies."""
 
         class DenyingGovernance:
-            async def check_request(self, model: str, provider: str, user_id: str = None):
+            async def check_request(
+                self, model: str, provider: str, user_id: str | None = None
+            ):
                 return False
 
-        executor = AgentExecutorImpl(governance=DenyingGovernance())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(governance=DenyingGovernance())
+        )
         agent = MockAgent(name="test")
         executor._llm = MockLLM(response="Response")
 
-        events = [e async for e in executor.astream(agent=agent, message="Hi", user_id="user-1")]
+        events = [
+            e
+            async for e in executor.astream(agent=agent, message="Hi", user_id="user-1")
+        ]
         error_events = [e for e in events if e.type == "error"]
 
         assert len(error_events) > 0
