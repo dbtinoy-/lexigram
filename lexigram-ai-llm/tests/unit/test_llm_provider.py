@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
+from lexigram.ai.llm.config import PricingConfig
 from lexigram.ai.llm.di.provider import LLMProvider
+from lexigram.contracts.ai.llm import CostEstimatorProtocol
 from lexigram.contracts.core.provider import ProviderPriority
+from lexigram.contracts.web.http_models import HttpStatusError
 from lexigram.di.provider import Provider
 
 
@@ -75,3 +79,35 @@ class TestLLMProviderLifecycle:
 
         # Should complete without error
         await prov.shutdown()
+
+
+class TestPricingBootContainment:
+    """LLMProvider.boot must survive pricing warm() failures."""
+
+    @pytest.mark.asyncio
+    async def test_boot_survives_pricing_warm_http_error(self) -> None:
+        """An HTTP error during pricing warm-up must not abort boot."""
+        from lexigram.ai.llm.pricing.estimator import PricingCostEstimator
+
+        prov = LLMProvider()
+        prov.config.pricing = PricingConfig(enabled=True, sources=[])
+
+        async def _raise_http_error(*args: object) -> None:
+            raise HttpStatusError("boom", status=503, response=MagicMock())
+
+        estimator = PricingCostEstimator({})
+        estimator.warm = _raise_http_error  # type: ignore[method-assign]
+
+        async def _resolve(key: object) -> object:
+            if key is CostEstimatorProtocol:
+                return estimator
+            return MagicMock()
+
+        container = MagicMock()
+        container.resolve = AsyncMock(side_effect=_resolve)
+        container.resolve_optional = AsyncMock()
+
+        # Must complete without raising.
+        await prov.boot(container)
+
+        assert container.resolve_optional is not None

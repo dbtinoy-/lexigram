@@ -579,14 +579,26 @@ class CostEstimatorProtocol(Protocol):
         model: str,
         total_tokens: int,
         provider: str | None = None,
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
     ) -> float:
         """Estimate cost in USD for the given token usage.
+
+        When *prompt_tokens* and *completion_tokens* are provided they are
+        priced at the input and output rates respectively — this yields the
+        most accurate estimate.  When both are ``0`` the caller has no
+        usage split, so implementations must fall back to *total_tokens*
+        using a documented approximation.
 
         Args:
             model: Model identifier (e.g. ``gpt-4o``).
             total_tokens: Total tokens consumed (prompt + completion).
             provider: Provider name (e.g. ``openai``) when pricing
                 differs per provider.
+            prompt_tokens: Input token count from ``Completion.usage``.
+                Defaults to ``0`` (unknown).
+            completion_tokens: Output token count from
+                ``Completion.usage``.  Defaults to ``0`` (unknown).
 
         Returns:
             Estimated cost in USD.  Return ``0.0`` when pricing is

@@ -138,6 +138,8 @@ class FunctionCallingStrategy(AbstractStrategy):
         steps: list[ReasoningStep] = []
         tool_records: list[ToolExecutionRecord] = []
         total_tokens = 0
+        prompt_tokens = 0
+        completion_tokens = 0
         start_time = time.monotonic()
 
         tool_map: dict[str, ToolProtocol] = {t.name: t for t in tools}
@@ -152,6 +154,9 @@ class FunctionCallingStrategy(AbstractStrategy):
             if completion is None:
                 return Err(AgentError(f"LLM failed at iteration {iteration}"))
 
+            step_prompt, step_completion = self._token_split(completion)
+            prompt_tokens += step_prompt
+            completion_tokens += step_completion
             total_tokens += self._count_tokens(completion)
 
             native_calls = getattr(completion, "tool_calls", None) or []
@@ -234,6 +239,8 @@ class FunctionCallingStrategy(AbstractStrategy):
                     steps=steps,
                     tool_calls=tool_records,
                     total_tokens=total_tokens,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
                     duration_ms=elapsed,
                     metadata={
                         "strategy": "function_calling",
@@ -250,6 +257,8 @@ class FunctionCallingStrategy(AbstractStrategy):
                 steps=steps,
                 tool_calls=tool_records,
                 total_tokens=total_tokens,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
                 duration_ms=elapsed,
                 metadata={
                     "strategy": "function_calling",
@@ -350,14 +359,38 @@ class FunctionCallingStrategy(AbstractStrategy):
         return result.unwrap()
 
     def _count_tokens(self, completion: Completion) -> int:
-        """Extract token usage from a completion, if reported."""
+        """Extract total token usage from a completion, if reported."""
+        prompt, completion_count = self._token_split(completion)
+        if prompt or completion_count:
+            return prompt + completion_count
         usage = getattr(completion, "usage", None)
-        if usage:
-            if isinstance(usage, dict):
-                return int(usage.get("total_tokens", 0) or 0)
-            total = getattr(usage, "total_tokens", 0)
-            return int(total or 0)
-        return 0
+        if isinstance(usage, dict):
+            return int(usage.get("total_tokens", 0) or 0)
+        total = getattr(usage, "total_tokens", 0)
+        return int(total or 0)
+
+    def _token_split(self, completion: Completion) -> tuple[int, int]:
+        """Extract the prompt/completion token split, if reported.
+
+        Args:
+            completion: LLM completion result.
+
+        Returns:
+            Tuple of ``(prompt_tokens, completion_tokens)``.  Both are
+            ``0`` when usage is missing.
+        """
+        usage = getattr(completion, "usage", None)
+        if not usage:
+            return 0, 0
+        if isinstance(usage, dict):
+            return (
+                int(usage.get("prompt_tokens", 0) or 0),
+                int(usage.get("completion_tokens", 0) or 0),
+            )
+        return (
+            int(getattr(usage, "prompt_tokens", 0) or 0),
+            int(getattr(usage, "completion_tokens", 0) or 0),
+        )
 
     # ------------------------------------------------------------------
     # Native tool loop
