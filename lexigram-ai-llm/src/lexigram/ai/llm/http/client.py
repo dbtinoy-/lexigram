@@ -8,7 +8,7 @@ dedicated resilience layer (``lexigram-resilience``).
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, cast
 
 import aiohttp
 
@@ -190,18 +190,27 @@ class ResilientHTTPClient:
         if self._retry is not None:
             # Retry wraps the circuit-breaker-protected call (or raw call)
             if self._circuit_breaker is not None:
-                return await self._retry.execute(
-                    self._circuit_breaker.call,
-                    self._raw_request,
-                    method,
-                    url,
-                    **kwargs,
+                return cast(
+                    "HttpResponse",
+                    await self._retry.execute(
+                        self._circuit_breaker.call,
+                        self._raw_request,
+                        method,
+                        url,
+                        **kwargs,
+                    ),
                 )
-            return await self._retry.execute(self._raw_request, method, url, **kwargs)
+            return cast(
+                "HttpResponse",
+                await self._retry.execute(self._raw_request, method, url, **kwargs),
+            )
 
         if self._circuit_breaker is not None:
-            return await self._circuit_breaker.call(
-                self._raw_request, method, url, **kwargs
+            return cast(
+                "HttpResponse",
+                await self._circuit_breaker.call(
+                    self._raw_request, method, url, **kwargs
+                ),
             )
 
         return await self._raw_request(method, url, **kwargs)

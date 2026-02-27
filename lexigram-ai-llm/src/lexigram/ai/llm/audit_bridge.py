@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, cast
 
-from lexigram.contracts.ai.llm import LLMClientProtocol
+from lexigram.contracts.ai.exceptions import LLMError
+from lexigram.contracts.ai.llm import (
+    ChatMessageProtocol,
+    CompletionProtocol,
+    LLMClientProtocol,
+    StreamChunk,
+)
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity
+from lexigram.contracts.infra import AsyncStream
+from lexigram.result import Result
 
 if TYPE_CHECKING:
     from lexigram.ai.llm.types import Completion
@@ -35,17 +44,25 @@ class _AuditWrappedClient:
             self._bridge = await self._resolver.resolve(LLMAuditBridge)
         return self._bridge
 
-    async def complete(self, messages, **kwargs):  # noqa: ANN201, ANN002, ANN003
+    async def complete(
+        self,
+        messages: Sequence[ChatMessageProtocol],
+        **kwargs: Any,
+    ) -> Result[CompletionProtocol, LLMError]:
         result = await self._client.complete(messages, **kwargs)
         if result.is_ok():
             try:
                 bridge = await self._get_bridge()
-                await bridge.on_completion(result.unwrap())
+                await bridge.on_completion(cast("Completion", result.unwrap()))
             except Exception:
                 pass
         return result
 
-    def stream_chat(self, messages, **kwargs):  # noqa: ANN201, ANN002, ANN003
+    def stream_chat(
+        self,
+        messages: list[ChatMessageProtocol],
+        **kwargs: Any,
+    ) -> AsyncStream[StreamChunk, LLMError]:
         return self._client.stream_chat(messages, **kwargs)
 
     async def health_check(self, timeout: float = 5.0) -> Any:
@@ -96,7 +113,7 @@ class LLMAuditBridge:
             severity=AuditEventSeverity.LOW,
             outcome="success",
             resource_type="llm.completion",
-            resource_id=completion.request_id,
+            resource_id=completion.request_id or "",
             metadata={
                 "provider": completion.provider,
                 "model": completion.model,

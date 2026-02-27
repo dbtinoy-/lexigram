@@ -14,6 +14,7 @@ from lexigram.ui import (
     el,
     render_to_string,
 )
+from lexigram.ui.atoms.badge import BadgeVariant
 
 logger = get_logger(__name__)
 
@@ -65,15 +66,15 @@ class LlmProvidersPage:
             if m.provider not in model_map:
                 model_map[m.provider] = m.model_id
 
-        provider_data: list[tuple[str, str, str, str, str]] = []
+        provider_data: list[tuple[str, str, str, BadgeVariant, str]] = []
         for name in provider_names:
             model_name = model_map.get(name, "\u2014")
             status_label = "unknown"
-            status_variant = "warning"
+            status_variant: BadgeVariant = "warning"
             latency = "\u2014"
 
             try:
-                client = self._registry.get_client(name)
+                client = await self._registry.get_client(name)
             except Exception:
                 client = None
 
@@ -88,7 +89,7 @@ class LlmProvidersPage:
                         status_variant = "warning"
                     else:
                         status_label = result.status.value
-                        status_variant = "error"
+                        status_variant = "danger"
                     latency = (
                         f"{result.duration_ms:.0f}ms"
                         if result.duration_ms > 0
@@ -96,7 +97,7 @@ class LlmProvidersPage:
                     )
                 except Exception:
                     status_label = "error"
-                    status_variant = "error"
+                    status_variant = "danger"
                     latency = "\u2014"
             else:
                 status_label = "not configured"

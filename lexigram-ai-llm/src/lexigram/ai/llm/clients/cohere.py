@@ -50,7 +50,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 
 import aiohttp
 
@@ -327,13 +327,7 @@ class CohereClient(AbstractLLMClient):
                         continue
 
                     try:
-                        # Handle bytes or str lines
-                        if isinstance(line, (bytes, bytearray)):
-                            line_text = line.decode("utf-8")
-                        else:
-                            line_text = str(line)
-
-                        data = loads(line_text)
+                        data = loads(line)
 
                         # Cohere sends different event types
                         event_type = data.get("event_type")
@@ -411,7 +405,7 @@ class CohereClient(AbstractLLMClient):
             response.raise_for_status()
             data = response.json()
 
-            return data["embeddings"]
+            return cast("list[list[float]]", data["embeddings"])
         except (
             HttpStatusError,
             aiohttp.ClientError,
@@ -472,7 +466,7 @@ class CohereClient(AbstractLLMClient):
             response.raise_for_status()
             data = response.json()
 
-            return data.get("results", [])
+            return cast("list[dict[str, Any]]", data.get("results", []))
         except (
             HttpStatusError,
             aiohttp.ClientError,

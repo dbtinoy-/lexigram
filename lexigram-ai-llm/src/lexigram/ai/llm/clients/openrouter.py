@@ -8,6 +8,7 @@ so it can be used interchangeably in higher-level code.
 from __future__ import annotations
 
 import asyncio
+import types
 from typing import TYPE_CHECKING, Any, cast
 
 import aiohttp
@@ -319,12 +320,14 @@ class OpenRouterClient(AbstractLLMClient):
                 # to aiohttp's line iterator for compatibility with various
                 # underlying client implementations.
                 if hasattr(response, "content"):
-                    iterator = cast("AsyncIterator[bytes]", response.content)
+                    iterator = cast("AsyncIterator[bytes | str]", response.content)
                 else:
-                    iterator = cast("AsyncIterator[bytes]", response.aiter_lines())
+                    iterator = cast(
+                        "AsyncIterator[bytes | str]", response.aiter_lines()
+                    )
 
                 async for raw_line in iterator:
-                    # raw_line might be bytes or str depending on iterator
+                    # aiter_lines() yields str; content iterators may yield bytes.
                     if isinstance(raw_line, bytes):
                         line = raw_line.decode("utf-8").strip()
                     else:
@@ -432,5 +435,10 @@ class OpenRouterClient(AbstractLLMClient):
     async def __aenter__(self) -> Any:
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> Any:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> Any:
         await self.close()

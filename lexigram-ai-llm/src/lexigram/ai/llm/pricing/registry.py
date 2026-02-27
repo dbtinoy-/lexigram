@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 def _tiktoken_available() -> bool:
     """Check if tiktoken is installed."""
     try:
-        import tiktoken  # type: ignore[import-not-found]  # noqa: F401
+        import tiktoken  # noqa: F401
 
         return True
     except ImportError:
@@ -25,7 +25,7 @@ def _tiktoken_available() -> bool:
 def _transformers_available() -> bool:
     """Check if HuggingFace transformers is installed."""
     try:
-        import transformers  # type: ignore[import-not-found]  # noqa: F401
+        import transformers  # noqa: F401
 
         return True
     except ImportError:
@@ -35,7 +35,7 @@ def _transformers_available() -> bool:
 def _mistral_available() -> bool:
     """Check if mistral-common is installed."""
     try:
-        import mistral_common  # type: ignore[import-not-found]  # noqa: F401
+        import mistral_common  # noqa: F401
 
         return True
     except ImportError:

@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 import asyncio
 from collections.abc import AsyncIterator
 import types
-from typing import Any, Protocol, Self
+from typing import Any, Protocol, Self, cast
 
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.exceptions import (
@@ -335,11 +335,14 @@ class AbstractLLMClient(ABC):
         if thinking_text is None:
             return completion
 
-        return completion.model_copy(
-            update={
-                "content": clean_content,
-                "thinking": ThinkingResult(content=thinking_text),
-            }
+        return cast(
+            "Completion",
+            completion.model_copy(
+                update={
+                    "content": clean_content,
+                    "thinking": ThinkingResult(content=thinking_text),
+                }
+            ),
         )
 
     @abstractmethod

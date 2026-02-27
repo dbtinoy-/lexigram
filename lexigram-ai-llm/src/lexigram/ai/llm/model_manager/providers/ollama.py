@@ -5,8 +5,11 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+ollama: Any = None
 try:
-    import ollama
+    import ollama as ollama_module
+
+    ollama = ollama_module
 except ImportError:
     ollama = None
 

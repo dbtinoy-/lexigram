@@ -259,7 +259,7 @@ class StructuredExtractor:
                     output_model=output_model.__name__,
                 )
 
-            completion_result = await self._client.complete(messages, **kwargs)  # type: ignore[arg-type]
+            completion_result = await self._client.complete(messages, **kwargs)
             if completion_result.is_err():
                 return Err(completion_result.unwrap_err())  # type: ignore[arg-type]
 
