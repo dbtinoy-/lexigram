@@ -1,105 +1,121 @@
-"""Tests for the relay conversion IR and shared types (G-XX relay plan)."""
+"""Tests for the relay conversion IR and canonical shared types."""
 from __future__ import annotations
 
-from lexigram.contracts.ai.relay import (
-    PassthroughData,
-    RelayConfig,
-    RelayProtocol,
+from lexigram.contracts.ai import (
+    ChatMessage,
+    ConversionQuality,
+    RelayConvertResult,
+    RelayError,
+    RelayFormat,
     RelayRequest,
     RelayResponse,
     RelayUsage,
-    StreamMode,
+    StreamDelta,
+    StreamState,
+    ThinkingConfig,
+    ToolCall,
 )
-from lexigram.contracts.ai.relay.ir import RelayError
 
 
-def test_protocol_enum_values():
-    """RelayProtocol maps to the four supported wire protocols."""
-    assert RelayProtocol.OPENAI_CHAT.value == "openai_chat"
-    assert RelayProtocol.CLAUDE.value == "claude"
-    assert RelayProtocol.GEMINI.value == "gemini"
-    assert RelayProtocol.RESPONSES.value == "responses"
+def test_relay_format_values() -> None:
+    """RelayFormat maps to the four supported wire protocols."""
+    assert RelayFormat.OPENAI_CHAT.value == "openai_chat"
+    assert RelayFormat.CLAUDE.value == "claude"
+    assert RelayFormat.GEMINI.value == "gemini"
+    assert RelayFormat.OPENAI_RESPONSES.value == "openai_responses"
 
 
-def test_stream_mode_enum_values():
-    """StreamMode only supports non-stream and SSE streaming."""
-    assert StreamMode.NON_STREAM.value == "non_stream"
-    assert StreamMode.STREAM_SSE.value == "stream_sse"
-
-
-def test_relay_config_defaults():
-    """RelayConfig defaults to non-streaming without passthrough."""
-    config = RelayConfig()
-    assert config.stream_mode is StreamMode.NON_STREAM
-    assert config.passthrough is False
-
-
-def test_relay_usage_defaults():
-    """RelayUsage defaults to zero tokens and optional breakdown fields."""
+def test_relay_usage_defaults_to_zero() -> None:
+    """RelayUsage defaults to zero tokens in every breakdown field."""
     usage = RelayUsage()
     assert usage.prompt_tokens == 0
     assert usage.completion_tokens == 0
     assert usage.total_tokens == 0
-    assert usage.cached_tokens is None
-    assert usage.reasoning_tokens is None
+    assert usage.cache_read_tokens == 0
+    assert usage.reasoning_tokens == 0
 
 
-def test_relay_request_build():
-    """RelayRequest carries model, messages, tools, and parameters."""
-    from lexigram.contracts.ai.agents import ToolDefinition
-    from lexigram.contracts.ai.llm import ChatMessage
+def test_relay_usage_derives_total() -> None:
+    """total_tokens is derived as prompt + completion."""
+    usage = RelayUsage(prompt_tokens=10, completion_tokens=5)
+    assert usage.total_tokens == 15
 
+
+def test_relay_request_defaults() -> None:
+    """RelayRequest defaults to non-streaming with empty tools."""
+    request = RelayRequest(model="gpt-4o", messages=[])
+    assert request.stream is False
+    assert request.tools == []
+    assert request.metadata == {}
+    assert request.passthrough == {}
+    assert request.temperature is None
+    assert request.top_p is None
+    assert request.top_k is None
+    assert request.system is None
+    assert request.tool_choice is None
+    assert request.response_format is None
+    assert request.parallel_tool_calls is None
+    assert request.thinking is None
+
+
+def test_relay_request_carries_parameters() -> None:
+    """RelayRequest carries flattened generation knobs."""
     request = RelayRequest(
-        model="gpt-4o",
+        model="claude-sonnet-4-5",
         messages=[ChatMessage(role="user", content="hi")],
-        tools=[ToolDefinition(name="add", description="Adds", parameters={})],
-        parameters={"temperature": 0.5},
+        temperature=0.0,
+        top_p=0.9,
+        top_k=40,
+        max_tokens=100,
         stream=True,
+        include_usage=True,
+        stop_sequences=["STOP"],
+        system="Be helpful",
+        tool_choice="auto",
+        parallel_tool_calls=True,
+        thinking=ThinkingConfig(budget_tokens=5000),
     )
-    assert request.model == "gpt-4o"
+    assert request.temperature == 0.0
+    assert request.top_p == 0.9
+    assert request.top_k == 40
+    assert request.max_tokens == 100
     assert request.stream is True
-    assert request.parameters["temperature"] == 0.5
-    assert request.tools is not None
-    assert request.tools[0].name == "add"
-    assert request.messages[0].content == "hi"
+    assert request.include_usage is True
+    assert request.stop_sequences == ["STOP"]
+    assert request.system == "Be helpful"
+    assert request.tool_choice == "auto"
+    assert request.parallel_tool_calls is True
+    assert request.thinking is not None
+    assert request.thinking.budget_tokens == 5000
 
 
-def test_relay_request_passthrough_and_metadata():
-    """RelayRequest keeps protocol-specific extras in passthrough dicts."""
-    request = RelayRequest(
-        model="claude-3-5-sonnet",
-        messages=[],
-        passthrough={"thinking": {"type": "enabled"}},
-        metadata={"channel_id": 1},
+def test_relay_response_defaults() -> None:
+    """RelayResponse defaults to empty content and no tool calls."""
+    response = RelayResponse(model="gpt-4o")
+    assert response.content == ""
+    assert response.tool_calls == []
+    assert response.finish_reason is None
+    assert response.usage is None
+
+
+def test_convert_result_carries_metadata() -> None:
+    """RelayConvertResult carries conversion audit metadata."""
+    result = RelayConvertResult(
+        value=RelayRequest(model="m", messages=[]),
+        source=RelayFormat.OPENAI_CHAT,
+        target=RelayFormat.CLAUDE,
+        converter_id="openai_chat_to_claude",
+        quality=ConversionQuality.GOOD,
+        steps=["openai_chat", "ir", "claude"],
     )
-    assert request.passthrough["thinking"]["type"] == "enabled"
-    assert request.metadata["channel_id"] == 1
+    assert result.source is RelayFormat.OPENAI_CHAT
+    assert result.target is RelayFormat.CLAUDE
+    assert result.converter_id == "openai_chat_to_claude"
+    assert result.quality == ConversionQuality.GOOD
+    assert result.steps == ["openai_chat", "ir", "claude"]
 
 
-def test_relay_response_build():
-    """RelayResponse carries content, thinking, tool calls, and usage."""
-    from lexigram.contracts.ai.llm import FunctionCall, ToolCall
-    from lexigram.contracts.ai.thinking import ThinkingResult
-
-    response = RelayResponse(
-        model="gemini-2.0-flash",
-        content="42",
-        thinking=ThinkingResult(content="let me think"),
-        tool_calls=[ToolCall(id="call_1", function=FunctionCall(name="add", arguments='{"a":1,"b":2}'))],
-        finish_reason="tool_calls",
-        usage=RelayUsage(prompt_tokens=10, completion_tokens=2, total_tokens=12),
-    )
-    assert response.content == "42"
-    assert response.thinking is not None
-    assert response.thinking.content == "let me think"
-    assert response.tool_calls is not None
-    assert response.tool_calls[0].id == "call_1"
-    assert response.finish_reason == "tool_calls"
-    assert response.usage is not None
-    assert response.usage.total_tokens == 12
-
-
-def test_relay_error_is_ai_error():
+def test_relay_error_is_ai_error() -> None:
     """RelayError subclasses AIError and carries the LEX_ERR_AI code."""
     from lexigram.contracts.ai.exceptions import AIError
 
@@ -109,7 +125,32 @@ def test_relay_error_is_ai_error():
     assert "cannot convert" in str(error)
 
 
-def test_passthrough_alias():
-    """PassthroughData is a plain dict alias for protocol extras."""
-    data: PassthroughData = {"tool_choice": "auto"}
-    assert data["tool_choice"] == "auto"
+def test_stream_delta_fields() -> None:
+    """StreamDelta models one canonical stream update."""
+    usage = RelayUsage(prompt_tokens=2, completion_tokens=3)
+    delta = StreamDelta(content="Hi", usage=usage, finish_reason="stop")
+    assert delta.content == "Hi"
+    assert delta.usage is not None and delta.usage.total_tokens == 5
+    assert delta.thinking_delta is None
+    assert delta.kind == "content"
+    assert delta.tool_call_index is None
+    assert delta.tool_call_arguments is None
+    assert delta.status is None
+    assert delta.block_index is None
+    assert delta.output_index is None
+
+
+def test_stream_state_fields() -> None:
+    """StreamState describes one upstream stream."""
+    state = StreamState(
+        source=RelayFormat.OPENAI_CHAT,
+        target=RelayFormat.CLAUDE,
+        model="gpt-4o",
+        include_usage=True,
+    )
+    assert state.source is RelayFormat.OPENAI_CHAT
+    assert state.target is RelayFormat.CLAUDE
+    assert state.model == "gpt-4o"
+    assert state.include_usage is True
+    assert state.is_done is False
+    assert state.tool_calls == []

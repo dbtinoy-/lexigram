@@ -44,9 +44,30 @@ class DatabaseSecretStore:
         self._db = db_provider
         self._table_name = table_name
         self._auto_create = auto_create_tables
+        self._table_ensured = False
+
+    async def _ensure_table(self) -> None:
+        """Create the store's table on first use when auto-create is enabled."""
+        if not self._auto_create or self._table_ensured:
+            return
+        conn = await self._db.acquire()
+        try:
+            await conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self._table_name} (
+                    name       TEXT PRIMARY KEY,
+                    value      TEXT NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+        finally:
+            await self._db.release(conn)
+        self._table_ensured = True
 
     async def get(self, name: str) -> str | None:
         """Return the secret value for *name*, or ``None`` if absent."""
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             row = await conn.fetchrow(
@@ -69,6 +90,7 @@ class DatabaseSecretStore:
         if not names:
             return {}
 
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             rows = await conn.fetch(
@@ -81,6 +103,7 @@ class DatabaseSecretStore:
 
     async def set(self, name: str, value: str) -> None:
         """Write or overwrite a secret value."""
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             await conn.execute(
@@ -97,6 +120,7 @@ class DatabaseSecretStore:
 
     async def delete(self, name: str) -> None:
         """Remove a secret.  No-op if absent."""
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             await conn.execute(

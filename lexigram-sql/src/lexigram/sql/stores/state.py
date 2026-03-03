@@ -47,9 +47,31 @@ class DatabaseStateStore:
         self._db = db_provider
         self._table_name = table_name
         self._auto_create = auto_create_tables
+        self._table_ensured = False
+
+    async def _ensure_table(self) -> None:
+        """Create the store's table on first use when auto-create is enabled."""
+        if not self._auto_create or self._table_ensured:
+            return
+        conn = await self._db.acquire()
+        try:
+            await conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self._table_name} (
+                    key        TEXT PRIMARY KEY,
+                    value      TEXT NOT NULL,
+                    expires_at TIMESTAMPTZ,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+        finally:
+            await self._db.release(conn)
+        self._table_ensured = True
 
     async def get(self, key: str) -> Any | None:
         """Return the value stored under *key*, or ``None`` if absent."""
+        await self._ensure_table()
         from lexigram import serialization as json
 
         conn = await self._db.acquire()
@@ -71,6 +93,7 @@ class DatabaseStateStore:
         ttl: int | None = None,
     ) -> None:
         """Persist *value* under *key* with an optional TTL in seconds."""
+        await self._ensure_table()
         from lexigram import serialization as json
 
         conn = await self._db.acquire()
@@ -108,6 +131,7 @@ class DatabaseStateStore:
 
     async def delete(self, key: str) -> None:
         """Remove the entry for *key*.  No-op if absent."""
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             await conn.execute(
@@ -131,6 +155,7 @@ class DatabaseStateStore:
         if not keys:
             return {}
 
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             rows = await conn.fetch(
@@ -159,6 +184,7 @@ class DatabaseStateStore:
         if not items:
             return
 
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             for key, value in items.items():
