@@ -13,6 +13,10 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.ai.relay.errors import stream_state_invalid
+from lexigram.ai.relay.finish_reasons import (
+    finish_reason_to_wire,
+    normalize_finish_reason,
+)
 from lexigram.ai.relay.stream.state import (
     StreamSnapshot,
     StreamToolCallRecord,
@@ -30,7 +34,7 @@ from lexigram.contracts.ai.relay.dto import (
     ClaudeUsage,
 )
 from lexigram.contracts.ai.relay.ir import StreamDelta
-from lexigram.contracts.ai.relay.types import RelayUsage
+from lexigram.contracts.ai.relay.types import RelayFormat, RelayUsage
 from lexigram.contracts.core.result import Err, Ok, Result
 
 __all__ = ["claude_emitter"]
@@ -38,14 +42,7 @@ __all__ = ["claude_emitter"]
 
 def _claude_stop_reason(reason: str) -> str:
     """Map a canonical finish reason onto Claude's wire values."""
-    normalized = reason.strip().lower()
-    if normalized in {"length", "max_tokens"}:
-        return "max_tokens"
-    if normalized in {"tool_calls", "tool_use", "function_call"}:
-        return "tool_use"
-    if normalized in {"content_filter", "refusal"}:
-        return "refusal"
-    return "end_turn"
+    return finish_reason_to_wire(normalize_finish_reason(reason), RelayFormat.CLAUDE)
 
 
 def _usage_to_wire(usage: RelayUsage) -> ClaudeUsage:
