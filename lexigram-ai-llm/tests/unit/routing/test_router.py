@@ -533,11 +533,12 @@ async def test_router_close_calls_close_on_all_clients():
 class TestStrategyFromConfig:
     """Tests for LLMRouter._strategy_from_config fallback behavior."""
 
-    def test_cost_optimized_falls_back_when_pricing_unavailable(self) -> None:
-        """cost_optimized must fail over to sequential, never crash."""
-        from lexigram.ai.llm.routing.strategies import SequentialCascadeStrategy
+    def test_cost_optimized_uses_default_pricing_sources(self) -> None:
+        """cost_optimized must build with real sources, never empty."""
+        from lexigram.ai.llm.routing.strategies import CostOptimizedStrategy
 
         cfg = LLMConfig(strategy="cost_optimized")
         strategy = LLMRouter._strategy_from_config(cfg)
 
-        assert isinstance(strategy, SequentialCascadeStrategy)
+        assert isinstance(strategy, CostOptimizedStrategy)
+        assert strategy._pricing.sources, "expected at least one default pricing source"

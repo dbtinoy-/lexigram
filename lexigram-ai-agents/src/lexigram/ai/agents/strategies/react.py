@@ -30,9 +30,10 @@ from lexigram.ai.agents.strategies.parsing import (
     extract_thought,
     extract_tool_call,
 )
+from lexigram.ai.agents.strategies.token_utils import TokenAccumulator
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import AgentError, AgentResponse
-from lexigram.contracts.ai.llm import ChatMessage, Role
+from lexigram.contracts.ai.llm import ChatMessage, Completion, Role
 from lexigram.logging import (
     get_logger,
 )
@@ -160,7 +161,7 @@ class ReActStrategy(AbstractStrategy):
 
         steps: list[ReasoningStep] = []
         tool_calls: list[ToolExecutionRecord] = []
-        total_tokens = 0
+        usage = TokenAccumulator()
         start_time = time.monotonic()
 
         # Build tool lookup
@@ -185,11 +186,17 @@ class ReActStrategy(AbstractStrategy):
 
         for iteration in range(1, self.max_iterations + 1):
             # --- THINK: Ask LLM to reason ---
-            llm_text = await self._call_llm(llm, messages)
-            if llm_text is None:
+            completion = await self._call_llm(llm, messages)
+            if completion is None:
                 return Err(
                     AgentError(f"LLM returned empty response at iteration {iteration}")
                 )
+            usage.add(completion)
+            llm_text = (
+                completion.content
+                if hasattr(completion, "content")
+                else str(completion)
+            )
 
             logger.debug(
                 "react_llm_response",
@@ -223,7 +230,9 @@ class ReActStrategy(AbstractStrategy):
                         message=final_answer,
                         steps=steps,
                         tool_calls=tool_calls,
-                        total_tokens=total_tokens,
+                        total_tokens=usage.total_tokens,
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
                         duration_ms=elapsed,
                         metadata={
                             "strategy": "react",
@@ -312,7 +321,9 @@ class ReActStrategy(AbstractStrategy):
                 message=f"[Max iterations reached] {last_obs}",
                 steps=steps,
                 tool_calls=tool_calls,
-                total_tokens=total_tokens,
+                total_tokens=usage.total_tokens,
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
                 duration_ms=elapsed,
                 metadata={
                     "strategy": "react",
@@ -331,8 +342,8 @@ class ReActStrategy(AbstractStrategy):
         llm: LLMClientProtocol,
         messages: list[ChatMessage],
         **kwargs: Any,
-    ) -> str | None:
-        """Call the LLM and return text content, or ``None`` on failure."""
+    ) -> Completion | None:
+        """Call the LLM and return the completion, or ``None`` on failure."""
         try:
             result = await asyncio.wait_for(
                 llm.complete(cast("list[Any]", messages), **kwargs),
@@ -349,8 +360,7 @@ class ReActStrategy(AbstractStrategy):
             logger.warning("react_llm_err_result", error=str(result.unwrap_err()))
             return None
 
-        completion = result.unwrap()
-        return completion.content if hasattr(completion, "content") else str(completion)
+        return result.unwrap()
 
     # ------------------------------------------------------------------
     # Tool Execution

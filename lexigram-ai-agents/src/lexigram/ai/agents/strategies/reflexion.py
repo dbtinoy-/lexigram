@@ -6,9 +6,10 @@ import asyncio
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.agents.strategies.base import AbstractStrategy
+from lexigram.ai.agents.strategies.token_utils import TokenAccumulator
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import AgentError, AgentResponse
-from lexigram.contracts.ai.llm import ChatMessage, Role
+from lexigram.contracts.ai.llm import ChatMessage, Completion, Role
 from lexigram.logging import (
     get_logger,
 )
@@ -111,6 +112,7 @@ class ReflexionStrategy(AbstractStrategy):
 
         steps: list[ReasoningStep] = []
         tool_calls: list[ToolExecutionRecord] = []
+        usage = TokenAccumulator()
 
         # Build initial chat messages from history
         messages: list[ChatMessage] = self._build_messages(
@@ -123,6 +125,12 @@ class ReflexionStrategy(AbstractStrategy):
             return Err(
                 AgentError("LLM returned empty response during initial generation")
             )
+        usage.add(current_response)
+        current_response = (
+            current_response.content
+            if hasattr(current_response, "content")
+            else str(current_response)
+        )
 
         steps.append(
             ReasoningStep(
@@ -155,6 +163,10 @@ class ReflexionStrategy(AbstractStrategy):
             if critique is None:
                 logger.warning("reflexion_critique_failed", iteration=iteration)
                 break
+            usage.add(critique)
+            critique = (
+                critique.content if hasattr(critique, "content") else str(critique)
+            )
 
             steps.append(
                 ReasoningStep(
@@ -203,6 +215,8 @@ class ReflexionStrategy(AbstractStrategy):
             if refined is None:
                 logger.warning("reflexion_refine_failed", iteration=iteration)
                 break
+            usage.add(refined)
+            refined = refined.content if hasattr(refined, "content") else str(refined)
 
             current_response = refined
             steps.append(
@@ -225,6 +239,9 @@ class ReflexionStrategy(AbstractStrategy):
                 message=current_response,
                 steps=steps,
                 tool_calls=tool_calls,
+                total_tokens=usage.total_tokens,
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
             )
         )
 
@@ -262,8 +279,8 @@ class ReflexionStrategy(AbstractStrategy):
         messages: list[ChatMessage],
         temperature: float | None = None,
         timeout: float = 60.0,
-    ) -> str | None:
-        """Call the LLM and return the text content, or ``None`` on failure."""
+    ) -> Completion | None:
+        """Call the LLM and return the completion, or ``None`` on failure."""
         kwargs: dict[str, Any] = {}
         if temperature is not None:
             kwargs["temperature"] = temperature
@@ -284,8 +301,7 @@ class ReflexionStrategy(AbstractStrategy):
             logger.warning("reflexion_llm_err_result", error=str(result.unwrap_err()))
             return None
 
-        completion = result.unwrap()
-        return completion.content if hasattr(completion, "content") else str(completion)
+        return result.unwrap()
 
 
 __all__ = ["ReflexionStrategy"]

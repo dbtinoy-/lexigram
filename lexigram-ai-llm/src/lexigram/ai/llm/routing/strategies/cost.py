@@ -15,6 +15,7 @@ from lexigram.ai.llm.routing.types import InferenceResult
 from lexigram.ai.llm.types import AIError
 from lexigram.contracts.ai import LLMClientProtocol
 from lexigram.contracts.ai.routing import QuotaBackendProtocol
+from lexigram.contracts.exceptions.base import LexigramError
 from lexigram.logging import (
     get_logger,
 )
@@ -66,7 +67,14 @@ class CostOptimizedStrategy:
                     cost = (estimated_prompt / 1_000_000) * pricing.prompt_per_1m + (
                         estimated_completion / 1_000_000
                     ) * pricing.completion_per_1m
-            except (ValueError, TypeError, AttributeError, LookupError):
+            except (
+                ValueError,
+                TypeError,
+                AttributeError,
+                LookupError,
+                OSError,
+                LexigramError,
+            ):
                 cost = float("inf")
             scored.append((cost, pcfg))
 
