@@ -210,17 +210,17 @@ async def stage4_streaming():
 # ═══════════════════════════════════════════════════════════
 # EXAMPLE 5: Tool Calling — LLM autonomously uses tools
 # ═══════════════════════════════════════════════════════════
-# @tool decorator + ReAct strategy = agentic AI.
-# The LLM decides when to call a tool, processes the
-# result, and produces a final answer.
+# @tool decorator + FunctionCallingStrategy = native tool calling.
+# The LLM decides when to call a tool (via provider-native function
+# calling), processes the result, and produces a final answer.
 
 try:
     from lexigram.ai.agents import tool
-    from lexigram.ai.agents.strategies import ReActStrategy
+    from lexigram.ai.agents.strategies import FunctionCallingStrategy
 except ImportError:
     def tool(fn):
         return fn
-    ReActStrategy = None
+    FunctionCallingStrategy = None
 
 KNOWLEDGE_BASE = {
     "providers": """Lexigram supports 15+ AI providers out of the box:
@@ -264,7 +264,7 @@ async def stage5_tool_calling():
         ]
     ) as app:
         llm = await app._container.resolve(LLMClientProtocol)
-        strategy = ReActStrategy(max_iterations=2)
+        strategy = FunctionCallingStrategy(max_iterations=2)
         for attempt in range(1, 3):
             try:
                 result = await asyncio.wait_for(
@@ -372,7 +372,7 @@ async def main():
     print()
 
     print("  ── Example 5: Agent ── LLM calls tools autonomously")
-    print("  ────  @tool + ReAct strategy")
+    print("  ────  @tool + FunctionCallingStrategy")
     await stage5_tool_calling()
     print()
     print("  ----------------")

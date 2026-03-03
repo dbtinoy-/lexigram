@@ -40,6 +40,10 @@ from lexigram.ai.llm.clients._bedrock_mappers import (
     parse_bedrock_response,
     tool_to_bedrock,
 )
+from lexigram.ai.llm.clients._tools_utils import (
+    _tool_schema_fields,
+    parse_json_arguments,
+)
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.exceptions import (
     LLMAuthenticationError,
@@ -72,6 +76,26 @@ logger = get_logger(__name__)
 __all__ = ["BedrockClient"]
 
 _THREAD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="bedrock-sync")
+
+
+def _content_to_text(content: Any) -> str:
+    """Extract plain text from message content for tool-result payloads.
+
+    Args:
+        content: Message content (string or list of content parts).
+
+    Returns:
+        Plain text string.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            str(p.get("text", ""))
+            for p in content
+            if isinstance(p, dict) and p.get("type") == "text"
+        )
+    return str(content)
 
 
 class BedrockClient(AbstractLLMClient):
@@ -181,6 +205,17 @@ class BedrockClient(AbstractLLMClient):
         if system:
             request["system"] = [{"text": system}]
 
+        tools = kwargs.pop("tools", None)
+        if tools:
+            converted_tools = [
+                tool_to_bedrock(t) for t in tools if _tool_schema_fields(t)[0]
+            ]
+            if converted_tools:
+                request["toolConfig"] = {
+                    "tools": converted_tools,
+                    "toolChoice": {"auto": {}},
+                }
+
         try:
             raw = await asyncio.get_event_loop().run_in_executor(
                 _THREAD_POOL,
@@ -258,6 +293,10 @@ class BedrockClient(AbstractLLMClient):
     ) -> Result[Completion, LLMError]:
         """Generate completion with optional tool calling on Bedrock.
 
+        Tool calling is handled by :meth:`_do_complete` via
+        ``complete(..., tools=...)``; this method forwards the tool
+        descriptors to keep the ``chat`` code path consistent.
+
         Args:
             messages: OpenAI-compatible message list.
             tools: Optional tool descriptors.
@@ -269,45 +308,15 @@ class BedrockClient(AbstractLLMClient):
         Returns:
             ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
             failures.
-
-        Raises:
-            LLMAuthenticationError: On credential or authorisation failure.
-            AIError: For unexpected infrastructure failures.
         """
-        active_model = model or self.config.model
-        bedrock_messages = await self._to_bedrock_messages_async(messages)
-        request: dict[str, Any] = {
-            "modelId": active_model,
-            "messages": bedrock_messages,
-            "inferenceConfig": {},
-        }
-        # Extended thinking is incompatible with temperature on Bedrock Claude
-        self._apply_thinking(request)
-        if "additionalModelRequestFields" not in request:
-            request["inferenceConfig"]["temperature"] = temperature
-
-        if max_tokens is not None:
-            request["inferenceConfig"]["maxTokens"] = max_tokens
-
-        system = extract_system(messages)
-        if system:
-            request["system"] = [{"text": system}]
-
-        if tools:
-            request["toolConfig"] = {
-                "tools": [tool_to_bedrock(t) for t in tools],
-                "toolChoice": {"auto": {}},
-            }
-
-        try:
-            raw = await asyncio.get_event_loop().run_in_executor(
-                _THREAD_POOL,
-                lambda: self._client.converse(**request),
-            )
-        except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
-            return self._handle_error_as_result(exc)
-
-        return Ok(parse_bedrock_response(raw, active_model))
+        return await self._do_complete(
+            messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            **kwargs,
+        )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Probe Bedrock by listing foundation models.
@@ -451,9 +460,54 @@ class BedrockClient(AbstractLLMClient):
                 if isinstance(msg, dict)
                 else getattr(msg, "content", "")
             )
+            tool_calls = (
+                msg.get("tool_calls")
+                if isinstance(msg, dict)
+                else getattr(msg, "tool_calls", None)
+            )
+            tool_call_id = (
+                msg.get("tool_call_id", "")
+                if isinstance(msg, dict)
+                else getattr(msg, "tool_call_id", "")
+            )
+
+            # Tool results become user turns with a toolResult block
+            if role_str == "tool":
+                result.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "toolResult": {
+                                    "toolUseId": tool_call_id,
+                                    "content": [
+                                        {"text": _content_to_text(content_raw)}
+                                    ],
+                                }
+                            }
+                        ],
+                    }
+                )
+                continue
 
             # Use _build_content_blocks for content serialization
             bedrock_content = await self._build_content_blocks(content_raw)
+
+            # Assistant turns that requested tools gain toolUse blocks
+            if role_str == "assistant" and tool_calls:
+                for call in tool_calls:
+                    fn = getattr(call, "function", None)
+                    if fn is None or not getattr(fn, "name", None):
+                        continue
+                    bedrock_content.append(
+                        {
+                            "toolUse": {
+                                "toolUseId": getattr(call, "id", ""),
+                                "name": fn.name,
+                                "input": parse_json_arguments(fn.arguments),
+                            }
+                        }
+                    )
 
             # Bedrock uses "user" and "assistant" roles only
             bedrock_role = "assistant" if role_str == "assistant" else "user"

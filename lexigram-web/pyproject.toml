@@ -79,6 +79,7 @@ websocket = [
 ]
 client = [
     "httpx>=0.26.0",
+    "httpx2>=2.0.0",
 ]
 docs = [
     "pyyaml>=6.0",
@@ -90,6 +91,7 @@ test = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
     "httpx>=0.26.0",
+    "httpx2>=2.0.0",
 ]
 dev = [
     "black>=23.0.0",
@@ -104,6 +106,7 @@ all = [
     "jinja2>=3.1.0",
     "websockets>=12.0.0",
     "httpx>=0.26.0",
+    "httpx2>=2.0.0",
     "pyyaml>=6.0",
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -151,6 +154,7 @@ test = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
     "httpx>=0.26.0",
+    "httpx2>=2.0.0",
 ]
 
 [tool.ruff]

@@ -47,7 +47,6 @@ from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.clients.gemini_helpers import (
     inject_thinking_config,
     messages_to_gemini,
-    parse_gemini_response,
     parse_gemini_response_with_tools,
     parse_gemini_sse_body,
     tool_to_gemini_function,
@@ -169,6 +168,11 @@ class GeminiClient(AbstractLLMClient):
         if max_tokens is not None:
             payload["generationConfig"]["maxOutputTokens"] = max_tokens
         inject_thinking_config(payload["generationConfig"], self.config)
+        tools = kwargs.pop("tools", None)
+        if tools:
+            payload["tools"] = [
+                {"functionDeclarations": [tool_to_gemini_function(t) for t in tools]}
+            ]
 
         path = f"/v1beta/models/{active_model}:generateContent?key={self._api_key}"
 
@@ -187,7 +191,7 @@ class GeminiClient(AbstractLLMClient):
 
         data: dict[str, Any] = response.json
         try:
-            return Ok(parse_gemini_response(data, active_model))
+            return Ok(parse_gemini_response_with_tools(data, active_model))
         except AIError as exc:
             return Err(LLMContentFilterError(str(exc)))
 
@@ -269,9 +273,9 @@ class GeminiClient(AbstractLLMClient):
     ) -> Result[Completion, LLMError]:
         """Generate completion with optional Gemini function calling.
 
-        Converts :class:`ToolCall` descriptors to Gemini ``FunctionDeclaration``
-        format and parses ``functionCall`` response parts back into
-        :class:`ToolCall` objects.
+        Tool calling is handled by :meth:`_do_complete` via
+        ``complete(..., tools=...)``; this method forwards the tool
+        descriptors to keep the ``chat`` code path consistent.
 
         Args:
             messages: OpenAI-compatible message list.
@@ -284,44 +288,15 @@ class GeminiClient(AbstractLLMClient):
         Returns:
             ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
             failures.
-
-        Raises:
-            LLMAuthenticationError: When credentials are invalid.
-            AIError: For unexpected infrastructure failures.
         """
-        active_model = model or self.config.model
-        contents = messages_to_gemini(messages)
-        payload: dict[str, Any] = {
-            "contents": contents,
-            "generationConfig": {"temperature": temperature},
-        }
-        if max_tokens is not None:
-            payload["generationConfig"]["maxOutputTokens"] = max_tokens
-        inject_thinking_config(payload["generationConfig"], self.config)
-        if tools:
-            payload["tools"] = [
-                {"functionDeclarations": [tool_to_gemini_function(t) for t in tools]}
-            ]
-
-        path = f"/v1beta/models/{active_model}:generateContent?key={self._api_key}"
-        try:
-            http = self._get_http()
-            response = await http.post(path, json=payload)
-            response.raise_for_status()
-        except (
-            HttpStatusError,
-            OSError,
-            ConnectionError,
-            TimeoutError,
-            RuntimeError,
-        ) as exc:
-            return self._handle_error_as_result(exc)
-
-        data: dict[str, Any] = response.json
-        try:
-            return Ok(parse_gemini_response_with_tools(data, active_model))
-        except AIError as exc:
-            return Err(LLMContentFilterError(str(exc)))
+        return await self._do_complete(
+            messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            **kwargs,
+        )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Perform a lightweight health check against the Gemini API.

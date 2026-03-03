@@ -59,6 +59,7 @@ db = [
 ]
 web = [
     "httpx>=0.26.0",
+    "httpx2>=2.0.0",
     "starlette>=0.28.0",
 ]
 auth = [
@@ -85,6 +86,7 @@ all = [
     "aiosqlite>=0.19.0",
     "asyncpg>=0.29.0",
     "httpx>=0.26.0",
+    "httpx2>=2.0.0",
     "starlette>=0.28.0",
     "lexigram-auth>=0.1.0",
     "lexigram-cache>=0.1.0",

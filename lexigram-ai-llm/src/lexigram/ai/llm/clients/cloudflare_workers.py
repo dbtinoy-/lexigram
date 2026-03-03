@@ -15,9 +15,13 @@ Notes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.llm.clients._message_utils import serialize_text_only
+from lexigram.ai.llm.clients._tools_utils import (
+    serialize_openai_tool_calls,
+    tool_to_openai_format,
+)
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.exceptions import (
     LLMAuthenticationError,
@@ -167,6 +171,13 @@ class CloudflareWorkersClient(AbstractLLMClient):
         }
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
+        tools = kwargs.pop("tools", None)
+        if tools:
+            payload["tools"] = [
+                converted
+                for tool in tools
+                if (converted := tool_to_openai_format(tool)) is not None
+            ]
 
         path = f"/client/v4/accounts/{self._account_id}/ai/run/{active_model}"
 
@@ -188,7 +199,7 @@ class CloudflareWorkersClient(AbstractLLMClient):
             errors = data.get("errors", [])
             return Err(LLMError(f"Cloudflare Workers AI request failed: {errors}"))
 
-        return Ok(_parse_cf_response(data, active_model))
+        return Ok(_parse_cf_response_with_tools(data, active_model))
 
     async def _do_stream_chat(
         self,
@@ -258,9 +269,9 @@ class CloudflareWorkersClient(AbstractLLMClient):
     ) -> Result[Completion, LLMError]:
         """Generate completion with optional Cloudflare tool/function calling.
 
-        Cloudflare Workers AI supports the OpenAI-compatible tools format.
-        ``tool_calls`` in the response are parsed back into :class:`ToolCall`
-        objects.
+        Tool calling is handled by :meth:`_do_complete` via
+        ``complete(..., tools=...)``; this method forwards the tool
+        descriptors to keep the ``chat`` code path consistent.
 
         Args:
             messages: Chat messages.
@@ -273,43 +284,15 @@ class CloudflareWorkersClient(AbstractLLMClient):
         Returns:
             ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
             failures.
-
-        Raises:
-            LLMLLMAuthenticationError: When credentials are invalid.
-            AIError: For unexpected infrastructure failures.
         """
-        active_model = model or self.config.model
-        cf_messages = _convert_messages_for_cloudflare(messages)
-        payload: dict[str, Any] = {
-            "messages": cf_messages,
-            "temperature": temperature,
-            "stream": False,
-        }
-        if max_tokens is not None:
-            payload["max_tokens"] = max_tokens
-        if tools:
-            payload["tools"] = [_tool_to_cf_function(t) for t in tools]
-
-        path = f"/client/v4/accounts/{self._account_id}/ai/run/{active_model}"
-        try:
-            http = self._get_http()
-            response = await http.post(path, json=payload)
-            response.raise_for_status()
-        except (
-            HttpStatusError,
-            OSError,
-            ConnectionError,
-            TimeoutError,
-            RuntimeError,
-        ) as exc:
-            return self._handle_error_as_result(exc)
-
-        data: dict[str, Any] = response.json
-        if not data.get("success", False):
-            errors = data.get("errors", [])
-            return Err(LLMError(f"Cloudflare Workers AI request failed: {errors}"))
-
-        return Ok(_parse_cf_response_with_tools(data, active_model))
+        return await self._do_complete(
+            messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            **kwargs,
+        )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Perform a lightweight health check against Cloudflare Workers AI.
@@ -379,9 +362,10 @@ def _convert_messages_for_cloudflare(
 ) -> list[dict[str, Any]]:
     """Convert ChatMessage objects to Cloudflare API format.
 
-    Cloudflare Workers AI accepts only ``role`` and ``content`` (string).
-    Uses ``serialize_text_only`` to extract text from multimodal content,
-    warning when image parts are encountered.
+    Cloudflare Workers AI accepts ``role`` and ``content`` (string), plus
+    the OpenAI ``tool_calls`` / ``tool_call_id`` fields for tool round
+    trips.  Uses ``serialize_text_only`` to extract text from multimodal
+    content, warning when image parts are encountered.
 
     Args:
         messages: List of ChatMessage objects or dicts (for backward compatibility).
@@ -395,10 +379,14 @@ def _convert_messages_for_cloudflare(
             # Backward compatibility: handle dict messages
             role: str = msg.get("role", "user")
             content: Any = msg.get("content", "")
+            tool_call_id: str | None = msg.get("tool_call_id")
+            tool_calls: Any = msg.get("tool_calls")
         else:
             # ChatMessage object
             role = msg.role.value
             content = msg.content
+            tool_call_id = msg.tool_call_id
+            tool_calls = msg.tool_calls
 
         # Serialize content using text-only for non-vision clients
         text_content = serialize_text_only(
@@ -406,29 +394,16 @@ def _convert_messages_for_cloudflare(
             logger=logger,
             client_name="cloudflare",
         )
-        result.append({"role": role, "content": text_content})
+        entry: dict[str, Any] = {"role": role, "content": text_content}
+        if tool_call_id:
+            entry["tool_call_id"] = tool_call_id
+        serialized_calls = serialize_openai_tool_calls(
+            cast("list[ToolCall] | None", tool_calls)
+        )
+        if serialized_calls:
+            entry["tool_calls"] = serialized_calls
+        result.append(entry)
     return result
-
-
-def _parse_cf_response(data: dict[str, Any], model: str) -> Completion:
-    """Parse a Cloudflare Workers AI response into a ``Completion``.
-
-    Args:
-        data: Parsed JSON response from the Cloudflare API.
-        model: Model identifier.
-
-    Returns:
-        Normalised :class:`~lexigram.ai.llm.types.Completion`.
-    """
-    result_obj = data.get("result", {})
-    text: str = result_obj.get("response", "")
-    usage_data = result_obj.get("usage", {})
-    usage = TokenUsage(
-        prompt_tokens=usage_data.get("prompt_tokens", 0),
-        completion_tokens=usage_data.get("completion_tokens", 0),
-        total_tokens=usage_data.get("total_tokens", 0),
-    )
-    return Completion(content=text, model=model, usage=usage)
 
 
 def _parse_cf_response_with_tools(data: dict[str, Any], model: str) -> Completion:
@@ -505,43 +480,3 @@ async def _parse_cf_sse_body(body: str, model: str) -> AsyncIterator[StreamChunk
             finish_reason=None,
             index=0,
         )
-
-
-def _tool_to_cf_function(tool: Any) -> dict[str, Any]:
-    """Convert a tool descriptor to Cloudflare Workers AI OpenAI-compatible format.
-
-    Args:
-        tool: A class with ``__tool_schema__``, or a dict with a ``function``
-            key in OpenAI tool format.
-
-    Returns:
-        Dict with ``type: "function"`` and nested ``function`` description.
-    """
-    if hasattr(tool, "__tool_schema__"):
-        schema: dict[str, Any] = tool.__tool_schema__
-        return {
-            "type": "function",
-            "function": {
-                "name": schema["name"],
-                "description": schema.get("description", ""),
-                "parameters": schema.get("parameters", {}),
-            },
-        }
-    if isinstance(tool, dict):
-        func = tool.get("function", tool)
-        return {
-            "type": "function",
-            "function": {
-                "name": func.get("name", ""),
-                "description": func.get("description", ""),
-                "parameters": func.get("parameters", {}),
-            },
-        }
-    return {
-        "type": "function",
-        "function": {
-            "name": getattr(tool, "name", str(tool)),
-            "description": getattr(tool, "description", ""),
-            "parameters": {},
-        },
-    }

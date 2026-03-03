@@ -31,14 +31,12 @@ from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.clients.gemini_helpers import (
     inject_thinking_config,
     messages_to_gemini,
-    parse_gemini_response,
     parse_gemini_response_with_tools,
     parse_gemini_sse_body,
     tool_to_gemini_function,
 )
 from lexigram.ai.llm.exceptions import (
     LLMAuthenticationError,
-    LLMContentFilterError,
     LLMError,
     LLMModelNotFoundError,
     LLMRateLimitError,
@@ -94,8 +92,8 @@ class VertexAIClient(AbstractLLMClient):
         super().__init__(config=config)
 
         try:
-            import google.auth  # noqa: F401
-            import google.auth.transport.requests  # noqa: F401
+            import google.auth  # type: ignore[import-not-found]  # noqa: F401
+            import google.auth.transport.requests  # type: ignore[import-not-found]  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "VertexAIClient requires 'google-auth'. "
@@ -138,7 +136,7 @@ class VertexAIClient(AbstractLLMClient):
 
         try:
             if self._credentials_file:
-                from google.oauth2 import (
+                from google.oauth2 import (  # type: ignore[import-not-found]
                     service_account,
                 )
 
@@ -231,6 +229,11 @@ class VertexAIClient(AbstractLLMClient):
         if max_tokens is not None:
             payload["generationConfig"]["maxOutputTokens"] = max_tokens
         inject_thinking_config(payload["generationConfig"], self.config)
+        tools = kwargs.pop("tools", None)
+        if tools:
+            payload["tools"] = [
+                {"functionDeclarations": [tool_to_gemini_function(t) for t in tools]}
+            ]
 
         path = f"{self._model_path(active_model)}:generateContent"
         try:
@@ -246,7 +249,7 @@ class VertexAIClient(AbstractLLMClient):
         ) as exc:
             return self._handle_error_as_result(exc)
 
-        return Ok(parse_gemini_response(response.json, active_model))
+        return Ok(parse_gemini_response_with_tools(response.json, active_model))
 
     async def _do_stream_chat(
         self,
@@ -318,6 +321,10 @@ class VertexAIClient(AbstractLLMClient):
     ) -> Result[Completion, LLMError]:
         """Generate completion with optional tool calling on Vertex AI.
 
+        Tool calling is handled by :meth:`_do_complete` via
+        ``complete(..., tools=...)``; this method forwards the tool
+        descriptors to keep the ``chat`` code path consistent.
+
         Args:
             messages: OpenAI-compatible message list.
             tools: Optional tool descriptors.
@@ -329,43 +336,15 @@ class VertexAIClient(AbstractLLMClient):
         Returns:
             ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
             failures.
-
-        Raises:
-            LLMAuthenticationError: When credentials are invalid.
-            AIError: For unexpected infrastructure failures.
         """
-        active_model = model or self.config.model
-        contents = messages_to_gemini(messages)
-        payload: dict[str, Any] = {
-            "contents": contents,
-            "generationConfig": {"temperature": temperature},
-        }
-        if max_tokens is not None:
-            payload["generationConfig"]["maxOutputTokens"] = max_tokens
-        inject_thinking_config(payload["generationConfig"], self.config)
-        if tools:
-            payload["tools"] = [
-                {"functionDeclarations": [tool_to_gemini_function(t) for t in tools]}
-            ]
-
-        path = f"{self._model_path(active_model)}:generateContent"
-        try:
-            http = await self._get_http()
-            response = await http.post(path, json=payload)
-            response.raise_for_status()
-        except (
-            HttpStatusError,
-            OSError,
-            ConnectionError,
-            TimeoutError,
-            RuntimeError,
-        ) as exc:
-            return self._handle_error_as_result(exc)
-
-        try:
-            return Ok(parse_gemini_response_with_tools(response.json, active_model))
-        except AIError as exc:
-            return Err(LLMContentFilterError(str(exc)))
+        return await self._do_complete(
+            messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            **kwargs,
+        )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Probe Vertex AI with a minimal generateContent request.

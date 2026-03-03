@@ -9,7 +9,112 @@ pytest.importorskip("ollama")
 
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.clients.ollama import OllamaClient
-from lexigram.ai.llm.types import ChatMessage, Role, StreamChunk
+from lexigram.ai.llm.types import ChatMessage, FunctionCall, Role, StreamChunk, ToolCall
+from lexigram.contracts.ai.agents import ToolDefinition
+
+
+@pytest.mark.asyncio
+async def test_tool_calling_complete(monkeypatch):
+    """Native tool definitions are converted and tool calls parsed."""
+    config = ClientConfig(provider="ollama", model="m")
+    client = OllamaClient(config)
+
+    tool = ToolDefinition(
+        name="search_knowledge",
+        description="Search the knowledge base.",
+        parameters={
+            "type": "object",
+            "properties": {"topic": {"type": "string"}},
+            "required": ["topic"],
+        },
+    )
+
+    captured = {}
+
+    async def fake_chat(**kwargs):
+        captured["params"] = kwargs
+        return {
+            "message": {
+                "content": "",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "search_knowledge",
+                            "arguments": {"topic": "providers"},
+                        }
+                    }
+                ],
+            },
+            "model": "m",
+            "prompt_eval_count": 10,
+            "eval_count": 3,
+        }
+
+    client.client = MagicMock()
+    client.client.chat = fake_chat
+
+    res = await client.complete(
+        [ChatMessage(role=Role.USER, content="List providers")],
+        tools=[tool],
+    )
+    assert res.is_ok()
+    completion = res.unwrap()
+
+    # tools were sent to Ollama in wire format (not raw ToolDefinition)
+    sent_tools = captured["params"]["tools"]
+    assert sent_tools == [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_knowledge",
+                "description": "Search the knowledge base.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"topic": {"type": "string"}},
+                    "required": ["topic"],
+                },
+            },
+        }
+    ]
+
+    # tool calls parsed back into framework ToolCalls
+    assert completion.tool_calls is not None
+    assert len(completion.tool_calls) == 1
+    tc = completion.tool_calls[0]
+    assert tc.function is not None
+    assert tc.function.name == "search_knowledge"
+    assert tc.function.arguments == {"topic": "providers"}
+
+
+@pytest.mark.asyncio
+async def test_tool_result_round_trip_is_serialized():
+    """Assistant tool calls are re-serialized back to Ollama wire format."""
+    config = ClientConfig(provider="ollama", model="m")
+    client = OllamaClient(config)
+
+    messages = [
+        ChatMessage(role=Role.USER, content="List providers"),
+        ChatMessage(
+            role=Role.ASSISTANT,
+            content="",
+            tool_calls=[
+                ToolCall(
+                    id="call-1",
+                    type="function",
+                    function=FunctionCall(name="search_knowledge", arguments={"topic": "providers"}),
+                )
+            ],
+        ),
+        ChatMessage(role=Role.TOOL, content="ollama, openai, anthropic"),
+    ]
+
+    serialized = await client._serialize_messages_for_ollama(messages)
+
+    assert serialized[0] == {"role": "user", "content": "List providers"}
+    assert serialized[1]["tool_calls"] == [
+        {"function": {"name": "search_knowledge", "arguments": {"topic": "providers"}}}
+    ]
+    assert serialized[2] == {"role": "tool", "content": "ollama, openai, anthropic"}
 
 
 @pytest.mark.asyncio
