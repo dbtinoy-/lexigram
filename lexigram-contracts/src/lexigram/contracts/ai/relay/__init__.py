@@ -1,11 +1,24 @@
-"""Relay conversion shared types — canonical IR and protocol enums.
+"""Relay conversion shared types — canonical IR, wire DTOs, protocol enums.
 
 These types are the contract between the wire DTOs and the converter
-engine in ``lexigram-ai-llm``.  Wire DTOs live in ``lexigram.contracts.ai.relay.dto``.
+engine in ``lexigram-ai-llm``.
 """
 
 from __future__ import annotations
 
+from lexigram.contracts.ai.relay.dto import (
+    ClaudeContent,
+    ClaudeMessage,
+    ClaudeRequest,
+    GeminiContent,
+    GeminiPart,
+    GeminiRequest,
+    OpenAIChatMessage,
+    OpenAIChatRequest,
+    ResponsesItem,
+    ResponsesRequest,
+    ResponsesResponse,
+)
 from lexigram.contracts.ai.relay.ir import (
     RelayError,
     RelayRequest,
@@ -20,6 +33,14 @@ from lexigram.contracts.ai.relay.types import (
 )
 
 __all__ = [
+    "ClaudeContent",
+    "ClaudeMessage",
+    "ClaudeRequest",
+    "GeminiContent",
+    "GeminiPart",
+    "GeminiRequest",
+    "OpenAIChatMessage",
+    "OpenAIChatRequest",
     "PassthroughData",
     "RelayConfig",
     "RelayError",
@@ -27,5 +48,8 @@ __all__ = [
     "RelayRequest",
     "RelayResponse",
     "RelayUsage",
+    "ResponsesItem",
+    "ResponsesRequest",
+    "ResponsesResponse",
     "StreamMode",
 ]
