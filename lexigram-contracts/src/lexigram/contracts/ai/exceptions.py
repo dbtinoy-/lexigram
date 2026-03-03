@@ -121,6 +121,20 @@ class ExtractionError(AIError):
         super().__init__(message, **kwargs)
 
 
+class RelayError(AIError):
+    """Base for relay conversion and gateway errors.
+
+    Extended in lexigram-ai-llm with specific conversion failures (e.g.
+    unsupported protocol, malformed wire payload).  Live alongside
+    ``LLMError`` and ``RAGError`` as an AI sub-domain base.
+    """
+
+    _code = "LEX_ERR_AI_003"
+
+    def __init__(self, message: str = "Relay error", **kwargs: Any) -> None:
+        super().__init__(message, **kwargs)
+
+
 class WorkflowError(AIError):
     """Base for workflow execution errors.
 
@@ -165,6 +179,7 @@ __all__ = [
     "GuardError",
     "LLMError",
     "RAGError",
+    "RelayError",
     "RetrieverError",
     "RunnableError",
     "SkillError",
