@@ -7,6 +7,24 @@ import pytest
 from lexigram.tasks.dlq.core import DeadLetterQueue
 from lexigram.tasks.execution.pool import WorkerPool
 from lexigram.tasks.execution.worker import TaskWorker
+from lexigram.tasks.middleware.core import (
+    TaskExecutionContext,
+    TaskMiddleware,
+)
+
+
+class _MarkerMiddleware(TaskMiddleware):
+    """Middleware that records that it ran on each worker."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def before_execute(self, ctx: TaskExecutionContext) -> None:
+        self.calls.append(ctx.job.id)
+
+
+async def _noop_handler(**kwargs) -> None:
+    return None
 
 
 @pytest.mark.asyncio
@@ -20,3 +38,28 @@ async def test_worker_pool_injects_default_dead_letter_queue() -> None:
         await pool.start()
 
     assert isinstance(pool.workers[0].dlq, DeadLetterQueue)
+
+
+@pytest.mark.asyncio
+async def test_worker_pool_forwards_middleware_pipeline() -> None:
+    """WorkerPool should propagate the middleware pipeline to its workers."""
+    from lexigram.tasks.backends.memory import MemoryTaskQueue
+    from lexigram.tasks.middleware.core import TaskMiddlewarePipeline
+
+    marker = _MarkerMiddleware()
+    pipeline = TaskMiddlewarePipeline()
+    pipeline.add(marker)
+
+    queue = MemoryTaskQueue()
+    pool = WorkerPool(
+        queue,
+        {"echo": _noop_handler},
+        size=1,
+        middleware_pipeline=pipeline,
+    )
+    await pool.start()
+    try:
+        assert len(pool.workers) == 1
+        assert marker in pool.workers[0]._middleware._middleware  # noqa: SLF001
+    finally:
+        await pool.stop()
