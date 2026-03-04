@@ -62,6 +62,7 @@ class TestGovernanceProviderLifecycle:
         """Verify boot() method has correct async signature."""
         prov = GovernanceProvider()
         container = MagicMock()
+        container.resolve_optional = AsyncMock(return_value=None)
 
         # Should complete without error
         await prov.boot(container)

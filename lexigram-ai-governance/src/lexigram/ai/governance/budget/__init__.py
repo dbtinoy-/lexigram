@@ -7,6 +7,7 @@ from lexigram.ai.governance.budget.tracker import (
     BudgetApproval,
     BudgetExceeded,
     BudgetTracker,
+    SlidingWindowCounter,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "BudgetApproval",
     "BudgetExceeded",
     "BudgetTracker",
+    "SlidingWindowCounter",
 ]

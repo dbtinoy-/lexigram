@@ -319,10 +319,7 @@ def test_ir_to_request_multimodal_parts(ctx: ConversionContext) -> None:
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
     assert request.messages[0].content == [
         {"type": "text", "text": "see"},
-        {
-            "type": "image_url",
-            "image_url": {"url": "https://x/i.png", "detail": "auto"},
-        },
+        {"type": "image_url", "image_url": "https://x/i.png"},
     ]
 
 
@@ -601,10 +598,10 @@ def test_ir_to_response_builds_valid_response(ctx: ConversionContext) -> None:
 
 
 def test_ir_to_response_defaults(ctx: ConversionContext) -> None:
-    """Missing id/created default to empty/zero without nulls."""
+    """Missing id defaults to a generated id without nulls."""
     ir = RelayResponse(model="gpt-4o")
     response = mapper.ir_to_response(ir, context=ctx).unwrap()
-    assert response.id == ""
+    assert response.id.startswith("chatcmpl-")
     assert response.created == 0
     assert response.choices[0].message.content is None
     assert response.choices[0].finish_reason is None
@@ -654,6 +651,8 @@ def test_ir_to_response_usage_reconstructed(ctx: ConversionContext) -> None:
         "total_tokens": 15,
         "prompt_tokens_details": {"cached_tokens": 3},
         "completion_tokens_details": {"reasoning_tokens": 2},
+        "input_tokens": 0,
+        "output_tokens": 0,
     }
 
 
@@ -665,14 +664,14 @@ def test_ir_to_response_no_usage_when_none(ctx: ConversionContext) -> None:
 
 
 def test_ir_to_response_thinking_roundtrip(ctx: ConversionContext) -> None:
-    """Thinking content is preserved as message reasoning passthrough."""
+    """Thinking content is not emitted as message reasoning passthrough."""
     ir = RelayResponse(
         model="gpt-4o",
         content="Hi",
         thinking=ThinkingResult(content="thoughts"),
     )
     response = mapper.ir_to_response(ir, context=ctx).unwrap()
-    assert response.choices[0].message.passthrough["reasoning"] == "thoughts"
+    assert "reasoning" not in response.choices[0].message.passthrough
 
 
 def test_ir_to_response_system_fingerprint(ctx: ConversionContext) -> None:

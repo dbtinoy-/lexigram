@@ -8,6 +8,10 @@ performs no HTTP, channel selection, billing, or model selection.
 
 from __future__ import annotations
 
+from pkgutil import extend_path
+
+__path__ = extend_path(__path__, __name__)
+
 from lexigram.ai.relay.context import ConversionContext
 from lexigram.ai.relay.engine import (
     RelayConverterEngine,

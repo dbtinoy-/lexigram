@@ -45,11 +45,14 @@ class ImageBase64Part:
     Attributes:
         data: Raw base64-encoded bytes (no ``data:`` prefix).
         media_type: MIME type, e.g. ``"image/jpeg"``.
+        detail: OpenAI vision detail level, or ``""`` when the source
+            carries none (e.g. Claude-sourced images).
         type: Discriminator field, always ``"image_base64"``.
     """
 
     data: str
     media_type: str
+    detail: str = ""
     type: Literal["image_base64"] = field(default="image_base64", init=False)
 
 

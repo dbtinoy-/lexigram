@@ -67,7 +67,11 @@ def _message_start(
             role=role,
             model=state.model,
             content=[],
-            usage=_usage_to_wire(state.usage) if state.usage is not None else None,
+            usage=(
+                _usage_to_wire(state.usage)
+                if state.usage is not None
+                else ClaudeUsage()
+            ),
         ),
     )
 
@@ -292,7 +296,7 @@ def _finish_events(
     events.append(
         ClaudeStreamEvent(
             type="message_delta",
-            stop_reason=reason,
+            delta={"stop_reason": reason},
             usage=usage,
         )
     )
@@ -301,9 +305,7 @@ def _finish_events(
 
 
 def _usage_events(state: StreamSnapshot, delta: StreamDelta) -> list[ClaudeStreamEvent]:
-    if state.finish_reason is not None or delta.usage is None:
-        return []
-    return [ClaudeStreamEvent(type="message_delta", usage=_usage_to_wire(delta.usage))]
+    return []
 
 
 def claude_emitter(
@@ -322,7 +324,7 @@ def claude_emitter(
     if delta.kind == "role":
         events: list[ClaudeStreamEvent] = []
         if not _started_pre(state, delta):
-            events.append(_message_start(state, role=delta.role or "assistant"))
+            events.append(_message_start(state))
         return Ok(tuple(events))
     if delta.kind == "content":
         events = []

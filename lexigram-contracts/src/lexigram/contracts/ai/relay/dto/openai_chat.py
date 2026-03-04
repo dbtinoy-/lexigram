@@ -41,8 +41,8 @@ class OpenAIChatMessage:
     def to_dict(self) -> dict[str, Any]:
         """Serialize to wire dict, omitting ``None`` optional fields."""
         data: dict[str, Any] = {**self.passthrough, "role": self.role}
-        if self.content is not None:
-            data["content"] = self.content
+
+        data["content"] = self.content
         if self.name is not None:
             data["name"] = self.name
         if self.tool_call_id is not None:
@@ -121,8 +121,7 @@ class OpenAIChatRequest:
             data["max_tokens"] = self.max_tokens
         if self.max_completion_tokens is not None:
             data["max_completion_tokens"] = self.max_completion_tokens
-        if self.stream:
-            data["stream"] = True
+        data["stream"] = self.stream
         if self.stream_options is not None:
             data["stream_options"] = self.stream_options
         if self.tools is not None:

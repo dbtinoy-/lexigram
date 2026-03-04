@@ -23,7 +23,7 @@ class TestResponsesDto:
     def test_request_to_dict(self) -> None:
         request = ResponsesRequest(model="gpt-4o", input=[])
         data = request.to_dict()
-        assert data == {"model": "gpt-4o", "input": []}
+        assert data == {"model": "gpt-4o", "input": [], "stream": False}
 
     def test_response_to_dict(self) -> None:
         response = ResponsesResponse(
@@ -83,7 +83,7 @@ class TestResponsesDto:
 
     def test_usage_derives_total(self) -> None:
         usage = ResponsesUsage(input_tokens=2, output_tokens=3)
-        assert usage.total_tokens == 5
+        assert usage.to_dict()["total_tokens"] == 5
 
 
 class TestResponsesEvents:
@@ -155,9 +155,10 @@ class TestResponsesEvents:
             response=ResponsesResponse(id="resp_1", model="gpt-4o", output=[]),
         )
         data = event.to_dict()
-        assert data["type"] == "response.completed"
-        assert data["sequence_number"] == 9
-        assert data["response"]["model"] == "gpt-4o"
+        assert data["Type"] == "response.completed"
+        assert data["Payload"]["type"] == "response.completed"
+        assert data["Payload"]["sequence_number"] == 9
+        assert data["Payload"]["response"]["model"] == "gpt-4o"
 
     def test_unknown_event_fields_retained(self) -> None:
         event = ResponsesEvent.from_dict(

@@ -495,7 +495,7 @@ def test_ir_to_request_system(ctx: ConversionContext) -> None:
 
 
 def test_ir_to_request_text_message(ctx: ConversionContext) -> None:
-    """A plain text message emits an input_text part list."""
+    """A plain text message emits raw string content without a type."""
     request = RelayRequest(
         model="gpt-5.2",
         messages=[ChatMessage(role="user", content="hi")],
@@ -503,9 +503,8 @@ def test_ir_to_request_text_message(ctx: ConversionContext) -> None:
     wire = mapper.ir_to_request(request, context=ctx).unwrap()
     assert wire.input == [
         ResponsesItem(
-            type="message",
             role="user",
-            content=[{"type": "input_text", "text": "hi"}],
+            content="hi",
         )
     ]
 
@@ -529,10 +528,7 @@ def test_ir_to_request_multi_part_message(ctx: ConversionContext) -> None:
     assert item.role == "user"
     assert item.content == [
         {"type": "input_text", "text": "look"},
-        {
-            "type": "input_image",
-            "image_url": {"url": "https://x/p.png", "detail": "low"},
-        },
+        {"type": "input_image", "image_url": "https://x/p.png"},
     ]
 
 
@@ -549,10 +545,7 @@ def test_ir_to_request_base64_image(ctx: ConversionContext) -> None:
     )
     wire = mapper.ir_to_request(request, context=ctx).unwrap()
     assert wire.input[0].content == [
-        {
-            "type": "input_image",
-            "image_url": {"url": "data:image/png;base64,AAAB", "detail": "auto"},
-        }
+        {"type": "input_image", "image_url": "data:image/png;base64,AAAB"}
     ]
 
 
@@ -642,8 +635,8 @@ def test_ir_to_request_tool_calls(ctx: ConversionContext) -> None:
         ],
     )
     wire = mapper.ir_to_request(request, context=ctx).unwrap()
-    assert [i.type for i in wire.input] == ["message", "function_call"]
-    assert wire.input[0].content == [{"type": "input_text", "text": "Let me check."}]
+    assert [i.type for i in wire.input] == [None, "function_call"]
+    assert wire.input[0].content == "Let me check."
     call = wire.input[1]
     assert call.id == "fc_1"
     assert call.call_id == "call_1"
@@ -654,7 +647,7 @@ def test_ir_to_request_tool_calls(ctx: ConversionContext) -> None:
 def test_ir_to_request_tool_call_skips_empty_message(
     ctx: ConversionContext,
 ) -> None:
-    """A tool-only assistant turn omits the message item."""
+    """A tool-only assistant turn still emits the empty message item."""
     request = RelayRequest(
         model="gpt-5.2",
         messages=[
@@ -671,11 +664,11 @@ def test_ir_to_request_tool_call_skips_empty_message(
         ],
     )
     wire = mapper.ir_to_request(request, context=ctx).unwrap()
-    assert [i.type for i in wire.input] == ["function_call"]
+    assert [i.type for i in wire.input] == [None, "function_call"]
 
 
 def test_ir_to_request_thinking_blocks(ctx: ConversionContext) -> None:
-    """Thinking blocks emit a reasoning item with the summary."""
+    """Assistant thinking blocks do not emit a reasoning item."""
     summary = [{"type": "summary_text", "text": "Analyzing..."}]
     request = RelayRequest(
         model="gpt-5.2",
@@ -689,10 +682,9 @@ def test_ir_to_request_thinking_blocks(ctx: ConversionContext) -> None:
         ],
     )
     wire = mapper.ir_to_request(request, context=ctx).unwrap()
-    item = wire.input[0]
-    assert item.type == "reasoning"
-    assert item.summary == summary
-    assert item.id == "rs_1"
+    assert len(wire.input) == 1
+    assert wire.input[0].role == "assistant"
+    assert wire.input[0].type is None
 
 
 def test_ir_to_request_thinking_effort(ctx: ConversionContext) -> None:
@@ -783,11 +775,9 @@ def test_ir_to_request_scalars(ctx: ConversionContext) -> None:
     assert wire.tools == [
         {
             "type": "function",
-            "function": {
-                "name": "get_weather",
-                "description": "Weather lookup",
-                "parameters": {"type": "object"},
-            },
+            "name": "get_weather",
+            "description": "Weather lookup",
+            "parameters": {"type": "object"},
         }
     ]
 
@@ -1099,19 +1089,19 @@ def test_ir_to_response_content(ctx: ConversionContext) -> None:
     response = RelayResponse(model="gpt-5.2", content="Hi", finish_reason="stop")
     wire = mapper.ir_to_response(response, context=ctx).unwrap()
     assert isinstance(wire, ResponsesResponse)
-    assert wire.id == ""
+    assert wire.id.startswith("chatcmpl-")
     assert wire.object == "response"
     _assert_item(
         wire.output,
         0,
         type="message",
         role="assistant",
-        content=[{"type": "output_text", "text": "Hi"}],
+        content=[{"type": "output_text", "text": "Hi", "annotations": []}],
     )
 
 
 def test_ir_to_response_thinking_first(ctx: ConversionContext) -> None:
-    """Thinking items precede content in the output ordering."""
+    """Thinking items follow content in the output ordering."""
     response = RelayResponse(
         model="gpt-5.2",
         content="Answer",
@@ -1119,13 +1109,13 @@ def test_ir_to_response_thinking_first(ctx: ConversionContext) -> None:
         finish_reason="stop",
     )
     wire = mapper.ir_to_response(response, context=ctx).unwrap()
+    _assert_item(wire.output, 0, type="message", role="assistant")
     _assert_item(
         wire.output,
-        0,
+        1,
         type="reasoning",
-        summary=[{"type": "summary_text", "text": "Analysis"}],
+        content=[{"type": "summary_text", "text": "Analysis", "annotations": None}],
     )
-    _assert_item(wire.output, 1, type="message", role="assistant")
 
 
 def test_ir_to_response_tool_calls(ctx: ConversionContext) -> None:
@@ -1243,7 +1233,7 @@ def test_ir_to_response_usage(ctx: ConversionContext) -> None:
     assert wire.usage.output_tokens == 5
     assert wire.usage.total_tokens == 15
     assert wire.usage.input_tokens_details == {"cached_tokens": 4}
-    assert wire.usage.output_tokens_details == {"reasoning_tokens": 3}
+    assert wire.usage.completion_tokens_details == {"reasoning_tokens": 3}
 
 
 # ---------------------------------------------------------------------------

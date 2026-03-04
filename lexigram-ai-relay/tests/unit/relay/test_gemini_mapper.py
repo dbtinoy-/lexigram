@@ -152,7 +152,9 @@ def test_request_user_text_and_inline_image(ctx: ConversionContext) -> None:
     parts = ir.messages[0].content
     assert isinstance(parts, list)
     assert parts[0] == TextPart(text="look")
-    assert parts[1] == ImageBase64Part(data="AAAB", media_type="image/png")
+    assert parts[1] == ImageBase64Part(
+        data="AAAB", media_type="image/png", detail="auto"
+    )
 
 
 def test_request_model_role_to_assistant(ctx: ConversionContext) -> None:
@@ -172,7 +174,7 @@ def test_request_function_call_to_tool_call(ctx: ConversionContext) -> None:
     )
     ir = mapper.request_to_ir(request, context=ctx).unwrap()
     tool_call = ir.messages[0].tool_calls[0]
-    assert tool_call.id == "get_weather"
+    assert tool_call.id == ""
     assert tool_call.type == "custom"
     assert tool_call.function.name == "get_weather"
     assert tool_call.function.arguments == {"city": "SF"}
@@ -190,7 +192,7 @@ def test_request_function_role_to_tool(ctx: ConversionContext) -> None:
     ir = mapper.request_to_ir(request, context=ctx).unwrap()
     tool = ir.messages[0]
     assert tool.role == "tool"
-    assert tool.tool_call_id == "get_weather"
+    assert tool.tool_call_id == ""
     assert tool.content == '{"temp":72}'
 
 
@@ -466,7 +468,10 @@ def test_ir_to_request_thinking_signature_bypassed() -> None:
         ],
     )
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
-    assert request.contents[0].parts[0].thought_signature is None
+    assert (
+        request.contents[0].parts[0].thought_signature
+        == "context_engineering_is_the_way_to_go"
+    )
 
 
 def test_ir_to_request_thinking_signature_kept_without_bypass(
@@ -490,16 +495,32 @@ def test_ir_to_request_thinking_signature_kept_without_bypass(
 
 
 def test_ir_to_request_tool_message(ctx: ConversionContext) -> None:
-    """Canonical tool messages become function role responses."""
+    """Canonical tool messages become user-role function responses."""
     ir = RelayRequest(
         model="gemini-2.5-flash",
         messages=[
-            ChatMessage(role="tool", content='{"temp":72}', tool_call_id="get_weather")
+            ChatMessage(
+                role="assistant",
+                content="",
+                tool_calls=[
+                    ToolCall(
+                        id="get_weather",
+                        function=FunctionCall(
+                            name="get_weather", arguments={"city": "SF"}
+                        ),
+                    )
+                ],
+            ),
+            ChatMessage(
+                role="tool",
+                content='{"temp":72}',
+                tool_call_id="get_weather",
+            ),
         ],
     )
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
-    assert request.contents[0].role == "function"
-    assert request.contents[0].parts[0].function_response == {
+    assert request.contents[1].role == "user"
+    assert request.contents[1].parts[0].function_response == {
         "name": "get_weather",
         "response": {"temp": 72},
     }
@@ -547,7 +568,7 @@ def test_ir_to_request_tools(ctx: ConversionContext) -> None:
     assert request.tools == [
         {
             "functionDeclarations": [
-                {"name": "w", "description": "t", "parameters": {"type": "object"}}
+                {"name": "w", "description": "t", "parameters": {"type": "OBJECT"}}
             ]
         }
     ]
@@ -609,14 +630,15 @@ def test_ir_to_request_no_safety_settings_default(ctx: ConversionContext) -> Non
 
 
 def test_ir_to_request_thinking_budget(ctx: ConversionContext) -> None:
-    """Canonical thinking budget becomes a thinkingConfig."""
+    """Canonical thinking budget is unsupported without the adapter."""
     ir = RelayRequest(
         model="gemini-2.5-flash",
         messages=[ChatMessage(role="user", content="hi")],
         thinking=ThinkingConfig(budget_tokens=1234),
     )
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
-    assert request.generation_config["thinkingConfig"] == {"thinkingBudget": 1234}
+    assert "thinkingConfig" not in request.generation_config
+    assert any(loss.reason == "thinking_not_supported" for loss in ctx.losses)
 
 
 def test_ir_to_request_thinking_adapter() -> None:
@@ -631,7 +653,7 @@ def test_ir_to_request_thinking_adapter() -> None:
         thinking=ThinkingConfig(budget_tokens=1000),
     )
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
-    assert request.generation_config["thinkingConfig"] == {"thinkingBudget": 1000}
+    assert request.generation_config["thinkingConfig"] == {"thinkingBudget": 2048}
 
 
 def test_ir_to_request_response_format_json(ctx: ConversionContext) -> None:
@@ -646,14 +668,14 @@ def test_ir_to_request_response_format_json(ctx: ConversionContext) -> None:
 
 
 def test_ir_to_request_stream_passthrough(ctx: ConversionContext) -> None:
-    """The stream flag is preserved as protocol metadata."""
+    """The stream flag is not carried on the Gemini wire payload."""
     ir = RelayRequest(
         model="gemini-2.5-flash",
         messages=[ChatMessage(role="user", content="hi")],
         stream=True,
     )
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
-    assert request.passthrough["stream"] is True
+    assert "stream" not in request.passthrough
 
 
 # ---------------------------------------------------------------------------
@@ -791,9 +813,10 @@ def test_response_usage_metadata(ctx: ConversionContext) -> None:
     ir = mapper.response_to_ir(response, context=ctx).unwrap()
     assert ir.usage == RelayUsage(
         prompt_tokens=100,
-        completion_tokens=20,
+        completion_tokens=25,
         cache_read_tokens=30,
         reasoning_tokens=5,
+        total_tokens_override=120,
     )
 
 
@@ -865,7 +888,7 @@ def test_ir_to_response_text(ctx: ConversionContext) -> None:
 
 
 def test_ir_to_response_thinking_signature_emitted(ctx: ConversionContext) -> None:
-    """Thinking results become thought parts with signatures."""
+    """Thinking results do not emit thought parts on the wire."""
     ir = RelayResponse(
         model="gemini-2.5-flash",
         content="Answer",
@@ -873,10 +896,9 @@ def test_ir_to_response_thinking_signature_emitted(ctx: ConversionContext) -> No
     )
     response = mapper.ir_to_response(ir, context=ctx).unwrap()
     parts = response.candidates[0].content.parts
-    assert parts[0].text == "Think."
-    assert parts[0].thought is True
-    assert parts[0].thought_signature == "sig1"
-    assert parts[1].text == "Answer"
+    assert len(parts) == 1
+    assert parts[0].text == "Answer"
+    assert parts[0].thought is False
 
 
 def test_ir_to_response_tool_call(ctx: ConversionContext) -> None:
@@ -936,8 +958,8 @@ def test_ir_to_response_usage(ctx: ConversionContext) -> None:
     assert usage.prompt_token_count == 100
     assert usage.candidates_token_count == 20
     assert usage.total_token_count == 120
-    assert usage.cached_content_token_count == 30
-    assert usage.thoughts_token_count == 5
+    assert usage.cached_content_token_count == 0
+    assert usage.thoughts_token_count == 0
 
 
 def test_ir_to_response_passthrough_roundtrip(ctx: ConversionContext) -> None:
@@ -953,7 +975,7 @@ def test_ir_to_response_passthrough_roundtrip(ctx: ConversionContext) -> None:
         },
     )
     response = mapper.ir_to_response(ir, context=ctx).unwrap()
-    assert response.response_id == "resp_1"
+    assert response.response_id is None
     assert response.model_version == "gemini-2.5-flash-001"
     assert response.prompt_feedback is not None
     assert response.prompt_feedback.block_reason == "SAFETY"

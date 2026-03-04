@@ -40,7 +40,11 @@ class TestOpenAIChatDto:
             messages=[OpenAIChatMessage(role="user", content="hi")],
         )
         data = request.to_dict()
-        assert data == {"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}]}
+        assert data == {
+            "model": "gpt-4o",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+        }
 
     def test_request_to_dict_keeps_explicit_zero(self) -> None:
         request = OpenAIChatRequest(

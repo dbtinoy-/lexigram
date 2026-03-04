@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any, Protocol, runtime_checkable
+from uuid import uuid4
 
 from lexigram.ai.relay.context import ConversionContext
 from lexigram.contracts.ai.exceptions import RelayError
@@ -111,3 +112,8 @@ def warning_messages(losses: Sequence[RelayLoss]) -> tuple[str, ...]:
         f"{loss.field}: {loss.reason} ({loss.target.value}, {loss.severity})"
         for loss in losses
     )
+
+
+def new_uuid() -> str:
+    """Return a fresh 32-hex identifier (relaykit ``GetUUID`` shape)."""
+    return uuid4().hex

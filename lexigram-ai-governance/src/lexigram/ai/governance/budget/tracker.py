@@ -17,6 +17,7 @@ from dataclasses import dataclass
 import time
 from typing import TYPE_CHECKING, Any
 
+from lexigram.identity import ambient as identity
 from lexigram.logging import (
     get_logger,
 )
@@ -92,26 +93,30 @@ class BudgetAlertEvent:
 # ---------------------------------------------------------------------------
 
 
-class _SlidingWindowCounter:
+class SlidingWindowCounter:
     """Thread-safe sliding window counter for rate / budget enforcement.
 
     Uses a deque of ``(timestamp, value)`` tuples.  On each access,
-    entries older than *window_seconds* are dropped.
+    entries older than *window_seconds* are dropped.  Reservation
+    amounts (``reserve``/``release_reservation``) are held separately
+    from used entries and counted by ``total()`` so concurrent
+    reservations cannot oversubscribe a limit.
     """
 
     def __init__(self, window_seconds: float = 60.0) -> None:
         self._window = window_seconds
         self._entries: deque[tuple[float, float]] = deque()
+        self._reserved: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
     async def add(self, value: float) -> float:
-        """Record *value* and return the updated window total.
+        """Record *value* and return the updated used-window total.
 
         Args:
             value: Value to add (token count, cost in USD, etc.).
 
         Returns:
-            Sum of all values in the current window after adding *value*.
+            Sum of used values in the current window after adding *value*.
         """
         now = time.monotonic()
         async with self._lock:
@@ -120,11 +125,29 @@ class _SlidingWindowCounter:
             return sum(v for _, v in self._entries)
 
     async def total(self) -> float:
-        """Return the current window total without adding a new entry."""
+        """Return the window total including reservations."""
         now = time.monotonic()
         async with self._lock:
             self._prune(now)
-            return sum(v for _, v in self._entries)
+            used = sum(v for _, v in self._entries)
+            return used + sum(self._reserved.values())
+
+    async def reserve(self, reservation_id: str, value: float) -> None:
+        """Reserve *value* under *reservation_id* against the limit.
+
+        Args:
+            reservation_id: Identifier used to release the reservation.
+            value: Amount to hold (token count, cost in USD, etc.).
+        """
+        async with self._lock:
+            self._reserved[reservation_id] = (
+                self._reserved.get(reservation_id, 0.0) + value
+            )
+
+    async def release_reservation(self, reservation_id: str) -> None:
+        """Release a reservation; harmless when unknown."""
+        async with self._lock:
+            self._reserved.pop(reservation_id, None)
 
     def _prune(self, now: float) -> None:
         cutoff = now - self._window
@@ -184,8 +207,8 @@ class BudgetTracker:
         self._event_bus = event_bus
 
         # Counters keyed by ``"<model>:<tenant_id>"`` (or ``"<model>:global"``)
-        self._token_counters: dict[str, _SlidingWindowCounter] = {}
-        self._cost_counters: dict[str, _SlidingWindowCounter] = {}
+        self._token_counters: dict[str, SlidingWindowCounter] = {}
+        self._cost_counters: dict[str, SlidingWindowCounter] = {}
 
         self._tpm_window = window_seconds
         self._cost_window = 3600.0  # 1-hour sliding window for cost
@@ -195,14 +218,14 @@ class BudgetTracker:
     def _counter_key(self, model: str, tenant_id: str | None) -> str:
         return f"{model}:{tenant_id or 'global'}"
 
-    def _get_token_counter(self, key: str) -> _SlidingWindowCounter:
+    def _get_token_counter(self, key: str) -> SlidingWindowCounter:
         if key not in self._token_counters:
-            self._token_counters[key] = _SlidingWindowCounter(self._tpm_window)
+            self._token_counters[key] = SlidingWindowCounter(self._tpm_window)
         return self._token_counters[key]
 
-    def _get_cost_counter(self, key: str) -> _SlidingWindowCounter:
+    def _get_cost_counter(self, key: str) -> SlidingWindowCounter:
         if key not in self._cost_counters:
-            self._cost_counters[key] = _SlidingWindowCounter(self._cost_window)
+            self._cost_counters[key] = SlidingWindowCounter(self._cost_window)
         return self._cost_counters[key]
 
     async def check_budget(
@@ -381,10 +404,102 @@ class BudgetTracker:
         for limit_type in ("tpm", "cost"):
             self._alerted_thresholds.pop(f"{key}:{limit_type}", None)
 
+    async def reserve(
+        self,
+        model: str,
+        estimated_tokens: int,
+        *,
+        estimated_cost: float = 0.0,
+        tenant_id: str | None = None,
+    ) -> Result[str, BudgetExceeded]:
+        """Atomically check limits and reserve capacity for a request.
+
+        Reserved amounts count against the sliding window so concurrent
+        requests cannot oversubscribe a limit.  Call
+        :meth:`release_reservation` after the request settles.
+
+        Args:
+            model: Model identifier.
+            estimated_tokens: Estimated token count for the request.
+            estimated_cost: Estimated USD cost for the request.
+            tenant_id: Optional tenant identifier.
+
+        Returns:
+            ``Ok(reservation_id)`` on success, ``Err(BudgetExceeded)``
+            when a limit would be exceeded.
+        """
+        key = self._counter_key(model, tenant_id)
+
+        if self._tpm_limit is not None:
+            current_tpm = await self._get_token_counter(key).total()
+            if current_tpm + estimated_tokens > self._tpm_limit:
+                logger.warning(
+                    "budget_tracker_reserve_tpm_exceeded",
+                    model=model,
+                    current_tpm=current_tpm,
+                    tpm_limit=self._tpm_limit,
+                    tenant_id=tenant_id,
+                )
+                return Err(
+                    BudgetExceeded(
+                        limit_type="tpm",
+                        current=current_tpm,
+                        limit=float(self._tpm_limit),
+                        model=model,
+                        tenant_id=tenant_id,
+                    )
+                )
+
+        if self._cost_limit is not None and estimated_cost > 0:
+            current_cost = await self._get_cost_counter(key).total()
+            if current_cost + estimated_cost > self._cost_limit:
+                logger.warning(
+                    "budget_tracker_reserve_cost_exceeded",
+                    model=model,
+                    current_cost=current_cost,
+                    cost_limit=self._cost_limit,
+                    tenant_id=tenant_id,
+                )
+                return Err(
+                    BudgetExceeded(
+                        limit_type="cost",
+                        current=current_cost,
+                        limit=self._cost_limit,
+                        model=model,
+                        tenant_id=tenant_id,
+                    )
+                )
+
+        reservation_id = identity.new_uuid()
+        await self._get_token_counter(key).reserve(
+            reservation_id, float(estimated_tokens)
+        )
+        await self._get_cost_counter(key).reserve(reservation_id, estimated_cost)
+        return Ok(reservation_id)
+
+    async def release_reservation(
+        self,
+        model: str,
+        reservation_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Release a previously reserved amount; harmless when unknown.
+
+        Args:
+            model: Model identifier the reservation was made for.
+            reservation_id: Reservation identifier from :meth:`reserve`.
+            tenant_id: Optional tenant identifier.
+        """
+        key = self._counter_key(model, tenant_id)
+        await self._get_token_counter(key).release_reservation(reservation_id)
+        await self._get_cost_counter(key).release_reservation(reservation_id)
+
 
 __all__ = [
     "BudgetAlertEvent",
     "BudgetApproval",
     "BudgetExceeded",
     "BudgetTracker",
+    "SlidingWindowCounter",
 ]

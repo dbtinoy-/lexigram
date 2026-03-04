@@ -134,7 +134,7 @@ def serialize_message_for_openai(msg: ChatMessage) -> dict[str, Any]:
         OpenAI message dict.
     """
     result: dict[str, Any] = {
-        "role": msg.role.value,
+        "role": msg.role.value if hasattr(msg.role, "value") else msg.role,
         "content": serialize_content_for_openai(msg.content),
     }
     if msg.name:

@@ -9,7 +9,12 @@ import pytest
 from lexigram.ai.governance.config import GovernanceConfig
 from lexigram.ai.governance.di.provider import GovernanceProvider
 from lexigram.ai.governance.module import GovernanceModule
-from lexigram.contracts.ai.governance import AIGovernanceProtocol, CostTrackingProtocol
+from lexigram.ai.governance.relay_billing.models import RelayBillingConfig
+from lexigram.contracts.ai.governance import (
+    AIGovernanceProtocol,
+    CostTrackingProtocol,
+    RelayBillingProtocol,
+)
 from lexigram.di.module import DynamicModule
 
 
@@ -55,8 +60,15 @@ class TestGovernanceModule:
 
         await provider.register(container)
 
-        assert container.singleton.call_count == 1
-        service_type, config = container.singleton.call_args.args
+        assert container.singleton.call_count == 3
+        expected = [
+            GovernanceConfig,
+            RelayBillingConfig,
+            RelayBillingProtocol,
+        ]
+        for idx, want in enumerate(expected):
+            assert container.singleton.call_args_list[idx].args[0] is want
+        service_type, config = container.singleton.call_args_list[0].args
         assert service_type is GovernanceConfig
         assert isinstance(config, GovernanceConfig)
         assert config.enabled is False
@@ -75,7 +87,7 @@ class TestGovernanceModule:
 
         await provider.register(container)
 
-        service_type, resolved_config = container.singleton.call_args.args
+        service_type, resolved_config = container.singleton.call_args_list[0].args
         assert service_type is GovernanceConfig
         assert resolved_config is config
 

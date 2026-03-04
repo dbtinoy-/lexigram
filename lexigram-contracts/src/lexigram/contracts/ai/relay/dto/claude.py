@@ -55,7 +55,10 @@ class ClaudeContent:
         if self.signature is not None:
             data["signature"] = self.signature
         if self.tool_use_id is not None:
-            data["tool_use_id"] = self.tool_use_id
+            if self.type == "tool_result":
+                data["tool_use_id"] = self.tool_use_id
+            else:
+                data["id"] = self.tool_use_id
         if self.name is not None:
             data["name"] = self.name
         if self.input is not None:
@@ -63,7 +66,13 @@ class ClaudeContent:
         if self.image_source is not None:
             data["source"] = self.image_source
         if self.tool_result_content is not None:
-            data["content"] = [c.to_dict() for c in self.tool_result_content]
+            texts = [
+                block.text for block in self.tool_result_content if block.type == "text"
+            ]
+            if len(self.tool_result_content) == 1 and texts[0] is not None:
+                data["content"] = texts[0]
+            else:
+                data["content"] = [c.to_dict() for c in self.tool_result_content]
         return data
 
     @classmethod
@@ -74,25 +83,36 @@ class ClaudeContent:
             "text",
             "thinking",
             "signature",
+            "id",
             "tool_use_id",
             "name",
             "input",
             "source",
             "content",
         }
+        block_type = data.get("type", "text")
+        content = data.get("content")
         return cls(
-            type=data.get("type", "text"),
+            type=block_type,
             text=data.get("text"),
             thinking=data.get("thinking"),
             signature=data.get("signature"),
-            tool_use_id=data.get("tool_use_id"),
+            tool_use_id=(
+                data.get("tool_use_id")
+                if block_type == "tool_result"
+                else data.get("id")
+            ),
             name=data.get("name"),
             input=data.get("input"),
             image_source=data.get("source"),
             tool_result_content=(
-                [ClaudeContent.from_dict(c) for c in data["content"]]
-                if isinstance(data.get("content"), list)
-                else None
+                [ClaudeContent.from_dict(c) for c in content if isinstance(c, dict)]
+                if isinstance(content, list)
+                else (
+                    [ClaudeContent(type="text", text=content)]
+                    if isinstance(content, str)
+                    else None
+                )
             ),
             passthrough={k: v for k, v in data.items() if k not in known},
         )
@@ -104,14 +124,16 @@ class ClaudeMessage:
 
     Attributes:
         role: ``user`` or ``assistant``.
-        content: List of content blocks.
+        content: Plain text, or a list of content blocks.
     """
 
     role: str
-    content: list[ClaudeContent]
+    content: str | list[ClaudeContent]
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to wire dict."""
+        if isinstance(self.content, str):
+            return {"role": self.role, "content": self.content}
         return {"role": self.role, "content": [c.to_dict() for c in self.content]}
 
     @classmethod
@@ -149,7 +171,7 @@ class ClaudeRequest:
     model: str
     max_tokens: int
     messages: list[ClaudeMessage]
-    system: str | None = None
+    system: str | list[dict[str, Any]] | None = None
     temperature: float | None = None
     top_p: float | None = None
     stream: bool = False
@@ -256,11 +278,9 @@ class ClaudeUsage:
             **self.passthrough,
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
+            "cache_creation_input_tokens": self.cache_creation_input_tokens,
+            "cache_read_input_tokens": self.cache_read_input_tokens,
         }
-        if self.cache_creation_input_tokens:
-            data["cache_creation_input_tokens"] = self.cache_creation_input_tokens
-        if self.cache_read_input_tokens:
-            data["cache_read_input_tokens"] = self.cache_read_input_tokens
         return data
 
     @classmethod

@@ -138,8 +138,16 @@ class RelayConversionContext:
             lookup by model.
         preserve_thinking_suffix: Thinking-suffix bypass policy lookup.
         media_resolver: Resolver for URL media, or ``None``.
+        upstream_model: Host model name substituted when the source
+            payload carries no model (e.g. Gemini responses).  Empty
+            string disables substitution.
         losses: Per-conversion loss records appended by mappers; copied
             into the ``RelayConvertResult`` by the engine.
+        request_id: Caller-supplied request id stamped on losses and
+            errors during conversion.  Empty string when not provided.
+        channel_name: Name of the selected relay channel, used for
+            channel-aware adaptation and audit.  Empty string when not
+            provided.
     """
 
     options: RelayOptions = field(default_factory=RelayOptions)
@@ -148,4 +156,7 @@ class RelayConversionContext:
     supports_image_generation: SupportsImageGenerationCallback | None = None
     preserve_thinking_suffix: PreserveThinkingSuffixCallback | None = None
     media_resolver: MediaResolverProtocol | None = None
+    upstream_model: str = ""
     losses: list[RelayLoss] = field(default_factory=list)
+    request_id: str = ""
+    channel_name: str = ""

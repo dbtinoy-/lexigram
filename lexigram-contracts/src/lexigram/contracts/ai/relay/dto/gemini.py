@@ -403,6 +403,10 @@ class GeminiUsageMetadata:
         total_token_count: Total tokens.
         cached_content_token_count: Cached input tokens, or ``None``.
         thoughts_token_count: Thinking tokens, or ``None``.
+        tool_use_prompt_token_count: Tokens spent on tool-use prompt parts.
+        prompt_tokens_details: Per-input-category details, or ``None``.
+        tool_use_prompt_tokens_details: Per-tool-call details, or ``None``.
+        candidates_tokens_details: Per-output-category details, or ``None``.
         passthrough: Unknown fields preserved verbatim.
     """
 
@@ -411,6 +415,10 @@ class GeminiUsageMetadata:
     total_token_count: int = 0
     cached_content_token_count: int | None = None
     thoughts_token_count: int | None = None
+    tool_use_prompt_token_count: int = 0
+    prompt_tokens_details: Any = None
+    tool_use_prompt_tokens_details: Any = None
+    candidates_tokens_details: Any = None
     passthrough: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -418,8 +426,12 @@ class GeminiUsageMetadata:
         data: dict[str, Any] = {
             **self.passthrough,
             "promptTokenCount": self.prompt_token_count,
+            "toolUsePromptTokenCount": self.tool_use_prompt_token_count,
             "candidatesTokenCount": self.candidates_token_count,
             "totalTokenCount": self.total_token_count,
+            "promptTokensDetails": self.prompt_tokens_details,
+            "toolUsePromptTokensDetails": self.tool_use_prompt_tokens_details,
+            "candidatesTokensDetails": self.candidates_tokens_details,
         }
         if self.cached_content_token_count is not None:
             data["cachedContentTokenCount"] = self.cached_content_token_count
@@ -432,10 +444,14 @@ class GeminiUsageMetadata:
         """Build usage from a wire dict, capturing unknown keys."""
         known = {
             "promptTokenCount",
+            "toolUsePromptTokenCount",
             "candidatesTokenCount",
             "totalTokenCount",
             "cachedContentTokenCount",
             "thoughtsTokenCount",
+            "promptTokensDetails",
+            "toolUsePromptTokensDetails",
+            "candidatesTokensDetails",
         }
         return cls(
             prompt_token_count=data.get("promptTokenCount", 0),
@@ -443,6 +459,10 @@ class GeminiUsageMetadata:
             total_token_count=data.get("totalTokenCount", 0),
             cached_content_token_count=data.get("cachedContentTokenCount"),
             thoughts_token_count=data.get("thoughtsTokenCount"),
+            tool_use_prompt_token_count=data.get("toolUsePromptTokenCount", 0),
+            prompt_tokens_details=data.get("promptTokensDetails"),
+            tool_use_prompt_tokens_details=data.get("toolUsePromptTokensDetails"),
+            candidates_tokens_details=data.get("candidatesTokensDetails"),
             passthrough={k: v for k, v in data.items() if k not in known},
         )
 

@@ -16,7 +16,7 @@ from lexigram.ai.relay.finish_reasons import (
     responses_incomplete_from_finish,
     responses_status_from_finish,
 )
-from lexigram.ai.relay.mappers.base import record_loss
+from lexigram.ai.relay.mappers.base import new_uuid, record_loss
 from lexigram.contracts.ai.agents import ToolDefinition
 from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.llm import ChatMessage, FunctionCall, ToolCall
@@ -154,7 +154,7 @@ class OpenAIResponsesMapper:
                     messages.append(self._message_from_item(wire_item, context))
                 elif item_type == "function_call":
                     pending_tools.append(self._tool_from_item(wire_item))
-                    pending_ids.append(wire_item.id)
+                    pending_ids.append(wire_item.id or wire_item.call_id)
                 elif item_type == "function_call_output":
                     flush_tools()
                     messages.append(self._tool_result_from_item(wire_item))
@@ -181,6 +181,8 @@ class OpenAIResponsesMapper:
         metadata: dict[str, Any] = {}
         if payload.include is not None:
             metadata["include"] = list(payload.include)
+        if payload.max_output_tokens is not None:
+            metadata["max_tokens_kind"] = "max_completion_tokens"
         if web_search_calls:
             metadata["input_web_search_calls"] = web_search_calls
         reasoning = payload.reasoning
@@ -240,12 +242,7 @@ class OpenAIResponsesMapper:
                 if message.role == "tool":
                     items.append(self._tool_result_to_item(message))
                     continue
-                if message.thinking_blocks:
-                    items.extend(self._thinking_to_items(message))
-                    if message.tool_calls:
-                        items.extend(self._tool_calls_to_items(message, context))
-                        continue
-                elif message.tool_calls:
+                if message.tool_calls:
                     items.extend(self._tool_calls_to_items(message, context))
                     continue
                 items.append(self._message_to_item(message, context))
@@ -258,10 +255,13 @@ class OpenAIResponsesMapper:
                 "text",
                 "service_tier",
                 "input_web_search_calls",
+                "generation_config",
+                "safety_settings",
+                "tool_config",
             }
             return Ok(
                 ResponsesRequest(
-                    model=context.normalize_model(request.model),
+                    model=context.resolve_model(request.model),
                     input=items,
                     instructions=instructions,
                     tools=(
@@ -277,6 +277,7 @@ class OpenAIResponsesMapper:
                     reasoning=self._reasoning_from_ir(request, context),
                     text=self._text_from_ir(request),
                     service_tier=request.metadata.get("service_tier"),
+                    tool_choice=request.tool_choice,
                     passthrough={
                         **request.passthrough,
                         **{
@@ -431,38 +432,60 @@ class OpenAIResponsesMapper:
             error = passthrough.pop("error", None)
             object_type = passthrough.pop("object", "response")
             status, incomplete = self._status_from_finish(response)
+            response_id = response.id or f"chatcmpl-{new_uuid()}"
+            item_status = "incomplete" if status == "incomplete" else "completed"
             items: list[ResponsesItem] = []
-            if response.thinking is not None and response.thinking.content:
-                items.append(
-                    ResponsesItem(
-                        type="reasoning",
-                        id="rs_0",
-                        summary=[
-                            {
-                                "type": "summary_text",
-                                "text": response.thinking.content,
-                            }
-                        ],
-                    )
-                )
             content_parts: list[dict[str, Any]] = []
             if response.content:
-                content_parts.append({"type": "output_text", "text": response.content})
+                content_parts.append(
+                    {
+                        "type": "output_text",
+                        "text": response.content,
+                        "annotations": [],
+                    }
+                )
             if content_parts:
                 items.append(
                     ResponsesItem(
                         type="message",
                         role="assistant",
-                        id="msg_0",
+                        id=f"{response_id}_msg_0",
+                        status=item_status,
                         content=content_parts,
+                        quality="",
+                        size="",
                     )
                 )
-            for index, tool in enumerate(response.tool_calls):
+            if response.thinking is not None and response.thinking.content:
+                items.append(
+                    ResponsesItem(
+                        type="reasoning",
+                        id=f"{response_id}_reasoning_0",
+                        status=item_status,
+                        role="",
+                        content=[
+                            {
+                                "type": "summary_text",
+                                "text": response.thinking.content,
+                                "annotations": None,
+                            }
+                        ],
+                        quality="",
+                        size="",
+                    )
+                )
+            for tool in response.tool_calls:
+                call_id = tool.id or f"call_{new_uuid()}"
                 items.append(
                     ResponsesItem(
                         type="function_call",
-                        id=tool.id or f"fc_{index}",
-                        call_id=tool.id,
+                        id=call_id,
+                        status=item_status,
+                        role="",
+                        content=None,
+                        quality="",
+                        size="",
+                        call_id=call_id,
                         name=tool.function.name if tool.function else "",
                         arguments=_arguments_to_wire(
                             tool.function.arguments if tool.function else {}
@@ -480,8 +503,8 @@ class OpenAIResponsesMapper:
                 )
             return Ok(
                 ResponsesResponse(
-                    id=response.id or "",
-                    model=response.model,
+                    id=response_id,
+                    model=context.resolve_model(response.model),
                     output=items,
                     object=object_type,
                     created_at=response.created or 0,
@@ -550,7 +573,12 @@ class OpenAIResponsesMapper:
                         )
                     )
                 else:
-                    converted.append(TextPart(text=str(part)))
+                    converted.append(
+                        ImageUrlPart(
+                            url=str(image or ""),
+                            detail=cast("Any", part.get("detail", "auto") or "auto"),
+                        )
+                    )
             elif part_type == "input_file":
                 files.append(part)
                 record_loss(
@@ -573,7 +601,10 @@ class OpenAIResponsesMapper:
         self, wire_item: ResponsesItem, context: ConversionContext
     ) -> ChatMessage:
         """Convert a wire message item into a canonical message."""
-        parts, files = self._input_parts_to_ir(wire_item.content, context)
+        wire_content = wire_item.content
+        if isinstance(wire_content, str):
+            wire_content = [{"type": "input_text", "text": wire_content}]
+        parts, files = self._input_parts_to_ir(wire_content, context)
         metadata: dict[str, Any] = {}
         if wire_item.id:
             metadata["item_id"] = wire_item.id
@@ -634,12 +665,24 @@ class OpenAIResponsesMapper:
         self, message: ChatMessage, context: ConversionContext
     ) -> ResponsesItem:
         """Convert a canonical message into a wire message item."""
-        data: dict[str, Any] = {"type": "message", "role": message.role}
+        data: dict[str, Any] = {"role": message.role}
         if message.metadata and message.metadata.get("item_id"):
             data["id"] = message.metadata["item_id"]
-        parts = self._message_content_parts(message, context)
-        if parts:
-            data["content"] = parts
+        files = (message.metadata or {}).get("input_files")
+        has_files = isinstance(files, list) and any(
+            isinstance(item, dict) for item in files
+        )
+        if isinstance(message.content, str):
+            if message.content and not has_files:
+                data["content"] = message.content
+            elif message.content or has_files:
+                parts = self._message_content_parts(message, context)
+                if parts:
+                    data["content"] = parts
+        else:
+            parts = self._message_content_parts(message, context)
+            if parts:
+                data["content"] = parts
         return ResponsesItem(**data)
 
     @staticmethod
@@ -660,20 +703,14 @@ class OpenAIResponsesMapper:
                     parts.append(
                         {
                             "type": "input_image",
-                            "image_url": {
-                                "url": part.url,
-                                "detail": part.detail or "auto",
-                            },
+                            "image_url": part.url,
                         }
                     )
                 elif isinstance(part, ImageBase64Part):
                     parts.append(
                         {
                             "type": "input_image",
-                            "image_url": {
-                                "url": (f"data:{part.media_type};base64,{part.data}"),
-                                "detail": "auto",
-                            },
+                            "image_url": f"data:{part.media_type};base64,{part.data}",
                         }
                     )
                 else:
@@ -697,11 +734,13 @@ class OpenAIResponsesMapper:
         items: list[ResponsesItem] = []
         if self._message_content_parts(message, context):
             items.append(self._message_to_item(message, context))
+        else:
+            items.append(ResponsesItem(role="assistant", content=""))
         item_ids = (message.metadata or {}).get("function_call_item_ids")
         for index, tool in enumerate(message.tool_calls or []):
             data: dict[str, Any] = {
                 "type": "function_call",
-                "call_id": tool.id or "",
+                "call_id": tool.id or f"call_{index + 1}",
                 "name": tool.function.name if tool.function else "",
                 "arguments": _arguments_to_wire(
                     tool.function.arguments if tool.function else {}
@@ -735,9 +774,8 @@ class OpenAIResponsesMapper:
         data: dict[str, Any] = {
             "type": "function_call_output",
             "output": str(output),
+            "call_id": message.tool_call_id or "call_0",
         }
-        if message.tool_call_id:
-            data["call_id"] = message.tool_call_id
         if message.metadata and message.metadata.get("item_id"):
             data["id"] = message.metadata["item_id"]
         return ResponsesItem(**data)
@@ -794,15 +832,10 @@ class OpenAIResponsesMapper:
                     reason="non_function_tool_dropped",
                 )
                 continue
-            function = tool.get("function")
-            if not isinstance(function, dict):
-                record_loss(
-                    context,
-                    field=f"tools[{index}]",
-                    target=_TARGET,
-                    reason="missing_function",
-                )
-                continue
+            if isinstance(tool.get("function"), dict):
+                function = tool["function"]
+            else:
+                function = tool
             parameters = function.get("parameters", {})
             definitions.append(
                 ToolDefinition(
@@ -818,11 +851,9 @@ class OpenAIResponsesMapper:
         """Serialize a canonical tool definition as a wire tool dict."""
         return {
             "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.parameters,
-            },
+            "name": tool.name,
+            "description": tool.description,
+            "parameters": tool.parameters,
         }
 
     @staticmethod
@@ -965,20 +996,25 @@ class OpenAIResponsesMapper:
         if usage is None:
             return None
         input_details = usage.input_tokens_details
-        output_details = usage.output_tokens_details
+        completion_details = usage.completion_tokens_details
+        if not isinstance(completion_details, dict):
+            completion_details = usage.output_tokens_details
         return RelayUsage(
-            prompt_tokens=usage.input_tokens,
-            completion_tokens=usage.output_tokens,
+            prompt_tokens=usage.prompt_tokens or usage.input_tokens,
+            completion_tokens=usage.completion_tokens or usage.output_tokens,
+            total_tokens_override=usage.total_tokens or None,
             cache_read_tokens=(
                 int(input_details.get("cached_tokens", 0) or 0)
                 if isinstance(input_details, dict)
                 else 0
             ),
             reasoning_tokens=(
-                int(output_details.get("reasoning_tokens", 0) or 0)
-                if isinstance(output_details, dict)
+                int(completion_details.get("reasoning_tokens", 0) or 0)
+                if isinstance(completion_details, dict)
                 else 0
             ),
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
         )
 
     @staticmethod
@@ -991,16 +1027,15 @@ class OpenAIResponsesMapper:
             if usage.cache_read_tokens
             else None
         )
-        output_details = (
-            {"reasoning_tokens": usage.reasoning_tokens}
-            if usage.reasoning_tokens
-            else None
-        )
         return ResponsesUsage(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            prompt_tokens_details={"cached_tokens": 0},
+            completion_tokens_details={"reasoning_tokens": usage.reasoning_tokens},
             input_tokens=usage.prompt_tokens,
-            output_tokens=usage.completion_tokens,
             input_tokens_details=input_details,
-            output_tokens_details=output_details,
+            output_tokens=usage.completion_tokens,
         )
 
 

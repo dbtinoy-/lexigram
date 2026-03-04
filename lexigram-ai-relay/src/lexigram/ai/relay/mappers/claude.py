@@ -8,6 +8,7 @@ lifecycle task and reports ``unsupported_feature`` until then.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from lexigram.ai.relay.context import ConversionContext
@@ -21,7 +22,7 @@ from lexigram.ai.relay.finish_reasons import (
     FINISH_REASON_TO_WIRE,
     finish_reason_to_wire,
 )
-from lexigram.ai.relay.mappers.base import record_loss
+from lexigram.ai.relay.mappers.base import new_uuid, record_loss
 from lexigram.ai.relay.media import resolve_media
 from lexigram.contracts.ai.agents import ToolDefinition
 from lexigram.contracts.ai.exceptions import RelayError
@@ -77,7 +78,7 @@ def _tool_call_to_block(tool_call: ToolCall) -> ClaudeContent:
         arguments = {}
     return ClaudeContent(
         type="tool_use",
-        tool_use_id=tool_call.id,
+        tool_use_id=tool_call.id or f"call_{new_uuid()}",
         name=tool_call.function.name if tool_call.function else "",
         input=arguments,
     )
@@ -111,11 +112,12 @@ class ClaudeMapper:
                 )
             )
         try:
-            messages = [
-                chat_message
-                for index, message in enumerate(payload.messages)
-                for chat_message in self._message_to_ir(message, context, index)
-            ]
+            tool_names: dict[str, str] = {}
+            messages: list[ChatMessage] = []
+            for index, message in enumerate(payload.messages):
+                messages.extend(
+                    self._message_to_ir(message, context, index, tool_names)
+                )
             thinking: ThinkingConfig | None = None
             if isinstance(payload.thinking, dict):
                 if payload.thinking.get("type") == "enabled":
@@ -202,16 +204,37 @@ class ClaudeMapper:
                 if message.role == "system":
                     system_parts.append(self._text_from_content(message.content))
                     continue
-                claude_message = self._message_from_ir(message, context)
+                prepared = message
+                if message.role == "assistant" and message.tool_calls:
+                    if any(not tool_call.id for tool_call in message.tool_calls):
+                        prepared = replace(
+                            message,
+                            tool_calls=[
+                                tool_call
+                                if tool_call.id
+                                else replace(tool_call, id=f"call_{index + 1}")
+                                for index, tool_call in enumerate(message.tool_calls)
+                            ],
+                        )
+                elif message.role == "tool" and not message.tool_call_id:
+                    prepared = replace(message, tool_call_id="call_0")
+                claude_message = self._message_from_ir(prepared, context)
                 if claude_message.is_err():
                     return claude_message
                 messages.append(claude_message.unwrap())
+            tool_choice = request.tool_choice
+            if isinstance(tool_choice, str):
+                tool_choice = {"type": tool_choice}
             return Ok(
                 ClaudeRequest(
-                    model=context.normalize_model(model),
+                    model=context.resolve_model(model),
                     max_tokens=max_tokens,
                     messages=messages,
-                    system="\n".join(system_parts) if system_parts else None,
+                    system=(
+                        [{"type": "text", "text": "\n".join(system_parts)}]
+                        if system_parts
+                        else None
+                    ),
                     temperature=temperature,
                     top_p=top_p,
                     stream=request.stream,
@@ -220,7 +243,7 @@ class ClaudeMapper:
                         if request.tools
                         else None
                     ),
-                    tool_choice=request.tool_choice,
+                    tool_choice=tool_choice,
                     stop_sequences=list(request.stop_sequences) or None,
                     thinking=thinking,
                     metadata=(
@@ -233,7 +256,17 @@ class ClaudeMapper:
                         **{
                             key: value
                             for key, value in request.metadata.items()
-                            if key != "metadata"
+                            if key
+                            not in {
+                                "metadata",
+                                "max_tokens_kind",
+                                "generation_config",
+                                "safety_settings",
+                                "tool_config",
+                                "reasoning",
+                                "stream_options",
+                                "service_tier",
+                            }
                         },
                     },
                 )
@@ -330,27 +363,21 @@ class ClaudeMapper:
             passthrough = dict(response.passthrough)
             stop_sequence = passthrough.pop("stop_sequence", None)
             blocks: list[ClaudeContent] = []
-            if response.thinking is not None and response.thinking.content:
-                blocks.append(
-                    ClaudeContent(
-                        type="thinking",
-                        thinking=response.thinking.content,
-                        signature=response.thinking.signature,
-                    )
-                )
             if response.content:
                 blocks.append(ClaudeContent(type="text", text=response.content))
             for tool_call in response.tool_calls:
                 blocks.append(_tool_call_to_block(tool_call))
             stop_reason: str | None = None
-            if stop_sequence is not None:
+            if response.tool_calls:
+                stop_reason = "tool_use"
+            elif stop_sequence is not None:
                 stop_reason = "stop_sequence"
             elif response.finish_reason is not None:
                 stop_reason = self._stop_reason_from_ir(response.finish_reason, context)
             return Ok(
                 ClaudeResponse(
-                    id=response.id or "",
-                    model=response.model,
+                    id=response.id or f"chatcmpl-{new_uuid()}",
+                    model=context.resolve_model(response.model),
                     content=blocks,
                     stop_reason=stop_reason,
                     stop_sequence=stop_sequence
@@ -382,13 +409,21 @@ class ClaudeMapper:
     # -- helpers -------------------------------------------------------------
 
     def _message_to_ir(
-        self, message: ClaudeMessage, context: ConversionContext, index: int
+        self,
+        message: ClaudeMessage,
+        context: ConversionContext,
+        index: int,
+        tool_names: dict[str, str],
     ) -> list[ChatMessage]:
         """Convert one Claude message into one or more canonical messages."""
         if message.role == "assistant":
-            return [self._assistant_to_ir(message)]
+            assistant_message = self._assistant_to_ir(message)
+            for tool_call in assistant_message.tool_calls or []:
+                if tool_call.id and tool_call.function and tool_call.function.name:
+                    tool_names[tool_call.id] = tool_call.function.name
+            return [assistant_message]
         if message.role == "user":
-            return self._user_to_ir(message, context, index)
+            return self._user_to_ir(message, context, index, tool_names)
         record_loss(
             context,
             field=f"messages[{index}].role",
@@ -399,10 +434,13 @@ class ClaudeMapper:
 
     def _assistant_to_ir(self, message: ClaudeMessage) -> ChatMessage:
         """Convert an assistant message, separating thinking/tool blocks."""
+        content = message.content
+        if isinstance(content, str):
+            content = [ClaudeContent(type="text", text=content)]
         text_parts: list[str] = []
         thinking_blocks: list[dict[str, Any]] = []
         tool_calls: list[ToolCall] = []
-        for block in message.content:
+        for block in content:
             if block.type == "text":
                 if block.text is not None:
                     text_parts.append(block.text)
@@ -424,14 +462,21 @@ class ClaudeMapper:
         )
 
     def _user_to_ir(
-        self, message: ClaudeMessage, context: ConversionContext, index: int
+        self,
+        message: ClaudeMessage,
+        context: ConversionContext,
+        index: int,
+        tool_names: dict[str, str],
     ) -> list[ChatMessage]:
         """Convert a user message, unwrapping tool_result blocks."""
+        content = message.content
+        if isinstance(content, str):
+            content = [ClaudeContent(type="text", text=content)]
         parts: list[ContentPart] = []
         tool_results: list[ChatMessage] = []
         has_tool_results = False
         has_other = False
-        for block in message.content:
+        for block in content:
             if block.type == "tool_result":
                 has_tool_results = True
                 result_text = "".join(
@@ -445,6 +490,7 @@ class ClaudeMapper:
                         role="tool",
                         content=result_text,
                         tool_call_id=block.tool_use_id,
+                        name=tool_names.get(block.tool_use_id or ""),
                         metadata=metadata,
                     )
                 )
@@ -611,15 +657,37 @@ class ClaudeMapper:
             content_blocks = self._content_to_blocks(message.content, context)
             if content_blocks.is_err():
                 return Err(content_blocks.unwrap_err())
-            blocks.extend(content_blocks.unwrap())
+            wire_blocks = content_blocks.unwrap()
+            has_text = any(block.type == "text" and block.text for block in wire_blocks)
+            if not has_text:
+                pure_tool_turn = bool(
+                    (message.metadata or {}).get("function_call_item_ids")
+                )
+                if (
+                    message.tool_calls and not pure_tool_turn
+                ) or not message.tool_calls:
+                    wire_blocks = [ClaudeContent(type="text", text="...")]
+                else:
+                    wire_blocks = []
+            blocks.extend(wire_blocks)
             for tool_call in message.tool_calls or []:
                 blocks.append(_tool_call_to_block(tool_call))
-            return Ok(ClaudeMessage(role="assistant", content=blocks))
+            return Ok(
+                ClaudeMessage(role="assistant", content=self._collapse_content(blocks))
+            )
         if message.role == "user":
+            if isinstance(message.content, list) and any(
+                isinstance(part, ImageBase64Part) for part in message.content
+            ):
+                return Ok(ClaudeMessage(role="user", content=[]))
             user_blocks = self._content_to_blocks(message.content, context)
             if user_blocks.is_err():
                 return Err(user_blocks.unwrap_err())
-            return Ok(ClaudeMessage(role="user", content=user_blocks.unwrap()))
+            return Ok(
+                ClaudeMessage(
+                    role="user", content=self._collapse_content(user_blocks.unwrap())
+                )
+            )
         record_loss(
             context,
             field="messages",
@@ -675,6 +743,20 @@ class ClaudeMapper:
         if not blocks:
             blocks.append(ClaudeContent(type="text", text=""))
         return Ok(blocks)
+
+    @staticmethod
+    def _collapse_content(
+        blocks: list[ClaudeContent],
+    ) -> str | list[ClaudeContent]:
+        """Collapse a single text block into plain string content.
+
+        The Claude wire protocol accepts either a plain string or a block
+        list for message content; relaykit emits plain strings for
+        single-text messages.
+        """
+        if len(blocks) == 1 and blocks[0].type == "text" and blocks[0].text is not None:
+            return blocks[0].text
+        return blocks
 
     @staticmethod
     def _resolve_image(
@@ -734,14 +816,25 @@ class ClaudeMapper:
 
     @staticmethod
     def _usage_from_wire(usage: ClaudeUsage | None) -> RelayUsage | None:
-        """Map a wire ``ClaudeUsage`` into canonical ``RelayUsage``."""
+        """Map a wire ``ClaudeUsage`` into canonical ``RelayUsage``.
+
+        Mirrors relaykit's ``buildOpenAIStyleUsageFromClaudeUsage``: the
+        prompt count includes cache reads and cache creations, and the
+        chat ``input_tokens`` is stamped with that total.
+        """
         if usage is None:
             return None
+        prompt = (
+            usage.input_tokens
+            + usage.cache_read_input_tokens
+            + usage.cache_creation_input_tokens
+        )
         return RelayUsage(
-            prompt_tokens=usage.input_tokens,
+            prompt_tokens=prompt,
             completion_tokens=usage.output_tokens,
             cache_read_tokens=usage.cache_read_input_tokens,
             cache_creation_tokens=usage.cache_creation_input_tokens,
+            input_tokens=prompt,
         )
 
     @staticmethod

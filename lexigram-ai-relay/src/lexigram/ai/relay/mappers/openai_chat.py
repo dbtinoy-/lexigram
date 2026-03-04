@@ -8,11 +8,12 @@ stream lifecycle task and reports ``unsupported_feature`` until then.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, cast
 
 from lexigram.ai.relay.context import ConversionContext
 from lexigram.ai.relay.errors import translate, unsupported_feature, unsupported_format
-from lexigram.ai.relay.mappers.base import record_loss
+from lexigram.ai.relay.mappers.base import new_uuid, record_loss
 from lexigram.contracts.ai.agents import ToolDefinition
 from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.llm import ChatMessage, FunctionCall, ToolCall
@@ -38,6 +39,7 @@ from lexigram.serialization import dumps_str
 __all__ = ["OpenAIChatMapper"]
 
 _TARGET = RelayFormat.OPENAI_CHAT
+_MESSAGE_METADATA_INTERNAL = {"function_call_item_ids"}
 
 
 def _tool_calls_to_ir(
@@ -70,7 +72,7 @@ def _tool_call_to_wire(tool_call: ToolCall) -> dict[str, Any]:
         arguments = ""
     return {
         "id": tool_call.id,
-        "type": tool_call.type or "function",
+        "type": "function",
         "function": {
             "name": tool_call.function.name if tool_call.function else "",
             "arguments": arguments,
@@ -228,16 +230,37 @@ class OpenAIChatMapper:
                     OpenAIChatMessage(role="system", content=request.system)
                 )
             for message in request.messages:
-                messages.append(self._message_from_ir(message, context))
+                prepared = message
+                if message.role == "assistant" and message.tool_calls:
+                    if any(not tool_call.id for tool_call in message.tool_calls):
+                        prepared = replace(
+                            message,
+                            tool_calls=[
+                                tool_call
+                                if tool_call.id
+                                else replace(tool_call, id=f"call_{index + 1}")
+                                for index, tool_call in enumerate(message.tool_calls)
+                            ],
+                        )
+                elif message.role == "tool" and not message.tool_call_id:
+                    prepared = replace(message, tool_call_id="call_0")
+                messages.append(self._message_from_ir(prepared, context))
             stream_options = self._stream_options_from_ir(request)
             reasoning = self._reasoning_from_ir(request, context)
+            if request.metadata.get("max_tokens_kind") == "max_completion_tokens":
+                max_completion_tokens: int | None = request.max_tokens
+                max_tokens: int | None = None
+            else:
+                max_completion_tokens = None
+                max_tokens = request.max_tokens
             return Ok(
                 OpenAIChatRequest(
-                    model=context.normalize_model(request.model),
+                    model=context.resolve_model(request.model),
                     messages=messages,
                     temperature=request.temperature,
                     top_p=request.top_p,
-                    max_completion_tokens=request.max_tokens,
+                    max_tokens=max_tokens,
+                    max_completion_tokens=max_completion_tokens,
                     stream=request.stream,
                     stream_options=stream_options,
                     tools=(
@@ -257,7 +280,15 @@ class OpenAIChatMapper:
                             key: value
                             for key, value in request.metadata.items()
                             if key
-                            not in {"service_tier", "reasoning", "stream_options"}
+                            not in {
+                                "service_tier",
+                                "reasoning",
+                                "stream_options",
+                                "generation_config",
+                                "safety_settings",
+                                "tool_config",
+                                "max_tokens_kind",
+                            }
                         },
                     },
                 )
@@ -336,32 +367,31 @@ class OpenAIChatMapper:
         try:
             passthrough = dict(response.passthrough)
             system_fingerprint = passthrough.pop("system_fingerprint", None)
-            message_passthrough: dict[str, Any] = {}
-            if response.thinking is not None and response.thinking.content:
-                message_passthrough["reasoning"] = response.thinking.content
-            content: str | None = response.content or ""
-            if response.tool_calls or not content:
-                content = None
+            content: str | None = response.content or None
+            tool_calls: list[dict[str, Any]] = []
+            for tool in response.tool_calls:
+                wire = _tool_call_to_wire(tool)
+                if not wire["id"]:
+                    wire["id"] = f"call_{new_uuid()}"
+                tool_calls.append(wire)
             message = OpenAIChatMessage(
                 role="assistant",
-                content=cast("str | None", content),
-                tool_calls=(
-                    [_tool_call_to_wire(tool) for tool in response.tool_calls]
-                    if response.tool_calls
-                    else None
-                ),
-                passthrough=message_passthrough,
+                content=content,
+                tool_calls=tool_calls or None,
+            )
+            finish_reason = (
+                "tool_calls" if response.tool_calls else response.finish_reason
             )
             return Ok(
                 OpenAIChatResponse(
-                    id=response.id or "",
-                    model=response.model,
+                    id=response.id or f"chatcmpl-{new_uuid()}",
+                    model=context.resolve_model(response.model),
                     created=response.created or 0,
                     choices=[
                         OpenAIChatChoice(
                             index=0,
                             message=message,
-                            finish_reason=response.finish_reason,
+                            finish_reason=finish_reason,
                         )
                     ],
                     usage=self._usage_to_wire(response.usage),
@@ -531,11 +561,22 @@ class OpenAIChatMapper:
         prompt_details = usage.get("prompt_tokens_details")
         completion_details = usage.get("completion_tokens_details")
         audio_tokens = usage.get("audio_tokens")
+        prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+        completion_tokens = int(usage.get("completion_tokens", 0) or 0)
         return RelayUsage(
-            prompt_tokens=int(usage.get("prompt_tokens", 0) or 0),
-            completion_tokens=int(usage.get("completion_tokens", 0) or 0),
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             cache_read_tokens=(
                 int(prompt_details.get("cached_tokens", 0) or 0)
+                if isinstance(prompt_details, dict)
+                else 0
+            ),
+            cache_creation_tokens=(
+                int(
+                    prompt_details.get("cached_creation_tokens", 0)
+                    or prompt_details.get("cache_write_tokens", 0)
+                    or 0
+                )
                 if isinstance(prompt_details, dict)
                 else 0
             ),
@@ -554,6 +595,8 @@ class OpenAIChatMapper:
                 if isinstance(audio_tokens, dict)
                 else 0
             ),
+            input_tokens=int(usage.get("input_tokens", 0) or 0),
+            output_tokens=int(usage.get("output_tokens", 0) or 0),
         )
 
     def _message_from_ir(
@@ -570,17 +613,19 @@ class OpenAIChatMapper:
                     parts.append(
                         {
                             "type": "image_url",
-                            "image_url": {"url": part.url, "detail": part.detail},
+                            "image_url": part.url,
                         }
                     )
                 elif isinstance(part, ImageBase64Part):
+                    image_url: dict[str, Any] = {
+                        "url": f"data:{part.media_type};base64,{part.data}",
+                    }
+                    if part.detail:
+                        image_url["detail"] = part.detail
                     parts.append(
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{part.media_type};base64,{part.data}",
-                                "detail": "auto",
-                            },
+                            "image_url": image_url,
                         }
                     )
                 else:
@@ -605,7 +650,11 @@ class OpenAIChatMapper:
                 if message.tool_calls
                 else None
             ),
-            passthrough=dict(message.metadata or {}),
+            passthrough={
+                key: value
+                for key, value in (message.metadata or {}).items()
+                if key not in _MESSAGE_METADATA_INTERNAL
+            },
         )
 
     @staticmethod
@@ -663,20 +712,31 @@ class OpenAIChatMapper:
 
     @staticmethod
     def _usage_to_wire(usage: RelayUsage | None) -> dict[str, Any] | None:
-        """Serialize canonical ``RelayUsage`` into a wire usage dict."""
+        """Serialize canonical ``RelayUsage`` into a wire usage dict.
+
+        Mirrors relaykit's ``dto.Usage`` serialization: the detail
+        containers and responses-style ``input_tokens``/``output_tokens``
+        are always present (zeros included), and cache-write counters are
+        added only when non-zero.
+        """
         if usage is None:
             return None
         data: dict[str, Any] = {
             "prompt_tokens": usage.prompt_tokens,
             "completion_tokens": usage.completion_tokens,
             "total_tokens": usage.total_tokens,
+            "prompt_tokens_details": {"cached_tokens": usage.cache_read_tokens},
+            "completion_tokens_details": {"reasoning_tokens": usage.reasoning_tokens},
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
         }
-        if usage.cache_read_tokens:
-            data["prompt_tokens_details"] = {"cached_tokens": usage.cache_read_tokens}
-        if usage.reasoning_tokens:
-            data["completion_tokens_details"] = {
-                "reasoning_tokens": usage.reasoning_tokens
-            }
+        if usage.cache_creation_tokens:
+            data["prompt_tokens_details"]["cached_creation_tokens"] = (
+                usage.cache_creation_tokens
+            )
+            data["prompt_tokens_details"]["cache_write_tokens"] = (
+                usage.cache_creation_tokens
+            )
         if usage.audio_input_tokens or usage.audio_output_tokens:
             data["audio_tokens"] = {
                 "input_tokens": usage.audio_input_tokens,

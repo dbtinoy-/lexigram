@@ -9,6 +9,7 @@ dependencies = [
     "lexigram",
     "lexigram-ai-agents",
     "lexigram-ai-relay",
+    "lexigram-ai-relay-gateway",
     "lexigram-admin",
     "lexigram-ai",
     "lexigram-auth",
@@ -80,6 +81,7 @@ members = [
 "lexigram-ai-llm",
     "lexigram-ai-rag",
     "lexigram-ai-relay",
+    "lexigram-ai-relay-gateway",
     "lexigram-auth",
     "lexigram-cache",
     "lexigram-cli",
@@ -154,6 +156,7 @@ lexigram-ai-memory = { workspace = true }
 lexigram-ai-observability = { workspace = true }
 lexigram-ai-rag = { workspace = true }
 lexigram-ai-relay = { workspace = true }
+lexigram-ai-relay-gateway = { workspace = true }
 lexigram-auth = { workspace = true }
 lexigram-cli = { workspace = true }
 lexigram-sql = { workspace = true }
