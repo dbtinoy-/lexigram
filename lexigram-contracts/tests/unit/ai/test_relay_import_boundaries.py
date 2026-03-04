@@ -39,8 +39,16 @@ def test_relay_import_has_no_extension_side_effects() -> None:
 @pytest.mark.parametrize("module", FORBIDDEN_MODULES)
 def test_forbidden_modules_not_loaded_by_contracts(module: str) -> None:
     """Contracts never import forbidden extension modules."""
-    import importlib
-
-    imported = importlib.import_module("lexigram.contracts.ai.relay")
-    assert imported is not None
-    assert module not in sys.modules  # pragma: no cover - safety net
+    script = (
+        "import sys; "
+        "sys.path.insert(0, {src!r}); "
+        "import lexigram.contracts.ai.relay; "
+        "assert {module!r} not in sys.modules, \"loaded {module!r}\""
+    ).format(src=str(SRC), module=module)
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=str(CONTRACTS_ROOT),
+    )
+    assert result.returncode == 0, result.stderr

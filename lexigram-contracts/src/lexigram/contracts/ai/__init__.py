@@ -34,7 +34,7 @@ from lexigram.contracts.ai.evaluation import (
     EvaluatorProtocol,
     RunReport,
 )
-from lexigram.contracts.ai.exceptions import RelayError
+from lexigram.contracts.ai.exceptions import RelayError, RelayErrorCode
 from lexigram.contracts.ai.governance import (
     AIAuditEvent,
     AIAuditStoreProtocol,

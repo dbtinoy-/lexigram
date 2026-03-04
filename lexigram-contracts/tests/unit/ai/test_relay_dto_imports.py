@@ -64,12 +64,26 @@ def test_common_module_exports_helpers() -> None:
 
 def test_relay_dto_package_does_not_import_implementations() -> None:
     """Importing the DTO package must not load AI extension implementations."""
+    import subprocess
     import sys
+    from pathlib import Path
 
-    from lexigram.contracts.ai.relay import dto  # noqa: F401
-
-    loaded = {m for m in sys.modules if m.startswith(("lexigram.ai.relay", "lexigram.ai.llm"))}
-    assert loaded == set(), f"extension modules leaked on contracts import: {sorted(loaded)}"
+    contracts_root = Path(__file__).resolve().parents[4]
+    src = contracts_root / "lexigram-contracts" / "src"
+    script = (
+        "import sys; "
+        "sys.path.insert(0, {src!r}); "
+        "import lexigram.contracts.ai.relay.dto; "
+        "loaded = sorted(m for m in sys.modules if m.startswith(('lexigram.ai.relay', 'lexigram.ai.llm'))); "
+        "assert not loaded, loaded"
+    ).format(src=str(src))
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=str(contracts_root),
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_dto_imports_via_relay_module() -> None:

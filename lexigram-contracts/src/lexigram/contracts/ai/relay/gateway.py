@@ -101,6 +101,8 @@ class RelayGatewayErrorCode(StrEnum):
         ENCODE_FAILED: Outbound payload serialization failed.
         DECODE_FAILED: Inbound payload deserialization failed.
         AUTH_DENIED: The caller is not authorized to invoke the model.
+        PERMISSION_DENIED: The operator is not authorized for the
+            requested control surface.
         UPSTREAM_ERROR: The upstream responded with a non-2xx status.
         UPSTREAM_TIMEOUT: The upstream request timed out.
         UPSTREAM_CANCELLED: The upstream request was cancelled.
@@ -110,6 +112,8 @@ class RelayGatewayErrorCode(StrEnum):
         STREAM_ERROR: A streaming session failed.
         QUOTA_EXCEEDED: Billing denied admission to the request.
         BILLING_FAILED: The billing pipeline failed unexpectedly.
+        DEPENDENCY_UNAVAILABLE: An optional runtime dependency was not
+            registered (e.g. the converter registry).
     """
 
     CHANNEL_DISABLED = "CHANNEL_DISABLED"
@@ -121,6 +125,7 @@ class RelayGatewayErrorCode(StrEnum):
     ENCODE_FAILED = "ENCODE_FAILED"
     DECODE_FAILED = "DECODE_FAILED"
     AUTH_DENIED = "AUTH_DENIED"
+    PERMISSION_DENIED = "PERMISSION_DENIED"
     UPSTREAM_ERROR = "UPSTREAM_ERROR"
     UPSTREAM_TIMEOUT = "UPSTREAM_TIMEOUT"
     UPSTREAM_CANCELLED = "UPSTREAM_CANCELLED"
@@ -130,6 +135,7 @@ class RelayGatewayErrorCode(StrEnum):
     STREAM_ERROR = "STREAM_ERROR"
     QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
     BILLING_FAILED = "BILLING_FAILED"
+    DEPENDENCY_UNAVAILABLE = "DEPENDENCY_UNAVAILABLE"
 
 
 @dataclass(frozen=True, slots=True)

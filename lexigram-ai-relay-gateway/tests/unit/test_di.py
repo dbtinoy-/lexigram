@@ -29,6 +29,7 @@ from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.di.provider import RelayGatewayProvider
+from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
 from lexigram.ai.relay.gateway.service import RelayGatewayService
 from lexigram.ai.relay.gateway.stream import UpstreamEventParser, relay_stream
 from lexigram.ai.relay.gateway.upstream import HTTPUpstreamAdapter
@@ -53,6 +54,8 @@ from lexigram.contracts.ai.relay import (
     RelayGatewayProtocol,
     RelayGatewayRequest,
     RelayLoss,
+    RelayPolicySnapshot,
+    RelayPolicyStoreProtocol,
     RelayStreamSessionProtocol,
     RelayUsage,
     UpstreamChunk,
@@ -116,7 +119,13 @@ def openai_request_dto() -> OpenAIChatRequest:
 
 def openai_response_wire() -> dict[str, Any]:
     """A minimal OpenAI Chat completions response wire body."""
-    return {"id": "resp-1", "object": "chat.completion", "created": 0, "model": MODEL, "choices": []}
+    return {
+        "id": "resp-1",
+        "object": "chat.completion",
+        "created": 0,
+        "model": MODEL,
+        "choices": [],
+    }
 
 
 def claude_response_dto() -> ClaudeResponse:
@@ -126,8 +135,27 @@ def claude_response_dto() -> ClaudeResponse:
 
 def ok_upstream_response(status: int = 200) -> HttpResponse:
     """An ``HttpResponse`` with a valid OpenAI Chat body for *status*."""
-    body = dumps(openai_response_wire()) if status == 200 else dumps({"error": {"message": "rate limited"}})
-    return HttpResponse(status=status, headers={"content-type": "application/json"}, body=body)
+    body = (
+        dumps(openai_response_wire())
+        if status == 200
+        else dumps({"error": {"message": "rate limited"}})
+    )
+    return HttpResponse(
+        status=status, headers={"content-type": "application/json"}, body=body
+    )
+
+
+class StaticPolicyStore(RelayPolicyStoreProtocol):
+    """In-memory policy store seeded with a fixed snapshot."""
+
+    def __init__(self, snapshot: RelayPolicySnapshot) -> None:
+        self.current = snapshot
+
+    async def load(self) -> RelayPolicySnapshot:
+        return self.current
+
+    async def save(self, snapshot: RelayPolicySnapshot) -> None:
+        self.current = snapshot
 
 
 class FakeConverter:
@@ -390,7 +418,9 @@ class BlockingUpstream:
                     "object": "chat.completion.chunk",
                     "created": 0,
                     "model": MODEL,
-                    "choices": [{"index": 0, "delta": {"content": "hi"}, "finish_reason": None}],
+                    "choices": [
+                        {"index": 0, "delta": {"content": "hi"}, "finish_reason": None}
+                    ],
                 }
             ).decode("utf-8"),
         )
@@ -452,6 +482,42 @@ async def test_register_exposes_contracts() -> None:
     assert container.has(RelayGatewayConfig)
     service = await container.resolve(RelayGatewayProtocol)
     assert callable(service.handle)
+
+
+async def test_stream_registry_is_shared_singleton() -> None:
+    """The stream registry resolves as a shared singleton for controls."""
+    provider = RelayGatewayProvider(config=make_config())
+    container = Container()
+    await provider.register(container)
+    assert container.has(RelayStreamRegistry)
+    first = await container.resolve(RelayStreamRegistry)
+    second = await container.resolve(RelayStreamRegistry)
+    assert first is second
+    handle_id, handle = first.register(
+        channel=CHANNEL_NAME, model=MODEL, request_id="req-99"
+    )
+    assert first.handle(handle_id) is handle
+
+
+async def test_boot_reconciles_policy_drain_into_selection() -> None:
+    """Boot applies a persisted drain to the runtime registry."""
+    store = StaticPolicyStore(
+        RelayPolicySnapshot(
+            enabled_channels={CHANNEL_NAME: False},
+            allowed_model_options={CHANNEL_NAME: frozenset({MODEL})},
+            media_allowed_schemes=frozenset({"https"}),
+            media_allowed_hosts=frozenset(),
+            max_request_bytes=1024,
+            max_stream_seconds=300.0,
+        )
+    )
+    provider = RelayGatewayProvider(config=make_config(), policy_store=store)
+    container = Container()
+    await provider.register(container)
+    await provider.boot(container)
+    registry = await container.resolve(RelayChannelRegistry)
+    assert registry.runtime_enabled() == {CHANNEL_NAME: False}
+    assert registry.select(RelayFormat.OPENAI_CHAT, MODEL).is_err()
 
 
 async def test_registered_config_is_configured() -> None:

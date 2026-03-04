@@ -13,13 +13,31 @@ from typing import TYPE_CHECKING
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
+from lexigram.ai.relay.gateway.operations.controls import (
+    InMemoryRelayPolicyStore,
+    RelayControlsService,
+)
+from lexigram.ai.relay.gateway.operations.health import (
+    RelayChannelCheckerProtocol,
+    RelayHealthService,
+)
+from lexigram.ai.relay.gateway.operations.metrics import (
+    RelayMetricsService,
+    RelayRouteEventSourceProtocol,
+)
+from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
 from lexigram.ai.relay.gateway.service import RelayGatewayService
 from lexigram.ai.relay.gateway.upstream import HTTPUpstreamAdapter
-from lexigram.contracts.ai.governance import RelayBillingProtocol
+from lexigram.contracts.ai.governance import (
+    AIAuditStoreProtocol,
+    RelayBillingProtocol,
+)
 from lexigram.contracts.ai.relay import (
     MediaResolverProtocol,
     RelayConverterProtocol,
     RelayGatewayProtocol,
+    RelayPolicyStoreProtocol,
+    RelayRegistryProtocol,
 )
 from lexigram.contracts.auth.guard import AuthorizerProtocol
 from lexigram.contracts.core.provider import ProviderPriority
@@ -47,6 +65,10 @@ class RelayGatewayProvider(Provider):
     Registers:
     - ``RelayGatewayConfig`` — the injected configuration (always)
     - ``RelayChannelRegistry`` — a registry built from the configuration
+    - ``RelayPolicyStoreProtocol`` — the runtime policy backend (always)
+    - ``RelayHealthService`` — channel health probing (always)
+    - ``RelayMetricsService`` — route metrics aggregation (always)
+    - ``RelayControlsService`` — permissioned control mutations (always)
     - ``RelayGatewayProtocol`` — the gateway service (only when both the
       converter and an HTTP client are available)
 
@@ -64,6 +86,19 @@ class RelayGatewayProvider(Provider):
             context.
         billing: Optional billing lifecycle; when ``None`` the gateway
             runs without admission control or settlement.
+        converter_registry: Converter registry backing health and metrics
+            diagnostics and route quality. Optional; when ``None`` the
+            diagnostic surfaces are unavailable (``DEPENDENCY_UNAVAILABLE``).
+        channel_checker: Optional channel checker driving per-channel
+            probes; when ``None`` the health service reports unchecked
+            channels.
+        metrics_events: Optional route event source feeding metrics
+            aggregation; when ``None`` the metrics surface is unavailable.
+        policy_store: Optional runtime policy backend. ``None`` installs
+            an in-process ``InMemoryRelayPolicyStore`` seeded from the
+            configuration.
+        audit: Optional audit backend for control mutations. ``None``
+            disables audit emission.
     """
 
     name = "ai-relay-gateway"
@@ -78,6 +113,11 @@ class RelayGatewayProvider(Provider):
         authorizer: AuthorizerProtocol | None = None,
         media_resolver: MediaResolverProtocol | None = None,
         billing: RelayBillingProtocol | None = None,
+        converter_registry: RelayRegistryProtocol | None = None,
+        channel_checker: RelayChannelCheckerProtocol | None = None,
+        metrics_events: RelayRouteEventSourceProtocol | None = None,
+        policy_store: RelayPolicyStoreProtocol | None = None,
+        audit: AIAuditStoreProtocol | None = None,
     ) -> None:
         super().__init__()
         self._config = config if config is not None else RelayGatewayConfig()
@@ -86,6 +126,15 @@ class RelayGatewayProvider(Provider):
         self._authorizer = authorizer
         self._media_resolver = media_resolver
         self._billing = billing
+        self._converter_registry = converter_registry
+        self._channel_checker = channel_checker
+        self._metrics_events = metrics_events
+        self._policy_store = (
+            policy_store
+            if policy_store is not None
+            else InMemoryRelayPolicyStore.with_defaults(self._config)
+        )
+        self._audit = audit
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the gateway configuration, registry, and service.
@@ -99,8 +148,31 @@ class RelayGatewayProvider(Provider):
             container: The container registrar to bind into.
         """
         registry = RelayChannelRegistry(self._config)
+        streams = RelayStreamRegistry()
         container.singleton(RelayGatewayConfig, self._config)
         container.singleton(RelayChannelRegistry, registry)
+        container.singleton(RelayStreamRegistry, streams)
+        container.singleton(RelayPolicyStoreProtocol, self._policy_store)
+        health_service = RelayHealthService(
+            registry=registry,
+            checker=self._channel_checker,
+            converter=self._converter_registry,
+            policy=self._policy_store,
+        )
+        container.singleton(RelayHealthService, health_service)
+        metrics_service = RelayMetricsService(
+            events=self._metrics_events,
+            converter=self._converter_registry,
+        )
+        container.singleton(RelayMetricsService, metrics_service)
+        controls_service = RelayControlsService(
+            registry=registry,
+            store=self._policy_store,
+            authorizer=self._authorizer,
+            audit=self._audit,
+            streams=streams,
+        )
+        container.singleton(RelayControlsService, controls_service)
         if self._converter is None:
             logger.warning(
                 "relay_gateway_missing_dependency",
@@ -127,7 +199,26 @@ class RelayGatewayProvider(Provider):
         logger.info("relay_gateway_provider_registered")
 
     async def boot(self, container: BootContainerProtocol) -> None:
-        """No-op boot; the gateway needs no runtime wiring."""
+        """Reconcile persisted policy drains into runtime selection.
+
+        Channels the policy store marks disabled (while the static
+        configuration still enables them) are drained in the runtime
+        registry so dispatch honors the persisted policy from the first
+        request onward.
+
+        Args:
+            container: The booted container used to resolve the policy
+                store and channel registry.
+        """
+        registry = await container.resolve(RelayChannelRegistry)
+        policy = await container.resolve(RelayPolicyStoreProtocol)
+        snapshot = await policy.load()
+        for channel in self._config.channels:
+            if channel.enabled and not snapshot.enabled_channels.get(
+                channel.name, True
+            ):
+                registry.set_runtime_enabled(channel.name, False)
+        logger.info("relay_gateway_provider_booted")
 
     async def shutdown(self) -> None:
         """No-op shutdown; the upstream adapter has no lifecycle."""
