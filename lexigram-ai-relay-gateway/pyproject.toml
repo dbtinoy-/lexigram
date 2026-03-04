@@ -62,6 +62,9 @@ relay-gateway = "lexigram.ai.relay.gateway.di.provider:RelayGatewayProvider"
 [project.entry-points."lexigram.ai.modules"]
 relay-gateway = "lexigram.ai.relay.gateway.module:RelayGatewayModule"
 
+[project.entry-points."lexigram.admin.contributors"]
+relay-gateway = "lexigram.ai.relay.gateway.admin.contributor:RelayGatewayAdminContributor"
+
 [dependency-groups]
 dev = ["ruff>=0.8.0", "mypy>=1.0.0"]
 test = [
