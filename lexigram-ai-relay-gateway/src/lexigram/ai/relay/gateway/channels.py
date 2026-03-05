@@ -129,11 +129,7 @@ class RelayChannelRegistry:
             Runtime-drained channels are treated exactly like disabled
             channels: they are invisible to selection until restored.
         """
-        enabled = [
-            channel
-            for channel in self._channels
-            if channel.enabled and self._runtime_enabled.get(channel.name, True)
-        ]
+        enabled = self._enabled_channels()
         if not enabled:
             return Err(
                 RelayGatewayError(
@@ -189,6 +185,76 @@ class RelayChannelRegistry:
             ),
         )
         return Ok(ordered[0])
+
+    def select_for_endpoint(
+        self,
+        kind: str,
+        model: str,
+        *,
+        exclude: frozenset[str] = frozenset(),
+    ) -> Result[RelayChannel, RelayGatewayError]:
+        """Pick the best channel serving an endpoint kind (e.g. ``"embeddings"``).
+
+        Passthrough entry point: eligibility is limited to channels
+        declaring *kind* in ``endpoint_kinds`` (empty means chat-only,
+        never eligible here), then survivors are sorted by ascending
+        priority (lower number wins) and ascending name as a stable
+        tiebreak. Model aliases and the ``enabled``/runtime-disabled
+        filters behave exactly like ``select``. A chat-only channel is
+        untouched by this method.
+
+        Args:
+            kind: Endpoint kind the caller wants (e.g. ``"embeddings"``);
+                only channels declaring it are eligible.
+            model: Requested model alias; only exact matches are
+                eligible.
+            exclude: Channel names to skip, e.g. for failover retries.
+                Defaults to empty (no exclusion).
+
+        Returns:
+            ``Ok(channel)`` for the best eligible channel, or
+            ``Err(RelayGatewayError)`` when none is eligible: no enabled
+            channels (``CHANNEL_DISABLED``, 404), otherwise, no channel
+            serves the kind or model (``MODEL_NOT_FOUND``, 404).
+        """
+        enabled = self._enabled_channels()
+        if not enabled:
+            return Err(
+                RelayGatewayError(
+                    code="CHANNEL_DISABLED",
+                    message="no enabled channels",
+                    status_code=404,
+                    request_id="",
+                )
+            )
+        serving = [
+            channel
+            for channel in enabled
+            if kind in channel.endpoint_kinds and channel.name not in exclude
+        ]
+        matched = [channel for channel in serving if model in channel.models]
+        if not matched:
+            return Err(
+                RelayGatewayError(
+                    code="MODEL_NOT_FOUND",
+                    message=f"no channel serves endpoint {kind!r} for model {model!r}",
+                    status_code=404,
+                    request_id="",
+                )
+            )
+        ordered = sorted(
+            matched,
+            key=lambda channel: (channel.priority, channel.name),
+        )
+        return Ok(ordered[0])
+
+    def _enabled_channels(self) -> list[RelayChannel]:
+        """Return channels enabled by both config and the runtime overrides."""
+        return [
+            channel
+            for channel in self._channels
+            if channel.enabled and self._runtime_enabled.get(channel.name, True)
+        ]
 
     @staticmethod
     def _meets_capabilities(

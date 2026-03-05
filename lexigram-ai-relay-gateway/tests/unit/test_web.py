@@ -29,7 +29,6 @@ from lexigram.contracts.ai.relay import (
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.serialization import loads
 
-
 class FakeGateway(RelayGatewayProtocol):
     """Minimal ``RelayGatewayProtocol`` double recording ``handle`` calls."""
 
@@ -44,7 +43,6 @@ class FakeGateway(RelayGatewayProtocol):
         self.calls.append(request)
         return self._outcome
 
-
 class FakeResolver:
     """Async callable returning the configured fake gateway."""
 
@@ -57,6 +55,34 @@ class FakeResolver:
         self.calls.append(request)
         return self._gateway
 
+class FakePassthroughService:
+    """Minimal ``PassthroughService`` double recording ``handle`` calls."""
+
+    def __init__(
+        self,
+        outcome: Result[RelayGatewayResult, RelayGatewayError],
+    ) -> None:
+        self._outcome = outcome
+        self.calls: list[tuple[str, RelayGatewayRequest]] = []
+
+    async def handle(
+        self, kind: str, request: RelayGatewayRequest
+    ) -> Result[RelayGatewayResult, RelayGatewayError]:
+        """Record the call and return the canned outcome."""
+        self.calls.append((kind, request))
+        return self._outcome
+
+class FakePassthroughResolver:
+    """Async callable returning the configured fake passthrough service."""
+
+    def __init__(self, service: FakePassthroughService) -> None:
+        self._service = service
+        self.calls: list[Any] = []
+
+    async def __call__(self, request: Any) -> FakePassthroughService:
+        """Record the request and return the fake service."""
+        self.calls.append(request)
+        return self._service
 
 class FakeRequest:
     """Minimal request double exposing the state/headers surface endpoints use."""
@@ -80,13 +106,11 @@ class FakeRequest:
         """Return the canned request body."""
         return self._body
 
-
 class FakeRoute:
     """Minimal route double carrying the path used by the mount guard."""
 
     def __init__(self, path: str) -> None:
         self.path = path
-
 
 class FakeApp:
     """Minimal app double recording ``add_route`` registrations."""
@@ -102,7 +126,6 @@ class FakeApp:
         self.registrations.append((path, endpoint, methods))
         self.routes.append(FakeRoute(path))
 
-
 def _ok_gateway(headers: dict[str, str] | None = None) -> FakeGateway:
     """Build a gateway returning an empty 200 result."""
     return FakeGateway(
@@ -115,18 +138,15 @@ def _ok_gateway(headers: dict[str, str] | None = None) -> FakeGateway:
         )
     )
 
-
 def test_contributor_id() -> None:
     """The contributor exposes its registered identifier."""
     assert RelayGatewayWebContributor().contributor_id == "relay-gateway"
-
 
 def test_contributor_get_controllers_empty() -> None:
     """Controllers and middleware are contributed by the host, not the gateway."""
     contributor = RelayGatewayWebContributor()
     assert contributor.get_controllers() == []
     assert contributor.get_middleware() == []
-
 
 async def test_mount_registers_routes_once() -> None:
     """Repeated mounts register each relay path exactly once."""
@@ -138,7 +158,6 @@ async def test_mount_registers_routes_once() -> None:
     assert len(app.registrations) == len(RELAY_ROUTE_PATHS)
     for _, _, methods in app.registrations:
         assert methods == ["POST"]
-
 
 async def test_buffered_openai_chat_success() -> None:
     """A buffered chat result is returned as JSON with request metadata."""
@@ -165,7 +184,6 @@ async def test_buffered_openai_chat_success() -> None:
     assert gateway.calls[0].source is RelayFormat.OPENAI_CHAT
     assert gateway.calls[0].stream is False
 
-
 async def test_request_id_fallback_uuid() -> None:
     """A missing state request id falls back to a generated uuid."""
     gateway = _ok_gateway()
@@ -177,7 +195,6 @@ async def test_request_id_fallback_uuid() -> None:
     assert len(rid) == 36
     assert all(character in "0123456789abcdef-" for character in rid.lower())
 
-
 async def test_malformed_body_400() -> None:
     """Malformed JSON yields a 400 invalid-request envelope without dispatch."""
     gateway = _ok_gateway()
@@ -188,7 +205,6 @@ async def test_malformed_body_400() -> None:
     assert loads(response.body)["error"]["type"] == "invalid_request_error"
     assert gateway.calls == []
 
-
 async def test_missing_model_400() -> None:
     """A payload without a model yields a 400 before touching the gateway."""
     gateway = _ok_gateway()
@@ -197,7 +213,6 @@ async def test_missing_model_400() -> None:
     response = await endpoint(FakeRequest(body=b"{}"))
     assert response.status_code == 400
     assert gateway.calls == []
-
 
 async def test_gemini_model_from_path() -> None:
     """Gemini takes the model from the path params."""
@@ -211,7 +226,6 @@ async def test_gemini_model_from_path() -> None:
     assert response.status_code == 200
     assert gateway.calls[0].model == "gemini-2.5-pro"
     assert gateway.calls[0].source is RelayFormat.GEMINI
-
 
 async def test_error_envelope_matches_inbound() -> None:
     """Gateway errors render in the inbound protocol's envelope per family."""
@@ -270,7 +284,6 @@ async def test_error_envelope_matches_inbound() -> None:
         assert response.status_code == 504
         assert loads(response.body) == expected[source]
 
-
 async def test_error_status_mapping_429() -> None:
     """Status codes map to protocol error types (403 and 429)."""
     routes = build_routes(
@@ -309,7 +322,6 @@ async def test_error_status_mapping_429() -> None:
     assert response.status_code == 429
     assert loads(response.body)["error"]["type"] == "rate_limit_error"
 
-
 async def test_buffered_headers_filtered() -> None:
     """Hop-by-hop and set-cookie headers are dropped; safe ones survive."""
     gateway = FakeGateway(
@@ -335,11 +347,9 @@ async def test_buffered_headers_filtered() -> None:
     assert "connection" not in {key.lower() for key in response.headers.keys()}
     assert response.headers.get("x-request-id") == "req-9"
 
-
 async def _terminal_stream() -> AsyncIterator[RelayWireEvent]:
     """One terminal wire event."""
     yield RelayWireEvent(event=None, data=None, terminal=True)
-
 
 async def test_streaming_response_headers() -> None:
     """Streaming results produce SSE responses with stream headers."""
@@ -356,7 +366,6 @@ async def test_streaming_response_headers() -> None:
     assert response.headers.get("cache-control") == "no-cache"
     assert response.headers.get("connection") == "keep-alive"
     assert response.headers.get("x-request-id") == "req-s"
-
 
 def test_sse_openai_chat_framing() -> None:
     """OpenAI Chat frames data-only chunks and terminates with ``[DONE]``."""
@@ -378,7 +387,6 @@ def test_sse_openai_chat_framing() -> None:
         == b""
     )
 
-
 def test_sse_responses_event_framing() -> None:
     """OpenAI Responses frames carry the event name above the data line."""
     encoder = SSEEncoder(RelayFormat.OPENAI_RESPONSES)
@@ -391,7 +399,6 @@ def test_sse_responses_event_framing() -> None:
     )
     assert frame.startswith(b"event: response.output_text.delta\n")
     assert b"data: " in frame
-
 
 def test_sse_claude_framing() -> None:
     """Claude frames carry the event name above the data line."""
@@ -406,7 +413,6 @@ def test_sse_claude_framing() -> None:
     assert frame.startswith(b"event: content_block_delta\n")
     assert b"data: " in frame
 
-
 def test_sse_gemini_framing() -> None:
     """Gemini frames data-only lines with no event name or terminator."""
     encoder = SSEEncoder(RelayFormat.GEMINI)
@@ -414,12 +420,10 @@ def test_sse_gemini_framing() -> None:
     assert frame == b'data: {"candidates":[]}\n\n'
     assert b"event:" not in frame
 
-
 async def _chat_stream() -> AsyncIterator[RelayWireEvent]:
     """One delta chunk followed by the terminal event."""
     yield RelayWireEvent(None, {"choices": [{"delta": {"content": "hi"}}]}, False)
     yield RelayWireEvent(None, None, True)
-
 
 async def test_stream_events_pass_through() -> None:
     """Every wire event becomes a frame; terminal emits exactly one ``[DONE]``."""
@@ -434,7 +438,6 @@ async def test_stream_events_pass_through() -> None:
     assert frames[-1] == b"data: [DONE]\n\n"
     assert frames.count(b"data: [DONE]\n\n") == 1
 
-
 async def test_identity_from_state_user() -> None:
     """Tenant id is read from the normalized auth user dict."""
     gateway = _ok_gateway()
@@ -446,3 +449,104 @@ async def test_identity_from_state_user() -> None:
     assert gateway.calls[0].tenant_id == "t1"
     await endpoint(FakeRequest(body=b'{"model": "gpt-4o"}', user=None))
     assert gateway.calls[1].tenant_id == ""
+
+class TestEmbeddingsRoute:
+    """``POST /v1/embeddings`` passthrough route behavior."""
+
+    @staticmethod
+    def embeddings_endpoint(
+        service: FakePassthrough,
+    ) -> Any:
+        routes = build_routes(
+            FakeResolver(FakeGateway(_ok_gateway()._outcome)),
+            resolve_passthrough=FakePassthroughResolver(service),
+        )
+        return routes[-1]
+
+    async def test_buffered_embeddings_success(self) -> None:
+        payload = {"object": "list", "data": [{"embedding": [0.1]}]}
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload=payload))
+        )
+        endpoint = self.embeddings_endpoint(service).endpoint
+        response = await endpoint(
+            FakeRequest(
+                body=b'{"model": "text-embedding-3-small", "input": "hi"}',
+                request_id="req-emb",
+                user={"id": "u1", "tenant_id": "t1"},
+            )
+        )
+        assert isinstance(response, JSONResponse)
+        assert response.status_code == 200
+        assert loads(response.body) == payload
+        assert response.headers.get("x-request-id") == "req-emb"
+        kind, request = service.calls[0]
+        assert kind == "embeddings"
+        assert request.request_id == "req-emb"
+        assert request.tenant_id == "t1"
+        assert request.model == "text-embedding-3-small"
+        assert request.source is RelayFormat.OPENAI_CHAT
+        assert request.stream is False
+        assert request.channel is None
+        assert request.payload == {"model": "text-embedding-3-small", "input": "hi"}
+
+    async def test_embeddings_error_uses_openai_envelope(self) -> None:
+        service = FakePassthroughService(
+            Err(
+                RelayGatewayError(
+                    code="MODEL_NOT_FOUND",
+                    message="no channel serves endpoint 'embeddings'",
+                    status_code=404,
+                    request_id="req-emb",
+                )
+            )
+        )
+        endpoint = self.embeddings_endpoint(service).endpoint
+        response = await endpoint(
+            FakeRequest(
+                body=b'{"model": "unknown-model", "input": "hi"}',
+                request_id="req-emb",
+            )
+        )
+        assert response.status_code == 404
+        assert loads(response.body) == {
+            "error": {
+                "message": "no channel serves endpoint 'embeddings'",
+                "type": "invalid_request_error",
+                "code": "MODEL_NOT_FOUND",
+                "request_id": "req-emb",
+            }
+        }
+
+    async def test_embeddings_missing_model_400(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        endpoint = self.embeddings_endpoint(service).endpoint
+        response = await endpoint(FakeRequest(body=b"{}"))
+        assert response.status_code == 400
+        assert response.headers.get("x-request-id") is None
+        assert service.calls == []
+
+    async def test_embeddings_malformed_body_400(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        endpoint = self.embeddings_endpoint(service).endpoint
+        response = await endpoint(FakeRequest(body=b"not json"))
+        assert response.status_code == 400
+        assert service.calls == []
+
+    async def test_embeddings_route_registered_in_mount(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        routes = build_routes(
+            FakeResolver(_ok_gateway()),
+            resolve_passthrough=FakePassthroughResolver(service),
+        )
+        paths = [route.path for route in routes]
+        assert "/v1/embeddings" in paths
+        assert paths[-1] == "/v1/embeddings"
+        assert RELAY_ROUTE_PATHS[-1] == "/v1/embeddings"
+

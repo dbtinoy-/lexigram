@@ -29,6 +29,7 @@ from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.di.provider import RelayGatewayProvider
+from lexigram.ai.relay.gateway.operations.auto_test import RelayChannelAutoTester
 from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
 from lexigram.ai.relay.gateway.service import RelayGatewayService
 from lexigram.ai.relay.gateway.stream import UpstreamEventParser, relay_stream
@@ -716,6 +717,35 @@ async def test_health_check() -> None:
     result = await provider.health_check()
     assert result.status == HealthStatus.HEALTHY
     assert result.component == "ai-relay-gateway"
+
+
+async def test_auto_tester_started_when_enabled() -> None:
+    """With ``auto_test_channels=True`` boot starts the tester and shutdown stops it."""
+    provider = RelayGatewayProvider(
+        config=RelayGatewayConfig(
+            channels=(make_channel(),),
+            auto_test_channels=True,
+            auto_test_interval_seconds=30,
+        )
+    )
+    container = Container()
+    await provider.register(container)
+    tester = await container.resolve(RelayChannelAutoTester)
+    assert tester.is_running is False
+    await provider.boot(container)
+    assert tester.is_running is True
+    await provider.shutdown()
+    assert tester.is_running is False
+
+
+async def test_auto_tester_absent_when_disabled() -> None:
+    """With the default config the provider never creates a tester."""
+    provider = RelayGatewayProvider(config=make_config())
+    container = Container()
+    await provider.register(container)
+    assert container.has(RelayChannelAutoTester) is False
+    await provider.boot(container)
+    await provider.shutdown()
 
 
 async def test_register_twice_behavior() -> None:

@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.ai.relay.gateway import (
+    PassthroughService,
     RelayGatewayConfig,
     RelayGatewayModule,
     RelayGatewayProvider,
@@ -218,3 +219,18 @@ async def test_provider_wires_gateway_into_container() -> None:
     assert isinstance(service, RelayGatewayService)
     result = await service.handle(make_request())
     assert result.is_ok()
+
+
+async def test_provider_wires_passthrough_into_container() -> None:
+    """A provider with injected deps binds the passthrough service."""
+    provider = RelayGatewayProvider(
+        config=make_config(),
+        converter=FakeConverter(),
+        http_client=FakeHTTPClient(),
+    )
+    container = Container()
+    await provider.register(container)
+
+    assert container.has(PassthroughService)
+    passthrough = await container.resolve(PassthroughService)
+    assert isinstance(passthrough, PassthroughService)

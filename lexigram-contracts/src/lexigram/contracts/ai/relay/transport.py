@@ -15,7 +15,18 @@ from lexigram.contracts.ai.relay.types import JsonValue
 
 @dataclass(frozen=True, slots=True)
 class UpstreamRequest:
-    """A fully-resolved request to an upstream model provider."""
+    """A fully-resolved request to an upstream model provider.
+
+    Attributes:
+        request_id: Identifier of the originating gateway request.
+        method: HTTP method used for the upstream call.
+        url: Fully-resolved upstream endpoint URL.
+        headers: Headers to send with the upstream call.
+        payload: JSON payload to send with the upstream call.
+        timeout_seconds: Timeout budget for the upstream call.
+        channel_name: Name of the relay channel that selected this call. Empty
+            when the caller does not use channel identity.
+    """
 
     request_id: str
     method: str
@@ -23,6 +34,7 @@ class UpstreamRequest:
     headers: Mapping[str, str]
     payload: Mapping[str, JsonValue]
     timeout_seconds: float
+    channel_name: str = ""
 
 
 @dataclass(frozen=True, slots=True)

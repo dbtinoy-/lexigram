@@ -270,7 +270,7 @@ class TestCopySemantics:
 
 
 class TestConfigValidation:
-    """RelayGatewayConfig rejects duplicate channel names."""
+    """RelayGatewayConfig rejects duplicate channel names and bad auto-test config."""
 
     def test_duplicate_channel_names_raise(self) -> None:
         with pytest.raises(ValueError):
@@ -281,6 +281,113 @@ class TestConfigValidation:
         assert config.channels == ()
         assert config.model_suffix == {}
         assert config.provider_options == {}
+        assert config.auto_test_channels is False
+        assert config.auto_test_interval_seconds == 600
+
+    def test_auto_test_fields_roundtrip(self) -> None:
+        config = RelayGatewayConfig(
+            channels=(make_channel("a"),),
+            auto_test_channels=True,
+            auto_test_interval_seconds=30,
+        )
+        assert config.auto_test_channels is True
+        assert config.auto_test_interval_seconds == 30
+
+    def test_zero_auto_test_interval_raises(self) -> None:
+        with pytest.raises(ValueError, match="positive"):
+            RelayGatewayConfig(auto_test_interval_seconds=0)
+
+    def test_negative_auto_test_interval_raises(self) -> None:
+        with pytest.raises(ValueError, match="positive"):
+            RelayGatewayConfig(channels=(make_channel("a"),), auto_test_interval_seconds=-1)
+
+
+class TestSelectForEndpoint:
+    """Endpoint-kind selection filters on ``endpoint_kinds`` like ``select``."""
+
+    def test_kind_match_returns_chat_compatible_channel(self) -> None:
+        registry = _registry(
+            make_channel("chat", priority=1),
+            make_channel("emb", endpoint_kinds=frozenset({"embeddings"})),
+        )
+        result = registry.select_for_endpoint("embeddings", MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "emb"
+
+    def test_no_channel_declares_kind_is_model_not_found(self) -> None:
+        registry = _registry(make_channel("chat"))
+        result = registry.select_for_endpoint("embeddings", MODEL)
+        assert result.is_err()
+        err = result.unwrap_err()
+        assert isinstance(err, RelayGatewayError)
+        assert err.code == "MODEL_NOT_FOUND"
+        assert err.status_code == 404
+
+    def test_kind_channel_missing_model_is_model_not_found(self) -> None:
+        registry = _registry(
+            make_channel("emb", endpoint_kinds=frozenset({"embeddings"}), models=("other",))
+        )
+        result = registry.select_for_endpoint("embeddings", MODEL)
+        assert result.is_err()
+        assert result.unwrap_err().code == "MODEL_NOT_FOUND"
+
+    def test_disabled_kind_channel_ignored(self) -> None:
+        registry = _registry(
+            make_channel("off", endpoint_kinds=frozenset({"embeddings"}), enabled=False),
+            make_channel("on", endpoint_kinds=frozenset({"embeddings"}), priority=100),
+        )
+        result = registry.select_for_endpoint("embeddings", MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "on"
+
+    def test_runtime_drain_gates_endpoint_selection(self) -> None:
+        registry = _registry(
+            make_channel("emb", endpoint_kinds=frozenset({"embeddings"})),
+            make_channel("backup", priority=100),
+        )
+        registry.set_runtime_enabled("emb", False)
+        result = registry.select_for_endpoint("embeddings", MODEL)
+        assert result.is_err()
+        assert result.unwrap_err().code == "MODEL_NOT_FOUND"
+
+    def test_all_disabled_returns_channel_disabled(self) -> None:
+        registry = _registry(
+            make_channel("a", endpoint_kinds=frozenset({"embeddings"}), enabled=False),
+        )
+        result = registry.select_for_endpoint("embeddings", MODEL)
+        assert result.is_err()
+        assert result.unwrap_err().code == "CHANNEL_DISABLED"
+
+    def test_exclude_skips_named_channels(self) -> None:
+        registry = _registry(
+            make_channel("a", endpoint_kinds=frozenset({"embeddings"}), priority=1),
+            make_channel("b", endpoint_kinds=frozenset({"embeddings"}), priority=2),
+        )
+        result = registry.select_for_endpoint(
+            "embeddings", MODEL, exclude=frozenset({"a"})
+        )
+        assert result.is_ok()
+        assert result.unwrap().name == "b"
+
+    def test_exclude_all_matches_is_model_not_found(self) -> None:
+        registry = _registry(
+            make_channel("a", endpoint_kinds=frozenset({"embeddings"}))
+        )
+        result = registry.select_for_endpoint(
+            "embeddings", MODEL, exclude=frozenset({"a"})
+        )
+        assert result.is_err()
+        assert result.unwrap_err().code == "MODEL_NOT_FOUND"
+
+    def test_priority_then_stable_name_ordering(self) -> None:
+        registry = _registry(
+            make_channel("z", endpoint_kinds=frozenset({"embeddings"}), priority=100),
+            make_channel("a", endpoint_kinds=frozenset({"embeddings"}), priority=100),
+            make_channel("b", endpoint_kinds=frozenset({"embeddings"}), priority=50),
+        )
+        result = registry.select_for_endpoint("embeddings", MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "b"
 
 
 class TestProviderOptionsAndSuffix:
