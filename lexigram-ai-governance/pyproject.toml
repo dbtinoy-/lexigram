@@ -66,6 +66,9 @@ governance = "lexigram.ai.governance.di.provider:GovernanceProvider"
 [project.entry-points."lexigram.ai.modules"]
 governance = "lexigram.ai.governance.module:GovernanceModule"
 
+[project.entry-points."lexigram.admin.contributors"]
+ai-governance = "lexigram.ai.governance.admin.contributor:GovernanceAdminContributor"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/lexigram"]
 

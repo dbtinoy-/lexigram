@@ -18,9 +18,16 @@ from lexigram.ai.governance.relay_billing.pricing import (
     SimpleCostEstimator,
     evaluate_expression,
 )
+from lexigram.ai.governance.relay_billing.reports import (
+    RelayUsageReport,
+    RelayUsageReportService,
+    RelayUsageTotals,
+)
 from lexigram.ai.governance.relay_billing.reservations import (
     DEFAULT_RESERVATION_TTL,
     DEFAULT_WINDOW_SECONDS,
+    RelayQuotaEntry,
+    RelayQuotaSnapshot,
     RelayReservationLimits,
     RelayReservationManager,
     RelayScopeLimit,
@@ -44,9 +51,14 @@ __all__ = [
     "RelayBillingService",
     "RelayCostAdapter",
     "RelayPricingEngine",
+    "RelayQuotaEntry",
+    "RelayQuotaSnapshot",
     "RelayReservationLimits",
     "RelayReservationManager",
     "RelayScopeLimit",
+    "RelayUsageReport",
+    "RelayUsageReportService",
+    "RelayUsageTotals",
     "SimpleCostEstimator",
     "estimate_prompt_tokens",
     "evaluate_expression",

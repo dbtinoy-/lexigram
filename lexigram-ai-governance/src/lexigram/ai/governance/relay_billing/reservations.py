@@ -52,6 +52,8 @@ logger = get_logger(__name__)
 __all__ = [
     "DEFAULT_RESERVATION_TTL",
     "DEFAULT_WINDOW_SECONDS",
+    "RelayQuotaEntry",
+    "RelayQuotaSnapshot",
     "RelayReservationLimits",
     "RelayReservationManager",
     "RelayScopeLimit",
@@ -123,6 +125,58 @@ class _ReservationState:
     reservation: RelayUsageReservation
     window_keys: tuple[str, ...]
     expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class RelayQuotaEntry:
+    """One dimension's quota configuration and current usage.
+
+    Attributes:
+        dimension: Scope dimension the entry applies to.
+        value: Scope values currently tracked on the dimension.
+        max_tokens: Configured token limit for the window.
+        max_charge: Configured charge limit for the window.
+        window_seconds: Sliding window size in seconds.
+        used_tokens: Tokens currently held by live reservations.
+        used_charge: Charge currently held by live reservations.
+    """
+
+    dimension: str
+    value: str
+    max_tokens: int
+    max_charge: Decimal
+    window_seconds: float
+    used_tokens: int
+    used_charge: Decimal
+
+    def remaining_tokens(self) -> int:
+        """Return tokens still available in the window (never negative)."""
+        return max(0, self.max_tokens - self.used_tokens)
+
+    def remaining_charge(self) -> Decimal:
+        """Return charge still available in the window (never negative)."""
+        return max(Decimal("0"), self.max_charge - self.used_charge)
+
+
+@dataclass(frozen=True, slots=True)
+class RelayQuotaSnapshot:
+    """Read-only quota usage per configured scope dimension.
+
+    Attributes:
+        tenant: Tenant-dimension quota entry, when limits are configured.
+        account: Account-dimension quota entry, when limits are configured.
+        user: User-dimension quota entry, when limits are configured.
+        model: Model-dimension quota entry, when limits are configured.
+        provider: Provider-dimension quota entry, when limits are configured.
+        channel: Channel-dimension quota entry, when limits are configured.
+    """
+
+    tenant: RelayQuotaEntry | None = None
+    account: RelayQuotaEntry | None = None
+    user: RelayQuotaEntry | None = None
+    model: RelayQuotaEntry | None = None
+    provider: RelayQuotaEntry | None = None
+    channel: RelayQuotaEntry | None = None
 
 
 def _payload_text(payload: RelayRequestPayload) -> str:
@@ -435,6 +489,53 @@ class RelayReservationManager:
             self._started.discard(reservation_id)
             logger.info("relay_reservation_settled", reservation_id=reservation_id)
             return Ok(None)
+
+    async def quota_snapshot(self) -> RelayQuotaSnapshot:
+        """Report configured limits and current usage per dimension.
+
+        Expired reservations are released first so the snapshot reflects
+        live capacity only.  Dimensions without a configured limit never
+        appear in the snapshot.
+
+        Returns:
+            Per-dimension quota entries aggregating every tracked window
+            value; ``None`` for unconfigured dimensions.
+        """
+        async with self._lock:
+            await self._release_expired(clock.now())
+            entries: dict[str, RelayQuotaEntry] = {}
+            for dimension in RELAY_DIMENSIONS:
+                limit = getattr(self._limits, dimension)
+                if limit is None:
+                    continue
+                prefix = f"{dimension}:"
+                keys = sorted(
+                    key for key in self._token_windows if key.startswith(prefix)
+                )
+                if not keys:
+                    continue
+                used_tokens = 0
+                used_charge = Decimal("0")
+                for key in keys:
+                    used_tokens += int(await self._token_window(key).total())
+                    used_charge += Decimal(str(await self._charge_window(key).total()))
+                entries[dimension] = RelayQuotaEntry(
+                    dimension=dimension,
+                    value=", ".join(key.partition(":")[2] for key in keys),
+                    max_tokens=limit.max_tokens,
+                    max_charge=limit.max_charge,
+                    window_seconds=limit.window_seconds,
+                    used_tokens=used_tokens,
+                    used_charge=used_charge,
+                )
+            return RelayQuotaSnapshot(
+                tenant=entries.get("tenant"),
+                account=entries.get("account"),
+                user=entries.get("user"),
+                model=entries.get("model"),
+                provider=entries.get("provider"),
+                channel=entries.get("channel"),
+            )
 
     async def _release_expired(self, now: datetime) -> None:
         """Release every reservation that expired at or before *now*."""
