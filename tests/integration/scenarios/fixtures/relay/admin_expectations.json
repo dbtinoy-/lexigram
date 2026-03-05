@@ -1,0 +1,62 @@
+{
+  "contributors": {
+    "relay-gateway": {
+      "display_name": "Relay Gateway",
+      "group": "ai",
+      "icon": "shuffle",
+      "priority": 57,
+      "required_permissions": [
+        "relay.read",
+        "relay.channel_control",
+        "relay.policy_control"
+      ],
+      "widgets": [
+        "channel_health",
+        "route_activity",
+        "active_streams"
+      ],
+      "health_checks": [
+        "relay.channels"
+      ],
+      "actions": [
+        "set_channel_state",
+        "force_cancel_stream"
+      ],
+      "pages": [
+        "relay_gateway_overview",
+        "relay_gateway_routes",
+        "relay_gateway_streams",
+        "relay_gateway_settings"
+      ]
+    },
+    "ai-governance": {
+      "display_name": "AI Governance",
+      "group": "ai",
+      "icon": "shield",
+      "priority": 58,
+      "required_permissions": [
+        "governance.read"
+      ],
+      "widgets": [
+        "current_spend",
+        "token_dimensions",
+        "quota_pressure",
+        "settlement_failures"
+      ],
+      "health_checks": [
+        "governance.billing"
+      ],
+      "actions": [],
+      "pages": [
+        "governance_relay_usage",
+        "governance_relay_quotas",
+        "governance_relay_settlements"
+      ]
+    }
+  },
+  "control": {
+    "channel": "claude-fast",
+    "operator_actor_id": "e2e-operator",
+    "denied_actor_id": "e2e-attacker"
+  }
+}

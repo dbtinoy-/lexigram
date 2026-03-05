@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Literal
 
 from lexigram.contracts.ai.relay import JsonValue, RelayChannel
 
@@ -38,6 +39,13 @@ class RelayGatewayConfig:
             Defaults to ``False`` (disabled).
         auto_test_interval_seconds: Delay between auto-test sweeps in
             seconds. Must be positive when defined. Defaults to ``600``.
+        max_upstream_retries: Number of retry attempts across *other*
+            channels after a retryable upstream failure on the buffered
+            path. Defaults to ``0`` (single attempt, today's behavior).
+        load_balancing: Channel-selection mode. ``"deterministic"``
+            (default) keeps today's name-sort tiebreak; ``"weighted"``
+            breaks ties among equal-priority eligible channels by
+            weighted-random pick driven by each channel's ``weight``.
     """
 
     channels: tuple[RelayChannel, ...] = ()
@@ -47,11 +55,17 @@ class RelayGatewayConfig:
     )
     auto_test_channels: bool = False
     auto_test_interval_seconds: int = 600
+    max_upstream_retries: int = 0
+    load_balancing: Literal["deterministic", "weighted"] = "deterministic"
 
     def __post_init__(self) -> None:
-        """Reject duplicate channel names and non-positive auto-test intervals."""
+        """Reject duplicate names, bad auto-test intervals, and negative retries."""
         names = [channel.name for channel in self.channels]
         if len(names) != len(set(names)):
             raise ValueError("duplicate channel names in RelayGatewayConfig")
         if self.auto_test_interval_seconds <= 0:
             raise ValueError("auto_test_interval_seconds must be a positive integer")
+        if self.max_upstream_retries < 0:
+            raise ValueError("max_upstream_retries must be non-negative")
+        if self.load_balancing not in ("deterministic", "weighted"):
+            raise ValueError("load_balancing must be 'deterministic' or 'weighted'")

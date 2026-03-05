@@ -201,7 +201,7 @@ class CSPConfig(BaseConfig):
     )
 
     @model_validator(mode="after")
-    def _merge_default_directives(self) -> "CSPConfig":
+    def _merge_default_directives(self) -> CSPConfig:
         """Merge the framework default directives into the configured ones.
 
         User-supplied directives always win per-key; any directive the user

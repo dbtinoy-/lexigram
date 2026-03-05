@@ -208,6 +208,7 @@ class RelayGatewayProvider(Provider):
             authorizer=self._authorizer,
             billing=self._billing,
             media_resolver=self._media_resolver,
+            streams=streams,
         )
         container.singleton(RelayGatewayProtocol, service)
         passthrough_service = PassthroughService(

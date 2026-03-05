@@ -37,6 +37,12 @@ def _registry(*channels: RelayChannel) -> RelayChannelRegistry:
     return RelayChannelRegistry(RelayGatewayConfig(channels=channels))
 
 
+def _weighted(roll: int, *channels: RelayChannel) -> RelayChannelRegistry:
+    """Build a weighted-mode registry whose random source always returns ``roll``."""
+    config = RelayGatewayConfig(channels=channels, load_balancing="weighted")
+    return RelayChannelRegistry(config, random_source=lambda _: roll)
+
+
 class TestSelectionOrder:
     """Ordering: preferred, exact model, priority, then stable name."""
 
@@ -301,6 +307,21 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="positive"):
             RelayGatewayConfig(channels=(make_channel("a"),), auto_test_interval_seconds=-1)
 
+    def test_max_upstream_retries_defaults_to_zero(self) -> None:
+        config = RelayGatewayConfig()
+        assert config.max_upstream_retries == 0
+
+    def test_max_upstream_retries_roundtrip(self) -> None:
+        config = RelayGatewayConfig(
+            channels=(make_channel("a"),),
+            max_upstream_retries=2,
+        )
+        assert config.max_upstream_retries == 2
+
+    def test_negative_max_upstream_retries_raises(self) -> None:
+        with pytest.raises(ValueError, match="retries"):
+            RelayGatewayConfig(max_upstream_retries=-1)
+
 
 class TestSelectForEndpoint:
     """Endpoint-kind selection filters on ``endpoint_kinds`` like ``select``."""
@@ -390,6 +411,53 @@ class TestSelectForEndpoint:
         assert result.unwrap().name == "b"
 
 
+class TestSelectExclude:
+    """Exclusion filtering on ``select`` for failover retries."""
+
+    def test_excluded_channel_is_never_the_top_pick(self) -> None:
+        registry = _registry(
+            make_channel("a", priority=1),
+            make_channel("b", priority=50),
+        )
+        result = registry.select(SOURCE, MODEL, exclude=frozenset({"a"}))
+        assert result.is_ok()
+        assert result.unwrap().name == "b"
+
+    def test_empty_exclude_reproduces_exact_selection(self) -> None:
+        registry = _registry(
+            make_channel("a", priority=100),
+            make_channel("b", priority=50),
+            make_channel("c", priority=200),
+        )
+        default = registry.select(SOURCE, MODEL)
+        explicit = registry.select(SOURCE, MODEL, exclude=frozenset())
+        assert default.unwrap().name == explicit.unwrap().name == "b"
+
+    def test_excluded_preferred_channel_is_not_preferred(self) -> None:
+        registry = _registry(
+            make_channel("a", priority=1),
+            make_channel("b", priority=50),
+        )
+        result = registry.select(SOURCE, MODEL, preferred="a", exclude=frozenset({"a"}))
+        assert result.is_ok()
+        assert result.unwrap().name == "b"
+
+    def test_excluding_every_eligible_channel_falls_through_filters(self) -> None:
+        registry = _registry(make_channel("only"))
+        result = registry.select(SOURCE, MODEL, exclude=frozenset({"only"}))
+        assert result.is_err()
+        assert result.unwrap_err().code == "TARGET_FORMAT_UNSUPPORTED"
+
+    def test_excluded_channel_skipped_before_format_filter(self) -> None:
+        registry = _registry(
+            make_channel("same", target_format=SOURCE),
+            make_channel("good", priority=50),
+        )
+        result = registry.select(SOURCE, MODEL, exclude=frozenset({"same"}))
+        assert result.is_ok()
+        assert result.unwrap().name == "good"
+
+
 class TestProviderOptionsAndSuffix:
     """model_suffix / provider_options round-trip and never affect selection."""
 
@@ -406,3 +474,85 @@ class TestProviderOptionsAndSuffix:
         result = registry.select(SOURCE, MODEL)
         assert result.is_ok()
         assert result.unwrap() == channels[0]
+
+
+def _weighted_registry(weight_rolls: tuple[int, ...], *channels: RelayChannel) -> RelayChannelRegistry:
+    """Build a weighted-mode registry with a scripted random source.
+
+    Args:
+        weight_rolls: Values the scripted random source returns in order;
+            exhausted calls get 0.
+        channels: Channels to configure (all share SOURCE/MODEL defaults).
+    """
+    config = RelayGatewayConfig(channels=channels, load_balancing="weighted")
+    source = _ScriptedRandom(*weight_rolls)
+    return RelayChannelRegistry(config, random_source=source)
+
+
+class _ScriptedRandom:
+    """A random source returning preloaded values in sequence (0 when exhausted)."""
+
+    def __init__(self, *values: int) -> None:
+        self._values = list(values)
+
+    def __call__(self, max_value: int) -> int:
+        value = self._values.pop(0) if self._values else 0
+        if value >= max_value:
+            return max_value - 1
+        return value
+
+
+class TestWeightedSelection:
+    """Weighted tie-break among equal-priority top tiers (plan H, Task 2)."""
+
+    def test_weighted_roll_in_first_weight_picks_it(self) -> None:
+        registry = _weighted_registry((0,), make_channel("a", weight=1), make_channel("b", weight=3))
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "a"
+
+    def test_weighted_roll_covers_multiple_weights_lands_later(self) -> None:
+        registry = _weighted_registry((3,), make_channel("a", weight=1), make_channel("b", weight=3))
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "b"
+
+    def test_weighted_deterministic_config_channel_unchanged(self) -> None:
+        registry = _registry(make_channel("z", weight=100), make_channel("a", weight=1))
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "a"
+
+    def test_weighted_zero_weight_excluded_unless_only_candidate(self) -> None:
+        only = _weighted_registry((0,), make_channel("zero", weight=0))
+        assert only.select(SOURCE, MODEL).unwrap().name == "zero"
+        with_others = _weighted_registry((0,), make_channel("zero", weight=0), make_channel("five", weight=5))
+        assert with_others.select(SOURCE, MODEL).unwrap().name == "five"
+
+    def test_weighted_preferred_channel_wins_regardless_of_weight(self) -> None:
+        registry = _weighted_registry(
+            (9,), make_channel("heavy", priority=1, weight=10), make_channel("light", weight=10)
+        )
+        result = registry.select(SOURCE, MODEL, preferred="light")
+        assert result.is_ok()
+        assert result.unwrap().name == "light"
+
+    def test_weighted_priority_tier_beats_other_tier_weights(self) -> None:
+        registry = _weighted_registry(
+            (0,),
+            make_channel("tier1", priority=1, weight=1),
+            make_channel("tier2", priority=100, weight=1000),
+        )
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "tier1"
+
+    def test_weighted_exclude_still_removes_from_pool(self) -> None:
+        registry = _weighted_registry(
+            (0,),
+            make_channel("a", weight=1000),
+            make_channel("b", weight=1),
+        )
+        result = registry.select(SOURCE, MODEL, exclude=frozenset({"a"}))
+        assert result.is_ok()
+        assert result.unwrap().name == "b"

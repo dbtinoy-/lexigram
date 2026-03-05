@@ -1,12 +1,12 @@
-"""Buffered (non-streaming) relay gateway request lifecycle.
+"""Relay gateway request lifecycle (buffered and streaming).
 
-``RelayGatewayService`` orchestrates one buffered request through the
+``RelayGatewayService`` orchestrates one request through the
 dependencies: authorization, channel selection, billing admission, request
-conversion, the protected upstream call, upstream response decode, response
-conversion, billing settlement, and result metadata assembly.
+conversion, the protected upstream call, response conversion, billing
+settlement, and result metadata assembly.  Streaming requests run the
+same preflight and then consume the upstream SSE stream lazily through
+the stream session, settling billing exactly once when the stream ends.
 
-Streaming support arrives in Task 5.  Stream settlement is deferred until
-that streaming service path exists; buffered settlement is wired here.
 Provider authentication headers are out of scope until Task 7.
 ``config.provider_options`` are intentionally not merged into
 ``RelayOptions`` yet because no mapping schema exists.
@@ -14,6 +14,8 @@ Provider authentication headers are out of scope until Task 7.
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import AsyncGenerator, AsyncIterator, Mapping
 import time
 from typing import Any, Literal, cast
 
@@ -26,7 +28,10 @@ from lexigram.ai.relay.gateway.errors import (
     conversion_error_to_gateway,
     with_request_id,
 )
+from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
+from lexigram.ai.relay.gateway.stream import UpstreamEventParser, relay_stream
 from lexigram.ai.relay.gateway.upstream import HTTPUpstreamAdapter
+from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.governance import (
     RelayBillingProtocol,
     RelayUsageReservation,
@@ -47,6 +52,10 @@ from lexigram.contracts.ai.relay import (
     RelayLoss,
     RelayOptions,
     RelayRequestPayload,
+    RelayStreamSessionProtocol,
+    RelayUpstreamProtocol,
+    RelayUsage,
+    RelayWireEvent,
     UpstreamRequest,
     UpstreamResponse,
 )
@@ -62,7 +71,7 @@ logger = get_logger(__name__)
 
 
 class RelayGatewayService:
-    """Buffered request lifecycle for the relay gateway.
+    """Relay request lifecycle (buffered and streaming).
 
     The service is stateless between requests and never touches request
     headers, payloads, or upstream details in error messages; errors are
@@ -79,6 +88,9 @@ class RelayGatewayService:
             settlement are skipped.
         _media_resolver: Optional URL-media resolver threaded into the
             conversion context.
+        _streams: Optional registry of active streams used to expose
+            in-flight streams and cancel handles to operators; ``None``
+            disables stream registration (but not streaming itself).
     """
 
     def __init__(
@@ -92,6 +104,7 @@ class RelayGatewayService:
         authorizer: AuthorizerProtocol | None = None,
         billing: RelayBillingProtocol | None = None,
         media_resolver: MediaResolverProtocol | None = None,
+        streams: RelayStreamRegistry | None = None,
     ) -> None:
         """Bind the service to its dependencies.
 
@@ -107,6 +120,9 @@ class RelayGatewayService:
                 gateway runs without admission control or settlement.
             media_resolver: Optional URL-media resolver placed on the
                 conversion context; ``None`` disables media resolution.
+            streams: Optional stream registry for operator visibility
+                and forced cancellation; ``None`` keeps streaming
+                functional without registry bookkeeping.
         """
         self._converter = converter
         self._codec = codec
@@ -116,19 +132,22 @@ class RelayGatewayService:
         self._authorizer = authorizer
         self._billing = billing
         self._media_resolver = media_resolver
+        self._streams = streams
 
     async def handle(
         self, request: RelayGatewayRequest
     ) -> Result[RelayGatewayResult, RelayGatewayError]:
-        """Run the buffered relay lifecycle for one request.
+        """Run the buffered or streaming relay lifecycle for one request.
 
         Dependencies run in fixed order: authorize, select channel,
-        reserve billing capacity, convert request, call upstream, decode
-        upstream response, convert response back, settle billing, and
-        assemble result.  Any failure short-circuits the pipeline.
+        reserve billing capacity, convert request, then either call
+        upstream, decode, convert response back, and settle (buffered),
+        or create the stream session and hand back a lazy stream that
+        consumes upstream events and settles when exhausted (streaming).
+        Any preflight failure short-circuits the pipeline.
 
         Args:
-            request: The buffered gateway request.
+            request: The gateway request.
 
         Returns:
             ``Ok(RelayGatewayResult)`` on success, or
@@ -146,7 +165,10 @@ class RelayGatewayService:
             stream=request.stream,
         )
         try:
-            result, channel_name = await self._dispatch(request)
+            if request.stream:
+                result, channel_name = await self._handle_streaming(request)
+            else:
+                result, channel_name = await self._dispatch(request)
         except Exception as exc:
             logger.warning(
                 "relay_gateway_unexpected_error",
@@ -190,10 +212,242 @@ class RelayGatewayService:
             )
             if not allowed:
                 return Err(auth_denied(request.request_id)), ""
+        max_attempts = self._config.max_upstream_retries + 1
+        tried: set[str] = set()
+        last_upstream_error: RelayGatewayError | None = None
+        last_channel_name = ""
+        last_channel: RelayChannel | None = None
+        held_reservation: RelayUsageReservation | None = None
+        for attempt in range(1, max_attempts + 1):
+            selected = self._registry.select(
+                source=request.source,
+                model=request.model,
+                stream=request.stream,
+                preferred=request.channel.name if request.channel else None,
+                exclude=frozenset(tried),
+            )
+            if selected.is_err():
+                if last_upstream_error is not None:
+                    billing = self._billing
+                    if (
+                        held_reservation is not None
+                        and billing is not None
+                        and last_channel is not None
+                    ):
+                        await self._settle(
+                            billing,
+                            held_reservation,
+                            self._empty_settle_result(request, last_channel),
+                            status="failed",
+                        )
+                    return (
+                        Err(with_request_id(last_upstream_error, request.request_id)),
+                        last_channel_name,
+                    )
+                return (
+                    Err(with_request_id(selected.unwrap_err(), request.request_id)),
+                    "",
+                )
+            channel = selected.unwrap()
+            last_channel = channel
+            last_channel_name = channel.name
+            logger.info(
+                "relay_gateway_channel_selected",
+                request_id=request.request_id,
+                channel=channel.name,
+                target_format=channel.target_format,
+                model=request.model,
+            )
+            billing = self._billing
+            reservation: RelayUsageReservation | None = None
+            if billing is not None:
+                admitted = await self._pre_consume(request, billing, channel)
+                if admitted.is_err():
+                    return Err(admitted.unwrap_err()), channel.name
+                reservation = admitted.unwrap()
+                if held_reservation is not None:
+                    await billing.release(held_reservation)
+                    held_reservation = None
+            outbound_model = request.model + self._config.model_suffix.get(
+                channel.name, ""
+            )
+            context = RelayConversionContext(
+                request_id=request.request_id,
+                channel_name=channel.name,
+                upstream_model=outbound_model,
+                options=RelayOptions(),
+                media_resolver=self._media_resolver,
+            )
+            conv = self._converter.convert_request(
+                payload=cast("RelayRequestPayload", request.payload),
+                source=request.source,
+                target=channel.target_format,
+                context=context,
+            )
+            if conv.is_err():
+                if reservation is not None and billing is not None:
+                    await billing.release(reservation)
+                return (
+                    Err(
+                        conversion_error_to_gateway(
+                            conv.unwrap_err(), request.request_id
+                        )
+                    ),
+                    channel.name,
+                )
+            converted_request = conv.unwrap()
+            self._log_conversion_loss(
+                request.request_id,
+                converted_request.converter_id,
+                converted_request.losses,
+            )
+            upstream_response = await self._call_upstream(
+                channel, outbound_model, converted_request.value.to_dict(), request
+            )
+            if upstream_response.is_err():
+                upstream_error = upstream_response.unwrap_err()
+                if upstream_error.retryable and attempt < max_attempts:
+                    tried.add(channel.name)
+                    last_upstream_error = upstream_error
+                    held_reservation = reservation
+                    logger.info(
+                        "relay_gateway_upstream_retry",
+                        request_id=request.request_id,
+                        channel=channel.name,
+                        error_code=upstream_error.code,
+                        attempt=attempt,
+                    )
+                    continue
+                if reservation is not None and billing is not None:
+                    await self._settle(
+                        billing,
+                        reservation,
+                        self._empty_settle_result(request, channel),
+                        status="failed",
+                    )
+                return (
+                    Err(with_request_id(upstream_error, request.request_id)),
+                    channel.name,
+                )
+            resp = upstream_response.unwrap()
+            if resp.payload is None:
+                if reservation is not None and billing is not None:
+                    await self._settle(
+                        billing,
+                        reservation,
+                        self._empty_settle_result(request, channel),
+                        status="failed",
+                    )
+                return (
+                    Err(
+                        RelayGatewayError(
+                            code=RelayGatewayErrorCode.UPSTREAM_MALFORMED,
+                            message="malformed upstream response",
+                            status_code=502,
+                            request_id=request.request_id,
+                            retryable=False,
+                        )
+                    ),
+                    channel.name,
+                )
+            decoded = self._codec.decode_response_payload(
+                target=channel.target_format,
+                data=dict(resp.payload),
+                request_id=request.request_id,
+            )
+            if decoded.is_err():
+                if reservation is not None and billing is not None:
+                    await self._settle(
+                        billing,
+                        reservation,
+                        self._empty_settle_result(request, channel),
+                        status="failed",
+                    )
+                return Err(decoded.unwrap_err()), channel.name
+            back = self._converter.convert_response(
+                payload=decoded.unwrap(),
+                source=channel.target_format,
+                target=request.source,
+                context=context,
+            )
+            if back.is_err():
+                if reservation is not None and billing is not None:
+                    await self._settle(
+                        billing,
+                        reservation,
+                        self._empty_settle_result(request, channel),
+                        status="failed",
+                    )
+                return (
+                    Err(
+                        conversion_error_to_gateway(
+                            back.unwrap_err(), request.request_id
+                        )
+                    ),
+                    channel.name,
+                )
+            converted = back.unwrap()
+            self._log_conversion_loss(
+                request.request_id, converted.converter_id, converted.losses
+            )
+            if reservation is not None and billing is not None:
+                await self._settle(billing, reservation, converted, status="completed")
+            metadata = RelayGatewayMetadata(
+                converter_id=converted.converter_id,
+                source=request.source,
+                target=channel.target_format,
+                quality=converted.quality,
+                loss_codes=tuple(loss.reason for loss in converted.losses),
+                warnings=converted.warnings,
+            )
+            return (
+                Ok(
+                    RelayGatewayResult(
+                        status_code=resp.status_code,
+                        headers={**resp.headers, "x-request-id": request.request_id},
+                        payload=converted.value.to_dict(),
+                        stream=None,
+                        metadata=metadata,
+                    )
+                ),
+                channel.name,
+            )
+        error = last_upstream_error or RelayGatewayError(
+            code=RelayGatewayErrorCode.CHANNEL_DISABLED,
+            message="no channels available",
+            status_code=404,
+            request_id=request.request_id,
+        )
+        return Err(with_request_id(error, request.request_id)), last_channel_name
+
+    async def _handle_streaming(
+        self, request: RelayGatewayRequest
+    ) -> tuple[Result[RelayGatewayResult, RelayGatewayError], str]:
+        """Run the streaming preflight and return a lazy stream result.
+
+        Authorization, channel selection, billing admission, request
+        conversion, and stream-session creation all complete before the
+        first frame is delivered; upstream I/O happens lazily as the
+        returned stream is consumed by the caller.
+
+        Returns:
+            ``tuple`` of the pipeline result (whose ``stream`` holds the
+            lazy ``AsyncIterator`` on success) and the selected channel
+            name.  The channel name is ``""`` when selection failed
+            before a channel was chosen.
+        """
+        if self._authorizer is not None:
+            allowed = await self._authorizer.authorize(
+                user=request.tenant_id,
+                action="relay.invoke",
+                resource=request.model,
+            )
+            if not allowed:
+                return Err(auth_denied(request.request_id)), ""
         selected = self._registry.select(
             source=request.source,
             model=request.model,
-            stream=request.stream,
+            stream=True,
             preferred=request.channel.name if request.channel else None,
         )
         if selected.is_err():
@@ -238,106 +492,230 @@ class RelayGatewayService:
                 channel.name,
             )
         converted_request = conv.unwrap()
+        session = self._converter.new_stream_session(
+            source=request.source,
+            target=channel.target_format,
+            context=context,
+        )
+        if session.is_err():
+            if reservation is not None and billing is not None:
+                await billing.release(reservation)
+            return (
+                Err(
+                    conversion_error_to_gateway(
+                        session.unwrap_err(), request.request_id
+                    )
+                ),
+                channel.name,
+            )
+        stream_session = session.unwrap()
         self._log_conversion_loss(
             request.request_id,
             converted_request.converter_id,
             converted_request.losses,
         )
-        upstream_response = await self._call_upstream(
-            channel, outbound_model, converted_request.value.to_dict(), request
-        )
-        if upstream_response.is_err():
-            if reservation is not None and billing is not None:
-                await self._settle(
-                    billing,
-                    reservation,
-                    self._empty_settle_result(request, channel),
-                    status="failed",
-                )
-            return (
-                Err(
-                    with_request_id(upstream_response.unwrap_err(), request.request_id)
-                ),
-                channel.name,
-            )
-        resp = upstream_response.unwrap()
-        if resp.payload is None:
-            if reservation is not None and billing is not None:
-                await self._settle(
-                    billing,
-                    reservation,
-                    self._empty_settle_result(request, channel),
-                    status="failed",
-                )
-            return (
-                Err(
-                    RelayGatewayError(
-                        code=RelayGatewayErrorCode.UPSTREAM_MALFORMED,
-                        message="malformed upstream response",
-                        status_code=502,
-                        request_id=request.request_id,
-                        retryable=False,
-                    )
-                ),
-                channel.name,
-            )
-        decoded = self._codec.decode_response_payload(
-            target=channel.target_format,
-            data=dict(resp.payload),
-            request_id=request.request_id,
-        )
-        if decoded.is_err():
-            if reservation is not None and billing is not None:
-                await self._settle(
-                    billing,
-                    reservation,
-                    self._empty_settle_result(request, channel),
-                    status="failed",
-                )
-            return Err(decoded.unwrap_err()), channel.name
-        back = self._converter.convert_response(
-            payload=decoded.unwrap(),
-            source=channel.target_format,
-            target=request.source,
-            context=context,
-        )
-        if back.is_err():
-            if reservation is not None and billing is not None:
-                await self._settle(
-                    billing,
-                    reservation,
-                    self._empty_settle_result(request, channel),
-                    status="failed",
-                )
-            return (
-                Err(conversion_error_to_gateway(back.unwrap_err(), request.request_id)),
-                channel.name,
-            )
-        converted = back.unwrap()
-        self._log_conversion_loss(
-            request.request_id, converted.converter_id, converted.losses
-        )
-        if reservation is not None and billing is not None:
-            await self._settle(billing, reservation, converted, status="completed")
         metadata = RelayGatewayMetadata(
-            converter_id=converted.converter_id,
+            converter_id=converted_request.converter_id,
             source=request.source,
             target=channel.target_format,
-            quality=converted.quality,
-            loss_codes=tuple(loss.reason for loss in converted.losses),
-            warnings=converted.warnings,
+            quality=converted_request.quality,
+            loss_codes=tuple(loss.reason for loss in converted_request.losses),
+            warnings=converted_request.warnings,
+        )
+        stream = self._stream_events(
+            request,
+            channel,
+            outbound_model,
+            converted_request,
+            reservation,
+            stream_session,
+            context,
         )
         return (
             Ok(
                 RelayGatewayResult(
-                    status_code=resp.status_code,
-                    headers={**resp.headers, "x-request-id": request.request_id},
-                    payload=converted.value.to_dict(),
-                    stream=None,
+                    status_code=200,
+                    headers={"x-request-id": request.request_id},
+                    payload=None,
+                    stream=stream,
                     metadata=metadata,
                 )
             ),
             channel.name,
+        )
+
+    async def _stream_events(
+        self,
+        request: RelayGatewayRequest,
+        channel: RelayChannel,
+        outbound_model: str,
+        converted_request: RelayConvertResult[RelayRequestPayload],
+        reservation: RelayUsageReservation | None,
+        session: RelayStreamSessionProtocol,
+        context: RelayConversionContext,
+    ) -> AsyncIterator[RelayWireEvent]:
+        """Consume the upstream stream and settle the reservation once.
+
+        Each consumer pull forwards exactly one upstream chunk through
+        the session; cancellation, truncation, and malformed framing
+        follow the ``relay_stream`` lifecycle.  The ``finally`` block
+        runs when the consumer ends the stream (completion, disconnect,
+        or error) and settles billing exactly once from the session
+        snapshot.
+
+        Yields:
+            Normalized ``RelayWireEvent`` values framed by the stream
+            session.
+        """
+        streams = self._streams
+        stream_id: str | None = None
+        cancel_handle: asyncio.Event | None = None
+        if streams is not None:
+            stream_id, cancel_handle = streams.register(
+                channel=channel.name,
+                model=outbound_model,
+                request_id=request.request_id,
+            )
+        parser = UpstreamEventParser(
+            session=session,
+            source=channel.target_format,
+            request_id=request.request_id,
+        )
+        url = self._upstream_url(channel, outbound_model)
+        payload = (
+            converted_request.value.to_dict()
+            if converted_request.value is not None
+            else {}
+        )
+        logger.info(
+            "relay_gateway_stream_started",
+            request_id=request.request_id,
+            channel=channel.name,
+            method="POST",
+            url=url,
+        )
+        upstream_request = UpstreamRequest(
+            request_id=request.request_id,
+            method="POST",
+            url=url,
+            headers={"content-type": "application/json"},
+            payload=dict(payload),
+            timeout_seconds=channel.timeout_seconds,
+            channel_name=channel.name,
+        )
+        truncated = False
+        stream_iter: AsyncGenerator[RelayWireEvent, None] | None = None
+        try:
+            stream_iter = cast(
+                "AsyncGenerator[RelayWireEvent, None]",
+                relay_stream(
+                    cast(
+                        "RelayUpstreamProtocol",
+                        self._upstream,
+                    ),
+                    upstream_request,
+                    parser,
+                    cancel_handle=cancel_handle,
+                ),
+            )
+            try:
+                async for wire in stream_iter:
+                    yield wire
+            except (RelayGatewayError, RelayError) as error:
+                logger.warning(
+                    "relay_gateway_stream_malformed",
+                    request_id=request.request_id,
+                    channel=channel.name,
+                    error=str(error),
+                )
+                truncated = True
+                raise
+        finally:
+            if stream_iter is not None:
+                await stream_iter.aclose()
+            if truncated:
+                status: Literal["completed", "failed", "cancelled", "truncated"] = (
+                    "truncated"
+                )
+            elif parser.cancelled:
+                status = "cancelled"
+            elif parser.truncated:
+                status = "truncated"
+            else:
+                status = "completed"
+            if streams is not None and stream_id is not None:
+                streams.unregister(stream_id)
+            billing = self._billing
+            if billing is not None and reservation is not None:
+                settled = self._stream_settle_result(
+                    request,
+                    channel,
+                    converter_id=converted_request.converter_id,
+                    session=session,
+                )
+                await self._settle(billing, reservation, settled, status=status)
+
+    def _stream_settle_result(
+        self,
+        request: RelayGatewayRequest,
+        channel: RelayChannel,
+        *,
+        converter_id: str,
+        session: RelayStreamSessionProtocol,
+    ) -> RelayConvertResult[Any]:
+        """Build the settled result from the stream session snapshot.
+
+        Args:
+            request: The gateway request being settled.
+            channel: The selected channel.
+            converter_id: Converter that produced the stream session.
+            session: The stream session whose snapshot carries the
+                settled usage.
+
+        Returns:
+            A ``RelayConvertResult`` carrying normalized usage extracted
+            from the session snapshot (or no usage when the snapshot
+            exposes none).
+        """
+        usage = self._usage_from_snapshot(session.snapshot())
+        return RelayConvertResult(
+            value=None,
+            source=request.source,
+            target=channel.target_format,
+            converter_id=converter_id,
+            quality=ConversionQuality.GOOD,
+            usage=usage,
+        )
+
+    @staticmethod
+    def _usage_from_snapshot(snapshot: object) -> RelayUsage | None:
+        """Extract ``RelayUsage`` from a session snapshot when present.
+
+        Snapshots are opaque; only a ``Mapping`` carrying a ``usage``
+        sub-mapping is inspected, accepting either the OpenAI-style
+        ``prompt_tokens``/``completion_tokens`` keys or the
+        Claude-style ``input_tokens``/``output_tokens`` keys.
+
+        Args:
+            snapshot: The session snapshot returned by
+                ``RelayStreamSessionProtocol.snapshot``.
+
+        Returns:
+            A normalized ``RelayUsage`` when the snapshot exposes one,
+            else ``None`` (settlement then records no usage).
+        """
+        if not isinstance(snapshot, Mapping):
+            return None
+        usage = snapshot.get("usage")
+        if not isinstance(usage, Mapping):
+            return None
+        prompt = usage.get("prompt_tokens", usage.get("input_tokens"))
+        completion = usage.get("completion_tokens", usage.get("output_tokens"))
+        if not isinstance(prompt, int) or not isinstance(completion, int):
+            return None
+        return RelayUsage(
+            prompt_tokens=prompt,
+            completion_tokens=completion,
         )
 
     async def _pre_consume(

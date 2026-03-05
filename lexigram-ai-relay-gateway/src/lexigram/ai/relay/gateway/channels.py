@@ -14,6 +14,9 @@ config ``enabled`` flag is false.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+import random
+
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.contracts.ai.relay import RelayChannel, RelayFormat, RelayGatewayError
 from lexigram.contracts.core.result import Err, Ok, Result
@@ -23,6 +26,11 @@ __all__ = ["RelayChannelRegistry"]
 
 class RelayChannelRegistry:
     """Selects a ``RelayChannel`` deterministically from a static config.
+
+    By default selection is fully deterministic; when the config enables
+    ``"weighted"`` load balancing, ties among an already-tied top tier
+    (equal precedence, eligible, same priority) are broken by
+    weighted-random pick instead of ascending name.
 
     Note:
         "Healthy channel" in the plan is interpreted as the channel's
@@ -36,15 +44,26 @@ class RelayChannelRegistry:
             service; empty equals "all channels as configured".
     """
 
-    def __init__(self, config: RelayGatewayConfig) -> None:
+    def __init__(
+        self,
+        config: RelayGatewayConfig,
+        *,
+        random_source: Callable[[int], int] | None = None,
+    ) -> None:
         """Bind the registry to a static channel table.
 
         Args:
             config: Immutable gateway configuration. Selection never
                 mutates it; the channel tuple is kept as configured.
+            random_source: Callable receiving a weight sum and returning
+                a value in ``[0, total)``; only used by the weighted
+                tie-break. Defaults to ``random.SystemRandom().randrange``;
+                tests pass a deterministic fake.
         """
+        self._config = config
         self._channels = config.channels
         self._runtime_enabled: dict[str, bool] = {}
+        self._random_source = random_source or random.SystemRandom().randrange
 
     @property
     def channels(self) -> tuple[RelayChannel, ...]:
@@ -88,6 +107,7 @@ class RelayChannelRegistry:
         stream: bool = False,
         capabilities: frozenset[str] = frozenset(),
         preferred: str | None = None,
+        exclude: frozenset[str] = frozenset(),
     ) -> Result[RelayChannel, RelayGatewayError]:
         """Pick the best channel for the routing query.
 
@@ -114,6 +134,11 @@ class RelayChannelRegistry:
                 subset of the channel's declared capabilities.
             preferred: Optional channel name that ranks first when it is
                 eligible. Defaults to ``None`` (no preference).
+            exclude: Channel names to skip, e.g. for failover retries.
+                Excluded names are filtered before the other eligibility
+                filters run, so an excluded channel is never eligible and
+                cannot be treated as preferred. Defaults to empty (no
+                exclusion).
 
         Returns:
             ``Ok(channel)`` for the best eligible channel, or
@@ -139,6 +164,7 @@ class RelayChannelRegistry:
                     request_id="",
                 )
             )
+        enabled = [channel for channel in enabled if channel.name not in exclude]
         transformable = [
             channel for channel in enabled if channel.target_format != source
         ]
@@ -184,6 +210,21 @@ class RelayChannelRegistry:
                 channel.name,
             ),
         )
+        if self._config.load_balancing == "weighted" and len(ordered) > 1:
+            top = ordered[0]
+            top_key = (top.name != preferred, model not in top.models, top.priority)
+            tier = [
+                channel
+                for channel in ordered
+                if (
+                    channel.name != preferred,
+                    model not in channel.models,
+                    channel.priority,
+                )
+                == top_key
+            ]
+            if len(tier) > 1:
+                return Ok(self._pick_weighted(tier))
         return Ok(ordered[0])
 
     def select_for_endpoint(
@@ -255,6 +296,24 @@ class RelayChannelRegistry:
             for channel in self._channels
             if channel.enabled and self._runtime_enabled.get(channel.name, True)
         ]
+
+    def _pick_weighted(self, tier: list[RelayChannel]) -> RelayChannel:
+        """Pick one channel from an already-tied tier by cumulative weight.
+
+        Channels with ``weight=0`` are excluded unless the whole tier is
+        made of them; the walk is driven by ``self._random_source`` on
+        the total weight so the pick is a pure function of the injected
+        source (low values pick early channels, values near the sum pick
+        late ones).
+        """
+        participants = [channel for channel in tier if channel.weight > 0] or tier
+        total = sum(channel.weight for channel in participants) or 1
+        roll = self._random_source(total)
+        for channel in participants:
+            roll -= channel.weight
+            if roll < 0:
+                return channel
+        return participants[-1]
 
     @staticmethod
     def _meets_capabilities(

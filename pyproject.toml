@@ -7,11 +7,14 @@ requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "lexigram",
+    "lexigram-contracts",
     "lexigram-ai-agents",
     "lexigram-ai-relay",
     "lexigram-ai-relay-gateway",
     "lexigram-admin",
     "lexigram-ai",
+    "lexigram-ai-llm",
+    "lexigram-ai-rag",
     "lexigram-auth",
     "lexigram-cache",
     "lexigram-cli",
@@ -78,7 +81,7 @@ members = [
     "lexigram-ai-agents",
     "lexigram-admin",
     "lexigram-ai",
-"lexigram-ai-llm",
+    "lexigram-ai-llm",
     "lexigram-ai-rag",
     "lexigram-ai-relay",
     "lexigram-ai-relay-gateway",
@@ -100,7 +103,6 @@ members = [
     "lexigram-tasks",
     "lexigram-secrets",
     "lexigram-testing",
-    "lexigram-ai-agents",
     "lexigram-ai-mcp",
     "lexigram-ai-memory",
     "lexigram-ai-observability",
@@ -114,14 +116,6 @@ members = [
     "lexigram-ai-evaluation",
     "lexigram-ui",
     "lexigram-web",
-    "lexigram-web/examples/structured_users",
-    "lexigram-web/examples/modular_platform",
-    "example/full-stack",
-    "examples/ai",
-    "examples/api",
-    "examples/worker",
-    "examples/platform",
-    "examples/lexigram-admin-plugin-demo",
     "lexigram-nosql",
     "lexigram-vector",
     "lexigram-graph",
@@ -350,9 +344,6 @@ pythonpath = [
     "lexigram-contracts/src",
     "lexigram-ui/src",
     "lexigram-web/src",
-    "lexigram-web/examples",
-    "lexigram-web/examples/structured_users/src",
-    "lexigram-web/examples/modular_platform/src",
     "lexigram-ai-governance/src",
     "lexigram-ai-observability/src",
     "lexigram-vector/src",
@@ -360,10 +351,6 @@ pythonpath = [
     "lexigram-graph/src",
     "lexigram-audit/src",
     "lexigram-webhook/src",
-    "examples/ai/src",
-    "examples/api/src",
-    "examples/worker/src",
-    "examples/platform/src",
 ]
 markers = [
     "integration: marks tests as integration tests",
@@ -436,10 +423,8 @@ omit = [
     "*/test_*.py",
     "*/conftest.py",
     "*/migrations/*",
-    "*/examples/*",
     "*/__pycache__/*",
     "lexigram-cli/src/lexigram/cli/templates/*",
-    "lexigram-admin/examples/*",
 ]
 
 [tool.coverage.report]
@@ -468,7 +453,6 @@ target-version = "py311"
 extend-exclude = [
     # Non-production directories: excluded entirely from linting
     "**/tests/**",
-    "**/examples/**",
     "**/docs/**",
     "**/migrations/**",
     "**/alembic/**",
@@ -821,7 +805,6 @@ exclude = [
     "lexigram-ai/src/lexigram/__init__.py",
     "lexigram-admin/src/lexigram/__init__.py",
     "tests/.*",
-    "examples/.*",
     "docs/.*",
     "alembic/.*",
 ]
