@@ -69,7 +69,7 @@ forbidden_modules =
     # Core package sub-modules
     lexigram.app
     lexigram.config
-    lexigram.core
+    lexigram.primitives
     lexigram.di
     lexigram.logging
     lexigram.result
@@ -85,15 +85,12 @@ forbidden_modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-    lexigram.idempotency
-    lexigram.mailer
-    lexigram.mapping
+            lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-    lexigram.plugins
-    lexigram.queue
+        lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security
@@ -122,7 +119,7 @@ type = forbidden
 source_modules =
     lexigram.app
     lexigram.config
-    lexigram.core
+    lexigram.primitives
     lexigram.di
     lexigram.logging
     lexigram.result
@@ -139,15 +136,12 @@ forbidden_modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-    lexigram.idempotency
-    lexigram.mailer
-    lexigram.mapping
+            lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-    lexigram.plugins
-    lexigram.queue
+        lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security
@@ -222,15 +216,12 @@ forbidden_modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-    lexigram.idempotency
-    lexigram.mailer
-    lexigram.mapping
+            lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-    lexigram.plugins
-    lexigram.queue
+        lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security
@@ -278,15 +269,12 @@ modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-    lexigram.idempotency
-    lexigram.mailer
-    lexigram.mapping
+            lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-    lexigram.plugins
-    lexigram.queue
+        lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security
@@ -305,7 +293,7 @@ ignore_imports =
     # Filed as tech-debt: replace with a contracts-based interface boundary.
     lexigram.web.** -> lexigram.security.**
     # Tracked violation: events/middleware/tasks use lexigram.resilience for
-    # retry and rate-limiting utilities.  These were moved from lexigram.core
+    # retry and rate-limiting utilities.  These were moved from lexigram.primitives
     # to lexigram.resilience (cc-p1).  Refactor target: promote retry and
     # TokenBucket to a foundational package (or contracts) so these extension
     # packages can remain independent.
@@ -326,9 +314,8 @@ ignore_imports =
     lexigram.ai.** -> lexigram.ai.rag.**
     lexigram.ai.** -> lexigram.ai.session.**
     lexigram.ai.** -> lexigram.ai.skills.**
-    lexigram.ai.** -> lexigram.ai.vector.**
+    lexigram.ai.** -> lexigram.vector.**
     lexigram.ai.** -> lexigram.ai.workers.**
-    lexigram.ai.** -> lexigram.ai.workflow.**
     # Documented allowance: lexigram.ai imports lexigram.vector for
     # vector store integration and composition.
     lexigram.ai.** -> lexigram.vector.**
@@ -358,9 +345,8 @@ modules =
     lexigram.ai.rag
     lexigram.ai.session
     lexigram.ai.skills
-    lexigram.ai.vector
+    lexigram.vector
     lexigram.ai.workers
-    lexigram.ai.workflow
 
 # =============================================================================
 # Contract 6 — AI sub-packages do not import from the AI parent (lexigram.ai)
