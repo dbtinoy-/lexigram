@@ -24,14 +24,16 @@ class EvaluationProvider(Provider):
 
     name = "evaluation"
     priority = ProviderPriority.DOMAIN
-    config_key: str | None = "ai.evaluation"
+    config_key: str | None = "ai_evaluation"
     config_model: type | None = EvaluationConfig
 
     def __init__(self, config: EvaluationConfig | None = None) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or EvaluationConfig()
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
+        self._config = self._requested_config or self._config or EvaluationConfig()
         container.singleton(EvaluationConfig, instance=self._config)
 
         from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
