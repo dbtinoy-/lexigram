@@ -44,14 +44,16 @@ class RAGProvider(Provider):
 
     name = "rag"
     priority = ProviderPriority.DOMAIN
-    config_key: str | None = "ai.rag"
+    config_key: str | None = "ai_rag"
     config_model: type | None = RAGConfig
 
     def __init__(self, config: RAGConfig | None = None) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or RAGConfig()
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
+        self._config = self._requested_config or self._config or RAGConfig()
         container.singleton(RAGConfig, instance=self._config)
 
         from lexigram.ai.rag.context_compression.strategy_registry import (
