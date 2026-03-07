@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from lexigram.contracts.ai.relay import RelayGatewayProtocol
 from lexigram.di.module import DynamicModule, Module, module
+
+if TYPE_CHECKING:
+    from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 
 __all__ = ["RelayGatewayModule"]
 
@@ -29,8 +34,13 @@ class RelayGatewayModule(Module):
     """
 
     @classmethod
-    def configure(cls) -> DynamicModule:
+    def configure(cls, config: RelayGatewayConfig | None = None) -> DynamicModule:
         """Create a RelayGatewayModule with the built-in gateway routes.
+
+        Args:
+            config: Static gateway configuration (channel table, model
+                suffixes, auto-test flags, job TTL). Defaults to an empty
+                configuration when omitted.
 
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
@@ -42,7 +52,7 @@ class RelayGatewayModule(Module):
 
         return DynamicModule(
             module=cls,
-            providers=[RelayGatewayProvider()],
+            providers=[RelayGatewayProvider(config=config)],
             exports=[
                 RelayGatewayProtocol,
                 RelayHealthService,

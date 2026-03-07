@@ -234,3 +234,10 @@ async def test_provider_wires_passthrough_into_container() -> None:
     assert container.has(PassthroughService)
     passthrough = await container.resolve(PassthroughService)
     assert isinstance(passthrough, PassthroughService)
+
+
+def test_configure_passes_config_to_provider() -> None:
+    """``configure`` must forward the gateway config to the provider."""
+    config = RelayGatewayConfig(auto_test_interval_seconds=30)
+    result = RelayGatewayModule.configure(config=config)
+    assert result.providers[0]._config is config
