@@ -46,6 +46,10 @@ class RelayGatewayConfig:
             (default) keeps today's name-sort tiebreak; ``"weighted"``
             breaks ties among equal-priority eligible channels by
             weighted-random pick driven by each channel's ``weight``.
+        job_ttl_seconds: Age in seconds after which a relay job record
+            (``POST /v1/videos`` style job relay) is evicted from the
+            in-memory job registry on its next poll. Must be positive.
+            Defaults to ``3600`` (one hour).
     """
 
     channels: tuple[RelayChannel, ...] = ()
@@ -57,6 +61,7 @@ class RelayGatewayConfig:
     auto_test_interval_seconds: int = 600
     max_upstream_retries: int = 0
     load_balancing: Literal["deterministic", "weighted"] = "deterministic"
+    job_ttl_seconds: int = 3600
 
     def __post_init__(self) -> None:
         """Reject duplicate names, bad auto-test intervals, and negative retries."""
@@ -69,3 +74,5 @@ class RelayGatewayConfig:
             raise ValueError("max_upstream_retries must be non-negative")
         if self.load_balancing not in ("deterministic", "weighted"):
             raise ValueError("load_balancing must be 'deterministic' or 'weighted'")
+        if self.job_ttl_seconds <= 0:
+            raise ValueError("job_ttl_seconds must be a positive integer")

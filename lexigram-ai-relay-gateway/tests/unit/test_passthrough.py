@@ -17,7 +17,12 @@ import pytest
 
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
-from lexigram.ai.relay.gateway.passthrough import PassthroughService
+from lexigram.ai.relay.gateway.passthrough import (
+    PassthroughService,
+    RelayPassthroughBody,
+    RelayPassthroughResult,
+    rewrite_multipart_form_field,
+)
 from lexigram.contracts.ai.governance import (
     RelayBillingError,
     RelayUsageRecord,
@@ -42,6 +47,26 @@ TENANT_ID = "tenant-1"
 BASE_URL = "https://upstream.example.com"
 WHITESPACE_BODY = {"model": MODEL, "input": ["hello"], "encoding_format": "float"}
 
+MULTIPART_BOUNDARY = "bnd-42"
+MULTIPART_CONTENT_TYPE = f"multipart/form-data; boundary={MULTIPART_BOUNDARY}"
+MULTIPART_BODY = b"".join(
+    [
+        f"--{MULTIPART_BOUNDARY}\r\n".encode("ascii"),
+        b'Content-Disposition: form-data; name="model"\r\n',
+        b"\r\n",
+        MODEL.encode("ascii"),
+        b"\r\n",
+        f"--{MULTIPART_BOUNDARY}\r\n".encode("ascii"),
+        b'Content-Disposition: form-data; name="image"; filename="starry.png"\r\n',
+        b"Content-Type: image/png\r\n",
+        b"\r\n",
+        b"\x89PNG\r\n\x1a\nBINARY\x00\xffDATA",
+        b"\r\n",
+        f"--{MULTIPART_BOUNDARY}--\r\n".encode("ascii"),
+    ]
+)
+"""A two-part multipart body: a ``model`` field plus a binary ``image`` part."""
+
 
 def make_channel(name: str = "a", **overrides: Any) -> RelayChannel:
     """Build an embeddings-capable channel with defaults; ``overrides`` win."""
@@ -63,7 +88,7 @@ def default_channels() -> tuple[RelayChannel, ...]:
 
 def make_request(
     model: str = MODEL,
-    payload: dict[str, Any] | None = None,
+    payload: RelayPassthroughBody | dict[str, Any] | None = None,
     channel: RelayChannel | None = None,
 ) -> RelayGatewayRequest:
     """Build a passthrough ``RelayGatewayRequest`` with an embeddings body."""
@@ -76,6 +101,21 @@ def make_request(
         payload=payload if payload is not None else dict(WHITESPACE_BODY),
         headers={},
         channel=channel,
+    )
+
+
+def ok_binary_upstream(
+    body: bytes,
+    content_type: str,
+    status_code: int = 200,
+) -> Result[UpstreamResponse, RelayGatewayError]:
+    """A canned Ok binary upstream result."""
+    return Ok(
+        UpstreamResponse(
+            status_code=status_code,
+            headers={"content-type": content_type},
+            payload=body,
+        )
     )
 
 
@@ -593,3 +633,222 @@ class FailingSettling(RecordingBilling):
                 request_id=reservation.request_id,
             )
         )
+
+
+class TestRelayPassthroughBody:
+    """``RelayPassthroughBody`` construction and value semantics (Plan K, Task 0)."""
+
+    def test_json_wraps_dict_as_json_content_type(self) -> None:
+        body = RelayPassthroughBody.json(dict(WHITESPACE_BODY))
+        assert body.data == WHITESPACE_BODY
+        assert body.content_type == "application/json"
+        assert isinstance(body.data, dict)
+        assert dict(body) == WHITESPACE_BODY
+        assert body["model"] == MODEL
+        assert "model" in body
+        assert list(body) == list(WHITESPACE_BODY)
+        assert len(body) == len(WHITESPACE_BODY)
+
+    def test_json_wraps_without_mutating_source(self) -> None:
+        source = dict(WHITESPACE_BODY)
+        body = RelayPassthroughBody.json(source)
+        source["model"] = "mutated"
+        assert body["model"] == MODEL
+
+    def test_raw_keeps_bytes_and_content_type(self) -> None:
+        body = RelayPassthroughBody.raw(MULTIPART_BODY, MULTIPART_CONTENT_TYPE)
+        assert body.data == MULTIPART_BODY
+        assert body.content_type == MULTIPART_CONTENT_TYPE
+
+    def test_raw_body_is_not_a_json_mapping(self) -> None:
+        body = RelayPassthroughBody.raw(b"bytes", "application/octet-stream")
+        with pytest.raises(TypeError):
+            dict(body)
+        with pytest.raises(TypeError):
+            body["model"]
+
+    def test_json_and_raw_of_same_bytes_are_distinct(self) -> None:
+        raw = RelayPassthroughBody.raw(MULTIPART_BODY, MULTIPART_CONTENT_TYPE)
+        assert raw != RelayPassthroughBody.json({"model": MODEL})
+
+    def test_result_carries_body_content_type_status(self) -> None:
+        result = RelayPassthroughResult(
+            body=b"\x00\xff", content_type="audio/mpeg", status_code=200
+        )
+        assert result.body == b"\x00\xff"
+        assert result.content_type == "audio/mpeg"
+        assert result.status_code == 200
+        assert result.payload is None
+        assert result.headers == {}
+
+
+class TestBinaryResponsePassthrough:
+    """Non-JSON upstream responses return verbatim (Plan K, Task 1)."""
+
+    @pytest.mark.asyncio
+    async def test_json_response_roundtrip_is_unchanged(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        upstream = RequestCapturingUpstream(calls)
+        service = make_service(calls, upstream=upstream)
+        result = await service.handle("embeddings", make_request())
+        assert result.is_ok()
+        gateway_result = result.unwrap()
+        assert gateway_result.content_type == "application/json"
+        assert gateway_result.payload == default_upstream_response()
+        assert upstream.captured is not None
+        assert upstream.captured.headers == {"content-type": "application/json"}
+
+    @pytest.mark.asyncio
+    async def test_raw_audio_response_returned_verbatim(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        audio = b"\x00\xff\xfeMP3BINARYDATA"
+        service = make_service(
+            calls,
+            upstream=RecordingUpstream(
+                calls, result=ok_binary_upstream(audio, "audio/mpeg")
+            ),
+        )
+        result = await service.handle("embeddings", make_request())
+        assert result.is_ok()
+        gateway_result = result.unwrap()
+        assert gateway_result.status_code == 200
+        assert gateway_result.body == audio
+        assert gateway_result.content_type == "audio/mpeg"
+        assert gateway_result.payload is None
+        assert gateway_result.headers == {
+            "content-type": "audio/mpeg",
+            "x-request-id": REQUEST_ID,
+        }
+
+    @pytest.mark.asyncio
+    async def test_non_json_response_is_not_an_error(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        raw = b"\x1f\x8b\x08binary-blob"
+        result = await make_service(
+            calls,
+            upstream=RecordingUpstream(
+                calls, result=ok_binary_upstream(raw, "application/octet-stream")
+            ),
+        ).handle("embeddings", make_request())
+        assert result.is_ok()
+        assert result.unwrap().body == raw
+
+    @pytest.mark.asyncio
+    async def test_binary_response_settles_completed_without_usage(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        billing = RecordingBilling(calls)
+        service = make_service(
+            calls,
+            upstream=RecordingUpstream(
+                calls, result=ok_binary_upstream(b"raw", "audio/mpeg")
+            ),
+            authorizer=RecordingAuthorizer(calls),
+            billing=billing,
+        )
+        result = await service.handle("embeddings", make_request())
+        assert result.is_ok()
+        assert billing.settle_statuses == ["completed"]
+        assert billing.settle_usages == [None]
+
+
+class TestMultipartRequestPassthrough:
+    """Multipart request bodies forward byte-for-byte (Plan K, Task 2)."""
+
+    def test_rewrite_swaps_model_value_only(self) -> None:
+        rewritten = rewrite_multipart_form_field(
+            MULTIPART_BODY, MULTIPART_BOUNDARY, "model", "new-model-name"
+        )
+        expected = MULTIPART_BODY.replace(
+            (MODEL + "\r\n").encode("ascii"), b"new-model-name\r\n", 1
+        )
+        assert rewritten == expected
+        assert b'name="image"' in rewritten
+        assert b"\x89PNG\r\n\x1a\nBINARY\x00\xffDATA" in rewritten
+        assert rewritten.endswith(f"--{MULTIPART_BOUNDARY}--\r\n".encode("ascii"))
+
+    def test_rewrite_leaves_body_unchanged_when_field_missing(self) -> None:
+        model_part = b'Content-Disposition: form-data; name="model"\r\n\r\n' + (
+            MODEL + "\r\n"
+        ).encode("ascii")
+        body_without_model = MULTIPART_BODY.replace(model_part, b"", 1)
+        assert b'name="model"' not in body_without_model
+        rewritten = rewrite_multipart_form_field(
+            body_without_model, MULTIPART_BOUNDARY, "model", "new-model-name"
+        )
+        assert rewritten == body_without_model
+
+    def test_rewrite_missing_boundary_is_verbatim(self) -> None:
+        assert (
+            rewrite_multipart_form_field(
+                MULTIPART_BODY, "no-such-boundary", "model", "x"
+            )
+            == MULTIPART_BODY
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_multipart_rewrites_model_and_forwards_verbatim(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        upstream = RequestCapturingUpstream(calls)
+        service = make_service(
+            calls,
+            upstream=upstream,
+            model_suffix={"a": ":legacy"},
+        )
+        request = make_request(
+            payload=RelayPassthroughBody.raw(MULTIPART_BODY, MULTIPART_CONTENT_TYPE)
+        )
+        result = await service.handle("embeddings", request)
+        assert result.is_ok()
+        assert upstream.captured is not None
+        assert upstream.captured.headers == {"content-type": MULTIPART_CONTENT_TYPE}
+        expected = rewrite_multipart_form_field(
+            MULTIPART_BODY, MULTIPART_BOUNDARY, "model", f"{MODEL}:legacy"
+        )
+        assert upstream.captured.payload == expected
+        assert b"\x89PNG\r\n\x1a\nBINARY\x00\xffDATA" in upstream.captured.payload
+        assert b"--bnd-42--\r\n" in upstream.captured.payload
+
+    @pytest.mark.asyncio
+    async def test_multipart_without_boundary_forwards_verbatim(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        upstream = RequestCapturingUpstream(calls)
+        service = make_service(calls, upstream=upstream)
+        request = make_request(
+            payload=RelayPassthroughBody.raw(
+                MULTIPART_BODY, "multipart/form-data; boundary=also-missing"
+            )
+        )
+        result = await service.handle("embeddings", request)
+        assert result.is_ok()
+        assert upstream.captured is not None
+        assert upstream.captured.payload == MULTIPART_BODY
+
+    @pytest.mark.asyncio
+    async def test_multipart_request_with_json_response(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        service = make_service(calls)
+        request = make_request(
+            payload=RelayPassthroughBody.raw(MULTIPART_BODY, MULTIPART_CONTENT_TYPE)
+        )
+        result = await service.handle("embeddings", request)
+        assert result.is_ok()
+        assert result.unwrap().payload == default_upstream_response()
+
+    @pytest.mark.asyncio
+    async def test_multipart_request_with_binary_response(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        audio = b"\x00\xff\xfbMP3"
+        service = make_service(
+            calls,
+            upstream=RecordingUpstream(
+                calls, result=ok_binary_upstream(audio, "audio/mpeg")
+            ),
+        )
+        request = make_request(
+            payload=RelayPassthroughBody.raw(MULTIPART_BODY, MULTIPART_CONTENT_TYPE)
+        )
+        result = await service.handle("embeddings", request)
+        assert result.is_ok()
+        gateway_result = result.unwrap()
+        assert gateway_result.body == audio
+        assert gateway_result.content_type == "audio/mpeg"

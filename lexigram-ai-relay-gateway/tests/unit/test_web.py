@@ -84,6 +84,49 @@ class FakePassthroughResolver:
         self.calls.append(request)
         return self._service
 
+class FakeJobPassthroughService:
+    """Minimal ``JobPassthroughService`` double recording submit/status calls."""
+
+    def __init__(
+        self,
+        submit_outcome: Result[RelayGatewayResult, RelayGatewayError] | None = None,
+        status_outcome: Result[RelayGatewayResult, RelayGatewayError] | None = None,
+    ) -> None:
+        self._submit_outcome = submit_outcome
+        self._status_outcome = status_outcome
+        self.submit_calls: list[tuple[str, RelayGatewayRequest]] = []
+        self.status_calls: list[tuple[str, str, RelayGatewayRequest]] = []
+
+    async def submit(
+        self, kind: str, request: RelayGatewayRequest
+    ) -> Result[RelayGatewayResult, RelayGatewayError]:
+        """Record the call and return the canned submit outcome."""
+        self.submit_calls.append((kind, request))
+        if self._submit_outcome is None:
+            return Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        return self._submit_outcome
+
+    async def status(
+        self, kind: str, gateway_job_id: str, request: RelayGatewayRequest
+    ) -> Result[RelayGatewayResult, RelayGatewayError]:
+        """Record the call and return the canned status outcome."""
+        self.status_calls.append((kind, gateway_job_id, request))
+        if self._status_outcome is None:
+            return Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        return self._status_outcome
+
+class FakeJobPassthroughResolver:
+    """Async callable returning the configured fake job passthrough service."""
+
+    def __init__(self, service: FakeJobPassthroughService) -> None:
+        self._service = service
+        self.calls: list[Any] = []
+
+    async def __call__(self, request: Any) -> FakeJobPassthroughService:
+        """Record the request and return the fake service."""
+        self.calls.append(request)
+        return self._service
+
 class FakeRequest:
     """Minimal request double exposing the state/headers surface endpoints use."""
 
@@ -461,7 +504,7 @@ class TestEmbeddingsRoute:
             FakeResolver(FakeGateway(_ok_gateway()._outcome)),
             resolve_passthrough=FakePassthroughResolver(service),
         )
-        return routes[-1]
+        return next(r for r in routes if r.path == "/v1/embeddings")
 
     async def test_buffered_embeddings_success(self) -> None:
         payload = {"object": "list", "data": [{"embedding": [0.1]}]}
@@ -547,6 +590,300 @@ class TestEmbeddingsRoute:
         )
         paths = [route.path for route in routes]
         assert "/v1/embeddings" in paths
-        assert paths[-1] == "/v1/embeddings"
-        assert RELAY_ROUTE_PATHS[-1] == "/v1/embeddings"
+        assert paths[-1] == "/v1/moderations"
+        assert RELAY_ROUTE_PATHS[-1] == "/v1/moderations"
+
+class TestRerankRoute:
+    """``POST /v1/rerank`` passthrough route behavior."""
+
+    @staticmethod
+    def rerank_endpoint(service: FakePassthrough) -> Any:
+        routes = build_routes(
+            FakeResolver(FakeGateway(_ok_gateway()._outcome)),
+            resolve_passthrough=FakePassthroughResolver(service),
+        )
+        return next(r for r in routes if r.path == "/v1/rerank")
+
+    async def test_buffered_rerank_success(self) -> None:
+        payload = {"object": "list", "data": [{"index": 0, "relevance_score": 0.9}]}
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload=payload))
+        )
+        endpoint = self.rerank_endpoint(service).endpoint
+        response = await endpoint(
+            FakeRequest(
+                body=b'{"model": "ranker-1", "query": "q", "documents": ["d"]}',
+                request_id="req-rerank",
+                user={"id": "u1", "tenant_id": "t1"},
+            )
+        )
+        assert isinstance(response, JSONResponse)
+        assert response.status_code == 200
+        assert loads(response.body) == payload
+        assert response.headers.get("x-request-id") == "req-rerank"
+        kind, request = service.calls[0]
+        assert kind == "rerank"
+        assert request.request_id == "req-rerank"
+        assert request.tenant_id == "t1"
+        assert request.model == "ranker-1"
+        assert request.source is RelayFormat.OPENAI_CHAT
+        assert request.stream is False
+        assert request.channel is None
+        assert request.payload == {"model": "ranker-1", "query": "q", "documents": ["d"]}
+
+    async def test_rerank_error_uses_openai_envelope(self) -> None:
+        service = FakePassthroughService(
+            Err(
+                RelayGatewayError(
+                    code="MODEL_NOT_FOUND",
+                    message="no channel serves endpoint 'rerank'",
+                    status_code=404,
+                    request_id="req-rerank",
+                )
+            )
+        )
+        endpoint = self.rerank_endpoint(service).endpoint
+        response = await endpoint(FakeRequest(body=b'{"model": "unknown-model"}'))
+        assert response.status_code == 404
+        assert loads(response.body) == {
+            "error": {
+                "message": "no channel serves endpoint 'rerank'",
+                "type": "invalid_request_error",
+                "code": "MODEL_NOT_FOUND",
+                "request_id": "req-rerank",
+            }
+        }
+
+    async def test_rerank_missing_model_400(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        endpoint = self.rerank_endpoint(service).endpoint
+        response = await endpoint(FakeRequest(body=b"{}"))
+        assert response.status_code == 400
+        assert service.calls == []
+
+    async def test_rerank_route_registered_in_mount(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        routes = build_routes(
+            FakeResolver(_ok_gateway()),
+            resolve_passthrough=FakePassthroughResolver(service),
+        )
+        paths = [route.path for route in routes]
+        assert "/v1/rerank" in paths
+
+class TestModerationsRoute:
+    """``POST /v1/moderations`` passthrough route behavior."""
+
+    @staticmethod
+    def moderations_endpoint(service: FakePassthrough) -> Any:
+        routes = build_routes(
+            FakeResolver(FakeGateway(_ok_gateway()._outcome)),
+            resolve_passthrough=FakePassthroughResolver(service),
+        )
+        return next(r for r in routes if r.path == "/v1/moderations")
+
+    async def test_buffered_moderations_success(self) -> None:
+        payload = {
+            "id": "modr-1",
+            "model": "moderation-1",
+            "results": [{"flagged": False, "categories": {}, "category_scores": {}}],
+        }
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload=payload))
+        )
+        endpoint = self.moderations_endpoint(service).endpoint
+        response = await endpoint(
+            FakeRequest(
+                body=b'{"model": "moderation-1", "input": "hi"}',
+                request_id="req-mod",
+                user={"id": "u1", "tenant_id": "t1"},
+            )
+        )
+        assert isinstance(response, JSONResponse)
+        assert response.status_code == 200
+        assert loads(response.body) == payload
+        assert response.headers.get("x-request-id") == "req-mod"
+        kind, request = service.calls[0]
+        assert kind == "moderation"
+        assert request.request_id == "req-mod"
+        assert request.tenant_id == "t1"
+        assert request.model == "moderation-1"
+        assert request.source is RelayFormat.OPENAI_CHAT
+        assert request.stream is False
+        assert request.channel is None
+        assert request.payload == {"model": "moderation-1", "input": "hi"}
+
+    async def test_moderations_error_uses_openai_envelope(self) -> None:
+        service = FakePassthroughService(
+            Err(
+                RelayGatewayError(
+                    code="MODEL_NOT_FOUND",
+                    message="no channel serves endpoint 'moderation'",
+                    status_code=404,
+                    request_id="req-mod",
+                )
+            )
+        )
+        endpoint = self.moderations_endpoint(service).endpoint
+        response = await endpoint(FakeRequest(body=b'{"model": "unknown-model"}'))
+        assert response.status_code == 404
+        assert loads(response.body) == {
+            "error": {
+                "message": "no channel serves endpoint 'moderation'",
+                "type": "invalid_request_error",
+                "code": "MODEL_NOT_FOUND",
+                "request_id": "req-mod",
+            }
+        }
+
+    async def test_moderations_missing_model_400(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        endpoint = self.moderations_endpoint(service).endpoint
+        response = await endpoint(FakeRequest(body=b"{}"))
+        assert response.status_code == 400
+        assert service.calls == []
+
+    async def test_moderations_route_registered_in_mount(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        routes = build_routes(
+            FakeResolver(_ok_gateway()),
+            resolve_passthrough=FakePassthroughResolver(service),
+        )
+        paths = [route.path for route in routes]
+        assert "/v1/moderations" in paths
+        assert paths[-1] == "/v1/moderations"
+
+class TestVideoRoutes:
+    """Job-relay routes: ``POST /v1/videos`` and ``GET /v1/videos/{job_id}``."""
+
+    @staticmethod
+    def video_routes(
+        service: FakeJobPassthroughService,
+    ) -> list[Any]:
+        routes = build_routes(
+            FakeResolver(_ok_gateway()),
+            resolve_passthrough=FakePassthroughResolver(service),
+            resolve_job_passthrough=FakeJobPassthroughResolver(service),
+        )
+        return routes
+
+    async def test_video_submit_route_calls_job_passthrough(self) -> None:
+        """POST /v1/videos forwards the body and returns the JSON verbatim."""
+        payload = {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "object": "video",
+            "status": "succeeded",
+        }
+        service = FakeJobPassthroughService(
+            submit_outcome=Ok(
+                RelayGatewayResult(status_code=200, headers={}, payload=payload)
+            )
+        )
+        routes = self.video_routes(service)
+        submit_route = next(route for route in routes if route.path == "/v1/videos")
+        response = await submit_route.endpoint(
+            FakeRequest(
+                body=b'{"model": "video-gen-1", "prompt": "a cat"}',
+                request_id="req-vid",
+                user={"id": "u1", "tenant_id": "t1"},
+            )
+        )
+        assert isinstance(response, JSONResponse)
+        assert response.status_code == 200
+        assert loads(response.body) == payload
+        assert response.headers.get("x-request-id") == "req-vid"
+        kind, request = service.submit_calls[0]
+        assert kind == "video_generation"
+        assert request.request_id == "req-vid"
+        assert request.tenant_id == "t1"
+        assert request.model == "video-gen-1"
+        assert request.source is RelayFormat.OPENAI_CHAT
+        assert request.stream is False
+        assert request.channel is None
+        assert request.payload == {"model": "video-gen-1", "prompt": "a cat"}
+        service._submit_outcome = Err(
+            RelayGatewayError(
+                code="MODEL_NOT_FOUND",
+                message="no relay job found for the given id",
+                status_code=404,
+                request_id="req-vid",
+            )
+        )
+        error_response = await submit_route.endpoint(
+            FakeRequest(
+                body=b'{"model": "video-gen-1", "prompt": "a cat"}',
+                request_id="req-vid",
+            )
+        )
+        assert error_response.status_code == 404
+        assert loads(error_response.body) == {
+            "error": {
+                "message": "no relay job found for the given id",
+                "type": "invalid_request_error",
+                "code": "MODEL_NOT_FOUND",
+                "request_id": "req-vid",
+            }
+        }
+
+    async def test_video_status_route_polls_same_job(self) -> None:
+        """GET /v1/videos/{job_id} calls ``status`` and returns the JSON verbatim."""
+        payload = {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "object": "video",
+            "status": "completed",
+            "url": "https://cdn.example.com/video.mp4",
+        }
+        service = FakeJobPassthroughService(
+            status_outcome=Ok(
+                RelayGatewayResult(status_code=200, headers={}, payload=payload)
+            )
+        )
+        routes = self.video_routes(service)
+        status_route = next(
+            route for route in routes if route.path == "/v1/videos/{job_id}"
+        )
+        response = await status_route.endpoint(
+            FakeRequest(
+                body=b"",
+                path_params={"job_id": "job-1"},
+                request_id="req-vid",
+                user={"id": "u1", "tenant_id": "t1"},
+            )
+        )
+        assert isinstance(response, JSONResponse)
+        assert response.status_code == 200
+        assert loads(response.body) == payload
+        assert response.headers.get("x-request-id") == "req-vid"
+        kind, job_id, request = service.status_calls[0]
+        assert kind == "video_generation"
+        assert job_id == "job-1"
+        assert request.request_id == "req-vid"
+        assert request.tenant_id == "t1"
+        assert request.model == ""
+        assert request.stream is False
+        assert request.payload == {}
+        service._status_outcome = Err(
+            RelayGatewayError(
+                code="AUTH_DENIED",
+                message="denied",
+                status_code=403,
+                request_id="req-vid",
+            )
+        )
+        error_response = await status_route.endpoint(
+            FakeRequest(
+                body=b"",
+                path_params={"job_id": "job-1"},
+                request_id="req-vid",
+            )
+        )
+        assert error_response.status_code == 403
+        assert loads(error_response.body)["error"]["type"] == "permission_denied_error"
 
