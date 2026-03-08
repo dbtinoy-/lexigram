@@ -29,6 +29,7 @@ dependencies = [
     "aiohttp>=3.9.0",
     "lexigram-contracts>=0.1.0",
     "lexigram>=0.1.1",
+    "typer>=0.9.0",
 ]
 
 [project.urls]
@@ -116,7 +117,6 @@ show_error_codes = true
 ignore_missing_imports = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
 ]
 
 [tool.ruff]

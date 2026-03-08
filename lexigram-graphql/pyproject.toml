@@ -40,6 +40,8 @@ dependencies = [
     "strawberry-graphql>=0.235.0",
     "graphql-core>=3.2.0",
     "typing-extensions>=4.5.0",
+    "starlette>=0.28.0",
+    "jinja2>=3.1.0",
 ]
 authors = [
     { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
@@ -158,7 +160,6 @@ strict_equality = true
 show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },
 ]
 

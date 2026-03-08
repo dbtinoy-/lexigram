@@ -10,9 +10,81 @@ from contextlib import asynccontextmanager
 import time
 from typing import Any
 
-from opentelemetry import metrics, trace
-from opentelemetry.propagate import inject
-from opentelemetry.trace import Span, StatusCode
+from lexigram.logging import get_logger
+
+try:
+    from opentelemetry import metrics, trace
+    from opentelemetry.propagate import inject
+    from opentelemetry.trace import Span, StatusCode
+
+    _opentelemetry_available = True
+except (ImportError, NameError):
+    _opentelemetry_available = False
+
+    class _DummySpan:
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *args: object) -> Any:
+            pass
+
+        def set_attribute(self, *args: Any) -> Any:
+            pass
+
+        def record_exception(self, *args: Any) -> Any:
+            pass
+
+        def set_status(self, *args: Any) -> Any:
+            pass
+
+    class _DummyTracer:
+        def start_as_current_span(self, *args: Any, **kwargs: Any) -> Any:
+            return _DummySpan()
+
+    class _DummyCounter:
+        def add(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+    class _DummyHistogram:
+        def record(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+    class _DummyMeter:
+        def create_counter(self, *args: Any, **kwargs: Any) -> Any:
+            return _DummyCounter()
+
+        def create_histogram(self, *args: Any, **kwargs: Any) -> Any:
+            return _DummyHistogram()
+
+    def _dummy_status(*args: Any) -> Any:
+        return None
+
+    def _dummy_inject(*args: Any, **kwargs: Any) -> None:
+        return None
+
+    metrics = type(
+        "metrics",
+        (),
+        {"get_meter": lambda *_: _DummyMeter()},
+    )()
+    trace = type(
+        "trace",
+        (),
+        {
+            "get_tracer": lambda *_: _DummyTracer(),
+            "Status": _dummy_status,
+            "SpanKind": type(
+                "SpanKind",
+                (),
+                {"PRODUCER": 1, "CONSUMER": 2, "CLIENT": 3, "SERVER": 4},
+            )(),
+        },
+    )()
+    inject = _dummy_inject
+    StatusCode = type("StatusCode", (), {"OK": 0, "ERROR": 2})()  # type: ignore[misc]
+
+logger = get_logger(__name__)
+_OTEL_INSTALL_HINT = "pip install lexigram-monitor[otel]"
 
 tracer = trace.get_tracer("lexigram.messaging")
 meter = metrics.get_meter("lexigram.messaging")
@@ -56,6 +128,14 @@ async def trace_publish(
         async with trace_publish("notifications", "email", "user@example.com") as span:
             await send_email(...)
     """
+    if not _opentelemetry_available:
+        logger.warning(
+            "opentelemetry_not_available",
+            hint=_OTEL_INSTALL_HINT,
+            detail="message publishing tracing disabled",
+        )
+        yield _DummySpan()  # type: ignore[misc]
+        return
     start_time = time.time()
     span_name = f"publish {message_type}"
 
@@ -123,6 +203,14 @@ async def trace_consume(
         async with trace_consume("notifications", carrier=headers) as span:
             await process_message(...)
     """
+    if not _opentelemetry_available:
+        logger.warning(
+            "opentelemetry_not_available",
+            hint=_OTEL_INSTALL_HINT,
+            detail="message consuming tracing disabled",
+        )
+        yield _DummySpan()  # type: ignore[misc]
+        return
     start_time = time.time()
     span_name = f"consume {message_type}"
 
@@ -183,6 +271,13 @@ def inject_trace_context(carrier: dict[str, Any]) -> None:
 
     Call this before sending a message to propagate trace context.
     """
+    if not _opentelemetry_available:
+        logger.warning(
+            "opentelemetry_not_available",
+            hint=_OTEL_INSTALL_HINT,
+            detail="trace context injection disabled",
+        )
+        return
     inject(carrier)
 
 

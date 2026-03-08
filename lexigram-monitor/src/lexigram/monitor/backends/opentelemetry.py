@@ -11,10 +11,13 @@ if TYPE_CHECKING:
     )
 
 from lexigram.contracts.observability.metrics import MetricsBackendProtocol
-from lexigram.monitor.exceptions import BackendNotAvailableError
 
 # Import Span/SpanContext from tracing instead of types
+from lexigram.logging import get_logger
+from lexigram.monitor.exceptions import BackendNotAvailableError
 from lexigram.monitor.tracing import Span, SpanContext
+
+logger = get_logger(__name__)
 
 # Predeclare optional opentelemetry variables for static analysis
 metrics: Any = None
@@ -98,7 +101,11 @@ class OpenTelemetryBackend(MetricsBackendProtocol):
                 )
                 # For meters, it has to be attached at creation, but here we attach if possible or skip.
             except ImportError:
-                pass
+                logger.warning(
+                    "opentelemetry_not_installed",
+                    hint="pip install lexigram-monitor[otel]",
+                    detail="OTLP exporters unavailable; metrics/tracing disabled",
+                )
 
     def _setup_registered_exporters(self) -> None:
         """Setup from explicit config registries."""

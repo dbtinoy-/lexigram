@@ -6,6 +6,9 @@ import dataclasses
 from typing import Any
 
 from lexigram.domain.models.base import DomainModel
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _is_dataclass_base(base: type[Any] | tuple[type[Any], ...]) -> bool:
@@ -94,7 +97,11 @@ def create_model(
                 **fields,
             )
     except ImportError:
-        pass  # Pydantic not installed — fall through to dataclass path
+        logger.warning(
+            "pydantic_not_installed",
+            hint="pip install lexigram",
+            detail="pydantic model factory unavailable; using dataclass fallback",
+        )
 
     # --- DomainModel / dataclass branch (canonical path) ---
     # DomainModel is a stdlib @dataclass mixin.  Build the class with

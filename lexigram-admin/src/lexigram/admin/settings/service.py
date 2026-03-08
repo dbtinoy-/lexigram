@@ -12,6 +12,20 @@ from lexigram.domain import DomainModel
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
+_registry_warned = [False]
+
+
+def _warn_registry_unavailable() -> None:
+    """Emit a one-off warning when the admin panel registry is unavailable."""
+
+    if _registry_warned[0]:
+        return
+    _registry_warned[0] = True
+    logger.warning(
+        "config_registry_unavailable",
+        hint="pip install lexigram-admin",
+        detail="falling back to legacy settings resolution",
+    )
 
 
 @runtime_checkable
@@ -179,7 +193,7 @@ class SettingsService:
             if node:
                 return node.default
         except ImportError:
-            pass
+            _warn_registry_unavailable()
 
         return None
 
@@ -324,7 +338,7 @@ class SettingsService:
                     setting_type = map_config_node_type(node)
                     is_sensitive = setting_type == "secret"
             except ImportError:
-                pass
+                _warn_registry_unavailable()
 
         try:
             existing = await self.repo.find_one(scope=scope, scope_id=scope_id, key=key)

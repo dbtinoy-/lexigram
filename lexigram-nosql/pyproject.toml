@@ -28,6 +28,7 @@ maintainers = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }
 dependencies = [
     "lexigram-contracts>=0.1.0",
     "lexigram>=0.1.1",
+    "jinja2>=3.1.0",
 ]
 
 [project.urls]
@@ -38,7 +39,7 @@ Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-mongodb = ["motor>=3.0"]
+mongodb = ["motor>=3.0", "pymongo>=4.6.0"]
 dynamodb = ["aioboto3>=11.0.0"]
 firestore = ["google-cloud-firestore>=2.19.0"]
 test = [
@@ -101,7 +102,6 @@ strict = true
 show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
 ]
 
 [tool.ruff]

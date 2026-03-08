@@ -290,6 +290,9 @@ def _parse_missing_packages(report_text: str) -> tuple[str, ...]:
         packages: list[str] = []
         for candidate in lines[index + 1 :]:
             stripped = candidate.strip()
+            # A heading ends the section; never pick up later sections.
+            if stripped.startswith("#"):
+                break
             if not stripped:
                 if packages:
                     break
@@ -299,7 +302,9 @@ def _parse_missing_packages(report_text: str) -> tuple[str, ...]:
                     break
                 continue
             value = stripped[2:].strip().strip("`")
-            if value and value != "(none)":
+            if value == "(none)":
+                return ()
+            if value:
                 packages.append(value)
         return tuple(packages)
     return ()

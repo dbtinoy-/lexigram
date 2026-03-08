@@ -128,7 +128,7 @@ class BedrockClient(AbstractLLMClient):
         except ImportError as exc:
             raise ImportError(
                 "BedrockClient requires 'boto3'. "
-                "Install with: pip install lexigram-intelligence[bedrock]"
+                "Install with: pip install boto3"
             ) from exc
 
         extra: dict[str, Any] = config.extra or {}

@@ -124,7 +124,7 @@ class PDFLoader(AbstractDocumentLoader):
             except ImportError as e:
                 msg = (
                     "PDF loading requires 'pypdf' package. "
-                    "Install with: pip install lexigram-intelligence[rag]"
+                    "Install with: pip install lexigram-ai-rag"
                 )
                 raise ImportError(msg) from e
 
@@ -270,7 +270,7 @@ class HTMLLoader(AbstractDocumentLoader):
             except ImportError as e:
                 msg = (
                     "HTML loading requires 'beautifulsoup4' package. "
-                    "Install with: pip install lexigram-intelligence[rag]"
+                    "Install with: pip install lexigram-ai-rag"
                 )
                 raise ImportError(msg) from e
             # Handle URL vs file path
@@ -281,7 +281,7 @@ class HTMLLoader(AbstractDocumentLoader):
                 except ImportError as _e:
                     msg = (
                         "HTML loading from URLs requires 'aiohttp' package. "
-                        "Install with: pip install lexigram-intelligence[rag]"
+                        "Install with: pip install lexigram-ai-rag"
                     )
                     raise ImportError(msg) from _e
                 async with aiohttp.ClientSession(

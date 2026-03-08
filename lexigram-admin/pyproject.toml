@@ -45,6 +45,10 @@ dependencies = [
     "python-multipart>=0.0.9",
     "itsdangerous>=2.2.0",
     "pyyaml>=6.0.3",
+    "starlette>=0.28.0",
+    "typer>=0.9.0",
+    "httpx>=0.27.0",
+    "markupsafe>=2.1.5",
 ]
 authors = [
     { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
@@ -202,7 +206,6 @@ strict_equality = true
 show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },
 ]
 

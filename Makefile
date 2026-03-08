@@ -164,7 +164,7 @@ clean:  ## Remove build artifacts and caches
 
 .PHONY: docs
 docs:  ## Regenerate API surface files
-	python scripts/generate_package_api.py -s 25000
+	$(UV) run python tools/generate_package_api.py -s 25000
 
 .PHONY: fmt
 fmt:  ## Format code (no lint check)
@@ -184,14 +184,14 @@ audit:  ## Run dependency vulnerability scan
 	$(UV) run pip-audit 2>/dev/null || $(UV) pip audit
 
 .PHONY: catalog
-catalog:  ## Regenerate docs/error-codes.md from source
-	python scripts/catalogs/generate_error_catalog.py
+catalog:  ## Regenerate docs/lexigram-docs/reference/REF_ERROR_CODES.md from source
+	$(UV) run python scripts/catalogs/generate_error_catalog.py
 
 .PHONY: catalog-package
 catalog-package:  ## Run all standalone catalog generators
-	python scripts/catalogs/generate_cli_commands_catalog.py
-	python scripts/catalogs/generate_env_vars_catalog.py
-	python scripts/catalogs/generate_error_catalog.py
+	$(UV) run python scripts/catalogs/generate_cli_commands_catalog.py
+	$(UV) run python scripts/catalogs/generate_env_vars_catalog.py
+	$(UV) run python scripts/catalogs/generate_error_catalog.py
 
 # ---------------------------------------------------------------------------
 # Public mirror publish
@@ -274,12 +274,20 @@ audit-rules:
 audit-tests:
 	$(UV) run python -m scripts.cli audit run tests
 
+.PHONY: audit-docs-links
+audit-docs-links:
+	$(UV) run python -m scripts.cli audit run docs-links
+
+.PHONY: audit-optional-imports
+audit-optional-imports:
+	$(UV) run python -m scripts.cli audit run optional-imports
+
 .PHONY: audit-files-dry
 audit-package-dry:
 	$(UV) run python -m scripts.cli audit list
 
 .PHONY: audit-package
-audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests scripts-audit-index
+audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links scripts-audit-index
 	@echo "All AUDIT files generated in docs/lexigram-docs/audit"
 
 # All-packages audit targets (write to repo root)
@@ -311,8 +319,16 @@ audit-rules-all:
 audit-tests-all:
 	$(UV) run python -m scripts.cli audit run tests --all
 
+.PHONY: audit-optional-imports-all
+audit-optional-imports-all:
+	$(UV) run python -m scripts.cli audit run optional-imports --all
+
+.PHONY: audit-docs-links-all
+audit-docs-links-all:
+	$(UV) run python -m scripts.cli audit run docs-links --all
+
 .PHONY: audit-package-all
-audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all scripts-audit-index-all
+audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all audit-optional-imports-all audit-docs-links-all scripts-audit-index-all
 	@echo "All AUDIT files generated at repo root"
 
 .PHONY: scripts-audit

@@ -23,6 +23,24 @@ from lexigram.contracts.exceptions.infra import NoPrimaryBackendError
 from lexigram.di.provider import Provider, ProviderPriority
 from lexigram.logging import get_logger
 from lexigram.primitives.context import Context
+
+logger = get_logger(__name__)
+_alembic_warned = [False]
+
+
+def _warn_alembic_missing() -> None:
+    """Emit a one-off warning when alembic is not installed."""
+
+    if _alembic_warned[0]:
+        return
+    _alembic_warned[0] = True
+    logger.warning(
+        "alembic_not_installed",
+        hint="pip install alembic",
+        detail="migration management disabled",
+    )
+
+
 from lexigram.sql.config import DatabaseConfig
 from lexigram.sql.providers.database_service import DatabaseService
 
@@ -31,8 +49,6 @@ if TYPE_CHECKING:
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
-
-logger = get_logger(__name__)
 
 
 class DatabaseProvider(Provider):
@@ -225,7 +241,7 @@ class DatabaseProvider(Provider):
             if self._enable_migrations:
                 self._db_provider.migration_manager = migration_manager
         except ImportError:
-            pass
+            _warn_alembic_missing()
 
         # Database-backed search backends have moved to lexigram-search
         # (`lexigram.search.backends.mysql` / `lexigram.search.backends.postgres`).
@@ -403,7 +419,7 @@ class DatabaseProvider(Provider):
             if self._enable_migrations:
                 _db_ref.migration_manager = migration_manager
         except ImportError:
-            pass
+            _warn_alembic_missing()
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot all database backends and wire optional observability integrations.

@@ -6,10 +6,10 @@ from scripts.audit.generators import tests as tests_generator_module
 from scripts.audit.generators.tests import TestsAuditGenerator
 from scripts.core.evidence import CommandEvidence
 
-SCRIPTS_COMMAND = ("uv", "run", "pytest", "tests/scripts", "-q", "--cov=scripts")
-FRAMEWORK_COMMAND = ("uv", "run", "pytest", "lexigram/tests", "-q", "--cov=lexigram")
-CONTRACTS_PACKAGE_COMMAND = ("uv", "run", "pytest", "lexigram-contracts/tests", "-q", "--cov=lexigram.contracts")
-AUTH_PACKAGE_COMMAND = ("uv", "run", "pytest", "lexigram-auth/tests", "-q", "--cov=lexigram.auth")
+SCRIPTS_COMMAND = ("uv", "run", "pytest", "tests/scripts", "-q", "-m", "not integration", "--cov=scripts")
+FRAMEWORK_COMMAND = ("uv", "run", "pytest", "lexigram/tests", "-q", "-m", "not integration", "--cov=lexigram")
+CONTRACTS_PACKAGE_COMMAND = ("uv", "run", "pytest", "lexigram-contracts/tests", "-q", "-m", "not integration", "--cov=lexigram.contracts")
+AUTH_PACKAGE_COMMAND = ("uv", "run", "pytest", "lexigram-auth/tests", "-q", "-m", "not integration", "--cov=lexigram.auth")
 
 
 def _write_sample_workspace(root: Path) -> None:
@@ -116,7 +116,7 @@ def test_tests_generator_includes_labeled_execution_evidence(
     monkeypatch.setattr(tests_generator_module, "run_command", fake_run_command)
     generator = TestsAuditGenerator()
 
-    result = generator.run(root=tmp_path)
+    result = generator.run(root=tmp_path, all_mode=True)
     markdown = (tmp_path / "AUDIT_TESTS.md").read_text(encoding="utf-8")
 
     assert result.success is True
@@ -205,7 +205,7 @@ def test_tests_generator_renders_failed_command_evidence(
     monkeypatch.setattr(tests_generator_module, "run_command", fake_run_command)
     generator = TestsAuditGenerator()
 
-    result = generator.run(root=tmp_path)
+    result = generator.run(root=tmp_path, all_mode=True)
     markdown = (tmp_path / "AUDIT_TESTS.md").read_text(encoding="utf-8")
 
     assert result.success is True
@@ -270,7 +270,7 @@ def test_tests_generator_renders_timeout_evidence_with_scope_label(
     monkeypatch.setattr(tests_generator_module, "run_command", fake_run_command)
     generator = TestsAuditGenerator()
 
-    result = generator.run(root=tmp_path)
+    result = generator.run(root=tmp_path, all_mode=True)
     markdown = (tmp_path / "AUDIT_TESTS.md").read_text(encoding="utf-8")
 
     assert result.success is True

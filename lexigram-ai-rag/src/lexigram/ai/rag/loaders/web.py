@@ -22,7 +22,7 @@ class WebScraperLoader:
     BeautifulSoup for HTML parsing.
 
     Requires: beautifulsoup4
-    Install: pip install lexigram-intelligence[rag]
+    Install: pip install lexigram-ai-rag[web]
     """
 
     def __init__(

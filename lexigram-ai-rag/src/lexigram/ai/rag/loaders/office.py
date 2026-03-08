@@ -20,7 +20,7 @@ class DocxLoader:
     """Load Microsoft Word (.docx) documents.
 
     Requires: python-docx
-    Install: pip install lexigram-intelligence[rag-office]
+    Install: pip install openpyxl
     """
 
     async def load(self, source: str | Path) -> list[Chunk]:
@@ -94,7 +94,7 @@ class ExcelLoader:
     ``chunk_per_sheet=True``).
 
     Requires: openpyxl
-    Install: pip install lexigram-intelligence[rag-office]
+    Install: pip install openpyxl
     """
 
     def __init__(self, *, chunk_per_sheet: bool = False) -> None:

@@ -17,8 +17,75 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from opentelemetry import metrics, trace
-from opentelemetry.semconv.trace import SpanAttributes
+from lexigram.logging import get_logger
+
+try:
+    from opentelemetry import metrics, trace
+    from opentelemetry.semconv.trace import SpanAttributes
+
+    _opentelemetry_available = True
+except (ImportError, NameError):
+    _opentelemetry_available = False
+
+    class _DummySpan:
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *args: object) -> Any:
+            pass
+
+        def set_attribute(self, *args: Any) -> Any:
+            pass
+
+        def record_exception(self, *args: Any) -> Any:
+            pass
+
+        def set_status(self, *args: Any) -> Any:
+            pass
+
+    class _DummyTracer:
+        def start_as_current_span(self, *args: Any, **kwargs: Any) -> Any:
+            return _DummySpan()
+
+    class _DummyCounter:
+        def add(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+    class _DummyHistogram:
+        def record(self, *args: Any, **kwargs: Any) -> Any:
+            pass
+
+    class _DummyMeter:
+        def create_counter(self, *args: Any, **kwargs: Any) -> Any:
+            return _DummyCounter()
+
+        def create_histogram(self, *args: Any, **kwargs: Any) -> Any:
+            return _DummyHistogram()
+
+    metrics = type(
+        "metrics",
+        (),
+        {"get_meter": lambda *_: _DummyMeter()},
+    )()
+    trace = type(
+        "trace",
+        (),
+        {"get_tracer": lambda *_: _DummyTracer()},
+    )()
+    SpanAttributes = type("SpanAttributes", (), {})()  # type: ignore[misc]
+
+logger = get_logger(__name__)
+_OTEL_INSTALL_HINT = "pip install lexigram-monitor[otel]"
+
+
+def _otel_warning() -> None:
+    """Emit a one-off warning when OpenTelemetry is not installed."""
+
+    logger.warning(
+        "opentelemetry_not_available",
+        hint=_OTEL_INSTALL_HINT,
+        detail="database instrumentation disabled",
+    )
 
 
 def instrument_database(provider: Any) -> None:
@@ -45,6 +112,9 @@ def instrument_database(provider: Any) -> None:
         >>> instrument_database(provider)
         >>> # Queries are now automatically traced
     """
+    if not _opentelemetry_available:
+        _otel_warning()
+        return
     if hasattr(provider, "_traced"):
         return
 

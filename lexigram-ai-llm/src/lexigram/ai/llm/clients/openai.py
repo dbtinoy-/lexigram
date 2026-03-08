@@ -73,7 +73,7 @@ class OpenAIClient(AbstractLLMClient):
         except ImportError as e:
             raise ImportError(
                 "OpenAI client requires 'openai' package. "
-                "Install with: pip install lexigram-intelligence[openai]",
+                "Install with: pip install lexigram-ai-llm[openai]",
             ) from e
 
         api_key = config.api_key.get_secret_value() if config.api_key else None

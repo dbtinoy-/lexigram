@@ -40,7 +40,7 @@ class TokenChunker(AbstractChunker):
         except ImportError as e:
             raise ImportError(
                 "Token chunking requires 'tiktoken' package. "
-                "Install with: pip install lexigram-intelligence[rag]",
+                "Install with: pip install tiktoken",
             ) from e
 
     def chunk(self, text: str, metadata: dict[str, Any] | None = None) -> list[Chunk]:

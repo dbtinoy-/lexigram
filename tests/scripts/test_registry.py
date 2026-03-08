@@ -11,9 +11,11 @@ from scripts.core.models import AuditReport
 from scripts.core.registry import GeneratorRegistry
 
 EXPECTED_GENERATOR_NAMES = (
+    "docs-links",
     "env_vars",
     "index",
     "integrations",
+    "optional-imports",
     "overview",
     "protocols",
     "quality",

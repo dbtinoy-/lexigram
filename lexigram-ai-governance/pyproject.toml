@@ -29,6 +29,7 @@ dependencies = [
     "lexigram-contracts>=0.1.0",
     "lexigram>=0.1.1",
     "typing-extensions>=4.0.0",
+    "starlette>=0.28.0",
 ]
 [project.urls]
 Homepage = "https://lexigram.dev"
@@ -100,7 +101,6 @@ show_error_codes = true
 strict = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
 ]
 
 [tool.ruff]

@@ -89,7 +89,7 @@ def test_cli_runs_single_generator_successfully(tmp_path: Path, capsys) -> None:
 
     assert exit_code == 0
     assert "env_vars: wrote" in output
-    assert (tmp_path / "AUDIT_ENV_VARS.md").exists()
+    assert (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_ENV_VARS.md").exists()
 
 
 def test_cli_validates_registered_generators(

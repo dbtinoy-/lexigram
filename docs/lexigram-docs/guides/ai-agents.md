@@ -93,7 +93,7 @@ ai_agents:
 ```
 
 :::note
-`AgentConfig` fields are also configurable via environment variables with the `LEXIGRAM_AI_AGENTS__` prefix. You can pass `config=None` to `configure()` to use all defaults.
+`AgentConfig` fields are also configurable via environment variables with the `LEX_AI_AGENTS__` prefix. You can pass `config=None` to `configure()` to use all defaults.
 :::
 
 ---

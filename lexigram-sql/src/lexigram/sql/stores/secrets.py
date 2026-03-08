@@ -10,7 +10,7 @@ Schema (apply via migrations)::
     CREATE TABLE IF NOT EXISTS <table_name> (
         name       TEXT PRIMARY KEY,
         value      TEXT NOT NULL,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 """
 
@@ -57,7 +57,7 @@ class DatabaseSecretStore:
                 CREATE TABLE IF NOT EXISTS {self._table_name} (
                     name       TEXT PRIMARY KEY,
                     value      TEXT NOT NULL,
-                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )

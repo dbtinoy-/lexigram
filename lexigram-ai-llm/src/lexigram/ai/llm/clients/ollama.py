@@ -72,7 +72,7 @@ class OllamaClient(AbstractLLMClient):
         except ImportError as e:
             raise ImportError(
                 "Ollama client requires 'ollama' package. "
-                "Install with: pip install lexigram-intelligence[ollama]",
+                "Install with: pip install lexigram-ai-llm[ollama]",
             ) from e
 
         # Ollama typically runs on localhost:11434

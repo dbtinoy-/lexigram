@@ -5,7 +5,13 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-import pymongo.errors  # type: ignore[import-not-found]
+pymongo: Any
+try:
+    import pymongo as _pymongo  # type: ignore[import-not-found]
+
+    pymongo = _pymongo
+except ImportError:
+    pymongo = None
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger

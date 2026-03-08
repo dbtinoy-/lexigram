@@ -158,7 +158,6 @@ strict_equality = true
 show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },
 ]
 

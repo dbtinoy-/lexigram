@@ -43,6 +43,8 @@ dependencies = [
     "watchfiles>=0.21.0",
     "shellingham>=1.5.0",
     "pydantic>=2.10.0",
+    "aiofiles>=23.0.0",
+    "tomli>=2.0.0",
 ]
 authors = [
     { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
@@ -146,7 +148,6 @@ strict_equality = true
 show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },
 ]
 

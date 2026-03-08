@@ -169,6 +169,6 @@ You can also bind hand-rolled fakes to `TaskWorkerProtocol` in any container —
 ## Next Steps
 
 - [Dependency Injection](/fundamentals/dependency-injection/) — binding workers to protocols
-- [Tasks & Scheduling](/guides/tasks/) — registering workers with the task system
+- [Tasks & Scheduling](/guides/background-jobs/) — registering workers with the task system
 - [Testing](/guides/testing/) — substituting stubs for infrastructure
 - [`lexigram-ai-workers` package](/packages/lexigram-ai-workers/) — full config reference, DLQ recovery, error classifier
