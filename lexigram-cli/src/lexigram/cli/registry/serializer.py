@@ -158,15 +158,16 @@ class TOMLSerializer(AsyncStringSerializerProtocol):
 
     def serialize(self, data: Any) -> str:
         try:
-            import tomli  # type: ignore[import-not-found]
+            import tomli  # noqa: F401
+            import tomli_w
         except ImportError:
             raise ImportError("tomli not installed") from None
 
         import io
 
-        output = io.StringIO()
-        tomli.dump(data, output)
-        return output.getvalue()
+        output = io.BytesIO()
+        tomli_w.dump(data, output)
+        return output.getvalue().decode("utf-8")
 
     def deserialize(self, data: str | bytes) -> Any:
         try:

@@ -25,7 +25,7 @@ class GCPSecretManagerStore:
 
     async def _get_client(self):
         if self._client is None:
-            from google.cloud import secretmanager  # type: ignore[import-untyped]
+            from google.cloud import secretmanager
 
             self._client = secretmanager.SecretManagerServiceAsyncClient()
         return self._client
@@ -61,7 +61,7 @@ class GCPSecretManagerStore:
 
     async def set(self, name: str, value: str) -> None:
 
-        from grpc import RpcError  # type: ignore[import-untyped]
+        from grpc import RpcError
 
         client = await self._get_client()
         parent = f"projects/{self._project_id}"
@@ -83,7 +83,7 @@ class GCPSecretManagerStore:
         )
 
     async def delete(self, name: str) -> None:
-        from grpc import RpcError  # type: ignore[import-untyped]
+        from grpc import RpcError
 
         client = await self._get_client()
         try:
@@ -101,7 +101,7 @@ class GCPSecretManagerStore:
         return await self.get_current_version(key)
 
     async def get_version(self, key: str, version: int) -> str | None:
-        from grpc import RpcError  # type: ignore[import-untyped]
+        from grpc import RpcError
 
         client = await self._get_client()
         try:
@@ -116,7 +116,7 @@ class GCPSecretManagerStore:
         return payload.data.decode("utf-8")
 
     async def list_versions(self, key: str) -> list[SecretVersion]:
-        from grpc import RpcError  # type: ignore[import-untyped]
+        from grpc import RpcError
 
         client = await self._get_client()
         try:
@@ -139,7 +139,7 @@ class GCPSecretManagerStore:
         return versions
 
     async def get_current_version(self, key: str) -> VersionedSecret:
-        from grpc import RpcError  # type: ignore[import-untyped]
+        from grpc import RpcError
 
         from lexigram.security.secrets.store import SecretValue
 

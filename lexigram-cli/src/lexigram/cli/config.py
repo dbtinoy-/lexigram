@@ -6,7 +6,7 @@ from typing import ClassVar
 try:
     import tomllib
 except ImportError:
-    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
+    import tomli as tomllib  # type: ignore[no-redef]
 
 from lexigram.cli import constants as cli_const
 from lexigram.config import BaseConfig
@@ -71,7 +71,7 @@ class ConfigManager:
 
         # Write TOML
         try:
-            import tomli_w  # type: ignore[import-not-found]
+            import tomli_w
 
             with open(cls.config_path, "wb") as f:
                 tomli_w.dump(existing_data, f)

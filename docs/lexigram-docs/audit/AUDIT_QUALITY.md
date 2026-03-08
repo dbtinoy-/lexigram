@@ -7,18 +7,18 @@
 ## Summary
 
 - Tool checks run: 2
-- Passing tools: 1
-- Failing tools: 1
+- Passing tools: 2
+- Failing tools: 0
 - Packages counted: 54
-- Total mypy errors: 192
-- Packages with errors: 32
+- Total mypy errors: 0
+- Packages with errors: 0
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
 | `Ruff` | **PASS** | 0 | 234 ms | `uv run ruff check .` |
-| `Mypy` | **FAIL** | 1 | 68881 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Mypy` | **PASS** | 0 | 96789 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
@@ -34,83 +34,15 @@ All checks passed!
 
 ### Mypy
 
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `68881 ms`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `96789 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
-[lexigram-admin] 11 errors
-[lexigram-ai-agents] 19 errors
-[lexigram-ai-governance] 4 errors
-[lexigram-ai-rag] 1 errors
-[lexigram-audit] 3 errors
-[lexigram-auth] 3 errors
-[lexigram-cache] 2 errors
-[lexigram-cli] 9 errors
-[lexigram-events] 12 errors
-[lexigram-graph] 19 errors
-[lexigram-graphql] 3 errors
-[lexigram-monitor] 4 errors
-[lexigram-multimedia] 1 errors
-[lexigram-multimedia-beat] 1 errors
-[lexigram-multimedia-image] 1 errors
-[lexigram-multimedia-interpolate] 1 errors
-[lexigram-multimedia-music] 1 errors
-[lexigram-multimedia-tts] 1 errors
-[lexigram-multimedia-upscale] 1 errors
-[lexigram-multimedia-video] 1 errors
-[lexigram-notification] 1 errors
-[lexigram-queue] 7 errors
-[lexigram-secrets] 26 errors
-[lexigram-sql] 4 errors
-[lexigram-tasks] 5 errors
-[lexigram-tenancy] 24 errors
-[lexigram-testing] 2 errors
-[lexigram-ui] 13 errors
-[lexigram-vector] 6 errors
-[lexigram-web] 3 errors
-[lexigram-webhook] 2 errors
-[lexigram-workflow] 1 errors
+All per-package mypy checks passed.
 ```
-
-### Mypy Error Breakdown
-
-#### By Error Code
-
-| Code | Count | Description |
-|------|-------|-------------|
-| `arg-type` | 64 | Argument type mismatch |
-| `unused-ignore` | 52 | Unused type: ignore comment |
-| `attr-defined` | 18 | Attribute not defined on type |
-| `assignment` | 13 | Type checking error |
-| `override` | 10 | Method override type mismatch |
-| `return-value` | 7 | Type checking error |
-| `str` | 5 | Type checking error |
-| `name-defined` | 5 | Type checking error |
-| `import-not-found` | 5 | Type checking error |
-| `var-annotated` | 4 | Variable missing type annotation |
-| `misc` | 4 | Miscellaneous type checking error |
-| `int` | 4 | Type checking error |
-| `annotation-unchecked` | 2 | Type checking error |
-| `import-untyped` | 2 | Type checking error |
-| `dict-item` | 2 | Type checking error |
-
-#### By Package (Top 10)
-
-| Package | Errors |
-|---------|--------|
-| `lexigram-secrets` | 26 |
-| `lexigram-tenancy` | 24 |
-| `lexigram-ai-agents` | 19 |
-| `lexigram-graph` | 19 |
-| `lexigram-ui` | 13 |
-| `lexigram-events` | 12 |
-| `lexigram-admin` | 11 |
-| `lexigram-cli` | 9 |
-| `lexigram-queue` | 7 |
-| `lexigram-vector` | 6 |
 
 ## Package Metrics
 

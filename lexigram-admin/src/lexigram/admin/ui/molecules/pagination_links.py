@@ -90,7 +90,7 @@ class PaginationLinks(Component):
             }
 
         # Merge common navigation props
-        attrs = {
+        attrs: dict[str, Any] = {
             "class_": cls,
             "onclick": "return false",
             "preload": "mouseover",

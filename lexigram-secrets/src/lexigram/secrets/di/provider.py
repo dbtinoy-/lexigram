@@ -94,11 +94,11 @@ class SecretsProvider(Provider):
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         from datetime import UTC, datetime
 
-        from lexigram.contracts.core.health import HealthCheckResult
+        from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 
         return HealthCheckResult(
             component="secrets",
-            status="healthy",
+            status=HealthStatus.HEALTHY,
             message="Secrets subsystem operational",
             checked_at=datetime.now(UTC),
         )

@@ -462,15 +462,15 @@ class BulkActionHandler:
         # ── Bulk action execution (POST) ──
         form = await request.form()
         action_name = form.get("action", "")
-        ids = form.getlist("ids") if hasattr(form, "getlist") else []
+        form_ids = form.getlist("ids") if hasattr(form, "getlist") else []
 
-        if not ids:
+        if not form_ids:
             return HTMLResponse("No records selected", status_code=400)
 
         is_htmx = request.headers.get("HX-Request") == "true"
 
         if action_name == "delete":
-            count = await resource._data_source.bulk_delete(ids)
+            count = await resource._data_source.bulk_delete(form_ids)
             message = f"Deleted {count} item(s)"
 
             if is_htmx:

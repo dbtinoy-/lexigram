@@ -33,7 +33,7 @@ from lexigram.ai.agents.strategies.parsing import (
 from lexigram.ai.agents.strategies.token_utils import TokenAccumulator
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import AgentError, AgentResponse
-from lexigram.contracts.ai.llm import ChatMessage, Completion, Role
+from lexigram.contracts.ai.llm import ChatMessage, Role
 from lexigram.logging import (
     get_logger,
 )
@@ -41,7 +41,7 @@ from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.agents import MemoryProtocol, ToolProtocol
-    from lexigram.contracts.ai.llm import LLMClientProtocol
+    from lexigram.contracts.ai.llm import CompletionProtocol, LLMClientProtocol
 
 logger = get_logger(__name__)
 
@@ -342,7 +342,7 @@ class ReActStrategy(AbstractStrategy):
         llm: LLMClientProtocol,
         messages: list[ChatMessage],
         **kwargs: Any,
-    ) -> Completion | None:
+    ) -> CompletionProtocol | None:
         """Call the LLM and return the completion, or ``None`` on failure."""
         try:
             result = await asyncio.wait_for(

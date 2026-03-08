@@ -370,6 +370,7 @@ class TabularView(AbstractDataView):
             td_attrs: dict[str, Any] = {
                 "@click": f"handleSelect('{rid}', $event)",
             }
+            cell_attrs: dict[str, Any] = {"@click.stop": ""}
             cells.append(
                 el(
                     "td",
@@ -378,7 +379,7 @@ class TabularView(AbstractDataView):
                         value=rid,
                         x_model="selectedIds",
                         aria_label=f"Select row {rid}",
-                        **{"@click.stop": ""},
+                        **cell_attrs,
                     ),
                     class_=cls,
                     style=style,

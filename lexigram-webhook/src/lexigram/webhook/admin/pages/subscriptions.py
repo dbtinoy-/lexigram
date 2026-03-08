@@ -169,7 +169,7 @@ class WebhookSubscriptionsPage:
                                     ),
                                     el(
                                         "td",
-                                        str(len(s.event_types)),
+                                        str(len(s.event_types or ())),
                                         class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--foreground)]",
                                     ),
                                     el(

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.contracts.events.version_skew import (
     EventSchemaVersionSkew,
@@ -71,7 +71,7 @@ class VersionAwareSubscription:
     async def _handle(
         self, envelope: Any, handler: Callable[[Any], Awaitable[None]]
     ) -> None:
-        event_type = getattr(envelope, "event_type", None)
+        event_type: str = cast("str", getattr(envelope, "event_type", None))
         version = getattr(envelope, "version", 1)
         event_id = str(getattr(envelope, "event_id", ""))
         timestamp = getattr(envelope, "timestamp", datetime.now(UTC))
@@ -106,7 +106,7 @@ class VersionAwareSubscription:
                         await handler(envelope)
                         return
 
-            known_versions = frozenset(
+            known_versions_set: frozenset[int] = frozenset(
                 t.schema_version
                 for t in self._known_set.all_known
                 if t.event_type == event_type
@@ -115,7 +115,7 @@ class VersionAwareSubscription:
                 consumer_id=self._consumer_id,
                 event_type=event_type,
                 received_version=version,
-                known_versions=known_versions,
+                known_versions=known_versions_set,
                 upcast_attempted=self._evolution is not None,
                 event_id=event_id,
                 tenant_id=tenant_id,
@@ -129,14 +129,14 @@ class VersionAwareSubscription:
                     "consumer_id": self._consumer_id,
                     "event_type": event_type,
                     "received_version": version,
-                    "known_versions": sorted(known_versions),
+                    "known_versions": sorted(known_versions_set),
                     "event_id": event_id,
                     "tenant_id": tenant_id,
                 },
             )
             return
 
-        alert = UnknownEventTypeReceived(
+        unknown_alert = UnknownEventTypeReceived(
             consumer_id=self._consumer_id,
             event_type=event_type,
             schema_version=version,
@@ -146,7 +146,7 @@ class VersionAwareSubscription:
         )
         await self._alert_dispatcher.send_alert(
             title="UnknownEventTypeReceived",
-            message=str(alert),
+            message=str(unknown_alert),
             severity="high",
             context={
                 "consumer_id": self._consumer_id,

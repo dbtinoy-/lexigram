@@ -32,7 +32,8 @@ class TasksFailedPage:
             return HTMLResponse(html)
 
         try:
-            tasks = await self._result_store.get_failed()
+            fetch_failed = getattr(self._result_store, "get_failed", None)
+            tasks = await fetch_failed() if fetch_failed is not None else []
         except Exception as exc:
             logger.warning("tasks_failed.store_unavailable", error=str(exc))
             html = render_to_string(

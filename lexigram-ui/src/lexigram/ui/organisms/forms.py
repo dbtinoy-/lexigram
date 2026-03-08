@@ -99,7 +99,7 @@ class Form(Component):
                         self.submit_label,
                         type=submit_button_attrs.get("type", "submit"),
                         class_="w-full sm:w-auto",
-                        **{k: v for k, v in submit_button_attrs.items() if k != "type"},
+                        onclick=submit_button_attrs.get("onclick"),
                     ),
                     autosave_indicator,
                     class_="flex items-center justify-between w-full",

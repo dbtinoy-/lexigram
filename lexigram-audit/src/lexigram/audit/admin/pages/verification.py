@@ -130,12 +130,12 @@ class AuditVerificationPage:
                                             "tr",
                                             el(
                                                 "td",
-                                                m.expected_hash[:32] + "...",
+                                                m.expected_checksum[:32] + "...",
                                                 class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-[var(--foreground)]",
                                             ),
                                             el(
                                                 "td",
-                                                m.actual_hash[:32] + "...",
+                                                m.actual_checksum[:32] + "...",
                                                 class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-red-600",
                                             ),
                                         )

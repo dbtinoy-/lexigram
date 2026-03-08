@@ -34,7 +34,7 @@ class TestGenerator(GeneratorBase):
             template_root=Path(__file__).parent.parent / "templates",
         )
 
-    def generate(  # type: ignore[override]
+    def generate(
         self,
         name: str,
         test_type: str = "model",

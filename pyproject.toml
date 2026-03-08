@@ -797,6 +797,14 @@ mypy_path = [
     "lexigram-audit/src",
     "lexigram-webhook/src",
     "lexigram-graph/src",
+    "lexigram-multimedia/src",
+    "lexigram-multimedia-beat/src",
+    "lexigram-multimedia-image/src",
+    "lexigram-multimedia-interpolate/src",
+    "lexigram-multimedia-music/src",
+    "lexigram-multimedia-tts/src",
+    "lexigram-multimedia-upscale/src",
+    "lexigram-multimedia-video/src",
 ]
 warn_unused_ignores = true
 exclude = [

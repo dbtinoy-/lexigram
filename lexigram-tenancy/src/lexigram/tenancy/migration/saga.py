@@ -64,7 +64,7 @@ class TenantTierMigrationSaga(ContentAddressedSaga):
             checkpoint_store=checkpoint_store,
             tenant_id=tenant_id,
         )
-        self._tenant_id = tenant_id
+        self._tenant_id: str = tenant_id
         self._target_tier = target_tier
         self._isolation_registry = isolation_registry
         self._tenant_provider = tenant_provider
@@ -305,10 +305,9 @@ class TenantTierMigrationSaga(ContentAddressedSaga):
 
     async def _validate_cutover(self, inputs: dict[str, Any]) -> dict[str, bool]:
         await self._ensure_state_initialized()
-        assigned = (
-            self._isolation_registry.get_tenant_strategy(self._tenant_id)
-            or await self._config_service.get(self._tenant_id, "tenancy.strategy")
-        )
+        assigned = self._isolation_registry.get_tenant_strategy(
+            self._tenant_id
+        ) or await self._config_service.get(self._tenant_id, "tenancy.strategy")
         if assigned != self._target_strategy_name:
             raise RuntimeError(
                 f"Cutover validation failed: tenant strategy is "

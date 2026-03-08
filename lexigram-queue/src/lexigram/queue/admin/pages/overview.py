@@ -27,7 +27,7 @@ class QueueOverviewPage:
         if self._queue is not None:
             try:
                 health = await self._queue.health_check(timeout=5.0)
-                metrics = health.metrics or {}
+                metrics = health.details or {}
                 depth = str(metrics.get("depth", "N/A"))
                 lag = str(metrics.get("consumer_lag", "N/A"))
                 failed = str(metrics.get("failed_count", "N/A"))

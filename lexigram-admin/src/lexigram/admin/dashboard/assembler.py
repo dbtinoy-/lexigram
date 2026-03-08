@@ -178,7 +178,7 @@ class DashboardAssembler:
         if missing:
             raise ContributorPermissionError(contributor_id, action_name, missing)
 
-        return await contributor.execute_action(action_name, params)
+        return await contributor.execute_action(action_name, params)  # type: ignore[attr-defined]
 
 
 __all__ = ["DashboardAssembler"]

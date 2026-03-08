@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any
+from typing import Any, cast
 
 from starlette.requests import Request
 from starlette.routing import Route
 
+from lexigram.admin.dashboard.widget_types import ConfigField
 from lexigram.admin.params import parse_widget_params
 from lexigram.contracts.admin.protocols import AdminContributorRegistryProtocol
 from lexigram.contracts.web import get, post
@@ -262,7 +263,9 @@ class WidgetController:
         if widget_def is None:
             return HTMLResponse("Widget not found", status_code=404)
 
-        schema = getattr(contributor, "get_widget_config_schema", lambda _: [])(name)
+        schema: list[ConfigField] = getattr(
+            contributor, "get_widget_config_schema", lambda _: []
+        )(name)
 
         prefs = (
             await self._settings_service.get_widget_prefs(tenant_id, user_id)
@@ -366,9 +369,9 @@ class WidgetController:
             for wdef in contributor.get_dashboard_widgets():
                 name = wdef.name
                 enabled = name in enabled_list
-                schema = getattr(contributor, "get_widget_config_schema", lambda _: [])(
-                    name
-                )
+                schema: list[ConfigField] = getattr(
+                    contributor, "get_widget_config_schema", lambda _: []
+                )(name)
                 cfg = configs.get(name, {})
 
                 from lexigram.admin.dashboard.widget_types import ConfigField
@@ -471,7 +474,7 @@ class WidgetController:
             elif key.startswith("param__"):
                 rest = key.removeprefix("param__")
                 wname, pname = rest.split("__", 1)
-                configs.setdefault(wname, {})[pname] = val
+                configs.setdefault(wname, {})[pname] = cast("str", val)
 
         existing = (
             await self._settings_service.get_widget_prefs(tenant_id, user_id)

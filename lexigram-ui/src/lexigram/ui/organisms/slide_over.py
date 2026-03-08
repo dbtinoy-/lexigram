@@ -107,7 +107,7 @@ class SlideOver(Component):
                 cancel_btn = Button(
                     "Cancel",
                     variant="outline",
-                    **{"x-on:click": "open = false"},
+                    x_on_click="open = false",
                 )
                 save_btn = SubmitButton(
                     label=save_label,
@@ -245,9 +245,7 @@ class SlideOver(Component):
                                     # Header
                                     el(
                                         "div",
-                                        {
-                                            "class": "px-5 py-4 border-b border-border"
-                                        },
+                                        {"class": "px-5 py-4 border-b border-border"},
                                         el(
                                             "div",
                                             {

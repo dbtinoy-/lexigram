@@ -24,8 +24,10 @@ _pipeline: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _pipeline
-    from stable_audio_tools import StableAudioOpenPipeline
-    import torch
+    from stable_audio_tools import (  # type: ignore[import-not-found]
+        StableAudioOpenPipeline,
+    )
+    import torch  # type: ignore[import-not-found]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _pipeline = StableAudioOpenPipeline.from_pretrained(device=device)

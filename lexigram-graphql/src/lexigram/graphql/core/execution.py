@@ -281,7 +281,7 @@ class GraphQLExecutorProtocol:
                     # Try to unwrap the original error from Strawberry/graphql-core's wrapper.
                     # Graphql-core wraps resolver exceptions in its own GraphQLError;
                     # the original may carry safe/code attributes we want to preserve.
-                    effective_error = error
+                    effective_error: Any = error
                     original = getattr(error, "original_error", None)
                     if original is not None:
                         if isinstance(original, GraphQLError):
@@ -293,6 +293,7 @@ class GraphQLExecutorProtocol:
                             from lexigram.graphql.exceptions import (
                                 GraphQLError as LexigramGraphQLError,
                             )
+
                             effective_error = LexigramGraphQLError(str(original))
                             effective_error.safe = True
                     formatted = self._error_formatter.format_error(effective_error)

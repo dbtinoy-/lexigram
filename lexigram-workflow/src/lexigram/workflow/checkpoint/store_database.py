@@ -30,7 +30,8 @@ __all__ = ["DatabaseContentCheckpointStore"]
 def _entry_to_json(entry: ContentCheckpointEntry) -> str:
     d = asdict(entry)
     d["completed_at"] = entry.completed_at.isoformat()
-    return dumps(d).decode() if isinstance(dumps(d), bytes) else dumps(d)
+    payload = dumps(d)
+    return payload.decode() if isinstance(payload, bytes) else payload
 
 
 def _entry_from_json(data: dict[str, Any]) -> ContentCheckpointEntry:
@@ -80,8 +81,7 @@ class DatabaseContentCheckpointStore:
     async def get(self, key: ContentCheckpointKey) -> ContentCheckpointEntry | None:
         await self._ensure_schema()
         result = await self._provider.execute_query(
-            f"SELECT key_str, entry_json FROM {self._table_name} "
-            f"WHERE key_str = ?",
+            f"SELECT key_str, entry_json FROM {self._table_name} WHERE key_str = ?",
             [key.as_str()],
         )
         if not result.rows:
@@ -111,8 +111,14 @@ class DatabaseContentCheckpointStore:
             f"output_size_bytes, completed_at, created_at) "
             f"VALUES (?, ?, ?, ?, ?, ?) "
             f"ON CONFLICT (key_str) DO NOTHING",
-            [key.as_str(), entry_json, entry.stage_handler_version,
-             entry.output_size_bytes, entry.completed_at.isoformat(), now_ts],
+            [
+                key.as_str(),
+                entry_json,
+                entry.stage_handler_version,
+                entry.output_size_bytes,
+                entry.completed_at.isoformat(),
+                now_ts,
+            ],
         )
 
     async def evict(self, key: ContentCheckpointKey) -> None:

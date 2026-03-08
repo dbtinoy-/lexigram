@@ -6,6 +6,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.logging import get_logger
 from lexigram.ui import Badge, Divider, EmptyState, el, render_to_string
+from lexigram.ui.atoms.badge import BadgeVariant
 from lexigram.web.routing.registry import RouteRegistry
 
 logger = get_logger(__name__)
@@ -142,8 +143,8 @@ class WebRoutesPage:
         return HTMLResponse(html)
 
 
-def _method_variant(method: str) -> str:
-    mapping = {
+def _method_variant(method: str) -> BadgeVariant:
+    mapping: dict[str, BadgeVariant] = {
         "GET": "success",
         "POST": "primary",
         "PUT": "info",

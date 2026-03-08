@@ -32,7 +32,8 @@ class TasksHistoryPage:
             return HTMLResponse(html)
 
         try:
-            tasks = await self._result_store.get_completed()
+            fetch_completed = getattr(self._result_store, "get_completed", None)
+            tasks = await fetch_completed() if fetch_completed is not None else []
         except Exception as exc:
             logger.warning("tasks_history.store_unavailable", error=str(exc))
             html = render_to_string(

@@ -185,7 +185,7 @@ class WebPushChannel:
         """
         try:
             from cryptography.hazmat.primitives.asymmetric import ec
-            from py_vapid import Vapid
+            from py_vapid import Vapid  # type: ignore[import-untyped]
 
             v = Vapid.from_string(self._vapid_private_key)
             private_key_obj = v.private_key

@@ -233,11 +233,12 @@ class HasManyFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
-        from lexigram.admin.forms.fields import MultiSelectField
+        from lexigram.admin.forms.fields import SelectField
 
         options = field_schema.options or []
-        return MultiSelectField(
+        return SelectField(
             options=[(o.get("value"), o.get("label")) for o in options],
+            multiple=True,
             **common_args,
         )
 

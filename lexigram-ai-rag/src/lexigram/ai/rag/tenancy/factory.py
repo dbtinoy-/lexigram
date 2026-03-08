@@ -95,7 +95,7 @@ class TenantScopedRAGPipeline:
         Raises:
             RAGError: If the pipeline execution fails.
         """
-        context = RAGContext(query=question, **kwargs)  # type: ignore[arg-type]
+        context = RAGContext(query=question, **kwargs)
         result = await self.execute(context)
         if result.is_err():
             raise result.unwrap_err()

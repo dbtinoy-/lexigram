@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from lexigram.contracts.cache.protocols import CacheBackendProtocol
+    from lexigram.contracts.cache.protocols import (  # type: ignore[import-untyped]
+        CacheBackendProtocol,
+    )
 
 
 class WritePauseRegistry:

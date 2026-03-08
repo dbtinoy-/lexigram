@@ -9,10 +9,12 @@ return ``0`` when usage is missing entirely.
 
 from __future__ import annotations
 
-from lexigram.contracts.ai.llm import Completion
+from lexigram.contracts.ai.llm import Completion, CompletionProtocol
+
+CompletionInput = Completion | CompletionProtocol
 
 
-def token_split(completion: Completion) -> tuple[int, int]:
+def token_split(completion: CompletionInput) -> tuple[int, int]:
     """Extract the prompt/completion token split from a completion.
 
     Args:
@@ -36,7 +38,7 @@ def token_split(completion: Completion) -> tuple[int, int]:
     )
 
 
-def count_tokens(completion: Completion) -> int:
+def count_tokens(completion: CompletionInput) -> int:
     """Count total tokens for a completion.
 
     Prefers the prompt/completion split when either side is reported;
@@ -66,7 +68,7 @@ class TokenAccumulator:
         self.completion_tokens = 0
         self.total_tokens = 0
 
-    def add(self, completion: Completion) -> None:
+    def add(self, completion: CompletionInput) -> None:
         """Accumulate usage from one completion.
 
         Args:

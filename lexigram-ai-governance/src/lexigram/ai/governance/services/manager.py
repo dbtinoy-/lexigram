@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import fnmatch
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.di.decorators import inject
 from lexigram.logging import (
@@ -70,6 +70,8 @@ class AIGovernanceManager:
         self._on_soft_limit = on_soft_limit
         self._audit_store = audit_store
         self._background_tasks: set[asyncio.Task[object]] = set()
+        self._resource_registry: ResourceUnitRegistry | None = None
+        self._resource_tracker: ResourceUnitTracker | None = None
 
         if persistence is not None:
             self._persistence = persistence
@@ -78,13 +80,17 @@ class AIGovernanceManager:
                 RedisGovernancePersistence,
             )
 
-            self._persistence = RedisGovernancePersistence(cache)
+            self._persistence = cast(
+                "GovernancePersistence", RedisGovernancePersistence(cache)
+            )
         else:
             from lexigram.ai.governance.persistence import (
                 InMemoryGovernancePersistence,
             )
 
-            self._persistence = InMemoryGovernancePersistence()
+            self._persistence = cast(
+                "GovernancePersistence", InMemoryGovernancePersistence()
+            )
 
         # Initialise resource unit tracker
         if config.resource_units:

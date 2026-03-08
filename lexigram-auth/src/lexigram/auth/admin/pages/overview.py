@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from starlette.responses import HTMLResponse
@@ -39,7 +40,7 @@ class AuthOverviewPage:
             try:
                 sessions = await self._session_repo.find_active_by_user(
                     user_id="*",
-                    cutoff=None,
+                    cutoff=datetime.now(UTC),
                 )
                 session_count = len(sessions)
             except Exception:

@@ -31,7 +31,7 @@ class QueueConsumersPage:
 
         try:
             health = await self._queue.health_check(timeout=5.0)
-            consumers = health.metrics.get("consumers", []) if health.metrics else []
+            consumers = health.details.get("consumers", []) if health.details else []
         except Exception:
             html = render_to_string(
                 EmptyState(
