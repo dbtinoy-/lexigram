@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-skills"
-version = "0.1.3005"
+version = "0.1.3006"
 description = "AI skills and tools for the Lexigram Framework — registry, executor, builtin tools, discovery"
 readme = "README.md"
 requires-python = ">=3.11"
