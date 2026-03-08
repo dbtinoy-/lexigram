@@ -7,17 +7,19 @@ container.  Buffered results return JSON; streaming results return SSE
 frames in the client's own protocol; failures render in the inbound
 protocol's error envelope with safe, filtered headers.
 
-Passthrough routes (currently ``POST /v1/embeddings``) serve non-chat
-endpoint kinds through ``PassthroughService`` with the same request
-resolution, header filtering, and error envelope machinery, without any
-wire-format conversion.  Job-relay routes (``POST /v1/videos`` and
-``GET /v1/videos/{job_id}``) serve submit-then-poll endpoint kinds
-through ``JobPassthroughService`` with the same envelope machinery.
+Passthrough routes (``POST /v1/embeddings``, ``/v1/rerank``,
+``/v1/moderations``, the ``/v1/audio/*`` and ``/v1/images/*`` routes)
+serve non-chat endpoint kinds through ``PassthroughService`` with the
+same request resolution, header filtering, and error envelope machinery,
+without any wire-format conversion.  Job-relay routes (``POST
+/v1/videos`` and ``GET /v1/videos/{job_id}``) serve submit-then-poll
+endpoint kinds through ``JobPassthroughService`` with the same envelope
+machinery.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable
 from functools import partial
 from typing import Any, TypeAlias
 
@@ -26,7 +28,22 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from lexigram.ai.relay.gateway.job_passthrough import JobPassthroughService
-from lexigram.ai.relay.gateway.passthrough import PassthroughService
+from lexigram.ai.relay.gateway.web.audio_endpoints import (
+    AUDIO_ROUTE_TABLE,
+    audio_speech_endpoint,
+    audio_transcriptions_endpoint,
+    audio_translations_endpoint,
+)
+from lexigram.ai.relay.gateway.web.image_endpoints import (
+    IMAGE_ROUTE_TABLE,
+    build_image_routes,
+)
+from lexigram.ai.relay.gateway.web.shared import (
+    ResolvePassthrough,
+    _error_response,
+    _parse_body,
+    _safe_headers,
+)
 from lexigram.ai.relay.gateway.web.sse import SSEEncoder
 from lexigram.contracts.ai.relay import (
     RelayFormat,
@@ -37,15 +54,11 @@ from lexigram.contracts.ai.relay import (
 )
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
 from lexigram.identity.ambient import new_uuid
-from lexigram.serialization import loads
 
 __all__ = ["RELAY_ROUTE_PATHS", "build_routes", "relay_endpoint"]
 
 ResolveGateway: TypeAlias = Callable[[Request], Awaitable[RelayGatewayProtocol]]
 """Resolver of a gateway implementation from a Starlette request."""
-
-ResolvePassthrough: TypeAlias = Callable[[Request], Awaitable[PassthroughService]]
-"""Resolver of a passthrough service from a Starlette request."""
 
 ResolveJobPassthrough: TypeAlias = Callable[[Request], Awaitable[JobPassthroughService]]
 """Resolver of a job passthrough service from a Starlette request."""
@@ -71,40 +84,23 @@ _JOB_ROUTE_TABLE: tuple[tuple[str, str], ...] = (("/v1/videos", "video_generatio
 _JOB_STATUS_PATH = "/v1/videos/{job_id}"
 """Inbound poll path for the registered job-relay endpoint kinds."""
 
+_AUDIO_HANDLERS = {
+    "audio_speech": audio_speech_endpoint,
+    "audio_transcriptions": audio_transcriptions_endpoint,
+    "audio_translations": audio_translations_endpoint,
+}
+"""Endpoint kind to handler for the audio passthrough routes."""
+
 RELAY_ROUTE_PATHS: tuple[str, ...] = tuple(
-    path for path, _ in (*_ROUTE_TABLE, *_PASSTHROUGH_ROUTE_TABLE)
+    path
+    for path, _ in (
+        *_ROUTE_TABLE,
+        *_PASSTHROUGH_ROUTE_TABLE,
+        *AUDIO_ROUTE_TABLE,
+        *IMAGE_ROUTE_TABLE,
+    )
 )
 """Inbound relay paths registered by ``build_routes``, in route order."""
-
-_HOP_BY_HOP_HEADERS: frozenset[str] = frozenset(
-    {
-        "connection",
-        "keep-alive",
-        "proxy-authenticate",
-        "proxy-authorization",
-        "te",
-        "trailer",
-        "transfer-encoding",
-        "upgrade",
-    }
-)
-"""Hop-by-hop headers that must never be relayed to clients."""
-
-_ERROR_TYPE_MAP: dict[int, tuple[str, str, str]] = {
-    400: ("invalid_request_error", "invalid_request_error", "INVALID_ARGUMENT"),
-    401: ("authentication_error", "authentication_error", "UNAUTHENTICATED"),
-    403: ("permission_denied_error", "permission_denied_error", "PERMISSION_DENIED"),
-    404: ("invalid_request_error", "not_found_error", "NOT_FOUND"),
-    409: ("conflict_error", "conflict_error", "FAILED_PRECONDITION"),
-    429: ("rate_limit_error", "rate_limit_error", "RESOURCE_EXHAUSTED"),
-    499: ("cancelled_error", "cancelled_error", "CANCELLED"),
-    502: ("server_error", "api_error", "INTERNAL"),
-    504: ("server_error", "api_error", "DEADLINE_EXCEEDED"),
-}
-"""Per-status error type names for the OpenAI, Claude, and Google families."""
-
-_DEFAULT_ERROR_TYPES: tuple[str, str, str] = ("server_error", "api_error", "INTERNAL")
-"""Error type names for every unmapped status code (including 500)."""
 
 
 async def relay_endpoint(
@@ -413,7 +409,9 @@ def build_routes(
             from the request; wired to request-time DI by the contributor.
         resolve_passthrough: Optional async callable resolving a
             ``PassthroughService`` from the request; when provided, the
-            passthrough routes (e.g. ``/v1/embeddings``) are appended.
+            passthrough routes (e.g. ``/v1/embeddings``), the audio
+            routes (``/v1/audio/*``), and the image routes
+            (``/v1/images/*``) are appended.
         resolve_job_passthrough: Optional async callable resolving a
             ``JobPassthroughService`` from the request; when provided,
             the job-relay routes (``POST /v1/videos`` and
@@ -421,8 +419,9 @@ def build_routes(
 
     Returns:
         One ``Route`` per inbound relay format, in ``RELAY_ROUTE_PATHS``
-        order, followed by the passthrough routes when their resolver is
-        provided and the job-relay routes when theirs is.
+        order, followed by the passthrough, audio, and image routes when
+        their resolver is provided and the job-relay routes when theirs
+        is.
     """
     routes = [
         Route(
@@ -441,6 +440,15 @@ def build_routes(
             )
             for path, kind in _PASSTHROUGH_ROUTE_TABLE
         )
+        routes.extend(
+            Route(
+                path,
+                partial(_AUDIO_HANDLERS[kind], resolve_passthrough),
+                methods=["POST"],
+            )
+            for path, kind in AUDIO_ROUTE_TABLE
+        )
+        routes.extend(build_image_routes(resolve_passthrough))
     if resolve_job_passthrough is not None:
         routes.extend(
             Route(
@@ -459,74 +467,6 @@ def build_routes(
             for _, kind in _JOB_ROUTE_TABLE
         )
     return routes
-
-
-def _parse_body(
-    raw: bytes, source: RelayFormat, request_id: str
-) -> dict[str, Any] | Response:
-    """Decode the request body, returning a 400 response when malformed.
-
-    Args:
-        raw: The raw request body bytes.
-        source: The inbound wire format for the error envelope.
-        request_id: Request id stamped on the error.
-
-    Returns:
-        The decoded JSON object, or a 400 ``INVALID_REQUEST`` response
-        for malformed JSON, non-object roots, and empty bodies.
-    """
-    try:
-        decoded = loads(raw)
-    except (TypeError, ValueError):
-        return _error_response(
-            source,
-            RelayGatewayError(
-                code=RelayGatewayErrorCode.INVALID_REQUEST,
-                message="malformed JSON body",
-                status_code=400,
-                request_id=request_id,
-            ),
-        )
-    if not isinstance(decoded, dict):
-        return _error_response(
-            source,
-            RelayGatewayError(
-                code=RelayGatewayErrorCode.INVALID_REQUEST,
-                message="request body must be a JSON object",
-                status_code=400,
-                request_id=request_id,
-            ),
-        )
-    return decoded
-
-
-def _safe_headers(
-    headers: Mapping[str, str], request_id: str, trace_id: str
-) -> dict[str, str]:
-    """Filter result headers and stamp request metadata.
-
-    Drops ``set-cookie`` and all hop-by-hop headers case-insensitively,
-    keeps everything else, and always adds ``x-request-id`` plus
-    ``x-trace-id`` when a trace id was provided.
-
-    Args:
-        headers: The result headers to filter.
-        request_id: Request id stamped as ``x-request-id``.
-        trace_id: Trace id stamped as ``x-trace-id`` when non-empty.
-
-    Returns:
-        The safe header dict.
-    """
-    safe: dict[str, str] = {}
-    for key, value in headers.items():
-        lowered = key.lower()
-        if lowered == "set-cookie" or lowered in _HOP_BY_HOP_HEADERS:
-            continue
-        safe[key] = value
-    safe["x-request-id"] = request_id
-    if trace_id:
-        safe["x-trace-id"] = trace_id
-    return safe
 
 
 def _streaming_response(
@@ -563,64 +503,3 @@ def _streaming_response(
             yield final
 
     return StreamingResponse(frames(), media_type="text/event-stream", headers=headers)
-
-
-def _error_types(status_code: int) -> tuple[str, str, str]:
-    """Map an HTTP status to per-protocol error type names.
-
-    Args:
-        status_code: The gateway error's status code.
-
-    Returns:
-        ``(openai_type, claude_type, google_status)`` for the status;
-        the server-error triple for unmapped statuses.
-    """
-    return _ERROR_TYPE_MAP.get(status_code, _DEFAULT_ERROR_TYPES)
-
-
-def _error_response(source: RelayFormat, error: RelayGatewayError) -> Response:
-    """Build the inbound-protocol error envelope for a gateway error.
-
-    Never includes request payloads, headers, or tracebacks; only the
-    safe error fields the protocol documents.
-
-    Args:
-        source: The inbound wire format determining the envelope shape.
-        error: The gateway error to render.
-
-    Returns:
-        A JSON response with the protocol's error envelope and the
-        error's status code.
-    """
-    openai_type, claude_type, google_status = _error_types(error.status_code)
-    if source == RelayFormat.OPENAI_CHAT:
-        envelope: dict[str, Any] = {
-            "error": {
-                "message": error.message,
-                "type": openai_type,
-                "code": error.code,
-                "request_id": error.request_id,
-            }
-        }
-    elif source == RelayFormat.OPENAI_RESPONSES:
-        envelope = {
-            "error": {
-                "message": error.message,
-                "type": openai_type,
-                "code": error.code,
-            }
-        }
-    elif source == RelayFormat.CLAUDE:
-        envelope = {
-            "type": "error",
-            "error": {"type": claude_type, "message": error.message},
-        }
-    else:
-        envelope = {
-            "error": {
-                "code": error.status_code,
-                "message": error.message,
-                "status": google_status,
-            }
-        }
-    return JSONResponse(content=envelope, status_code=error.status_code)

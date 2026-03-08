@@ -590,8 +590,8 @@ class TestEmbeddingsRoute:
         )
         paths = [route.path for route in routes]
         assert "/v1/embeddings" in paths
-        assert paths[-1] == "/v1/moderations"
-        assert RELAY_ROUTE_PATHS[-1] == "/v1/moderations"
+        assert paths[-1] == "/v1/images/edits"
+        assert RELAY_ROUTE_PATHS[-1] == "/v1/images/edits"
 
 class TestRerankRoute:
     """``POST /v1/rerank`` passthrough route behavior."""
@@ -758,7 +758,26 @@ class TestModerationsRoute:
         )
         paths = [route.path for route in routes]
         assert "/v1/moderations" in paths
-        assert paths[-1] == "/v1/moderations"
+        assert paths[-1] == "/v1/images/edits"
+
+    async def test_audio_and_image_routes_registered_in_mount(self) -> None:
+        service = FakePassthroughService(
+            Ok(RelayGatewayResult(status_code=200, headers={}, payload={}))
+        )
+        routes = build_routes(
+            FakeResolver(_ok_gateway()),
+            resolve_passthrough=FakePassthroughResolver(service),
+        )
+        paths = [route.path for route in routes]
+        for audio_path in (
+            "/v1/audio/speech",
+            "/v1/audio/transcriptions",
+            "/v1/audio/translations",
+            "/v1/images/generations",
+            "/v1/images/edits",
+        ):
+            assert audio_path in paths, f"{audio_path} not mounted"
+            assert audio_path in RELAY_ROUTE_PATHS, f"{audio_path} missing from RELAY_ROUTE_PATHS"
 
 class TestVideoRoutes:
     """Job-relay routes: ``POST /v1/videos`` and ``GET /v1/videos/{job_id}``."""
