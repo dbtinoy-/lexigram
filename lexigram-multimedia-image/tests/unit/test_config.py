@@ -1,4 +1,18 @@
+from lexigram.config import BaseConfig
 from lexigram.multimedia.image.config import ImageConfig
+
+
+def test_image_config_is_base_config() -> None:
+    assert issubclass(ImageConfig, BaseConfig)
+    assert ImageConfig.config_section == "multimedia_image"
+
+
+def test_image_config_from_dict_and_redaction() -> None:
+    cfg = ImageConfig.from_dict(
+        {"backend": "openai", "stability_api_key_secret_name": "lex_stability"}
+    )
+    assert cfg.backend == "openai"
+    assert cfg.to_safe_dict()["stability_api_key_secret_name"] == "***"
 
 
 def test_default_config_points_at_local_http() -> None:

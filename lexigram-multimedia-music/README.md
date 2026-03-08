@@ -58,16 +58,14 @@ if __name__ == "__main__":
 # application.yaml
 multimedia:
   music:
-    backend: "stable-audio-open"
-    duration_seconds: 45.0
+    backend: "ace-step"
 ```
 
 ### Option 2 — Profiles + Environment Variables
 
 ```bash
 export LEX_PROFILE=production
-export LEX_MULTIMEDIA__MUSIC__BACKEND=stability-audio
-export LEX_MULTIMEDIA__MUSIC__DURATION_SECONDS=45
+export LEX_MULTIMEDIA_MUSIC__BACKEND=ace-step
 ```
 
 ### Option 3 — Python
@@ -76,22 +74,18 @@ export LEX_MULTIMEDIA__MUSIC__DURATION_SECONDS=45
 from lexigram.multimedia.music import AudioMusicModule
 from lexigram.multimedia.music.config import MusicConfig
 
-AudioMusicModule.configure(
-    config=MusicConfig(backend="stable-audio-open", duration_seconds=45.0)
-)
+AudioMusicModule.configure(config=MusicConfig(backend="ace-step"))
 ```
 
 ### Config reference
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `backend` | `"local-http"` | `LEX_MULTIMEDIA__MUSIC__BACKEND` | `local-http`, `stability-audio`, `ace-step`, `stable-audio-open` |
-| `local_http_base_url` | `"http://localhost:5003"` | `LEX_MULTIMEDIA__MUSIC__LOCAL_HTTP_BASE_URL` | Local reference server URL |
-| `duration_seconds` | `30.0` | `LEX_MULTIMEDIA__MUSIC__DURATION_SECONDS` | Default generated clip length in seconds |
-| `stability_api_key_secret_name` | `"stability_api_key"` | `LEX_MULTIMEDIA__MUSIC__STABILITY_API_KEY_SECRET_NAME` | Secret name for the Stability Audio API key |
-| `ace_step_base_url` | `"http://localhost:5300"` | `LEX_MULTIMEDIA__MUSIC__ACE_STEP_BASE_URL` | ACE-Step server URL |
-| `stable_audio_open_base_url` | `"http://localhost:5301"` | `LEX_MULTIMEDIA__MUSIC__STABLE_AUDIO_OPEN_BASE_URL` | Stable Audio Open server URL |
-| `timeout` | `60.0` | `LEX_MULTIMEDIA__MUSIC__TIMEOUT` | Request timeout in seconds |
+| `backend` | `"local-http"` | `LEX_MULTIMEDIA_MUSIC__BACKEND` | `local-http`, `stability-audio`, `ace-step`, `stable-audio-open` |
+| `local_http_base_url` | `"http://localhost:5003"` | `LEX_MULTIMEDIA_MUSIC__LOCAL_HTTP_BASE_URL` | Local reference server URL |
+| `ace_step_base_url` | `"http://localhost:5300"` | `LEX_MULTIMEDIA_MUSIC__ACE_STEP_BASE_URL` | ACE-Step server URL |
+| `stable_audio_open_base_url` | `"http://localhost:5301"` | `LEX_MULTIMEDIA_MUSIC__STABLE_AUDIO_OPEN_BASE_URL` | Stable Audio Open server URL |
+| `timeout` | `60.0` | `LEX_MULTIMEDIA_MUSIC__TIMEOUT` | Request timeout in seconds |
 
 ## Module Factory Methods
 

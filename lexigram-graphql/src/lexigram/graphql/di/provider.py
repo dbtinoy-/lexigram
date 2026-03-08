@@ -90,6 +90,8 @@ class GraphQLProvider(Provider):
 
     name = "graphql"
     priority = ProviderPriority.PRESENTATION
+    config_key: str | None = "graphql"
+    config_model: type | None = GraphQLConfig
 
     def __init__(
         self,
@@ -112,6 +114,7 @@ class GraphQLProvider(Provider):
             priority: Provider priority for initialization order.
         """
         super().__init__(priority=priority)
+        self._requested_config = config
         self.config = config
         self._identity: Any = None
         self.query_class = query_class
@@ -350,8 +353,7 @@ class GraphQLProvider(Provider):
                 self._identity = await container.resolve(IdGeneratorProtocol)
 
         # Get or create configuration
-        if self.config is None:
-            self.config = GraphQLConfig()
+        self.config = self._requested_config or self.config or GraphQLConfig()
 
         # Initialize schema builder
         self._schema_builder = SchemaBuilderProtocol(self.config)

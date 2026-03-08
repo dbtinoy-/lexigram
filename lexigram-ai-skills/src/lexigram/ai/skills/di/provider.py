@@ -49,6 +49,8 @@ class SkillsProvider(Provider):
 
     name = "skills"
     priority = ProviderPriority.DOMAIN
+    config_key: str | None = "ai_skills"
+    config_model: type | None = SkillsConfig
 
     def __init__(
         self,
@@ -65,6 +67,7 @@ class SkillsProvider(Provider):
             **kwargs: Reserved for future keyword arguments.
         """
         super().__init__()
+        self._requested_config = config
         self._config = config or SkillsConfig()
         self._enable_tool_bridge = enable_tool_bridge
 
@@ -75,6 +78,11 @@ class SkillsProvider(Provider):
         from lexigram.ai.skills.permissions.permission_checker import PermissionChecker
         from lexigram.ai.skills.registry import SkillRegistry
 
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), SkillsConfig)
+            else self._config
+        )
         container.singleton(SkillsConfig, instance=self._config)
         registry = SkillRegistry()
         container.singleton(SkillRegistry, instance=registry)

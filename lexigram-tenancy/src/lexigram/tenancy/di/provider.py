@@ -40,6 +40,8 @@ class TenancyProvider(Provider):
     """
 
     name = "tenancy"
+    config_key: str | None = "tenancy"
+    config_model: type | None = TenancyConfig
 
     def __init__(self, config: TenancyConfig | None = None) -> None:
         """Initialise the bundle provider.
@@ -51,6 +53,7 @@ class TenancyProvider(Provider):
         from lexigram.contracts.core.provider import ProviderPriority
 
         self.priority = ProviderPriority.INFRASTRUCTURE
+        self._requested_config = config
         self._config = config or TenancyConfig()
         self._sub_providers: list[Provider] = [
             TenantResolutionProvider(self._config.resolution),
@@ -66,6 +69,19 @@ class TenancyProvider(Provider):
         Args:
             container: The DI container registrar.
         """
+        effective_config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), TenancyConfig)
+            else self._config
+        )
+        if effective_config is not self._config:
+            self._config = effective_config
+            self._sub_providers = [
+                TenantResolutionProvider(self._config.resolution),
+                TenantLifecycleProvider(self._config.lifecycle),
+                TenantConfigProvider(self._config.overrides),
+                TenantIntegrationProvider(self._config.integration),
+            ]
         for sp in self._sub_providers:
             await sp.register(container)
 

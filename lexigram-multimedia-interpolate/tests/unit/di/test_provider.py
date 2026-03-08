@@ -22,6 +22,21 @@ class _FakeContainer:
 
 
 @pytest.mark.asyncio
+async def test_provider_declares_config_key_and_model() -> None:
+    provider = InterpolationGenerationProvider()
+    assert provider.config_key == "multimedia_interpolate"
+    assert provider.config_model is InterpolationConfig
+
+
+@pytest.mark.asyncio
+async def test_register_binds_interpolation_config_into_container() -> None:
+    provider = InterpolationGenerationProvider()
+    container = _FakeContainer()
+    await provider.register(container)
+    assert container.bindings[InterpolationConfig].backend == "rife"
+
+
+@pytest.mark.asyncio
 async def test_register_binds_rife_backend_by_default() -> None:
     provider = InterpolationGenerationProvider(config=InterpolationConfig())
     container = _FakeContainer()

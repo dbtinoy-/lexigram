@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+from typing import ClassVar, Literal
+
+from lexigram.config import BaseConfig
 
 
-@dataclass
-class MusicConfig:
+class MusicConfig(BaseConfig):
+    """Configuration for the music generation subsystem."""
+
+    config_section: ClassVar[str] = "multimedia_music"
     backend: Literal[
-        "local-http",
-        "stability-audio",
-        "ace-step",
-        "stable-audio-open",
+        "local-http", "stability-audio", "ace-step", "stable-audio-open"
     ] = "local-http"
     local_http_base_url: str = "http://localhost:5003"
-    duration_seconds: float = 30.0
-    stability_api_key_secret_name: str = "stability_api_key"
     ace_step_base_url: str = "http://localhost:5300"
     stable_audio_open_base_url: str = "http://localhost:5301"
     timeout: float = 60.0

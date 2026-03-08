@@ -1,7 +1,7 @@
 # Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
 # Full field reference: see the README Configuration section.
 # YAML key: multimedia: → music:
-# Environment variable prefix: LEX_MULTIMEDIA__MUSIC__
+# Environment variable prefix: LEX_MULTIMEDIA_MUSIC__
 #
 # NOTE: lexigram-multimedia-music is a subsystem of the lexigram-multimedia
 # umbrella. In application.yaml its config is nested under the `multimedia:`
@@ -18,12 +18,6 @@ multimedia:
 
     # Local reference server (backend: local-http)
     local_http_base_url: "http://localhost:5003"
-
-    # Default generated clip length in seconds.
-    duration_seconds: 30.0
-
-    # Stability Audio (backend: stability-audio)
-    stability_api_key_secret_name: "stability_api_key"
 
     # ACE-Step reference server (backend: ace-step)
     ace_step_base_url: "http://localhost:5300"

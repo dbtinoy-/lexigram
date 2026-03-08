@@ -1,23 +1,10 @@
 """Tests for OTel exporter registry."""
 
+import sys
+from collections.abc import Iterator
+
 import pytest
 from unittest.mock import MagicMock, patch
-import sys
-
-# Ensure opentelemetry modules are mocked in sys.modules to avoid AttributeError
-mock_otel = MagicMock()
-sys.modules["opentelemetry"] = mock_otel
-sys.modules["opentelemetry.exporter"] = mock_otel.exporter
-sys.modules["opentelemetry.exporter.otlp"] = mock_otel.exporter.otlp
-sys.modules["opentelemetry.exporter.otlp.proto"] = mock_otel.exporter.otlp.proto
-sys.modules["opentelemetry.exporter.otlp.proto.grpc"] = mock_otel.exporter.otlp.proto.grpc
-sys.modules["opentelemetry.exporter.otlp.proto.grpc.trace_exporter"] = mock_otel.exporter.otlp.proto.grpc.trace_exporter
-sys.modules["opentelemetry.exporter.otlp.proto.grpc.metric_exporter"] = mock_otel.exporter.otlp.proto.grpc.metric_exporter
-sys.modules["opentelemetry.sdk"] = mock_otel.sdk
-sys.modules["opentelemetry.sdk.trace"] = mock_otel.sdk.trace
-sys.modules["opentelemetry.sdk.trace.export"] = mock_otel.sdk.trace.export
-sys.modules["opentelemetry.sdk.metrics"] = mock_otel.sdk.metrics
-sys.modules["opentelemetry.sdk.metrics.export"] = mock_otel.sdk.metrics.export
 
 from lexigram.monitor.backends.exporters.otel_registry import (
     OTLPTracingExporterHandler,
@@ -27,6 +14,34 @@ from lexigram.monitor.backends.exporters.otel_registry import (
     TracingExporterRegistry,
     MetricsExporterRegistry,
 )
+
+
+@pytest.fixture(autouse=True)
+def _mock_otel_modules() -> Iterator[None]:
+    """Stub optional OTel exporter modules and restore them afterwards."""
+    mock_otel = MagicMock()
+    entries = {
+        "opentelemetry": mock_otel,
+        "opentelemetry.exporter": mock_otel.exporter,
+        "opentelemetry.exporter.otlp": mock_otel.exporter.otlp,
+        "opentelemetry.exporter.otlp.proto": mock_otel.exporter.otlp.proto,
+        "opentelemetry.exporter.otlp.proto.grpc": mock_otel.exporter.otlp.proto.grpc,
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter": mock_otel.exporter.otlp.proto.grpc.trace_exporter,
+        "opentelemetry.exporter.otlp.proto.grpc.metric_exporter": mock_otel.exporter.otlp.proto.grpc.metric_exporter,
+        "opentelemetry.sdk": mock_otel.sdk,
+        "opentelemetry.sdk.trace": mock_otel.sdk.trace,
+        "opentelemetry.sdk.trace.export": mock_otel.sdk.trace.export,
+        "opentelemetry.sdk.metrics": mock_otel.sdk.metrics,
+        "opentelemetry.sdk.metrics.export": mock_otel.sdk.metrics.export,
+    }
+    saved = {name: sys.modules.get(name) for name in entries}
+    sys.modules.update(entries)
+    yield
+    for name, module in saved.items():
+        if module is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = module
 
 
 def test_otlp_tracing_handler():

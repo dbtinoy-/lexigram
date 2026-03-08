@@ -46,9 +46,12 @@ class ObservabilityProvider(Provider):
 
     name = "ai-observability"
     priority = ProviderPriority.DOMAIN
+    config_key: str | None = "ai_observability"
+    config_model: type | None = ObservabilityConfig
 
     def __init__(self, config: ObservabilityConfig | None = None) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or ObservabilityConfig()
 
     @classmethod
@@ -60,6 +63,11 @@ class ObservabilityProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the observability services."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), ObservabilityConfig)
+            else self._config
+        )
         container.singleton(ObservabilityConfig, self._config)
 
         if not self._config.enabled:

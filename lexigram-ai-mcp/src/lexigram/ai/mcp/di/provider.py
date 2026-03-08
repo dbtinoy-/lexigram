@@ -45,6 +45,8 @@ class _ConnectorResourceBundle:
 class MCPProvider(Provider):
     name = "mcp"
     priority = ProviderPriority.PRESENTATION
+    config_key: str | None = "ai_mcp"
+    config_model: type | None = MCPConfig
 
     """Provider for MCP server components.
 
@@ -67,6 +69,7 @@ class MCPProvider(Provider):
         **provider_kwargs: Any,
     ) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or MCPConfig()
         self._controllers: list[type] = controllers or []
         self._services: list[type] = services or []
@@ -77,6 +80,11 @@ class MCPProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register MCPConfig with the DI container."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), MCPConfig)
+            else self._config
+        )
         container.singleton(MCPConfig, self._config)
 
     async def boot(self, container: BootContainerProtocol) -> None:

@@ -35,6 +35,8 @@ class GovernanceProvider(Provider):
 
     name = "governance"
     priority = ProviderPriority.DOMAIN
+    config_key: str | None = "ai_governance"
+    config_model: type | None = GovernanceConfig
 
     def __init__(
         self,
@@ -47,6 +49,7 @@ class GovernanceProvider(Provider):
             raise TypeError(
                 f"config must be GovernanceConfig or dict, got {type(config).__name__}"
             )
+        self._requested_config = config
         self._config = config or GovernanceConfig()
 
     @classmethod
@@ -63,6 +66,11 @@ class GovernanceProvider(Provider):
         """Register the governance services."""
         from lexigram.contracts.ai.governance import AIGovernanceProtocol
 
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), GovernanceConfig)
+            else self._config
+        )
         container.singleton(GovernanceConfig, self._config)
         register_relay_billing(container, self._config)
 

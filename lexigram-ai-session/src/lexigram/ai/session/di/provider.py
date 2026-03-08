@@ -40,6 +40,8 @@ class SessionProvider(Provider):
 
     name = "session"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "ai_session"
+    config_model: type | None = SessionConfig
 
     def __init__(
         self,
@@ -51,12 +53,18 @@ class SessionProvider(Provider):
         super().__init__()
         if isinstance(config, dict):
             config = SessionConfig(**config)
+        self._requested_config = config
         self._config = config or SessionConfig()
         self._enable_cleanup_scheduler = enable_cleanup_scheduler
         self._scheduler: SessionCleanupScheduler | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register session services in the container."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), SessionConfig)
+            else self._config
+        )
         container.singleton(SessionConfig, instance=self._config)
 
         if not self._config.enabled:

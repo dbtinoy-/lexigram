@@ -48,9 +48,12 @@ class UIProvider(Provider):
 
     name = "ui"
     priority = ProviderPriority.PRESENTATION
+    config_key: str | None = "ui"
+    config_model: type | None = UIConfig
 
     def __init__(self, config: UIConfig | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        self._requested_config = config
         if config is not None:
             self._config = config
 
@@ -60,6 +63,11 @@ class UIProvider(Provider):
         Args:
             container: The DI container registrar.
         """
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), UIConfig)
+            else self._config
+        )
         config: UIConfig = (
             self._config if isinstance(self._config, UIConfig) else UIConfig()
         )

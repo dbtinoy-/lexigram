@@ -28,9 +28,12 @@ class GraphProvider(Provider):
 
     name = "graph"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "graph"
+    config_model: type | None = GraphConfig
 
     def __init__(self, config: GraphConfig | None = None) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or GraphConfig()
         self._store: GraphStoreProtocol | None = None
 
@@ -47,6 +50,11 @@ class GraphProvider(Provider):
             ValueError: If an unknown backend is specified in config.
 
         """
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), GraphConfig)
+            else self._config
+        )
         container.singleton(GraphConfig, self._config)
 
         if not self._config.enabled:

@@ -2,13 +2,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
+import shutil
 
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
 from lexigram.multimedia.video.config import VideoConfig
 from lexigram.multimedia.video.di.provider import VideoGenerationProvider
 from lexigram.multimedia.video.providers.local_http import LocalHttpVideoProvider
-from lexigram.multimedia.video.tasks import VideoGenerationTask
+from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessingTask
 
 
 class _FakeContainer:
@@ -22,6 +23,42 @@ class _FakeContainer:
         if key not in self.bindings:
             raise LookupError(key)
         return self.bindings[key]
+
+
+@pytest.mark.asyncio
+async def test_openai_backend_registers_without_ffmpeg(monkeypatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+
+    provider = VideoGenerationProvider(
+        config=VideoConfig(backend="openai", openai_api_key_secret_name="lex_openai")
+    )
+    container = _FakeContainer()
+    await provider.register(container)
+
+    assert container.bindings[VideoProvider] is not None
+    assert VideoProcessingTask not in container.bindings
+
+
+@pytest.mark.asyncio
+async def test_local_http_backend_registers_without_ffmpeg(monkeypatch) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _cmd: None)
+
+    provider = VideoGenerationProvider(config=VideoConfig(backend="local-http"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    assert container.bindings[VideoProvider] is not None
+
+
+@pytest.mark.asyncio
+async def test_processing_pipeline_registered_when_ffmpeg_present(mocker) -> None:
+    mocker.patch("shutil.which", return_value="/usr/bin/ffmpeg")
+
+    provider = VideoGenerationProvider(config=VideoConfig(backend="local-http"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    assert container.bindings[VideoProcessingTask] is not None
 
 
 @pytest.mark.asyncio
@@ -128,10 +165,10 @@ async def test_check_http_health_uses_system_stats_for_comfyui(mocker) -> None:
     mock_cm.__aexit__ = AsyncMock(return_value=False)
     mock_get = mocker.patch("aiohttp.ClientSession.get", return_value=mock_cm)
 
-    await provider._check_http_health(provider._video_config.comfyui_base_url, 5.0)
+    await provider._check_http_health(provider._config.comfyui_base_url, 5.0)
 
     called_url = mock_get.call_args.args[0]
-    assert called_url == f"{provider._video_config.comfyui_base_url}/system_stats"
+    assert called_url == f"{provider._config.comfyui_base_url}/system_stats"
 
 
 @pytest.mark.asyncio

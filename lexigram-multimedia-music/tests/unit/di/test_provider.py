@@ -25,6 +25,43 @@ class _FakeContainer:
 
 
 @pytest.mark.asyncio
+async def test_provider_declares_config_key_and_model() -> None:
+    provider = AudioMusicProvider()
+    assert provider.config_key == "multimedia_music"
+    assert provider.config_model is MusicConfig
+
+
+@pytest.mark.asyncio
+async def test_register_binds_music_config_into_container() -> None:
+    provider = AudioMusicProvider(config=MusicConfig(backend="ace-step"))
+    container = _FakeContainer()
+    await provider.register(container)
+    assert container.bindings[MusicConfig].backend == "ace-step"
+
+
+@pytest.mark.asyncio
+async def test_explicit_constructor_config_wins_over_injected() -> None:
+    provider = AudioMusicProvider(config=MusicConfig(backend="ace-step"))
+    provider.config = MusicConfig(backend="stable-audio-open")
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    assert container.bindings[MusicConfig].backend == "ace-step"
+
+
+@pytest.mark.asyncio
+async def test_injected_config_used_when_no_explicit() -> None:
+    provider = AudioMusicProvider()
+    provider.config = MusicConfig(backend="ace-step")
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    assert container.bindings[MusicConfig].backend == "ace-step"
+
+
+@pytest.mark.asyncio
 async def test_register_binds_local_http_backend_by_default() -> None:
     provider = AudioMusicProvider(config=MusicConfig())
     container = _FakeContainer()

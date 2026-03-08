@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import BeatAnalysisProvider
 from lexigram.di.provider import Provider
+from lexigram.di.provider_utils import resolve_optional
 from lexigram.logging import get_logger
 from lexigram.multimedia.beat.config import BeatAnalysisConfig
 
@@ -30,22 +31,16 @@ class BeatAnalysisGenerationProvider(Provider):
     """Provider that registers a configured BeatAnalysisProvider backend."""
 
     name = "beat"
+    config_key: str | None = "multimedia_beat"
+    config_model: type | None = BeatAnalysisConfig
 
     def __init__(self, config: BeatAnalysisConfig | None = None) -> None:
         super().__init__(name="beat")
-        self._beat_config = config or BeatAnalysisConfig()
+        self._requested_config = config
+        self._config = config or BeatAnalysisConfig()
         self._backend: BeatAnalysisProvider | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
-
-    async def _resolve_optional(self, container: Any, protocol: type) -> Any:
-        resolver = getattr(container, "resolve_optional", None)
-        if resolver is not None:
-            return await resolver(protocol)
-        try:
-            return await container.resolve(protocol)
-        except (LookupError, KeyError, ValueError, TypeError):
-            return None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -53,12 +48,15 @@ class BeatAnalysisGenerationProvider(Provider):
             RetryPolicyProtocol,
         )
 
-        self._retry = await self._resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await self._resolve_optional(
+        self._config = self._requested_config or self._config or BeatAnalysisConfig()
+        container.singleton(BeatAnalysisConfig, self._config)
+
+        self._retry = await resolve_optional(container, RetryPolicyProtocol)
+        self._circuit_breaker = await resolve_optional(
             container, CircuitBreakerProtocol
         )
 
-        if self._beat_config.backend == "librosa":
+        if self._config.backend == "librosa":
             from lexigram.multimedia.beat.providers.librosa import (
                 LibrosaBeatAnalysisProvider,
             )
@@ -66,10 +64,10 @@ class BeatAnalysisGenerationProvider(Provider):
             self._backend = cast(
                 "BeatAnalysisProvider",
                 LibrosaBeatAnalysisProvider(
-                    sample_rate=self._beat_config.librosa_sample_rate
+                    sample_rate=self._config.librosa_sample_rate
                 ),
             )
-        elif self._beat_config.backend == "madmom":
+        elif self._config.backend == "madmom":
             from lexigram.multimedia.beat.providers.madmom import (
                 MadmomBeatAnalysisProvider,
             )
@@ -77,8 +75,8 @@ class BeatAnalysisGenerationProvider(Provider):
             self._backend = cast(
                 "BeatAnalysisProvider",
                 MadmomBeatAnalysisProvider(
-                    base_url=self._beat_config.madmom_base_url,
-                    timeout=self._beat_config.timeout,
+                    base_url=self._config.madmom_base_url,
+                    timeout=self._config.timeout,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -86,12 +84,12 @@ class BeatAnalysisGenerationProvider(Provider):
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented beat-analysis backend: "
-                f"{self._beat_config.backend!r}"
+                f"{self._config.backend!r}"
             )
 
         assert self._backend is not None
         container.singleton(BeatAnalysisProvider, self._backend)
-        logger.info("beat_analysis_registered", backend=self._beat_config.backend)
+        logger.info("beat_analysis_registered", backend=self._config.backend)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """No async I/O needed at boot beyond what register() already did."""
@@ -100,7 +98,7 @@ class BeatAnalysisGenerationProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._beat_config.backend == "librosa":
+        if self._config.backend == "librosa":
             # No server, no network dependency to probe — construction
             # succeeding (checked above) is the only thing there is to
             # verify for this backend (design spec §9).
@@ -113,7 +111,7 @@ class BeatAnalysisGenerationProvider(Provider):
                 aiohttp.ClientSession(
                     timeout=aiohttp.ClientTimeout(total=timeout)
                 ) as session,
-                session.get(f"{self._beat_config.madmom_base_url}/health") as resp,
+                session.get(f"{self._config.madmom_base_url}/health") as resp,
             ):
                 status = (
                     HealthStatus.HEALTHY

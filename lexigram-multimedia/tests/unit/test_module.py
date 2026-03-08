@@ -34,7 +34,7 @@ def test_configure_accepts_custom_config() -> None:
     config = MultimediaConfig()
     module = MultimediaModule.configure(config)
 
-    assert module.providers[0]._multimedia_config is config
+    assert module.providers[0]._config is config
 
 
 def test_stub_returns_dynamic_module_with_exports() -> None:
@@ -52,6 +52,20 @@ def test_stub_returns_dynamic_module_with_exports() -> None:
     }
 
 
+def test_stub_honors_config_across_core_subsystems() -> None:
+    from lexigram.multimedia.config import MultimediaConfig
+
+    config = MultimediaConfig()
+    config.music.backend = "ace-step"
+    module = MultimediaModule.stub(config)
+
+    assert len(module.imports) >= 7
+    music_import = next(
+        i for i in module.imports if getattr(i, "module", None).__name__ == "AudioMusicModule"
+    )
+    assert music_import.providers[0]._config.backend == "ace-step"
+
+
 def test_stub_tolerates_failing_entry_point_loads() -> None:
     from unittest.mock import MagicMock, patch
 
@@ -67,4 +81,4 @@ def test_stub_tolerates_failing_entry_point_loads() -> None:
         module = MultimediaModule.stub()
 
     assert module.module is MultimediaModule
-    assert module.imports == []
+    assert len(module.imports) == 7

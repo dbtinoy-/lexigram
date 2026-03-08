@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.multimedia.protocols import UpscaleProvider
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.multimedia.upscale.config import UpscaleConfig
+from lexigram.multimedia.upscale.tasks import UpscaleTask
 
 
 @module()
@@ -18,7 +19,7 @@ class UpscaleModule(Module):
         return DynamicModule(
             module=cls,
             providers=[UpscaleGenerationProvider(config=config)],
-            exports=[UpscaleProvider],
+            exports=[UpscaleProvider, UpscaleTask],
         )
 
     @classmethod
@@ -32,7 +33,7 @@ class UpscaleModule(Module):
                     config=config or UpscaleConfig(backend="real-esrgan")
                 )
             ],
-            exports=[UpscaleProvider],
+            exports=[UpscaleProvider, UpscaleTask],
         )
 
 

@@ -38,11 +38,14 @@ class FeedbackProvider(Provider):
 
     name = "feedback"
     priority = ProviderPriority.DOMAIN
+    config_key: str | None = "ai_feedback"
+    config_model: type | None = FeedbackConfig
 
     def __init__(self, config: FeedbackConfig | dict | None = None) -> None:
         super().__init__()
         if isinstance(config, dict):
             config = FeedbackConfig(**config)
+        self._requested_config = config
         self._config = config or FeedbackConfig()
 
     @classmethod
@@ -53,6 +56,11 @@ class FeedbackProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the feedback services."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), FeedbackConfig)
+            else self._config
+        )
         container.singleton(FeedbackConfig, self._config)
 
         if not self._config.enabled:

@@ -77,7 +77,7 @@ class TestGraphQLExecutor:
         result = result_obj.unwrap()
         assert result.data is None  # Or partial data depending on error handling strategy
         assert result.errors
-        assert "Internal server error" in result.errors[0].message
+        assert result.errors[0].message == "Intentional error"
 
     @pytest.mark.asyncio
     async def test_execute_publishes_lifecycle_events(self):

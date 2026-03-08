@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import InterpolationProvider
 from lexigram.di.provider import Provider
+from lexigram.di.provider_utils import resolve_optional
 from lexigram.logging import get_logger
 from lexigram.multimedia.interpolate.config import InterpolationConfig
 from lexigram.multimedia.interpolate.tasks import InterpolationTask
@@ -31,23 +32,17 @@ class InterpolationGenerationProvider(Provider):
     """Provider that registers a configured InterpolationProvider backend."""
 
     name = "interpolate"
+    config_key: str | None = "multimedia_interpolate"
+    config_model: type | None = InterpolationConfig
 
     def __init__(self, config: InterpolationConfig | None = None) -> None:
         super().__init__(name="interpolate")
-        self._interpolation_config = config or InterpolationConfig()
+        self._requested_config = config
+        self._config = config or InterpolationConfig()
         self._backend: InterpolationProvider | None = None
         self._task_handler: InterpolationTask | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
-
-    async def _resolve_optional(self, container: Any, protocol: type) -> Any:
-        resolver = getattr(container, "resolve_optional", None)
-        if resolver is not None:
-            return await resolver(protocol)
-        try:
-            return await container.resolve(protocol)
-        except (LookupError, KeyError, ValueError, TypeError):
-            return None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -55,12 +50,15 @@ class InterpolationGenerationProvider(Provider):
             RetryPolicyProtocol,
         )
 
-        self._retry = await self._resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await self._resolve_optional(
+        self._config = self._requested_config or self._config or InterpolationConfig()
+        container.singleton(InterpolationConfig, self._config)
+
+        self._retry = await resolve_optional(container, RetryPolicyProtocol)
+        self._circuit_breaker = await resolve_optional(
             container, CircuitBreakerProtocol
         )
 
-        if self._interpolation_config.backend == "rife":
+        if self._config.backend == "rife":
             from lexigram.multimedia.interpolate.providers.rife import (
                 RifeInterpolationProvider,
             )
@@ -68,8 +66,8 @@ class InterpolationGenerationProvider(Provider):
             self._backend = cast(
                 "InterpolationProvider",
                 RifeInterpolationProvider(
-                    base_url=self._interpolation_config.rife_base_url,
-                    timeout=self._interpolation_config.timeout,
+                    base_url=self._config.rife_base_url,
+                    timeout=self._config.timeout,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -77,7 +75,7 @@ class InterpolationGenerationProvider(Provider):
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented interpolation backend: "
-                f"{self._interpolation_config.backend!r}"
+                f"{self._config.backend!r}"
             )
 
         assert self._backend is not None
@@ -88,7 +86,7 @@ class InterpolationGenerationProvider(Provider):
 
         from lexigram.contracts.multimedia.protocols import VideoProcessor
 
-        video_processor = await self._resolve_optional(container, VideoProcessor)
+        video_processor = await resolve_optional(container, VideoProcessor)
         if video_processor is not None:
             from lexigram.multimedia.interpolate.video_interpolation_service import (
                 VideoInterpolationService,
@@ -99,9 +97,7 @@ class InterpolationGenerationProvider(Provider):
             )
             container.singleton(VideoInterpolationService, video_interpolation_service)
 
-        logger.info(
-            "interpolation_registered", backend=self._interpolation_config.backend
-        )
+        logger.info("interpolation_registered", backend=self._config.backend)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """No async I/O needed at boot beyond what register() already did."""
@@ -110,8 +106,8 @@ class InterpolationGenerationProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._interpolation_config.backend == "rife":
-            base_url = self._interpolation_config.rife_base_url
+        if self._config.backend == "rife":
+            base_url = self._config.rife_base_url
 
         import aiohttp
 

@@ -22,6 +22,21 @@ class _FakeContainer:
 
 
 @pytest.mark.asyncio
+async def test_provider_declares_config_key_and_model() -> None:
+    provider = UpscaleGenerationProvider()
+    assert provider.config_key == "multimedia_upscale"
+    assert provider.config_model is UpscaleConfig
+
+
+@pytest.mark.asyncio
+async def test_register_binds_upscale_config_into_container() -> None:
+    provider = UpscaleGenerationProvider(config=UpscaleConfig(backend="hat"))
+    container = _FakeContainer()
+    await provider.register(container)
+    assert container.bindings[UpscaleConfig].backend == "hat"
+
+
+@pytest.mark.asyncio
 async def test_register_binds_real_esrgan_backend_by_default() -> None:
     provider = UpscaleGenerationProvider(config=UpscaleConfig())
     container = _FakeContainer()

@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.multimedia.protocols import TTSProvider
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.multimedia.tts.config import TTSConfig
+from lexigram.multimedia.tts.tasks import TTSGenerationTask
 
 
 @module()
@@ -18,7 +19,7 @@ class AudioTTSModule(Module):
         return DynamicModule(
             module=cls,
             providers=[AudioTTSProvider(config=config)],
-            exports=[TTSProvider],
+            exports=[TTSProvider, TTSGenerationTask],
         )
 
     @classmethod
@@ -30,7 +31,7 @@ class AudioTTSModule(Module):
             providers=[
                 AudioTTSProvider(config=config or TTSConfig(backend="local-http"))
             ],
-            exports=[TTSProvider],
+            exports=[TTSProvider, TTSGenerationTask],
         )
 
 

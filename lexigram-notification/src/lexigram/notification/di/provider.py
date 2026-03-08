@@ -67,9 +67,12 @@ class NotificationProvider(Provider):
 
     name = "notification"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "notification"
+    config_model: type | None = NotificationConfig
 
     def __init__(self, config: NotificationConfig | None = None) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or NotificationConfig()
         self._sms_services: list[tuple[str, Any]] = []
         self._push_services: list[tuple[str, Any]] = []
@@ -142,6 +145,11 @@ class NotificationProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind all SMS and push backends into the container."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), NotificationConfig)
+            else self._config
+        )
         container.singleton(NotificationConfig, self._config)
 
         for entry in self._config.sms_backends:

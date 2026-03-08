@@ -49,6 +49,8 @@ class WorkersProvider(Provider):
 
     name = "workers"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "ai_workers"
+    config_model: type | None = WorkersConfig
 
     def __init__(
         self,
@@ -56,6 +58,7 @@ class WorkersProvider(Provider):
         enable_scheduler: bool = True,
     ) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or WorkersConfig()
         self._enable_scheduler = enable_scheduler
         self._workers: list[Any] = []
@@ -68,6 +71,11 @@ class WorkersProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register workers with the DI container."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), WorkersConfig)
+            else self._config
+        )
         container.singleton(WorkersConfig, self._config)
 
         if not self._config.enabled:

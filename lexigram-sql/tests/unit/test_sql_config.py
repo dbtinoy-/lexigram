@@ -147,7 +147,7 @@ class TestDatabaseConfig:
         config = DatabaseConfig()
         assert config.name == "database"
         assert config.enabled is True
-        assert config.backend.url.get_secret_value() == "sqlite:///piccolina.db"
+        assert config.backend.url.get_secret_value() == "sqlite:///data.db"
         assert config.pool.min_size == 1
         assert config.pool.max_size == 10
         assert config.operations.echo is False

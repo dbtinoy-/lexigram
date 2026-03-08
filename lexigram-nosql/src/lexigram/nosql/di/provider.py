@@ -44,9 +44,12 @@ class NoSQLProvider(Provider):
 
     name = "nosql"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "nosql"
+    config_model: type | None = NoSQLConfig
 
     def __init__(self, config: NoSQLConfig | None = None) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or NoSQLConfig()
         self._store: DocumentStoreProtocol | None = None
         # Multi-backend: list of (name, store) 2-tuples
@@ -59,6 +62,11 @@ class NoSQLProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the NoSQL services."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), NoSQLConfig)
+            else self._config
+        )
         container.singleton(NoSQLConfig, self._config)
 
         if not self._config.enabled:

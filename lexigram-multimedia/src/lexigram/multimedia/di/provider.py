@@ -40,10 +40,13 @@ class MultimediaProvider(Provider):
     """
 
     name = "multimedia"
+    config_key: str | None = "multimedia"
+    config_model: type | None = MultimediaConfig
 
     def __init__(self, config: MultimediaConfig | None = None) -> None:
         super().__init__(name="multimedia")
-        self._multimedia_config = config or MultimediaConfig()
+        self._requested_config = config
+        self._config = config or MultimediaConfig()
         self._sub_providers: dict[str, Any] = {}
         self._storage: BlobStoreProtocol | None = None
         self._cache_backend: CacheBackendProtocol | None = None
@@ -64,26 +67,25 @@ class MultimediaProvider(Provider):
         from lexigram.multimedia.upscale.di.provider import UpscaleGenerationProvider
         from lexigram.multimedia.video.di.provider import VideoGenerationProvider
 
-        self._sub_providers["tts"] = AudioTTSProvider(
-            config=self._multimedia_config.tts
-        )
-        self._sub_providers["music"] = AudioMusicProvider(
-            config=self._multimedia_config.music
-        )
+        self._config = self._requested_config or self._config or MultimediaConfig()
+        container.singleton(MultimediaConfig, self._config)
+
+        self._sub_providers["tts"] = AudioTTSProvider(config=self._config.tts)
+        self._sub_providers["music"] = AudioMusicProvider(config=self._config.music)
         self._sub_providers["video"] = VideoGenerationProvider(
-            config=self._multimedia_config.video
+            config=self._config.video
         )
         self._sub_providers["image"] = ImageGenerationProvider(
-            config=self._multimedia_config.image
+            config=self._config.image
         )
         self._sub_providers["upscale"] = UpscaleGenerationProvider(
-            config=self._multimedia_config.upscale
+            config=self._config.upscale
         )
         self._sub_providers["interpolate"] = InterpolationGenerationProvider(
-            config=self._multimedia_config.interpolate
+            config=self._config.interpolate
         )
         self._sub_providers["beat"] = BeatAnalysisGenerationProvider(
-            config=self._multimedia_config.beat
+            config=self._config.beat
         )
         for sub in self._sub_providers.values():
             await sub.register(container)
@@ -243,7 +245,7 @@ class MultimediaProvider(Provider):
             wrapped = _WrappedTaskHandler(
                 inner=inner,
                 storage=self._storage,
-                path_prefix=f"{self._multimedia_config.storage_path_prefix}{segment}",
+                path_prefix=f"{self._config.storage_path_prefix}{segment}",
             )
             self._wrapped_task_handlers[task_name] = wrapped
             task_provider.register_handler(task_name, _make_handler_adapter(wrapped))
@@ -257,9 +259,7 @@ class MultimediaProvider(Provider):
         timeline_wrapped = _WrappedTaskHandler(
             inner=self._timeline_task_handler,
             storage=self._storage,
-            path_prefix=(
-                f"{self._multimedia_config.storage_path_prefix}video/composed/"
-            ),
+            path_prefix=(f"{self._config.storage_path_prefix}video/composed/"),
         )
         self._wrapped_task_handlers["timeline_render"] = timeline_wrapped
         task_provider.register_handler(
@@ -293,11 +293,9 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="tts_generation",
             storage=self._storage,
-            path_prefix=f"{self._multimedia_config.storage_path_prefix}tts/",
+            path_prefix=f"{self._config.storage_path_prefix}tts/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend
-            if self._multimedia_config.cache_results
-            else None,
+            cache_backend=self._cache_backend if self._config.cache_results else None,
             event_bus=self._event_bus,
             media_type="tts",
         )
@@ -312,11 +310,9 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="music_generation",
             storage=self._storage,
-            path_prefix=f"{self._multimedia_config.storage_path_prefix}music/",
+            path_prefix=f"{self._config.storage_path_prefix}music/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend
-            if self._multimedia_config.cache_results
-            else None,
+            cache_backend=self._cache_backend if self._config.cache_results else None,
             event_bus=self._event_bus,
             media_type="music",
         )
@@ -331,11 +327,9 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="video_generation",
             storage=self._storage,
-            path_prefix=f"{self._multimedia_config.storage_path_prefix}video/",
+            path_prefix=f"{self._config.storage_path_prefix}video/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend
-            if self._multimedia_config.cache_results
-            else None,
+            cache_backend=self._cache_backend if self._config.cache_results else None,
             event_bus=self._event_bus,
             media_type="video",
         )
@@ -344,7 +338,7 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="video_processing",
             storage=self._storage,
-            path_prefix=f"{self._multimedia_config.storage_path_prefix}video/processed/",
+            path_prefix=f"{self._config.storage_path_prefix}video/processed/",
             idempotency_manager=self._idempotency_manager,
             backend_method="process",
         )
@@ -352,9 +346,7 @@ class MultimediaProvider(Provider):
             generation=generation,
             processing=processing,
             storage=self._storage,
-            path_prefix=(
-                f"{self._multimedia_config.storage_path_prefix}video/processed/in/"
-            ),
+            path_prefix=(f"{self._config.storage_path_prefix}video/processed/in/"),
         )
 
     @property
@@ -367,9 +359,7 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="timeline_render",
             storage=self._storage,
-            path_prefix=(
-                f"{self._multimedia_config.storage_path_prefix}video/composed/in/"
-            ),
+            path_prefix=(f"{self._config.storage_path_prefix}video/composed/in/"),
             idempotency_manager=self._idempotency_manager,
         )
 
@@ -383,11 +373,9 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="image_generation",
             storage=self._storage,
-            path_prefix=f"{self._multimedia_config.storage_path_prefix}image/",
+            path_prefix=f"{self._config.storage_path_prefix}image/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend
-            if self._multimedia_config.cache_results
-            else None,
+            cache_backend=self._cache_backend if self._config.cache_results else None,
             event_bus=self._event_bus,
             media_type="image",
         )
@@ -402,11 +390,9 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="upscale_generation",
             storage=self._storage,
-            path_prefix=f"{self._multimedia_config.storage_path_prefix}upscale/",
+            path_prefix=f"{self._config.storage_path_prefix}upscale/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend
-            if self._multimedia_config.cache_results
-            else None,
+            cache_backend=self._cache_backend if self._config.cache_results else None,
             event_bus=self._event_bus,
             media_type="upscale",
             backend_method="upscale",
@@ -422,11 +408,9 @@ class MultimediaProvider(Provider):
             task_manager=self._task_manager,
             task_name="interpolate_generation",
             storage=self._storage,
-            path_prefix=f"{self._multimedia_config.storage_path_prefix}interpolate/",
+            path_prefix=f"{self._config.storage_path_prefix}interpolate/",
             idempotency_manager=self._idempotency_manager,
-            cache_backend=self._cache_backend
-            if self._multimedia_config.cache_results
-            else None,
+            cache_backend=self._cache_backend if self._config.cache_results else None,
             event_bus=self._event_bus,
             media_type="interpolate",
             backend_method="interpolate",
