@@ -217,6 +217,22 @@ publish-reset:  ## Force-reset main mirror history (rare)
 publish-dry-framework:  ## Dry run — framework packages only, no push
 	bash tools/publish_public.sh
 
+# ---------------------------------------------------------------------------
+# Version check & bump (git ↔ PyPI sync)
+# ---------------------------------------------------------------------------
+
+.PHONY: version-check
+version-check:  ## Compare local versions vs PyPI (exit 1 if bumps needed)
+	$(UV) run python scripts/check_version.py check
+
+.PHONY: version-bump
+version-bump:  ## Show next version for PKG (add APPLY=--apply to write); all packages if PKG unset
+	$(UV) run python scripts/check_version.py bump $(if $(PKG),--pkg $(PKG),) $(APPLY)
+
+.PHONY: version-bump-all
+version-bump-all:  ## Show next version for all packages
+	$(UV) run python scripts/check_version.py bump
+
 .PHONY: publish-dry-experimental
 publish-dry-experimental:  ## Dry run — experimental packages only, no push
 	COMMIT_MSG="$(m)" bash tools/publish_public.sh --experimental
