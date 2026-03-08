@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-multimedia-interpolate"
-version = "0.1.0"
+version = "0.1.3005"
 description = "Video frame-rate interpolation for the Lexigram Framework — RIFE backend"
 readme = "README.md"
 requires-python = ">=3.11"
