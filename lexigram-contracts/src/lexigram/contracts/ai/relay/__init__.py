@@ -7,6 +7,11 @@ engine implemented in the ``lexigram-ai-relay`` extension package.
 
 from __future__ import annotations
 
+from lexigram.contracts.ai.relay.auth import (
+    RelayAuthError,
+    RelayAuthIdentity,
+    RelayAuthVerifierProtocol,
+)
 from lexigram.contracts.ai.relay.context import (
     ClaudeOptions,
     GeminiOptions,
@@ -99,6 +104,9 @@ __all__ = [
     "OpenAIChatRequest",
     "OpenAIChatResponse",
     "RelayActiveStream",
+    "RelayAuthError",
+    "RelayAuthIdentity",
+    "RelayAuthVerifierProtocol",
     "RelayChannel",
     "RelayChannelHealth",
     "RelayConversionContext",
