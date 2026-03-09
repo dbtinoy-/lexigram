@@ -365,6 +365,14 @@ class AuthConfig(BaseConfig):
         "``None`` (the default) means unlimited.  When a positive integer is "
         "set and the limit is exceeded, the least-recently-used session is evicted.",
     )
+    relay_verification: bool = Field(
+        default=False,
+        description=(
+            "Enable binding ``RelayAuthVerifierProtocol`` for the relay "
+            "gateway's inbound API-key authentication.  When ``False`` "
+            "(default) no relay binding is registered."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_security(self) -> AuthConfig:

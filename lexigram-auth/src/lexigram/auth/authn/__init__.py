@@ -10,6 +10,7 @@ from lexigram.auth.authn.google_oauth import GoogleOAuthService
 from lexigram.auth.authn.jwt import JWTTokenManager
 from lexigram.auth.authn.oauth2 import OAuth2IdentityProvider, OAuth2Manager
 from lexigram.auth.authn.password_reset import PasswordResetService
+from lexigram.auth.authn.relay import RelayApiKeyVerifier
 from lexigram.auth.authn.schemas import (
     LoginRequest,
     OAuth2AuthorizeRequest,
@@ -54,6 +55,7 @@ __all__ = [
     "PasswordResetService",
     "RefreshTokenRequest",
     "RegisterRequest",
+    "RelayApiKeyVerifier",
     "TokenBindingConfig",
     "TokenResponse",
     "User",
