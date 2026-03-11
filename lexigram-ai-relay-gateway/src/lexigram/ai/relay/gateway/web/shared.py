@@ -15,8 +15,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from lexigram.ai.relay.gateway.passthrough import PassthroughService
+from lexigram.ai.relay.gateway.ratelimit import RelayRateLimiter
 from lexigram.contracts.ai.relay import (
     RelayAuthError,
+    RelayAuthIdentity,
     RelayAuthVerifierProtocol,
     RelayFormat,
     RelayGatewayError,
@@ -34,6 +36,7 @@ __all__ = [
     "_parse_body",
     "_safe_headers",
     "auth_guard",
+    "rate_limit_guard",
 ]
 
 ResolvePassthrough: TypeAlias = Callable[[Request], Awaitable[PassthroughService]]
@@ -170,6 +173,59 @@ def _auth_error_response(err: RelayAuthError) -> JSONResponse:
             }
         },
         status_code=401,
+    )
+
+
+async def rate_limit_guard(
+    request: Request, limiter: RelayRateLimiter | None
+) -> Response | None:
+    """Reject one authenticated request when over its rate-limit budget.
+
+    Composed inside ``auth_guard``'s allow path, so it only sees callers
+    that authenticated (``request.state.relay_identity`` set).  The model
+    comes from the Gemini path parameter or the request body; a missing
+    identity, missing model, or malformed body passes through so the
+    handler renders its own 400 for invalid payloads.  ``request.body()``
+    is cached by Starlette, so the handler still reads the body once.
+
+    Args:
+        request: The inbound Starlette request.
+        limiter: The resolved limiter; ``None`` (no rules configured or
+            no container) passes the request through untouched.
+
+    Returns:
+        ``None`` when the request may proceed; a 429
+        ``rate_limit_error`` envelope with ``retry_after_seconds``
+        otherwise.
+    """
+    if limiter is None:
+        return None
+    identity = getattr(request.state, "relay_identity", None)
+    if not isinstance(identity, RelayAuthIdentity):
+        return None
+    model: Any = request.path_params.get("model")
+    if not isinstance(model, str) or not model:
+        try:
+            body = loads(await request.body())
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(body, dict):
+            return None
+        model = body.get("model")
+        if not isinstance(model, str) or not model:
+            return None
+    decision = await limiter.check(identity, model)
+    if decision is None or decision.allowed:
+        return None
+    return JSONResponse(
+        {
+            "error": {
+                "type": "rate_limit_error",
+                "code": "RATE_LIMITED",
+                "retry_after_seconds": decision.ttl_seconds,
+            }
+        },
+        status_code=429,
     )
 
 

@@ -53,6 +53,9 @@ class RelayGatewayConfig:
         require_auth: When ``True`` the inbound relay routes require a
             bound ``RelayAuthVerifierProtocol``; when ``False`` (default)
             all routes stay open, preserving today's behavior.
+        rate_limits: Model name (or ``"*"`` for the token-wide rule) to
+            a ``{"max": int, "window_seconds": int}`` budget.  Empty
+            (default) disables the rate-limit guard entirely.
     """
 
     channels: tuple[RelayChannel, ...] = ()
@@ -66,6 +69,7 @@ class RelayGatewayConfig:
     load_balancing: Literal["deterministic", "weighted"] = "deterministic"
     job_ttl_seconds: int = 3600
     require_auth: bool = False
+    rate_limits: Mapping[str, Mapping[str, int]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Reject duplicate names, bad auto-test intervals, and negative retries."""

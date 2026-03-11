@@ -29,6 +29,7 @@ from starlette.routing import Route
 
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.job_passthrough import JobPassthroughService
+from lexigram.ai.relay.gateway.ratelimit import RelayRateLimiter
 from lexigram.ai.relay.gateway.web.audio_endpoints import (
     AUDIO_ROUTE_TABLE,
     audio_speech_endpoint,
@@ -45,6 +46,7 @@ from lexigram.ai.relay.gateway.web.shared import (
     _parse_body,
     _safe_headers,
     auth_guard,
+    rate_limit_guard,
 )
 from lexigram.ai.relay.gateway.web.sse import SSEEncoder
 from lexigram.contracts.ai.relay import (
@@ -53,6 +55,7 @@ from lexigram.contracts.ai.relay import (
     RelayGatewayError,
     RelayGatewayProtocol,
     RelayGatewayRequest,
+    RelayRateLimitCounterProtocol,
     RelayWireEvent,
 )
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
@@ -117,14 +120,43 @@ async def _resolve_verifier(request: Request) -> RelayAuthVerifierProtocol | Non
     return await container.resolve_optional(RelayAuthVerifierProtocol)
 
 
+async def _resolve_limiter(request: Request) -> RelayRateLimiter | None:
+    """Build the limiter from config when rules are set, else ``None``.
+
+    The counter comes from the container; an unbound counter leaves the
+    limiter inert (pass-through), and an empty ``rate_limits`` map
+    disables the guard entirely — today's behavior either way.
+    """
+    container: Any = getattr(request.state, "container", None)
+    if container is None:
+        return None
+    config = await container.resolve_optional(RelayGatewayConfig)
+    if config is None or not config.rate_limits:
+        return None
+    counter = await container.resolve_optional(RelayRateLimitCounterProtocol)
+    return RelayRateLimiter(rules=config.rate_limits, counter=counter)
+
+
 def _with_auth_guard(
     handler: Callable[..., Awaitable[Response]],
 ) -> Callable[..., Awaitable[Response]]:
-    """Wrap a route handler so auth runs first, preserving the open default."""
+    """Wrap a route handler so auth and rate limiting run first.
+
+    Preserves the open default: no bound verifier or no rate-limit rules
+    means the wrapped handler runs untouched.
+    """
 
     async def guarded(request: Request) -> Response:
         verifier = await _resolve_verifier(request)
-        return await auth_guard(request, verifier, handler)
+        limiter = await _resolve_limiter(request)
+
+        async def inner(req: Request) -> Response:
+            blocked = await rate_limit_guard(req, limiter)
+            if blocked is not None:
+                return blocked
+            return await handler(req)
+
+        return await auth_guard(request, verifier, inner)
 
     return guarded
 
