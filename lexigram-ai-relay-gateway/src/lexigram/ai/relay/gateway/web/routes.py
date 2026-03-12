@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from functools import partial
+from time import monotonic
 from typing import Any, TypeAlias
 
 from starlette.requests import Request
@@ -29,6 +30,7 @@ from starlette.routing import Route
 
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.job_passthrough import JobPassthroughService
+from lexigram.ai.relay.gateway.logging import RelayRequestLogger
 from lexigram.ai.relay.gateway.ratelimit import RelayRateLimiter
 from lexigram.ai.relay.gateway.web.audio_endpoints import (
     AUDIO_ROUTE_TABLE,
@@ -45,7 +47,9 @@ from lexigram.ai.relay.gateway.web.shared import (
     _error_response,
     _parse_body,
     _safe_headers,
+    _status_for,
     auth_guard,
+    log_request,
     rate_limit_guard,
 )
 from lexigram.ai.relay.gateway.web.sse import SSEEncoder
@@ -56,6 +60,7 @@ from lexigram.contracts.ai.relay import (
     RelayGatewayProtocol,
     RelayGatewayRequest,
     RelayRateLimitCounterProtocol,
+    RelayRequestLogStoreProtocol,
     RelayWireEvent,
 )
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
@@ -137,6 +142,54 @@ async def _resolve_limiter(request: Request) -> RelayRateLimiter | None:
     return RelayRateLimiter(rules=config.rate_limits, counter=counter)
 
 
+async def _resolve_logger(request: Request) -> RelayRequestLogger | None:
+    """Resolve the request-log emitter, or ``None`` when no store is bound."""
+    container: Any = getattr(request.state, "container", None)
+    if container is None:
+        return None
+    store = await container.resolve_optional(RelayRequestLogStoreProtocol)
+    if store is None:
+        return None
+    return RelayRequestLogger(store=store)
+
+
+def _dispatch_latency_ms(started: float) -> int:
+    """Round the monotonic dispatch span to whole milliseconds."""
+    return round((monotonic() - started) * 1000)
+
+
+_SOURCE_KIND: dict[RelayFormat, str] = {
+    RelayFormat.OPENAI_CHAT: "chat",
+    RelayFormat.OPENAI_RESPONSES: "responses",
+    RelayFormat.CLAUDE: "messages",
+    RelayFormat.GEMINI: "generateContent",
+}
+"""Wire format to request-log endpoint-kind label."""
+
+
+async def _log_dispatch(
+    request: Request,
+    source: RelayFormat,
+    model: str,
+    status_code: int,
+    error_code: str,
+    started: float,
+) -> None:
+    """Emit the terminal dispatch entry through the resolved logger."""
+    logger = await _resolve_logger(request)
+    if logger is None:
+        return
+    log_request(
+        request,
+        logger,
+        kind=_SOURCE_KIND[source],
+        status=_status_for(status_code),
+        model=model,
+        error_code=error_code,
+        latency_ms=_dispatch_latency_ms(started),
+    )
+
+
 def _with_auth_guard(
     handler: Callable[..., Awaitable[Response]],
 ) -> Callable[..., Awaitable[Response]]:
@@ -171,7 +224,8 @@ async def relay_endpoint(
     The body is read exactly once, the request id falls back to a
     generated uuid when the middleware did not set one, and identity
     comes from the auth middleware's normalized user dict.  The gateway
-    is resolved per request, never cached.
+    is resolved per request, never cached.  Finished dispatches are
+    emitted through the request-log emitter (metadata only, best-effort).
 
     Args:
         source: The inbound wire format owned by this route.
@@ -184,6 +238,7 @@ async def relay_endpoint(
         results with neither payload nor stream, or the inbound error
         envelope for gateway failures.
     """
+    started = monotonic()
     raw = await request.body()
     request_id = getattr(request.state, "request_id", None) or new_uuid()
     trace_id = request.headers.get("x-trace-id", "") or ""
@@ -225,18 +280,26 @@ async def relay_endpoint(
     gateway = await resolve_gateway(request)
     result = await gateway.handle(gateway_request)
     if result.is_err():
-        return _error_response(source, result.unwrap_err())
+        error = result.unwrap_err()
+        response = _error_response(source, error)
+        await _log_dispatch(
+            request, source, model_value, response.status_code, error.code, started
+        )
+        return response
     ok_result = result.unwrap()
     headers = _safe_headers(ok_result.headers, request_id, trace_id)
     if ok_result.stream is not None:
-        return _streaming_response(source, ok_result.stream, headers)
-    if ok_result.payload is not None:
-        return JSONResponse(
+        response = _streaming_response(source, ok_result.stream, headers)
+    elif ok_result.payload is not None:
+        response = JSONResponse(
             content=ok_result.payload,
             status_code=ok_result.status_code,
             headers=headers,
         )
-    return Response(status_code=204, headers=headers)
+    else:
+        response = Response(status_code=204, headers=headers)
+    await _log_dispatch(request, source, model_value, response.status_code, "", started)
+    return response
 
 
 async def passthrough_endpoint(
@@ -263,6 +326,7 @@ async def passthrough_endpoint(
         neither payload nor stream, or the OpenAI error envelope for
         gateway failures.
     """
+    started = monotonic()
     raw = await request.body()
     request_id = getattr(request.state, "request_id", None) or new_uuid()
     trace_id = request.headers.get("x-trace-id", "") or ""
@@ -299,16 +363,49 @@ async def passthrough_endpoint(
     service = await resolve_passthrough(request)
     result = await service.handle(kind, gateway_request)
     if result.is_err():
-        return _error_response(RelayFormat.OPENAI_CHAT, result.unwrap_err())
+        error = result.unwrap_err()
+        response = _error_response(RelayFormat.OPENAI_CHAT, error)
+        await _log_kind_dispatch(
+            request, kind, model_value, response.status_code, error.code, started
+        )
+        return response
     ok_result = result.unwrap()
     headers = _safe_headers(ok_result.headers, request_id, trace_id)
     if ok_result.payload is not None:
-        return JSONResponse(
+        response = JSONResponse(
             content=ok_result.payload,
             status_code=ok_result.status_code,
             headers=headers,
         )
-    return Response(status_code=204, headers=headers)
+    else:
+        response = Response(status_code=204, headers=headers)
+    await _log_kind_dispatch(
+        request, kind, model_value, response.status_code, "", started
+    )
+    return response
+
+
+async def _log_kind_dispatch(
+    request: Request,
+    kind: str,
+    model: str,
+    status_code: int,
+    error_code: str,
+    started: float,
+) -> None:
+    """Emit a terminal dispatch entry for passthrough and job routes."""
+    logger = await _resolve_logger(request)
+    if logger is None:
+        return
+    log_request(
+        request,
+        logger,
+        kind=kind,
+        status=_status_for(status_code),
+        model=model,
+        error_code=error_code,
+        latency_ms=_dispatch_latency_ms(started),
+    )
 
 
 async def job_submit_endpoint(
@@ -337,6 +434,7 @@ async def job_submit_endpoint(
         gateway-issued job id), ``204`` when the result carries no
         payload, or the OpenAI error envelope for gateway failures.
     """
+    started = monotonic()
     raw = await request.body()
     request_id = getattr(request.state, "request_id", None) or new_uuid()
     trace_id = request.headers.get("x-trace-id", "") or ""
@@ -373,16 +471,26 @@ async def job_submit_endpoint(
     service = await resolve_job_passthrough(request)
     result = await service.submit(kind, gateway_request)
     if result.is_err():
-        return _error_response(RelayFormat.OPENAI_CHAT, result.unwrap_err())
+        error = result.unwrap_err()
+        response = _error_response(RelayFormat.OPENAI_CHAT, error)
+        await _log_kind_dispatch(
+            request, kind, model_value, response.status_code, error.code, started
+        )
+        return response
     ok_result = result.unwrap()
     headers = _safe_headers(ok_result.headers, request_id, trace_id)
     if ok_result.payload is not None:
-        return JSONResponse(
+        response = JSONResponse(
             content=ok_result.payload,
             status_code=ok_result.status_code,
             headers=headers,
         )
-    return Response(status_code=204, headers=headers)
+    else:
+        response = Response(status_code=204, headers=headers)
+    await _log_kind_dispatch(
+        request, kind, model_value, response.status_code, "", started
+    )
+    return response
 
 
 async def job_status_endpoint(
