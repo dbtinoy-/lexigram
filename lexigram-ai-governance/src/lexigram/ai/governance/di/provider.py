@@ -9,6 +9,10 @@ from lexigram.ai.governance.relay_billing.di import (
     boot_relay_billing,
     register_relay_billing,
 )
+from lexigram.ai.governance.relay_logs.di import (
+    boot_relay_logs,
+    register_relay_logs,
+)
 from lexigram.ai.governance.services.manager import AIGovernanceManager
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.core.provider import ProviderPriority
@@ -73,6 +77,7 @@ class GovernanceProvider(Provider):
         )
         container.singleton(GovernanceConfig, self._config)
         register_relay_billing(container, self._config)
+        register_relay_logs(container, self._config)
 
         if not self._config.enabled:
             logger.info("governance_disabled", reason="GovernanceConfig.enabled=False")
@@ -106,6 +111,10 @@ class GovernanceProvider(Provider):
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot phase."""
         await boot_relay_billing(
+            cast("BootContainerProtocol", container),
+            self._config,
+        )
+        await boot_relay_logs(
             cast("BootContainerProtocol", container),
             self._config,
         )

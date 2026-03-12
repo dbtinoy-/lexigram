@@ -15,6 +15,10 @@ from lexigram.contracts.ai.governance import (
     CostTrackingProtocol,
     RelayBillingProtocol,
 )
+from lexigram.contracts.ai.relay import (
+    RelayRequestLogStoreProtocol,
+    RelayUsageServiceProtocol,
+)
 from lexigram.di.module import DynamicModule
 
 
@@ -60,11 +64,13 @@ class TestGovernanceModule:
 
         await provider.register(container)
 
-        assert container.singleton.call_count == 3
+        assert container.singleton.call_count == 5
         expected = [
             GovernanceConfig,
             RelayBillingConfig,
             RelayBillingProtocol,
+            RelayRequestLogStoreProtocol,
+            RelayUsageServiceProtocol,
         ]
         for idx, want in enumerate(expected):
             assert container.singleton.call_args_list[idx].args[0] is want
