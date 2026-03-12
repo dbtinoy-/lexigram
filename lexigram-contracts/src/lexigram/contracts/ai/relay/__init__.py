@@ -48,6 +48,10 @@ from lexigram.contracts.ai.relay.ir import (
     StreamDelta,
     StreamState,
 )
+from lexigram.contracts.ai.relay.logs import (
+    RelayRequestLogEntry,
+    RelayRequestLogStoreProtocol,
+)
 from lexigram.contracts.ai.relay.operations import (
     RelayActiveStream,
     RelayChannelHealth,
@@ -89,6 +93,11 @@ from lexigram.contracts.ai.relay.types import (
     RelayResponsePayload,
     RelayUsage,
 )
+from lexigram.contracts.ai.relay.usage import (
+    RelayDailyUsage,
+    RelayModelRank,
+    RelayUsageServiceProtocol,
+)
 
 __all__ = [
     "ClaudeContent",
@@ -116,6 +125,7 @@ __all__ = [
     "RelayConversionContext",
     "RelayConvertResult",
     "RelayConverterProtocol",
+    "RelayDailyUsage",
     "RelayFormat",
     "RelayGatewayError",
     "RelayGatewayMetadata",
@@ -124,6 +134,7 @@ __all__ = [
     "RelayGatewayResult",
     "RelayLoss",
     "RelayMapperProtocol",
+    "RelayModelRank",
     "RelayOperationsControlProtocol",
     "RelayOperationsProtocol",
     "RelayOptions",
@@ -135,6 +146,8 @@ __all__ = [
     "RelayRegistryDiagnostics",
     "RelayRegistryProtocol",
     "RelayRequest",
+    "RelayRequestLogEntry",
+    "RelayRequestLogStoreProtocol",
     "RelayRequestPayload",
     "RelayResponse",
     "RelayResponsePayload",
@@ -143,6 +156,7 @@ __all__ = [
     "RelayStreamSessionProtocol",
     "RelayUpstreamProtocol",
     "RelayUsage",
+    "RelayUsageServiceProtocol",
     "RelayWireEvent",
     "ResponsesItem",
     "ResponsesRequest",
