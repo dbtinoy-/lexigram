@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.relay.gateway.operations.controls import (
     PERMISSION_CHANNEL_CONTROL,
+    PERMISSION_CHANNEL_MANAGE,
     PERMISSION_POLICY_CONTROL,
     PERMISSION_READ,
     PERMISSION_STREAM_CONTROL,
@@ -116,6 +117,14 @@ _NAV_ITEMS: tuple[NavigationContribution, ...] = (
                 permission=PERMISSION_READ,
             ),
             NavigationContribution(
+                label="Channels",
+                url="/admin/relay-gateway/channels",
+                icon="server",
+                group="ai",
+                order=25,
+                permission=PERMISSION_READ,
+            ),
+            NavigationContribution(
                 label="Streams",
                 url="/admin/relay-gateway/streams",
                 icon="radio",
@@ -194,6 +203,197 @@ _ACTIONS: tuple[AdminActionDefinition, ...] = (
             ),
         ),
     ),
+    AdminActionDefinition(
+        name="create_channel",
+        title="Create Channel",
+        contributor="relay-gateway",
+        handler="lexigram.ai.relay.gateway.admin.actions:create_channel",
+        icon="plus-circle",
+        confirmation_message="Create a durable relay channel?",
+        category="operations",
+        permission=PERMISSION_CHANNEL_MANAGE,
+        parameter_schema=ActionParameterSchema(
+            fields=(
+                ActionParameterField(
+                    name="name",
+                    type_hint="str",
+                    required=True,
+                    description="Unique channel name.",
+                ),
+                ActionParameterField(
+                    name="upstream_base_url",
+                    type_hint="str",
+                    required=True,
+                    description="Upstream endpoint base URL.",
+                ),
+                ActionParameterField(
+                    name="target_format",
+                    type_hint="str",
+                    required=True,
+                    description=(
+                        "Wire format: openai_chat, openai_responses, claude, or gemini."
+                    ),
+                ),
+                ActionParameterField(
+                    name="models",
+                    type_hint="str",
+                    required=True,
+                    description="Comma-separated model aliases.",
+                ),
+                ActionParameterField(
+                    name="priority",
+                    type_hint="int",
+                    required=False,
+                    default=100,
+                    description="Selection priority (lower routes first).",
+                ),
+                ActionParameterField(
+                    name="weight",
+                    type_hint="int",
+                    required=False,
+                    default=100,
+                    description="Load-balancing weight.",
+                ),
+                ActionParameterField(
+                    name="enabled",
+                    type_hint="bool",
+                    required=False,
+                    default=True,
+                    description="Whether the channel accepts new requests.",
+                ),
+                ActionParameterField(
+                    name="timeout_seconds",
+                    type_hint="float",
+                    required=False,
+                    default=60.0,
+                    description="Upstream timeout in seconds.",
+                ),
+            ),
+            description="Create a durable gateway channel.",
+        ),
+    ),
+    AdminActionDefinition(
+        name="update_channel",
+        title="Update Channel",
+        contributor="relay-gateway",
+        handler="lexigram.ai.relay.gateway.admin.actions:update_channel",
+        icon="pencil",
+        confirmation_message="Update this durable channel at the given revision?",
+        category="operations",
+        permission=PERMISSION_CHANNEL_MANAGE,
+        parameter_schema=ActionParameterSchema(
+            fields=(
+                ActionParameterField(
+                    name="name",
+                    type_hint="str",
+                    required=True,
+                    description="Channel name to update.",
+                ),
+                ActionParameterField(
+                    name="expected_revision",
+                    type_hint="int",
+                    required=True,
+                    description="Revision the caller observed; stale writes are rejected.",
+                ),
+                ActionParameterField(
+                    name="upstream_base_url",
+                    type_hint="str",
+                    required=True,
+                    description="Upstream endpoint base URL.",
+                ),
+                ActionParameterField(
+                    name="target_format",
+                    type_hint="str",
+                    required=True,
+                    description="Wire format: openai_chat, openai_responses, claude, or gemini.",
+                ),
+                ActionParameterField(
+                    name="models",
+                    type_hint="str",
+                    required=True,
+                    description="Comma-separated model aliases.",
+                ),
+                ActionParameterField(
+                    name="priority",
+                    type_hint="int",
+                    required=False,
+                    default=100,
+                    description="Selection priority (lower routes first).",
+                ),
+                ActionParameterField(
+                    name="weight",
+                    type_hint="int",
+                    required=False,
+                    default=100,
+                    description="Load-balancing weight.",
+                ),
+                ActionParameterField(
+                    name="enabled",
+                    type_hint="bool",
+                    required=False,
+                    default=True,
+                    description="Whether the channel accepts new requests.",
+                ),
+                ActionParameterField(
+                    name="timeout_seconds",
+                    type_hint="float",
+                    required=False,
+                    default=60.0,
+                    description="Upstream timeout in seconds.",
+                ),
+            ),
+            description="Update a durable gateway channel under compare-and-set.",
+        ),
+    ),
+    AdminActionDefinition(
+        name="delete_channel",
+        title="Delete Channel",
+        contributor="relay-gateway",
+        handler="lexigram.ai.relay.gateway.admin.actions:delete_channel",
+        icon="trash-2",
+        confirmation_message="Delete this channel permanently?",
+        destructive=True,
+        category="operations",
+        permission=PERMISSION_CHANNEL_MANAGE,
+        parameter_schema=ActionParameterSchema(
+            fields=(
+                ActionParameterField(
+                    name="name",
+                    type_hint="str",
+                    required=True,
+                    description="Channel name to delete.",
+                ),
+                ActionParameterField(
+                    name="expected_revision",
+                    type_hint="int",
+                    required=True,
+                    description="Revision the caller observed; stale deletes are rejected.",
+                ),
+            ),
+            description="Delete a durable gateway channel under compare-and-set.",
+        ),
+    ),
+    AdminActionDefinition(
+        name="test_channel",
+        title="Test Channel",
+        contributor="relay-gateway",
+        handler="lexigram.ai.relay.gateway.admin.actions:test_channel",
+        icon="activity",
+        confirmation_message="Probe this channel through the health service?",
+        category="operations",
+        permission=PERMISSION_CHANNEL_MANAGE,
+        parameter_schema=ActionParameterSchema(
+            fields=(
+                ActionParameterField(
+                    name="name",
+                    type_hint="str",
+                    required=True,
+                    description="Channel name to probe.",
+                ),
+            ),
+            description="Run the channel health probe and report the verdict.",
+        ),
+    ),
 )
 
 
@@ -213,7 +413,12 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
     priority = 57
 
     required_permissions = frozenset(
-        {PERMISSION_READ, PERMISSION_CHANNEL_CONTROL, PERMISSION_POLICY_CONTROL}
+        {
+            PERMISSION_READ,
+            PERMISSION_CHANNEL_CONTROL,
+            PERMISSION_CHANNEL_MANAGE,
+            PERMISSION_POLICY_CONTROL,
+        }
     )
 
     def __init__(self) -> None:
@@ -362,6 +567,17 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
                 icon="settings",
                 description="Runtime routing policy",
                 order=40,
+            ),
+            ManagementPageDefinition(
+                name="relay_gateway_channels",
+                title="Relay Channels",
+                contributor="relay-gateway",
+                route_path="/relay-gateway/channels",
+                handler="lexigram.ai.relay.gateway.admin.pages:RelayGatewayChannelsPage",
+                category=PageCategory.AI,
+                icon="server",
+                description="Durable channel rows",
+                order=45,
             ),
         ]
 

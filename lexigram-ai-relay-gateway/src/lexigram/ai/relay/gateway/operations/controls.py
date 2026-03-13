@@ -43,6 +43,7 @@ PERMISSION_READ = "relay.read"
 PERMISSION_CHANNEL_CONTROL = "relay.channel_control"
 PERMISSION_POLICY_CONTROL = "relay.policy_control"
 PERMISSION_STREAM_CONTROL = "relay.stream_control"
+PERMISSION_CHANNEL_MANAGE = "relay.manage"
 
 
 class InMemoryRelayPolicyStore(RelayPolicyStoreProtocol):

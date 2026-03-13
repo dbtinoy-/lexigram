@@ -228,7 +228,12 @@ class TestContributorDiscovery:
         assert contributor.display_name == "Relay Gateway"
         assert contributor.group == "ai"
         assert contributor.required_permissions == frozenset(
-            {"relay.read", "relay.channel_control", "relay.policy_control"}
+            {
+                "relay.read",
+                "relay.channel_control",
+                "relay.policy_control",
+                "relay.manage",
+            }
         )
 
     def test_widgets_and_pages_registered(self) -> None:
@@ -243,6 +248,7 @@ class TestContributorDiscovery:
             "/relay-gateway/routes",
             "/relay-gateway/streams",
             "/relay-gateway/settings",
+            "/relay-gateway/channels",
         }
 
     def test_widget_endpoints_have_matching_routes(self) -> None:
