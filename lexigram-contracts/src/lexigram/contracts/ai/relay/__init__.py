@@ -75,6 +75,10 @@ from lexigram.contracts.ai.relay.ratelimit import (
     RelayRateLimitCounterProtocol,
     RelayRateLimitDecision,
 )
+from lexigram.contracts.ai.relay.store import (
+    RelayChannelSnapshot,
+    RelayChannelStoreProtocol,
+)
 from lexigram.contracts.ai.relay.transport import (
     RelayUpstreamProtocol,
     RelayWireEvent,
@@ -122,6 +126,8 @@ __all__ = [
     "RelayAuthVerifierProtocol",
     "RelayChannel",
     "RelayChannelHealth",
+    "RelayChannelSnapshot",
+    "RelayChannelStoreProtocol",
     "RelayConversionContext",
     "RelayConvertResult",
     "RelayConverterProtocol",
