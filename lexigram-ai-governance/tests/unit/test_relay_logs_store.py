@@ -177,3 +177,73 @@ async def test_model_rank_respects_limit_and_window() -> None:
     rank = await service.model_rank(days=7, limit=1)
     assert len(rank) == 1
     assert rank[0].model == "gpt-4"
+
+
+async def test_list_requests_round_trip_and_ordering() -> None:
+    db = SqliteFakeDatabase()
+    store: RelayRequestLogStoreProtocol = SqlRelayRequestLogStore(db=db)
+    await store.append(
+        make_entry(
+            request_id="r1",
+            created_at=datetime(2026, 8, 10, 9, 0, 0),
+            prompt_tokens=10,
+            completion_tokens=20,
+            cost="0.05",
+        )
+    )
+    await store.append(
+        make_entry(
+            request_id="r2",
+            user_id="u2",
+            token_id="t9",
+            model="claude-3",
+            status="failed",
+            created_at=datetime(2026, 8, 10, 12, 0, 0),
+            error_code="UPSTREAM_5XX",
+        )
+    )
+    service: RelayUsageServiceProtocol = RelayUsageService(db=db)
+    entries = await service.list_requests(days=7, page=1, page_size=20)
+    assert [e.request_id for e in entries] == ["r2", "r1"]
+    assert entries[0].user_id == "u2"
+    assert entries[0].model == "claude-3"
+    assert entries[0].status == "failed"
+    assert entries[0].error_code == "UPSTREAM_5XX"
+    assert entries[0].created_at == datetime(2026, 8, 10, 12, 0, 0)
+    assert entries[1].cost == "0.05"
+
+
+async def test_list_requests_filters_by_user_and_token() -> None:
+    db = SqliteFakeDatabase()
+    store: RelayRequestLogStoreProtocol = SqlRelayRequestLogStore(db=db)
+    for i in range(3):
+        await store.append(make_entry(request_id=f"r{i}", user_id="u1", token_id="t1"))
+    await store.append(make_entry(request_id="rx", user_id="u2", token_id="t2"))
+    service: RelayUsageServiceProtocol = RelayUsageService(db=db)
+    entries = await service.list_requests(
+        days=7, page=1, page_size=20, user_id="u1", token_id="t1"
+    )
+    assert [e.request_id for e in entries] == ["r2", "r1", "r0"]
+    entries = await service.list_requests(days=7, page=1, page_size=20, user_id="u2")
+    assert [e.request_id for e in entries] == ["rx"]
+
+
+async def test_list_requests_paginates_and_respects_window() -> None:
+    db = SqliteFakeDatabase()
+    store: RelayRequestLogStoreProtocol = SqlRelayRequestLogStore(db=db)
+    for i in range(3):
+        await store.append(make_entry(request_id=f"r{i}", token_id="t1"))
+    await store.append(
+        make_entry(
+            request_id="rold",
+            token_id="t1",
+            created_at=datetime(2026, 7, 1, 9, 0, 0),
+        )
+    )
+    service: RelayUsageServiceProtocol = RelayUsageService(db=db)
+    page_one = await service.list_requests(days=7, page=1, page_size=2)
+    assert [e.request_id for e in page_one] == ["r2", "r1"]
+    page_two = await service.list_requests(days=7, page=2, page_size=2)
+    assert [e.request_id for e in page_two] == ["r0"]
+    windowed = await service.list_requests(days=1, page=1, page_size=20)
+    assert all(e.request_id != "rold" for e in windowed)

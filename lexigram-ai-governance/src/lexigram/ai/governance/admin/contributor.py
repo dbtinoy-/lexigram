@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 __all__ = ["GovernanceAdminContributor"]
 
 PERMISSION_READ = "governance.read"
+PERMISSION_LOG_READ = "relay.logs"
 
 _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
     DashboardWidgetDefinition(
@@ -132,6 +133,22 @@ _NAV_ITEMS: tuple[NavigationContribution, ...] = (
                 order=30,
                 permission=PERMISSION_READ,
             ),
+            NavigationContribution(
+                label="Request Logs",
+                url="/admin/ai-governance/relay-logs",
+                icon="list",
+                group="ai",
+                order=40,
+                permission=PERMISSION_LOG_READ,
+            ),
+            NavigationContribution(
+                label="Usage Rankings",
+                url="/admin/ai-governance/relay-rankings",
+                icon="trending-up",
+                group="ai",
+                order=50,
+                permission=PERMISSION_LOG_READ,
+            ),
         ),
     ),
 )
@@ -179,6 +196,30 @@ _PAGE_DEFS: tuple[ManagementPageDefinition, ...] = (
         icon="receipt",
         description="Failed settlements and conversion loss",
         order=30,
+    ),
+    ManagementPageDefinition(
+        name="governance_relay_logs",
+        title="Request Logs",
+        contributor="ai-governance",
+        route_path="/ai-governance/relay-logs",
+        handler="lexigram.ai.governance.admin.logs_pages:RelayRequestLogsPage",
+        category=PageCategory.AI,
+        icon="list",
+        permission=PERMISSION_LOG_READ,
+        description="Redaction-safe dispatch metadata per request",
+        order=40,
+    ),
+    ManagementPageDefinition(
+        name="governance_relay_rankings",
+        title="Usage Rankings",
+        contributor="ai-governance",
+        route_path="/ai-governance/relay-rankings",
+        handler="lexigram.ai.governance.admin.logs_pages:RelayUsageRankingsPage",
+        category=PageCategory.AI,
+        icon="trending-up",
+        permission=PERMISSION_LOG_READ,
+        description="Per-model completion tokens and cost",
+        order=50,
     ),
 )
 

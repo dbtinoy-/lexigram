@@ -66,6 +66,19 @@ class NoopRelayUsageService(RelayUsageServiceProtocol):
         del days, limit
         return []
 
+    async def list_requests(
+        self,
+        days: int,
+        page: int,
+        page_size: int,
+        *,
+        user_id: str | None = None,
+        token_id: str | None = None,
+    ) -> list[RelayRequestLogEntry]:
+        """Return no request-log entries."""
+        del days, page, page_size, user_id, token_id
+        return []
+
 
 def register_relay_logs(
     container: ContainerRegistrarProtocol,
