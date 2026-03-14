@@ -48,6 +48,13 @@ from lexigram.contracts.ai.relay.ir import (
     StreamDelta,
     StreamState,
 )
+from lexigram.contracts.ai.relay.ledger import (
+    RelayCheckinRecord,
+    RelayLedgerError,
+    RelayLedgerServiceProtocol,
+    RelayTopUpRecord,
+    RelayTopUpStatus,
+)
 from lexigram.contracts.ai.relay.logs import (
     RelayRequestLogEntry,
     RelayRequestLogStoreProtocol,
@@ -128,6 +135,7 @@ __all__ = [
     "RelayChannelHealth",
     "RelayChannelSnapshot",
     "RelayChannelStoreProtocol",
+    "RelayCheckinRecord",
     "RelayConversionContext",
     "RelayConvertResult",
     "RelayConverterProtocol",
@@ -138,6 +146,8 @@ __all__ = [
     "RelayGatewayProtocol",
     "RelayGatewayRequest",
     "RelayGatewayResult",
+    "RelayLedgerError",
+    "RelayLedgerServiceProtocol",
     "RelayLoss",
     "RelayMapperProtocol",
     "RelayModelRank",
