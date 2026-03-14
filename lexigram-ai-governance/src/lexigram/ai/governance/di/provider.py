@@ -13,6 +13,10 @@ from lexigram.ai.governance.relay_channels.di import (
     boot_relay_channels,
     register_relay_channels,
 )
+from lexigram.ai.governance.relay_ledger.di import (
+    boot_relay_ledger,
+    register_relay_ledger,
+)
 from lexigram.ai.governance.relay_logs.di import (
     boot_relay_logs,
     register_relay_logs,
@@ -83,6 +87,7 @@ class GovernanceProvider(Provider):
         register_relay_billing(container, self._config)
         register_relay_logs(container, self._config)
         register_relay_channels(container, self._config)
+        register_relay_ledger(container, self._config)
 
         if not self._config.enabled:
             logger.info("governance_disabled", reason="GovernanceConfig.enabled=False")
@@ -124,6 +129,10 @@ class GovernanceProvider(Provider):
             self._config,
         )
         await boot_relay_channels(
+            cast("BootContainerProtocol", container),
+            self._config,
+        )
+        await boot_relay_ledger(
             cast("BootContainerProtocol", container),
             self._config,
         )
