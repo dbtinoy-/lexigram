@@ -26,6 +26,9 @@ from lexigram.contracts.admin.errors import (
 )
 from lexigram.contracts.admin.route_spec import AdminRouteSpec
 from lexigram.contracts.admin.types import (
+    ActionParameterField,
+    ActionParameterSchema,
+    AdminActionDefinition,
     AdminHealthDefinition,
     DashboardWidgetDefinition,
     ManagementPageDefinition,
@@ -48,6 +51,7 @@ __all__ = ["GovernanceAdminContributor"]
 
 PERMISSION_READ = "governance.read"
 PERMISSION_LOG_READ = "relay.logs"
+PERMISSION_LEDGER = "relay.billing"
 
 _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
     DashboardWidgetDefinition(
@@ -149,6 +153,14 @@ _NAV_ITEMS: tuple[NavigationContribution, ...] = (
                 order=50,
                 permission=PERMISSION_LOG_READ,
             ),
+            NavigationContribution(
+                label="Relay Ledger",
+                url="/admin/ai-governance/relay-ledger",
+                icon="wallet",
+                group="ai",
+                order=60,
+                permission=PERMISSION_LEDGER,
+            ),
         ),
     ),
 )
@@ -221,6 +233,83 @@ _PAGE_DEFS: tuple[ManagementPageDefinition, ...] = (
         description="Per-model completion tokens and cost",
         order=50,
     ),
+    ManagementPageDefinition(
+        name="governance_relay_ledger",
+        title="Relay Ledger",
+        contributor="ai-governance",
+        route_path="/ai-governance/relay-ledger",
+        handler="lexigram.ai.governance.admin.ledger_pages:RelayLedgerPage",
+        category=PageCategory.AI,
+        icon="wallet",
+        permission=PERMISSION_LEDGER,
+        description="Ledger top-ups and daily check-ins",
+        order=60,
+    ),
+)
+
+_ACTIONS: tuple[AdminActionDefinition, ...] = (
+    AdminActionDefinition(
+        name="settle_topup",
+        title="Settle Top-Up",
+        contributor="ai-governance",
+        handler="lexigram.ai.governance.admin.ledger_actions:settle_topup",
+        icon="check-circle",
+        confirmation_message="Settle this pending top-up as completed?",
+        category="billing",
+        permission=PERMISSION_LEDGER,
+        parameter_schema=ActionParameterSchema(
+            description=(
+                "Flip a pending ledger top-up reference to completed "
+                "when the backing payment settled."
+            ),
+            fields=(
+                ActionParameterField(
+                    name="reference_id",
+                    type_hint="str",
+                    required=True,
+                    description="Ledger reference ID of the credit.",
+                ),
+                ActionParameterField(
+                    name="expected_status",
+                    type_hint="str",
+                    required=False,
+                    default="pending",
+                    choices=("pending", "completed", "failed"),
+                    description="Current status the reference must hold.",
+                ),
+            ),
+        ),
+    ),
+    AdminActionDefinition(
+        name="run_checkin",
+        title="Run Daily Check-In",
+        contributor="ai-governance",
+        handler="lexigram.ai.governance.admin.ledger_actions:run_checkin",
+        icon="calendar-check",
+        confirmation_message="Record a daily check-in award for this user?",
+        category="billing",
+        permission=PERMISSION_LEDGER,
+        parameter_schema=ActionParameterSchema(
+            description=(
+                "Credit one user a caller-supplied daily award.  Reward "
+                "policy (amount, cadence) is decided by the application."
+            ),
+            fields=(
+                ActionParameterField(
+                    name="user_id",
+                    type_hint="str",
+                    required=True,
+                    description="User receiving the award.",
+                ),
+                ActionParameterField(
+                    name="award",
+                    type_hint="str",
+                    required=True,
+                    description='Award amount, e.g. "5".',
+                ),
+            ),
+        ),
+    ),
 )
 
 
@@ -239,7 +328,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
     icon = "shield"
     priority = 58
 
-    required_permissions = frozenset({PERMISSION_READ})
+    required_permissions = frozenset({PERMISSION_READ, PERMISSION_LEDGER})
 
     def __init__(self) -> None:
         self._container: Any = None
@@ -301,6 +390,44 @@ class GovernanceAdminContributor(BaseAdminContributor):
 
     def get_management_pages(self) -> Sequence[ManagementPageDefinition]:
         return list(_PAGE_DEFS)
+
+    def get_actions(self) -> Sequence[AdminActionDefinition]:
+        return list(_ACTIONS)
+
+    async def execute_action(
+        self,
+        action_name: str,
+        params: dict[str, object],
+    ) -> object:
+        """Dispatch an action to its lazy-loaded handler.
+
+        Handlers run with the container captured at boot; a container is
+        required.  Every handler performs server-side parameter
+        validation before invoking the ledger service.
+
+        Args:
+            action_name: Name of the action to execute.
+            params: Parameters forwarded to the action handler.
+
+        Returns:
+            The handler's result mapping.
+
+        Raises:
+            LookupError: Unknown action name.
+            RuntimeError: Contributor booted without a container.
+        """
+        from importlib import import_module as _import_module
+
+        registry = {action.name: action for action in _ACTIONS}
+        definition = registry.get(action_name)
+        if definition is None:
+            raise LookupError(f"unknown ai-governance action {action_name!r}")
+        module_path, _, handler_name = definition.handler.partition(":")
+        module = _import_module(module_path)
+        handler = getattr(module, handler_name)
+        if self._container is None:
+            raise RuntimeError("contributor has no container; on_admin_boot required")
+        return await handler(self._container, **params)
 
     async def render_widget(
         self,

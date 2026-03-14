@@ -147,7 +147,9 @@ class TestContributorDiscovery:
         assert contributor.name == "ai-governance"
         assert contributor.display_name == "AI Governance"
         assert contributor.group == "ai"
-        assert contributor.required_permissions == frozenset({"governance.read"})
+        assert contributor.required_permissions == frozenset(
+            {"governance.read", "relay.billing"}
+        )
 
     def test_widgets_and_pages_registered(self) -> None:
         """All dashboard widgets and management pages are declared."""
@@ -167,6 +169,7 @@ class TestContributorDiscovery:
             "/ai-governance/relay-settlements",
             "/ai-governance/relay-logs",
             "/ai-governance/relay-rankings",
+            "/ai-governance/relay-ledger",
         }
 
     def test_widget_endpoints_have_matching_routes(self) -> None:
@@ -182,7 +185,7 @@ class TestContributorDiscovery:
         """Pages carry only read-only permission gates."""
         contributor = GovernanceAdminContributor()
         for page in contributor.get_management_pages():
-            assert page.permission in (None, "governance.read", "relay.logs")
+            assert page.permission in (None, "governance.read", "relay.logs", "relay.billing")
 
 
 class TestReadOnlyPages:
