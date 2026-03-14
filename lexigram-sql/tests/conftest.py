@@ -93,7 +93,7 @@ async def test_bed():
     try:
         import importlib
 
-        testing = importlib.import_module("lexigram.testing")
+        testing = importlib.import_module("lexigram.testing.fixtures.bed")
         TestEnvironment = getattr(testing, "TestEnvironment")
     except (ImportError, AttributeError):
         pytest.skip(
