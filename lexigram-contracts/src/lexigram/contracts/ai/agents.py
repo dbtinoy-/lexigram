@@ -531,7 +531,7 @@ class AgentExecutor:
         """Run the agent synchronously."""
         import asyncio
 
-        return asyncio.get_event_loop().run_until_complete(self.arun(input))
+        return asyncio.run(self.arun(input))
 
     async def arun(self, input: str) -> str:
         """Run the agent asynchronously."""
