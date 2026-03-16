@@ -44,7 +44,7 @@ class Skeleton(Component):
                 items.append(
                     el(
                         "div",
-                        class_="h-4 bg-muted rounded animate-pulse mb-2",
+                        class_="h-4 bg-muted rounded-md animate-pulse mb-2",
                         style=f"width: {item_width}",
                     ),
                 )
@@ -65,7 +65,7 @@ class Skeleton(Component):
                 items.append(
                     el(
                         "div",
-                        class_="h-8 bg-muted rounded animate-pulse mb-2",
+                        class_="h-8 bg-muted rounded-md animate-pulse mb-2",
                         style=f"width: {self.width}",
                     ),
                 )
@@ -75,7 +75,7 @@ class Skeleton(Component):
         h = self.height or "8rem"
         return el(
             "div",
-            class_="bg-muted rounded animate-pulse",
+            class_="bg-muted rounded-md animate-pulse",
             style=f"width: {self.width}; height: {h}",
             aria_hidden="true",
         )

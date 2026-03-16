@@ -77,21 +77,19 @@ class Tabs(Component):
             el(
                 "div",
                 el(
-                    "div",
-                    el(
-                        "nav",
+                    "nav",
                         *[
                             el(
                                 "a" if not self.client_side else "button",
                                 label,
-                                class_="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-all duration-200 "
+                                class_="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 "
                                 + (
-                                    f":class=\"activeTab === '{value}' ? 'border-ring text-primary' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'\""
+                                    f":class=\"activeTab === '{value}' ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'\""
                                     if self.client_side
                                     else (
-                                        "border-ring text-primary"
+                                        "bg-background text-foreground shadow"
                                         if value == self.active_id
-                                        else "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                                        else "text-muted-foreground hover:text-foreground"
                                     )
                                 ),
                                 aria_current=(
@@ -120,15 +118,13 @@ class Tabs(Component):
                             )
                             for label, value in self.tabs
                         ],
-                        class_="-mb-px flex space-x-8",
+                        class_="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
                         role="tablist",
                         aria_label="Tabs",
                         **keyboard_nav,
                     ),
-                    class_="border-b border-border",
+                    class_="hidden sm:block mb-6",
                 ),
-                class_="hidden sm:block mb-6",
-            ),
             # Content container (for children like TabPanel)
             el("div", *self.children, class_="mt-4"),
             **attrs,

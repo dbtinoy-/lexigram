@@ -14,6 +14,7 @@ from lexigram.ui.atoms.spinner import Spinner
 from lexigram.ui.atoms.switch import Switch
 from lexigram.ui.atoms.theme_toggle import ThemeToggle
 from lexigram.ui.atoms.tooltip import Tooltip
+from lexigram.ui.molecules.tabs import Tabs
 
 # ---------------------------------------------------------------------------
 # Button
@@ -601,3 +602,34 @@ class TestSwitch:
     def test_switch_checked_state(self) -> None:
         result = str(Switch(label="Active", name="active", value=True))
         assert "Active" in result
+
+
+# ---------------------------------------------------------------------------
+# Current shadcn class parity
+# ---------------------------------------------------------------------------
+
+
+class TestCurrentShadcnClasses:
+    """Class parity with the current shadcn/ui registry."""
+
+    def test_badge(self) -> None:
+        html = str(Badge("New"))
+        assert "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold" in html
+        assert "border-transparent" in html
+
+    def test_skeleton(self) -> None:
+        html = str(Skeleton())
+        assert "animate-pulse" in html
+        assert "rounded-md" in html
+        assert "bg-muted" in html
+
+    def test_switch_track(self) -> None:
+        html = str(Switch(label="s", name="s"))
+        assert "h-6 w-11" in html
+        assert "rounded-full border-2 border-transparent" in html
+        assert "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" in html
+
+    def test_tabs_container(self) -> None:
+        html = str(Tabs([("A", "a"), ("B", "b")]))
+        assert 'role="tablist"' in html
+        assert "bg-muted p-1 text-muted-foreground" in html
