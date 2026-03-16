@@ -26,6 +26,11 @@ SHADCN_DEFAULT_COLORS: dict[str, str] = {
     "--border": "oklch(0.85 0 0)",
     "--input": "oklch(0.82 0 0)",
     "--ring": "oklch(0.546 0.245 262.881)",
+    "--chart-1": "oklch(0.646 0.222 41.116)",
+    "--chart-2": "oklch(0.6 0.118 184.704)",
+    "--chart-3": "oklch(0.398 0.07 227.392)",
+    "--chart-4": "oklch(0.828 0.189 84.429)",
+    "--chart-5": "oklch(0.769 0.188 70.08)",
     "--color-success": "oklch(0.627 0.194 149.214)",
     "--color-success-foreground": "oklch(1 0 0)",
     "--color-warning": "oklch(0.795 0.184 86.047)",
@@ -66,6 +71,11 @@ SHADCN_DARK_COLORS: dict[str, str] = {
     "--border": "oklch(0.32 0 0)",
     "--input": "oklch(0.37 0 0)",
     "--ring": "oklch(0.546 0.245 262.881)",
+    "--chart-1": "oklch(0.646 0.222 41.116)",
+    "--chart-2": "oklch(0.6 0.118 184.704)",
+    "--chart-3": "oklch(0.398 0.07 227.392)",
+    "--chart-4": "oklch(0.828 0.189 84.429)",
+    "--chart-5": "oklch(0.769 0.188 70.08)",
     "--color-success": "oklch(0.627 0.194 149.214)",
     "--color-success-foreground": "oklch(1 0 0)",
     "--color-warning": "oklch(0.795 0.184 86.047)",
@@ -127,6 +137,7 @@ TYPOGRAPHY_TOKENS: dict[str, str] = {
 
 # ── Shadow tokens ──────────────────────────────────────────────
 SHADOW_TOKENS: dict[str, str] = {
+    "--shadow-xs": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
     "--shadow-sm": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
     "--shadow": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
     "--shadow-md": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
