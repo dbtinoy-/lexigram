@@ -25,7 +25,7 @@ class TestButton:
         html = str(Button("Save"))
         assert "bg-primary" in html
         assert "text-primary-foreground" in html
-        assert "h-9" in html
+        assert "h-10" in html
 
     def test_secondary_variant(self):
         html = str(Button("Cancel", variant="secondary"))
@@ -55,15 +55,15 @@ class TestButton:
 
     def test_size_icon(self):
         html = str(Button("X", size="icon"))
-        assert "h-9 w-9" in html
+        assert "h-10 w-10" in html
 
     def test_size_sm(self):
         html = str(Button("Small", size="sm"))
-        assert "h-8" in html
+        assert "h-9" in html
 
     def test_size_lg(self):
         html = str(Button("Large", size="lg"))
-        assert "h-10" in html
+        assert "h-11" in html
 
     def test_size_xl(self):
         html = str(Button("XL", size="xl"))
@@ -80,6 +80,25 @@ class TestButton:
     def test_focus_ring(self):
         html = str(Button("Focus"))
         assert "focus-visible:ring-ring" in html
+
+    def test_current_shadcn_classes(self):
+        """Button matches current shadcn/ui base + variant classes."""
+        html = str(Button("Save"))
+        assert "gap-2" in html
+        assert "ring-offset-background" in html
+        assert "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" in html
+        assert "disabled:pointer-events-none disabled:opacity-50" in html
+        assert "[&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0" in html
+
+    def test_icon_size_is_h10_w10(self):
+        """Current shadcn icon size is h-10 w-10."""
+        html = str(Button("X", size="icon"))
+        assert "h-10 w-10" in html
+
+    def test_default_size_is_h10(self):
+        """Current shadcn default size is h-10."""
+        html = str(Button("Save"))
+        assert "h-10 px-4 py-2" in html
 
     def test_transition(self):
         html = str(Button("Trans"))
