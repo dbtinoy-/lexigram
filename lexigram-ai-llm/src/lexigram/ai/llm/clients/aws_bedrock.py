@@ -31,8 +31,12 @@ Notes:
 from __future__ import annotations
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures.thread import _threads_queues, _worker
+import threading
 from typing import TYPE_CHECKING, Any
+import weakref
 
 from lexigram.ai.llm.clients._bedrock_mappers import (
     bedrock_stream_chunks,
@@ -75,7 +79,52 @@ logger = get_logger(__name__)
 
 __all__ = ["BedrockClient"]
 
-_THREAD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="bedrock-sync")
+_thread_pool: ThreadPoolExecutor | None = None
+
+
+class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
+    """ThreadPoolExecutor whose workers are daemon threads.
+
+    Keeps the pool off the non-daemon thread list so it never blocks
+    interpreter shutdown or trips test teardown assertions. Mirrors the
+    CPython 3.13 worker-spawn logic with ``daemon=True``.
+    """
+
+    def _adjust_thread_count(self) -> None:
+        if self._idle_semaphore.acquire(timeout=0):
+            return
+
+        def weakref_cb(_, q=self._work_queue) -> None:
+            q.put(None)
+
+        num_threads = len(self._threads)
+        if num_threads < self._max_workers:
+            thread_name = f"{self._thread_name_prefix or self}_{num_threads}"
+            t = threading.Thread(
+                name=thread_name,
+                target=_worker,
+                args=(
+                    weakref.ref(self, weakref_cb),
+                    self._work_queue,
+                    self._initializer,
+                    self._initargs,
+                ),
+                daemon=True,
+            )
+            t.start()
+            self._threads.add(t)  # type: ignore[attr-defined]
+            _threads_queues[t] = self._work_queue  # type: ignore[index]
+
+
+def _get_thread_pool() -> ThreadPoolExecutor:
+    """Get the shared executor, creating it lazily on first use."""
+    global _thread_pool
+    if _thread_pool is None:
+        _thread_pool = _DaemonThreadPoolExecutor(
+            max_workers=4, thread_name_prefix="bedrock-sync"
+        )
+        atexit.register(_thread_pool.shutdown)
+    return _thread_pool
 
 
 def _content_to_text(content: Any) -> str:
@@ -127,8 +176,7 @@ class BedrockClient(AbstractLLMClient):
             import boto3
         except ImportError as exc:
             raise ImportError(
-                "BedrockClient requires 'boto3'. "
-                "Install with: pip install boto3"
+                "BedrockClient requires 'boto3'. Install with: pip install boto3"
             ) from exc
 
         extra: dict[str, Any] = config.extra or {}
@@ -218,7 +266,7 @@ class BedrockClient(AbstractLLMClient):
 
         try:
             raw = await asyncio.get_event_loop().run_in_executor(
-                _THREAD_POOL,
+                _get_thread_pool(),
                 lambda: self._client.converse(**request),
             )
         except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
@@ -273,13 +321,13 @@ class BedrockClient(AbstractLLMClient):
 
         try:
             raw_stream = await asyncio.get_event_loop().run_in_executor(
-                _THREAD_POOL,
+                _get_thread_pool(),
                 lambda: self._client.converse_stream(**request),
             )
         except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
             return self._handle_error_as_result(exc)
 
-        return Ok(bedrock_stream_chunks(raw_stream, active_model, _THREAD_POOL))
+        return Ok(bedrock_stream_chunks(raw_stream, active_model, _get_thread_pool()))
 
     async def _do_chat(
         self,
@@ -332,7 +380,7 @@ class BedrockClient(AbstractLLMClient):
 
             mgmt = boto3.client("bedrock", region_name=self._region)
             await asyncio.get_event_loop().run_in_executor(
-                _THREAD_POOL,
+                _get_thread_pool(),
                 lambda: mgmt.list_foundation_models(maxResults=1),
             )
         except Exception as exc:  # noqa: BLE001 - boto3 exposes provider-specific exceptions

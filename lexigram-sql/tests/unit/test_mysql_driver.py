@@ -200,7 +200,8 @@ class TestMySQLDriver:
             async def mock_circuit_breaker():
                 yield
 
-            pool.circuit_breaker = mock_circuit_breaker()
+            pool.circuit_breaker = Mock()
+            pool.circuit_breaker.protect.side_effect = mock_circuit_breaker
 
             async with pool.get_connection() as conn:
                 assert isinstance(conn, MySQLConnection)
@@ -522,7 +523,8 @@ class TestMySQLDriver:
             async def mock_circuit_breaker():
                 yield
 
-            pool.circuit_breaker = mock_circuit_breaker()
+            pool.circuit_breaker = Mock()
+            pool.circuit_breaker.protect.side_effect = mock_circuit_breaker
 
             with pytest.raises(
                 DatabaseConnectionError,
@@ -600,10 +602,12 @@ class TestMySQLDriver:
             await pool.initialize()
 
             # Mock circuit breaker as async context manager for get_connection
-            mock_cb = AsyncMock()
-            mock_cb.state.value = "closed"
-            mock_cb.__aenter__ = AsyncMock()
-            mock_cb.__aexit__ = AsyncMock()
+            @asynccontextmanager
+            async def mock_circuit_breaker():
+                yield
+
+            mock_cb = Mock()
+            mock_cb.protect.side_effect = mock_circuit_breaker
 
             pool.circuit_breaker = mock_cb
 
@@ -689,10 +693,12 @@ class TestMySQLDriver:
             await pool.initialize()
 
             # Mock circuit breaker as async context manager for get_connection
-            mock_cb = AsyncMock()
-            mock_cb.state.value = "closed"
-            mock_cb.__aenter__ = AsyncMock()
-            mock_cb.__aexit__ = AsyncMock()
+            @asynccontextmanager
+            async def mock_circuit_breaker():
+                yield
+
+            mock_cb = Mock()
+            mock_cb.protect.side_effect = mock_circuit_breaker
 
             pool.circuit_breaker = mock_cb
 
@@ -818,15 +824,20 @@ class TestMySQLDriver:
         with patch.object(pool, "_create_pool", side_effect=mock_create_pool):
             await pool.initialize()
 
-            # Mock circuit breaker
-            pool.circuit_breaker = AsyncMock()
+            # Mock circuit breaker as async context manager
+            @asynccontextmanager
+            async def mock_circuit_breaker():
+                yield
+
+            pool.circuit_breaker = Mock()
+            pool.circuit_breaker.protect.side_effect = mock_circuit_breaker
 
             with pytest.raises(DatabaseConnectionError):
                 async with pool.get_connection():
                     pass
 
             # Verify circuit breaker was used
-            pool.circuit_breaker.__aenter__.assert_called_once()
+            pool.circuit_breaker.protect.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_mysql_connection_with_custom_monitor(self, mock_monitor):

@@ -678,7 +678,7 @@ class TestPostgresDriver:
             # Mock retry to track calls
 
             with patch(
-                "lexigram.resilience.retry.retry", new_callable=AsyncMock
+                "lexigram.sql.backends.postgres.retry_call", new_callable=AsyncMock
             ) as mock_retry:
                 mock_pool = AsyncMock()
                 mock_retry.return_value = mock_pool

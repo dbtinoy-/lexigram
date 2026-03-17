@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from unittest.mock import patch
 
 from lexigram.nosql.backends.mongodb.codecs import configure_codecs
@@ -12,7 +13,18 @@ class TestConfigureCodecs:
             assert hasattr(result, "uuid_representation")
 
     def test_returns_none_when_bson_unavailable(self) -> None:
-        with patch.dict("sys.modules", {"bson": None}):
-            with patch("lexigram.nosql.backends.mongodb.codecs.configure_codecs", return_value=None):
-                result = configure_codecs()
-                assert result is None
+        _saved = {
+            k: sys.modules.pop(k)
+            for k in list(sys.modules)
+            if k == "bson" or k.startswith("bson.")
+        }
+        try:
+            with patch.dict("sys.modules", {"bson": None}):
+                with patch(
+                    "lexigram.nosql.backends.mongodb.codecs.configure_codecs",
+                    return_value=None,
+                ):
+                    result = configure_codecs()
+                    assert result is None
+        finally:
+            sys.modules.update(_saved)
