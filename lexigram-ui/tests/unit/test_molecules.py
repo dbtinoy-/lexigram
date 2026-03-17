@@ -223,3 +223,35 @@ class TestToastStates:
         toast = Toast("Auto ID")
         result = str(toast)
         assert "Auto ID" in result
+
+
+class TestShadcnDialogClasses:
+    """Modal/dialog class parity with current shadcn."""
+
+    def test_modal_panel(self) -> None:
+        html = str(Modal(title="Confirm"))
+        assert "rounded-lg" in html
+        assert "bg-background" in html or "bg-card" in html
+        assert "shadow-lg" in html
+
+    def test_modal_has_role_dialog(self) -> None:
+        html = str(Modal(title="Confirm"))
+        assert 'role="dialog"' in html
+        assert 'aria-modal="true"' in html
+        assert "aria-labelledby" in html
+
+    def test_modal_backdrop(self) -> None:
+        html = str(Modal(title="Confirm"))
+        assert "bg-black/80" in html
+
+    def test_dropdown_menu(self) -> None:
+        from lexigram.ui.molecules.dropdown import Dropdown
+
+        html = str(Dropdown("Menu", items=["A", "B"]))
+        assert 'role="menu"' in html
+
+    def test_pagination(self) -> None:
+        from lexigram.ui.molecules.pagination import Pagination
+
+        html = str(Pagination(page=1, total=45))
+        assert 'aria-label="Pagination"' in html

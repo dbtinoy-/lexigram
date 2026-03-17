@@ -17,11 +17,11 @@ class Modal(Component):
     PANEL_MAX_HEIGHT = "max-h-[66vh]"
     PANEL_CLASSES = (
         "relative transform overflow-hidden rounded-lg bg-card "
-        "text-left shadow-xl transition-all w-full"
+        "text-left shadow-lg transition-all w-full"
     )
 
     # Backdrop constants
-    BACKDROP_CLASSES = "fixed inset-0 bg-background/80 transition-opacity"
+    BACKDROP_CLASSES = "fixed inset-0 z-50 bg-black/80 transition-opacity"
 
     # Transition timing
     TRANSITION_ENTER = "ease-out duration-300"
@@ -175,6 +175,7 @@ class Modal(Component):
                         "role": "dialog",
                         "aria-modal": "true",
                         "aria-labelledby": "modal-title",
+                        "aria-describedby": "modal-description",
                     },
                     el(
                         "div",
@@ -221,6 +222,7 @@ class Modal(Component):
                                 "div",
                                 {
                                     "class": "relative mt-2 flex-1 overflow-y-auto px-4 sm:px-6",
+                                    "id": "modal-description",
                                 },
                                 *children_html,
                             ),
