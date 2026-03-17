@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import itertools
 import re
 from typing import Any
 
 from lexigram.ui.atoms.button import Button, ButtonVariant, SubmitButton
 from lexigram.ui.core.base import Component, el, raw, render_to_string
+
+_counter = itertools.count()
 
 
 class Modal(Component):
@@ -57,6 +60,7 @@ class Modal(Component):
         self.render_trigger = render_trigger
         self.max_width = max_width or self.PANEL_MAX_WIDTH
         self.max_height = max_height or self.PANEL_MAX_HEIGHT
+        self.id_suffix = next(_counter)
 
     def _build_panel_classes(self) -> str:
         """Build the panel classes with configurable max width/height."""
@@ -174,8 +178,8 @@ class Modal(Component):
                         "class": "fixed inset-0 z-10 w-screen overflow-y-auto",
                         "role": "dialog",
                         "aria-modal": "true",
-                        "aria-labelledby": "modal-title",
-                        "aria-describedby": "modal-description",
+                        "aria-labelledby": f"modal-title-{self.id_suffix}",
+                        "aria-describedby": f"modal-description-{self.id_suffix}",
                     },
                     el(
                         "div",
@@ -210,7 +214,7 @@ class Modal(Component):
                                             "h3",
                                             {
                                                 "class": "text-base font-semibold leading-6 text-foreground",
-                                                "id": "modal-title",
+                                                "id": f"modal-title-{self.id_suffix}",
                                             },
                                             self.title,
                                         ),
@@ -222,7 +226,7 @@ class Modal(Component):
                                 "div",
                                 {
                                     "class": "relative mt-2 flex-1 overflow-y-auto px-4 sm:px-6",
-                                    "id": "modal-description",
+                                    "id": f"modal-description-{self.id_suffix}",
                                 },
                                 *children_html,
                             ),
