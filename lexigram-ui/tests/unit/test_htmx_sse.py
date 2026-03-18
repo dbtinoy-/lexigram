@@ -184,3 +184,12 @@ class TestSSEFormatCompliance:
         assert lines[1] == "event: update"
         assert lines[2] == "retry: 1000"
         assert lines[3] == "data: payload"
+
+
+def test_sse_region_is_live() -> None:
+    """SSE stream regions must announce updates (aria-live)."""
+    from lexigram.ui.htmx.sse import SSE
+
+    html = str(SSE(url="/events", target="#main"))
+    assert 'aria-live="polite"' in html
+    assert 'role="status"' in html

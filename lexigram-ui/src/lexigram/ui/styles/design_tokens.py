@@ -31,11 +31,11 @@ SHADCN_DEFAULT_COLORS: dict[str, str] = {
     "--chart-3": "oklch(0.398 0.07 227.392)",
     "--chart-4": "oklch(0.828 0.189 84.429)",
     "--chart-5": "oklch(0.769 0.188 70.08)",
-    "--color-success": "oklch(0.627 0.194 149.214)",
+    "--color-success": "oklch(0.52 0.18 149.214)",
     "--color-success-foreground": "oklch(1 0 0)",
     "--color-warning": "oklch(0.795 0.184 86.047)",
     "--color-warning-foreground": "oklch(0.145 0 0)",
-    "--color-info": "oklch(0.585 0.233 277.117)",
+    "--color-info": "oklch(0.56 0.23 277.117)",
     "--color-info-foreground": "oklch(1 0 0)",
     "--color-gray-50": "oklch(0.985 0 0)",
     "--color-gray-100": "oklch(0.967 0 0)",
@@ -76,11 +76,11 @@ SHADCN_DARK_COLORS: dict[str, str] = {
     "--chart-3": "oklch(0.398 0.07 227.392)",
     "--chart-4": "oklch(0.828 0.189 84.429)",
     "--chart-5": "oklch(0.769 0.188 70.08)",
-    "--color-success": "oklch(0.627 0.194 149.214)",
+    "--color-success": "oklch(0.52 0.18 149.214)",
     "--color-success-foreground": "oklch(1 0 0)",
     "--color-warning": "oklch(0.795 0.184 86.047)",
     "--color-warning-foreground": "oklch(0.145 0 0)",
-    "--color-info": "oklch(0.585 0.233 277.117)",
+    "--color-info": "oklch(0.56 0.23 277.117)",
     "--color-info-foreground": "oklch(1 0 0)",
     "--color-gray-50": "oklch(0.145 0 0)",
     "--color-gray-100": "oklch(0.205 0 0)",
@@ -168,11 +168,13 @@ def render_all_tokens(
     lines = [":root {"]
     for var, value in {**c, **SPACING_TOKENS, **TYPOGRAPHY_TOKENS, **SHADOW_TOKENS, **ANIMATION_TOKENS}.items():
         lines.append(f"  {var}: {value};")
+    lines.append("  color-scheme: light;")
     lines.append("}")
     lines.append("")
     lines.append(".dark {")
     for var, value in dc.items():
         lines.append(f"  {var}: {value};")
+    lines.append("  color-scheme: dark;")
     lines.append("}")
     return "\n".join(lines)
 

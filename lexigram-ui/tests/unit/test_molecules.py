@@ -281,3 +281,19 @@ class TestFormFieldA11y:
 
         html = str(FormField(TextInput(name="email"), label="Email", error="Bad email"))
         assert 'role="alert"' in html
+
+
+class TestToastA11y:
+    def test_toast_role_status(self) -> None:
+        from lexigram.ui.molecules.toast import InlineToast
+
+        html = str(InlineToast("Saved"))
+        assert 'role="status"' in html
+        assert 'aria-live="polite"' in html
+
+    def test_toast_error_role_alert(self) -> None:
+        from lexigram.ui.molecules.toast import InlineToast
+
+        html = str(InlineToast("Failed", toast_type="error"))
+        assert 'role="alert"' in html
+        assert 'aria-live="assertive"' in html

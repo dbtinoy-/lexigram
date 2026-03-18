@@ -175,6 +175,8 @@ class SSE(Component):
                 "sse-connect": self.url,
                 "sse-swap": self.event_type,
                 "hx-target": self.target,
+                "role": "status",
+                "aria-live": "polite",
             },
             *self.children,
             reconnect_script,

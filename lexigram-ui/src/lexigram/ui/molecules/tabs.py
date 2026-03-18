@@ -62,7 +62,7 @@ class Tabs(Component):
                     ],
                     id="tabs",
                     name="tabs",
-                    class_="block w-full rounded-md border-border focus:border-ring focus-visible:ring-ring bg-background text-foreground",
+                    class_="block w-full h-10 rounded-md border-border focus:border-ring focus-visible:ring-ring bg-background text-foreground",
                     **(
                         {"x_model": "activeTab"}
                         if self.client_side
@@ -84,13 +84,9 @@ class Tabs(Component):
                                 label,
                                 class_="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 "
                                 + (
-                                    f":class=\"activeTab === '{value}' ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'\""
-                                    if self.client_side
-                                    else (
-                                        "bg-background text-foreground shadow"
-                                        if value == self.active_id
-                                        else "text-muted-foreground hover:text-foreground"
-                                    )
+                                    "bg-background text-foreground shadow"
+                                    if value == self.active_id
+                                    else "text-muted-foreground hover:text-foreground"
                                 ),
                                 aria_current=(
                                     "page" if value == self.active_id else None
@@ -109,6 +105,7 @@ class Tabs(Component):
                                     else {
                                         "type": "button",
                                         "@click": f"activeTab = '{value}'",
+                                        "x_bind__class": f"activeTab === '{value}' ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'",
                                         "role": "tab",
                                         "aria_selected": "true" if value == self.active_id else "false",
                                         "aria_controls": f"tabpanel-{value}",
