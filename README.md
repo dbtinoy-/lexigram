@@ -47,15 +47,16 @@ TRUST   di · contracts · modules · async
 
 ## what's in the box
 
+this repo ships the main ecosystem — the core, the backend, the contracts:
+
 - **`lexigram`** — the core, the container, the boot lifecycle
 - **`lexigram-web`** — async routing and controllers
 - **`lexigram-sql`** — sqlalchemy, already wired
 - **`lexigram-cache`** — redis and in-memory, one contract
-- **`lexigram-ai`** — the entry-point for everything below
-- **`lexigram-ai-agents`** — agents with tools, react and beyond
-- **`lexigram-ai-llm`** — provider-agnostic llm clients
-- **`lexigram-ai-rag`** — retrieval pipelines with chunkers and embedders
-- **`lexigram-ai-mcp`** — model-context-protocol clients
+- **`lexigram-vector`** / **`lexigram-graph`** — storage for the ai layer
+- plus auth, events, queue, tasks, http, resilience, storage, search, notification, monitor, webhook, tenancy, features, audit, graphql, nosql, workflow, and testing
+
+the AI family — agents, llms, rag, memory, skills, mcp, session, workers, observability, feedback, and the guard / governance / evaluation / prompt / relay suite — lives in [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental). multimedia (tts, music, image, video, beat, interpolate, upscale) lives in [lexigram-multimedia-experimental](https://github.com/dbtinoy-/lexigram-multimedia-experimental). same modules, same container, same rules — their own repos and cadence.
 
 the full list — including notification, queue, events, auth, observability, and more — lives in the [docs ecosystem](https://docs.lexigram.dev/ecosystem/).
 
@@ -118,6 +119,8 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 ## pointers
 
 - full docs → [docs.lexigram.dev](https://docs.lexigram.dev)
+- AI subsystems (experimental) → [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental)
+- multimedia subsystems (experimental) → [lexigram-multimedia-experimental](https://github.com/dbtinoy-/lexigram-multimedia-experimental)
 - skills for AI coding agents → [lexigram-skills](https://github.com/dbtinoy-/lexigram-framework-skills)
 - contributing → [CONTRIBUTING.md](./CONTRIBUTING.md)
 - security → [SECURITY.md](./SECURITY.md)
