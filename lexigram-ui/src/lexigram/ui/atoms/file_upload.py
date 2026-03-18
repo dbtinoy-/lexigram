@@ -147,6 +147,7 @@ class FileUpload(Component):
                 "p",
                 self.error,
                 id=f"{self.name}-error",
+                role="alert",
                 class_="mt-2 text-sm text-destructive",
             )
 

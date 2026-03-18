@@ -69,6 +69,9 @@ class RichEditor(Component):
             "class_": editor_classes,
             "disabled": "" if self.disabled else None,
             "style": f"min-height: {self.min_height}px",
+            "role": "textbox",
+            "aria-multiline": "true",
+            "aria-labelledby": f"{self.name}-label" if self.label else None,
         }
         if self.toolbar is not None:
             editor_kwargs["data-toolbar"] = self.toolbar
@@ -83,6 +86,7 @@ class RichEditor(Component):
                     "label",
                     self.label,
                     for_=f"{self.name}_input",
+                    id=f"{self.name}-label",
                     class_="block text-sm font-medium text-foreground opacity-70 mb-1",
                 ),
                 content,

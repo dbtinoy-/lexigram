@@ -648,3 +648,12 @@ class TestProgressTooltipAria:
     def test_tooltip_aria(self) -> None:
         html = str(Tooltip("More info"))
         assert 'role="tooltip"' in html
+
+
+class TestFileUploadA11y:
+    def test_file_upload_has_label_and_hint(self) -> None:
+        from lexigram.ui.atoms.file_upload import FileUpload
+
+        html = str(FileUpload(name="doc", label="Document"))
+        assert 'for="' in html
+        assert 'type="file"' in html
