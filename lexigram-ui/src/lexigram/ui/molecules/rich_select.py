@@ -182,6 +182,10 @@ class RichSelect(Component):
         if selected_cls:
             # Inject raw Alpine binding alongside class_ using dict child pattern
             attrs[":class"] = f"isSelected('{vs}') ? '{_SELECTED_OPTION_CLS}' : ''"
+        if self.multi:
+            attrs[":aria-selected"] = f"isSelected('{vs}')"
+        else:
+            attrs[":aria-selected"] = f"isSelected('{vs}') ? 'true' : 'false'"
         if show_expr:
             attrs["x-show"] = show_expr
 
@@ -214,8 +218,13 @@ class RichSelect(Component):
             **{
                 "@click": "open = !open",
                 "class_": _TRIGGER_CLS,
+                "role": "combobox",
                 "aria-haspopup": "listbox",
+                "aria-controls": options_list_id,
                 ":aria-expanded": "open",
+                "aria-label": self.label,
+                "@keydown.down.prevent": "open = true; $nextTick(() => $el.querySelector('[role=option]')?.focus())",
+                "@keydown.enter.prevent": "open = true",
             },
         )
 

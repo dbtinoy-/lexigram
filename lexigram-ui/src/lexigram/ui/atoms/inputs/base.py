@@ -137,6 +137,8 @@ class AbstractInput(ABC, Component):
         return el(
             "p",
             self.error,
+            id=f"{self.input_id}-error",
+            role="alert",
             class_=self.ERROR_MSG_CLASSES,
         )
 
