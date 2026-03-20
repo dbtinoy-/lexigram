@@ -73,9 +73,7 @@ class InlineToast(Component):
         bg_color = get_toast_classes(self.type)
         icon_name = get_semantic_icon(self.type)
         text_color = (
-            "text-warning-foreground"
-            if self.type in ("warning",)
-            else "text-white"
+            "text-warning-foreground" if self.type in ("warning",) else "text-white"
         )
 
         inner: list[Any] = [
