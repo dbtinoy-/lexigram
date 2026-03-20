@@ -2,6 +2,8 @@
 
 Async-first DI/IoC framework for Python — core package.
 
+![Lexigram demo](docs/gifs/hero/lexigram-hero.gif)
+
 ---
 
 ## Overview
