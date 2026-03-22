@@ -11,21 +11,20 @@ SEMANTIC_CLASSES: dict[str, str] = {
     "default": "bg-muted text-muted-foreground",
     "gray": "bg-muted text-muted-foreground",
     "primary": "bg-primary text-primary-foreground",
-    "success": "bg-success text-success-foreground",
-    "warning": "bg-warning text-warning-foreground",
-    "danger": "bg-destructive text-destructive-foreground",
-    "error": "bg-destructive text-destructive-foreground",
-    "info": "bg-info text-info-foreground",
-    "red": "bg-destructive text-destructive-foreground",
-    "yellow": "bg-warning text-warning-foreground",
-    "green": "bg-success text-success-foreground",
-    "blue": "bg-info text-info-foreground",
+    "success": "bg-success text-success-foreground dark:bg-success/20 dark:text-success",
+    "warning": "bg-warning text-warning-foreground dark:bg-warning/20 dark:text-warning",
+    "danger": "bg-destructive text-destructive-foreground dark:bg-destructive/25 dark:text-destructive",
+    "error": "bg-destructive text-destructive-foreground dark:bg-destructive/25 dark:text-destructive",
+    "info": "bg-info text-info-foreground dark:bg-info/20 dark:text-info",
+    "red": "bg-destructive text-destructive-foreground dark:bg-destructive/25 dark:text-destructive",
+    "yellow": "bg-warning text-warning-foreground dark:bg-warning/20 dark:text-warning",
+    "green": "bg-success text-success-foreground dark:bg-success/20 dark:text-success",
+    "blue": "bg-info text-info-foreground dark:bg-info/20 dark:text-info",
     "indigo": "bg-primary text-primary-foreground",
     "purple": "bg-primary text-primary-foreground",
     "pink": "bg-primary text-primary-foreground",
-    "orange": "bg-warning text-warning-foreground",
+    "orange": "bg-warning text-warning-foreground dark:bg-warning/20 dark:text-warning",
 }
-
 
 
 SEMANTIC_ICONS: dict[str, str] = {
@@ -38,12 +37,12 @@ SEMANTIC_ICONS: dict[str, str] = {
 }
 
 TOAST_CLASSES: dict[str, str] = {
-    "info": "bg-info",
-    "success": "bg-success",
-    "warning": "bg-warning",
-    "error": "bg-destructive",
-    "danger": "bg-destructive",
-    "default": "bg-primary",
+    "info": "bg-info/20 text-info border border-info/30",
+    "success": "bg-success/20 text-success border border-success/30",
+    "warning": "bg-warning/20 text-warning border border-warning/30",
+    "error": "bg-destructive/25 text-destructive border border-destructive/30",
+    "danger": "bg-destructive/25 text-destructive border border-destructive/30",
+    "default": "bg-primary text-primary-foreground",
 }
 
 ALERT_CLASSES: dict[str, str] = {

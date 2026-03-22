@@ -72,9 +72,6 @@ class InlineToast(Component):
 
         bg_color = get_toast_classes(self.type)
         icon_name = get_semantic_icon(self.type)
-        text_color = (
-            "text-warning-foreground" if self.type in ("warning",) else "text-white"
-        )
 
         inner: list[Any] = [
             el(
@@ -87,7 +84,7 @@ class InlineToast(Component):
 
         if self.action_label:
             action_attrs: dict[str, Any] = {
-                "class_": "ml-4 text-sm font-semibold underline underline-offset-2 hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 rounded",
+                "class_": "ml-4 text-sm font-semibold underline underline-offset-2 hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 rounded",
             }
             if self.action_url:
                 action_el = el(
@@ -117,7 +114,7 @@ class InlineToast(Component):
             "div",
             *inner,
             role="alert" if is_error else "status",
-            class_=f"fixed bottom-4 right-4 {bg_color} {text_color} px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform flex items-center max-w-sm",
+            class_=f"fixed bottom-4 right-4 {bg_color} px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform flex items-center max-w-sm",
             **{
                 "x-data": "{ show: true }",
                 "x-show": "show",

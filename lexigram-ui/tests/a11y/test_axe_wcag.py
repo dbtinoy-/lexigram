@@ -18,10 +18,6 @@ GALLERY_NAMES = [
     "TextInput", "Tooltip",
 ]
 
-# Components known to fail interactive checks until hardened (Phase 3).
-# This list MUST be empty by the end of Phase 3.
-KNOWN_FAILURES: set[str] = set()
-
 
 def _scan_violations(page: object, html: str) -> list[dict]:
     """Load axe-core and run a WCAG-tagged scan, returning violations."""
@@ -38,8 +34,6 @@ def _scan_violations(page: object, html: str) -> list[dict]:
 @pytest.mark.parametrize("name", GALLERY_NAMES)
 def test_axe_wcag_light(page: object, gallery: dict[str, str], name: str) -> None:
     """No WCAG 2.2 AA violations in light theme."""
-    if name in KNOWN_FAILURES:
-        pytest.skip("hardened in Phase 3")
     violations = _scan_violations(page, gallery[name])
     assert not violations, (
         f"{name}: {len(violations)} WCAG AA violations: "
@@ -47,13 +41,7 @@ def test_axe_wcag_light(page: object, gallery: dict[str, str], name: str) -> Non
     )
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        "BarChart", "Button", "Card", "Form", "LineChart", "Modal", "PieChart",
-        "Select", "SlideOver", "Sparkline", "Switch", "Tabs",
-    ],
-)
+@pytest.mark.parametrize("name", GALLERY_NAMES)
 def test_axe_wcag_dark(page: object, gallery: dict[str, str], name: str) -> None:
     """No WCAG violations in dark theme (contrast)."""
     html = gallery[name].replace(

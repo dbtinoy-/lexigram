@@ -37,8 +37,10 @@ def shadcn_css(
     if primary:
         colors["--primary"] = primary
         colors["--ring"] = primary
+        colors["--primary-foreground"] = "oklch(1 0 0)"
         dark_colors["--primary"] = primary
         dark_colors["--ring"] = primary
+        dark_colors["--primary-foreground"] = "oklch(1 0 0)"
     if background:
         colors["--background"] = background
         dark_colors["--background"] = background
