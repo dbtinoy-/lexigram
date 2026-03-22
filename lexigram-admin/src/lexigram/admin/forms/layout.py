@@ -49,7 +49,7 @@ class FieldNode(AbstractLayoutNode):
             return el(
                 "div",
                 f"Error: Field '{self.field_name}' not found",
-                class_="text-red-500",
+                class_="text-destructive",
             )
 
 
@@ -72,7 +72,7 @@ class Section(AbstractLayoutNode):
                 el(
                     "h3",
                     self.title,
-                    class_="text-lg font-medium text-gray-900 dark:text-gray-100",
+                    class_="text-lg font-medium text-foreground",
                 ),
             )
         if self.description:
@@ -80,7 +80,7 @@ class Section(AbstractLayoutNode):
                 el(
                     "p",
                     self.description,
-                    class_="mt-1 text-sm text-gray-500 dark:text-gray-400",
+                    class_="mt-1 text-sm text-muted-foreground",
                 ),
             )
 
@@ -88,7 +88,7 @@ class Section(AbstractLayoutNode):
             el(
                 "div",
                 *header,
-                class_="mb-4 pb-2 border-b border-gray-100 dark:border-gray-700",
+                class_="mb-4 pb-2 border-b border-border",
             )
             if header
             else ""
@@ -102,7 +102,7 @@ class Section(AbstractLayoutNode):
                 *content,
                 class_=f"grid grid-cols-1 md:grid-cols-{self.columns} gap-4",
             ),
-            class_="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700",
+            class_="bg-muted dark:bg-card/50 p-4 rounded-lg border border-border",
         )
         if self.visible_when:
             return el(

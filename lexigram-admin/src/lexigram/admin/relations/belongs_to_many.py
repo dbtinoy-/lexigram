@@ -89,20 +89,20 @@ class BelongsToManyRelationManager(RelationManager):
             checked = "checked" if is_attached else ""
             row = f"""<tr class="{"bg-primary-50 dark:bg-primary-900/20" if is_attached else ""}">
                 <td class="px-4 py-2">
-                    <input type="checkbox" class="belongs-to-many-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    <input type="checkbox" class="belongs-to-many-checkbox rounded border-border text-primary-600 focus:ring-primary-500"
                            data-related-id="{item_id}" {checked}
                            hx-post="/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/toggle"
                            hx-vals='{{"related_id": "{item_id}"}}'
                            hx-target="closest tr" hx-swap="outerHTML" />
                 </td>
-                <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{label}</td>
+                <td class="px-4 py-2 text-sm text-foreground">{label}</td>
                 {pivot_cells}
-                <td class="px-4 py-2 text-sm text-gray-500">{item_id}</td>
+                <td class="px-4 py-2 text-sm text-muted-foreground">{item_id}</td>
             </tr>"""
             rows_html += row
 
         header = f"""<div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">{rel_name.replace("_", " ").title()}</h3>
+            <h3 class="text-lg font-medium text-foreground">{rel_name.replace("_", " ").title()}</h3>
             <div class="flex gap-2">
                 <input type="text" class="px-3 py-1.5 text-sm border rounded-lg"
                        placeholder="Search..." id="search-{rel_name}"
@@ -112,16 +112,16 @@ class BelongsToManyRelationManager(RelationManager):
             </div>
         </div>"""
 
-        table = f"""<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-800">
+        table = f"""<table class="min-w-full divide-y divide-border">
+            <thead class="bg-muted dark:bg-card">
                 <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Attach</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Record</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Attach</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Record</th>
                     {self._render_pivot_headers()}
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">ID</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">{rows_html}</tbody>
+            <tbody class="divide-y divide-border">{rows_html}</tbody>
         </table>"""
 
         return f"""<div class="relation-panel p-4" id="relation-panel-{rel_name}">
@@ -138,7 +138,7 @@ class BelongsToManyRelationManager(RelationManager):
         if not self.pivot_columns:
             return ""
         return "".join(
-            f'<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{c.replace("_", " ").title()}</th>'
+            f'<th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">{c.replace("_", " ").title()}</th>'
             for c in self.pivot_columns
         )
 
@@ -232,14 +232,14 @@ class BelongsToManyRelationManager(RelationManager):
 
         row = f"""<tr class="{"bg-primary-50 dark:bg-primary-900/20" if is_attached else ""}">
             <td class="px-4 py-2">
-                <input type="checkbox" class="belongs-to-many-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                <input type="checkbox" class="belongs-to-many-checkbox rounded border-border text-primary-600 focus:ring-primary-500"
                        data-related-id="{related_id}" {checked}
                        hx-post="/admin/{resource_name}/{self.parent_id}/relations/{self.get_relationship_name()}/toggle"
                        hx-vals='{{"related_id": "{related_id}"}}'
                        hx-target="closest tr" hx-swap="outerHTML" />
             </td>
-            <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{label}</td>
+            <td class="px-4 py-2 text-sm text-foreground">{label}</td>
             {pivot_cells}
-            <td class="px-4 py-2 text-sm text-gray-500">{related_id}</td>
+            <td class="px-4 py-2 text-sm text-muted-foreground">{related_id}</td>
         </tr>"""
         return HTMLResponse(row)

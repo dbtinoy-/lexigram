@@ -48,7 +48,13 @@ class Dropdown(Component):
                 origin_cls = "origin-bottom-left left-0"
 
         menu_items = [
-            el("div", item, {"role": "menuitem", "tabindex": "-1", "class": "cursor-pointer"})
+            el(
+                "div",
+                item,
+                role="menuitem",
+                tabindex="-1",
+                class_="cursor-pointer",
+            )
             for item in self.items
         ]
 
@@ -58,7 +64,9 @@ class Dropdown(Component):
                 "x-data": "{ open: false, focusedIndex: -1 }",
                 "class": "relative inline-block text-left w-full",
                 "x-on:keydown.escape.prevent": "open = false",
-                "x-on:keydown.down.prevent": "focusedIndex = Math.min(focusedIndex + 1, " + str(len(self.items) - 1) + "); $nextTick(() => $el.querySelector('[role=menuitem]:nth-child(' + (focusedIndex + 1) + ')')?.focus())",
+                "x-on:keydown.down.prevent": "focusedIndex = Math.min(focusedIndex + 1, "
+                + str(len(self.items) - 1)
+                + "); $nextTick(() => $el.querySelector('[role=menuitem]:nth-child(' + (focusedIndex + 1) + ')')?.focus())",
                 "x-on:keydown.up.prevent": "focusedIndex = Math.max(focusedIndex - 1, 0); $nextTick(() => $el.querySelector('[role=menuitem]:nth-child(' + (focusedIndex + 1) + ')')?.focus())",
             },
             # Trigger

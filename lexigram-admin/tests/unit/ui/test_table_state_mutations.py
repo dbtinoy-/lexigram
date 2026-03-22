@@ -17,7 +17,7 @@ Tests the new immutable mutation methods added to TableState:
 
 import pytest
 
-from lexigram.admin.ui.state import TableState
+from lexigram.ui.state import TableState
 
 
 class TestTableStateMutationHelpers:

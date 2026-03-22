@@ -35,9 +35,7 @@ class ErrorState(Component):
                 "div",
                 el(
                     "div",
-                    get_icon(
-                        "alert-circle", class_name="w-16 h-16 text-destructive"
-                    ),
+                    get_icon("alert-circle", class_name="w-16 h-16 text-destructive"),
                     class_="mb-4",
                     aria_hidden="true",
                 ),

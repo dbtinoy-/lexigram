@@ -26,7 +26,7 @@ class StateDebugPanel(Component):
         return el(
             "div",
             {
-                "class": "state-debug-panel p-4 bg-gray-900 text-white rounded-lg shadow-xl font-mono text-xs border border-gray-700",
+                "class": "state-debug-panel p-4 bg-background text-white rounded-lg shadow-xl font-mono text-xs border border-border",
             },
             el(
                 "h3",
@@ -39,16 +39,16 @@ class StateDebugPanel(Component):
                 [
                     el(
                         "div",
-                        {"class": "flex justify-between border-b border-gray-800 py-1"},
+                        {"class": "flex justify-between border-b border-border py-1"},
                         el("span", {"class": "text-green-400"}, k),
-                        el("span", {"class": "text-gray-300"}, str(v)),
+                        el("span", {"class": "text-foreground"}, str(v)),
                     )
                     for k, v in items
                 ]
                 if not self.session.is_empty
                 else el(
                     "p",
-                    {"class": "text-gray-500 italic"},
+                    {"class": "text-muted-foreground italic"},
                     "No state data in current session.",
                 ),
             ),

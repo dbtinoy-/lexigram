@@ -1,7 +1,7 @@
 """Data table component type definitions.
 
 Canonical definitions:
-  TableState       → lexigram.admin.ui.state
+  TableState       → lexigram.ui.state
   TableConfiguration → lexigram.admin.resources.config
 """
 

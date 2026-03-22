@@ -46,7 +46,7 @@ class CommandPalette(Component):
             # Render icon to string
             icon_node = get_icon(
                 c.get("icon", ""),
-                class_name="w-6 h-6 text-gray-500 group-hover:text-white transition-colors",
+                class_name="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors",
             )
             c["icon_html"] = str(icon_node)
             processed_commands.append(c)
@@ -87,7 +87,7 @@ class CommandPalette(Component):
                     "x-transition:leave": "transition-opacity ease-in duration-200",
                     "x-transition:leave-start": "opacity-100",
                     "x-transition:leave-end": "opacity-0",
-                    "class": "fixed inset-0 bg-gray-600/60 backdrop-blur-sm transition-opacity",
+                    "class": "fixed inset-0 bg-muted/60 backdrop-blur-sm transition-opacity",
                     "x-on:click": "close()",
                 },
             ),
@@ -102,20 +102,20 @@ class CommandPalette(Component):
                     "x-transition:leave": "transition-all ease-in duration-200",
                     "x-transition:leave-start": "opacity-100 scale-100",
                     "x-transition:leave-end": "opacity-0 scale-95",
-                    "class": "mx-auto max-w-2xl transform divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden rounded-2xl bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black ring-opacity-5 transition-all",
+                    "class": "mx-auto max-w-2xl transform divide-y divide-border overflow-hidden rounded-2xl bg-background shadow-2xl ring-1 ring-border transition-all",
                 },
                 # Search Input
                 el(
                     "div",
                     el(
                         "div",
-                        get_icon("search", class_name="h-5 w-5 text-gray-400"),
+                        get_icon("search", class_name="h-5 w-5 text-muted-foreground"),
                         class_="pointer-events-none absolute left-4 top-3.5 h-5 w-5",
                     ),
                     el(
                         "input",
                         type="text",
-                        class_="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-0 sm:text-sm",
+                        class_="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-foreground placeholder:text-muted-foreground focus:ring-0 sm:text-sm",
                         placeholder="Search commands or navigation...",
                         x_model="search",
                         x_on_keydown_down="next()",
@@ -142,7 +142,7 @@ class CommandPalette(Component):
                             "li",
                             {
                                 "class": "group flex cursor-default select-none items-center rounded-xl p-3",
-                                ":class": "selectedIndex === index ? 'bg-primary-600 text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'",
+                                ":class": "selectedIndex === index ? 'bg-primary-600 text-white' : 'text-foreground hover:bg-muted dark:hover:bg-card'",
                                 "id": "option-1",
                                 "role": "option",
                                 "tabindex": "-1",
@@ -154,7 +154,7 @@ class CommandPalette(Component):
                                 "div",
                                 {
                                     "class": "flex h-10 w-10 flex-none items-center justify-center rounded-lg",
-                                    ":class": "selectedIndex === index ? 'bg-primary-500' : 'bg-gray-100 dark:bg-gray-800'",
+                                    ":class": "selectedIndex === index ? 'bg-primary-500' : 'bg-muted dark:bg-card'",
                                 },
                                 el(
                                     "div",
@@ -183,7 +183,7 @@ class CommandPalette(Component):
                                     "x-show": "command.shortcut",
                                     "x-text": "command.shortcut",
                                     "class": "ml-3 flex-none text-xs font-semibold",
-                                    ":class": "selectedIndex === index ? 'text-primary-100' : 'text-gray-400'",
+                                    ":class": "selectedIndex === index ? 'text-primary-100' : 'text-muted-foreground'",
                                 },
                             ),
                         ),
@@ -195,7 +195,7 @@ class CommandPalette(Component):
                     el(
                         "p",
                         "No results found for that search.",
-                        class_="p-10 text-center text-sm text-gray-500",
+                        class_="p-10 text-center text-sm text-muted-foreground",
                     ),
                     x_show="search !== '' && filteredCommands.length === 0",
                 ),
@@ -207,9 +207,13 @@ class CommandPalette(Component):
                         el(
                             "span",
                             "esc",
-                            class_="rounded-md border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500",
+                            class_="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground",
                         ),
-                        el("span", " to close", class_="ml-1 text-xs text-gray-500"),
+                        el(
+                            "span",
+                            " to close",
+                            class_="ml-1 text-xs text-muted-foreground",
+                        ),
                         class_="flex items-center",
                     ),
                     el(
@@ -217,12 +221,16 @@ class CommandPalette(Component):
                         el(
                             "span",
                             "enter",
-                            class_="rounded-md border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500",
+                            class_="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground",
                         ),
-                        el("span", " to select", class_="ml-1 text-xs text-gray-500"),
+                        el(
+                            "span",
+                            " to select",
+                            class_="ml-1 text-xs text-muted-foreground",
+                        ),
                         class_="flex items-center ml-4",
                     ),
-                    class_="flex flex-none items-center justify-end bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5",
+                    class_="flex flex-none items-center justify-end bg-muted dark:bg-card/50 px-4 py-2.5",
                 ),
             ),
             # Inline script to register Alpine data

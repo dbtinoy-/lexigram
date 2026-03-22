@@ -4,7 +4,6 @@ from lexigram.ui.styles.design_tokens import (
     SHADCN_DARK_COLORS,
     SHADCN_DEFAULT_COLORS,
     render_all_tokens,
-    render_utility_classes,
 )
 
 
@@ -29,7 +28,7 @@ def shadcn_css(
         info: Override info color.
 
     Returns:
-        Complete CSS string with :root and .dark variable blocks + utility classes.
+        Complete CSS string with :root and .dark variable blocks.
     """
     colors = dict(SHADCN_DEFAULT_COLORS)
     dark_colors = dict(SHADCN_DARK_COLORS)
@@ -63,8 +62,5 @@ def shadcn_css(
     parts = [
         "/* Lexigram UI — ShadCN-compatible design tokens */",
         render_all_tokens(colors, dark_colors),
-        "",
-        "/* Utility classes */",
-        render_utility_classes(),
     ]
     return "\n".join(parts)

@@ -112,7 +112,7 @@ class RatingField(SchemaField[int]):
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
         stars = "\u2605" * value + "\u2606" * (5 - value)
-        return Element("span", stars, class_="text-yellow-500")
+        return Element("span", stars, class_="text-warning")
 
     def from_form(self, raw: str | None) -> Result[int | None, FieldError]:
         if raw is None:
@@ -211,12 +211,12 @@ class KeyValueField(SchemaField[dict[str, str]]):
                 Element(
                     "td",
                     k,
-                    class_="font-medium text-gray-700 dark:text-gray-300 pr-4 py-1 text-sm",
+                    class_="font-medium text-foreground pr-4 py-1 text-sm",
                 ),
                 Element(
                     "td",
                     v,
-                    class_="text-gray-600 dark:text-gray-400 py-1 text-sm",
+                    class_="text-muted-foreground py-1 text-sm",
                 ),
             )
             for k, v in value.items()

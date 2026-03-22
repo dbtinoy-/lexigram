@@ -6,12 +6,11 @@ import contextlib
 import datetime
 from typing import Any
 
-from lexigram.admin.ui.columns import DateColumn
 from lexigram.admin.ui.organisms.table.views.tabular import (
     AbstractDataView,
     TabularView,
 )
-from lexigram.ui import el
+from lexigram.ui import DateColumn, el
 
 
 def _get_attr(item: Any, key: str, default: Any = None) -> Any:
@@ -99,7 +98,7 @@ class CalendarView(AbstractDataView):
                 "div",
                 d,
                 role="columnheader",
-                class_="text-center font-medium text-gray-500 py-2",
+                class_="text-center font-medium text-muted-foreground py-2",
             )
             for d in ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         ]
@@ -114,7 +113,7 @@ class CalendarView(AbstractDataView):
                             "div",
                             "",
                             role="gridcell",
-                            class_="h-32 bg-gray-50/50 border border-gray-100",
+                            class_="h-32 bg-muted/50 border border-border",
                         ),
                     )
                     continue
@@ -140,7 +139,7 @@ class CalendarView(AbstractDataView):
                         el(
                             "div",
                             f"+{len(day_events) - 3} more",
-                            class_="text-xs text-gray-400 pl-1",
+                            class_="text-xs text-muted-foreground pl-1",
                         ),
                     )
 
@@ -150,11 +149,11 @@ class CalendarView(AbstractDataView):
                         "div",
                         str(day),
                         role="presentation",
-                        class_="text-right text-sm text-gray-700 font-medium mb-1",
+                        class_="text-right text-sm text-foreground font-medium mb-1",
                     ),
                     *event_els,
                     role="gridcell",
-                    class_="h-32 bg-white border border-gray-100 p-2 hover:bg-gray-50 transition-colors",
+                    class_="h-32 bg-card border border-border p-2 hover:bg-muted transition-colors",
                 )
                 days.append(cell)
             weeks.append(el("div", *days, role="row", class_="grid grid-cols-7"))
@@ -172,7 +171,7 @@ class CalendarView(AbstractDataView):
                 "div",
                 *days_header,
                 role="row",
-                class_="grid grid-cols-7 border-b border-gray-200 mb-2",
+                class_="grid grid-cols-7 border-b border-border mb-2",
             ),
             el(
                 "div",
@@ -180,5 +179,5 @@ class CalendarView(AbstractDataView):
                 role="grid",
                 aria_label=f"{month_name} {curr_year} calendar",
             ),
-            class_="bg-white p-4 rounded-lg shadow-sm border border-gray-200",
+            class_="bg-card p-4 rounded-lg shadow-sm border border-border",
         )

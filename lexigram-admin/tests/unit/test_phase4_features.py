@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # 4.1 Activity logging — ResourceController._emit_audit
 # ---------------------------------------------------------------------------
@@ -98,14 +97,14 @@ class TestActivityLogging:
 
 class TestInlineEditCell:
     def test_renders_display_value(self) -> None:
-        from lexigram.admin.ui.molecules.inline_edit_cell import InlineEditCell
+        from lexigram.ui import InlineEditCell
 
         cell = InlineEditCell(value="Alice", resource_url="/admin/users/1", field_name="name")
         html = str(cell.render())
         assert "Alice" in html
 
     def test_renders_htmx_patch_attribute(self) -> None:
-        from lexigram.admin.ui.molecules.inline_edit_cell import InlineEditCell
+        from lexigram.ui import InlineEditCell
 
         cell = InlineEditCell(value="Alice", resource_url="/admin/users/1", field_name="name")
         html = str(cell.render())
@@ -113,14 +112,14 @@ class TestInlineEditCell:
         assert "/admin/users/1" in html
 
     def test_renders_field_name_in_input(self) -> None:
-        from lexigram.admin.ui.molecules.inline_edit_cell import InlineEditCell
+        from lexigram.ui import InlineEditCell
 
         cell = InlineEditCell(value="42", resource_url="/admin/users/42", field_name="age", cell_type="number")
         html = str(cell.render())
         assert 'name="age"' in html
 
     def test_non_editable_renders_plain_text(self) -> None:
-        from lexigram.admin.ui.molecules.inline_edit_cell import InlineEditCell
+        from lexigram.ui import InlineEditCell
 
         cell = InlineEditCell(value="Alice", resource_url="/admin/users/1", field_name="name", editable=False)
         html = str(cell.render())
@@ -129,7 +128,7 @@ class TestInlineEditCell:
         assert "<input" not in html
 
     def test_renders_select_with_options(self) -> None:
-        from lexigram.admin.ui.molecules.inline_edit_cell import InlineEditCell
+        from lexigram.ui import InlineEditCell
 
         cell = InlineEditCell(
             value="active",
@@ -144,7 +143,7 @@ class TestInlineEditCell:
         assert "Inactive" in html
 
     def test_renders_textarea_for_textarea_type(self) -> None:
-        from lexigram.admin.ui.molecules.inline_edit_cell import InlineEditCell
+        from lexigram.ui import InlineEditCell
 
         cell = InlineEditCell(value="Long text", resource_url="/admin/posts/1", field_name="body", cell_type="textarea")
         html = str(cell.render())

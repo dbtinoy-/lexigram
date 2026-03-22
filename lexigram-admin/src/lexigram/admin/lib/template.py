@@ -46,77 +46,29 @@ def render_login_page(
     context = StandaloneLayoutContext(
         page_title="Login",
         flash_messages=flash_messages,
-        extra_head="""
-        <style>
-            .login-container {
-                background: white;
-                padding: 2rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                width: 100%;
-                max-width: 400px;
-            }
-            .dark .login-container {
-                background: #1f2937;
-            }
-            .login-header {
-                text-align: center;
-                margin-bottom: 1.5rem;
-            }
-            .form-group {
-                margin-bottom: 1rem;
-            }
-            .form-group label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: 500;
-            }
-            .form-group input {
-                width: 100%;
-                padding: 0.75rem;
-                border: 1px solid #d1d5db;
-                border-radius: 0.375rem;
-            }
-            .dark .form-group input {
-                background: #374151;
-                border-color: #4b5563;
-                color: white;
-            }
-            .submit-btn {
-                width: 100%;
-                padding: 0.75rem;
-                background: #3b82f6;
-                color: white;
-                border: none;
-                border-radius: 0.375rem;
-                font-weight: 500;
-                cursor: pointer;
-            }
-            .submit-btn:hover {
-                background: #2563eb;
-            }
-        </style>
-        """,
     )
 
     content = f"""
-    <div class="login-container">
-        <div class="login-header">
-            <h1>{escape(site_name)}</h1>
-            <p>Please sign in to continue</p>
+    <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-foreground mb-2">Sign In</h1>
+            <p class="text-sm text-muted-foreground">Please sign in to continue</p>
         </div>
         <form method="post" action="/admin/login">
             <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
             <input type="hidden" name="next" value="{escape(next_url)}">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="your@email.com" required>
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium text-foreground mb-2">Email</label>
+                <input type="email" id="email" name="email" placeholder="your@email.com" required
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Password" required>
+            <div class="mb-4">
+                <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
+                <input type="password" id="password" name="password" placeholder="Password" required
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
             </div>
-            <button type="submit" class="submit-btn">Sign In</button>
+            <button type="submit"
+                    class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Sign In</button>
         </form>
     </div>
     """
@@ -155,91 +107,53 @@ def render_setup_page(
     context = StandaloneLayoutContext(
         page_title="Initial Setup" if not locked else "Setup Complete",
         flash_messages=flash_messages,
-        extra_head="""
-        <style>
-            .setup-container {
-                background: white;
-                padding: 2rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                width: 100%;
-                max-width: 420px;
-            }
-            .dark .setup-container { background: #1f2937; }
-            .setup-header { text-align: center; margin-bottom: 1.5rem; }
-            .setup-header p { color: #6b7280; font-size: 0.9rem; }
-            .form-group { margin-bottom: 1rem; }
-            .form-group label {
-                display: block; margin-bottom: 0.5rem; font-weight: 500;
-            }
-            .form-group input {
-                width: 100%; padding: 0.75rem;
-                border: 1px solid #d1d5db; border-radius: 0.375rem;
-                box-sizing: border-box;
-            }
-            .dark .form-group input {
-                background: #374151; border-color: #4b5563; color: white;
-            }
-            .submit-btn {
-                width: 100%; padding: 0.75rem;
-                background: #10b981; color: white; border: none;
-                border-radius: 0.375rem; font-weight: 500; cursor: pointer;
-                margin-top: 0.5rem;
-            }
-            .submit-btn:hover { background: #059669; }
-            .login-btn {
-                display: block; width: 100%; padding: 0.75rem;
-                background: #3b82f6; color: white; border: none;
-                border-radius: 0.375rem; font-weight: 500; cursor: pointer;
-                text-align: center; text-decoration: none; margin-top: 0.5rem;
-            }
-            .login-btn:hover { background: #2563eb; }
-            .hint { font-size: 0.8rem; color: #9ca3af; margin-top: 0.25rem; }
-        </style>
-        """,
     )
 
     if locked:
         content = """
-        <div class="setup-container">
-            <div class="setup-header">
-                <h1>✅ Setup Complete</h1>
-                <p>An administrator account already exists.<br>
-                Please log in with your credentials.</p>
-            </div>
-            <a href="/admin/login" class="login-btn">Go to Login</a>
+        <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8 text-center">
+            <h1 class="text-2xl font-bold text-foreground mb-2">✅ Setup Complete</h1>
+            <p class="text-sm text-muted-foreground mb-4">An administrator account already exists.<br>
+            Please log in with your credentials.</p>
+            <a href="/admin/login"
+               class="block w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium text-center hover:bg-primary/90 transition-colors">Go to Login</a>
         </div>
         """
     else:
         content = f"""
-        <div class="setup-container">
-            <div class="setup-header">
-                <h1>Welcome to {escape(site_name)}</h1>
-                <p>Create your administrator account to get started.</p>
+        <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-foreground mb-2">Welcome to {escape(site_name)}</h1>
+                <p class="text-sm text-muted-foreground">Create your administrator account to get started.</p>
             </div>
             <form method="post" action="/admin/setup">
                 <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
-                <div class="form-group">
-                    <label for="name">Full Name</label>
-                    <input type="text" id="name" name="name" placeholder="Your Name" required>
+                <div class="mb-4">
+                    <label for="name" class="block text-sm font-medium text-foreground mb-2">Full Name</label>
+                    <input type="text" id="name" name="name" placeholder="Your Name" required
+                           class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
                 </div>
-                <div class="form-group">
-                    <label for="email">Email Address</label>
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-foreground mb-2">Email Address</label>
                     <input type="email" id="email" name="email"
-                           placeholder="admin@example.com" required>
+                           placeholder="admin@example.com" required
+                           class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
                 </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
+                <div class="mb-4">
+                    <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
                     <input type="password" id="password" name="password"
-                           placeholder="At least 8 characters" required minlength="8">
-                    <p class="hint">Minimum 8 characters.</p>
+                           placeholder="At least 8 characters" required minlength="8"
+                           class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+                    <p class="text-xs text-muted-foreground mt-1">Minimum 8 characters.</p>
                 </div>
-                <div class="form-group">
-                    <label for="confirm_password">Confirm Password</label>
+                <div class="mb-4">
+                    <label for="confirm_password" class="block text-sm font-medium text-foreground mb-2">Confirm Password</label>
                     <input type="password" id="confirm_password" name="confirm_password"
-                           placeholder="Repeat password" required minlength="8">
+                           placeholder="Repeat password" required minlength="8"
+                           class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
                 </div>
-                <button type="submit" class="submit-btn">Create Account</button>
+                <button type="submit"
+                        class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Create Account</button>
             </form>
         </div>
         """
@@ -280,63 +194,14 @@ def render_error_page(
     )
     context = StandaloneLayoutContext(
         page_title=title,
-        extra_head="""
-        <style>
-            .error-container {
-                background: white;
-                padding: 2rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                width: 100%;
-                max-width: 600px;
-                text-align: center;
-            }
-            .dark .error-container {
-                background: #1f2937;
-            }
-            .error-code {
-                font-size: 4rem;
-                font-weight: bold;
-                color: #9ca3af;
-                margin-bottom: 0.5rem;
-            }
-            .error-btn {
-                display: inline-block;
-                padding: 0.75rem 1.5rem;
-                background: #3b82f6;
-                color: white;
-                border: none;
-                border-radius: 0.375rem;
-                font-weight: 500;
-                text-decoration: none;
-                margin-top: 1rem;
-            }
-            .error-btn:hover {
-                background: #2563eb;
-            }
-            .error-details {
-                text-align: left;
-                margin-top: 1rem;
-            }
-            .error-details pre {
-                background: #f5f5f5;
-                padding: 1rem;
-                overflow-x: auto;
-                border-radius: 0.375rem;
-            }
-            .dark .error-details pre {
-                background: #374151;
-            }
-        </style>
-        """,
     )
 
     details_html = ""
     if details:
         details_html = f"""
-        <details class="error-details">
-            <summary>Technical Details</summary>
-            <pre>{escape(details)}</pre>
+        <details class="text-left mt-4">
+            <summary class="cursor-pointer font-medium text-sm text-muted-foreground">Technical Details</summary>
+            <pre class="bg-muted text-foreground p-4 rounded-md overflow-x-auto mt-2">{escape(details)}</pre>
         </details>
         """
 
@@ -347,13 +212,14 @@ def render_error_page(
     )
 
     content = f"""
-    <div class="error-container">
+    <div class="w-full max-w-2xl bg-card border border-border rounded-lg shadow-lg p-8 text-center">
         {icon_html}
-        <div class="error-code">{status_code}</div>
-        <h1>{escape(title)}</h1>
-        <p>{escape(message)}</p>
+        <div class="text-6xl font-bold text-muted-foreground mb-2">{status_code}</div>
+        <h1 class="text-2xl font-bold text-foreground mb-2">{escape(title)}</h1>
+        <p class="text-sm text-muted-foreground">{escape(message)}</p>
         {details_html}
-        <a href="{escape(action_url)}" class="error-btn">{escape(action_text)}</a>
+        <a href="{escape(action_url)}"
+           class="inline-block px-6 py-3 rounded-md bg-primary text-primary-foreground font-medium mt-4 hover:bg-primary/90 transition-colors">{escape(action_text)}</a>
     </div>
     """
 

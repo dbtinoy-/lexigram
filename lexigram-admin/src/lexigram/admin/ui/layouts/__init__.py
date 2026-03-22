@@ -50,14 +50,12 @@ from lexigram.admin.ui.layouts.standalone_layout import (
     standalone_layout,
 )
 
-# Tab group
-from lexigram.admin.ui.layouts.tab_group import Tab, TabGroup
-
 # Widgets
 from lexigram.admin.ui.widgets import InfolistEntry, InfolistEntryType, InfolistWidget
 
+# Tab group
 # Base classes
-from lexigram.ui.layouts import (
+from lexigram.ui import (
     BaseLayoutConfig,
     BaseLayoutContext,
     CSSManager,
@@ -65,6 +63,8 @@ from lexigram.ui.layouts import (
     HTMLDocumentConfig,
     JSManager,
     LayoutBase,
+    Tab,
+    TabGroup,
 )
 
 __all__ = [  # noqa: RUF022

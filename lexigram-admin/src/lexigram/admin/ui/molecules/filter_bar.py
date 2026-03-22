@@ -196,7 +196,7 @@ class FilterBar(Component):
             badge = el(
                 "span",
                 str(active_count),
-                class_="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none",
+                class_="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none",
             )
 
         toggle_btn = el(
@@ -208,7 +208,7 @@ class FilterBar(Component):
                 class_="relative inline-flex items-center justify-center",
             ),
             type="button",
-            class_="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-gray-200",
+            class_="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground",
             aria_label="Toggle filters",
             **{"@click": "showFilters = !showFilters"},
         )
@@ -231,6 +231,6 @@ class FilterBar(Component):
                 class_="flex items-start gap-2",
             ),
             x_data="{ showFilters: window.innerWidth >= 768 }",
-            class_="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-1",
+            class_="bg-card p-3 rounded-xl shadow-sm border border-border mb-1",
             **self.props,
         )

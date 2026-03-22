@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from lexigram.admin.ui.widgets.infolist import (
+from lexigram.ui import (
     InfolistEntry,
     InfolistEntryType,
     InfolistWidget,

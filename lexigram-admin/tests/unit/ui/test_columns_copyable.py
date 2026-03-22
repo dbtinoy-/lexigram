@@ -1,5 +1,5 @@
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.columns.types import TextColumn
+from lexigram.ui.columns.types import TextColumn
 
 
 def test_text_column_copyable_renders_hx_on_click():

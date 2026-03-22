@@ -96,9 +96,9 @@ def bulk_edit_modal(
             "x-on:click": "open = false",
             "class": (
                 "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium "
-                "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 "
-                "border border-gray-300 dark:border-gray-600 "
-                "hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                "text-foreground bg-card "
+                "border border-border "
+                "hover:bg-muted dark:hover:bg-muted transition-colors"
             ),
         },
         "Cancel",
@@ -132,15 +132,17 @@ def _render_field_html(field: BulkEditField) -> str:
     """Render a single form field as an HTML string (used in slide-over body)."""
     field_id = f"bulk-edit-{field.name}"
     input_cls = (
-        "mt-1 block w-full rounded-lg border border-gray-300 dark:border-gray-600 "
-        "bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm "
+        "mt-1 block w-full rounded-lg border border-border "
+        "bg-card text-foreground px-3 py-2 text-sm "
         "focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
     )
     required_attr = "required" if field.required else ""
-    req_star = '<span class="text-red-500 ml-0.5">*</span>' if field.required else ""
+    req_star = (
+        '<span class="text-destructive ml-0.5">*</span>' if field.required else ""
+    )
     label_html = (
         f'<label for="{field_id}" class="block text-sm font-medium '
-        f'text-gray-700 dark:text-gray-300 mb-1">{field.label}{req_star}</label>'
+        f'text-foreground mb-1">{field.label}{req_star}</label>'
     )
 
     if field.field_type == "select" and field.options:
@@ -153,7 +155,7 @@ def _render_field_html(field: BulkEditField) -> str:
     elif field.field_type == "checkbox":
         input_html = (
             f'<input type="checkbox" id="{field_id}" name="{field.name}" value="true" '
-            f'class="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500">'
+            f'class="mt-1 h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500">'
         )
     else:
         input_html = (
@@ -162,7 +164,7 @@ def _render_field_html(field: BulkEditField) -> str:
         )
 
     help_html = (
-        f'<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{field.help_text}</p>'
+        f'<p class="mt-1 text-xs text-muted-foreground">{field.help_text}</p>'
         if field.help_text
         else ""
     )
@@ -174,10 +176,10 @@ def _render_field_html(field: BulkEditField) -> str:
     # Label
     label_elem = label(
         for_=field_id,
-        class_="block text-sm font-medium text-gray-700 dark:text-gray-300",
+        class_="block text-sm font-medium text-foreground",
     )[
         field.label,
-        span(class_="text-red-500")[" *"] if field.required else None,
+        span(class_="text-destructive")[" *"] if field.required else None,
     ]
 
     # Input element based on type
@@ -186,7 +188,7 @@ def _render_field_html(field: BulkEditField) -> str:
             id=field_id,
             name=field.name,
             required=field.required,
-            class_="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+            class_="mt-1 block w-full rounded-md border-border dark:bg-muted dark:text-foreground shadow-sm focus:border-ring focus:ring-ring sm:text-sm",
         )[
             option(value="")["-- No change --"],
             [option(value=str(vl[0]))[vl[1]] for vl in field.options],
@@ -197,7 +199,7 @@ def _render_field_html(field: BulkEditField) -> str:
             name=field.name,
             required=field.required,
             rows="3",
-            class_="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+            class_="mt-1 block w-full rounded-md border-border dark:bg-muted dark:text-foreground shadow-sm focus:border-ring focus:ring-ring sm:text-sm",
         )
     elif field.field_type == "checkbox":
         input_elem = input_(
@@ -205,7 +207,7 @@ def _render_field_html(field: BulkEditField) -> str:
             id=field_id,
             name=field.name,
             value="true",
-            class_="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500",
+            class_="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-ring",
         )
     else:
         input_elem = input_(
@@ -213,12 +215,12 @@ def _render_field_html(field: BulkEditField) -> str:
             id=field_id,
             name=field.name,
             required=field.required,
-            class_="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+            class_="mt-1 block w-full rounded-md border-border dark:bg-muted dark:text-foreground shadow-sm focus:border-ring focus:ring-ring sm:text-sm",
         )
 
     # Help text
     help_elem = (
-        p(class_="mt-1 text-sm text-gray-500 dark:text-gray-400")[field.help_text]
+        p(class_="mt-1 text-sm text-muted-foreground")[field.help_text]
         if field.help_text
         else None
     )
@@ -251,17 +253,17 @@ def bulk_assign_modal(
         htpy component for the modal
     """
     return div(
-        class_="fixed inset-0 bg-gray-600 bg-opacity-50 hidden",
+        class_="fixed inset-0 bg-muted bg-opacity-50 hidden",
         id="bulk-assign-modal",
     )[
         div(class_="flex items-center justify-center min-h-screen px-4")[
             div(
-                class_="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full",
+                class_="bg-card rounded-lg shadow-xl max-w-lg w-full",
             )[
                 # Header
-                div(class_="px-6 py-4 border-b border-gray-200 dark:border-gray-700")[
+                div(class_="px-6 py-4 border-b border-border")[
                     div(class_="flex items-center justify-between")[
-                        p(class_="text-lg font-semibold text-gray-900 dark:text-white")[
+                        p(class_="text-lg font-semibold text-foreground")[
                             f"Bulk Assign {field_label}"
                         ],
                         Button(
@@ -275,9 +277,9 @@ def bulk_assign_modal(
                 div(class_="px-6 py-4")[
                     (
                         div(
-                            class_="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg",
+                            class_="mb-4 p-3 bg-warning/10 rounded-lg",
                         )[
-                            p(class_="text-sm text-yellow-800 dark:text-yellow-200")[
+                            p(class_="text-sm text-warning")[
                                 confirm_message
                                 or f"This will update {selected_count} record(s)."
                             ]
@@ -291,13 +293,13 @@ def bulk_assign_modal(
                     )[
                         label(
                             for_="bulk-assign-value",
-                            class_="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+                            class_="block text-sm font-medium text-foreground mb-2",
                         )[f"Select {field_label}"],
                         select(
                             id="bulk-assign-value",
                             name=field_name,
                             required=not allow_null,
-                            class_="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500",
+                            class_="block w-full rounded-md border-border dark:bg-muted dark:text-foreground shadow-sm focus:border-ring focus:ring-ring",
                         )[
                             (
                                 option(value="", selected=True)["-- Unassign --"]
@@ -313,7 +315,7 @@ def bulk_assign_modal(
                 ],
                 # Footer
                 div(
-                    class_="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3",
+                    class_="px-6 py-4 border-t border-border flex justify-end space-x-3",
                 )[
                     Button(
                         type="button",
@@ -354,19 +356,19 @@ def bulk_confirm_dialog(
     """
 
     return div(
-        class_="fixed inset-0 bg-gray-600 bg-opacity-50 hidden",
+        class_="fixed inset-0 bg-muted bg-opacity-50 hidden",
         id="bulk-confirm-dialog",
     )[
         div(class_="flex items-center justify-center min-h-screen px-4")[
             div(
-                class_="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full",
+                class_="bg-card rounded-lg shadow-xl max-w-md w-full",
             )[
                 # Header
                 div(class_="px-6 py-4")[
-                    p(class_="text-lg font-semibold text-gray-900 dark:text-white")[
+                    p(class_="text-lg font-semibold text-foreground")[
                         f"Confirm {action_name.title()}"
                     ],
-                    p(class_="mt-2 text-sm text-gray-600 dark:text-gray-400")[
+                    p(class_="mt-2 text-sm text-muted-foreground")[
                         f"Are you sure you want to {action_name} {selected_count} record(s)?"
                     ],
                 ],
@@ -374,17 +376,17 @@ def bulk_confirm_dialog(
                 (
                     div(class_="px-6 py-2")[
                         div(
-                            class_="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-900",
+                            class_="max-h-40 overflow-y-auto border border-border rounded p-3 bg-muted dark:bg-background",
                         )[
                             [
                                 p(
-                                    class_="text-sm text-gray-700 dark:text-gray-300 truncate",
+                                    class_="text-sm text-foreground truncate",
                                 )[f"• {item}"]
                                 for item in (preview_items or [])[:10]
                             ],
                             (
                                 p(
-                                    class_="text-sm text-gray-500 dark:text-gray-400 mt-2",
+                                    class_="text-sm text-muted-foreground mt-2",
                                 )[f"...and {len(preview_items) - 10} more"]
                                 if preview_items and len(preview_items) > 10
                                 else None
@@ -396,7 +398,7 @@ def bulk_confirm_dialog(
                 ),
                 # Footer
                 div(
-                    class_="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3",
+                    class_="px-6 py-4 border-t border-border flex justify-end space-x-3",
                 )[
                     Button(
                         type="button",
@@ -434,27 +436,27 @@ def bulk_progress_indicator(
         htpy component for the progress indicator
     """
     return div(
-        class_="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center",
+        class_="fixed inset-0 bg-muted bg-opacity-50 flex items-center justify-center",
         id="bulk-progress",
     )[
         div(
-            class_="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6",
+            class_="bg-card rounded-lg shadow-xl max-w-md w-full p-6",
         )[
-            p(class_="text-lg font-semibold text-gray-900 dark:text-white mb-4")[
+            p(class_="text-lg font-semibold text-foreground mb-4")[
                 f"{action_name.title()} in Progress..."
             ],
             # Progress bar
-            div(class_="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2")[
+            div(class_="w-full bg-muted rounded-full h-2.5 mb-2")[
                 div(
                     id="progress-bar",
-                    class_="bg-blue-600 h-2.5 rounded-full transition-all duration-300",
+                    class_="bg-primary h-2.5 rounded-full transition-all duration-300",
                     style="width: 0%",
                 )
             ],
             # Status text
             div(
                 id="progress-status",
-                class_="text-sm text-gray-600 dark:text-gray-400 text-center",
+                class_="text-sm text-muted-foreground text-center",
                 hx_get=progress_url,
                 hx_trigger="every 500ms",
                 hx_swap="innerHTML",
@@ -462,7 +464,7 @@ def bulk_progress_indicator(
             # Errors
             div(
                 id="progress-errors",
-                class_="mt-4 text-sm text-red-600 dark:text-red-400",
+                class_="mt-4 text-sm text-destructive",
             ),
         ]
     ]

@@ -99,6 +99,15 @@ class TestCLICommands:
         group_names = [g.name for g in app.registered_groups]
         assert "providers" in group_names
 
+    def test_create_ai_app_has_gateway_subgroup(self) -> None:
+        """create_ai_app() registers a 'gateway' sub-command group."""
+        pytest.importorskip("typer", reason="typer not installed")
+        from lexigram.ai.cli.commands import create_ai_app
+
+        app = create_ai_app()
+        group_names = [g.name for g in app.registered_groups]
+        assert "gateway" in group_names
+
     def test_create_ai_app_has_status_command(self) -> None:
         """create_ai_app() registers a 'status' command."""
         pytest.importorskip("typer", reason="typer not installed")

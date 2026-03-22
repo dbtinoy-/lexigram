@@ -40,8 +40,8 @@ class SidebarItem(Component):
             bg_cls = "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400"
             icon_cls = "text-primary-600 dark:text-primary-400"
         else:
-            bg_cls = "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-primary-600 dark:hover:text-primary-400"
-            icon_cls = "text-gray-400 group-hover:text-primary-600 dark:group-hover:text-primary-400"
+            bg_cls = "text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-card/50 hover:text-primary-600 dark:hover:text-primary-400"
+            icon_cls = "text-muted-foreground group-hover:text-primary-600 dark:group-hover:text-primary-400"
 
         # Icon rendering
         icon_node = ""
@@ -152,11 +152,13 @@ class SidebarSection(Component):
             # Remove mr-2 from icon itself, wrapper handles spacing
             group_icon_node = get_icon(
                 icon_name,
-                class_name="w-5 h-5 text-gray-500 transition-colors group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300",
+                class_name="w-5 h-5 text-muted-foreground transition-colors group-hover:text-foreground dark:text-muted-foreground dark:group-hover:text-foreground",
             )
         else:
             # Dot icon
-            group_icon_node = el("div", class_="w-1.5 h-1.5 rounded-full bg-gray-400")
+            group_icon_node = el(
+                "div", class_="w-1.5 h-1.5 rounded-full bg-muted-foreground/40"
+            )
 
         # Collapsible Header
         header = el(
@@ -180,14 +182,14 @@ class SidebarSection(Component):
             el(
                 "div",
                 get_icon("chevron-down", class_name="w-4 h-4"),
-                class_="text-gray-400 transition-transform duration-200",
+                class_="text-muted-foreground transition-transform duration-200",
                 **{
                     "x-bind:class": "expanded ? 'rotate-0' : '-rotate-90'",
                     "x-show": "!sidebarMini",
                 },
             ),
             type="button",
-            class_="w-full flex items-center px-3 mt-4 mb-2 text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-0 group",
+            class_="w-full flex items-center px-3 mt-4 mb-2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-0 group",
             title=self.title,
             **{
                 "x-on:click": "expanded = !expanded",
@@ -205,7 +207,7 @@ class SidebarSection(Component):
         items_container = el(
             "div",
             *self.items,
-            class_="space-y-1 relative ml-[1.375rem] pl-3 border-l border-gray-200 dark:border-gray-800",
+            class_="space-y-1 relative ml-[1.375rem] pl-3 border-l border-border",
             # Hide border in mini mode
             **{
                 "x-show": "expanded || sidebarMini",
@@ -282,8 +284,7 @@ class Sidebar(Component):
         self.raw_user = raw_user
 
     def render(self) -> Any:
-        from lexigram.admin.ui.organisms.systembox import SystemBox
-        from lexigram.admin.ui.organisms.userbox import UserBox
+        from lexigram.ui import SystemBox, UserBox
 
         # Logo Icon - Navigates to /admin dashboard
         if self.logo_url:
@@ -325,10 +326,10 @@ class Sidebar(Component):
             "button",
             get_icon(
                 "chevron-left",
-                class_name="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors",
+                class_name="w-4 h-4 text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground transition-colors",
             ),
             type="button",
-            class_="p-1 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-0",
+            class_="p-1 rounded-full border border-border hover:bg-muted dark:hover:bg-card transition-colors focus:outline-none focus:ring-0",
             **{
                 "x-on:click": "sidebarMini = !sidebarMini",
                 "x-bind:class": "sidebarMini ? 'rotate-180' : ''",
@@ -344,10 +345,10 @@ class Sidebar(Component):
             el(
                 "span",
                 self.logo_text,
-                class_="font-bold text-xl text-gray-900 dark:text-white tracking-tight ml-3 whitespace-nowrap",
+                class_="font-bold text-xl text-foreground tracking-tight ml-3 whitespace-nowrap",
                 x_show="!sidebarMini",
             ),
-            class_="p-4 flex items-center h-16 border-b border-gray-200 dark:border-gray-800",
+            class_="p-4 flex items-center h-16 border-b border-border",
         )
 
         # Navigation Area
@@ -385,7 +386,7 @@ class Sidebar(Component):
             el("div", toggle_btn, class_="flex items-center justify-center py-2"),
             system_menu_bar,
             user_node,
-            class_="dark:border-gray-800",
+            class_="dark:border-border",
         )
 
         return el(
@@ -393,7 +394,7 @@ class Sidebar(Component):
             header,
             nav,
             footer,
-            class_="relative flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out",
+            class_="relative flex flex-col h-full bg-card dark:bg-background border-r border-border transition-all duration-300 ease-in-out",
             **{"id": "main-sidebar", "x-bind:class": "sidebarMini ? 'w-24' : 'w-72'"},
             role="complementary",
             aria_label="Sidebar navigation",

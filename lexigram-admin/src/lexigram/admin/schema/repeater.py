@@ -87,7 +87,7 @@ class RepeaterField(SchemaField[list[dict[str, Any]]]):
             Element(
                 "p",
                 **{"x-text": "`${items.length} item(s)`"},
-                class_="text-xs text-gray-500 dark:text-gray-400 mt-1",
+                class_="text-xs text-muted-foreground mt-1",
             )
             if self.max_items is not None
             else ""
@@ -99,7 +99,7 @@ class RepeaterField(SchemaField[list[dict[str, Any]]]):
                 Element(
                     "label",
                     self.label,
-                    class_="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2",
+                    class_="block text-sm font-medium text-foreground mb-2",
                 ),
                 Element(
                     "div",
@@ -116,7 +116,7 @@ class RepeaterField(SchemaField[list[dict[str, Any]]]):
                         "p",
                         errors[0],
                         id=f"{self.name}-error",
-                        class_="mt-2 text-sm text-red-600",
+                        class_="mt-2 text-sm text-destructive",
                     )
                     if errors
                     else ""
@@ -155,7 +155,7 @@ class RepeaterField(SchemaField[list[dict[str, Any]]]):
             type="button",
             **{"@click": f"removeItem({index})"},
             class_=(
-                "absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 "
+                "absolute top-2 right-2 p-1 text-muted-foreground hover:text-destructive "
                 "transition-colors duration-200 rounded"
             ),
         )
@@ -164,7 +164,7 @@ class RepeaterField(SchemaField[list[dict[str, Any]]]):
             "div",
             *rows,
             remove_btn,
-            class_="relative p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900",
+            class_="relative p-4 border border-border rounded-xl bg-card dark:bg-background",
         )
 
     def _build_item_template(self) -> Element:
@@ -198,10 +198,7 @@ class RepeaterField(SchemaField[list[dict[str, Any]]]):
             "div",
             *tpl_rows,
             tpl_remove,
-            class_=(
-                "relative p-4 border border-gray-200 dark:border-gray-700 "
-                "rounded-xl bg-white dark:bg-gray-900"
-            ),
+            class_=("relative p-4 border border-border rounded-xl bg-background"),
         )
 
         return Element(
@@ -218,7 +215,7 @@ class RepeaterField(SchemaField[list[dict[str, Any]]]):
         return Element(
             "span",
             f"{count} {label}",
-            class_="text-sm text-gray-600 dark:text-gray-400",
+            class_="text-sm text-muted-foreground",
         )
 
     def from_form(

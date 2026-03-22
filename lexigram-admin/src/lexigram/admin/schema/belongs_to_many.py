@@ -56,7 +56,7 @@ class BelongsToManyField(SchemaField[list[str]]):
         selected_display = Element(
             "div",
             **{"x-text": "`${selectedIds.length} selected`"},
-            class_="text-sm text-gray-500 dark:text-gray-400 mb-2",
+            class_="text-sm text-muted-foreground mb-2",
         )
 
         content = Element(
@@ -73,7 +73,7 @@ class BelongsToManyField(SchemaField[list[str]]):
                 Element(
                     "label",
                     self.label,
-                    class_="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
+                    class_="block text-sm font-medium text-foreground mb-1",
                 ),
                 content,
                 (
@@ -81,7 +81,7 @@ class BelongsToManyField(SchemaField[list[str]]):
                         "p",
                         errors[0],
                         id=f"{self.name}-error",
-                        class_="mt-2 text-sm text-red-600",
+                        class_="mt-2 text-sm text-destructive",
                     )
                     if errors
                     else ""
@@ -99,7 +99,7 @@ class BelongsToManyField(SchemaField[list[str]]):
         return Element(
             "span",
             f"{count} {label}",
-            class_="text-sm text-gray-600 dark:text-gray-400",
+            class_="text-sm text-muted-foreground",
         )
 
     def from_form(self, raw: str | None) -> Result[list[str] | None, FieldError]:

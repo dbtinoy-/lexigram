@@ -109,7 +109,7 @@ class GridView(AbstractDataView):
                             "div",
                             title[0].upper(),
                             aria_hidden="true",
-                            class_="w-full h-40 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-4xl text-gray-300 font-bold",
+                            class_="w-full h-40 bg-muted dark:bg-card flex items-center justify-center text-4xl text-foreground font-bold",
                         ),
                         class_="relative",
                     ),
@@ -119,7 +119,7 @@ class GridView(AbstractDataView):
                         el(
                             "p",
                             subtitle,
-                            class_="text-sm text-gray-500 mb-4 h-5 overflow-hidden",
+                            class_="text-sm text-muted-foreground mb-4 h-5 overflow-hidden",
                         ),
                         el(
                             "a",
@@ -133,7 +133,7 @@ class GridView(AbstractDataView):
                         else "",
                         class_="p-4",
                     ),
-                    class_="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative group",
+                    class_="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow overflow-hidden relative group",
                 )
             cards.append(card)
 

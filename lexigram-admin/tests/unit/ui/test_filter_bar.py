@@ -1,6 +1,6 @@
 from lexigram.admin.ui.filters.types import SelectFilter
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
-from lexigram.admin.ui.state import TableState
+from lexigram.ui.state import TableState
 from lexigram.ui.core.base import render_to_string
 
 

@@ -108,7 +108,7 @@ class TestJsonField:
 # SortableRecordList
 # ---------------------------------------------------------------------------
 
-from lexigram.admin.ui.organisms.sortable_list import SortableRecordList
+from lexigram.ui import SortableRecordList
 
 
 class TestSortableRecordList:

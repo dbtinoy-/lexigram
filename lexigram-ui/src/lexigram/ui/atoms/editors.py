@@ -153,7 +153,7 @@ class MarkdownEditor(Component):
             "ring-inset focus:ring-2 focus:ring-inset sm:text-sm transition-all "
             "duration-200 bg-background text-foreground "
             "placeholder:text-muted-foreground font-mono "
-            f"{'ring-red-300 focus:ring-red-500' if self.error else 'ring-[var(--input)] focus:ring-ring'}"
+            f"{'ring-destructive/40 focus:ring-destructive' if self.error else 'ring-[var(--input)] focus:ring-ring'}"
             f"{' opacity-50' if self.disabled else ''}"
         )
 

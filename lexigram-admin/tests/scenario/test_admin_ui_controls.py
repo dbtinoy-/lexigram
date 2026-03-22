@@ -21,8 +21,8 @@ from starlette.applications import Starlette
 
 from lexigram.admin.controllers.resource import ResourceController, ResourceMeta
 from lexigram.admin.data.data_source import QueryResult
-from lexigram.admin.ui.actions import Action, BulkAction
-from lexigram.admin.ui.columns.types import BadgeColumn, DateColumn, TextColumn
+from lexigram.ui.actions import Action, BulkAction
+from lexigram.ui.columns.types import BadgeColumn, DateColumn, TextColumn
 from lexigram.admin.ui.filters import SelectFilter
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.admin.ui.organisms.sidebar import SidebarItem, SidebarSection

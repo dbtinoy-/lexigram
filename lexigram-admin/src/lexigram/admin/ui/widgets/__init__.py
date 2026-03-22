@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from lexigram.admin.ui.widgets.infolist import (
-    InfolistEntry,
-    InfolistEntryType,
-    InfolistWidget,
-)
+from lexigram.ui import InfolistEntry, InfolistEntryType, InfolistWidget
 
 __all__ = [
     "InfolistEntry",

@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone, timedelta
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,7 +16,6 @@ import pytest
 # ---------------------------------------------------------------------------
 # InboxService (lexigram-notification)
 # ---------------------------------------------------------------------------
-
 from lexigram.notification import InboxMessage, InboxService, InMemoryInboxStore
 
 
@@ -132,8 +131,7 @@ class TestInboxService:
 # Timezone handling
 # ---------------------------------------------------------------------------
 
-from lexigram.admin.i18n import convert_to_timezone, get_user_timezone
-from lexigram.admin.i18n import Translator
+from lexigram.admin.i18n import Translator, convert_to_timezone, get_user_timezone
 
 
 class TestFormatDatetime:
@@ -205,7 +203,7 @@ class TestGetUserTimezone:
 # AutoRefreshWidget
 # ---------------------------------------------------------------------------
 
-from lexigram.admin.ui.organisms.live_polling import AutoRefreshWidget, LiveDataTable
+from lexigram.ui import AutoRefreshWidget, LiveDataTable
 
 
 class TestAutoRefreshWidget:
@@ -270,7 +268,7 @@ class TestLiveDataTable:
 # DateHierarchyFilter
 # ---------------------------------------------------------------------------
 
-from lexigram.admin.ui.molecules.date_hierarchy import DateHierarchyFilter
+from lexigram.ui import DateHierarchyFilter
 
 
 class TestDateHierarchyFilter:
@@ -337,7 +335,7 @@ class TestDateHierarchyFilter:
 # SimplePagination
 # ---------------------------------------------------------------------------
 
-from lexigram.admin.ui.organisms.simple_pagination import SimplePagination
+from lexigram.ui import SimplePagination
 
 
 class TestSimplePagination:

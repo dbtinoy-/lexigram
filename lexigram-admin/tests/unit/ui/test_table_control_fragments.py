@@ -1,7 +1,7 @@
 """Tests for TableControlFragments OOB rendering."""
 from __future__ import annotations
 
-from lexigram.admin.ui.columns.types import TextColumn
+from lexigram.ui.columns.types import TextColumn
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.ui.core.base import render_to_string
 

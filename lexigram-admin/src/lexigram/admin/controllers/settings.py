@@ -21,53 +21,53 @@ logger = get_logger(__name__)
 
 _SETTINGS_FORM = """\
 <div class="max-w-2xl mx-auto py-8 px-4">
-  <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Settings</h1>
+  <h1 class="text-2xl font-bold text-foreground mb-6">Settings</h1>
   <form method="post" action="/admin/settings" class="space-y-6">
     <input type="hidden" name="csrf_token" value="{csrf_token}">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">Branding</h2>
+    <div class="bg-card rounded-xl shadow-sm border border-border p-6 space-y-6">
+      <h2 class="text-lg font-semibold text-foreground border-b border-border pb-2">Branding</h2>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Site Name</label>
+        <label class="block text-sm font-medium text-foreground mb-1">Site Name</label>
         <input type="text" name="site_name" value="{site_name}"
-               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+               class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                placeholder="My Admin">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Primary Color</label>
+        <label class="block text-sm font-medium text-foreground mb-1">Primary Color</label>
         <div class="flex items-center gap-3">
           <input type="color" name="primary_color" value="{primary_color}"
-                 class="w-10 h-10 rounded cursor-pointer border border-gray-300 dark:border-gray-600 p-0.5"
+                 class="w-10 h-10 rounded cursor-pointer border border-border p-0.5"
                  oninput="this.nextElementSibling.value=this.value">
           <input type="text" name="primary_color_text" value="{primary_color}"
-                 class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                 class="flex-1 rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                  placeholder="#6b7280" pattern="^#[0-9a-fA-F]{{6}}$"
                  oninput="this.previousElementSibling.value=this.value">
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Hex color code (e.g. #6b7280)</p>
+        <p class="text-xs text-muted-foreground mt-1">Hex color code (e.g. #6b7280)</p>
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo URL</label>
+        <label class="block text-sm font-medium text-foreground mb-1">Logo URL</label>
         <input type="url" name="logo_url" value="{logo_url}"
-               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+               class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                placeholder="https://example.com/logo.png">
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Favicon URL</label>
+        <label class="block text-sm font-medium text-foreground mb-1">Favicon URL</label>
         <input type="url" name="favicon_url" value="{favicon_url}"
-               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+               class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                placeholder="https://example.com/favicon.ico">
       </div>
 
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2 pt-4">Appearance</h2>
+      <h2 class="text-lg font-semibold text-foreground border-b border-border pb-2 pt-4">Appearance</h2>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Theme</label>
+        <label class="block text-sm font-medium text-foreground mb-1">Default Theme</label>
         <select name="dark_mode"
-                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
           <option value="system" {system_sel}>System</option>
           <option value="light" {light_sel}>Light</option>
           <option value="dark" {dark_sel}>Dark</option>
@@ -77,7 +77,7 @@ _SETTINGS_FORM = """\
 
     <div class="flex justify-end gap-3">
       <a href="/admin/"
-         class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+         class="px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors">
         Cancel
       </a>
       <button type="submit"
@@ -106,10 +106,7 @@ def _render_settings_form(
         dark_sel=_sel("dark"),
     )
     if message:
-        banner_class = (
-            "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 "
-            "text-green-800 dark:text-green-300"
-        )
+        banner_class = "bg-success/10 border-success/30 text-success"
         html = (
             f'<div class="{banner_class} border rounded-lg px-4 py-3 mb-4 text-sm">{message}</div>'
             + html

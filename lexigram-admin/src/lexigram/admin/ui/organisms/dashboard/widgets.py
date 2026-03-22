@@ -87,26 +87,26 @@ class HealthEntry:
 # ---------------------------------------------------------------------------
 
 _ICON_BG: dict[str, str] = {
-    "blue": "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400",
-    "green": "bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400",
-    "red": "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400",
-    "yellow": "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400",
-    "purple": "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400",
-    "gray": "bg-gray-100 dark:bg-gray-900/40 text-gray-600 dark:text-gray-400",
-    "indigo": "bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400",
-    "orange": "bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400",
+    "blue": "bg-info/10 text-info",
+    "green": "bg-success/10 text-success",
+    "red": "bg-destructive/10 text-destructive",
+    "yellow": "bg-warning/10 text-warning",
+    "purple": "bg-primary/10 text-primary",
+    "gray": "bg-muted text-muted-foreground",
+    "indigo": "bg-primary/10 text-primary",
+    "orange": "bg-warning/10 text-warning",
 }
 
 _HEALTH_COLORS: dict[str, str] = {
-    "ok": "text-green-600 dark:text-green-400",
-    "degraded": "text-yellow-600 dark:text-yellow-400",
-    "down": "text-red-600 dark:text-red-400",
+    "ok": "text-success",
+    "degraded": "text-warning",
+    "down": "text-destructive",
 }
 
 _HEALTH_DOT: dict[str, str] = {
-    "ok": "bg-green-500",
-    "degraded": "bg-yellow-500",
-    "down": "bg-red-500",
+    "ok": "bg-success",
+    "degraded": "bg-warning",
+    "down": "bg-destructive",
 }
 
 
@@ -132,11 +132,7 @@ class StatCard(Component):
 
         change_el: Any = ""
         if s.change:
-            color = (
-                "text-green-600 dark:text-green-400"
-                if s.change_positive
-                else "text-red-600 dark:text-red-400"
-            )
+            color = "text-success" if s.change_positive else "text-destructive"
             arrow = "↑" if s.change_positive else "↓"
             change_el = el(
                 "span", f"{arrow} {s.change}", class_=f"text-xs font-medium {color}"
@@ -147,7 +143,7 @@ class StatCard(Component):
             description_el = el(
                 "p",
                 s.description,
-                class_="text-xs text-gray-500 dark:text-gray-400 mt-1",
+                class_="text-xs text-muted-foreground mt-1",
             )
 
         icon_el = el(
@@ -160,7 +156,7 @@ class StatCard(Component):
             el(
                 "span",
                 s.value,
-                class_="text-2xl font-bold text-gray-900 dark:text-white tabular-nums",
+                class_="text-2xl font-bold text-foreground tabular-nums",
             ),
             change_el,
             class_="flex items-baseline gap-2",
@@ -170,7 +166,7 @@ class StatCard(Component):
             el(
                 "p",
                 s.label,
-                class_="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1",
+                class_="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1",
             ),
             value_row,
             description_el,
@@ -180,7 +176,7 @@ class StatCard(Component):
             "div",
             icon_el,
             info_el,
-            class_="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 flex items-start gap-4 hover:shadow-md transition-shadow",
+            class_="bg-card rounded-xl shadow-sm border border-border p-5 flex items-start gap-4 hover:shadow-md transition-shadow",
         )
 
         if s.href:
@@ -252,7 +248,7 @@ class ActivityFeed(Component):
             el(
                 "h3",
                 self.title,
-                class_="text-sm font-semibold text-gray-700 dark:text-gray-200",
+                class_="text-sm font-semibold text-foreground",
             ),
         ]
         if self.view_all_href:
@@ -269,7 +265,7 @@ class ActivityFeed(Component):
             body = el(
                 "p",
                 "No recent activity.",
-                class_="text-sm text-gray-400 dark:text-gray-500 py-4 text-center",
+                class_="text-sm text-muted-foreground py-4 text-center",
             )
         else:
             rows = []
@@ -284,27 +280,27 @@ class ActivityFeed(Component):
                         class_="font-medium text-primary-600 dark:text-primary-400",
                     ),
                     raw(f" {item.resource_id}" if item.resource_id else ""),
-                    class_="text-sm text-gray-700 dark:text-gray-300 leading-snug",
+                    class_="text-sm text-foreground leading-snug",
                 )
                 ts_el = (
                     el(
                         "p",
                         item.timestamp,
-                        class_="text-xs text-gray-400 dark:text-gray-500 mt-0.5",
+                        class_="text-xs text-muted-foreground mt-0.5",
                     )
                     if item.timestamp
                     else ""
                 )
                 detail_el = el("div", action_text, ts_el, class_="flex-1 min-w-0")
                 icon_span = raw(
-                    f'<span class="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center"><i data-lucide="{item.icon}" class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400"></i></span>'
+                    f'<span class="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-muted flex items-center justify-center"><i data-lucide="{item.icon}" class="w-3.5 h-3.5 text-muted-foreground"></i></span>'
                 )
                 rows.append(
                     el(
                         "li",
                         icon_span,
                         detail_el,
-                        class_="flex items-start gap-3 py-3 border-b border-gray-50 dark:border-gray-700/50 last:border-0",
+                        class_="flex items-start gap-3 py-3 border-b border-border/50 last:border-0",
                     )
                 )
             body = el("ul", *rows, class_="divide-y-0")
@@ -316,7 +312,7 @@ class ActivityFeed(Component):
             "div",
             header_el,
             body,
-            class_="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5",
+            class_="bg-card rounded-xl shadow-sm border border-border p-5",
         )
 
 
@@ -346,7 +342,7 @@ class SystemHealthWidget(Component):
             status_color = _HEALTH_COLORS.get(entry.status, _HEALTH_COLORS["ok"])
             dot_color = _HEALTH_DOT.get(entry.status, _HEALTH_DOT["ok"])
             latency_html = (
-                f'<span class="text-xs text-gray-400 dark:text-gray-500">{entry.latency_ms}ms</span>'
+                f'<span class="text-xs text-muted-foreground">{entry.latency_ms}ms</span>'
                 if entry.latency_ms is not None
                 else ""
             )
@@ -359,7 +355,7 @@ class SystemHealthWidget(Component):
                 el(
                     "span",
                     entry.name,
-                    class_="text-sm text-gray-700 dark:text-gray-300",
+                    class_="text-sm text-foreground",
                 ),
                 class_="flex items-center gap-2",
             )
@@ -376,7 +372,7 @@ class SystemHealthWidget(Component):
                     "li",
                     left,
                     right,
-                    class_="flex items-center justify-between py-2.5 border-b border-gray-50 dark:border-gray-700/50 last:border-0",
+                    class_="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0",
                 )
             )
 
@@ -386,7 +382,7 @@ class SystemHealthWidget(Component):
             else el(
                 "p",
                 "No services configured.",
-                class_="text-sm text-gray-400 dark:text-gray-500",
+                class_="text-sm text-muted-foreground",
             )
         )
         return el(
@@ -394,10 +390,10 @@ class SystemHealthWidget(Component):
             el(
                 "h3",
                 self.title,
-                class_="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4",
+                class_="text-sm font-semibold text-foreground mb-4",
             ),
             body,
-            class_="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5",
+            class_="bg-card rounded-xl shadow-sm border border-border p-5",
         )
 
 

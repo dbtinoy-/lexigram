@@ -30,7 +30,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram"
-version = "0.1.3007"
+version = "0.1.3008"
 description = "Async-first DI/IoC framework for Python — core package"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -124,11 +124,11 @@ security = [
 # ── Web & API ─────────────────────────────────────────────────────────
 
 web = [
-    "lexigram-web>=0.1.2",
+    "lexigram-web[uvicorn]>=0.1.2",
 ]
 
 api = [
-    "lexigram-web>=0.1.2",
+    "lexigram-web[uvicorn]>=0.1.2",
     "lexigram-ai>=0.1.2",
     "lexigram-ai-llm>=0.1.2",
 ]
@@ -205,12 +205,13 @@ graphql = [
 
 cli = [
     "lexigram-cli>=0.1.2",
+    "uvicorn[standard]>=0.27.0",
 ]
 
 # ── Everything ────────────────────────────────────────────────────────
 
 all = [
-    "lexigram-web>=0.1.2",
+    "lexigram-web[uvicorn]>=0.1.2",
     "lexigram-ai>=0.1.2",
     "lexigram-ai-llm>=0.1.2",
     "lexigram-ai-agents>=0.1.2",

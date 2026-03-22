@@ -46,7 +46,12 @@ class Switch(Component):
             return el(
                 "div",
                 base,
-                el("p", self.error, class_="mt-2 text-sm text-destructive", role="alert"),
+                el(
+                    "p",
+                    self.error,
+                    class_="mt-2 text-sm text-destructive",
+                    role="alert",
+                ),
                 class_="mb-4",
             )
         return base

@@ -8,8 +8,8 @@ Tests the htmx_attrs.py module which provides:
 
 import pytest
 
-from lexigram.admin.ui.htmx_attrs import HTMXAttrs, HTMXAttrsBuilder
-from lexigram.admin.ui.state import TableState
+from lexigram.ui import HTMXAttrs, HTMXAttrsBuilder
+from lexigram.ui.state import TableState
 from lexigram.ui.core.zones import Zones
 
 

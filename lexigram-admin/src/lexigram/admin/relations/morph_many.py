@@ -45,11 +45,11 @@ class MorphManyRelationManager(RelationManager):
                 actions += f'<a href="{edit_url}" hx-get="{edit_url}" hx-target="closest tr" hx-swap="outerHTML" class="text-primary-600 hover:text-primary-800 text-sm mr-2">Edit</a>'
             if self.inline_delete:
                 delete_url = f"/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/{item_id}"
-                actions += f'<a href="{delete_url}" hx-delete="{delete_url}" hx-confirm="Delete this record?" hx-target="closest tr" hx-swap="outerHTML" class="text-red-600 hover:text-red-800 text-sm">Delete</a>'
+                actions += f'<a href="{delete_url}" hx-delete="{delete_url}" hx-confirm="Delete this record?" hx-target="closest tr" hx-swap="outerHTML" class="text-destructive hover:text-destructive/90 text-sm">Delete</a>'
 
             rows_html += f"""<tr>
-                <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">{label}</td>
-                <td class="px-4 py-2 text-sm text-gray-500">{item_id}</td>
+                <td class="px-4 py-2 text-sm text-foreground">{label}</td>
+                <td class="px-4 py-2 text-sm text-muted-foreground">{item_id}</td>
                 <td class="px-4 py-2 text-sm">{actions}</td>
             </tr>"""
 
@@ -66,17 +66,17 @@ class MorphManyRelationManager(RelationManager):
             </div>"""
 
         return f"""<div class="relation-panel p-4" id="relation-panel-{rel_name}">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{rel_name.replace("_", " ").title()}</h3>
+            <h3 class="text-lg font-medium text-foreground mb-4">{rel_name.replace("_", " ").title()}</h3>
             {header}
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-800">
+            <table class="min-w-full divide-y divide-border">
+                <thead class="bg-muted dark:bg-card">
                     <tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Record</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Record</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">ID</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">{rows_html}</tbody>
+                <tbody class="divide-y divide-border">{rows_html}</tbody>
             </table>
             {self._render_empty_state(rows_html)}
         </div>"""
@@ -84,4 +84,4 @@ class MorphManyRelationManager(RelationManager):
     def _render_empty_state(self, rows_html: str) -> str:
         if rows_html:
             return ""
-        return '<p class="text-sm text-gray-500 dark:text-gray-400 italic mt-4">No related records found.</p>'
+        return '<p class="text-sm text-muted-foreground italic mt-4">No related records found.</p>'

@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from lexigram.admin.resources.base import Resource
-from lexigram.admin.ui.actions import Action, BulkAction
-from lexigram.admin.ui.columns import BadgeColumn, DateColumn, TextColumn
+from lexigram.ui.actions import Action, BulkAction
+from lexigram.ui.columns import BadgeColumn, DateColumn, TextColumn
 from lexigram.admin.ui.filters import SelectFilter
 
 

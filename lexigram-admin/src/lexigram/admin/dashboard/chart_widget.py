@@ -54,7 +54,7 @@ class ChartWidget(Component):
             el(
                 "h3",
                 self.title,
-                class_="text-sm font-semibold text-gray-700 dark:text-gray-200",
+                class_="text-sm font-semibold text-foreground",
             ),
         ]
         if self.description:
@@ -62,7 +62,7 @@ class ChartWidget(Component):
                 el(
                     "p",
                     self.description,
-                    class_="text-xs text-gray-500 dark:text-gray-400 mt-0.5",
+                    class_="text-xs text-muted-foreground mt-0.5",
                 )
             )
 
@@ -84,26 +84,26 @@ class ChartWidget(Component):
                 body = el(
                     "div",
                     "Unsupported chart type",
-                    class_="text-sm text-gray-400 text-center py-8",
+                    class_="text-sm text-muted-foreground text-center py-8",
                 )
         elif self.data_source:
             body = el(
                 "div",
-                el("div", class_="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"),
-                el("div", class_="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"),
+                el("div", class_="h-4 bg-muted rounded w-3/4 mb-2"),
+                el("div", class_="h-4 bg-muted rounded w-1/2 mb-2"),
                 class_="animate-pulse py-2",
             )
         else:
             body = el(
                 "div",
                 "No data",
-                class_="text-sm text-gray-400 dark:text-gray-500 text-center py-8",
+                class_="text-sm text-muted-foreground text-center py-8",
             )
 
         return el(
             "div",
             el("div", *header, class_="mb-4"),
             body,
-            class_=f"bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 {span}".strip(),
+            class_=f"bg-card rounded-xl shadow-sm border border-border p-5 {span}".strip(),
             **hx_attrs,
         )

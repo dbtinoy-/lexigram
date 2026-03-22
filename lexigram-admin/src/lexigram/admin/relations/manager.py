@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
-    from lexigram.admin.ui.columns.types import Column
+    from lexigram.ui.columns.types import Column
 from lexigram.di.decorators import inject
 
 

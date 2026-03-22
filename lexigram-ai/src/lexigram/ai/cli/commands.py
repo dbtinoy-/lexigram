@@ -14,9 +14,43 @@ def create_ai_app() -> typer.Typer:
     app = typer.Typer(help="AI subsystem management commands")
     models_app = typer.Typer(help="Model management commands")
     providers_app = typer.Typer(help="Provider management commands")
+    gateway_app = typer.Typer(help="AI relay gateway commands")
 
     app.add_typer(models_app, name="models")
     app.add_typer(providers_app, name="providers")
+    app.add_typer(gateway_app, name="gateway")
+
+    @gateway_app.command("check")
+    def gateway_check(
+        config: str = typer.Argument(..., help="Gateway config file (.json or .toml)"),
+    ) -> None:
+        """Validate a relay gateway configuration file."""
+        from lexigram.ai.cli.gateway import load_gateway_config
+
+        try:
+            loaded = load_gateway_config(config)
+        except ValueError as exc:
+            typer.echo(f"gateway config invalid: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+        typer.echo(
+            f"gateway config valid: {len(loaded.channels)} channel(s), "
+            f"load_balancing={loaded.load_balancing}"
+        )
+
+    @gateway_app.command("serve")
+    def gateway_serve(
+        config: str = typer.Argument(..., help="Gateway config file (.json or .toml)"),
+        host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
+        port: int = typer.Option(8000, "--port", help="Bind port"),
+    ) -> None:
+        """Assemble and serve the relay gateway application."""
+        from lexigram.ai.cli.gateway import serve_gateway
+
+        try:
+            serve_gateway(config, host=host, port=port)
+        except (ValueError, TypeError, ModuleNotFoundError) as exc:
+            typer.echo(f"cannot start gateway: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
 
     @app.command("status")
     def ai_status() -> None:

@@ -1,8 +1,8 @@
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.columns.types import TextColumn
+from lexigram.ui.columns.types import TextColumn
 from lexigram.admin.resources.config import TableConfiguration
 from lexigram.admin.ui.organisms.table.views.tabular import TabularView
-from lexigram.admin.ui.state import TableState
+from lexigram.ui.state import TableState
 
 
 def test_filament_style_width_and_grow():

@@ -5,12 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.config import TableConfiguration
-from lexigram.admin.ui.actions import BulkAction
-from lexigram.admin.ui.columns import Column
 from lexigram.admin.ui.organisms.command_palette import CommandPalette
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.admin.ui.organisms.sidebar import Sidebar
-from lexigram.ui import Form, Repeater
+from lexigram.ui import BulkAction, Column, Form, Repeater
 
 
 def page_header(title, subtitle=None, actions=None) -> Any:
@@ -21,8 +19,8 @@ def page_header(title, subtitle=None, actions=None) -> Any:
         "div",
         el(
             "div",
-            el("h1", title, class_="text-2xl font-bold text-gray-900 dark:text-white"),
-            el("p", subtitle, class_="mt-1 text-sm text-gray-500 dark:text-gray-400")
+            el("h1", title, class_="text-2xl font-bold text-foreground"),
+            el("p", subtitle, class_="mt-1 text-sm text-muted-foreground")
             if subtitle
             else "",
             class_="flex-1 min-w-0",

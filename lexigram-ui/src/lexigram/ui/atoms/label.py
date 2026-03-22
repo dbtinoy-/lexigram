@@ -65,11 +65,7 @@ class Label(Component):
             "semibold": "font-semibold",
             "bold": "font-bold",
         }
-        colour_class = (
-            "text-muted-foreground"
-            if self.muted
-            else "text-foreground"
-        )
+        colour_class = "text-muted-foreground" if self.muted else "text-foreground"
 
         css = (
             f"block {size_classes.get(self.size, 'text-sm')} "

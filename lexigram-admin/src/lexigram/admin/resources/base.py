@@ -21,10 +21,10 @@ if TYPE_CHECKING:
     from lexigram.admin.layout.layout_manager import LayoutManager
     from lexigram.admin.rbac.schema import ResourcePermissions
     from lexigram.admin.relations.manager_ext import RelationManager
-    from lexigram.admin.ui.actions import Action, BulkAction
-    from lexigram.admin.ui.columns import Column
     from lexigram.admin.ui.filters.base import Filter
     from lexigram.domain import DomainModel
+    from lexigram.ui.actions import Action, BulkAction
+    from lexigram.ui.columns import Column
 
 _VALID_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)?$")
 

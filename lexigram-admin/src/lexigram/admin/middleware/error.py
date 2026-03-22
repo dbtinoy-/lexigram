@@ -135,7 +135,7 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
                 traceback.format_exception(type(exc), exc, exc.__traceback__),
             )
             debug_html = f"""
-            <div id="error-details-{id(exc)}" class="hidden mt-4 p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-auto max-h-64 font-mono">
+            <div id="error-details-{id(exc)}" class="hidden mt-4 p-4 bg-background text-foreground rounded-lg text-xs overflow-auto max-h-64 font-mono">
               {tb_text}
             </div>
             """
@@ -147,20 +147,20 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
 
         # 4. Create Styled Fragment
         html = f"""
-        <div class="admin-error-fragment p-6 my-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-red-100 dark:border-red-900/50">
+        <div class="admin-error-fragment p-6 my-4 bg-card rounded-xl shadow-sm border border-destructive/30">
           <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center text-2xl">
+            <div class="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center text-2xl">
               {icon}
             </div>
             <div>
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white">{title} ({status_code})</h3>
-              <p class="text-gray-600 dark:text-gray-400">{message}</p>
+              <h3 class="text-lg font-bold text-foreground">{title} ({status_code})</h3>
+              <p class="text-muted-foreground">{message}</p>
             </div>
           </div>
           {debug_html}
           <div class="mt-4 flex justify-end">
             {debug_button}
-            <button onclick="this.closest('.admin-error-fragment').remove()" class="text-sm font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <button onclick="this.closest('.admin-error-fragment').remove()" class="text-sm font-medium text-muted-foreground hover:text-foreground">
               Dismiss
             </button>
           </div>

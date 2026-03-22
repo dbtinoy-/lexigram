@@ -351,7 +351,7 @@ class MultiSelectFilter(Filter):
             el(
                 "label",
                 self.label,
-                class_="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5",
+                class_="block text-sm font-medium text-foreground mb-1.5",
             ),
             el("div", *checkboxes, class_="space-y-2"),
             class_="filter-item mb-2",

@@ -8,8 +8,6 @@
 
 ![Lexigram AI demo](docs/gifs/hero/lexigram-hero.gif)
 
-hey — wanna ship an AI app this weekend?
-
 `lexigram-ai` is the AI layer of the [lexigram framework](https://lexigram.dev): a thin coordinator that wires the lexigram-ai family — agents, LLMs, RAG, memory, skills, MCP, session, workers, observability, feedback, guard, governance, evaluation, prompt, relay — into the container through entry-point discovery. one install, one `Application.boot`, and the whole family is resolvable by contract. every backend is swappable: run it on your own infra or point it at an API.
 
 - **wired, not glued.** agents, llms, rag, memory — one container, one boot call.
@@ -22,7 +20,7 @@ hey — wanna ship an AI app this weekend?
 ## install
 
 ```bash
-uv add "lexigram[ai,web]"    # framework + web + the ai family (what the example below uses)
+uv add "lexigram[ai,web]"    # framework + web + ai + server (what the example below uses)
 uv add lexigram-ai           # just the coordinator
 pip install "lexigram[ai,web]"
 ```
@@ -30,10 +28,9 @@ pip install "lexigram[ai,web]"
 ## 60 seconds, end to end
 
 ```python
-import asyncio
-
 from lexigram import Application
 from lexigram.web import Controller, get, WebModule
+from lexigram.web.server import run_server
 from lexigram.ai.llm import LLMModule, ClientConfig
 from lexigram.contracts.ai import LLMClientProtocol, ChatMessage, Role
 
@@ -49,23 +46,21 @@ class ChatController(Controller):
         return {"reply": result.unwrap().content}
 
 
-async def main():
-    async with Application.boot(modules=[
-        # Local-first. To talk to a hosted provider instead, set
-        # `provider="openai"` (or "anthropic", "groq", ...) and supply
-        # the matching API key.
-        LLMModule.configure(ClientConfig(
-            provider="ollama",
-            model="llama3.2",
-            api_base="http://localhost:11434/v1",
-            api_key="ollama",
-        )),
-        WebModule.configure(controllers=[ChatController], port=8000),
-    ]):
-        await asyncio.Event().wait()
+app = Application()
+app.add_modules([
+    # Local-first. To talk to a hosted provider instead, set
+    # `provider="openai"` (or "anthropic", "groq", ...) and supply
+    # the matching API key.
+    LLMModule.configure(ClientConfig(
+        provider="ollama",
+        model="llama3.2",
+        api_base="http://localhost:11434",
+        api_key="ollama",
+    )),
+    WebModule.configure(controllers=[ChatController]),
+])
 
-
-asyncio.run(main())
+run_server(app, port=8000)
 ```
 
 → http://localhost:8000/chat?q=hello

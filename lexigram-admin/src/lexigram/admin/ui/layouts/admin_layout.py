@@ -20,6 +20,11 @@ from typing import Any
 
 from markupsafe import Markup, escape
 
+from lexigram.admin.theme.tailwind import (
+    DARK_BOOTSTRAP_SCRIPT,
+    TAILWIND_THEME_CONFIG,
+    THEME_BRIDGE_SCRIPT,
+)
 from lexigram.admin.ui.layouts.components import (
     FooterConfig,
     FooterRenderer,
@@ -34,11 +39,7 @@ from lexigram.admin.ui.layouts.components import (
     UserInfo,
     flash_to_toast,
 )
-from lexigram.ui.layouts import (
-    BaseLayoutConfig,
-    BaseLayoutContext,
-    LayoutBase,
-)
+from lexigram.ui import BaseLayoutConfig, BaseLayoutContext, LayoutBase
 
 
 @dataclass
@@ -267,12 +268,11 @@ class AdminLayout(LayoutBase):
         </style>
         """)
 
-        # Core admin CSS
-        parts.append('<link rel="stylesheet" href="/admin/static/css/admin.css">')
-
         # Tailwind CSS (CDN)
         parts.append('<script src="https://cdn.tailwindcss.com"></script>')
-        parts.append("<script>tailwind.config = { darkMode: 'class' }</script>")
+        parts.append(TAILWIND_THEME_CONFIG)
+        parts.append(DARK_BOOTSTRAP_SCRIPT)
+        parts.append(THEME_BRIDGE_SCRIPT)
 
         # Lucide icons
         parts.append('<script src="https://unpkg.com/lucide@latest"></script>')

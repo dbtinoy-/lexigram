@@ -28,6 +28,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
+from lexigram.ai.relay.gateway.catalog import ModelCatalogService
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.job_passthrough import JobPassthroughService
 from lexigram.ai.relay.gateway.logging import RelayRequestLogger
@@ -66,13 +67,21 @@ from lexigram.contracts.ai.relay import (
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
 from lexigram.identity.ambient import new_uuid
 
-__all__ = ["RELAY_ROUTE_PATHS", "build_routes", "relay_endpoint"]
+__all__ = [
+    "MODEL_ROUTE_PATHS",
+    "RELAY_ROUTE_PATHS",
+    "build_routes",
+    "relay_endpoint",
+]
 
 ResolveGateway: TypeAlias = Callable[[Request], Awaitable[RelayGatewayProtocol]]
 """Resolver of a gateway implementation from a Starlette request."""
 
 ResolveJobPassthrough: TypeAlias = Callable[[Request], Awaitable[JobPassthroughService]]
 """Resolver of a job passthrough service from a Starlette request."""
+
+ResolveModelCatalog: TypeAlias = Callable[[Request], Awaitable[ModelCatalogService]]
+"""Resolver of the model catalog service from a Starlette request."""
 
 _ROUTE_TABLE: tuple[tuple[str, RelayFormat], ...] = (
     ("/v1/chat/completions", RelayFormat.OPENAI_CHAT),
@@ -94,6 +103,25 @@ _JOB_ROUTE_TABLE: tuple[tuple[str, str], ...] = (("/v1/videos", "video_generatio
 
 _JOB_STATUS_PATH = "/v1/videos/{job_id}"
 """Inbound poll path for the registered job-relay endpoint kinds."""
+
+_MODEL_LIST_PATHS: tuple[str, ...] = ("/v1/models", "/v1beta/models")
+"""Inbound model-list paths; ``/v1beta/models`` is always Gemini."""
+_MODEL_DETAIL_PATHS: tuple[str, ...] = (
+    "/v1/models/{model}",
+    "/v1beta/models/{model}",
+)
+"""Inbound model-detail paths; ``/v1beta/models/{model}`` is Gemini."""
+
+MODEL_ROUTE_PATHS: tuple[str, ...] = (
+    *_MODEL_LIST_PATHS,
+    *_MODEL_DETAIL_PATHS,
+)
+"""Inbound model-list and detail paths registered by ``build_routes``.
+
+The gemini ``/v1beta/models/{model}:generateContent`` relay path mounts
+alongside these without colliding because the detail path is a distinct
+pattern.
+"""
 
 _AUDIO_HANDLERS = {
     "audio_speech": audio_speech_endpoint,
@@ -212,6 +240,116 @@ def _with_auth_guard(
         return await auth_guard(request, verifier, inner)
 
     return guarded
+
+
+async def models_endpoint(
+    forced_format: RelayFormat | None,
+    resolve_catalog: ResolveModelCatalog,
+    request: Request,
+) -> Response:
+    """Serve the model-list route in the client's wire protocol.
+
+    ``/v1beta/models`` forces the Gemini shape; ``/v1/models`` sniffs the
+    request for Google (``x-goog-api-key`` header or ``key`` query
+    param) and Anthropic (``anthropic-version`` or ``x-api-key`` without
+    the Google markers) conventions and falls back to the OpenAI shape.
+    The catalog is resolved per request, never cached; responses carry
+    the gateway's request-id and trace-id headers.
+
+    Args:
+        forced_format: Wire format to always use, or ``None`` to sniff
+            the request headers.
+        resolve_catalog: Resolver of the model catalog service.
+        request: The Starlette request being served.
+
+    Returns:
+        The protocol-appropriate model list JSON.
+    """
+    request_id = getattr(request.state, "request_id", None) or new_uuid()
+    trace_id = request.headers.get("x-trace-id", "") or ""
+    wire_format = forced_format or _model_list_format(request)
+    catalog = await resolve_catalog(request)
+    if wire_format == RelayFormat.GEMINI:
+        payload: dict[str, Any] = catalog.list_gemini()
+    elif wire_format == RelayFormat.CLAUDE:
+        payload = catalog.list_claude()
+    else:
+        payload = catalog.list_openai()
+    return JSONResponse(
+        content=payload, headers=_safe_headers({}, request_id, trace_id)
+    )
+
+
+async def model_detail_endpoint(
+    gemini: bool,
+    resolve_catalog: ResolveModelCatalog,
+    request: Request,
+) -> Response:
+    """Serve the model-detail route in the client's wire protocol.
+
+    ``/v1beta/models/{model}`` renders the Gemini shape and
+    ``/v1/models/{model}`` renders the OpenAI shape.  An alias no enabled
+    channel serves renders the inbound error envelope with
+    ``MODEL_NOT_FOUND``.
+
+    Args:
+        gemini: Whether the route is the ``/v1beta`` Gemini variant.
+        resolve_catalog: Resolver of the model catalog service.
+        request: The Starlette request being served.
+
+    Returns:
+        The protocol-appropriate model detail JSON, or the ``MODEL_NOT_FOUND``
+        error envelope for unknown aliases.
+    """
+    request_id = getattr(request.state, "request_id", None) or new_uuid()
+    trace_id = request.headers.get("x-trace-id", "") or ""
+    alias = request.path_params.get("model")
+    if not isinstance(alias, str) or not alias:
+        return _error_response(
+            RelayFormat.GEMINI if gemini else RelayFormat.OPENAI_CHAT,
+            RelayGatewayError(
+                code=RelayGatewayErrorCode.INVALID_REQUEST,
+                message="model is required",
+                status_code=400,
+                request_id=request_id,
+            ),
+        )
+    source = RelayFormat.GEMINI if gemini else RelayFormat.OPENAI_CHAT
+    catalog = await resolve_catalog(request)
+    payload = catalog.gemini_detail(alias) if gemini else catalog.openai_detail(alias)
+    if payload is None:
+        return _error_response(
+            source,
+            RelayGatewayError(
+                code=RelayGatewayErrorCode.MODEL_NOT_FOUND,
+                message=f"model {alias!r} is not served",
+                status_code=404,
+                request_id=request_id,
+            ),
+        )
+    return JSONResponse(
+        content=payload, headers=_safe_headers({}, request_id, trace_id)
+    )
+
+
+def _model_list_format(request: Request) -> RelayFormat:
+    """Sniff the wire format for a model-list request.
+
+    Google conventions win (``x-goog-api-key`` header or ``key`` query
+    param), then Anthropic (``anthropic-version`` header), then OpenAI by
+    default.
+
+    Args:
+        request: The Starlette request being served.
+
+    Returns:
+        The wire format whose list shape the response should use.
+    """
+    if "x-goog-api-key" in request.headers or "key" in request.query_params:
+        return RelayFormat.GEMINI
+    if "anthropic-version" in request.headers:
+        return RelayFormat.CLAUDE
+    return RelayFormat.OPENAI_CHAT
 
 
 async def relay_endpoint(
@@ -567,6 +705,7 @@ def build_routes(
     *,
     resolve_passthrough: ResolvePassthrough | None = None,
     resolve_job_passthrough: ResolveJobPassthrough | None = None,
+    resolve_model_catalog: ResolveModelCatalog | None = None,
 ) -> list[Route]:
     """Build the relay POST routes bound to gateway resolvers.
 
@@ -582,12 +721,16 @@ def build_routes(
             ``JobPassthroughService`` from the request; when provided,
             the job-relay routes (``POST /v1/videos`` and
             ``GET /v1/videos/{job_id}``) are appended.
+        resolve_model_catalog: Optional async callable resolving a
+            ``ModelCatalogService`` from the request; when provided, the
+            model-list and model-detail routes (``GET /v1/models``,
+            ``GET /v1beta/models``, and their detail variants) are
+            appended.
 
     Returns:
         One ``Route`` per inbound relay format, in ``RELAY_ROUTE_PATHS``
-        order, followed by the passthrough, audio, and image routes when
-        their resolver is provided and the job-relay routes when theirs
-        is.
+        order, followed by the passthrough, audio, image, job-relay, and
+        model-catalog routes when their resolver is provided.
     """
     routes = [
         Route(
@@ -645,6 +788,41 @@ def build_routes(
                 methods=["GET"],
             )
             for _, kind in _JOB_ROUTE_TABLE
+        )
+    if resolve_model_catalog is not None:
+        routes.append(
+            Route(
+                "/v1beta/models",
+                _with_auth_guard(
+                    partial(models_endpoint, RelayFormat.GEMINI, resolve_model_catalog)
+                ),
+                methods=["GET"],
+            )
+        )
+        routes.append(
+            Route(
+                "/v1/models",
+                _with_auth_guard(partial(models_endpoint, None, resolve_model_catalog)),
+                methods=["GET"],
+            )
+        )
+        routes.append(
+            Route(
+                "/v1beta/models/{model}",
+                _with_auth_guard(
+                    partial(model_detail_endpoint, True, resolve_model_catalog)
+                ),
+                methods=["GET"],
+            )
+        )
+        routes.append(
+            Route(
+                "/v1/models/{model}",
+                _with_auth_guard(
+                    partial(model_detail_endpoint, False, resolve_model_catalog)
+                ),
+                methods=["GET"],
+            )
         )
     return routes
 

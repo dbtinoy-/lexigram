@@ -120,9 +120,7 @@ class StatCard(Component):
         delta_el = None
         if self.delta:
             color_cls = (
-                "text-success"
-                if self.delta_color == "green"
-                else "text-destructive"
+                "text-success" if self.delta_color == "green" else "text-destructive"
             )
             delta_el = el(
                 "span",

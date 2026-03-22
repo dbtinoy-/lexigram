@@ -6,7 +6,7 @@ import sys
 # Ensure package src and sibling packages are importable in test environment
 
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.organisms.userbox import UserBox
+from lexigram.ui import UserBox
 
 
 def test_userbox_renders_menu_items():

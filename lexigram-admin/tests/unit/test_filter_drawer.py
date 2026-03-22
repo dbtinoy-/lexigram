@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lexigram.admin.ui.organisms.filter_drawer import FilterDrawer
+from lexigram.ui import FilterDrawer
 
 
 class TestFilterDrawerRender:

@@ -1,4 +1,4 @@
-from lexigram.admin.ui.state import TableState
+from lexigram.ui.state import TableState
 
 
 def test_to_url_contains_query_params():

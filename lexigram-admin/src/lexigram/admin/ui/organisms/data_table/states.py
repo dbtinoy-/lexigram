@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.config import TableConfiguration
-from lexigram.admin.ui.state import TableState
-from lexigram.ui import ActionButton, EmptyState, ErrorState, Skeleton, el
+from lexigram.ui import ActionButton, EmptyState, ErrorState, Skeleton, TableState, el
 
 
 class StateRenderer:
@@ -49,14 +48,14 @@ class StateRenderer:
                 el(
                     "tr",
                     *cells,
-                    class_="border-b border-gray-100 dark:border-gray-700",
+                    class_="border-b border-border",
                 ),
             )
         return el(
             "div",
             el(
                 "table",
-                el("tbody", *skeleton_rows, class_="bg-white dark:bg-gray-800"),
+                el("tbody", *skeleton_rows, class_="bg-card"),
                 class_="w-full",
                 aria_label="Loading data",
             ),

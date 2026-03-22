@@ -12,13 +12,11 @@ from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.exceptions import DataError
 from lexigram.admin.observability.admin_metrics import AdminMetrics, OperationTimer
 from lexigram.admin.resources.config import TableConfiguration
-from lexigram.admin.ui.columns import Column as OrgColumn
-from lexigram.admin.ui.columns import TextColumn
 from lexigram.admin.ui.organisms.data_table import DataTable
-from lexigram.admin.ui.state import TableState
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
-from lexigram.ui import Zones, render_to_string
+from lexigram.ui import Column as OrgColumn
+from lexigram.ui import TableState, TextColumn, Zones, render_to_string
 
 logger = get_logger(__name__)
 
@@ -487,7 +485,7 @@ class ListRenderer:
             row_actions = list(actions)
 
         # Inject default URLs for standard actions if missing
-        from lexigram.admin.ui.actions.standard import EditAction, ViewAction
+        from lexigram.ui.actions.standard import EditAction, ViewAction
 
         for action in row_actions:
             if (
@@ -533,8 +531,8 @@ class ListRenderer:
                 else resource.bulk_actions()
             )
 
-        from lexigram.admin.ui.actions.standard import BulkAction as OrgBulkAction
-        from lexigram.admin.ui.actions.standard import DeleteBulkAction
+        from lexigram.ui.actions.standard import BulkAction as OrgBulkAction
+        from lexigram.ui.actions.standard import DeleteBulkAction
 
         for ba in source_bulk:
             if isinstance(ba, OrgBulkAction):

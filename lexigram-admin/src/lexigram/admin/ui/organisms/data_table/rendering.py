@@ -12,9 +12,8 @@ from lexigram.admin.ui.organisms.data_table.permissions import PermissionManager
 from lexigram.admin.ui.organisms.data_table.states import StateRenderer
 from lexigram.admin.ui.organisms.data_table.views import ViewFactory
 from lexigram.admin.ui.organisms.pagination import Pagination
-from lexigram.admin.ui.state import TableState
 from lexigram.serialization import dumps_str
-from lexigram.ui import Zones, el, render_to_string
+from lexigram.ui import TableState, Zones, el, render_to_string
 
 
 class DataTableRenderer:
@@ -192,7 +191,7 @@ class DataTableRenderer:
 
     def _render_scope_tabs(self, oob: bool = False) -> str:
         """Render Active/Trash scope tabs for soft-delete toggling."""
-        from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+        from lexigram.ui import HTMXAttrs
 
         state = self.state
         prefix = self.config.resource_prefix or ""
@@ -215,8 +214,8 @@ class DataTableRenderer:
                 if is_active
                 else (
                     "px-4 py-2 text-sm font-medium border-b-2 transition-colors "
-                    "border-transparent text-gray-500 hover:text-gray-700 "
-                    "hover:border-gray-300"
+                    "border-transparent text-muted-foreground hover:text-foreground "
+                    "hover:border-border"
                 )
             )
 
@@ -244,7 +243,7 @@ class DataTableRenderer:
                         "nav",
                         _tab("Active", active, active_url, active_attrs),
                         _tab("Trash", not active, trash_url, trash_attrs),
-                        class_="flex space-x-8 border-b border-gray-200",
+                        class_="flex space-x-8 border-b border-border",
                     ),
                     class_="px-6",
                 ),
@@ -336,7 +335,7 @@ class DataTableRenderer:
 
     def _render_htmx_wrapper(self, table_content: Any) -> Any:
         """Render HTMX wrapper with appropriate attributes."""
-        from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+        from lexigram.ui import HTMXAttrs
 
         htmx_attrs = {}
         if self.state and self.config.resource_prefix:
@@ -357,9 +356,7 @@ class DataTableRenderer:
 
     def _render_script(self) -> str:
         """Render Alpine.js script."""
-        from lexigram.admin.ui.organisms.table.client_logic import (
-            DataTableScriptRenderer,
-        )
+        from lexigram.ui import DataTableScriptRenderer
 
         return DataTableScriptRenderer.render(self._all_ids)
 
@@ -395,7 +392,7 @@ class DataTableRenderer:
             ),
             role="alert",
             aria_live="polite",
-            class_="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg transition-transform duration-200 z-50",
+            class_="fixed bottom-0 left-0 right-0 bg-card dark:bg-background border-t border-border shadow-lg transition-transform duration-200 z-50",
             x_show="selectedIds.length > 0",
             style="display: none;",
             **{

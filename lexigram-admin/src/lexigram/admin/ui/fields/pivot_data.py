@@ -60,7 +60,7 @@ class PivotDataField(SchemaField):
                     Element(
                         "label",
                         col.label,
-                        class_="text-xs font-medium text-gray-500 dark:text-gray-400 w-24",
+                        class_="text-xs font-medium text-muted-foreground w-24",
                     ),
                     raw(input_html),
                     class_="flex items-center gap-2 mb-2",
@@ -77,7 +77,7 @@ class PivotDataField(SchemaField):
         attrs = f'name="pivot_{col.name}" '
         if col.field_type == "checkbox":
             checked = "checked" if value else ""
-            return f'<input type="checkbox" {attrs} {checked} class="rounded border-gray-300 text-primary-600" />'
+            return f'<input type="checkbox" {attrs} {checked} class="rounded border-border text-primary-600" />'
         if col.field_type == "select":
             return f'<select {attrs} class="px-2 py-1 text-sm border rounded">{value}</select>'
         return f'<input type="{col.field_type}" {attrs} value="{value}" class="px-2 py-1 text-sm border rounded w-full" />'
@@ -86,7 +86,7 @@ class PivotDataField(SchemaField):
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
         parts = ", ".join(f"{k}={v}" for k, v in value.items())
-        return Element("span", parts, class_="text-sm text-gray-600 dark:text-gray-400")
+        return Element("span", parts, class_="text-sm text-muted-foreground")
 
     def from_form(self, raw: str | None) -> Result[dict[str, Any] | None, FieldError]:
         if raw is None:
@@ -118,7 +118,7 @@ class PivotTable:
         rel_name = "pivot"
 
         header_cols = "".join(
-            f'<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{c.label}</th>'
+            f'<th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">{c.label}</th>'
             for c in self.pivot_columns
         )
 
@@ -138,23 +138,23 @@ class PivotTable:
                 </td>"""
 
             rows_html += f"""<tr>
-                <td class="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">{label}</td>
+                <td class="px-4 py-2 text-sm font-medium text-foreground">{label}</td>
                 {pivot_cells}
                 <td class="px-4 py-2 text-sm">
-                    <button class="text-red-600 hover:text-red-800 text-sm"
+                    <button class="text-destructive hover:text-destructive/90 text-sm"
                             hx-delete="/admin/{resource_name}/{parent_id}/relations/{rel_name}/{related_id}"
                             hx-confirm="Detach this record?"
                             hx-target="closest tr" hx-swap="outerHTML">Detach</button>
                 </td>
             </tr>"""
 
-        return f"""<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-800">
+        return f"""<table class="min-w-full divide-y divide-border">
+            <thead class="bg-muted dark:bg-card">
                 <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Record</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Record</th>
                     {header_cols}
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">{rows_html}</tbody>
+            <tbody class="divide-y divide-border">{rows_html}</tbody>
         </table>"""

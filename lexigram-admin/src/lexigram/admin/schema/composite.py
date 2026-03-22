@@ -33,7 +33,7 @@ class JsonField(SchemaField[dict | list]):
         return Element(
             "pre",
             pretty,
-            class_="text-xs text-gray-600 max-w-md overflow-x-auto",
+            class_="text-xs text-muted-foreground max-w-md overflow-x-auto",
         )
 
     def from_form(self, raw: str | None) -> Result[dict | list | None, FieldError]:

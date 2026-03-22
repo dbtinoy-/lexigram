@@ -66,12 +66,12 @@ class ConfigDashboardUI:
                 el(
                     "h1",
                     title_map.get(category, "Configuration"),
-                    class_="text-3xl font-bold text-gray-900 dark:text-white",
+                    class_="text-3xl font-bold text-foreground",
                 ),
                 el(
                     "p",
                     "Manage your system configuration and environment settings",
-                    class_="text-gray-600 dark:text-gray-400 mt-2",
+                    class_="text-muted-foreground mt-2",
                 ),
             ],
         )
@@ -97,7 +97,7 @@ class ConfigDashboardUI:
                         el("span", spec.label or spec.namespace.title()),
                     ],
                     href=f"?ns={spec.namespace}",
-                    class_=f"flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors {'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' if is_active else 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'}",
+                    class_=f"flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors {'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' if is_active else 'text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-card'}",
                 ),
             )
 
@@ -106,7 +106,7 @@ class ConfigDashboardUI:
                 el(
                     "div",
                     "No configurations found.",
-                    class_="text-sm text-gray-500 italic p-4",
+                    class_="text-sm text-muted-foreground italic p-4",
                 ),
             )
 
@@ -115,7 +115,7 @@ class ConfigDashboardUI:
             el(
                 "h3",
                 "Namespaces",
-                class_="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-2",
+                class_="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2",
             ),
             el("nav", nav_items, class_="space-y-1"),
             class_="w-full lg:w-64 flex-shrink-0",
@@ -164,12 +164,12 @@ class ConfigDashboardUI:
                     el(
                         "h3",
                         "Select a Namespace",
-                        class_="text-lg font-medium text-gray-900 dark:text-white",
+                        class_="text-lg font-medium text-foreground",
                     ),
                     el(
                         "p",
                         "Choose a configuration namespace from the sidebar to edit settings.",
-                        class_="text-gray-500 mt-2",
+                        class_="text-muted-foreground mt-2",
                     ),
                     class_="text-center py-12",
                 ),

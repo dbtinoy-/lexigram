@@ -173,7 +173,12 @@ class MiddlewareSetup:
         csrf_cache = None
         try:
             csrf_cache = cast("Any", container).resolve_sync(CacheBackendProtocol)
-        except (UnresolvableDependencyError, AttributeError, RuntimeError, ModuleVisibilityError):
+        except (
+            UnresolvableDependencyError,
+            AttributeError,
+            RuntimeError,
+            ModuleVisibilityError,
+        ):
             pass
 
         app.add_middleware(

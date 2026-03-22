@@ -123,7 +123,7 @@ class DashboardController(AdminController):
                     el(
                         "div",
                         el("h3", w.title, class_="font-semibold"),
-                        class_="bg-white dark:bg-gray-800 rounded-lg p-4 shadow",
+                        class_="bg-card rounded-lg p-4 shadow",
                     )
                 )
             widgets_section = el(
@@ -188,7 +188,7 @@ class DashboardController(AdminController):
         dnd_html = raw("""
 <div id="dashboard-dnd-controls" class="mt-4 text-center">
   <button id="save-layout-btn"
-          class="hidden bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+          class="hidden bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90 text-sm">
     💾 Save Layout
   </button>
 </div>
@@ -250,7 +250,7 @@ function openWidgetConfig(url) {
             "button",
             "⚙ Customize Dashboard",
             onclick="openWidgetConfig('/admin/core/widgets/customize')",
-            class_="text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 cursor-pointer",
+            class_="text-sm bg-muted hover:bg-muted px-3 py-1.5 rounded border border-border cursor-pointer",
         )
 
         config_dialog = el(
@@ -266,7 +266,7 @@ function openWidgetConfig(url) {
                 el(
                     "h2",
                     dashboard_id,
-                    class_="text-2xl font-bold text-gray-900 dark:text-white",
+                    class_="text-2xl font-bold text-foreground",
                 ),
                 customize_btn,
                 class_="flex items-center justify-between",

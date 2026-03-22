@@ -53,7 +53,7 @@ class TabularView(AbstractDataView):
         tbody = el(
             "tbody",
             *self.render_rows(),
-            class_="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700",
+            class_="bg-card divide-y divide-border",
         )
         tfoot = self.render_summary() if self.summary else ""
 
@@ -66,14 +66,14 @@ class TabularView(AbstractDataView):
             thead,
             tbody,
             tfoot,
-            class_="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border-separate border-spacing-0",
+            class_="min-w-full divide-y divide-border border-separate border-spacing-0",
             style="table-layout: auto; min-width: 100%; width: max-content;",
         )
 
         return el(
             "div",
             table_el,
-            class_=f"overflow-x-auto overflow-y-auto shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 rounded-lg bg-gray-50/50 {density_class}",
+            class_=f"overflow-x-auto overflow-y-auto shadow-sm ring-1 ring-border dark:ring-border rounded-lg bg-muted/50 {density_class}",
             style="max-height: min(70vh, calc(100vh - var(--admin-table-offset, 18rem))); min-height: 200px;",
         )
 
@@ -112,11 +112,11 @@ class TabularView(AbstractDataView):
             )
             style = ""
             cls = (
-                "px-6 py-3 text-left w-12 sticky top-0 z-30 bg-gray-50 dark:bg-gray-900"
+                "px-6 py-3 text-left w-12 sticky top-0 z-30 bg-muted dark:bg-background"
             )
             if is_pinned:
                 style = f"left: {left_offset}px"
-                cls += " border-r border-gray-100 dark:border-gray-700"
+                cls += " border-r border-border"
                 left_offset += 48  # Approximate w-12 width
 
             select_all_attrs: dict[str, Any] = {
@@ -142,7 +142,7 @@ class TabularView(AbstractDataView):
                 el(
                     "th",
                     "",
-                    class_="px-6 py-3 text-left w-12 sticky top-0 z-20 bg-gray-50 dark:bg-gray-900",
+                    class_="px-6 py-3 text-left w-12 sticky top-0 z-20 bg-muted dark:bg-background",
                 ),
             )
 
@@ -160,7 +160,7 @@ class TabularView(AbstractDataView):
             if hasattr(header_th, "attrs"):
                 header_th.attrs["class_"] = (
                     header_th.attrs.get("class_", "")
-                    + " sticky top-0 z-20 bg-gray-50 dark:bg-gray-900 group"
+                    + " sticky top-0 z-20 bg-muted dark:bg-background group"
                 )
                 header_th.attrs["data-col-name"] = col.name
 
@@ -195,7 +195,7 @@ class TabularView(AbstractDataView):
                         "span",
                         el(
                             "i",
-                            class_="fas fa-grip-vertical text-gray-400 opacity-0 group-hover:opacity-100 cursor-move mr-1",
+                            class_="fas fa-grip-vertical text-muted-foreground opacity-0 group-hover:opacity-100 cursor-move mr-1",
                         ),
                         class_="drag-handle inline-flex items-center",
                         **{
@@ -211,7 +211,7 @@ class TabularView(AbstractDataView):
                 if hasattr(header_th, "attrs"):
                     header_th.attrs["class_"] = (
                         header_th.attrs.get("class_", "")
-                        + " sticky left-0 z-30 border-r border-gray-100 dark:border-gray-700"
+                        + " sticky left-0 z-30 border-r border-border"
                     )
                     header_th.attrs["style"] = (
                         header_th.attrs.get("style", "") + f"; left: {left_offset}px"
@@ -228,7 +228,7 @@ class TabularView(AbstractDataView):
                     "th",
                     "Actions",
                     scope="col",
-                    class_="px-6 py-3 text-right text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-medium sticky top-0 z-20 bg-gray-50 dark:bg-gray-900",
+                    class_="px-6 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground font-medium sticky top-0 z-20 bg-muted dark:bg-background",
                 ),
             )
 
@@ -238,7 +238,7 @@ class TabularView(AbstractDataView):
             el(
                 "tr",
                 *header_cells,
-                class_="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700",
+                class_="bg-muted dark:bg-card/50 border-b border-border",
                 style="height: 60px;",
             ),
         )
@@ -302,19 +302,19 @@ class TabularView(AbstractDataView):
                             el(
                                 "span",
                                 group_name,
-                                class_="font-semibold text-gray-900 dark:text-gray-100",
+                                class_="font-semibold text-foreground",
                             ),
                             el(
                                 "span",
                                 f"({len(group_items)})",
-                                class_="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal",
+                                class_="ml-2 text-sm text-muted-foreground font-normal",
                             ),
                             type="button",
                             class_="flex items-center w-full text-left focus:outline-none",
                             **{"@click": f"toggleGroup('{group_name}')"},
                         ),
                         colspan=colspan,
-                        class_="px-6 py-3 bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-100 dark:border-gray-700 backdrop-blur-sm sticky left-0 z-10",
+                        class_="px-6 py-3 bg-muted/80 dark:bg-card/80 border-b border-border backdrop-blur-sm sticky left-0 z-10",
                     ),
                     class_="group-header",
                 )
@@ -363,7 +363,7 @@ class TabularView(AbstractDataView):
             cls = "px-6 py-4 whitespace-nowrap w-12 z-20 bg-inherit"
             style = ""
             if is_pinned:
-                cls += " sticky left-0 border-r border-gray-100 dark:border-gray-700"
+                cls += " sticky left-0 border-r border-border"
                 style = f"left: {row_left_offset}px"
                 row_left_offset += 48
 
@@ -411,7 +411,7 @@ class TabularView(AbstractDataView):
                 ),
                 type="button",
                 aria_label=f"Toggle details for row {rid}",
-                class_="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500",
+                class_="p-1 rounded hover:bg-muted text-muted-foreground",
                 **{
                     ":aria-expanded": f"expandedIds.includes('{rid}')",
                     "@click": f"toggleExpand('{rid}')",
@@ -461,7 +461,7 @@ class TabularView(AbstractDataView):
                 if hasattr(cell_td, "attrs"):
                     cell_td.attrs["class_"] = (
                         cell_td.attrs.get("class_", "")
-                        + " sticky left-0 z-20 border-r border-gray-100 dark:border-gray-700 bg-inherit"
+                        + " sticky left-0 z-20 border-r border-border bg-inherit"
                     )
                     cell_td.attrs["style"] = (
                         cell_td.attrs.get("style", "") + f"; left: {row_left_offset}px"
@@ -513,8 +513,8 @@ class TabularView(AbstractDataView):
 
         row_height = getattr(self.config, "density_row_height", "48px")
         row_attrs = {
-            "class_": "hover:bg-gray-50 dark:hover:bg-gray-800/80 transition-shadow duration-150 border-b border-gray-100 dark:border-gray-700 last:border-0 group",
-            ":class": f"{{ 'bg-primary-50/50 dark:bg-primary-900/30 ring-inset ring-2 ring-primary-500/50 z-10 relative': $data.focusedId === '{rid}', 'bg-gray-50/30': {index} % 2 === 1 }}",
+            "class_": "hover:bg-muted dark:hover:bg-card/80 transition-shadow duration-150 border-b border-border last:border-0 group",
+            ":class": f"{{ 'bg-primary-50/50 dark:bg-primary-900/30 ring-inset ring-2 ring-primary-500/50 z-10 relative': $data.focusedId === '{rid}', 'bg-muted/30': {index} % 2 === 1 }}",
             "style": f"height: {row_height};",
         }
 
@@ -553,12 +553,12 @@ class TabularView(AbstractDataView):
                         el(
                             "div",
                             "Loading relationship...",
-                            class_="animate-pulse text-gray-400 text-sm p-4",
+                            class_="animate-pulse text-muted-foreground text-sm p-4",
                         ),
                         **{"hx-get": detail_url, "hx-trigger": "intersect once"},
                     ),
                     colspan=colspan,
-                    class_="px-0 py-0 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50",
+                    class_="px-0 py-0 border-b border-border bg-muted/50 dark:bg-background/50",
                 ),
                 **detail_attrs,
             )
@@ -573,7 +573,7 @@ class TabularView(AbstractDataView):
             is_pinned = any(
                 getattr(col, "_pinned", None) == "left" for col in self.config.columns
             )
-            cls = "px-6 py-3 sticky bottom-0 z-30 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700"
+            cls = "px-6 py-3 sticky bottom-0 z-30 bg-muted dark:bg-background border-t border-border"
             style = ""
             if is_pinned:
                 style = f"left: {left_offset}px"
@@ -587,14 +587,14 @@ class TabularView(AbstractDataView):
                 el(
                     "td",
                     "",
-                    class_="px-6 py-3 sticky bottom-0 z-20 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700",
+                    class_="px-6 py-3 sticky bottom-0 z-20 bg-muted dark:bg-background border-t border-border",
                 ),
             )
 
         # Data columns
         for col in self.config.columns:
             val = self.summary.get(col.name, "") if self.summary else ""
-            cls = "px-6 py-3 text-sm font-bold text-gray-900 dark:text-white sticky bottom-0 z-20 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700"
+            cls = "px-6 py-3 text-sm font-bold text-foreground sticky bottom-0 z-20 bg-muted dark:bg-background border-t border-border"
             style = ""
 
             if getattr(col, "_pinned", None) == "left":
@@ -610,7 +610,7 @@ class TabularView(AbstractDataView):
                 el(
                     "td",
                     "",
-                    class_="px-6 py-3 sticky bottom-0 z-20 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700",
+                    class_="px-6 py-3 sticky bottom-0 z-20 bg-muted dark:bg-background border-t border-border",
                 ),
             )
 

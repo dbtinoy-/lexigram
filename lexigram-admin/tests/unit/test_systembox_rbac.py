@@ -3,7 +3,7 @@ import sys
 
 
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.organisms.systembox import SystemBox
+from lexigram.ui import SystemBox
 
 
 class MockUser:

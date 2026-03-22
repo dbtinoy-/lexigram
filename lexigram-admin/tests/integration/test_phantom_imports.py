@@ -23,84 +23,6 @@ FORBIDDEN_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^from lexigram\.ui\.accessibility[\.\s]", re.MULTILINE),
 ]
 
-ALLOWLIST: set[str] = {
-    # Known deep-path imports — legacy, will be migrated over time.
-    "lexigram/admin/controllers/dashboard.py",
-    "lexigram/admin/controllers/resource.py",
-    "lexigram/admin/dashboard/widgets.py",
-    "lexigram/admin/forms/builder.py",
-    "lexigram/admin/forms/components.py",
-    "lexigram/admin/forms/fields/_advanced.py",
-    "lexigram/admin/forms/fields/_text.py",
-    "lexigram/admin/forms/layout.py",
-    "lexigram/admin/forms/wizard.py",
-    "lexigram/admin/middleware/error.py",
-    "lexigram/admin/rbac/ui/permission_gate.py",
-    "lexigram/admin/resources/detail_renderer.py",
-    "lexigram/admin/resources/field_renderer.py",
-    "lexigram/admin/resources/form_renderer.py",
-    "lexigram/admin/resources/list_renderer.py",
-    "lexigram/admin/settings/panel/layout.py",
-    "lexigram/admin/settings/panel/ui.py",
-    "lexigram/admin/ui/actions/base.py",
-    "lexigram/admin/ui/actions/standard.py",
-    "lexigram/admin/ui/columns/column/rendering.py",
-    "lexigram/admin/ui/columns/types.py",
-    "lexigram/admin/ui/debug.py",
-    "lexigram/admin/ui/filters/types/selection.py",
-    "lexigram/admin/ui/filters/types/standard.py",
-    "lexigram/admin/ui/filters/types/toggle.py",
-    "lexigram/admin/ui/htmx_attrs.py",
-    "lexigram/admin/ui/layouts/__init__.py",
-    "lexigram/admin/ui/layouts/admin_layout.py",
-    "lexigram/admin/ui/layouts/components/__init__.py",
-    "lexigram/admin/ui/layouts/standalone_layout.py",
-    "lexigram/admin/ui/molecules/__init__.py",
-    "lexigram/admin/ui/molecules/date_hierarchy.py",
-    "lexigram/admin/ui/molecules/date_range_filter.py",
-    "lexigram/admin/ui/molecules/debug_panel.py",
-    "lexigram/admin/ui/molecules/filter_bar.py",
-    "lexigram/admin/ui/molecules/filter_dropdown.py",
-    "lexigram/admin/ui/molecules/inline_edit_cell.py",
-    "lexigram/admin/ui/molecules/jump_to_page.py",
-    "lexigram/admin/ui/molecules/layout_switcher.py",
-    "lexigram/admin/ui/molecules/page_size_selector.py",
-    "lexigram/admin/ui/molecules/pagination.py",
-    "lexigram/admin/ui/molecules/pagination_links.py",
-    "lexigram/admin/ui/molecules/search_bar.py",
-    "lexigram/admin/ui/molecules/view_switcher.py",
-    "lexigram/admin/ui/observability.py",
-    "lexigram/admin/ui/organisms/bulk_edit_modal.py",
-    "lexigram/admin/ui/organisms/command_palette.py",
-    "lexigram/admin/ui/organisms/components.py",
-    "lexigram/admin/ui/organisms/dashboard/widgets.py",
-    "lexigram/admin/ui/organisms/dashboard/chart_widget.py",
-    "lexigram/admin/ui/organisms/data_table/coordinator.py",
-    "lexigram/admin/ui/organisms/data_table/layout.py",
-    "lexigram/admin/ui/organisms/data_table/rendering.py",
-    "lexigram/admin/ui/organisms/data_table/states.py",
-    "lexigram/admin/ui/organisms/dynamic_form.py",
-    "lexigram/admin/ui/organisms/filter_drawer.py",
-    "lexigram/admin/ui/organisms/form_registry.py",
-    "lexigram/admin/ui/organisms/live_polling.py",
-    "lexigram/admin/ui/organisms/pagination.py",
-    "lexigram/admin/ui/organisms/sidebar.py",
-    "lexigram/admin/ui/organisms/simple_pagination.py",
-    "lexigram/admin/ui/organisms/sortable_list.py",
-    "lexigram/admin/ui/organisms/systembox.py",
-    "lexigram/admin/ui/organisms/table/client_logic.py",
-    "lexigram/admin/ui/organisms/table/toolbar.py",
-    "lexigram/admin/ui/organisms/table/views/calendar.py",
-    "lexigram/admin/ui/organisms/table/views/grid.py",
-    "lexigram/admin/ui/organisms/table/views/stacked.py",
-    "lexigram/admin/ui/organisms/table/views/tabular.py",
-    "lexigram/admin/ui/organisms/task_progress.py",
-    "lexigram/admin/ui/organisms/topbar.py",
-    "lexigram/admin/ui/organisms/userbox.py",
-    "lexigram/admin/ui/templates/shell.py",
-    "lexigram/admin/views/_views.py",
-}
-
 ADMIN_SRC = Path(__file__).resolve().parents[2] / "src"
 
 # Test files with known deep-path imports. These should be migrated to
@@ -163,8 +85,6 @@ def test_no_deep_path_ui_imports_in_admin_source() -> None:
         if "__pycache__" in path.parts:
             continue
         rel = str(path.relative_to(ADMIN_SRC))
-        if rel in ALLOWLIST:
-            continue
         text = path.read_text(encoding="utf-8")
         for pattern in FORBIDDEN_PATTERNS:
             for match in pattern.finditer(text):

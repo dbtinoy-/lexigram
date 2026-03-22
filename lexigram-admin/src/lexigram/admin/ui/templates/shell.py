@@ -198,14 +198,11 @@ class AdminShell(Component):
                 .search-subtitle {
                     display: block;
                     font-size: 0.75rem;
-                    color: #6b7280;
+                    color: var(--muted-foreground);
                     margin-top: 0.125rem;
                 }
-                .dark .search-subtitle {
-                    color: #9ca3af;
-                }
                 .search-result-item:focus-visible {
-                    outline: 2px solid var(--color-primary-500);
+                    outline: 2px solid var(--ring);
                     outline-offset: -2px;
                 }
                 @media (max-width: 640px) {
@@ -268,7 +265,7 @@ class AdminShell(Component):
                     if (!searchInput) return;
                     var results = document.getElementById('search-results');
                     if (!results) return;
-                    results.innerHTML = '<div class="search-loading text-center py-8 px-4 text-sm text-gray-400">Searching...</div>';
+                    results.innerHTML = '<div class="search-loading text-center py-8 px-4 text-sm text-muted-foreground">Searching...</div>';
                     searchFocusedIndex = -1;
                 });
 
@@ -306,7 +303,9 @@ class AdminShell(Component):
         toasts = ""
         for msg in self.flash_messages:
             toasts += render_to_string(
-                InlineToast(msg.get("message", ""), toast_type=msg.get("category", "info")),
+                InlineToast(
+                    msg.get("message", ""), toast_type=msg.get("category", "info")
+                ),
             )
         toast_node = raw(toasts) if toasts else ""
 
@@ -318,7 +317,7 @@ class AdminShell(Component):
             # Overlay for mobile
             el(
                 "div",
-                class_="fixed inset-0 z-30 bg-gray-600/50 backdrop-blur-sm lg:hidden",
+                class_="fixed inset-0 z-30 bg-muted/50 backdrop-blur-sm lg:hidden",
                 x_show="sidebarOpen",
                 x_transition_enter="transition-opacity ease-linear duration-300",
                 x_transition_enter_start="opacity-0",
@@ -352,14 +351,17 @@ class AdminShell(Component):
                         "div",
                         el(
                             "nav",
-                            {"class": "flex text-gray-500 text-xs mb-4"},
+                            {"class": "flex text-muted-foreground text-xs mb-4"},
                             [
                                 el(
                                     "div",
                                     {"class": "flex items-center"},
                                     el(
                                         "a",
-                                        {"href": b["url"], "class": "hover:text-blue-500"}
+                                        {
+                                            "href": b["url"],
+                                            "class": "hover:text-primary",
+                                        }
                                         if b["url"]
                                         else {},
                                         b["label"],
@@ -380,7 +382,7 @@ class AdminShell(Component):
             el(
                 "main",
                 el("div", content_inner, id="main-content", class_="px-4 py-4"),
-                class_="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 focus:outline-none transition-colors duration-300",
+                class_="flex-1 overflow-y-auto bg-muted dark:bg-background focus:outline-none transition-colors duration-300",
             ),
             class_="flex flex-col flex-1 min-w-0 overflow-hidden",
         )
@@ -434,14 +436,14 @@ class AdminShell(Component):
 
                     // Display toast notification
                     if (flashContainer) {{
-                        flashContainer.innerHTML = `<div class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 max-w-sm" role="alert">
+                        flashContainer.innerHTML = `<div class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg bg-destructive/10 border border-destructive/30 text-destructive max-w-sm" role="alert">
                             <div class="flex items-start gap-3">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
                                 <div class="flex-1">
                                     <p class="font-medium">Error</p>
                                     <p class="text-sm mt-1">${{message}}</p>
                                 </div>
-                                <button onclick="this.closest('[role=alert]').remove()" class="text-red-500 hover:text-red-700"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
+                                <button onclick="this.closest('[role=alert]').remove()" class="text-destructive hover:text-destructive"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
                             </div>
                         </div>`;
                         // Auto-dismiss after 5 seconds
@@ -453,7 +455,7 @@ class AdminShell(Component):
                 function showToast(message, type) {{
                     const flashContainer = document.getElementById('{Zones.FLASH.id}');
                     if (!flashContainer) return;
-                    const bgColors = {{success: 'bg-green-100 dark:bg-green-900 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200', error: 'bg-red-100 dark:bg-red-900 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200', warning: 'bg-yellow-100 dark:bg-yellow-900 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200', info: 'bg-blue-100 dark:bg-blue-900 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200'}};
+                    const bgColors = {{success: 'bg-success/10 border border-success/30 text-success', error: 'bg-destructive/10 border border-destructive/30 text-destructive', warning: 'bg-warning/10 border border-warning/30 text-warning', info: 'bg-info/10 border border-info/30 text-info'}};
                     const icons = {{success: 'M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z', error: 'M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z', warning: 'M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z', info: 'M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z'}};
                     const colorClass = bgColors[type] || bgColors.info;
                     const iconPath = icons[type] || icons.info;
@@ -481,14 +483,14 @@ class AdminShell(Component):
                 document.body.addEventListener('htmx:sendError', function(evt) {{
                     const flashContainer = document.getElementById('{Zones.FLASH.id}');
                     if (flashContainer) {{
-                        flashContainer.innerHTML = `<div class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg bg-yellow-100 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200 max-w-sm" role="alert">
+                        flashContainer.innerHTML = `<div class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg bg-warning/10 border border-warning/30 text-warning max-w-sm" role="alert">
                             <div class="flex items-start gap-3">
                                 <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                                 <div class="flex-1">
                                     <p class="font-medium">Network Error</p>
                                     <p class="text-sm mt-1">Unable to connect. Check your internet connection.</p>
                                 </div>
-                                <button onclick="this.closest('[role=alert]').remove()" class="text-yellow-500 hover:text-yellow-700"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
+                                <button onclick="this.closest('[role=alert]').remove()" class="text-warning hover:text-warning/90"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
                             </div>
                         </div>`;
                     }}
@@ -502,10 +504,8 @@ class AdminShell(Component):
             dm_expr = "true"
         elif dark_mode_init == "light":
             dm_expr = "false"
-        elif dark_mode_init == "system":
-            dm_expr = "localStorage.getItem('darkMode') !== null ? localStorage.getItem('darkMode') === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches"
         else:
-            dm_expr = "false"
+            dm_expr = "localStorage.getItem('darkMode') !== null ? localStorage.getItem('darkMode') === 'true' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)"
 
         return el(
             "div",
@@ -513,9 +513,9 @@ class AdminShell(Component):
                 "x-data": "{ sidebarOpen: false, sidebarMini: localStorage.getItem('sidebarMini') === 'true', darkMode: "
                 + dm_expr
                 + " }",
-                "x-init": "$watch('darkMode', val => localStorage.setItem('darkMode', val)); $watch('sidebarMini', val => localStorage.setItem('sidebarMini', val))",
-                ":class": "{ 'dark': darkMode }",
-                "class": "flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans",
+                "x-init": "$watch('darkMode', val => { localStorage.setItem('darkMode', val); document.documentElement.classList.toggle('dark', val) }); $watch('sidebarMini', val => localStorage.setItem('sidebarMini', val)); document.documentElement.classList.toggle('dark', darkMode)",
+                "x-on:darkmode-change.window": "darkMode = $event.detail.dark",
+                "class": "flex h-screen overflow-hidden bg-background transition-colors duration-300 font-sans text-foreground",
                 "x-on:beforeunload.window": "window.notificationEventSource?.close()",
             },
             loading_bar,

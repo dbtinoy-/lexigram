@@ -150,7 +150,7 @@ class DetailRenderer:
                 el(
                     "td",
                     el("strong", field_name),
-                    class_="py-2 pr-4 align-top text-sm font-medium text-gray-600 dark:text-gray-400 w-1/4",
+                    class_="py-2 pr-4 align-top text-sm font-medium text-muted-foreground w-1/4",
                 ),
                 el(
                     "td",
@@ -185,9 +185,9 @@ class DetailRenderer:
                             name=field_name,
                             value=str(field_value),
                             class_=(
-                                "inline-edit-input border border-gray-300 dark:border-gray-600 "
+                                "inline-edit-input border border-border "
                                 "rounded px-2 py-1 text-sm w-full "
-                                "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 "
+                                "bg-muted text-foreground "
                                 "focus:outline-none focus:ring-2 focus:ring-primary-500"
                             ),
                             **{
@@ -217,20 +217,20 @@ class DetailRenderer:
                             "Cancel",
                             type="button",
                             class_=(
-                                "ml-1 px-2 py-1 text-xs font-medium text-gray-600 "
-                                "dark:text-gray-400 hover:text-gray-800 rounded border "
-                                "border-gray-300 dark:border-gray-600"
+                                "ml-1 px-2 py-1 text-xs font-medium text-muted-foreground "
+                                "dark:text-muted-foreground hover:text-foreground rounded border "
+                                "border-border"
                             ),
                             **{"@click": f"{alpine_key} = false"},
                         ),
                         class_="flex items-center gap-1",
                         **{"x-show": alpine_key},
                     ),
-                    class_="py-2 text-sm text-gray-900 dark:text-gray-100",
+                    class_="py-2 text-sm text-foreground",
                 ),
                 **{
                     "x-data": f"{{ {alpine_key}: false }}",
-                    "class": "border-t border-gray-100 dark:border-gray-700",
+                    "class": "border-t border-border",
                 },
             )
             field_rows.append(row)
@@ -242,7 +242,7 @@ class DetailRenderer:
         content = f"""
         <div class="resource-header" style="margin-bottom: 1.5rem;">
             <a href="{self._config.prefix}/{self.resource_name}" style="color: #6366f1;">&larr; Back to {label}</a>
-            <h1>{label} #{item_id} <span style="font-size:0.75rem;color:#6b7280;">(inline edit)</span></h1>
+            <h1>{label} #{item_id} <span class="text-muted-foreground text-xs">(inline edit)</span></h1>
         </div>
         <div class="resource-content">{table_html}</div>
         """

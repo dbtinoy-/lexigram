@@ -52,8 +52,8 @@ class SidebarConfig:
     footer_text: str = ""
 
     # Styling
-    bg_class: str = "bg-gray-900"
-    text_class: str = "text-gray-100"
+    bg_class: str = "bg-background"
+    text_class: str = "text-foreground"
 
     # Branding (optional, if not in header)
     show_logo: bool = False

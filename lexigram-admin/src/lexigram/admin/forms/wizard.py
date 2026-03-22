@@ -280,7 +280,7 @@ class WizardRenderer(Component):
             self.render_progress_bar(),
             self.render_step_navigation(),
             self.render_current_step(),
-            class_="wizard-container p-6 bg-white rounded-xl shadow-lg",
+            class_="wizard-container p-6 bg-card rounded-xl shadow-lg",
         )
 
     def render_progress_bar(self) -> Any:
@@ -292,7 +292,7 @@ class WizardRenderer(Component):
                 class_="h-2 bg-primary-600 transition-all duration-500",
                 style=f"width: {progress}%",
             ),
-            class_="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-8",
+            class_="w-full h-2 bg-muted rounded-full overflow-hidden mb-8",
         )
 
     def render_step_navigation(self) -> Any:
@@ -305,7 +305,7 @@ class WizardRenderer(Component):
                 el(
                     "div",
                     step.title,
-                    class_=f"text-sm font-medium {'text-primary-600' if is_active else 'text-gray-500'}",
+                    class_=f"text-sm font-medium {'text-primary-600' if is_active else 'text-muted-foreground'}",
                 ),
             )
         return el("div", *nav_items, class_="flex justify-between mb-6")
@@ -316,7 +316,7 @@ class WizardRenderer(Component):
         return el(
             "div",
             el("h2", step.title, class_="text-xl font-bold mb-2"),
-            el("p", step.description or "", class_="text-gray-600 mb-6"),
+            el("p", step.description or "", class_="text-muted-foreground mb-6"),
             el("div", *fields_html, class_="space-y-4"),
             class_="step-content",
         )

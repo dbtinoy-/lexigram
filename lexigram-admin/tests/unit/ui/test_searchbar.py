@@ -1,4 +1,4 @@
-from lexigram.admin.ui.molecules.search_bar import SearchBar
+from lexigram.ui import SearchBar
 from lexigram.ui.core.base import render_to_string
 
 

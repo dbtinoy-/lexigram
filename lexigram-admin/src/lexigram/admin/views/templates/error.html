@@ -2,26 +2,26 @@
 
 {% block title %}{{ status_code }} - {{ title }}{% endblock %}
 
-{% block body_class %}bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-screen flex items-center justify-center
+{% block body_class %}bg-gradient-to-br from-muted via-white to-muted min-h-screen flex items-center justify-center
 p-4{% endblock %}
 
 {% block content %}
 <div class="w-full max-w-2xl">
     <!-- Error Card -->
-    <div class="bg-white rounded-2xl shadow-xl p-12 text-center">
+    <div class="bg-card rounded-2xl shadow-xl p-12 text-center">
         <!-- Icon -->
         <div class="inline-flex items-center justify-center w-24 h-24 bg-red-50 rounded-full mb-6">
             <span class="text-5xl">{{ icon }}</span>
         </div>
 
         <!-- Status Code -->
-        <div class="text-8xl font-bold text-gray-200 mb-4">{{ status_code }}</div>
+        <div class="text-8xl font-bold text-foreground mb-4">{{ status_code }}</div>
 
         <!-- Title -->
-        <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ title }}</h1>
+        <h1 class="text-3xl font-bold text-foreground mb-4">{{ title }}</h1>
 
         <!-- Message -->
-        <p class="text-gray-600 text-lg mb-8 max-w-md mx-auto">{{ message }}</p>
+        <p class="text-muted-foreground text-lg mb-8 max-w-md mx-auto">{{ message }}</p>
 
         <!-- Actions -->
         <div class="flex gap-4 justify-center">
@@ -30,7 +30,7 @@ p-4{% endblock %}
                 {{ action_text }}
             </a>
             <button hx-on-click="window.history.back()"
-                class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all">
+                class="px-6 py-3 bg-muted text-foreground rounded-lg font-medium hover:bg-muted transition-all">
                 Go Back
             </button>
         </div>
@@ -38,7 +38,7 @@ p-4{% endblock %}
 
     <!-- Footer -->
     <div class="text-center mt-6">
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-muted-foreground">
             Powered by Lexigram Admin
         </p>
     </div>

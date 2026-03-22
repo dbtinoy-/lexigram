@@ -18,12 +18,12 @@ justify-center p-4{% endblock %}
                 </path>
             </svg>
         </div>
-        <h1 class="text-3xl font-bold text-gray-900">Admin Login</h1>
-        <p class="text-gray-600 mt-2">Sign in to access the admin panel</p>
+        <h1 class="text-3xl font-bold text-foreground">Admin Login</h1>
+        <p class="text-muted-foreground mt-2">Sign in to access the admin panel</p>
     </div>
 
     <!-- Login Card -->
-    <div class="bg-white rounded-2xl shadow-xl p-8">
+    <div class="bg-card rounded-2xl shadow-xl p-8">
         {% if error %}
         <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
             <p class="text-red-600 text-sm">{{ error }}</p>
@@ -34,21 +34,21 @@ justify-center p-4{% endblock %}
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
             <!-- Email Field -->
             <div>
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="email" class="block text-sm font-medium text-foreground mb-2">
                     Email Address
                 </label>
                 <input type="email" id="email" name="email" required autofocus
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                    class="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                     placeholder="admin@example.com" />
             </div>
 
             <!-- Password Field -->
             <div>
-                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="password" class="block text-sm font-medium text-foreground mb-2">
                     Password
                 </label>
                 <input type="password" id="password" name="password" required
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                    class="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                     placeholder="••••••••" />
             </div>
 
@@ -64,7 +64,7 @@ justify-center p-4{% endblock %}
 
     <!-- Footer -->
     <div class="text-center mt-6">
-        <p class="text-sm text-gray-500">
+        <p class="text-sm text-muted-foreground">
             Powered by Lexigram Admin
         </p>
     </div>

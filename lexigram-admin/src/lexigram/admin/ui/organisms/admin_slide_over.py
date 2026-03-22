@@ -115,11 +115,11 @@ def render_delete_confirm(
         el(
             "div",
             {
-                "class": "flex items-start gap-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 p-4"
+                "class": "flex items-start gap-4 rounded-xl bg-destructive/10 border border-destructive/30 p-4"
             },
             raw(
                 '<div class="flex-shrink-0 mt-0.5">'
-                '<svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">'
+                '<svg class="h-6 w-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">'
                 '<path stroke-linecap="round" stroke-linejoin="round" '
                 'd="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>'
                 "</svg>"
@@ -130,14 +130,12 @@ def render_delete_confirm(
                 {"class": "flex-1 min-w-0"},
                 el(
                     "p",
-                    {"class": "text-sm font-semibold text-red-800 dark:text-red-300"},
+                    {"class": "text-sm font-semibold text-destructive"},
                     "Confirm Deletion",
                 ),
                 el(
                     "p",
-                    {
-                        "class": "mt-1 text-sm text-red-700 dark:text-red-400 leading-relaxed"
-                    },
+                    {"class": "mt-1 text-sm text-destructive leading-relaxed"},
                     raw(message or default_message),
                 ),
             ),
@@ -146,7 +144,9 @@ def render_delete_confirm(
             [
                 el(
                     "p",
-                    {"class": "text-sm text-gray-500 dark:text-gray-400 italic"},
+                    {
+                        "class": "text-sm text-muted-foreground dark:text-muted-foreground italic"
+                    },
                     extra_warning,
                 )
             ]
@@ -161,7 +161,7 @@ def render_delete_confirm(
                 "label",
                 {
                     "for": "delete-confirm-input",
-                    "class": "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
+                    "class": "block text-sm font-medium text-foreground mb-1",
                 },
                 'Type <span class="font-bold tracking-wider">DELETE</span> to confirm:',
             ),
@@ -174,11 +174,11 @@ def render_delete_confirm(
                     "x-model": "confirmText",
                     "placeholder": "Type DELETE here",
                     "class": (
-                        "block w-full rounded-lg border border-gray-300 dark:border-gray-600 "
-                        "bg-white dark:bg-gray-900 px-3 py-2 text-sm "
-                        "text-gray-900 dark:text-gray-100 "
-                        "placeholder-gray-400 dark:placeholder-gray-500 "
-                        "focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 "
+                        "block w-full rounded-lg border border-border "
+                        "bg-background px-3 py-2 text-sm "
+                        "text-foreground "
+                        "placeholder-muted-foreground dark:placeholder-muted-foreground "
+                        "focus:outline-none focus:ring-2 focus:ring-destructive focus:border-destructive "
                         "transition-colors"
                     ),
                     "autocomplete": "off",
@@ -195,9 +195,9 @@ def render_delete_confirm(
             "x-on:click": "open = false",
             "class": (
                 "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium "
-                "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 "
-                "border border-gray-300 dark:border-gray-600 "
-                "hover:bg-gray-50 dark:hover:bg-gray-700 "
+                "text-foreground bg-card "
+                "border border-border "
+                "hover:bg-muted dark:hover:bg-muted "
                 "focus:outline-none focus:ring-2 focus:ring-primary-500 "
                 "transition-colors"
             ),
@@ -215,8 +215,8 @@ def render_delete_confirm(
             "x-bind:disabled": "confirmText !== 'DELETE'",
             "class": (
                 "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium "
-                "text-white bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 "
-                "focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 "
+                "text-white bg-destructive hover:bg-destructive/90 "
+                "focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 "
                 "transition-colors shadow-sm "
                 "disabled:opacity-50 disabled:cursor-not-allowed"
             ),
@@ -290,11 +290,11 @@ def render_bulk_delete_confirm(
         el(
             "div",
             {
-                "class": "flex items-start gap-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 p-4"
+                "class": "flex items-start gap-4 rounded-xl bg-destructive/10 border border-destructive/30 p-4"
             },
             raw(
                 '<div class="flex-shrink-0 mt-0.5">'
-                '<svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">'
+                '<svg class="h-6 w-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">'
                 '<path stroke-linecap="round" stroke-linejoin="round" '
                 'd="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>'
                 "</svg>"
@@ -305,14 +305,12 @@ def render_bulk_delete_confirm(
                 {"class": "flex-1 min-w-0"},
                 el(
                     "p",
-                    {"class": "text-sm font-semibold text-red-800 dark:text-red-300"},
+                    {"class": "text-sm font-semibold text-destructive"},
                     "Confirm Bulk Deletion",
                 ),
                 el(
                     "p",
-                    {
-                        "class": "mt-1 text-sm text-red-700 dark:text-red-400 leading-relaxed"
-                    },
+                    {"class": "mt-1 text-sm text-destructive leading-relaxed"},
                     raw(message or default_message),
                 ),
             ),
@@ -321,7 +319,9 @@ def render_bulk_delete_confirm(
             [
                 el(
                     "p",
-                    {"class": "text-sm text-gray-500 dark:text-gray-400 italic"},
+                    {
+                        "class": "text-sm text-muted-foreground dark:text-muted-foreground italic"
+                    },
                     extra_warning,
                 )
             ]
@@ -336,7 +336,7 @@ def render_bulk_delete_confirm(
                 "label",
                 {
                     "for": "bulk-delete-confirm-input",
-                    "class": "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
+                    "class": "block text-sm font-medium text-foreground mb-1",
                 },
                 'Type <span class="font-bold tracking-wider">DELETE</span> to confirm:',
             ),
@@ -349,11 +349,11 @@ def render_bulk_delete_confirm(
                     "x-model": "confirmText",
                     "placeholder": "Type DELETE here",
                     "class": (
-                        "block w-full rounded-lg border border-gray-300 dark:border-gray-600 "
-                        "bg-white dark:bg-gray-900 px-3 py-2 text-sm "
-                        "text-gray-900 dark:text-gray-100 "
-                        "placeholder-gray-400 dark:placeholder-gray-500 "
-                        "focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 "
+                        "block w-full rounded-lg border border-border "
+                        "bg-background px-3 py-2 text-sm "
+                        "text-foreground "
+                        "placeholder-muted-foreground dark:placeholder-muted-foreground "
+                        "focus:outline-none focus:ring-2 focus:ring-destructive focus:border-destructive "
                         "transition-colors"
                     ),
                     "autocomplete": "off",
@@ -370,9 +370,9 @@ def render_bulk_delete_confirm(
             "x-on:click": "open = false",
             "class": (
                 "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium "
-                "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 "
-                "border border-gray-300 dark:border-gray-600 "
-                "hover:bg-gray-50 dark:hover:bg-gray-700 "
+                "text-foreground bg-card "
+                "border border-border "
+                "hover:bg-muted dark:hover:bg-muted "
                 "focus:outline-none focus:ring-2 focus:ring-primary-500 "
                 "transition-colors"
             ),
@@ -392,8 +392,8 @@ def render_bulk_delete_confirm(
             "x-bind:disabled": "confirmText !== 'DELETE'",
             "class": (
                 "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium "
-                "text-white bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 "
-                "focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 "
+                "text-white bg-destructive hover:bg-destructive/90 "
+                "focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 "
                 "transition-colors shadow-sm "
                 "disabled:opacity-50 disabled:cursor-not-allowed"
             ),

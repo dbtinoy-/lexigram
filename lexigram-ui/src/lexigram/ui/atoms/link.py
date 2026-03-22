@@ -40,9 +40,7 @@ class Link(Component):
         if self.variant == "primary":
             base_classes.append("text-primary hover:text-primary/80")
         elif self.variant == "muted":
-            base_classes.append(
-                "text-muted-foreground hover:text-foreground"
-            )
+            base_classes.append("text-muted-foreground hover:text-foreground")
         else:
             base_classes.append("text-foreground hover:underline")
 
