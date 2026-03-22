@@ -31,6 +31,8 @@ from lexigram.ui.atoms.skeleton import Skeleton
 from lexigram.ui.atoms.spinner import Spinner
 from lexigram.ui.atoms.switch import Switch
 from lexigram.ui.atoms.tooltip import Tooltip
+from lexigram.ui.charts import BarChart, LineChart, MiniBar, PieChart, Sparkline
+from lexigram.ui.charts.types import ChartDataPoint
 from lexigram.ui.molecules.alert import Alert
 from lexigram.ui.molecules.card import Card
 from lexigram.ui.molecules.dropdown import Dropdown
@@ -48,37 +50,99 @@ def build_gallery() -> dict[str, str]:
     panels: list[tuple[str, object]] = [
         ("Alert", Alert("Operation complete")),
         ("Badge", Badge("New")),
+        (
+            "BarChart",
+            BarChart(
+                [
+                    ChartDataPoint("Jan", 42, "chart-1"),
+                    ChartDataPoint("Feb", 68, "chart-2"),
+                    ChartDataPoint("Mar", 33, "chart-3"),
+                ]
+            ),
+        ),
         ("Button", Button("Save")),
         ("Card", Card(title="Card title", content="Card body content")),
         ("Checkbox", Checkbox(name="agree", label="Agree")),
         ("Divider", Divider()),
         ("Dropdown", Dropdown("Menu", items=["Item 1", "Item 2"])),
-        ("Fieldset", Fieldset(TextInput(name="username", label="Username"), legend="Account")),
-        ("Form", Form(children=[TextInput(name="field", label="Field")], action_url="/save")),
+        (
+            "Fieldset",
+            Fieldset(TextInput(name="username", label="Username"), legend="Account"),
+        ),
+        (
+            "Form",
+            Form(children=[TextInput(name="field", label="Field")], action_url="/save"),
+        ),
         ("Icon", Icon(name="check")),
         ("InlineToast", InlineToast("Saved successfully")),
         ("Label", Label("Name")),
         ("Layout", Row(Col("Cell A"), Col("Cell B"))),
+        (
+            "LineChart",
+            LineChart(
+                [
+                    ChartDataPoint("Jan", 42, "chart-1"),
+                    ChartDataPoint("Feb", 68, "chart-2"),
+                    ChartDataPoint("Mar", 33, "chart-3"),
+                ]
+            ),
+        ),
         ("Link", Link("Home", href="/")),
-        ("Modal", Modal(title="Dialog", trigger="Open", is_open=True, footer=[Button("Close", size="sm")])),
+        (
+            "Modal",
+            Modal(
+                title="Dialog",
+                trigger="Open",
+                is_open=True,
+                footer=[Button("Close", size="sm")],
+            ),
+        ),
         ("NumberInput", NumberInput(name="count", label="Count")),
         ("Pagination", Pagination(page=1, total=45, per_page=20)),
         ("PasswordInput", PasswordInput(name="pw", label="Password")),
+        (
+            "PieChart",
+            PieChart(
+                [
+                    ChartDataPoint("Alpha", 30, "chart-1"),
+                    ChartDataPoint("Beta", 50, "chart-2"),
+                    ChartDataPoint("Gamma", 20, "chart-3"),
+                ]
+            ),
+        ),
         ("ProgressBar", ProgressBar(value=60)),
         ("Radio", Radio(name="r", choices=[("a", "Alpha"), ("b", "Beta")])),
-        ("Select", Select(name="s", label="Choose one", choices=[("a", "Alpha"), ("b", "Beta")])),
+        (
+            "Select",
+            Select(
+                name="s", label="Choose one", choices=[("a", "Alpha"), ("b", "Beta")]
+            ),
+        ),
         ("Skeleton", Skeleton()),
         ("SlideOver", SlideOver(title="Panel", trigger="Open", is_open=True)),
+        (
+            "Sparkline",
+            Sparkline(
+                [
+                    ChartDataPoint("P1", 10, "chart-1"),
+                    ChartDataPoint("P2", 25, "chart-2"),
+                    ChartDataPoint("P3", 18, "chart-3"),
+                ]
+            ),
+        ),
         ("Spinner", Spinner()),
         ("Switch", Switch("Toggle setting", name="toggle")),
-        ("Tabs", Tabs(
-            [("Overview", "overview"), ("Details", "details")],
-            active_tab="overview",
-            children=[
-                TabPanel("overview", "Overview content"),
-                TabPanel("details", "Details content"),
-            ],
-        )),
+        (
+            "Tabs",
+            Tabs(
+                [("Overview", "overview"), ("Details", "details")],
+                active_tab="overview",
+                children=[
+                    TabPanel("overview", "Overview content"),
+                    TabPanel("details", "Details content"),
+                ],
+            ),
+        ),
         ("TextArea", TextArea(name="notes", label="Notes")),
         ("TextInput", TextInput(name="name", label="Name")),
         ("Tooltip", Tooltip("More info here")),

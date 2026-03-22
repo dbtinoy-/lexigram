@@ -33,7 +33,6 @@ def test_get_semantic_classes_all_variants_use_semantic_classes() -> None:
         assert "bg-" in classes, f"{variant}: missing semantic background class"
 
 
-
 def test_get_semantic_icon_known() -> None:
     assert get_semantic_icon("success") == "check"
 
@@ -87,6 +86,15 @@ def test_chart_tokens_exist() -> None:
 
     for i in range(1, 6):
         assert f"--chart-{i}" in SHADCN_DEFAULT_COLORS
+
+
+def test_chart_utilities_exist() -> None:
+    """Chart token utility classes must exist for chart components."""
+    from lexigram.ui.styles.design_tokens import SEMANTIC_UTILITY_CLASSES
+
+    for i in range(1, 6):
+        assert f"bg-chart-{i}" in SEMANTIC_UTILITY_CLASSES
+        assert f"text-chart-{i}" in SEMANTIC_UTILITY_CLASSES
 
 
 def test_shadow_xs_token_exists() -> None:

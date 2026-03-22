@@ -212,6 +212,11 @@ SEMANTIC_UTILITY_CLASSES: dict[str, str] = {
     "bg-warning-foreground": "background-color: var(--color-warning-foreground);",
     "bg-info": "background-color: var(--color-info);",
     "bg-info-foreground": "background-color: var(--color-info-foreground);",
+    "bg-chart-1": "background-color: var(--chart-1);",
+    "bg-chart-2": "background-color: var(--chart-2);",
+    "bg-chart-3": "background-color: var(--chart-3);",
+    "bg-chart-4": "background-color: var(--chart-4);",
+    "bg-chart-5": "background-color: var(--chart-5);",
     # ── Text colors ──
     "text-background": "color: var(--background);",
     "text-foreground": "color: var(--foreground);",
@@ -233,6 +238,11 @@ SEMANTIC_UTILITY_CLASSES: dict[str, str] = {
     "text-warning-foreground": "color: var(--color-warning-foreground);",
     "text-info": "color: var(--color-info);",
     "text-info-foreground": "color: var(--color-info-foreground);",
+    "text-chart-1": "color: var(--chart-1);",
+    "text-chart-2": "color: var(--chart-2);",
+    "text-chart-3": "color: var(--chart-3);",
+    "text-chart-4": "color: var(--chart-4);",
+    "text-chart-5": "color: var(--chart-5);",
     # ── Border colors ──
     "border-background": "border-color: var(--background);",
     "border-foreground": "border-color: var(--foreground);",

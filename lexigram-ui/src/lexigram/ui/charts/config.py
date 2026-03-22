@@ -11,6 +11,11 @@ CHART_COLORS: dict[str, str] = {
     "pink": "#EC4899",
     "teal": "#14B8A6",
     "gray": "#6B7280",
+    "chart-1": "var(--chart-1)",
+    "chart-2": "var(--chart-2)",
+    "chart-3": "var(--chart-3)",
+    "chart-4": "var(--chart-4)",
+    "chart-5": "var(--chart-5)",
 }
 
 CHART_BG: dict[str, str] = {
@@ -24,6 +29,11 @@ CHART_BG: dict[str, str] = {
     "pink": "bg-pink-500",
     "teal": "bg-teal-500",
     "gray": "bg-muted",
+    "chart-1": "bg-chart-1",
+    "chart-2": "bg-chart-2",
+    "chart-3": "bg-chart-3",
+    "chart-4": "bg-chart-4",
+    "chart-5": "bg-chart-5",
 }
 
 CHART_TEXT: dict[str, str] = {
@@ -37,6 +47,11 @@ CHART_TEXT: dict[str, str] = {
     "pink": "text-pink-600 dark:text-pink-400",
     "teal": "text-teal-600 dark:text-teal-400",
     "gray": "text-muted-foreground",
+    "chart-1": "text-muted-foreground",
+    "chart-2": "text-muted-foreground",
+    "chart-3": "text-muted-foreground",
+    "chart-4": "text-muted-foreground",
+    "chart-5": "text-muted-foreground",
 }
 
 
