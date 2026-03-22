@@ -118,7 +118,7 @@ markers = [
 
 [project]
 name = "lexigram-ai"
-version = "0.1.3008"
+version = "0.1.3006"
 description = "AI Layer for Lexigram Framework - Native LLM, Vector, RAG integration"
 readme = "README.md"
 requires-python = ">=3.11"

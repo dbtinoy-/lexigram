@@ -30,7 +30,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram"
-version = "0.1.3008"
+version = "0.1.3007"
 description = "Async-first DI/IoC framework for Python — core package"
 readme = "README.md"
 requires-python = ">=3.11"
