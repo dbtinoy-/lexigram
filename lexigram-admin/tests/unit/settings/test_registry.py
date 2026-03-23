@@ -36,6 +36,20 @@ class MixedSpec(PydanticConfigSpec):
     node_overrides = {"color": ColorNode}
 
 
+class OverrideModel(DomainModel):
+    """Model whose int field is overridden."""
+
+    count: int = Field(default=3, title="Count")
+
+
+class OverrideSpec(PydanticConfigSpec):
+    """Spec overriding an int field with ColorNode."""
+
+    namespace = "test.override"
+    model = OverrideModel
+    node_overrides = {"count": ColorNode}
+
+
 class TestColorNode:
     """Tests for ColorNode hex validation."""
 
@@ -80,6 +94,10 @@ class TestPydanticConfigSpecNodes:
         nodes = MixedSpec.get_nodes()
         assert nodes["mode"].default == "a"
 
+    def test_node_override_wins_over_type_mapping(self) -> None:
+        nodes = OverrideSpec.get_nodes()
+        assert isinstance(nodes["count"], ColorNode)
+
 
 class TestSpecMetadata:
     """Tests for spec description and permissions metadata."""
@@ -95,6 +113,26 @@ class TestSpecMetadata:
         assert "description" in d
         assert "namespace" in d
         assert "nodes" in d
+
+
+class TestOptionalFields:
+    """Tests for optional field handling."""
+
+    def test_field_with_default_none_is_optional(self) -> None:
+        class OptionalModel(DomainModel):
+            """Model with an explicitly optional field."""
+
+            note: str | None = Field(default=None, title="Note")
+
+        class OptionalSpec(PydanticConfigSpec):
+            """Spec bound to OptionalModel."""
+
+            namespace = "test.optional"
+            model = OptionalModel
+
+        nodes = OptionalSpec.get_nodes()
+        assert nodes["note"].required is False
+        assert nodes["note"].default is None
 
 
 @pytest.mark.asyncio

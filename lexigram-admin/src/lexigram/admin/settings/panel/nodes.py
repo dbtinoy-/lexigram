@@ -214,10 +214,10 @@ class PydanticConfigSpec(ConfigSpec):
         nodes: dict[str, AbstractConfigNode] = {}
         for name, field in dc_fields.items():
             annotation = hints.get(name, str)
-            default = field.default
-            if default is MISSING:
-                default = None
-            has_default = default is not None or field.default_factory is not MISSING
+            has_default = (
+                field.default is not MISSING or field.default_factory is not MISSING
+            )
+            default = None if field.default is MISSING else field.default
             metadata = field.metadata or {}
 
             kwargs: dict[str, Any] = {
@@ -227,19 +227,20 @@ class PydanticConfigSpec(ConfigSpec):
                 "required": not has_default,
             }
 
-            node_cls: type[AbstractConfigNode] = cls.node_overrides.get(
-                name, StringNode
-            )
-            if annotation is bool:
-                node_cls = BooleanNode
-            elif annotation is int:
-                node_cls = IntNode
-            elif get_origin(annotation) is Literal:
-                node_cls = EnumNode
-                options = list(get_args(annotation))
-                kwargs["options"] = options
-                if default is None or default not in options:
-                    kwargs["default"] = options[0]
+            node_cls: type[AbstractConfigNode] = cls.node_overrides.get(name)
+            if node_cls is None:
+                if annotation is bool:
+                    node_cls = BooleanNode
+                elif annotation is int:
+                    node_cls = IntNode
+                elif get_origin(annotation) is Literal:
+                    node_cls = EnumNode
+                    options = list(get_args(annotation))
+                    kwargs["options"] = options
+                    if default is None or default not in options:
+                        kwargs["default"] = options[0]
+                else:
+                    node_cls = StringNode
 
             node = node_cls(**kwargs)
             node._name = name
