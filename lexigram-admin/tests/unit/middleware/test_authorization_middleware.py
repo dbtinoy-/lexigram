@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.responses import PlainTextResponse
 
 from lexigram.admin.middleware.authorization import (
     AdminAuthorizationMiddleware,
@@ -113,13 +113,13 @@ async def test_public_path_skips_authorization() -> None:
 
 
 @pytest.mark.asyncio
-async def test_anonymous_htmx_returns_json_401() -> None:
-    """HTMX requests get JSON 401, not redirect."""
+async def test_anonymous_htmx_returns_hx_redirect() -> None:
+    """HTMX requests get HX-Redirect so the login page replaces the page."""
     mw = AdminAuthorizationMiddleware(app=None, authorizer=DenyAll())
     request = _make_request(hx_request="true")
     resp = mw._unauthenticated(request)
-    assert resp.status_code == 401
-    assert isinstance(resp, JSONResponse)
+    assert resp.status_code == 200
+    assert resp.headers.get("HX-Redirect", "").startswith("/admin/login?next=")
 
 
 @pytest.mark.asyncio

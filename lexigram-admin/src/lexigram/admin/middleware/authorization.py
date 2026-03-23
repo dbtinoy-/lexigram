@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse
+from starlette.responses import JSONResponse, RedirectResponse, Response
 
 from lexigram.admin.observability.admin_metrics import AdminMetrics
 from lexigram.logging import get_logger
@@ -84,20 +84,21 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
     @staticmethod
-    def _unauthenticated(request: Request) -> JSONResponse | RedirectResponse:
-        """Return 401, with JSON for HTMX requests to prevent redirect loops."""
+    def _unauthenticated(
+        request: Request,
+    ) -> JSONResponse | RedirectResponse | Response:
+        """Redirect to login, with HX-Redirect for HTMX requests.
+
+        HTMX swaps responses into the current page, so a plain redirect
+        would render the login page inside the target component. The
+        HX-Redirect header forces a full browser navigation instead.
+        """
+        login_url = f"/admin/login?next={request.url.path}"
         if request.headers.get("HX-Request") == "true":
-            return JSONResponse(
-                {
-                    "error": "session_expired",
-                    "login_url": "/admin/login",
-                },
-                status_code=401,
-            )
-        return RedirectResponse(
-            url=f"/admin/login?next={request.url.path}",
-            status_code=302,
-        )
+            response = Response(status_code=200)
+            response.headers["HX-Redirect"] = login_url
+            return response
+        return RedirectResponse(url=login_url, status_code=302)
 
     @staticmethod
     def _forbidden(request: Request) -> JSONResponse:
