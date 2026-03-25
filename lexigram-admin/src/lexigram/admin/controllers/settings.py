@@ -1,120 +1,45 @@
+"""Spec-driven settings controller for the admin interface.
+
+Renders editable configuration specs (branding, caching, security) through
+the config panel UI and persists values to the DB-backed store.
+"""
+
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
-from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.controllers.base import AdminController
-from lexigram.admin.engine.renderer import AdminRenderer
-from lexigram.admin.multitenancy.adapter import resolve_tenant_id
-from lexigram.admin.services.settings_service import (
-    DEFAULT_SETTINGS,
-    AdminSettingsService,
-)
+from lexigram.admin.settings.panel.layout import ConfigLayout
+from lexigram.admin.settings.panel.registry import ConfigRegistry
+from lexigram.admin.settings.panel.types import ConfigCategory, get_default_categories
+from lexigram.admin.settings.panel.ui import ConfigDashboardUI
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
 
+if TYPE_CHECKING:
+    from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+    from lexigram.admin.engine.renderer import AdminRenderer
+    from lexigram.admin.services.settings_service import AdminSettingsService
+
 logger = get_logger(__name__)
 
+__all__ = ["SettingsController"]
 
-_SETTINGS_FORM = """\
-<div class="max-w-2xl mx-auto py-8 px-4">
-  <h1 class="text-2xl font-bold text-foreground mb-6">Settings</h1>
-  <form method="post" action="/admin/settings" class="space-y-6">
-    <input type="hidden" name="csrf_token" value="{csrf_token}">
-    <div class="bg-card rounded-xl shadow-sm border border-border p-6 space-y-6">
-      <h2 class="text-lg font-semibold text-foreground border-b border-border pb-2">Branding</h2>
-
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Site Name</label>
-        <input type="text" name="site_name" value="{site_name}"
-               class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-               placeholder="My Admin">
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Primary Color</label>
-        <div class="flex items-center gap-3">
-          <input type="color" name="primary_color" value="{primary_color}"
-                 class="w-10 h-10 rounded cursor-pointer border border-border p-0.5"
-                 oninput="this.nextElementSibling.value=this.value">
-          <input type="text" name="primary_color_text" value="{primary_color}"
-                 class="flex-1 rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                 placeholder="#6b7280" pattern="^#[0-9a-fA-F]{{6}}$"
-                 oninput="this.previousElementSibling.value=this.value">
-        </div>
-        <p class="text-xs text-muted-foreground mt-1">Hex color code (e.g. #6b7280)</p>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Logo URL</label>
-        <input type="url" name="logo_url" value="{logo_url}"
-               class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-               placeholder="https://example.com/logo.png">
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Favicon URL</label>
-        <input type="url" name="favicon_url" value="{favicon_url}"
-               class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-               placeholder="https://example.com/favicon.ico">
-      </div>
-
-      <h2 class="text-lg font-semibold text-foreground border-b border-border pb-2 pt-4">Appearance</h2>
-
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Default Theme</label>
-        <select name="dark_mode"
-                class="w-full rounded-lg border border-border bg-card dark:bg-muted px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-          <option value="system" {system_sel}>System</option>
-          <option value="light" {light_sel}>Light</option>
-          <option value="dark" {dark_sel}>Dark</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="flex justify-end gap-3">
-      <a href="/admin/"
-         class="px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors">
-        Cancel
-      </a>
-      <button type="submit"
-              class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors focus:ring-2 focus:ring-primary-500">
-        Save Settings
-      </button>
-    </div>
-  </form>
-</div>"""
-
-
-def _render_settings_form(
-    settings: dict[str, Any], csrf_token: str = "", message: str = ""
-) -> str:
-    def _sel(v: str) -> str:
-        return 'selected="selected"' if settings.get("dark_mode") == v else ""
-
-    html = _SETTINGS_FORM.format(
-        csrf_token=csrf_token,
-        site_name=settings.get("site_name", ""),
-        primary_color=settings.get("primary_color", "#6b7280"),
-        logo_url=settings.get("logo_url", ""),
-        favicon_url=settings.get("favicon_url", ""),
-        system_sel=_sel("system"),
-        light_sel=_sel("light"),
-        dark_sel=_sel("dark"),
-    )
-    if message:
-        banner_class = "bg-success/10 border-success/30 text-success"
-        html = (
-            f'<div class="{banner_class} border rounded-lg px-4 py-3 mb-4 text-sm">{message}</div>'
-            + html
-        )
-    return html
+_SYSTEM_CATEGORY = "system"
 
 
 class SettingsController(AdminController):
+    """Spec-driven settings controller.
+
+    Routes:
+        GET  /admin/settings              - Redirect to first editable spec
+        GET  /admin/settings/{namespace}  - Spec edit form
+        POST /admin/settings/{namespace}  - Save spec values
+    """
+
     prefix = "/settings"
 
     def __init__(
@@ -122,69 +47,216 @@ class SettingsController(AdminController):
         renderer: AdminRenderer,
         settings_service: AdminSettingsService | None = None,
         csrf_service: AdminCsrfServiceProtocol | None = None,
+        audit_service: Any = None,
+        registry: ConfigRegistry | None = None,
     ) -> None:
-        super().__init__(renderer=renderer)
-        self._settings_service = settings_service
+        super().__init__(renderer=renderer, settings_service=settings_service)
         self._csrf_service = csrf_service
+        self._audit_service = audit_service
+        self._registry = registry or ConfigRegistry.with_defaults()
 
-    async def _get_tenant(self, request: Request) -> str:
-        return await resolve_tenant_id(request, default="default")
+    # -- helpers --
 
-    def _get_csrf_token(self, request: Request) -> str:
+    def _store_name(self) -> str:
+        """Use the DB store when registered, else the in-memory default."""
+        return "db" if self._registry.has_store("db") else "default"
+
+    def _build_categories(
+        self, request: Request
+    ) -> tuple[list[ConfigCategory], list[Any]]:
+        """Build categories with the visible specs for the requesting user."""
+        user = getattr(getattr(request, "state", None), "user", None)
+        permissions = frozenset(getattr(user, "permissions", None) or ())
+        visible = [
+            spec
+            for spec in self._registry.get_specs(_SYSTEM_CATEGORY)
+            if not spec.required_permissions
+            or permissions.issuperset(spec.required_permissions)
+        ]
+        categories = get_default_categories()
+        for cat in categories:
+            if cat.name == _SYSTEM_CATEGORY:
+                cat.specs.extend(visible)
+        return categories, visible
+
+    def _get_category(
+        self,
+        categories: list[ConfigCategory],
+        name: str,
+    ) -> ConfigCategory | None:
+        """Find a category by name."""
+        return next((c for c in categories if c.name == name), None)
+
+    def _get_csrf_token(self, request: Request) -> str | None:
+        """Resolve the CSRF token for form rendering, if available."""
         if not self._csrf_service:
-            return ""
-        session = getattr(request, "session", {})
-        session_id: str = session.get("admin_user_id", "anonymous")
-        return self._csrf_service.generate_token(session_id)
+            return None
+        try:
+            token = getattr(self._csrf_service, "get_token", None) or getattr(
+                self._csrf_service, "generate_token", None
+            )
+            if token:
+                return token(request)
+        except Exception:  # noqa: BLE001 — non-fatal for form rendering
+            logger.warning("settings.csrf_token_unavailable")
+        return None
+
+    async def _audit(
+        self,
+        request: Request,
+        success: bool = True,
+        **metadata: Any,
+    ) -> None:
+        """Append a settings change to the security audit log, best-effort."""
+        if not self._audit_service:
+            return
+        try:
+            from lexigram.admin.auth.types import AdminSecurityEventType
+
+            client = getattr(request, "client", None)
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.SETTINGS_UPDATED,
+                ip_address=getattr(client, "host", "unknown"),
+                user_agent=request.headers.get("user-agent", "") or "",
+                success=success,
+                metadata=metadata,
+            )
+        except Exception:  # noqa: BLE001 — audit failures must not break saves
+            logger.warning("settings.audit_failed", **metadata)
+
+    # -- routes --
 
     @get("/")
-    async def index(self, request: Request) -> HTMLResponse:
-        tenant = await self._get_tenant(request)
-        settings = DEFAULT_SETTINGS.copy()
-        if self._settings_service:
-            overrides = await self._settings_service.get_all(tenant)
-            settings.update(overrides)
-        content = _render_settings_form(
-            settings, csrf_token=self._get_csrf_token(request)
+    async def index(self, request: Request) -> Response:
+        """Redirect to the first editable spec, or render an empty state."""
+        _, visible = self._build_categories(request)
+        if visible:
+            return RedirectResponse(
+                url=f"/admin/settings/{visible[0].namespace}",
+                status_code=302,
+            )
+
+        categories = get_default_categories()
+        layout = ConfigLayout(
+            categories=categories,
+            active_category=None,
+            active_namespace=None,
+            content=None,
+            title="Settings",
         )
-        return await self.render_admin(request, content, title="Settings")
+        return await self.render_admin(request, layout, title="Settings")
 
-    @post("/")
-    async def save(self, request: Request) -> HTMLResponse:
-        tenant = await self._get_tenant(request)
-        logger.debug(
-            "settings.save_called",
-            tenant=tenant,
-            csrf_service=self._csrf_service is not None,
+    @get("/{namespace:path}")
+    async def spec_view(self, request: Request) -> Response:
+        """Spec detail/edit view."""
+        namespace = request.path_params.get("namespace", "")
+        spec = self._registry.get_spec(namespace)
+        if not spec or not spec.get_nodes():
+            self.flash(f"Configuration '{namespace}' not found.", "error")
+            return RedirectResponse(url="/admin/settings", status_code=302)
+
+        categories, _ = self._build_categories(request)
+        values = await self._registry.get_values(namespace, self._store_name())
+
+        ui = ConfigDashboardUI()
+        form_content = ui.render_config_form(
+            spec=spec.to_dict(),
+            values=values,
+            action=f"/admin/settings/{namespace}",
+            csrf_token=self._get_csrf_token(request),
         )
-        body_scope = request.scope.get("admin_form_data")
-        if body_scope is not None:
-            form = body_scope
-        else:
-            form = await request.form()
 
-        primary_color = str(form.get("primary_color", "")).strip()
-        if not primary_color:
-            primary_color = str(form.get("primary_color_text", "#6b7280")).strip()
+        layout = ConfigLayout(
+            categories=categories,
+            active_category=_SYSTEM_CATEGORY,
+            active_namespace=namespace,
+            content=form_content,
+            title="Settings",
+        )
 
-        settings = {
-            "site_name": str(form.get("site_name", "")).strip(),
-            "primary_color": primary_color,
-            "logo_url": str(form.get("logo_url", "")).strip(),
-            "favicon_url": str(form.get("favicon_url", "")).strip(),
-            "dark_mode": str(form.get("dark_mode", "system")).strip(),
+        return await self.render_admin(
+            request,
+            layout,
+            title=f"{spec.label or namespace} - Settings",
+        )
+
+    @post("/{namespace:path}")
+    async def save_spec(self, request: Request) -> Response:
+        """Save configuration changes for a spec."""
+        namespace = request.path_params.get("namespace", "")
+        spec = self._registry.get_spec(namespace)
+        if not spec or not spec.get_nodes():
+            self.flash(f"Configuration '{namespace}' not found.", "error")
+            return RedirectResponse(url="/admin/settings", status_code=302)
+
+        user = getattr(getattr(request, "state", None), "user", None)
+        permissions = frozenset(getattr(user, "permissions", None) or ())
+        if spec.required_permissions and not permissions.issuperset(
+            spec.required_permissions
+        ):
+            await self._audit(request, success=False, reason="permission_denied")
+            self.flash("You do not have permission to edit this setting.", "error")
+            return RedirectResponse(
+                url=f"/admin/settings/{namespace}",
+                status_code=302,
+            )
+
+        form = await request.form()
+
+        nodes = spec.get_nodes()
+        updates = {
+            key: value
+            for key, value in form.items()
+            if not key.startswith("_") and key in nodes
         }
 
-        if self._settings_service:
-            await self._settings_service.set_all(tenant, settings)
+        invalid = [
+            key for key, value in updates.items() if nodes[key].validate(value) != value
+        ]
+        await self._registry.save_values(namespace, updates, self._store_name())
 
-        settings = dict(DEFAULT_SETTINGS, **settings)
-        content = _render_settings_form(
-            settings,
-            csrf_token=self._get_csrf_token(request),
-            message="Settings saved successfully.",
+        await self._audit(
+            request,
+            namespace=namespace,
+            keys=sorted(updates),
+            invalid=invalid,
         )
-        return await self.render_admin(request, content, title="Settings")
 
+        if request.headers.get("hx-request") == "true":
+            from lexigram.ui.core.base import render_to_string
 
-__all__ = ["SettingsController"]
+            self._flash_messages.clear()
+            toast_html = render_to_string(
+                self._render_toast("Settings saved successfully.", "success")
+            )
+            flash_oob = (
+                f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
+            )
+
+            values = await self._registry.get_values(namespace, self._store_name())
+            ui = ConfigDashboardUI()
+            form_content = ui.render_config_form(
+                spec=spec.to_dict(),
+                values=values,
+                action=f"/admin/settings/{namespace}",
+                csrf_token=self._get_csrf_token(request),
+            )
+            form_html = render_to_string(form_content)
+
+            return HTMLResponse(flash_oob + form_html)
+
+        if invalid:
+            self.flash(
+                f"Saved. Invalid values reset to defaults: {', '.join(invalid)}",
+                "warning",
+            )
+        else:
+            self.flash("Settings saved successfully.", "success")
+        return RedirectResponse(
+            url=f"/admin/settings/{namespace}",
+            status_code=302,
+        )
+
+    def _render_toast(self, message: str, kind: str) -> str:
+        """Build a toast component for htmx responses."""
+        return f'<div class="toast toast-success">{message}</div>'

@@ -107,8 +107,8 @@ class ConfigLayout(Component):
                     el(
                         "a",
                         el("span", spec.label or spec.namespace, class_="truncate"),
-                        href=f"/admin/config/{category.name}/{spec.namespace}",
-                        hx_get=f"/admin/config/{category.name}/{spec.namespace}",
+                        href=f"/admin/settings/{spec.namespace}",
+                        hx_get=f"/admin/settings/{spec.namespace}",
                         hx_target="#main-content",
                         hx_swap="innerHTML",
                         hx_push_url="true",

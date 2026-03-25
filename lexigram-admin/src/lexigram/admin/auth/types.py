@@ -30,6 +30,7 @@ class AdminSecurityEventType(str, Enum):
     PERMISSION_DENIED = "permission_denied"
     SUSPICIOUS_ACTIVITY = "suspicious_activity"
     ADMIN_UNLOCK = "admin_unlock"
+    SETTINGS_UPDATED = "settings_updated"
 
 
 class AdminLockoutStatus(str, Enum):
