@@ -79,24 +79,14 @@ class SettingsController(AdminController):
                 cat.specs.extend(visible)
         return categories, visible
 
-    def _get_category(
-        self,
-        categories: list[ConfigCategory],
-        name: str,
-    ) -> ConfigCategory | None:
-        """Find a category by name."""
-        return next((c for c in categories if c.name == name), None)
-
     def _get_csrf_token(self, request: Request) -> str | None:
         """Resolve the CSRF token for form rendering, if available."""
         if not self._csrf_service:
             return None
         try:
-            token = getattr(self._csrf_service, "get_token", None) or getattr(
-                self._csrf_service, "generate_token", None
-            )
-            if token:
-                return token(request)
+            session = getattr(request, "session", {})
+            session_id: str = session.get("admin_user_id", "")
+            return self._csrf_service.generate_token(session_id)
         except Exception:  # noqa: BLE001 — non-fatal for form rendering
             logger.warning("settings.csrf_token_unavailable")
         return None
@@ -211,7 +201,9 @@ class SettingsController(AdminController):
         }
 
         invalid = [
-            key for key, value in updates.items() if nodes[key].validate(value) != value
+            key
+            for key, value in updates.items()
+            if str(nodes[key].validate(value)).lower() != value.lower()
         ]
         await self._registry.save_values(namespace, updates, self._store_name())
 
@@ -226,9 +218,16 @@ class SettingsController(AdminController):
             from lexigram.ui.core.base import render_to_string
 
             self._flash_messages.clear()
-            toast_html = render_to_string(
-                self._render_toast("Settings saved successfully.", "success")
-            )
+            if invalid:
+                toast_message = (
+                    "Settings saved. Invalid values reset to defaults: "
+                    + ", ".join(invalid)
+                )
+                toast_kind = "warning"
+            else:
+                toast_message = "Settings saved successfully."
+                toast_kind = "success"
+            toast_html = render_to_string(self._render_toast(toast_message, toast_kind))
             flash_oob = (
                 f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
             )
@@ -259,4 +258,4 @@ class SettingsController(AdminController):
 
     def _render_toast(self, message: str, kind: str) -> str:
         """Build a toast component for htmx responses."""
-        return f'<div class="toast toast-success">{message}</div>'
+        return f'<div class="toast toast-{kind}">{message}</div>'
