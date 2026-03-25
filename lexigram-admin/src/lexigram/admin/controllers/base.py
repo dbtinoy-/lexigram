@@ -138,8 +138,9 @@ class AdminController(ControllerProtocol):
                 "favicon_url",
                 "dark_mode",
             ):
-                if overrides.get(field):
-                    extra_context.setdefault(field, overrides[field])
+                value = overrides.get(field) or overrides.get(f"admin.branding.{field}")
+                if value:
+                    extra_context.setdefault(field, value)
         except Exception:  # noqa: BLE001 — non-fatal
             pass
 
