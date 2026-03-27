@@ -13,6 +13,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.base import AdminController
+from lexigram.admin.settings.panel import BooleanNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 from lexigram.admin.settings.panel.types import ConfigCategory, get_default_categories
@@ -200,7 +201,11 @@ class SettingsController(AdminController):
 
         nodes = spec.get_nodes()
         updates = {
-            key: value
+            key: (
+                "true"
+                if isinstance(nodes[key], BooleanNode) and value == "on"
+                else value
+            )
             for key, value in form.items()
             if not key.startswith("_") and key in nodes
         }
