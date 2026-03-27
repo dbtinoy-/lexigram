@@ -99,9 +99,7 @@ class AdminCsrfMiddleware:
 
         if check_path in _CSRF_BYPASS_PATHS:
             return True
-        if check_path.startswith("/static"):
-            return True
-        return bool(check_path.rstrip("/").endswith("/delete"))
+        return bool(check_path.startswith("/static"))
 
     async def _validate_csrf(self, request: StarletteRequest) -> bool:
         """Extract and validate CSRF token from request.

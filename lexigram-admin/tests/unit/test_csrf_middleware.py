@@ -12,7 +12,6 @@ import pytest
 
 from lexigram.admin.middleware.csrf import AdminCsrfMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -174,6 +173,20 @@ class TestAdminCsrfBypassPaths:
         mw = AdminCsrfMiddleware(inner_app, _make_csrf_service(valid=False))
         status, _ = await _collect_response(mw, _make_scope("POST", "/static/app.js"))
         assert status == 200
+
+    @pytest.mark.asyncio
+    async def test_delete_suffix_not_bypassed(self) -> None:
+        """Deletion endpoints must NOT bypass CSRF (blanket /delete bypass removed)."""
+
+        async def inner_app(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"ok"})
+
+        mw = AdminCsrfMiddleware(inner_app, _make_csrf_service(valid=False))
+        status, _ = await _collect_response(
+            mw, _make_scope("POST", "/admin/users/1/delete")
+        )
+        assert status == 403
 
 
 # ---------------------------------------------------------------------------
