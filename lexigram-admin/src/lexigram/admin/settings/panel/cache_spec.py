@@ -17,6 +17,7 @@ class CacheSpec(PydanticConfigSpec):
     icon = "cube-transparent"
     description = "Toggle response caching and set the default TTL."
     model = CacheSettings
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:

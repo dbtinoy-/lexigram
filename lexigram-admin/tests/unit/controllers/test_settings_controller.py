@@ -36,7 +36,7 @@ class _FakeUser:
     """AdminUser stand-in with permissions."""
 
     def __init__(self, permissions: frozenset[str] | None = None) -> None:
-        self.permissions = permissions or frozenset()
+        self.permissions = permissions or frozenset({"admin.settings.edit"})
         self.user_id = "user-1"
         self.username = "admin"
 
@@ -64,7 +64,7 @@ class TestSettingsController:
     async def test_index_redirects_to_first_spec(
         self, controller: SettingsController
     ) -> None:
-        resp = await controller.index(_mock_request())
+        resp = await controller.index(_mock_request(user=_FakeUser()))
         assert resp.status_code == 302
         assert resp.headers["location"] == "/admin/settings/admin.branding"
 
@@ -291,6 +291,32 @@ class TestSettingsController:
         resp = await controller.save_spec(req)
         assert isinstance(resp, RedirectResponse)
         audit.log_event.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_save_spec_bound_spec_requires_permission(
+        self, renderer: MagicMock
+    ) -> None:
+        from starlette.responses import RedirectResponse
+
+        registry = ConfigRegistry.with_defaults()
+
+        audit = AsyncMock()
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=registry,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={"csp": "default-src 'self'", "hsts_max_age": "3600"},
+            user=_FakeUser(permissions=frozenset({"admin.other"})),
+        )
+        req.path_params = {"namespace": "admin.security"}
+        resp = await controller.save_spec(req)
+        assert isinstance(resp, RedirectResponse)
+        audit.log_event.assert_awaited_once()
+        values = await registry.get_values("admin.security")
+        assert values.get("hsts_max_age", 0) != 3600
 
 
 class GatedSpec(ConfigSpec):

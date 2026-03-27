@@ -18,6 +18,7 @@ class BrandingSpec(PydanticConfigSpec):
     description = "Site name, colors, logo, and theme preference."
     model = BrandingSettings
     node_overrides = {"primary_color": ColorNode}
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:
