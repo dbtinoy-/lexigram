@@ -82,8 +82,16 @@ class AdminCacheMiddleware:
 
         if self.settings_service:
             try:
-                enabled = await self.settings_service.get("admin.cache.enabled")
-                ttl = await self.settings_service.get("admin.cache.default_ttl")
+                val = await self.settings_service.get(
+                    "admin.cache.enabled", self.enabled
+                )
+                if val is not None:
+                    enabled = bool(val)
+                val = await self.settings_service.get(
+                    "admin.cache.default_ttl", self.ttl
+                )
+                if val is not None:
+                    ttl = int(val)
             except (RuntimeError, ValueError, OSError) as exc:
                 _log.warning(
                     "admin.cache_middleware.settings_error",
