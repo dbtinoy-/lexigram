@@ -189,6 +189,14 @@ class AdminAuthService:
             ip_address=ip_address,
             user_agent=user_agent,
         )
+        await self._audit_service.log_event(
+            event_type=AdminSecurityEventType.SESSION_CREATED,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True,
+            admin_user_id=str(user.user_id),
+            metadata={"email": str(user.email), "session_id": session_id},
+        )
 
         expires_at: datetime = datetime.now(UTC) + timedelta(
             seconds=self._session_lifetime

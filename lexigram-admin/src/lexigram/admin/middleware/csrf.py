@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from starlette.requests import Request as StarletteRequest
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -40,15 +43,34 @@ class AdminCsrfMiddleware:
         self,
         app: ASGIApp,
         csrf_service: AdminCsrfServiceProtocol,
+        audit_service: Any = None,
     ) -> None:
         """Initialize with ASGI app and CSRF service.
 
         Args:
             app: The next ASGI application.
             csrf_service: CSRF token validation service.
+            audit_service: Optional audit service for CSRF violation events.
         """
         self._app = app
         self._csrf_service = csrf_service
+        self._audit_service = audit_service
+
+    async def _audit_violation(self, scope: Scope, reason: str) -> None:
+        """Record a CSRF violation, best-effort."""
+        if not self._audit_service:
+            return
+        try:
+            client = scope.get("client")
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.CSRF_VIOLATION,
+                ip_address=client[0] if client else "unknown",
+                user_agent="",
+                success=False,
+                metadata={"path": scope.get("path", ""), "reason": reason},
+            )
+        except Exception:  # noqa: BLE001 — audit failures must not break requests
+            logger.warning("csrf.audit_failed", reason=reason)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """ASGI entry point.
@@ -152,6 +174,7 @@ class AdminCsrfMiddleware:
                     path=str(request.url.path),
                     content_type=content_type,
                 )
+                await self._audit_violation(request.scope, "token_missing")
                 return False
 
             is_valid = self._csrf_service.validate_token(session_id, token)
@@ -161,6 +184,7 @@ class AdminCsrfMiddleware:
                     path=str(request.url.path),
                     session_id=session_id,
                 )
+                await self._audit_violation(request.scope, "token_invalid")
             return is_valid
         except Exception:  # noqa: BLE001
             logger.warning("csrf.validation_error")

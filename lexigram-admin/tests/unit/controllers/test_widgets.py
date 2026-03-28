@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from starlette.routing import Route
 
+from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.widgets import WidgetController
 from lexigram.contracts.admin.types import WidgetViewModel
 from lexigram.result import Err, Ok
@@ -113,7 +114,9 @@ class TestWidgetControllerGetRoutes:
         routes = controller.get_routes()
         assert isinstance(routes, list)
 
-    def test_get_routes_returns_starlette_routes(self, mock_registry: MagicMock) -> None:
+    def test_get_routes_returns_starlette_routes(
+        self, mock_registry: MagicMock
+    ) -> None:
         """Test that get_routes returns Starlette Route objects."""
         controller = WidgetController(registry=mock_registry)
         routes = controller.get_routes()
@@ -170,5 +173,98 @@ class TestWidgetControllerGetRoutes:
         routes = controller.get_routes()
         for route in routes:
             import inspect
+
             sig = inspect.signature(route.endpoint)
             assert "request" in sig.parameters
+
+
+class TestWidgetControllerPermissionGate:
+    """Mutating widget endpoints require admin.settings.edit."""
+
+    @pytest.fixture
+    def user_with_perm(self) -> MagicMock:
+        user = MagicMock()
+        user.permissions = frozenset({"admin.settings.edit"})
+        return user
+
+    @pytest.fixture
+    def user_without_perm(self) -> MagicMock:
+        user = MagicMock()
+        user.permissions = frozenset({"admin.users.view"})
+        return user
+
+    def _make_controller(self, audit: MagicMock | None = None) -> WidgetController:
+        registry = MagicMock()
+        return WidgetController(registry=registry, audit_service=audit)
+
+    def _make_request(self, user: MagicMock) -> MagicMock:
+        request = MagicMock()
+        state = MagicMock()
+        state.user = user
+        request.state = state
+        request.client = MagicMock()
+        request.client.host = "127.0.0.1"
+        request.headers = {"user-agent": "test-agent"}
+        return request
+
+    @pytest.mark.asyncio
+    async def test_save_widget_config_denied_without_permission(
+        self, user_without_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        controller = self._make_controller(audit)
+        response = await controller.save_widget_config(
+            self._make_request(user_without_perm)
+        )
+        assert response.status_code == 403
+        audit.log_event.assert_awaited_once_with(
+            event_type=AdminSecurityEventType.PERMISSION_DENIED,
+            ip_address="127.0.0.1",
+            user_agent="test-agent",
+            success=False,
+            metadata={
+                "reason": "permission_denied",
+                "route": "save_widget_config",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_save_widget_config_allowed_with_permission(
+        self, user_with_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        controller = self._make_controller(audit)
+        request = self._make_request(user_with_perm)
+        request.form = AsyncMock(return_value={"widget_name": "w", "enabled": "on"})
+        controller._settings_service = None
+        response = await controller.save_widget_config(request)
+        assert response.status_code == 204
+        assert audit.log_event.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_reorder_widgets_denied_without_permission(
+        self, user_without_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        controller = self._make_controller(audit)
+        response = await controller.reorder_widgets(
+            self._make_request(user_without_perm)
+        )
+        assert response.status_code == 403
+        audit.log_event.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_save_all_widget_configs_denied_without_permission(
+        self, user_without_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        controller = self._make_controller(audit)
+        response = await controller.save_all_widget_configs(
+            self._make_request(user_without_perm)
+        )
+        assert response.status_code == 403
+        audit.log_event.assert_awaited_once()
