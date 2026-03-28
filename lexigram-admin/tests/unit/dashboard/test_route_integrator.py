@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
+
+import pytest
 
 from lexigram.admin.dashboard.naming_policy import NamingPolicy
-from lexigram.admin.dashboard.route_integrator import RouteIntegrator
+from lexigram.admin.dashboard.route_integrator import (
+    RouteIntegrator,
+    _resolve_primary_color,
+)
 from lexigram.contracts.admin import AdminRouteSpec, BaseAdminContributor
 
 
@@ -22,14 +27,14 @@ class FakeContributor(BaseAdminContributor):
             AdminRouteSpec(
                 path="/admin/fake/hello",
                 method="GET",
-                handler=lambda req: "hello",
+                handler=lambda _req: "hello",
                 name="hello",
                 permissions=frozenset(),
             ),
             AdminRouteSpec(
                 path="/admin/fake/stats",
                 method="GET",
-                handler=lambda req: "stats",
+                handler=lambda _req: "stats",
                 name="stats",
                 permissions=frozenset({"admin.view"}),
             ),
@@ -85,8 +90,32 @@ class TestRouteIntegrator:
 
         integrator.register([FakeContributor()])
 
-        from lexigram.admin.dashboard.naming_policy import NameCollisionError
         import pytest
+
+        from lexigram.admin.dashboard.naming_policy import NameCollisionError
 
         with pytest.raises(NameCollisionError):
             integrator.register([FakeContributor()])
+
+
+class TestResolvePrimaryColor:
+    @pytest.mark.asyncio
+    async def test_returns_saved_branding_color(self) -> None:
+        registry = MagicMock()
+        registry.get_values = AsyncMock(return_value={"primary_color": "#123456"})
+        container = MagicMock()
+        container.resolve = AsyncMock(return_value=registry)
+
+        color = await _resolve_primary_color(container)
+
+        assert color == "#123456"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_when_registry_unavailable(self) -> None:
+        class _BrokenResolver:
+            async def resolve(self, *args: object, **kwargs: object) -> object:
+                raise RuntimeError("no registry")
+
+        color = await _resolve_primary_color(_BrokenResolver())
+
+        assert color == "#6b7280"
