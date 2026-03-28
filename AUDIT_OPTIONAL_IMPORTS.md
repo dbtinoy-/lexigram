@@ -107,10 +107,8 @@
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/command_palette.py:8 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/dashboard.py:10 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/dashboard.py:11 |
-| `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/draft_controller.py:6 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/error.py:8 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/error.py:9 |
-| `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/form_validation.py:8 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/pool_health.py:11 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/pool_health.py:12 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/resource.py:14 |

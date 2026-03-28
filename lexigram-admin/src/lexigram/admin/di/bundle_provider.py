@@ -369,6 +369,46 @@ class AdminProvider(Provider):
             if self._config.strict_resource_resolution:
                 raise
 
+        # Mount ErrorController (styled error pages) — best-effort
+        try:
+            from lexigram.admin.controllers.error import ErrorController
+
+            error_controller = await admin_resolver.resolve(
+                ErrorController,
+                bypass_visibility=True,
+            )
+            controller_instances.append(error_controller)
+        except Exception as exc:
+            _log.error(
+                "admin.error_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:ErrorController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
+        # Mount PoolHealthController (connection pool monitoring) — best-effort.
+        # pool_manager/task_manager are optional: without them the endpoints
+        # respond 503 instead of failing resolution.
+        try:
+            from lexigram.admin.controllers.pool_health import PoolHealthController
+
+            pool_health_controller = await admin_resolver.resolve(
+                PoolHealthController,
+                bypass_visibility=True,
+            )
+            controller_instances.append(pool_health_controller)
+        except Exception as exc:
+            _log.error(
+                "admin.pool_health_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:PoolHealthController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Mount SettingsController (theme & branding settings)
         try:
             from lexigram.admin.auth.protocols import (
