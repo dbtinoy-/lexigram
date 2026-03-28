@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from starlette.requests import Request
+from starlette.responses import StreamingResponse
 
 from lexigram.admin.controllers.base import AdminController
 from lexigram.contracts.infra.tasks.progress import (
     ProgressSnapshot,
     ProgressTrackerProtocol,
 )
+from lexigram.contracts.web import get
 from lexigram.di.decorators import inject
 from lexigram.serialization import dumps_str
+
+if TYPE_CHECKING:
+    from lexigram.admin.engine.renderer import AdminRenderer
 
 
 def _snap_to_dict(snap: ProgressSnapshot) -> dict[str, Any]:
@@ -36,75 +43,78 @@ class ProgressController(AdminController):
     (or any conforming implementation) via the DI container.
     """
 
-    def __init__(self, tracker: ProgressTrackerProtocol) -> None:
-        super().__init__(prefix="/progress")  # type: ignore[call-arg]
+    def __init__(
+        self,
+        tracker: ProgressTrackerProtocol,
+        renderer: AdminRenderer | None = None,
+    ) -> None:
+        super().__init__(renderer=renderer)
         self.tracker = tracker
 
-    def routes(self) -> None:
-        """Define progress tracking routes."""
-        from starlette.responses import StreamingResponse
+    @get("/progress/{task_id}/stream")
+    async def stream_progress(self, request: Request) -> StreamingResponse:
+        """Stream progress updates via Server-Sent Events.
 
-        @self.router.get("/{task_id}/stream")  # type: ignore[attr-defined]
-        async def stream_progress(task_id: str) -> StreamingResponse:
-            """Stream progress updates via Server-Sent Events.
+        The stream uses :meth:`ProgressTrackerProtocol.subscribe` so
+        updates are pushed immediately rather than polled.  The generator
+        closes automatically when the task reaches a terminal state.
 
-            The stream uses :meth:`ProgressTrackerProtocol.subscribe` so
-            updates are pushed immediately rather than polled.  The generator
-            closes automatically when the task reaches a terminal state.
+        Args:
+            request: Starlette request.  The task id comes from the route.
 
-            Args:
-                task_id: Task identifier.
+        Returns:
+            SSE stream of progress snapshots.
+        """
 
-            Returns:
-                SSE stream of progress snapshots.
-            """
+        async def event_generator() -> Any:
+            try:
+                task_id = request.path_params["task_id"]
+                # Guard: emit an error event and stop if the task is unknown.
+                snap = await self.tracker.get(task_id)
+                if snap is None:
+                    yield (
+                        f"event: error\ndata: "
+                        f"{dumps_str({'error': 'Task not found'})}\n\n"
+                    )
+                    return
 
-            async def event_generator() -> Any:
-                try:
-                    # Guard: emit an error event and stop if the task is unknown.
-                    snap = await self.tracker.get(task_id)
-                    if snap is None:
-                        yield (
-                            f"event: error\ndata: "
-                            f"{dumps_str({'error': 'Task not found'})}\n\n"
-                        )
-                        return
+                # subscribe() yields until terminal state then closes.
+                async for current_snap in self.tracker.subscribe(task_id):
+                    yield (
+                        f"event: progress\ndata: "
+                        f"{dumps_str(_snap_to_dict(current_snap))}\n\n"
+                    )
 
-                    # subscribe() yields until terminal state then closes.
-                    async for current_snap in self.tracker.subscribe(task_id):
-                        yield (
-                            f"event: progress\ndata: "
-                            f"{dumps_str(_snap_to_dict(current_snap))}\n\n"
-                        )
+            except asyncio.CancelledError:
+                # Client disconnected — clean exit.
+                pass
+            except (RuntimeError, ValueError, TypeError, OSError) as exc:
+                yield f"event: error\ndata: {dumps_str({'error': str(exc)})}\n\n"
 
-                except asyncio.CancelledError:
-                    # Client disconnected — clean exit.
-                    pass
-                except (RuntimeError, ValueError, TypeError, OSError) as exc:
-                    yield f"event: error\ndata: {dumps_str({'error': str(exc)})}\n\n"
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+            },
+        )
 
-            return StreamingResponse(
-                event_generator(),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",  # Disable nginx buffering
-                },
-            )
+    @get("/progress/{task_id}")
+    async def get_task_status(
+        self,
+        request: Request,
+    ) -> dict[str, Any] | tuple[dict[str, str], int]:
+        """Return current task status as a JSON dict.
 
-        @self.router.get("/{task_id}")  # type: ignore[attr-defined]
-        async def get_task_status(
-            task_id: str,
-        ) -> dict[str, Any] | tuple[dict[str, str], int]:
-            """Return current task status as a JSON dict.
+        Args:
+            request: Starlette request.  The task id comes from the route.
 
-            Args:
-                task_id: Task identifier.
-
-            Returns:
-                Progress dict or a 404 error dict.
-            """
-            snap = await self.tracker.get(task_id)
-            if snap is None:
-                return {"error": "Task not found"}, 404
-            return _snap_to_dict(snap)
+        Returns:
+            Progress dict or a 404 error dict.
+        """
+        task_id = request.path_params["task_id"]
+        snap = await self.tracker.get(task_id)
+        if snap is None:
+            return {"error": "Task not found"}, 404
+        return _snap_to_dict(snap)

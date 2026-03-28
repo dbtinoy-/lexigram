@@ -413,6 +413,35 @@ class AdminProvider(Provider):
             if self._config.strict_resource_resolution:
                 raise
 
+        # Mount ProgressController (SSE/status progress tracking) — best-effort.
+        # Tries an integrator-registered tracker first; falls back to the
+        # in-memory tracker from lexigram-tasks (optional integration —
+        # without it the controller is skipped, like other optional seats).
+        try:
+            from lexigram.admin.controllers.progress import ProgressController
+
+            try:
+                progress_controller = await admin_resolver.resolve(
+                    ProgressController,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                from lexigram.tasks.progress import InMemoryProgressTracker
+
+                progress_controller = ProgressController(
+                    tracker=InMemoryProgressTracker()
+                )
+            controller_instances.append(progress_controller)
+        except Exception as exc:
+            _log.error(
+                "admin.progress_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:ProgressController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Mount SettingsController (theme & branding settings)
         try:
             from lexigram.admin.auth.protocols import (
