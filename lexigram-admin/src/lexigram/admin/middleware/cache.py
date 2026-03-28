@@ -69,11 +69,17 @@ class AdminCacheMiddleware:
         ]
 
     def _get_cache_key(self, scope: Scope) -> str:
-        """Generate cache key from request scope."""
+        """Generate cache key from request scope, namespaced by user."""
         path = scope.get("path", "")
         query = scope.get("query_string", b"").decode()
-        role = "guest"
-        return f"admin:resp:{path}:{query}:{role}"
+        state = scope.get("state", {}) or {}
+        user = state.get("user", None)
+        identity = "guest"
+        if user is not None:
+            user_id = getattr(user, "user_id", None) or getattr(user, "id", None)
+            if user_id:
+                identity = f"user:{user_id}"
+        return f"admin:resp:{path}:{query}:{identity}"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Pure ASGI middleware implementation."""
