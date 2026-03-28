@@ -370,3 +370,76 @@ modules =
 # To manually verify:
 #   grep -rn "from lexigram.ai import\|import lexigram.ai$" \
 #     lexigram-ai-*/src/lexigram/ai/
+
+# =============================================================================
+# Contract 7 — Local protocol modules are package-internal seams only
+# =============================================================================
+# Per guide docs/lexigram-docs/guides/contracts.md (R4): a package-local
+# protocols.py exists for internal implementation seams and must never be
+# imported across packages.  Cross-package sharing requires promoting the
+# protocol into lexigram-contracts (R1/R2).  Imports by the owning package
+# itself are permitted (wildcard ** matches zero or more submodules).
+#
+# Excluded from the forbidden list: lexigram.ui.protocols (RenderableProtocol)
+# is reachable only through the lexigram.ui package, which other packages
+# (web/admin/admin pages) legitimately import under documented allowances.
+# Forbidden checks are chain-based, and import-linter has no "direct imports
+# only" mode, so ui.protocols is reviewed by grep instead of this contract.
+
+[importlinter:contract:local-protocols-scoped]
+name = Local protocol modules are package-internal seams (no cross-package imports)
+type = forbidden
+source_modules =
+    # Core
+    lexigram.app
+    lexigram.config
+    lexigram.primitives
+    lexigram.di
+    lexigram.logging
+    lexigram.result
+    # Extension packages (owners of the forbidden modules below are
+    # excluded; their intra-package usage is allowed)
+    lexigram.auth
+    lexigram.cache
+    lexigram.concurrency
+    lexigram.domain
+    lexigram.events
+    lexigram.features
+    lexigram.graph
+    lexigram.graphql
+    lexigram.http
+    lexigram.mapping
+    lexigram.middleware
+    lexigram.monitor
+    lexigram.nosql
+    lexigram.notification
+    lexigram.queue
+    lexigram.resilience
+    lexigram.search
+    lexigram.security
+    lexigram.serialization
+    lexigram.sql
+    lexigram.storage
+    lexigram.tasks
+    lexigram.testing
+    lexigram.validation
+    lexigram.vector
+    lexigram.web
+    lexigram.workflow
+forbidden_modules =
+    lexigram.ai.llm.protocols
+    lexigram.ai.agents.protocols
+    lexigram.ai.agents.speculation.protocols
+    lexigram.ai.memory.protocols
+    lexigram.cli.protocols
+    lexigram.admin.auth.protocols
+    lexigram.admin.auth.store.protocols
+ignore_imports =
+    # Owner-package usage only — intra-package seam imports are allowed
+    lexigram.ai.llm.** -> lexigram.ai.llm.protocols
+    lexigram.ai.agents -> lexigram.ai.agents.protocols
+    lexigram.ai.agents.speculation.** -> lexigram.ai.agents.speculation.protocols
+    lexigram.ai.memory -> lexigram.ai.memory.protocols
+    lexigram.cli.** -> lexigram.cli.protocols
+    lexigram.admin.** -> lexigram.admin.auth.protocols
+    lexigram.admin.** -> lexigram.admin.auth.store.protocols

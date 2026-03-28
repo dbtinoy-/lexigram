@@ -54,10 +54,8 @@ _LAZY_IMPORTS = {
     "RetrievalStrategyRegistry": "lexigram.ai.rag.retrieval.strategy_registry",
     # Types
     "RerankResult": "lexigram.ai.rag.reranking.types",
-    # Internal protocols
-    "ChunkerProtocol": "lexigram.ai.rag.protocols",
-    "RerankerProtocol": "lexigram.ai.rag.protocols",
-    "ContextCompressorProtocol": "lexigram.ai.rag.protocols",
+    # Contracts re-exports
+    "ChunkerProtocol": "lexigram.contracts.ai.vector",
 }
 
 if TYPE_CHECKING:
@@ -86,11 +84,6 @@ if TYPE_CHECKING:
     )
     from lexigram.ai.rag.pipeline import RAGPipeline
     from lexigram.ai.rag.pipeline.builder import PipelineBuilder
-    from lexigram.ai.rag.protocols import (
-        ChunkerProtocol,
-        ContextCompressorProtocol,
-        RerankerProtocol,
-    )
     from lexigram.ai.rag.reranking.strategy_registry import (
         RerankingStrategyRegistry,
     )
@@ -104,6 +97,7 @@ if TYPE_CHECKING:
         Context,
         RAGError,
     )
+    from lexigram.contracts.ai.vector import ChunkerProtocol
 
 
 def __getattr__(name: str) -> Any:
@@ -126,7 +120,6 @@ __all__ = [
     "ChunkerProtocol",
     "ChunkingConfig",
     "Context",
-    "ContextCompressorProtocol",
     "IngestionConfig",
     "PipelineBuilder",
     "PipelineConfig",
@@ -141,7 +134,6 @@ __all__ = [
     "RAGProvider",
     "RAGTenancyConfig",
     "RerankResult",
-    "RerankerProtocol",
     "RerankingStrategyRegistry",
     "RetrievalCompletedEvent",
     "RetrievalConfig",
