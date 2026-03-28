@@ -7,7 +7,15 @@ from typing import Literal
 from lexigram.domain import DomainModel
 from lexigram.validation import Field
 
-__all__ = ["DEFAULT_CSP", "BrandingSettings", "CacheSettings", "SecuritySettings"]
+__all__ = [
+    "DEFAULT_CSP",
+    "BrandingSettings",
+    "CacheSettings",
+    "I18nSettings",
+    "ProfilerSettings",
+    "RbacSettings",
+    "SecuritySettings",
+]
 
 DEFAULT_CSP = (
     "default-src 'self'; "
@@ -71,4 +79,50 @@ class SecuritySettings(DomainModel):
         ge=0,
         title="HSTS Max Age (seconds)",
         description="Strict-Transport-Security max-age.",
+    )
+
+
+class I18nSettings(DomainModel):
+    """Internationalization defaults consumed by the i18n locale resolver."""
+
+    default_locale: str = Field(
+        default="en",
+        title="Default Locale",
+        description="Fallback BCP 47 locale tag used when a request resolves no locale.",
+    )
+    default_timezone: str = Field(
+        default="UTC",
+        title="Default Timezone",
+        description="Fallback IANA timezone name used when a request resolves no timezone.",
+    )
+
+
+class RbacSettings(DomainModel):
+    """RBAC defaults consumed by the permission service."""
+
+    default_role: str = Field(
+        default="viewer",
+        title="Default Role",
+        description="Role assigned to users with no explicit role mapping.",
+    )
+    allow_anonymous: bool = Field(
+        default=False,
+        title="Allow Anonymous",
+        description="Permit requests without an authenticated identity.",
+    )
+
+
+class ProfilerSettings(DomainModel):
+    """Profiler toggles. Rendering/persistence only — no consumer is wired (see plan)."""
+
+    enabled: bool = Field(
+        default=False,
+        title="Enabled",
+        description="Enable request profiling.",
+    )
+    slow_threshold_ms: int = Field(
+        default=500,
+        ge=1,
+        title="Slow Threshold (ms)",
+        description="Requests slower than this are flagged as slow.",
     )

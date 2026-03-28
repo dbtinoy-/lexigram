@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.admin.config import AdminRateLimitConfig
 from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
@@ -14,8 +15,9 @@ class RateLimitSpec(PydanticConfigSpec):
     namespace = "admin.rate_limit"
     label = "Rate Limiting"
     icon = "hand-raised"
-    # RateLimitConfig was removed from lexigram.config; spec has no bound model.
-    model = None
+    description = "Authentication rate limits by window and action."
+    model = AdminRateLimitConfig
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:

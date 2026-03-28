@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.admin.config import AdminFeaturesConfig
 from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
@@ -14,8 +15,9 @@ class FeaturesSpec(PydanticConfigSpec):
     namespace = "admin.features"
     label = "Feature Flags"
     icon = "toggle-on"
-    # AdminFeaturesConfig was removed from lexigram.config; spec has no bound model.
-    model = None
+    description = "Toggle admin UI and UX features."
+    model = AdminFeaturesConfig
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:
