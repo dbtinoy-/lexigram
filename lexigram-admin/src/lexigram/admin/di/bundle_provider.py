@@ -285,6 +285,7 @@ class AdminProvider(Provider):
 
         # Resolve built-in WidgetController (best-effort)
         try:
+            from lexigram.admin.auth.protocols import AdminAuditLogServiceProtocol
             from lexigram.admin.controllers.widgets import WidgetController
 
             widget_controller = await admin_resolver.resolve(
@@ -296,6 +297,13 @@ class AdminProvider(Provider):
                 widget_controller, "_settings_service"
             ):
                 widget_controller._settings_service = admin_settings_service
+            try:
+                audit_service = await admin_resolver.resolve(
+                    AdminAuditLogServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                audit_service = None
             if audit_service is not None and hasattr(
                 widget_controller, "_audit_service"
             ):
@@ -432,6 +440,12 @@ class AdminProvider(Provider):
                     tracker=InMemoryProgressTracker()
                 )
             controller_instances.append(progress_controller)
+        except ModuleNotFoundError as exc:
+            _log.info(
+                "admin.progress_controller_skipped",
+                reason="lexigram_tasks_not_installed",
+                error=str(exc),
+            )
         except Exception as exc:
             _log.error(
                 "admin.progress_controller_resolution_failed",
