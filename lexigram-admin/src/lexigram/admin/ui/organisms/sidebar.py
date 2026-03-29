@@ -383,9 +383,13 @@ class Sidebar(Component):
         )
         footer = el(
             "div",
-            el("div", toggle_btn, class_="flex items-center justify-center py-2"),
             system_menu_bar,
-            user_node,
+            el(
+                "div",
+                user_node,
+                toggle_btn,
+                class_="flex items-center gap-1 px-2 py-1",
+            ),
             class_="dark:border-border",
         )
 
