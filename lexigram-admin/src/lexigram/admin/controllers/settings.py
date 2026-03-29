@@ -63,16 +63,35 @@ class SettingsController(AdminController):
         """Use the DB store when registered, else the in-memory default."""
         return "db" if self._registry.has_store("db") else "default"
 
+    @staticmethod
+    def _user_permissions(request: Request) -> frozenset[str]:
+        """Return the requesting user's permission set (empty when unknown)."""
+        user = getattr(getattr(request, "state", None), "user", None)
+        return frozenset(getattr(user, "permissions", None) or ())
+
+    @staticmethod
+    def _user_is_superadmin(request: Request) -> bool:
+        """Return True when the requesting user holds the superadmin role.
+
+        Superadmin bypasses per-spec permission gating so accounts created
+        with an empty permission set (e.g. via the setup wizard) can still
+        manage system configurations.
+        """
+        user = getattr(getattr(request, "state", None), "user", None)
+        roles = getattr(user, "roles", None) or ()
+        return "superadmin" in roles
+
     def _build_categories(
         self, request: Request
     ) -> tuple[list[ConfigCategory], list[Any]]:
         """Build categories with the visible specs for the requesting user."""
-        user = getattr(getattr(request, "state", None), "user", None)
-        permissions = frozenset(getattr(user, "permissions", None) or ())
+        permissions = self._user_permissions(request)
+        is_superadmin = self._user_is_superadmin(request)
         visible = [
             spec
             for spec in self._registry.get_specs(_SYSTEM_CATEGORY)
             if not spec.required_permissions
+            or is_superadmin
             or permissions.issuperset(spec.required_permissions)
         ]
         categories = get_default_categories()
@@ -180,10 +199,11 @@ class SettingsController(AdminController):
             self.flash(f"Configuration '{namespace}' not found.", "error")
             return RedirectResponse(url="/admin/settings", status_code=302)
 
-        user = getattr(getattr(request, "state", None), "user", None)
-        permissions = frozenset(getattr(user, "permissions", None) or ())
-        if spec.required_permissions and not permissions.issuperset(
+        permissions = self._user_permissions(request)
+        if (
             spec.required_permissions
+            and not self._user_is_superadmin(request)
+            and not permissions.issuperset(spec.required_permissions)
         ):
             await self._audit(
                 request,

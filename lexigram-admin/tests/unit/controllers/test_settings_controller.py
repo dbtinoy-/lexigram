@@ -35,8 +35,13 @@ def _mock_request(
 class _FakeUser:
     """AdminUser stand-in with permissions."""
 
-    def __init__(self, permissions: frozenset[str] | None = None) -> None:
+    def __init__(
+        self,
+        permissions: frozenset[str] | None = None,
+        roles: list[str] | None = None,
+    ) -> None:
         self.permissions = permissions or frozenset({"admin.settings.edit"})
+        self.roles = roles or []
         self.user_id = "user-1"
         self.username = "admin"
 
@@ -85,6 +90,51 @@ class TestSettingsController:
         req.path_params = {"namespace": "admin.nope"}
         resp = await controller.spec_view(req)
         assert resp.status_code == 302
+
+    @pytest.mark.asyncio
+    async def test_index_superadmin_sees_gated_specs_without_permissions(
+        self,
+        controller: SettingsController,
+        registry: ConfigRegistry,
+    ) -> None:
+        class GatedSpec2(ConfigSpec):
+            namespace = "admin.gated2"
+            label = "Gated 2"
+            icon = "lock"
+            description = ""
+            required_permissions = frozenset({"admin.settings.edit"})
+            flag = BooleanNode(label="Flag", default=True)
+
+        registry.register_spec("system", GatedSpec2)
+        req = _mock_request(
+            user=_FakeUser(permissions=frozenset(), roles=["superadmin"]),
+        )
+        _, visible = controller._build_categories(req)
+        assert any(spec.namespace == "admin.gated2" for spec in visible)
+
+    @pytest.mark.asyncio
+    async def test_save_spec_superadmin_bypasses_permission_gate(
+        self, controller: SettingsController, registry: ConfigRegistry
+    ) -> None:
+        class GatedSpec3(ConfigSpec):
+            namespace = "admin.gated3"
+            label = "Gated 3"
+            icon = "lock"
+            description = ""
+            required_permissions = frozenset({"admin.settings.edit"})
+            flag = BooleanNode(label="Flag", default=True)
+
+        registry.register_spec("system", GatedSpec3)
+        req = _mock_request(
+            method="POST",
+            form_data={"_csrf": "token", "flag": "true"},
+            user=_FakeUser(permissions=frozenset(), roles=["superadmin"]),
+        )
+        req.path_params = {"namespace": "admin.gated3"}
+        resp = await controller.save_spec(req)
+        assert resp.status_code == 302
+        values = await registry.get_values("admin.gated3", store_name="default")
+        assert values["flag"] is True
 
     @pytest.mark.asyncio
     async def test_save_spec_persists_values(
