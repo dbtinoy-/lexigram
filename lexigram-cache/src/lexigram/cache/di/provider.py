@@ -19,6 +19,7 @@ from lexigram.cache.backends.registry import BackendRegistry
 from lexigram.cache.config import (
     CacheBackendConfig,
     CacheConfig,
+    resolve_backend_type,
 )
 from lexigram.cache.service.health import get_health_status as _get_health_status
 from lexigram.cache.service.health import get_metrics as _get_metrics
@@ -188,7 +189,7 @@ class CacheProvider(Provider):
             for backend_config in self.config.backends:
                 if (
                     backend_config.enabled
-                    and backend_config.type == BackendType.REDIS
+                    and resolve_backend_type(backend_config) == BackendType.REDIS
                     and backend_config.redis_url
                 ):
                     store = RedisStateStore(  # type: ignore[abstract]
@@ -397,7 +398,7 @@ class CacheProvider(Provider):
                 logger.info(
                     "Initialized backend: %s (%s)",
                     backend_config.name,
-                    backend_config.type,
+                    resolve_backend_type(backend_config),
                 )
             except Exception as e:
                 logger.exception("Failed to initialize backend %s", backend_config.name)

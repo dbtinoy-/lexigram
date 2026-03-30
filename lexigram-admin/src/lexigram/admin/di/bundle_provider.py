@@ -511,6 +511,26 @@ class AdminProvider(Provider):
                 error=str(exc),
             )
 
+        # Mount InfrastructureController (cluster landing page)
+        try:
+            from lexigram.admin.controllers.infrastructure import (
+                InfrastructureController,
+            )
+            from lexigram.admin.engine.renderer import AdminRenderer
+
+            infra_renderer = await admin_resolver.resolve(
+                AdminRenderer,
+                bypass_visibility=True,
+            )
+            controller_instances.append(
+                InfrastructureController(renderer=infra_renderer)
+            )
+        except Exception as exc:
+            _log.warning(
+                "admin.infrastructure_controller_skipped",
+                error=str(exc),
+            )
+
         # Populate NavItemBuilder with resolved resource instances
         self._resolved_resources = resources_dict
         nav_builder = self._nav_item_builder
@@ -861,6 +881,7 @@ class AdminProvider(Provider):
 
         # Build NavigationAssembler contributions and expose on app state.
         assembler_nav_items: list[dict[str, object]] = []
+        assembler_groups: dict[str, list[Any]] | None = None
         _registry = locals().get("registry")
         if _registry and contributors:
             from lexigram.admin.navigation.assembler import (
@@ -874,13 +895,16 @@ class AdminProvider(Provider):
                     resource_items=[],
                 )
                 grouped = await assembler.build()
+                assembler_groups = grouped
                 assembler_nav_items = contributions_to_flat_nav(grouped)
             except Exception:  # noqa: BLE001 — non-fatal
                 _log.warning("admin.navigation_assembler_prebuild_failed")
         if hasattr(app, "state"):
             app.state.assembler_nav_items = assembler_nav_items
+            app.state.assembler_groups = assembler_groups or {}
         if admin_app is not None and hasattr(admin_app, "state"):
             admin_app.state.assembler_nav_items = assembler_nav_items
+            admin_app.state.assembler_groups = assembler_groups or {}
 
         _log.info("admin.mounted", prefix=self._config.prefix)
 

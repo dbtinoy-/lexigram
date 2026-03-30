@@ -46,13 +46,13 @@ class TestResolveAdminNav:
     """Tests for resolve_admin_nav function."""
 
     def test_returns_empty_when_no_request(self, nav_builder: NavItemBuilder) -> None:
-        items, system = resolve_admin_nav(None)
+        items, system, _ = resolve_admin_nav(None)
         assert items == []
         assert system == []
 
     def test_returns_empty_when_no_nav_builder(self) -> None:
         request = _mock_request("/admin/users", None)
-        items, system = resolve_admin_nav(request)
+        items, system, _ = resolve_admin_nav(request)
         assert items == []
         assert system == []
 
@@ -63,7 +63,7 @@ class TestResolveAdminNav:
             {"label": "Cache", "href": "/admin/cache", "icon": "database"},
         ]
         request = _mock_request("/admin/users", nav_builder, assembler_items)
-        items, _ = resolve_admin_nav(request)
+        items, _, _ = resolve_admin_nav(request)
         assert len(items) >= 1
         assert any(i.get("href") == "/admin/cache" for i in items)
 
@@ -74,7 +74,7 @@ class TestResolveAdminNav:
             {"label": "Cache", "href": "/admin/cache", "icon": "database"},
         ]
         request = _mock_request("/admin/cache", nav_builder, assembler_items)
-        items, _ = resolve_admin_nav(request)
+        items, _, _ = resolve_admin_nav(request)
         cache_item = next(i for i in items if i.get("href") == "/admin/cache")
         assert cache_item.get("active") is True
 
@@ -85,7 +85,7 @@ class TestResolveAdminNav:
             {"label": "Cache", "href": "/admin/cache", "icon": "database"},
         ]
         request = _mock_request("/admin/something_else", nav_builder, assembler_items)
-        items, _ = resolve_admin_nav(request)
+        items, _, _ = resolve_admin_nav(request)
         cache_item = next(i for i in items if i.get("href") == "/admin/cache")
         assert cache_item.get("active") is False
 
@@ -93,7 +93,7 @@ class TestResolveAdminNav:
         self, nav_builder: NavItemBuilder
     ) -> None:
         request = _mock_request("/admin/user_profiles", nav_builder, [])
-        items, _ = resolve_admin_nav(request)
+        items, _, _ = resolve_admin_nav(request)
         profile_item = next(
             i for i in items if i.get("href") == "/admin/user_profiles"
         )
@@ -103,7 +103,7 @@ class TestResolveAdminNav:
         self, nav_builder: NavItemBuilder
     ) -> None:
         request = _mock_request("/admin/user_profiles", nav_builder)
-        items, _ = resolve_admin_nav(request)
+        items, _, _ = resolve_admin_nav(request)
         profile_item = next(
             i for i in items if i.get("href") == "/admin/user_profiles"
         )
@@ -116,7 +116,7 @@ class TestResolveAdminNav:
             {"is_group": True, "label": "System"},
         ]
         request = _mock_request("/admin/system", nav_builder, assembler_items)
-        items, _ = resolve_admin_nav(request)
+        items, _, _ = resolve_admin_nav(request)
         # Should not crash when item has no href
         group = next(i for i in items if i.get("is_group"))
         assert group is not None
@@ -127,7 +127,7 @@ class TestResolveAdminNav:
             {"label": "System Health", "icon": "activity", "href": "/admin/system-health"},
         ])
         request = _mock_request("/admin/users", nav_builder, [])
-        _, system = resolve_admin_nav(request)
+        _, system, _ = resolve_admin_nav(request)
         assert len(system) >= 2
         labels = [s["label"] for s in system]
         assert "Settings" in labels

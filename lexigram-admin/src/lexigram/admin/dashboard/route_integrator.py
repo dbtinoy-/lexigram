@@ -8,6 +8,13 @@ from typing import TYPE_CHECKING, Any, get_args, get_origin, get_type_hints
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import HTMLResponse
 
+from lexigram.admin.navigation.clusters import (
+    CLUSTER_GROUP,
+    CLUSTER_ICON,
+    CLUSTER_LABEL,
+    CLUSTER_URL,
+    cluster_child_href,
+)
 from lexigram.contracts.admin.types import (
     ManagementPageDefinition,
     SettingsPanelDefinition,
@@ -114,7 +121,7 @@ class AdminPageHandler:
 
         from lexigram.admin.engine.renderer import resolve_admin_nav
         from lexigram.admin.ui.templates.shell import AdminShell
-        from lexigram.ui import render_to_string
+        from lexigram.ui import raw, render_to_string
 
         content = (
             response.body.decode()
@@ -127,7 +134,13 @@ class AdminPageHandler:
         user = (
             getattr(request.state, "user", None) if hasattr(request, "state") else None
         )
-        nav_items, system_menu_items = resolve_admin_nav(request)
+        nav_items, system_menu_items, secondary_nav = resolve_admin_nav(request)
+        if secondary_nav:
+            from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
+
+            content = render_to_string(
+                ClusterLayout(items=secondary_nav, content=raw(content))
+            )
 
         theme_css = ""
         try:
@@ -141,6 +154,11 @@ class AdminPageHandler:
             pass
 
         user_menu_items: list[dict[str, str]] = [
+            {
+                "label": CLUSTER_LABEL,
+                "href": CLUSTER_URL,
+                "icon": CLUSTER_ICON,
+            },
             {
                 "label": "Settings",
                 "href": "/admin/settings",
@@ -234,6 +252,21 @@ async def _placeholder_page(
         "</div></div>"
     )
 
+    try:
+        from lexigram.admin.engine.renderer import resolve_admin_nav
+
+        nav_items, system_menu_items, secondary_nav = resolve_admin_nav(request)
+    except Exception:  # noqa: BLE001 — non-fatal
+        nav_items, system_menu_items, secondary_nav = [], [], None
+
+    if secondary_nav:
+        from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
+        from lexigram.ui import raw, render_to_string
+
+        content = render_to_string(
+            ClusterLayout(items=secondary_nav, content=raw(content))
+        )
+
     is_htmx = bool(request.headers.get("hx-request"))
 
     if is_htmx:
@@ -244,14 +277,25 @@ async def _placeholder_page(
 
         from starlette.templating import Jinja2Templates
 
-        from lexigram.admin.engine.renderer import resolve_admin_nav
         from lexigram.admin.ui.templates.shell import AdminShell
         from lexigram.ui import render_to_string
 
         user = (
             getattr(request.state, "user", None) if hasattr(request, "state") else None
         )
-        nav_items, system_menu_items = resolve_admin_nav(request)
+
+        user_menu_items = [
+            {
+                "label": CLUSTER_LABEL,
+                "href": CLUSTER_URL,
+                "icon": CLUSTER_ICON,
+            },
+            {
+                "label": "Settings",
+                "href": "/admin/settings",
+                "icon": "settings",
+            },
+        ]
 
         theme_css = ""
         try:
@@ -274,6 +318,7 @@ async def _placeholder_page(
             user=user,
             nav_items=nav_items,
             system_menu_items=system_menu_items,
+            user_menu_items=user_menu_items,
             theme_css=theme_css,
         )
         shell_html = render_to_string(shell)
@@ -439,6 +484,16 @@ class RouteIntegrator:
                 for child in item.children or ():
                     self._ensure_nav_route(child, registered_internal_paths)
 
+        # Cluster areas are also reachable under the center namespace
+        # (e.g. /admin/infrastructure/web), mirroring how settings
+        # sub-pages nest below /admin/settings. Aliases share the source
+        # route's handler — real page or placeholder alike.
+        for c in contributors:
+            for item in c.get_navigation_items():
+                self._register_cluster_alias(item)
+                for child in item.children or ():
+                    self._register_cluster_alias(child)
+
     def _ensure_nav_route(
         self,
         item: Any,
@@ -466,3 +521,42 @@ class RouteIntegrator:
             name=f"placeholder_{safe_label}",
         )
         registered_paths.add(internal)
+
+    def _register_cluster_alias(self, item: Any) -> None:
+        """Register a namespaced alias for a cluster group nav item.
+
+        Cluster areas live under the center namespace (``/admin/
+        infrastructure/web``) in addition to their contributor URL. When
+        the source URL has a real handler, the alias reuses it; otherwise
+        the alias falls back to the placeholder page.
+        """
+        if getattr(item, "group", None) != CLUSTER_GROUP:
+            return
+        url = item.url
+        if not url or url.startswith("http"):
+            return
+        namespaced = cluster_child_href(url)
+        if not namespaced or namespaced == url:
+            return
+
+        internal = url
+        internal_ns = namespaced
+        if self._prefix and internal.startswith(self._prefix):
+            internal = internal[len(self._prefix) :]
+        if self._prefix and internal_ns.startswith(self._prefix):
+            internal_ns = internal_ns[len(self._prefix) :]
+        if internal_ns == internal:
+            return
+
+        safe_label = item.label.lower().replace(" ", "_").replace("/", "_")
+        if not self._router.alias_route(
+            internal,
+            internal_ns,
+            name=f"cluster_alias_{safe_label}",
+        ):
+            self._router.add_route(
+                path=internal_ns,
+                method="GET",
+                handler=_placeholder_page,
+                name=f"cluster_alias_{safe_label}",
+            )

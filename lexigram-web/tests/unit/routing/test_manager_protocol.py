@@ -2,9 +2,26 @@
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import MagicMock
 
+from lexigram.web.routing.controller_registry import ControllerRegistry
 from lexigram.web.routing.manager import WebRouterManager
+from lexigram.web.routing.registry import RouteRegistry
+
+routes_registry_mod = sys.modules["lexigram.web.routing.registry"]
+controller_registry_mod = sys.modules["lexigram.web.routing.controller_registry"]
+
+
+class _FakeController:
+    """Minimal controller shape used to exercise route registration."""
+
+    prefix = ""
+
+    @classmethod
+    def collect_routes(cls) -> list[dict]:
+        """Return a single fake route."""
+        return [{"path": "/fake", "method": "GET", "handler_name": "get_fake"}]
 
 
 class TestWebRouterManagerProtocols:
@@ -159,3 +176,29 @@ class TestWebRouterManagerProtocols:
         # Should construct without error
         manager = WebRouterManager(provider=mock_provider)
         assert manager.provider is not None
+
+    async def test_register_controller_routes_mirrors_into_registry(
+        self, monkeypatch
+    ) -> None:
+        """Mounted controllers are mirrored into the global RouteRegistry."""
+        fresh = RouteRegistry()
+        monkeypatch.setattr(routes_registry_mod, "route_registry", fresh)
+        monkeypatch.setattr(
+            controller_registry_mod,
+            "controller_registry",
+            ControllerRegistry(),
+        )
+
+        mock_provider = MagicMock()
+        mock_provider.starlette = MagicMock()
+        mock_provider.fail_on_route_conflict = False
+        mock_provider.router = MagicMock()
+        mock_provider.router._create_endpoint = MagicMock(return_value=MagicMock())
+
+        manager = WebRouterManager(provider=mock_provider)
+        await manager.register_controller_routes(_FakeController, MagicMock())
+
+        assert _FakeController in fresh.get_controllers()
+        routes = fresh.get_all_routes()
+        assert "GET" in routes["/fake"]
+        assert routes["/fake"]["GET"]["controller"] is _FakeController
