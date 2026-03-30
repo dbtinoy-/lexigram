@@ -20,6 +20,7 @@ from lexigram.ui import el
 
 if TYPE_CHECKING:
     from lexigram.admin.engine.renderer import AdminRenderer
+    from lexigram.admin.services.settings_service import AdminSettingsService
 
 logger = get_logger(__name__)
 
@@ -46,8 +47,13 @@ class InfrastructureController(AdminController):
 
     prefix = "/infrastructure"
 
-    def __init__(self, renderer: AdminRenderer, **kwargs: Any) -> None:
-        super().__init__(renderer=renderer, **kwargs)
+    def __init__(
+        self,
+        renderer: AdminRenderer,
+        settings_service: AdminSettingsService | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(renderer=renderer, settings_service=settings_service, **kwargs)
 
     @get("/")
     async def index(self, request: Request) -> Response:

@@ -64,7 +64,7 @@ async def _resolve_primary_color(container: Any) -> str:
         if color:
             return str(color)
     except Exception:  # noqa: BLE001 — non-fatal
-        pass
+        logger.exception("admin.theme_overrides_failed")
     return _DEFAULT_PRIMARY_COLOR
 
 
@@ -166,6 +166,38 @@ class AdminPageHandler:
             },
         ]
 
+        branding: dict[str, str] = {}
+        try:
+            from lexigram.admin.multitenancy.adapter import resolve_tenant_id
+            from lexigram.admin.services.settings_service import (
+                resolve_admin_settings_service,
+            )
+
+            container = (
+                getattr(request.state, "root_container", None)
+                or getattr(request.state, "container", None)
+                or getattr(request.app.state, "container", None)
+                or self._container
+            )
+            settings_service = await resolve_admin_settings_service(container)
+            if settings_service is not None:
+                tenant = await resolve_tenant_id(request, default="default")
+                overrides = await settings_service.get_all(tenant)
+                for field in ("primary_color", "site_name", "logo_url", "dark_mode"):
+                    value = overrides.get(field) or overrides.get(
+                        f"admin.branding.{field}"
+                    )
+                    if value:
+                        branding[field] = value
+                if branding.get("primary_color"):
+                    from lexigram.admin.theme.service import AdminThemeService
+
+                    theme_css = AdminThemeService(
+                        primary_color=branding["primary_color"]
+                    ).generate_theme_css()
+        except Exception:  # noqa: BLE001 — non-fatal
+            pass
+
         shell = AdminShell(
             content=content,
             title=title,
@@ -174,6 +206,11 @@ class AdminPageHandler:
             system_menu_items=system_menu_items,
             user_menu_items=user_menu_items,
             theme_css=theme_css,
+            **{
+                k: v
+                for k, v in branding.items()
+                if k in ("dark_mode", "site_name", "logo_url")
+            },
         )
         shell_html = render_to_string(shell)
 
@@ -182,7 +219,11 @@ class AdminPageHandler:
         return templates.TemplateResponse(
             request,
             "admin_shell.html",
-            context={"content": shell_html, "title": title},
+            context={
+                "content": shell_html,
+                "title": title,
+                "dark_mode": branding.get("dark_mode", ""),
+            },
         )
 
     async def _resolve_page(self) -> Any:
@@ -328,7 +369,11 @@ async def _placeholder_page(
         return templates.TemplateResponse(
             request,
             "admin_shell.html",
-            context={"content": shell_html, "title": "Under Construction"},
+            context={
+                "content": shell_html,
+                "title": "Under Construction",
+                "dark_mode": "",
+            },
         )
     except Exception:
         return HTMLResponse(content)

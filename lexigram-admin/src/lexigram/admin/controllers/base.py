@@ -123,7 +123,28 @@ class AdminController(ControllerProtocol):
         request: Request,
         extra_context: dict[str, Any],
     ) -> None:
-        """Load runtime theme settings and merge into extra_context."""
+        """Load runtime theme settings and merge into extra_context.
+
+        Uses the controller's settings service when injected, otherwise
+        builds one from the request-scoped DI container (mirroring the
+        bundle's own construction) so every renderer path honors the same
+        persisted branding.
+        """
+        if not self._settings_service:
+            try:
+                from lexigram.admin.services.settings_service import (
+                    resolve_admin_settings_service,
+                )
+
+                container = getattr(request.state, "container", None) or getattr(
+                    request.app.state, "container", None
+                )
+                if container is not None:
+                    self._settings_service = await resolve_admin_settings_service(
+                        container
+                    )
+            except Exception:  # noqa: BLE001 — non-fatal
+                pass
         if not self._settings_service:
             return
         try:

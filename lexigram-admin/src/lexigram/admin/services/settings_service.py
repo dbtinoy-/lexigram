@@ -162,4 +162,46 @@ class AdminSettingsService:
         await self._provider.set_config(tenant_id, self._key(key), prefs)
 
 
-__all__ = ["DEFAULT_SETTINGS", "AdminSettingsDbProvider", "AdminSettingsService"]
+async def resolve_admin_settings_service(
+    container: Any,
+) -> AdminSettingsService | None:
+    """Build a DB-backed settings service from a DI container.
+
+    Mirrors the bundle's own construction: resolves the database provider
+    and wires an :class:`AdminSettingsDbProvider` underneath.  Returns
+    ``None`` when the database provider is unavailable, so callers can
+    fall back to client-side defaults.
+
+    Args:
+        container: DI resolver (``ContainerResolverProtocol``).
+
+    Returns:
+        An ``AdminSettingsService`` or ``None`` if it cannot be built.
+    """
+    try:
+        from lexigram.contracts.data import DatabaseProviderProtocol
+
+        try:
+            db_provider = await container.resolve(
+                DatabaseProviderProtocol,
+                bypass_visibility=True,
+            )
+        except TypeError:
+            db_provider = await container.resolve(DatabaseProviderProtocol)
+        return AdminSettingsService(
+            config_provider=AdminSettingsDbProvider(db=db_provider)
+        )
+    except Exception as exc:  # noqa: BLE001 — non-fatal
+        logger.exception(
+            "admin.settings_service_resolve_failed",
+            error=str(exc)[:300],
+        )
+        return None
+
+
+__all__ = [
+    "DEFAULT_SETTINGS",
+    "AdminSettingsDbProvider",
+    "AdminSettingsService",
+    "resolve_admin_settings_service",
+]
