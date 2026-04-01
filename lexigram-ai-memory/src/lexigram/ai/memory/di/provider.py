@@ -87,6 +87,17 @@ class MemoryProvider(Provider):
             logger.info("memory_disabled", reason="MemoryConfig.enabled=False")
             return
 
+        # Follow-up: wire cache/database/vector backends at boot phase
+        # (see 2026-08-12-ai-family-gaps-remediation.md Task 5) — requires
+        # resolving CacheBackendProtocol/DatabaseProviderProtocol from the
+        # container, which ContainerRegistrarProtocol does not permit.
+        if self._mem_config.default_backend != "in_memory":
+            logger.warning(
+                "memory_backend_not_implemented",
+                requested_backend=self._mem_config.default_backend,
+                fallback="in_memory",
+            )
+
         backend = InMemoryMemoryBackend()
         episodic = EpisodicMemoryStore(backend=backend)
         semantic = SemanticMemoryStore(
