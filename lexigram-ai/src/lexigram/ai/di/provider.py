@@ -160,13 +160,6 @@ class AIProvider(Provider, AIProviderProtocol):
         container.singleton(CallbackManagerProtocol, CallbackManagerImpl)
         container.singleton("callback_manager", CallbackManagerImpl)
 
-        # Feedback processor registry — cross-cutting concern owned by AIProvider
-        from lexigram.ai.feedback.processors.processor_registry import (
-            FeedbackProcessorRegistry,
-        )
-
-        container.singleton(FeedbackProcessorRegistry)
-
         # Governance
         if intelligence_config.governance and intelligence_config.governance.enabled:
             from lexigram.ai.governance.audit import (
