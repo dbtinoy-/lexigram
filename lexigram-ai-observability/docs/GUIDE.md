@@ -175,7 +175,6 @@ from lexigram.ai.observability.hooks import LLMCallTracedHook
 - Register health checks for every external AI dependency (LLM provider, vector store).
 - Use `tracing_enabled=false` during local development if you don't need spans.
 - Attach meaningful span attributes (`tokens.total`, `cost`, `error.type`) via the wrapper or decorator callbacks.
-- Set up OpenTelemetry export with `[opentelemetry]` extras for Jaeger, Zipkin, or cloud traces.
 
 ## Next Steps
 

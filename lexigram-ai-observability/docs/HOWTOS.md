@@ -85,25 +85,6 @@ config = ObservabilityConfig(
 module = ObservabilityModule.configure(config)
 ```
 
-## Export Traces to Jaeger
-
-```bash
-uv add "lexigram-ai-observability[opentelemetry]"
-```
-
-```python
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.trace import TracerProvider as OTLPTracerProvider
-
-provider = OTLPTracerProvider()
-provider.add_span_processor(
-    BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4317"))
-)
-trace.set_tracer_provider(provider)
-# Register the TracerProvider in the container for AITracer to consume
-```
-
 ## How do I track embedding operations?
 
 ```python

@@ -24,9 +24,6 @@ if TYPE_CHECKING:
     from contextlib import AbstractContextManager as ContextManager
 
 
-# The local TracerProtocol and SpanProtocol definitions are removed as per instruction.
-# The type alias Span = SpanProtocol is also removed.
-
 # TracerProtocol is an alias for Tracer in contracts
 TracerProtocol = Tracer
 

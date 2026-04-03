@@ -38,10 +38,6 @@ Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-opentelemetry = [
-    "opentelemetry-api>=1.0.0",
-    "opentelemetry-sdk>=1.0.0",
-]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
