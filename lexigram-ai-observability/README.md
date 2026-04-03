@@ -14,6 +14,8 @@ AI-layer observability for the Lexigram Framework. Provides tracing, metrics, he
 
 ```bash
 uv add lexigram-ai-observability
+# Optional extras
+uv add "lexigram-ai-observability[opentelemetry]"
 ```
 
 ## Quick Start
