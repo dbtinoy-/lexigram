@@ -40,7 +40,7 @@ Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 librosa = ["librosa>=0.10.0", "soundfile>=0.12.0"]
-madmom-server = ["madmom; python_version < '3.0'"]
+madmom-server = ["madmom"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
