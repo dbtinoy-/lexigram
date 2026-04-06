@@ -34,6 +34,16 @@ class VideoGenerationTask:
             resolution=params.get("resolution", "1280x720"),
             image_uri=params.get("image_uri"),
             format=params.get("format", "mp4"),
+            model=params.get("model"),
+            mode=params.get("mode"),
+            last_frame_image=params.get("last_frame_image"),
+            reference_images=params.get("reference_images", []),
+            reference_videos=params.get("reference_videos", []),
+            reference_audios=params.get("reference_audios", []),
+            generate_audio=params.get("generate_audio", False),
+            return_last_frame=params.get("return_last_frame", False),
+            ratio=params.get("ratio"),
+            seed=params.get("seed"),
             extra=params.get("extra", {}),
         )
         result = await self._backend.generate(request)
