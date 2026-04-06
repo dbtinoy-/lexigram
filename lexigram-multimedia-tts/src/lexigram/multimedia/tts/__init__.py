@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lexigram.multimedia.tts.config import TTSConfig
 from lexigram.multimedia.tts.di import AudioTTSProvider
-from lexigram.multimedia.tts.exceptions import TTSAuthenticationError, TTSTimeoutError
+from lexigram.multimedia.tts.exceptions import TTSAuthenticationError
 from lexigram.multimedia.tts.module import AudioTTSModule
 from lexigram.multimedia.tts.providers import (
     ChatterboxTTSProvider,
@@ -30,5 +30,4 @@ __all__ = [
     "TTSAuthenticationError",
     "TTSConfig",
     "TTSGenerationTask",
-    "TTSTimeoutError",
 ]
