@@ -14,10 +14,10 @@ __all__ = [
 class ImageTimeoutError(ImageGenerationError):
     """Raised when an image generation operation exceeds its timeout."""
 
-    code = "LEX_ERR_MM_IMAGE_001"
+    _code = "LEX_ERR_MM_IMAGE_001"
 
 
 class ImageGenerationAuthenticationError(ImageGenerationError):
     """Raised when the image backend rejects the configured API credentials."""
 
-    code = "LEX_ERR_MM_IMAGE_002"
+    _code = "LEX_ERR_MM_IMAGE_002"
