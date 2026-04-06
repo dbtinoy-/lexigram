@@ -93,14 +93,13 @@ class DashboardController(AdminController):
             if self._settings_service
             else {}
         )
-        enabled_set = set(widget_prefs.get("enabled", []))
-        custom_order = widget_prefs.get("order", {})
-
-        # Filter and sort widgets
-        if enabled_set:
+        # Filter and sort widgets. No saved prefs means everything is on.
+        if "enabled" in widget_prefs:
+            enabled_set = set(widget_prefs["enabled"])
             contributor_widgets = [
                 w for w in contributor_widgets if w.name in enabled_set
             ]
+        custom_order = widget_prefs.get("order", {})
         if custom_order:
             contributor_widgets.sort(key=lambda w: custom_order.get(w.name, w.order))
 
@@ -193,15 +192,6 @@ class DashboardController(AdminController):
   </button>
 </div>
 <script>
-function openWidgetConfig(url) {
-  fetch(url)
-    .then(function(r) { return r.text(); })
-    .then(function(html) {
-      var d = document.getElementById('widget-config-dialog');
-      if (d) { d.innerHTML = html; d.showModal(); }
-    });
-}
-
 (function() {
   var grid = document.getElementById('dashboard-grid');
   var saveBtn = document.getElementById('save-layout-btn');
@@ -221,6 +211,10 @@ function openWidgetConfig(url) {
 
   initSortable();
   document.body.addEventListener('htmx:afterSwap', initSortable);
+  document.body.addEventListener('htmx:afterSwap', function(e) {
+    var t = e.detail && e.detail.target;
+    if (t && window.htmx) { try { htmx.process(t); } catch (err) {} }
+  });
 
   if (saveBtn) {
     saveBtn.addEventListener('click', async function() {
@@ -249,14 +243,13 @@ function openWidgetConfig(url) {
         customize_btn = el(
             "button",
             "⚙ Customize Dashboard",
-            onclick="openWidgetConfig('/admin/core/widgets/customize')",
+            **{
+                "hx-get": "/admin/core/widgets/customize",
+                "hx-target": "#slide-over-container",
+                "hx-swap": "innerHTML",
+                "hx-push-url": "false",
+            },
             class_="text-sm bg-muted hover:bg-muted px-3 py-1.5 rounded border border-border cursor-pointer",
-        )
-
-        config_dialog = el(
-            "dialog",
-            id="widget-config-dialog",
-            class_="rounded shadow-lg border p-0 min-w-[400px] max-w-lg",
         )
 
         content = el(
@@ -273,7 +266,6 @@ function openWidgetConfig(url) {
             ),
             widgets_section,
             dnd_html,
-            config_dialog,
             class_="dashboard-view space-y-6",
         )
 

@@ -166,11 +166,12 @@ class BelongsToManyRelationManager(RelationManager):
         prefix = f"/admin/{resource_name}/{self.parent_id}/relations/{self.get_relationship_name()}"
 
         async def _handle_toggle(request: Any) -> Response:
-            body = (
-                await request.json()
-                if request.headers.get("content-type") == "application/json"
-                else await request.form()
-            )
+            if request.headers.get("content-type") == "application/json":
+                body = await request.json()
+            else:
+                body = request.scope.get("admin_form_data")
+                if body is None:
+                    body = await request.form()
             related_id = body.get("related_id", "")
             attached = await self.get_attached_ids()
             if related_id in attached:
@@ -180,11 +181,12 @@ class BelongsToManyRelationManager(RelationManager):
             return await self._render_single_row(request, resource_name, related_id)
 
         async def _handle_sync(request: Any) -> Response:
-            body = (
-                await request.json()
-                if request.headers.get("content-type") == "application/json"
-                else await request.form()
-            )
+            if request.headers.get("content-type") == "application/json":
+                body = await request.json()
+            else:
+                body = request.scope.get("admin_form_data")
+                if body is None:
+                    body = await request.form()
             raw_ids = body.get("related_ids", "")
             if isinstance(raw_ids, str):
                 ids = (
@@ -200,7 +202,9 @@ class BelongsToManyRelationManager(RelationManager):
 
         async def _handle_pivot_update(request: Any) -> Response:
             related_id = request.path_params.get("related_id", "")
-            form = await request.form()
+            form = request.scope.get("admin_form_data")
+            if form is None:
+                form = await request.form()
             pivot_data = dict(form)
             await self.update_pivot(related_id, pivot_data)
             return HTMLResponse("")

@@ -437,7 +437,9 @@ def csrf_protect(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable
         if not submitted_token:
             # Try form data
             try:
-                form = await request.form()
+                form = request.scope.get("admin_form_data")
+                if form is None:
+                    form = await request.form()
                 submitted_token = form.get("csrf_token")  # type: ignore[assignment]
             except (
                 ConnectionError,

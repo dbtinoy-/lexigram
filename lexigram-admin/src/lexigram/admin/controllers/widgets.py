@@ -8,7 +8,10 @@ from typing import Any, cast
 from starlette.requests import Request
 from starlette.routing import Route
 
-from lexigram.admin.auth.protocols import AdminAuditLogServiceProtocol
+from lexigram.admin.auth.protocols import (
+    AdminAuditLogServiceProtocol,
+    AdminCsrfServiceProtocol,
+)
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.dashboard.widget_types import ConfigField
 from lexigram.admin.params import parse_widget_params
@@ -39,17 +42,37 @@ class WidgetController:
         self,
         registry: AdminContributorRegistryProtocol,
         audit_service: AdminAuditLogServiceProtocol | None = None,
+        csrf_service: AdminCsrfServiceProtocol | None = None,
     ) -> None:
         self._registry = registry
         self._settings_service: Any = None
         self._resolver: Any = None
         self._audit_service = audit_service
+        self._csrf_service = csrf_service
+
+    def _get_csrf_token(self, request: Request) -> str | None:
+        """Resolve the CSRF token for form rendering, if available."""
+        if not self._csrf_service:
+            return None
+        try:
+            session = getattr(request, "session", {})
+            session_id: str = session.get("admin_user_id", "")
+            return self._csrf_service.generate_token(session_id)
+        except Exception:  # noqa: BLE001 — non-fatal for form rendering
+            return None
 
     # -- helpers --
 
     def _user_has_edit_permission(self, request: Request) -> bool:
-        """Check whether the requesting user may mutate widget prefs."""
+        """Check whether the requesting user may mutate widget prefs.
+
+        Superadmin bypasses permission gating so accounts created with an
+        empty permission set (e.g. via the setup wizard) can still manage
+        dashboard widgets.
+        """
         user = getattr(getattr(request, "state", None), "user", None)
+        if user and "superadmin" in (getattr(user, "roles", None) or ()):
+            return True
         permissions = frozenset(getattr(user, "permissions", None) or ())
         return permissions.issuperset(_REQUIRED_PERMISSIONS)
 
@@ -311,7 +334,7 @@ class WidgetController:
             if self._settings_service
             else {}
         )
-        enabled = name in prefs.get("enabled", [])
+        enabled = "enabled" not in prefs or name in prefs.get("enabled", [])
         cfg = prefs.get("configs", {}).get(name, {})
 
         html = render_widget_config_popup(name, widget_def.title, schema, cfg, enabled)
@@ -335,7 +358,9 @@ class WidgetController:
         tenant_id = "default"
         user_id = "default"
 
-        data = await request.form()
+        data = request.scope.get("admin_form_data")
+        if data is None:
+            data = await request.form()
         widget_name = data.get("widget_name")
         enabled = "enabled" in data
         params = {
@@ -408,8 +433,6 @@ class WidgetController:
         """Render full dashboard customization panel with all widgets."""
         from starlette.responses import HTMLResponse
 
-        from lexigram.admin.dashboard.widgets import _render_field_input
-
         tenant_id = "default"
         user_id = "default"
 
@@ -419,48 +442,22 @@ class WidgetController:
             else {}
         )
         enabled_list = prefs.get("enabled", [])
-        configs = prefs.get("configs", {})
+        has_explicit_prefs = "enabled" in prefs
 
-        rows: list[Any] = [
-            el("h3", "Customize Dashboard", class_="text-xl font-semibold mb-4"),
-            el(
-                "p",
-                "Enable/disable widgets and configure their parameters.",
-                class_="text-sm text-muted-foreground mb-6",
-            ),
-        ]
-
+        grouped: dict[str, tuple[str, list[Any]]] = {}
         for contributor in self._registry.get_all():
-            for wdef in contributor.get_dashboard_widgets():
+            widgets = list(contributor.get_dashboard_widgets())
+            if not widgets:
+                continue
+            toggles: list[Any] = []
+            for wdef in widgets:
                 name = wdef.name
                 enabled = name in enabled_list
-                schema: list[ConfigField] = getattr(
-                    contributor, "get_widget_config_schema", lambda _: []
-                )(name)
-                cfg = configs.get(name, {})
-
-                from lexigram.admin.dashboard.widget_types import ConfigField
-
-                field_inputs: list[Any] = []
-                for f in schema:
-                    if isinstance(f, dict):
-                        f = ConfigField(**f)
-                    value = cfg.get(f.name, f.default)
-                    field_inputs.append(
-                        el(
-                            "div",
-                            el(
-                                "label",
-                                f.label,
-                                class_="block text-xs font-medium mb-1",
-                            ),
-                            _render_field_input(f, value, widget_name=name),
-                            class_="mb-2",
-                        ),
-                    )
-
-                widget_row = el(
-                    "div",
+                if not has_explicit_prefs:
+                    # No saved prefs yet — dashboard shows everything by default,
+                    # so the form must render every widget as enabled.
+                    enabled = True
+                toggles.append(
                     el(
                         "label",
                         el(
@@ -470,48 +467,86 @@ class WidgetController:
                             value="1",
                             checked="checked" if enabled else None,
                         ),
-                        el("span", wdef.title, class_="font-medium ml-2"),
                         el(
                             "span",
-                            f" ({wdef.contributor})",
-                            class_="text-xs text-muted-foreground ml-1",
+                            wdef.title,
+                            class_="truncate text-sm font-medium",
                         ),
-                        class_="flex items-center mb-2",
-                    ),
-                    el("div", *field_inputs, class_="ml-6"),
-                    class_="mb-4 pb-4 border-b border-border last:border-0",
+                        class_=(
+                            "flex items-center gap-2 rounded-lg border border-border "
+                            "bg-card px-3 py-2 cursor-pointer select-none "
+                            "hover:bg-muted/50 transition-colors"
+                        ),
+                    )
                 )
-                rows.append(widget_row)
+            label = getattr(contributor, "display_name", "") or contributor.name
+            grouped[contributor.name] = (label, toggles)
+
+        sections: list[Any] = []
+        for label, toggles in grouped.values():
+            sections.append(
+                el(
+                    "div",
+                    el(
+                        "h3",
+                        label,
+                        class_=(
+                            "text-xs font-semibold uppercase tracking-wider "
+                            "text-muted-foreground"
+                        ),
+                    ),
+                    el("div", class_="mt-1.5 border-t border-border"),
+                    el(
+                        "div",
+                        *toggles,
+                        class_="mt-3 grid grid-cols-2 gap-2",
+                    ),
+                )
+            )
+
+        csrf_token = self._get_csrf_token(request)
+
+        from lexigram.admin.ui.organisms.admin_slide_over import (
+            render_slide_over_fragment,
+        )
 
         form = el(
             "form",
-            *rows,
-            el(
-                "div",
-                el(
-                    "button",
-                    "Save All Changes",
-                    type_="submit",
-                    class_="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90",
-                ),
-                el(
-                    "button",
-                    "Cancel",
-                    type_="button",
-                    class_="ml-2 text-muted-foreground px-4 py-2 rounded hover:bg-muted",
-                    onclick="this.closest('dialog').close()",
-                ),
-                class_="mt-6 flex justify-end gap-2 sticky bottom-0 bg-card py-3 border-t",
-            ),
+            el("input", type_="hidden", name="csrf_token", value=csrf_token or ""),
+            *sections,
+            id="widget-customize-form",
             **{
                 "hx-post": "/admin/core/widgets/customize/save",
                 "hx-swap": "none",
-                "hx-on:htmx:afterRequest": "document.getElementById('widget-config-dialog').close()",
+                "hx-on:htmx:after-request": "if(event.detail.successful){window.location.reload();}",
             },
-            class_="p-6 max-h-[80vh] overflow-y-auto",
+            class_="space-y-6",
         )
 
-        return HTMLResponse(str(form))
+        return HTMLResponse(
+            render_slide_over_fragment(
+                title="Customize Dashboard",
+                subtitle="Enable/disable widgets and configure their parameters.",
+                content=form,
+                size="xl",
+                footer=[
+                    el(
+                        "button",
+                        "Cancel",
+                        type_="button",
+                        **{"x-on:click": "open = false"},
+                        class_="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-foreground bg-card border border-border hover:bg-muted transition-colors",
+                    ),
+                    el(
+                        "button",
+                        "Save All Changes",
+                        type_="submit",
+                        form="widget-customize-form",
+                        class_="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors",
+                    ),
+                ],
+            )
+        )
 
     @post("/core/widgets/customize/save")
     async def save_all_widget_configs(self, request: Request) -> object:
@@ -531,7 +566,9 @@ class WidgetController:
         tenant_id = "default"
         user_id = "default"
 
-        data = await request.form()
+        data = request.scope.get("admin_form_data")
+        if data is None:
+            data = await request.form()
 
         enabled_list: list[str] = []
         configs: dict[str, dict[str, str]] = {}

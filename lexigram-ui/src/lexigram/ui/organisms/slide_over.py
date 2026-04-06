@@ -193,7 +193,7 @@ class SlideOver(Component):
                 "div",
                 {
                     "x-show": "open",
-                    "class": "relative z-50",
+                    "class": "fixed inset-0 z-50 pointer-events-auto",
                     "aria-labelledby": f"{self.id}-title",
                     "aria-describedby": f"{self.id}-description",
                     "role": "dialog",
@@ -217,10 +217,12 @@ class SlideOver(Component):
                 ),
                 el(
                     "div",
-                    {"class": "fixed inset-0 overflow-hidden"},
+                    {"class": "pointer-events-none fixed inset-0 overflow-hidden"},
                     el(
                         "div",
-                        {"class": "absolute inset-0 overflow-hidden"},
+                        {
+                            "class": "pointer-events-none absolute inset-0 overflow-hidden"
+                        },
                         el(
                             "div",
                             {
