@@ -22,6 +22,7 @@ if TYPE_CHECKING:
         CircuitBreakerProtocol,
         RetryPolicyProtocol,
     )
+    from lexigram.multimedia.upscale.video_upscale_service import VideoUpscaleService
 
 logger = get_logger(__name__)
 
@@ -43,6 +44,7 @@ class UpscaleGenerationProvider(Provider):
         self._task_handler: UpscaleTask | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
+        self._video_upscale_service: VideoUpscaleService | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -106,6 +108,7 @@ class UpscaleGenerationProvider(Provider):
             video_upscale_service = VideoUpscaleService(
                 upscale_provider=self._backend, video_processor=video_processor
             )
+            self._video_upscale_service = video_upscale_service
             container.singleton(VideoUpscaleService, video_upscale_service)
 
         logger.info("upscale_registered", backend=self._config.backend)
