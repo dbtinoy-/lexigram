@@ -1,0 +1,51 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: audit:
+# Environment variable prefix: LEX_AUDIT__
+
+audit:
+  # -- Storage Backend --------------------------------------------------------
+
+  # Backend type for the audit log store.
+  # "sql"    — persistent SQL table via DatabaseProviderProtocol (recommended for production)
+  # "memory" — in-process store, data lost on restart (dev / test only)
+  store_backend: "sql"
+
+  # SQL table name for the unified audit log (sql backend only).
+  table_name: "audit_log"
+
+  # -- Integrity / Tamper Detection -------------------------------------------
+
+  # HMAC-SHA256 key for audit entry checksum computation.
+  # Must be set to enable tamper detection. Leave null to disable checksums.
+  # Generate a key: python -c "import secrets; print(secrets.token_hex(32))"
+  hmac_key: null
+
+  # -- Retention Policy -------------------------------------------------------
+
+  retention_policy:
+    name: "default"
+
+    # Default retention period in days for all severity levels.
+    default_retention_days: 365
+
+    # Per-severity overrides (days). Omit a key to use default_retention_days.
+    severity_overrides:
+      critical: 2555   # ~7 years — regulatory / compliance events
+      high: 1095       # 3 years  — security and access events
+
+  # -- Scheduled Verification -------------------------------------------------
+
+  # Cron expression for scheduled HMAC checksum verification.
+  # Default: hourly ("0 * * * *"). Requires a task scheduler integration.
+  verification_schedule: "0 * * * *"
+
+  # Number of audit entries to verify per verification run.
+  # Lower values reduce load; higher values catch tampering sooner.
+  verification_batch_size: 100
+
+  # -- Admin Panel ------------------------------------------------------------
+
+  # Whether to register the AuditAdminContributor with lexigram-admin.
+  # Set to false if lexigram-admin is not installed or not desired.
+  enable_admin: true

@@ -1,0 +1,147 @@
+"""HTTP security component tests for lexigram-web.
+
+Covers: SecurityConfig, SecurityHeadersConfig, CORSMiddlewareFactory.
+Adapted from lexigram-security unit tests; imports updated to
+lexigram.web.security.* after HTTP middleware absorption in Task 3.
+"""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock
+
+import pytest
+
+from lexigram.web.security.config import (
+    CORSConfig,
+    SecurityConfig,
+    SecurityHeadersConfig,
+)
+from lexigram.web.security.cors.middleware import CORSMiddleware, CORSMiddlewareFactory
+
+
+class TestSecurityConfig:
+    """Test Security configuration."""
+
+    def test_config_defaults(self) -> None:
+        """Test default security configuration."""
+        config = SecurityConfig()
+        assert config.enable_csrf is True
+        assert config.enable_cors is True
+
+    def test_config_with_custom_values(self) -> None:
+        """Test configuration with custom values."""
+        config = SecurityConfig(
+            enable_csrf=False,
+            enable_cors=False,
+        )
+        assert config.enable_csrf is False
+        assert config.enable_cors is False
+
+    def test_config_has_cors_sub_config(self) -> None:
+        """SecurityConfig must aggregate a CORSConfig sub-object."""
+        config = SecurityConfig()
+        assert isinstance(config.cors, CORSConfig)
+
+    def test_config_has_csrf_sub_config(self) -> None:
+        """SecurityConfig must aggregate a CSRFConfig sub-object."""
+        from lexigram.web.security.config import CSRFConfig
+
+        config = SecurityConfig()
+        assert isinstance(config.csrf, CSRFConfig)
+
+
+class TestSecurityHeadersConfig:
+    """Test security headers configuration."""
+
+    def test_config_creation(self) -> None:
+        """Test headers config can be created."""
+        config = SecurityHeadersConfig()
+        assert config is not None
+
+    def test_config_default_hsts_max_age(self) -> None:
+        """Default HSTS max_age should be one year."""
+        config = SecurityHeadersConfig()
+        assert config.hsts_max_age == 31536000
+
+    def test_config_with_custom_csp(self) -> None:
+        """Test config with CSP string."""
+        config = SecurityHeadersConfig(csp="default-src 'self'")
+        assert "default-src" in (config.csp or "")
+
+    def test_config_xss_protection_default(self) -> None:
+        """XSS protection header should have a default value."""
+        config = SecurityHeadersConfig()
+        assert config.xss_protection is not None
+
+
+class TestCORSMiddlewareFactory:
+    """Test the CORS middleware factory."""
+
+    def test_factory_returns_middleware(self) -> None:
+        """Factory wraps the provided ASGI application with configured headers."""
+        factory = CORSMiddlewareFactory(
+            config=CORSConfig(allowed_origins=["https://example.com"])
+        )
+
+        dummy_app = AsyncMock()
+        middleware = factory(dummy_app)
+
+        assert isinstance(middleware, CORSMiddleware)
+        assert middleware.app is dummy_app
+
+    def test_factory_default_config(self) -> None:
+        """Factory should work without explicit config."""
+        factory = CORSMiddlewareFactory()
+        dummy_app = AsyncMock()
+        middleware = factory(dummy_app)
+        assert isinstance(middleware, CORSMiddleware)
+
+
+class TestSecurityPackageExports:
+    """Test the top-level lexigram.web.security public API."""
+
+    def test_http_security_surface_is_reexported(self) -> None:
+        """Top-level package should expose the absorbed HTTP security surface."""
+        from lexigram.web import security as web_security
+        from lexigram.web.security.config import (
+            CORSConfig as CanonicalCORSConfig,
+            CSPConfig as CanonicalCSPConfig,
+            CSRFConfig as CanonicalCSRFConfig,
+            CrossOriginConfig as CanonicalCrossOriginConfig,
+            HSTSConfig as CanonicalHSTSConfig,
+            SecurityConfig as CanonicalSecurityConfig,
+            SecurityHeadersConfig as CanonicalSecurityHeadersConfig,
+        )
+        from lexigram.web.security.cors.middleware import (
+            CORSMiddleware as CanonicalCORSMiddleware,
+            CORSMiddlewareFactory as CanonicalCORSMiddlewareFactory,
+        )
+        from lexigram.web.security.csp.builder import CSPPolicy as CanonicalCSPPolicy
+        from lexigram.web.security.csrf.middleware import (
+            CSRFProtectionMiddleware as CanonicalCSRFMiddleware,
+        )
+        from lexigram.web.security.csrf.protection import (
+            CSRFProtection as CanonicalCSRFProtection,
+        )
+        from lexigram.web.security.headers.middleware import (
+            SecurityHeadersMiddleware as CanonicalSecurityHeadersMiddleware,
+        )
+
+        assert web_security.CORSConfig is CanonicalCORSConfig
+        assert web_security.CORSMiddleware is CanonicalCORSMiddleware
+        assert web_security.CORSMiddlewareFactory is CanonicalCORSMiddlewareFactory
+        assert web_security.CSPConfig is CanonicalCSPConfig
+        assert web_security.CSPPolicy is CanonicalCSPPolicy
+        assert web_security.CSRFConfig is CanonicalCSRFConfig
+        assert web_security.CSRFProtection is CanonicalCSRFProtection
+        assert web_security.CSRFProtectionMiddleware is CanonicalCSRFMiddleware
+        assert web_security.CrossOriginConfig is CanonicalCrossOriginConfig
+        assert web_security.HSTSConfig is CanonicalHSTSConfig
+        assert web_security.SecurityConfig is CanonicalSecurityConfig
+        assert (
+            web_security.SecurityHeadersConfig is CanonicalSecurityHeadersConfig
+        )
+        assert (
+            web_security.SecurityHeadersMiddleware
+            is CanonicalSecurityHeadersMiddleware
+        )

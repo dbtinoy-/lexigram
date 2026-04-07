@@ -1,0 +1,122 @@
+"""Admin Resource for {{ model_name }}.
+
+This module defines the admin UI configuration for the {{ model_name }} model,
+including table columns, filters, actions, and form configuration.
+
+Usage:
+    Add to your admin provider:
+        >>> from {{ package_name }}.admin.resources import {{ resource_name }}
+        >>> provider.add_resource({{ resource_name }})
+"""
+
+from datetime import datetime, timezone
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+from lexigram.admin import Resource, ResourcePermissions
+from lexigram.admin.resources.base import SoftDeleteEntity
+from lexigram.admin.ui.actions import DeleteAction, EditAction, ViewAction
+from lexigram.admin.ui.columns import (
+    BooleanColumn,
+    DateColumn,
+    TextColumn,
+)
+from lexigram.admin.ui.filters import BooleanFilter, DateFilter, TextFilter
+
+
+# Form Schema
+class {{ form_class_name }}(BaseModel):
+    """Form schema for {{ model_name }}."""
+{% for field in fields %}
+    {{ field.name }}: {{ field.pydantic_type }} = Field(
+        {{ field.form_field_kwargs }}
+    )
+{%- endfor %}
+
+
+# Resource Class
+class {{ resource_name }}(Resource):
+    """Admin resource for {{ model_name }}.
+
+    Provides:
+    - List view with sortable columns
+    - Create/Edit form with validation
+    - Filter and search capabilities
+    - Bulk actions support
+    """
+
+    # Model
+    model = {{ model_class_name }}
+
+    # UI Configuration
+    icon = "{{ icon }}"
+    label = "{{ label }}"
+    visible_in_sidebar = {{ visible_in_sidebar }}
+
+    # Table Columns
+    columns = [
+        {%- for field in columns %}
+        {{ field }},
+        {%- endfor %}
+    ]
+
+    # Row Actions
+    actions = [
+        ViewAction(),
+        EditAction(),
+        DeleteAction(),
+    ]
+
+    # Filters
+    filters = [
+        {%- for filter_def in filter_fields %}
+        {{ filter_def }},
+        {%- endfor %}
+    ]
+
+    # Form Configuration
+    form_class = {{ form_class_name }}
+    form_display_mode = "{{ form_display_mode }}"
+
+    # Pagination
+    page_size = {{ page_size }}
+    default_sort = "{{ default_sort }}"
+
+    # Permissions
+    permissions = ResourcePermissions(
+        view=["admin:{{ permission_prefix }}:view"],
+        create=["admin:{{ permission_prefix }}:create"],
+        edit=["admin:{{ permission_prefix }}:edit"],
+        delete=["admin:{{ permission_prefix }}:delete"],
+    )
+
+    # Hooks
+    async def before_create(self, data: dict) -> dict:
+        """Hook called before creating a record."""
+        # Add custom validation or data modification
+        return data
+
+    async def after_create(self, record: Any) -> None:
+        """Hook called after creating a record."""
+        # Log the creation, send notifications, etc.
+        pass
+
+    async def before_update(self, id: Any, data: dict) -> dict:
+        """Hook called before updating a record."""
+        return data
+
+    async def after_update(self, record: Any) -> None:
+        """Hook called after updating a record."""
+        pass
+
+    async def before_delete(self, id: Any) -> None:
+        """Hook called before deleting a record."""
+        pass
+
+    async def after_delete(self, id: Any) -> None:
+        """Hook called after deleting a record."""
+        pass
+
+
+__all__ = ["{{ resource_name }}", "{{ form_class_name }}"]

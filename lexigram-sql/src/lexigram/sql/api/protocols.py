@@ -1,0 +1,113 @@
+"""Protocol definitions for lexigram-sql API."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
+
+if TYPE_CHECKING:
+    from contextlib import AbstractAsyncContextManager
+    import types
+
+    from lexigram.contracts import ContainerResolverProtocol, HealthCheckResult
+
+
+@runtime_checkable
+class ConnectionProtocol(Protocol):
+    """Protocol for database connections."""
+
+    async def execute(
+        self,
+        sql: str,
+        params: tuple[object, ...] | None = None,
+    ) -> Any:  # pragma: no cover - interface
+        ...
+
+    def fetchone(self) -> dict[str, Any] | None:  # pragma: no cover - interface
+        ...
+
+    def fetchall(self) -> list[dict[str, Any]]:  # pragma: no cover - interface
+        ...
+
+    def scalar(self) -> Any:  # pragma: no cover - interface
+        ...
+
+
+class UnitOfWorkProtocol(Protocol):
+    """Protocol for Unit of Work implementations."""
+
+    async def __aenter__(self) -> Self: ...
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: types.TracebackType | None,
+    ) -> None: ...
+
+    async def commit(self) -> None: ...
+
+    async def rollback(self) -> None: ...
+
+    def register_new(self, entity: Any) -> None:  # pragma: no cover - interface
+        ...
+
+    def register_dirty(self, entity: Any) -> None:  # pragma: no cover - interface
+        ...
+
+    def register_deleted(self, entity: Any) -> None:  # pragma: no cover - interface
+        ...
+
+
+class DatabaseProviderProtocol(Protocol):
+    """Protocol for database provider implementations.
+
+    Attributes:
+        url: The plain (decrypted) connection URL string. When the underlying
+            configuration stores the URL as a ``SecretStr``, this attribute
+            must return the unwrapped value — never the ``SecretStr`` wrapper.
+    """
+
+    url: str  # Plain decrypted connection URL (not a SecretStr)
+
+    async def register(self, container: Any) -> None:  # pragma: no cover - interface
+        ...
+
+    async def boot(
+        self, container: ContainerResolverProtocol
+    ) -> None:  # pragma: no cover - interface
+        ...
+
+    async def shutdown(self) -> None:  # pragma: no cover - interface
+        ...
+
+    async def health_check(
+        self, timeout: float = 5.0
+    ) -> HealthCheckResult:  # pragma: no cover - interface
+        ...
+
+    def get_connection(
+        self,
+    ) -> AbstractAsyncContextManager[
+        ConnectionProtocol
+    ]:  # pragma: no cover - interface
+        """Return an async context manager yielding a database connection.
+
+        Implementations should provide an asynccontextmanager-compatible method
+        that yields a ConnectionProtocol instance.
+        """
+        ...
+
+    async def get_scoped_connection(
+        self,
+    ) -> ConnectionProtocol:  # pragma: no cover - interface
+        ...
+
+    def get_unit_of_work(self) -> UnitOfWorkProtocol:  # pragma: no cover - interface
+        ...
+
+
+__all__ = [
+    "ConnectionProtocol",
+    "DatabaseProviderProtocol",
+    "UnitOfWorkProtocol",
+]

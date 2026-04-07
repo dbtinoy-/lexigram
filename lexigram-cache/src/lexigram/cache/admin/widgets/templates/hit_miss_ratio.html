@@ -1,0 +1,13 @@
+<div class="card h-100">
+  <div class="card-body">
+    <h6 class="card-title text-muted">Cache Hit Rate</h6>
+    <div class="metric-value fs-4 fw-bold text-success">{{ hit_rate_pct }}%</div>
+    <div class="metric-label text-muted small">Hit Rate ({{ window_minutes }}m)</div>
+    <div class="progress mt-3" style="height: 8px;">
+      <div class="progress-bar bg-success" role="progressbar" style="width: {{ hit_rate_pct }}%"></div>
+    </div>
+    <div class="d-flex justify-content-between small mt-1">
+      <span>Hits: {{ hits }}</span><span>Misses: {{ misses }}</span>
+    </div>
+  </div>
+</div>

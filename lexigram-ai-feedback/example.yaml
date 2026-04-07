@@ -1,0 +1,14 @@
+# feedback.yaml.example
+# Lexigram AI Feedback Configuration Template
+# YAML key: ai_feedback:
+# Environment variable prefix: LEX_AI_FEEDBACK__
+
+ai_feedback:
+  # Master on/off switch for the feedback collection subsystem.
+  enabled: true
+
+  # Processing
+  async_processing: true  # Process feedback handlers asynchronously
+
+  # Storage
+  store_raw_payloads: false  # Persist raw payloads for auditing; disable in production unless needed

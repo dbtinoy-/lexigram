@@ -1,0 +1,18 @@
+# workers.yaml.example
+# Lexigram AI Workers Configuration Template
+# YAML key: ai_workers:
+# Environment variable prefix: LEX_AI_WORKERS__
+
+ai_workers:
+  # Master on/off switch for the AI background workers subsystem.
+  enabled: true
+
+  # -- Concurrency -----------------------------------------------------------
+
+  batch_embedding_concurrency: 3      # Maximum concurrent batch-embedding tasks
+  document_ingestion_concurrency: 3   # Maximum concurrent document-ingestion tasks
+
+  # -- Maintenance -----------------------------------------------------------
+
+  enable_maintenance: true            # Run periodic maintenance tasks (DLQ recovery, cleanup)
+  dlq_check_interval: 60             # Interval in seconds between Dead Letter Queue recovery sweeps

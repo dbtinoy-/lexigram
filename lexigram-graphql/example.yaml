@@ -1,0 +1,90 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: graphql:
+# Environment variable prefix: LEX_GRAPHQL__
+
+graphql:
+  # Environment: development, staging, production
+  env: development
+
+  # Server Configuration
+  server:
+    path: "/graphql"
+    debug: true  # false in production
+    include_error_details: true
+    
+  # Playground (GraphQL IDE)
+  playground:
+    enabled: true
+    
+  # Schema Validation
+  schema:
+    max_depth: 10  # Query/mutation depth limit
+    complexity_limit: 1000  # Query complexity score
+    
+  # Query Analysis
+  query_analysis:
+    enabled: true
+    timeout: 30  # Seconds
+    
+  # Subscriptions (Real-time updates)
+  subscriptions:
+    enabled: true
+    keepalive_interval: "30s"  # Duration: 30s, 1m
+    connection_timeout: "60s"  # Duration: 30s, 1m
+    max_subscriptions_per_client: 10
+
+  # Caching
+  cache:
+    enabled: true
+    default_max_age: "1h"  # Duration: 300, "5m", "1h"
+    backend: "redis"  # redis, memory
+    key_prefix: "graphql:"
+
+  # Data Loaders (Batch loading)
+  data_loader:
+    enabled: true
+    batch_size: 100
+    cache_ttl: "60s"  # Duration: 30s, 1m
+    
+  # Rate Limiting
+  rate_limit:
+    enabled: true
+    limit: "100/minute"
+    backend: "redis"
+    key_prefix: "gql_ratelimit:"
+    
+    # Per-query limits
+    query_limits:
+      - name: "expensive_query"
+        limit: "10/minute"
+        
+  # Introspection (API discovery)
+  introspection:
+    enabled: true  # false in production for security
+    
+  # Persisted Queries (APQ)
+  persisted_queries:
+    enabled: false
+    ttl_seconds: "24h"  # Duration: 3600, "1h", "24h"
+    
+  # Tracing & Monitoring
+  tracing:
+    enabled: true
+    include_field_timings: true
+    include_execution_plan: false
+    
+  # Error Handling
+  error_handling:
+    include_stacktrace: true  # false in production
+    hide_sensitive_errors: true
+    
+  # Batch Operations
+  batch:
+    enabled: true
+    max_batch_size: 10
+    
+  # Security
+  security:
+    require_authentication: false
+    allowed_operations: ["query", "mutation", "subscription"]

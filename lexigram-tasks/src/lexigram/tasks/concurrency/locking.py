@@ -1,0 +1,259 @@
+"""Distributed locking for task deduplication.
+
+Provides distributed locks to prevent duplicate task execution across workers.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
+import time
+from typing import Any, Self
+
+
+class InMemoryLock:
+    """In-memory lock for preventing duplicate task execution within a single process.
+
+    Note: This is NOT a distributed lock. For true distributed locking across
+    multiple processes/servers, use a Redis-based or database-based lock implementation.
+
+    Example:
+        ```python
+        lock_manager = LockManager()
+        async with lock_manager.acquire("user:123:sync", timeout=60):
+            await sync_user_data(user_id=123)
+        ```
+    """
+
+    def __init__(
+        self,
+        key: str,
+        timeout: float,
+        locks_dict: dict[str, tuple[float, asyncio.Lock]],
+        locks_lock: asyncio.Lock,
+    ):
+        """Initialize in-memory lock.
+
+        Args:
+            key: Unique lock key
+            timeout: Lock timeout in seconds (auto-release)
+            locks_dict: Shared locks dictionary (from LockManager)
+            locks_lock: Shared lock for accessing locks_dict (from LockManager)
+        """
+        self.key = key
+        self.timeout = timeout
+        self.acquired = False
+        self._lock: asyncio.Lock | None = None
+        self._locks = locks_dict
+        self._locks_lock = locks_lock
+
+    async def acquire(self) -> bool:
+        """Acquire the lock.
+
+        Returns:
+            True if lock was acquired, False if already held
+        """
+        async with self._locks_lock:
+            # Clean up expired locks using monotonic time
+            now = time.monotonic()
+            expired = [k for k, (expiry, _) in self._locks.items() if expiry < now]
+            for k in expired:
+                del self._locks[k]
+
+            # Try to acquire
+            if self.key not in self._locks:
+                lock = asyncio.Lock()
+                await lock.acquire()
+                self._locks[self.key] = (now + self.timeout, lock)
+                self._lock = lock
+                self.acquired = True
+                return True
+
+            return False
+
+    async def try_acquire(self) -> bool:
+        """Try to acquire lock without waiting.
+
+        Returns:
+            True if acquired, False if already held
+        """
+        return await self.acquire()
+
+    async def release(self) -> None:
+        """Release the lock."""
+        if self.acquired and self._lock:
+            async with self._locks_lock:
+                if self.key in self._locks:
+                    del self._locks[self.key]
+                self._lock.release()
+            self.acquired = False
+
+    async def __aenter__(self) -> Self:
+        """Context manager entry."""
+        await self.acquire()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Context manager exit."""
+        await self.release()
+
+
+class LockManager:
+    """Manager for in-memory task-deduplication locks.
+
+    Maintains a mapping of *key → (expiry_timestamp, asyncio.Lock)* and
+    exposes the locks via :meth:`acquire`.  Use it as an async context manager
+    to prevent the same logical task from running concurrently.
+
+    **Lock hierarchy and fallback order**
+
+    ``LockManager`` is a *process-local* lock only.  It protects against
+    concurrent execution of the same task **within a single worker process**
+    but provides no cross-process or cross-host guarantees.  For distributed
+    locking across multiple workers or hosts, pair this with a Redis-based or
+    database-backed lock (see ``lexigram-resilience``).
+
+    **Contention behaviour**
+
+    * When a caller requests a lock that is already held, the internal
+      ``asyncio.Lock`` causes the second caller to *suspend* (not busy-wait)
+      until the first caller releases it.
+    * If the first caller holds the lock past *timeout* seconds, the lock key
+      is still valid until explicitly released — there is no automatic
+      force-release on timeout; the timeout field is informational metadata
+      for external monitoring only.
+
+    **Registration**
+
+    Register as a container ``singleton`` so all workers within the same
+    process share the same lock table::
+
+        container.singleton(LockManager, LockManager)
+
+    Example:
+        ```python
+        lock_manager = LockManager()
+        async with lock_manager.acquire("user:123:sync", timeout=60):
+            await sync_user_data(user_id=123)
+        ```
+    """
+
+    def __init__(self) -> None:
+        self._locks: dict[str, tuple[float, asyncio.Lock]] = {}
+        self._locks_lock: asyncio.Lock = asyncio.Lock()
+
+    def acquire(self, key: str, timeout: float = 60.0) -> InMemoryLock:
+        """Create a lock for the given key.
+
+        Args:
+            key: Unique lock key
+            timeout: Lock timeout in seconds
+
+        Returns:
+            InMemoryLock instance
+        """
+        return InMemoryLock(key, timeout, self._locks, self._locks_lock)
+
+
+class UniqueTask:
+    """Decorator for unique task execution.
+
+    Prevents duplicate execution of the same task using in-memory locks.
+
+    Example:
+        ```python
+        lock_manager = LockManager()
+        @unique_task(
+            lock_manager=lock_manager,
+            key_func=lambda user_id: f"sync_user:{user_id}",
+            timeout=3600
+        )
+        async def sync_user(user_id: str):
+            await sync_user_data(user_id)
+        ```
+    """
+
+    def __init__(
+        self,
+        lock_manager: LockManager,
+        key_func: Callable[[Any], str],
+        timeout: float = 60.0,
+        skip_if_locked: bool = True,
+    ):
+        """Initialize unique task decorator.
+
+        Args:
+            lock_manager: LockManager instance for creating locks
+            key_func: Function to generate lock key from task args
+            timeout: Lock timeout in seconds
+            skip_if_locked: If True, skip execution if lock held; if False, wait
+        """
+        self.lock_manager = lock_manager
+        self.key_func = key_func
+        self.timeout = timeout
+        self.skip_if_locked = skip_if_locked
+
+    def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
+        """Decorate function with unique task logic."""
+
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Generate lock key
+            lock_key = self.key_func(*args, **kwargs)
+            lock = self.lock_manager.acquire(lock_key, self.timeout)
+
+            if self.skip_if_locked:
+                # Try to acquire, skip if can't
+                if not await lock.try_acquire():
+                    return None
+                try:
+                    return await func(*args, **kwargs)
+                finally:
+                    await lock.release()
+            else:
+                # Wait for lock
+                async with lock:
+                    return await func(*args, **kwargs)
+
+        return wrapper
+
+
+# Convenience function for creating locks (deprecated - use LockManager instead)
+@asynccontextmanager
+async def distributed_lock(
+    key: str,
+    timeout: float = 60.0,
+    lock_manager: LockManager | None = None,
+) -> AsyncGenerator[InMemoryLock, None]:
+    """Context manager for in-memory locks.
+
+    Deprecated: Use LockManager.acquire() instead for better DI integration.
+
+    Args:
+        key: Unique lock key
+        timeout: Lock timeout in seconds
+        lock_manager: Optional LockManager instance (creates new if None)
+
+    Yields:
+        InMemoryLock instance
+
+    Example:
+        ```python
+        manager = LockManager()  # Should be from DI container
+        async with distributed_lock("resource:123", lock_manager=manager):
+            await process_resource(123)
+        ```
+    """
+    if lock_manager is None:
+        lock_manager = LockManager()
+    lock = lock_manager.acquire(key, timeout)
+    try:
+        await lock.acquire()
+        yield lock
+    finally:
+        await lock.release()

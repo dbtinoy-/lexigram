@@ -1,0 +1,244 @@
+# docker-compose.test.yml — Lexigram integration test infrastructure
+#
+# All services run on non-standard ports to avoid conflicts with dev services.
+#
+# ─── Profiles ─────────────────────────────────────────────────────────────────
+#
+#   core       — postgres + redis  (lexigram-sql, lexigram-cache, lexigram-auth)
+#   messaging  — kafka             (lexigram-events, lexigram-queue)
+#   storage    — minio             (lexigram-storage)
+#   search     — elasticsearch     (lexigram-search)
+#   nosql      — mongo             (lexigram-nosql)
+#   vector     — qdrant            (lexigram-vector)
+#   graph      — neo4j             (lexigram-graph)
+#   full       — all services
+#
+#   Usage:
+#     docker compose -f docker-compose.test.yml --profile core up -d
+#     docker compose -f docker-compose.test.yml --profile full up -d
+#
+# ─── Connection strings (match IntegrationTestConfig defaults exactly) ────────
+#
+#   LEX_TEST_POSTGRES_DSN=postgresql+asyncpg://lexigram:lexigram@localhost:15432/lexigram_test
+#   LEX_TEST_POSTGRES_DSN_RAW=postgresql://lexigram:lexigram@localhost:15432/lexigram_test
+#   LEX_TEST_REDIS_URL=redis://localhost:16379/15
+#   LEX_TEST_KAFKA_BOOTSTRAP=localhost:19092
+#   LEX_TEST_MINIO_ENDPOINT=localhost:19000
+#   LEX_TEST_MINIO_ACCESS_KEY=minioadmin
+#   LEX_TEST_MINIO_SECRET_KEY=minioadmin
+#   LEX_TEST_ELASTICSEARCH_URL=http://localhost:19200
+#   LEX_TEST_MONGODB_DSN=mongodb://localhost:17017
+#   LEX_TEST_QDRANT_URL=http://localhost:16333
+#   LEX_TEST_NEO4J_URL=bolt://localhost:17687
+#   LEX_TEST_NEO4J_AUTH=neo4j/testpassword
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+networks:
+  lexigram-test:
+    driver: bridge
+
+volumes:
+  lexigram_test_postgres:
+  lexigram_test_redis:
+  lexigram_test_mongo:
+  lexigram_test_elasticsearch:
+  lexigram_test_minio:
+  lexigram_test_kafka:
+  lexigram_test_qdrant:
+  lexigram_test_neo4j_data:
+  lexigram_test_neo4j_logs:
+
+services:
+
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
+  # Profiles: core, full
+  postgres:
+    image: postgres:16-alpine
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_DB: lexigram_test
+      POSTGRES_USER: lexigram
+      POSTGRES_PASSWORD: lexigram
+    volumes:
+      - lexigram_test_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lexigram -d lexigram_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles: [core, full]
+
+  # ── Redis 7 ───────────────────────────────────────────────────────────────
+  # Profiles: core, full
+  redis:
+    image: redis:7-alpine
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "16379:6379"
+    volumes:
+      - lexigram_test_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    profiles: [core, full]
+
+  # ── MongoDB 7 ─────────────────────────────────────────────────────────────
+  # Profiles: nosql, full
+  mongo:
+    image: mongo:7
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "17017:27017"
+    volumes:
+      - lexigram_test_mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    profiles: [nosql, full]
+
+  # ── Elasticsearch 8 (single-node, no security) ────────────────────────────
+  # Profiles: search, full
+  elasticsearch:
+    image: elasticsearch:8.13.0
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "19200:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - lexigram_test_elasticsearch:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qv '\"status\":\"red\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    profiles: [search, full]
+
+  # ── MinIO ─────────────────────────────────────────────────────────────────
+  # Profiles: storage, full
+  minio:
+    image: minio/minio:RELEASE.2024-03-21T23-13-43Z
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "19000:9000"   # S3 API
+      - "19001:9001"   # Web console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MC_HOST_local: "http://minioadmin:minioadmin@localhost:9000"
+    command: server /data --console-address ":9001"
+    volumes:
+      - lexigram_test_minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles: [storage, full]
+
+  # ── Kafka (KRaft mode — no Zookeeper) ─────────────────────────────────────
+  # Profiles: messaging, full
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "19092:9092"    # broker
+      - "19093:9093"    # controller
+    environment:
+      # KRaft mode
+      KAFKA_KRAFT_MODE: "true"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "1"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      # Listeners
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:19092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      # Cluster identity — fixed UUID so restarts are idempotent
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qg"
+      # Tuning for test workloads
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+    volumes:
+      - lexigram_test_kafka:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    profiles: [messaging, full]
+
+  # ── Qdrant v1.9.2 ─────────────────────────────────────────────────────────
+  # Profiles: vector, full
+  qdrant:
+    image: qdrant/qdrant:v1.9.2
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "16333:6333"   # REST / HTTP
+      - "16334:6334"   # gRPC
+    volumes:
+      - lexigram_test_qdrant:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles: [vector, full]
+
+  # ── Neo4j 5.19 (Bolt only, no auth) ───────────────────────────────────────
+  # Profiles: graph, full
+  neo4j:
+    image: neo4j:5.19-community
+    restart: "no"
+    networks:
+      - lexigram-test
+    ports:
+      - "17687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: none
+    volumes:
+      - lexigram_test_neo4j_data:/data
+      - lexigram_test_neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    profiles: [graph, full]

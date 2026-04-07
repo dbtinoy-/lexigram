@@ -1,0 +1,47 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# Environment variable prefix: LEX_SECRETS__
+
+secrets:
+  # Whether the secrets subsystem is enabled.
+  enabled: true
+
+  # Environment: development, staging, production
+  env: development
+
+  # -------------------------------------------------------------------------
+  # Backend — select one store type
+  # -------------------------------------------------------------------------
+  # "memory"  — in-process dict (for dev / single-process testing)
+  # "vault"   — HashiCorp Vault KV v2 backend
+  backend_type: "memory"
+
+  # Backend-specific options (passed as kwargs to the backend constructor).
+  # For the vault backend:
+  # backend_options:
+  #   url: "http://localhost:8200"
+  #   token: "${VAULT_TOKEN}"
+  #   mount_point: "secret"
+  #   path_prefix: "lexigram"
+  backend_options: {}
+
+  # -------------------------------------------------------------------------
+  # Rotation — automatic key rotation schedule
+  # -------------------------------------------------------------------------
+  # Maximum age of a secret before it is automatically rotated (seconds).
+  max_age_seconds: 86400  # 24 hours
+
+  # How many seconds before max_age to emit a rotation warning.
+  warning_before_seconds: 3600  # 1 hour
+
+  # -------------------------------------------------------------------------
+  # Tenancy — optional multi-tenant isolation
+  # -------------------------------------------------------------------------
+  # When set, all secret keys are prefixed with the tenant namespace.
+  tenant_id: null
+
+  # -------------------------------------------------------------------------
+  # Audit — operation logging
+  # -------------------------------------------------------------------------
+  # Actor identifier attached to all audit log entries for secret operations.
+  audit_actor_id: "secrets"

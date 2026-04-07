@@ -1,0 +1,242 @@
+"""Environment registry for managing different environments.
+
+This module provides a registry pattern for environment configurations.
+"""
+
+from __future__ import annotations
+
+import abc
+from dataclasses import dataclass, field
+import os
+from typing import ClassVar
+
+
+@dataclass
+class EnvironmentConfig:
+    """Configuration for an environment."""
+
+    name: str
+    description: str = ""
+    variables: dict[str, str] = field(default_factory=dict)
+    database_url: str = ""
+    debug: bool = False
+    log_level: str = "INFO"
+
+
+class Environment(abc.ABC):
+    """Abstract base class for environments."""
+
+    name: ClassVar[str]
+    description: ClassVar[str]
+
+    @abc.abstractmethod
+    def get_config(self) -> EnvironmentConfig:
+        """Get environment configuration."""
+
+    @abc.abstractmethod
+    def validate(self) -> tuple[bool, str]:
+        """Validate the environment is properly configured."""
+        raise NotImplementedError
+
+
+class DevelopmentEnvironment(Environment):
+    """Development environment."""
+
+    name = "development"
+    description = "Local development environment"
+
+    def get_config(self) -> EnvironmentConfig:
+        return EnvironmentConfig(
+            name=self.name,
+            description=self.description,
+            database_url=os.environ.get("DATABASE_URL", "sqlite:///./dev.db"),
+            debug=True,
+            log_level="DEBUG",
+        )
+
+    def validate(self) -> tuple[bool, str]:
+        return True, "Development environment is valid"
+
+
+class StagingEnvironment(Environment):
+    """Staging environment."""
+
+    name = "staging"
+    description = "Staging/QA environment"
+
+    def get_config(self) -> EnvironmentConfig:
+        return EnvironmentConfig(
+            name=self.name,
+            description=self.description,
+            database_url=os.environ.get("DATABASE_URL", ""),
+            debug=False,
+            log_level="INFO",
+        )
+
+    def validate(self) -> tuple[bool, str]:
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            return False, "DATABASE_URL is required for staging"
+        return True, "Staging environment is valid"
+
+
+class ProductionEnvironment(Environment):
+    """Production environment."""
+
+    name = "production"
+    description = "Production environment"
+
+    def get_config(self) -> EnvironmentConfig:
+        return EnvironmentConfig(
+            name=self.name,
+            description=self.description,
+            database_url=os.environ.get("DATABASE_URL", ""),
+            debug=False,
+            log_level="WARNING",
+        )
+
+    def validate(self) -> tuple[bool, str]:
+        errors = []
+
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            errors.append("DATABASE_URL is required")
+
+        if "localhost" in db_url or "127.0.0.1" in db_url:
+            errors.append("Database URL should not point to localhost in production")
+
+        secret = os.environ.get("AUTH_SECRET", "")
+        if not secret or len(secret) < 32:
+            errors.append("AUTH_SECRET should be at least 32 characters")
+
+        if errors:
+            return False, "; ".join(errors)
+        return True, "Production environment is valid"
+
+
+class TestEnvironment(Environment):
+    """Test environment."""
+
+    name = "test"
+    description = "Testing environment"
+
+    def get_config(self) -> EnvironmentConfig:
+        return EnvironmentConfig(
+            name=self.name,
+            description=self.description,
+            database_url=os.environ.get("DATABASE_URL", "sqlite:///./test.db"),
+            debug=True,
+            log_level="DEBUG",
+        )
+
+    def validate(self) -> tuple[bool, str]:
+        return True, "Test environment is valid"
+
+
+class EnvironmentRegistry:
+    """Registry for environments.
+
+    Provides a pluggable way to add new environments.
+    """
+
+    _environments: dict[str, Environment] = {}
+    _initialized: bool = False
+    _current: str = "development"
+
+    @classmethod
+    def register(cls, env: type[Environment]) -> None:
+        """Register an environment class."""
+        instance = env()
+        cls._environments[env.name] = instance
+
+    @classmethod
+    def get(cls, name: str) -> Environment | None:
+        """Get an environment by name."""
+        cls.register_defaults()
+        return cls._environments.get(name)
+
+    @classmethod
+    def get_all(cls) -> dict[str, Environment]:
+        """Get all registered environments."""
+        cls.register_defaults()
+        return cls._environments.copy()
+
+    @classmethod
+    def get_choices(cls) -> list[str]:
+        """Get list of available environment names."""
+        cls.register_defaults()
+        return list(cls._environments.keys())
+
+    @classmethod
+    def set_current(cls, name: str) -> None:
+        """Set the current environment."""
+        if name not in cls._environments:
+            raise ValueError(f"Unknown environment: {name}")
+        cls._current = name
+        os.environ["LEX_ENV"] = name
+
+    @classmethod
+    def get_current(cls) -> str:
+        """Get the current environment name."""
+        return os.environ.get("LEX_ENV", cls._current)
+
+    @classmethod
+    def get_current_env(cls) -> Environment | None:
+        """Get the current environment object."""
+        return cls._environments.get(cls.get_current())
+
+    @classmethod
+    def register_defaults(cls) -> None:
+        """Initialize default environments if not already done."""
+        if not cls._initialized:
+            cls.register(DevelopmentEnvironment)
+            cls.register(StagingEnvironment)
+            cls.register(ProductionEnvironment)
+            cls.register(TestEnvironment)
+            cls._initialized = True
+
+
+class EnvironmentManager:
+    """Manages environment switching and validation."""
+
+    def __init__(self):
+        self.registry = EnvironmentRegistry
+
+    def switch(self, name: str) -> bool:
+        """Switch to a different environment."""
+        env = self.registry.get(name)
+        if not env:
+            return False
+
+        valid, _message = env.validate()
+        if not valid:
+            return False
+
+        self.registry.set_current(name)
+        return True
+
+    def validate_current(self) -> tuple[bool, str]:
+        """Validate the current environment."""
+        env = self.registry.get_current_env()
+        if not env:
+            return False, "No current environment"
+        return env.validate()
+
+    def get_config(self) -> EnvironmentConfig | None:
+        """Get configuration for current environment."""
+        env = self.registry.get_current_env()
+        if env:
+            return env.get_config()
+        return None
+
+
+__all__ = [
+    "DevelopmentEnvironment",
+    "Environment",
+    "EnvironmentConfig",
+    "EnvironmentManager",
+    "EnvironmentRegistry",
+    "ProductionEnvironment",
+    "StagingEnvironment",
+    "TestEnvironment",
+]

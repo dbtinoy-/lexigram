@@ -1,0 +1,29 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see docs/CONFIGURATION.md
+# YAML key: ui:
+# Environment variable prefix: LEX_UI__
+
+ui:
+  # Name of the default CSS theme applied to all components.
+  # Must match a theme registered with UIProvider.
+  default_theme: "default"
+
+  # HTML-escape user-supplied strings by default when rendering components.
+  # Disable only if you are certain the input is already sanitized.
+  auto_escape: true
+
+  # Active UI theme variant (light, dark, or system).
+  theme: "light"
+
+  # Version of HTMX to reference in layout helpers (loaded from CDN).
+  htmx_version: "2.0.4"
+
+  # Render a `data-component` debug attribute on every component root element.
+  # Enable during development to identify component boundaries in browser DevTools.
+  debug_components: false
+
+  # Enable Server-Sent Events support for real-time streaming.
+  enable_sse: false
+
+  # Enable realtime update features (polling, live counters).
+  enable_realtime: false

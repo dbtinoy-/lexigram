@@ -1,0 +1,129 @@
+"""{{ class_name }} controller module.
+
+{% if doc %}
+{{ doc }}
+{% endif %}
+"""
+from typing import Any
+
+from lexigram.web import delete, get, post, put
+from lexigram.web.exceptions import (
+    BadRequestError,
+    ForbiddenError,
+    NotFoundError,
+    InternalServerError,
+)
+from lexigram.web.routing.controllers import Controller
+
+from .services.{{ model_name }}_service import {{ class_name }}Service
+
+
+class {{ class_name }}Controller(Controller):
+    """Controller for {{ class_name }} CRUD operations."""
+
+    def __init__(self, service: {{ class_name }}Service):
+        super().__init__()
+        self.service = service
+
+    {% if resource_path %}
+    @get("/{{ resource_path }}")
+    {% else %}
+    @get("/")
+    {% endif %}
+    async def list(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        **filters: Any,
+    ) -> dict[str, Any]:
+        try:
+            items = await self.service.list(limit=limit, offset=offset, **filters)
+            return {
+                "items": [item.to_dict() if hasattr(item, 'to_dict') else item for item in items],
+                "limit": limit,
+                "offset": offset,
+                "total": len(items),
+            }
+        except Exception as e:
+            raise InternalServerError(f"Failed to list {{ resource_name }}: {str(e)}")
+
+    {% if resource_path %}
+    @get("/{{ resource_path }}/{id}")
+    {% else %}
+    @get("/{id}")
+    {% endif %}
+    async def get(
+        self,
+        id: int,
+    ) -> dict[str, Any]:
+        try:
+            item = await self.service.get(id)
+            if not item:
+                raise NotFoundError(f"{{ class_name }} not found with id: {id}")
+            return item.to_dict() if hasattr(item, 'to_dict') else item
+        except NotFoundError:
+            raise
+        except Exception as e:
+            raise InternalServerError(f"Failed to get {{ resource_name }}: {str(e)}")
+
+    {% if resource_path %}
+    @post("/{{ resource_path }}")
+    {% else %}
+    @post("/")
+    {% endif %}
+    async def create(
+        self,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not data:
+            raise BadRequestError("Request body is required")
+        try:
+            item = await self.service.create(data)
+            return item.to_dict() if hasattr(item, 'to_dict') else item
+        except ValueError as e:
+            raise BadRequestError(str(e))
+        except Exception as e:
+            raise InternalServerError(f"Failed to create {{ resource_name }}: {str(e)}")
+
+    {% if resource_path %}
+    @put("/{{ resource_path }}/{id}")
+    {% else %}
+    @put("/{id}")
+    {% endif %}
+    async def update(
+        self,
+        id: int,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not data:
+            raise BadRequestError("Request body is required")
+        try:
+            item = await self.service.update(id, data)
+            if not item:
+                raise NotFoundError(f"{{ class_name }} not found with id: {id}")
+            return item.to_dict() if hasattr(item, 'to_dict') else item
+        except NotFoundError:
+            raise
+        except ValueError as e:
+            raise BadRequestError(str(e))
+        except Exception as e:
+            raise InternalServerError(f"Failed to update {{ resource_name }}: {str(e)}")
+
+    {% if resource_path %}
+    @delete("/{{ resource_path }}/{id}")
+    {% else %}
+    @delete("/{id}")
+    {% endif %}
+    async def delete(
+        self,
+        id: int,
+    ) -> dict[str, str]:
+        try:
+            success = await self.service.delete(id)
+            if not success:
+                raise NotFoundError(f"{{ class_name }} not found with id: {id}")
+            return {"message": "{{ class_name }} deleted successfully"}
+        except NotFoundError:
+            raise
+        except Exception as e:
+            raise InternalServerError(f"Failed to delete {{ resource_name }}: {str(e)}")

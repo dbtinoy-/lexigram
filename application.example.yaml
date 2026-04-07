@@ -1,0 +1,1683 @@
+# ==============================================================================
+# lexigram.yaml.example
+# Lexigram Framework — complete configuration reference.
+#
+# All values shown are exact defaults taken from each package's config class.
+# Secrets:  prefer environment variables or a vault over plaintext.
+#           Syntax: "${ENV_VAR_NAME}" lets the loader substitute at runtime.
+# Env-var overrides use double-underscore nesting, e.g.:
+#   LEX_WEB__SERVER__PORT=9000  →  web.server.port = 9000
+# ==============================================================================
+
+# ── SQL Database (lexigram-sql) ───────────────────────────────────────────────
+# env_prefix: LEX_SQL__  |  config_key: "db"
+db:
+  name: database
+  enabled: true
+  backend:
+    url: "${LEX_SQL__BACKEND__URL}"        # e.g. postgresql+asyncpg://user:pass@host/db
+  pool:
+    min_size: 2
+    max_size: 10
+    max_overflow: 5
+    recycle: 3600                               # seconds before a connection is recycled
+    timeout: 30                                 # connection acquisition timeout (seconds)
+  operations:
+    echo: false                                 # log every SQL statement
+  audit_hmac_key: null                          # HMAC key for audit-log checksum signing
+  data:
+    default_page_size: 20
+    max_page_size: 100
+    default_cursor_size: 20
+
+# ── Multi-Database (lexigram-sql) ─────────────────────────────────────────────
+# Uncomment the 'backends:' list to enable multi-database mode.
+# When present, each backend is registered under its name and resolved via
+#   Annotated[DatabaseProviderProtocol, Named("maps")]
+# The entry with primary: true (or the first entry) also binds to the
+# unnamed DatabaseProviderProtocol for backward compatibility.
+#
+# db:
+#   backends:
+#     - name: primary
+#       backend:
+#         url: "${DATABASE_URL}"
+#       primary: true
+#       pool:
+#         min_size: 2
+#         max_size: 20
+#       migration_dir: migrations
+#
+#     - name: maps
+#       backend:
+#         url: "${MAPS_DATABASE_URL}"
+#       pool:
+#         min_size: 2
+#         max_size: 10
+#       migration_dir: migrations/maps
+#
+#     - name: rag
+#       backend:
+#         url: "${RAG_DATABASE_URL}"
+#       pool:
+#         min_size: 1
+#         max_size: 5
+#       # migration_dir omitted — no Alembic for this DB
+#
+# Vector store using the named 'rag' database:
+# ai:
+#   vector:
+#     backend: pgvector
+#     pgvector:
+#       database: rag    # resolves Named("rag") DatabaseProviderProtocol
+
+# ── Cache (lexigram-cache) ─────────────────────────────────────────────────────
+# env_prefix: LEX_CACHE__
+cache:
+  name: cache
+  enabled: true
+  environment: development
+  debug: false
+  service:
+    default_backend: null                       # name of the backend to use as default
+    default_serializer: json                    # json | msgpack | pickle (never use pickle in prod)
+    enable_protection: true                     # cache stampede protection
+    protection_lock_ttl: 30                     # lock TTL for stampede protection (seconds)
+    protection_max_wait: 5.0                    # max wait for a protection lock (seconds)
+    protection_retry_interval: 0.1             # retry interval while waiting for lock
+    enable_metrics: true
+    enable_health_checks: true
+    circuit_breaker_enabled: true
+    circuit_breaker_threshold: 5
+    allow_pickle: false                         # must be explicitly opted-in; insecure
+  backends:
+    - name: memory
+      type: memory                              # memory | redis | memcached
+      default: true
+      enabled: true
+      default_ttl: null                         # null = no expiry
+      key_prefix: ""
+      enable_metrics: true
+      health_check_interval: 30
+      max_size: null                            # max entries; null = unlimited
+      cleanup_interval: 300                     # memory-backend cleanup sweep (seconds)
+
+    # Uncomment to add a Redis backend:
+    # - name: redis
+    #   type: redis
+    #   default: false
+    #   enabled: true
+    #   default_ttl: 3600
+    #   key_prefix: ""
+    #   redis_url: "${REDIS_URL}"               # takes precedence over host/port
+    #   redis_host: localhost
+    #   redis_port: 6379
+    #   redis_db: 0
+    #   redis_password: null
+    #   redis_ssl: false
+    #   redis_pool_size: 10
+
+   # Multi-backend: declare multiple named cache backends (optional)
+   # When backends are configured beyond the single default, each is registered
+   # under its name and resolved via Annotated[CacheBackendProtocol, Named("name")].
+   # The entry with default: true also receives the unnamed CacheBackendProtocol binding.
+   #
+   # Example: Redis as primary, Memcached as L2:
+   # backends:
+   #   - name: primary
+   #     type: redis
+   #     default: true
+   #     enabled: true
+   #     default_ttl: 3600
+   #     key_prefix: "app:"
+   #     redis_url: "${CACHE_REDIS_URL:-redis://localhost:6379/0}"
+   #     redis_pool_size: 20
+   #
+   #   - name: l2
+   #     type: memcached
+   #     default: false
+   #     enabled: true
+   #     default_ttl: 86400
+   #     key_prefix: "app:"
+   #     memcached_servers:
+   #       - "${CACHE_MEMCACHED_HOST:-localhost}:11211"
+   #
+   # Inject named backends in services:
+   #   from typing import Annotated
+   #   from lexigram.contracts.cache import CacheBackendProtocol
+   #   from lexigram.di.markers import Named
+   #
+   #   class MyService:
+   #       def __init__(
+   #           self,
+   #           primary: CacheBackendProtocol,        # default backend
+   #           l2: Annotated[CacheBackendProtocol, Named("l2")],
+   #       ):
+   #           self._primary = primary
+   #           self._l2 = l2
+
+# ── Auth (lexigram-auth) ───────────────────────────────────────────────────────
+# env_prefix: LEX_AUTH__
+auth:
+  name: auth
+  enabled: true
+  secret_key: "${LEX_AUTH__SECRET_KEY}"   # REQUIRED — signing key for sessions
+  admin_email: null
+  admin_password: null
+  login_rate_limit: "5/minute"
+  max_sessions_per_user: null                   # null = unlimited
+  token:
+    secret_key: "${LEX_AUTH__TOKEN__SECRET_KEY}"   # REQUIRED
+    algorithm: HS256
+    access_token_expire_minutes: 30
+    key_rotation_grace_period_seconds: 300      # old keys remain valid for this long
+  password:
+    min_length: 12
+    max_length: 128
+    require_uppercase: true
+    require_lowercase: false
+    require_digits: true
+    require_special: false
+    banned_patterns: []
+  rbac:
+    enabled: true
+    superuser_bypass: true
+    default_role: viewer
+    cache_permissions: true
+    permission_cache_ttl: 300
+  middleware:
+    exclude_paths: []
+    backend: session                            # session | jwt | basic | api_key
+    header_name: Authorization
+    scheme: Bearer
+    roles_required: []
+    permissions_required: []
+    optional_auth: false
+    login_url: null
+    exclude_prefixes: []
+    login_rate_limit: "5/minute"
+  oauth2_providers: {}                          # provider_name: {client_id, client_secret, ...}
+  users: []                                     # seeded users for development/testing only
+  roles: {}                                     # role definitions
+
+# ── Web (lexigram-web) ─────────────────────────────────────────────────────────
+# env_prefix: LEX_WEB__
+web:
+  name: web
+  enabled: true
+  env: development
+  server:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 1
+    reload: false
+    debug: false
+  security:
+    hsts:
+      enabled: false                            # enable in production only
+      max_age: 31536000                         # 1 year
+      include_subdomains: true
+      preload: false
+    csp:
+      enabled: true
+      directives:
+        default-src: "'self'"
+        script-src: "'self' 'unsafe-inline' 'unsafe-eval'"
+        script-src-elem: "'self' 'unsafe-inline' 'unsafe-eval'"
+        style-src: "'self' 'unsafe-inline'"
+        img-src: "'self' data: https: blob:"
+        font-src: "'self' data:"
+        connect-src: "'self' https: wss: ws:"
+        frame-ancestors: "'none'"
+        base-uri: "'self'"
+        form-action: "'self'"
+    api_docs:
+      enabled: false                            # auto-configures CSP for /docs and /redoc
+      provider: both                            # swagger | redoc | both
+    cross_origin:
+      enabled: false
+      embedder_policy: require-corp
+      opener_policy: same-origin
+      resource_policy: same-origin
+    referrer_policy: strict-origin-when-cross-origin
+    headers:
+      x-content-type-options: nosniff
+      x-frame-options: DENY
+      x-xss-protection: "1; mode=block"
+      referrer-policy: strict-origin-when-cross-origin
+    permissions_policy:
+      geolocation: "()"
+      microphone: "()"
+      camera: "()"
+      payment: "()"
+      usb: "()"
+    csrf:
+      enabled: true
+      cookie_samesite: lax                      # lax | strict | none
+      cookie_secure: true
+      cookie_name: csrf_token
+      header_name: X-CSRF-Token
+      excluded_paths:
+        - /api/
+        - /health
+        - /metrics
+  cors:
+    enabled: true
+    allow_origins:
+      - http://localhost:3000
+      - http://localhost:8001
+    allow_credentials: false                    # if true, allow_origins must NOT contain "*"
+    allow_methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+      - OPTIONS
+    allow_headers:
+      - "*"
+    max_age: 600
+    allow_origin_regex: null
+    expose_headers: []
+  static:
+    enabled: false
+    directory: static
+    prefix: /static
+    html: false                                 # true enables SPA mode
+  rate_limit:
+    enabled: true
+    default_limit: 100
+    default_window: 60
+    whitelist_ips: []
+    storage_backend: memory                     # memory | redis
+    rules: {}                                   # per-path: "/api/upload": {requests: 10, window: 60}
+  openapi_title: API
+  openapi_version: "1.0.0"
+  openapi_url: /openapi.json
+  swagger_ui_url: /docs
+  redoc_url: /redoc
+  swagger_js_url: null
+  swagger_css_url: null
+  redoc_js_url: null
+  compression_enabled: true
+  template_directory: templates
+  debug_routes: false
+  debug_routes_token: null                      # X-Debug-Token header value
+  enable_identity_resolution: false             # resolve OAuth external IDs to internal UUIDs
+  enable_auth: false
+  max_body_size: 10485760                       # 10 MiB
+  auth_exclude_paths:
+    - /health
+    - /health/
+    - /docs
+    - /redoc
+    - /openapi.json
+
+# ── Security (lexigram-security) ───────────────────────────────────────────────
+# env_prefix: LEX_SECURITY__
+security:
+  enabled: true
+  enable_cors: true
+  enable_csrf: true
+  cors:
+    allowed_origins:
+      - "*"
+    allow_methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+    allow_headers:
+      - "*"
+    expose_headers: []
+    allow_credentials: false
+    max_age: 600
+  csrf:
+    enabled: false
+    cookie_name: csrf_token
+    header_name: X-CSRF-Token
+    cookie_secure: true
+    cookie_samesite: Lax                        # Lax | Strict | None
+    token_length: 32
+  headers:
+    hsts_max_age: 31536000
+    hsts_include_subdomains: true
+    content_type_nosniff: true
+    frame_options: DENY                         # DENY | SAMEORIGIN
+    xss_protection: "1; mode=block"
+    referrer_policy: strict-origin-when-cross-origin
+    csp: null                                   # full CSP header string, or null
+    permissions_policy: null                    # full Permissions-Policy string, or null
+  sanitization:
+    allowed_tags: null                          # null = allow all; list strings to whitelist
+    strip_comments: true
+    default_sanitize_mode: allow               # allow | strip | escape
+
+# ── GraphQL (lexigram-graphql) ─────────────────────────────────────────────────
+# env_prefix: LEX_GRAPHQL__
+graphql:
+  name: graphql
+  enabled: true
+  path: /graphql
+  debug: false
+  enable_identity_resolution: false
+  schema_baseline_path: null
+  cache:
+    enabled: true
+    default_max_age: 60                         # seconds
+    default_scope: public                       # public | private
+    vary_headers:
+      - Accept
+      - Accept-Encoding
+  depth_limit:
+    enabled: true
+    max_depth: 10
+    ignore_introspection: true
+  complexity:
+    enabled: true
+    max_complexity: 1000
+    default_field_cost: 1.0
+    default_list_cost: 10.0
+  persisted_queries:
+    enabled: true
+    store_type: memory                          # memory | redis
+    ttl_seconds: 86400
+  batch:
+    enabled: false
+    max_batch_size: 10
+  introspection:
+    enabled: true
+    allowed_environments:
+      - development
+      - testing
+  playground:
+    enabled: true
+    path: /graphql/playground
+    title: Lexigram GraphQL Playground
+  subscriptions:
+    enabled: true
+    path: /graphql/ws
+    protocol: graphql_transport_ws             # graphql_transport_ws | graphql_ws
+    keepalive_interval: 30
+    connection_timeout: 60
+  dataloader:
+    enabled: true
+    batch_enabled: true
+    cache_enabled: true
+    max_batch_size: 100
+    batch_delay_ms: 2.0
+  tracing:
+    enabled: false
+    service_name: lexigram-graphql
+    trace_resolvers: true
+    trace_dataloaders: true
+    sample_rate: 1.0
+  metrics:
+    enabled: false
+    namespace: lexigram_graphql
+    include_labels:
+      - operation_type
+      - operation_name
+    histogram_buckets:
+      - 0.01
+      - 0.05
+      - 0.1
+      - 0.25
+      - 0.5
+      - 1.0
+      - 2.5
+      - 5.0
+      - 10.0
+  errors:
+    mask_errors: true
+    include_stacktrace: false
+    debug_mode: false
+    log_errors: true
+  rate_limit:
+    enabled: true
+    default_limit: 100
+    default_window: 60
+    whitelist_ips: []
+    storage_backend: memory
+    rules: {}
+
+# ── Events / CQRS / Event-Sourcing (lexigram-events) ──────────────────────────
+# env_prefix: LEX_EVENTS__
+events:
+  name: events
+  enabled: true
+  use_database_provider: false                  # use lexigram-sql's DatabaseProvider
+  event_store_backend: memory                   # memory | postgres | mongodb
+  debug: false
+  environment: development
+  memory:
+    max_events_per_stream: 10000
+    enable_snapshots: true
+  # postgres:                                   # required when event_store_backend: postgres
+  #   dsn: "${LEX_EVENTS__POSTGRES__DSN}"
+  #   pool_min_size: 5
+  #   pool_max_size: 20
+  #   command_timeout: 60.0
+  #   events_table: events
+  #   snapshots_table: snapshots
+  #   auto_create_tables: true
+  # mongodb:                                    # required when event_store_backend: mongodb
+  #   connection_string: "${LEX_EVENTS__MONGODB__CONNECTION_STRING}"
+  #   database_name: events
+  #   events_collection: domain_events
+  #   snapshots_collection: snapshots
+  #   max_pool_size: 10
+  #   server_selection_timeout: 30000
+  snapshots:
+    enabled: true
+    strategy: event_count                       # event_count | time_based
+    event_count_threshold: 100
+    time_threshold_seconds: 3600
+    max_snapshots_per_aggregate: 5
+  command_bus:
+    max_retries: 3
+    retry_delay_seconds: 1.0
+    timeout_seconds: 30.0
+    enable_validation: true
+    enable_logging: true
+    enable_metrics: true
+  query_bus:
+    timeout_seconds: 30.0
+    enable_caching: true
+    cache_ttl_seconds: 300
+    enable_logging: true
+    enable_metrics: true
+  event_bus:
+    max_concurrent_handlers: 10
+    handler_timeout_seconds: 30.0
+    retry_failed_handlers: true
+    max_handler_retries: 3
+    enable_dead_letter: true
+    allow_no_handlers: true
+    parallel_dispatch: true
+    continue_on_error: true
+    max_queue_per_subscriber: 1000
+  saga:
+    default_timeout_seconds: 300.0
+    max_retries_per_step: 3
+    retry_delay_seconds: 1.0
+    enable_compensation: true
+    persist_state: true
+    cleanup_completed_after_hours: 24
+  projection:
+    checkpoint_interval: 100
+    batch_size: 100
+    max_catch_up_events: 10000
+    rebuild_batch_size: 1000
+    enable_parallel_projections: true
+  streaming:
+    buffer_size: 1000
+    batch_size: 100
+    poll_interval_ms: 100
+    max_subscribers: 100
+    enable_websocket: true
+    websocket_ping_interval: 30
+  logging_middleware:
+    enabled: true
+    log_level: INFO
+    include_payload: false
+    max_payload_length: 1000
+  validation_middleware:
+    enabled: true
+    strict_mode: true
+  transaction_middleware:
+    enabled: true
+    isolation_level: READ_COMMITTED
+    timeout_seconds: 30.0
+  retry_middleware:
+    enabled: true
+    max_retries: 3
+    initial_delay_seconds: 0.1
+    max_delay_seconds: 10.0
+    exponential_base: 2.0
+  metrics_middleware:
+    enabled: true
+    prefix: events
+    include_histograms: true
+    histogram_buckets:
+      - 0.01
+      - 0.05
+      - 0.1
+      - 0.25
+      - 0.5
+      - 1.0
+      - 2.5
+      - 5.0
+      - 10.0
+  # rabbitmq:                                   # optional adapter
+  #   url: "${LEX_EVENTS__RABBITMQ__URL}"
+  #   exchange_name: events
+  #   queue_prefix: events
+  #   prefetch_count: 10
+  #   durable: true
+  #   timeout: 30.0
+  #   reconnect_attempts: 3
+  #   reconnect_delay: 1.0
+  #   enable_logging: true
+  # kafka:                                      # optional adapter
+  #   bootstrap_servers: "${KAFKA_BOOTSTRAP_SERVERS}"
+  #   topic_prefix: events
+  #   consumer_group: events-consumers
+  #   auto_offset_reset: earliest
+  #   enable_auto_commit: true
+  #   timeout: 30.0
+  #   reconnect_attempts: 3
+  # azure_service_bus:                          # optional adapter
+  #   connection_string: "${AZURE_SERVICE_BUS_CONNECTION_STRING}"
+  #   topic_name: events
+  #   subscription_name: events-subscription
+  #   max_concurrent_calls: 10
+  #   timeout: 30.0
+
+# ─────────────────────────────────────────────────────
+# lexigram-mailer — email delivery
+# ─────────────────────────────────────────────────────
+mailer:
+  backends:
+    - name: transactional
+      primary: true
+      driver: sendgrid
+      sendgrid:
+        api_key: "${SENDGRID_API_KEY}"
+
+    - name: internal
+      driver: smtp
+      from_email: "noreply@company.com"
+      smtp:
+        host: "smtp.company.com"
+        port: 587
+        password: "${SMTP_PASSWORD}"
+
+# ─────────────────────────────────────────────────────
+# lexigram-notification — SMS + push
+# ─────────────────────────────────────────────────────
+notification:
+  sms_backends:
+    - name: alerts
+      primary: true
+      driver: twilio
+      twilio:
+        account_sid: "${TWILIO_ACCOUNT_SID}"
+        auth_token: "${TWILIO_AUTH_TOKEN}"
+        from_number: "+15550000000"
+
+  push_backends:
+    - name: mobile
+      primary: true
+      driver: fcm
+      fcm:
+        server_key: "${FCM_SERVER_KEY}"
+
+# ─────────────────────────────────────────────────────
+# lexigram-queue — message bus / queue
+# ─────────────────────────────────────────────────────
+queue:
+  backends:
+    - name: events
+      primary: true
+      driver: kafka
+      kafka:
+        bootstrap_servers: "kafka:9092"
+        client_id: "my-app"
+        group_id: "my-app-consumers"
+
+    - name: jobs
+      driver: redis
+      redis:
+        url: "${REDIS_URL}"
+
+    - name: test
+      driver: memory
+
+# ── Background Tasks (lexigram-tasks) ──────────────────────────────────────────
+# env_prefix: LEX_TASKS__
+tasks:
+  name: tasks
+  enabled: true
+  backend:
+    type: memory                                # memory | redis | amqp | postgres
+    redis_url: "redis://localhost:6379"
+    amqp_url: "amqp://localhost:5672/"
+    postgres_dsn: null
+    queue_name: tasks
+  worker:
+    worker_count: 1
+    max_concurrent_tasks: 10
+    poll_interval: 0.1                          # seconds between queue polls
+    shutdown_timeout: 30.0
+    default_timeout: 300.0
+    max_timeout: 3600.0
+    enforce_timeout: true
+  scheduler:
+    enabled: true
+    check_interval: 1.0                         # seconds between schedule checks
+    timezone: UTC
+  retry:
+    max_attempts: 3
+    base_delay: 1.0
+    max_delay: 60.0
+    backoff_factor: 2.0
+    jitter: true
+  rate_limit:
+    enabled: false
+    rate: 100
+    per: 1.0
+    burst: null
+  timeout:
+    default_timeout: 300.0
+    max_timeout: 3600.0
+    enforce_timeout: true
+  extra: {}
+
+# ── Multi-Queue: Background Tasks (lexigram-tasks) ─────────────────────────────
+# Uncomment the 'backends:' list to enable multi-backend mode.
+# When tasks.backends is set, each queue is registered under its name and
+# resolved via Annotated[TaskQueueProtocol, Named("emails")].
+# The entry with primary: true (or the first entry) also binds to the
+# unnamed TaskQueueProtocol for backward compatibility.
+#
+# tasks:
+#   backends:
+#     - name: primary
+#       primary: true
+#       type: redis                             # memory | redis | amqp | postgres
+#       redis_url: "${TASKS_PRIMARY_URL:-redis://localhost:6379}"
+#       queue_name: tasks
+#
+#     - name: emails
+#       type: redis
+#       redis_url: "${TASKS_EMAILS_URL:-redis://localhost:6379}"
+#       queue_name: emails
+#
+#     - name: heavy
+#       type: amqp
+#       amqp_url: "${TASKS_HEAVY_URL:-amqp://localhost:5672/}"
+#       queue_name: heavy-jobs
+#
+# Inject named queues in services:
+#   from typing import Annotated
+#   from lexigram.contracts.tasks import TaskQueueProtocol
+#   from lexigram.di.markers import Named
+#
+#   class EmailService:
+#       def __init__(self, queue: Annotated[TaskQueueProtocol, Named("emails")]):
+#           self._queue = queue
+
+# ── Monitor / Observability (lexigram-monitor) ─────────────────────────────────
+# env_prefix: LEX_MONITOR__
+monitor:
+  enabled: true
+  name: lexigram-service
+  backend_type: memory                          # memory | prometheus | otlp
+  environment: development
+  debug: false
+  metrics:
+    enabled: true
+prefix: lexigram_
+    default_labels: {}
+    histogram_buckets:
+      - 0.005
+      - 0.01
+      - 0.025
+      - 0.05
+      - 0.1
+      - 0.25
+      - 0.5
+      - 1.0
+      - 2.5
+      - 5.0
+      - 10.0
+    collection_interval: 60.0
+  tracing:
+    enabled: true
+    service_name: lexigram-service
+    sampler_type: always_on                     # always_on | always_off | trace_id_ratio
+    sample_rate: 1.0
+    max_traces_per_second: 100
+    propagation_formats:
+      - tracecontext
+      - baggage
+    max_attributes: 128
+    max_events: 128
+    max_links: 128
+    max_spans: 1000
+  health:
+    enabled: true
+    path: /health
+    include_details: true
+    timeout: 5.0
+    checks: []                                  # named health check registrations
+    interval: 30
+  logging:
+    enabled: true
+    level: INFO
+    format: json                                # json | text
+    include_trace_context: true
+    redact_fields:
+      - password
+      - secret
+      - token
+      - api_key
+      - authorization
+  opentelemetry:
+    endpoint: null
+    headers: {}
+    insecure: false
+    timeout: 30.0
+    compression: none                           # none | gzip
+    batch_size: 512
+    export_interval: 5.0
+    tracing_exporters:
+      - type: console                           # console | jaeger | otlp
+        endpoint: null
+        headers: {}
+    metrics_exporters:
+      - type: console
+        endpoint: null
+        headers: {}
+  prometheus:
+    port: 8000
+    path: /metrics
+    enable_default_metrics: true
+    pushgateway_url: null
+    push_interval: 10.0
+    store_in_db: false
+    metrics_table: metrics_samples
+
+# ── Search (lexigram-search) ───────────────────────────────────────────────────
+# env_prefix: LEX_SEARCH__
+search:
+  enabled: true
+  backend_type: memory                          # memory | meilisearch | elasticsearch | typesense | postgres | mysql | sqlite | mongo
+  timeout: 30.0
+  query:
+    strategy: fuzzy
+    default_limit: 20
+    max_limit: 100
+    enable_highlighting: true
+    enable_faceting: true
+    enable_aggregations: false
+    fuzzy_threshold: 0.8
+  meilisearch:
+    url: "http://localhost:7700"
+    api_key: null
+    timeout: 30
+    max_connections: 10
+    searchable_attributes:
+      - title
+      - name
+      - description
+      - content
+      - text
+      - body
+    displayed_attributes:
+      - id
+      - title
+      - name
+      - description
+      - created_at
+      - updated_at
+    filterable_attributes: []
+    sortable_attributes:
+      - created_at
+      - updated_at
+    typo_tolerance_enabled: true
+    min_word_size_for_typos:
+      oneTypo: 4
+      twoTypos: 8
+    ranking_rules:
+      - words
+      - typo
+      - proximity
+      - attribute
+      - sort
+      - exactness
+  elasticsearch:
+    hosts:
+      - http://localhost:9200
+    api_key: null
+    username: null
+    password: null
+    use_ssl: false
+    verify_certs: true
+    index_prefix: lexigram_search_
+    number_of_shards: 1
+    number_of_replicas: 0
+  typesense:
+    api_key: null
+    nodes:
+      - host: localhost
+        port: "8108"
+        protocol: http
+    connection_timeout: 30
+    health_check_interval: 60
+  postgres:
+    connection_string: null
+    text_search_config: english
+    enable_trigram: true
+    auto_create_tables: true
+  mysql:
+    connection_string: null
+    fulltext_mode: natural_language
+    min_word_length: 3
+  sqlite:
+    db_path: ":memory:"
+    tokenizer: "porter unicode61"
+    auto_create_tables: true
+  mongo:
+    connection_string: null
+    database_name: search
+    use_atlas_search: false
+  operations:
+    max_retries: 3
+    retry_backoff: 0.5
+    request_timeout: 30.0
+    bulk_chunk_size: 500
+
+# ── Multi-Backend: Search Engines (lexigram-search) ──────────────────────────────
+# Uncomment the 'backends:' list to enable multi-backend mode.
+# When search.backends is set, each backend is registered under its name and
+# resolved via Annotated[SearchEngineProtocol, Named("analytics")].
+# The entry with primary: true also binds to the unnamed SearchEngineProtocol for
+# backward compatibility.
+#
+# search:
+#   backends:
+#     - name: primary
+#       primary: true
+#       backend_type: meilisearch
+#       # database: primary              # for postgres/mysql backends
+#       meilisearch:
+#         url: "${SEARCH_MEILISEARCH_URL:-http://localhost:7700}"
+#         api_key: "${SEARCH_MEILISEARCH_API_KEY}"
+#         timeout: 30
+#         max_connections: 10
+#
+#     - name: analytics
+#       backend_type: elasticsearch
+#       elasticsearch:
+#         hosts:
+#           - "${SEARCH_ELASTICSEARCH_HOST:-http://localhost:9200}"
+#         api_key: "${SEARCH_ELASTICSEARCH_API_KEY}"
+#         username: null
+#         password: null
+#         use_ssl: false
+#         verify_certs: true
+#         index_prefix: lexigram_search_
+#
+# Inject named backends in services:
+#   from typing import Annotated
+#   from lexigram.contracts.ai.search import SearchEngineProtocol
+#   from lexigram.di.markers import Named
+#
+#   class AnalyticsService:
+#       def __init__(self, search: Annotated[SearchEngineProtocol, Named("analytics")]):
+#           self._search = search
+
+# ── Object Storage (lexigram-storage) ──────────────────────────────────────────
+# env_prefix: LEX_STORAGE__
+storage:
+  name: storage
+  enabled: true
+  default_driver: local                         # local | s3 | gcs | azure | r2 | memory
+  health_check_timeout: 5.0
+  service:
+    max_file_size_mb: 100
+    allowed_mime_types:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
+  drivers:
+    local:
+      root_dir: ./storage
+      base_url: "http://localhost:8000/storage"
+    # s3:
+    #   bucket: "${LEX_STORAGE__S3__BUCKET}"
+    #   region: "${LEX_STORAGE__S3__REGION}"
+    #   access_key: "${AWS_ACCESS_KEY_ID}"
+    #   secret_key: "${AWS_SECRET_ACCESS_KEY}"
+    #   endpoint_url: null                      # custom endpoint for MinIO etc.
+    #   encryption:
+    #     enabled: false
+    #     type: AES256                          # AES256 | aws:kms | gcs:cmek
+    #     kms_key_id: null
+    # gcs:
+    #   bucket: "${LEX_STORAGE__GCS__BUCKET}"
+    #   project_id: "${GCP_PROJECT_ID}"
+    #   credentials_path: null
+    #   encryption:
+    #     enabled: false
+    #     type: gcs:cmek
+    #     kms_key_id: null
+    # azure:
+    #   account_name: "${AZURE_STORAGE_ACCOUNT}"
+    #   account_key: "${AZURE_STORAGE_KEY}"
+    #   container: "${AZURE_STORAGE_CONTAINER}"
+    # r2:
+    #   bucket: "${R2_BUCKET}"
+    #   access_key: "${R2_ACCESS_KEY}"
+    #   secret_key: "${R2_SECRET_KEY}"
+    #   endpoint_url: "${R2_ENDPOINT_URL}"
+    #   region: auto
+    # memory: {}                                # in-memory driver (testing/development)
+
+# ── Multi-Backend: Blob Stores (lexigram-storage) ───────────────────────────────
+# Uncomment the 'backends:' list to enable multi-backend mode.
+# When storage.backends is set, each backend is registered under its name and
+# resolved via Annotated[BlobStoreProtocol, Named("media")].
+# The entry with primary: true also binds to the unnamed BlobStoreProtocol for
+# backward compatibility.
+#
+# storage:
+#   backends:
+#     - name: primary
+#       primary: true
+#       driver: s3
+#       s3:
+#         bucket: "${S3_PRIMARY_BUCKET:-my-app-primary}"
+#         region: "${AWS_REGION:-us-east-1}"
+#         access_key: "${AWS_ACCESS_KEY_ID}"
+#         secret_key: "${AWS_SECRET_ACCESS_KEY}"
+#         endpoint_url: null                      # custom endpoint for MinIO etc.
+#         encryption:
+#           enabled: false
+#
+#     - name: media
+#       driver: local
+#       local:
+#         root_dir: "${STORAGE_LOCAL_DIR:-./media}"
+#         base_url: "${STORAGE_LOCAL_URL:-http://localhost:8000/media}"
+#
+# Inject named stores in services:
+#   from typing import Annotated
+#   from lexigram.contracts.infra.storage import BlobStoreProtocol
+#   from lexigram.di.markers import Named
+#
+#   class MediaService:
+#       def __init__(self, store: Annotated[BlobStoreProtocol, Named("media")]):
+#           self._store = store
+
+# ── Vector Store (lexigram-vector) ─────────────────────────────────────────────
+# env_prefix: LEX_VECTOR__
+vector:
+  enabled: true
+  backend: memory                               # memory | pgvector | pinecone | qdrant
+  default_distance_metric: cosine               # cosine | euclidean | dot_product
+  default_index_type: hnsw                      # hnsw | ivfflat | flat
+  default_dimension: 1536
+  upsert_batch_size: 100
+  max_retries: 3
+  retry_delay: 0.5
+  pgvector:
+    schema: public
+    default_lists: 100
+    default_probes: 10
+    default_ef_search: 64
+    table_prefix: vec_
+    create_extension: true
+  pinecone:
+    api_key: null
+    environment: ""
+    index_name: ""
+    namespace: ""
+    timeout: 30.0
+    pool_threads: 4
+  qdrant:
+    url: "http://localhost:6333"
+    api_key: null
+    grpc_port: 6334
+    prefer_grpc: true
+    timeout: 30.0
+  memory:
+    max_collections: 100
+    max_vectors_per_collection: 100000
+
+# ── Multi-Store: Vector Databases (lexigram-vector) ────────────────────────────
+# Uncomment the 'backends:' list to enable multi-backend mode.
+# When vector.backends is set, each store is registered under its name and
+# resolved via Annotated[VectorStoreProtocol, Named("rag")].
+# The entry with primary: true (or the first entry) also binds to the
+# unnamed VectorStoreProtocol for backward compatibility.
+#
+# vector:
+#   backends:
+#     - name: primary
+#       primary: true
+#       backend: qdrant
+#       qdrant:
+#         url: "${VECTOR_PRIMARY_URL:-http://localhost:6333}"
+#         api_key: "${VECTOR_PRIMARY_API_KEY:-}"
+#         grpc_port: 6334
+#
+#     - name: rag
+#       backend: pgvector
+#       pgvector:
+#         database: rag                             # resolves Named("rag") DatabaseProviderProtocol
+#         schema: public
+#         embedding_dimension: 1536
+#
+#     - name: semantic-cache
+#       backend: qdrant
+#       qdrant:
+#         url: "${VECTOR_CACHE_URL:-http://localhost:6333}"
+#         api_key: "${VECTOR_CACHE_API_KEY:-}"
+#
+# Inject named stores in services:
+#   from typing import Annotated
+#   from lexigram.contracts.data.vector import VectorStoreProtocol
+#   from lexigram.di.markers import Named
+#
+#   class RAGRepository:
+#       def __init__(self, store: Annotated[VectorStoreProtocol, Named("rag")]):
+#           self._store = store
+
+# ── NoSQL (lexigram-nosql) ─────────────────────────────────────────────────────
+# env_prefix: LEX_NOSQL__
+nosql:
+  enabled: true
+  driver: mongodb
+  mongodb:
+    uri: "mongodb://localhost:27017"
+    database: lexigram
+    max_pool_size: 100
+    min_pool_size: 10
+    server_selection_timeout_ms: 5000
+    connect_timeout_ms: 10000
+    socket_timeout_ms: 30000
+    retry_writes: true
+    retry_reads: true
+    read_preference: primaryPreferred
+    write_concern_w: majority
+    auth_source: admin
+
+# ── Multi-Store: Document Databases (lexigram-nosql) ───────────────────────────
+# Uncomment the 'backends:' list to enable multi-backend mode.
+# When nosql.backends is set, each backend is registered under its name and
+# resolved via Annotated[DocumentStoreProtocol, Named("analytics")].
+# The entry with primary: true (or the first entry) also binds to the
+# unnamed DocumentStoreProtocol for backward compatibility.
+#
+# nosql:
+#   backends:
+#     - name: primary
+#       primary: true
+#       driver: mongodb
+#       mongodb:
+#         uri: "${NOSQL_PRIMARY_URI:-mongodb://localhost:27017}"
+#         database: myapp
+#         max_pool_size: 100
+#         min_pool_size: 10
+#         server_selection_timeout_ms: 5000
+#         connect_timeout_ms: 10000
+#         socket_timeout_ms: 30000
+#         retry_writes: true
+#         retry_reads: true
+#         read_preference: primaryPreferred
+#         write_concern_w: majority
+#         auth_source: admin
+#
+#     - name: analytics
+#       driver: mongodb
+#       mongodb:
+#         uri: "${NOSQL_ANALYTICS_URI:-mongodb://localhost:27017}"
+#         database: myapp_analytics
+#         max_pool_size: 20
+#         min_pool_size: 2
+#         server_selection_timeout_ms: 5000
+#         connect_timeout_ms: 10000
+#         socket_timeout_ms: 30000
+#
+# Inject named stores in services:
+#   from typing import Annotated
+#   from lexigram.contracts.data.nosql import DocumentStoreProtocol
+#   from lexigram.di.markers import Named
+#
+#   class AnalyticsRepository:
+#       def __init__(self, store: Annotated[DocumentStoreProtocol, Named("analytics")]):
+#           self._store = store
+
+# ── Graph Database (lexigram-graph) ────────────────────────────────────────────
+# env_prefix: LEX_GRAPH__
+graph:
+  enabled: true
+  backend: memory                               # memory | neo4j
+  default_traversal_max_depth: 10
+  default_query_limit: 100
+  bulk_batch_size: 500
+  max_retries: 3
+  retry_delay: 0.5
+  neo4j:
+    uri: "bolt://localhost:7687"
+    username: neo4j
+    password: null
+    database: neo4j
+    max_connection_pool_size: 50
+    connection_timeout: 30.0
+    max_transaction_retry_time: 30.0
+    fetch_size: 1000
+    encrypted: false
+    trust: TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+  memory:
+    max_nodes: 100000
+    max_edges: 500000
+
+# ── AI Core (lexigram-ai) ──────────────────────────────────────────────────────
+# env_prefix: LEX_AI__
+ai:
+  name: ai
+  enabled: true
+  # governance and observability are controlled by their own sub-packages below
+  subsystems: {}                                # dynamic config for third-party AI subsystems
+
+# ── AI — LLM (lexigram-ai-llm) ────────────────────────────────────────────────
+# env_prefix: LEX_AI_LLM__
+# Providers are activated when their trigger field is set (api_key or base_url+model).
+# Preferred: configure via environment variables — YAML secrets are discouraged.
+#   LEX_AI_LLM__PROVIDERS__0__NAME=local
+#   LEX_AI_LLM__PROVIDERS__0__BASE_URL=http://localhost:1234/v1
+#   LEX_AI_LLM__PROVIDERS__0__MODEL=qwen/qwen3.5-9b
+#
+# ModelProvider values: openai | anthropic | ollama | groq | mistral | openrouter |
+#   gemini | azure-openai | aws-bedrock | google-vertex | cloudflare | deepseek |
+#   together | fireworks | lmstudio | openai_compatible | custom
+ai_llm:
+  enabled: true
+  # ── Multi-provider routing (cascade order — first = highest priority) ─────────
+  strategy: sequential                          # sequential | parallel_race | cost_optimized | latency_optimized
+  providers:
+    - name: primary
+      model: gpt-4-turbo                        # exact model identifier
+      api_key: null                             # "${OPENAI_API_KEY}" recommended
+      base_url: null                            # custom endpoint (Azure, proxies, local LLMs)
+      timeout: 60                               # per-request timeout (seconds)
+      enabled: true
+      extras: {}                                # provider-specific pass-through params
+  defaults:
+    temperature: 0.2
+    max_tokens: null
+  quota:
+    backend: memory                             # memory | database
+  logging:
+    backend: memory
+    max_memory_entries: 1000
+
+# ── AI — RAG Pipeline (lexigram-ai-rag) ───────────────────────────────────────
+# env_prefix: LEX_AI_RAG__
+ai_rag:
+  enabled: true
+  persist_directory: null
+  vector_store_type: pgvector                   # pgvector | chroma | qdrant | mock
+  vector_dimension: 1536
+  collection_name: default
+  top_k: 5
+  similarity_threshold: 0.7
+  use_hybrid_search: true
+  embedding_provider: openai
+  embedding_model: null                         # REQUIRED — e.g. text-embedding-ada-002
+  enable_citations: true
+  citation_style: inline                        # inline | footnote | numbered
+  min_citation_confidence: 0.6
+  chunk_size: 512
+  chunk_overlap: 50
+  chunking_strategy: recursive                  # recursive | semantic | token
+  enable_query_expansion: true
+  enable_hyde: false
+  synthesis_strategy: hybrid                    # direct | extractive | abstractive | hybrid
+  enable_hallucination_detection: true
+  enable_caching: true
+  cache_ttl: 3600
+  pipeline:
+    name: default-rag-pipeline
+    description: ""
+    stages:
+      - retrieval
+      - synthesis
+      - quality_assurance
+    max_retries: 3
+    retry_delay: 1.0
+    default_error_strategy: graceful
+    auto_evaluate_every_n: null
+    require_citations: false
+    ingestion:
+      enabled: true
+      document_formats:
+        - text
+        - pdf
+        - markdown
+      preprocessing_enabled: false
+      ocr_enabled: false
+      table_extraction_enabled: false
+      metadata_enrichment_enabled: false
+      chunking_strategy: recursive
+      chunk_size: 1000
+      chunk_overlap: 200
+      min_chunk_size: 100
+      error_strategy: graceful
+      fail_fast: false
+    query_processing:
+      enabled: true
+      transformation_enabled: false
+      transformation_strategies:
+        - expansion
+      hyde_enabled: false
+      hyde_num_documents: 1
+      routing_enabled: false
+      routing_strategy: rule_based
+      error_strategy: graceful
+    retrieval:
+      enabled: true
+      vector_search_enabled: true
+      top_k: 10
+      similarity_threshold: 0.0
+      knowledge_graph_enabled: false
+      max_graph_depth: 2
+      multi_hop_enabled: false
+      max_hops: 3
+      error_strategy: fail_fast
+    context_optimization:
+      enabled: true
+      ranking_enabled: true
+      compression_enabled: false
+      compression_strategy: hybrid
+      max_context_tokens: 4000
+      deduplication_enabled: true
+      deduplication_threshold: 0.9
+      citations_enabled: true
+      error_strategy: graceful
+    synthesis:
+      enabled: true
+      strategy: hybrid
+      max_response_length: 500
+      include_citations: true
+      output_format: markdown
+      error_strategy: fallback
+      fallback_strategy: direct
+    quality_assurance:
+      enabled: true
+      min_faithfulness: 0.7
+      min_relevance: 0.6
+      min_confidence: 0.5
+      hallucination_detection_enabled: true
+      hallucination_strict_mode: false
+      reject_low_quality: false
+      warn_low_quality: true
+      error_strategy: graceful
+    post_processing:
+      enabled: true
+      cache_enabled: true
+      cache_results: true
+      collect_metrics: true
+      detailed_logging: false
+      error_strategy: skip
+    metadata: {}
+
+# ── AI — Memory (lexigram-ai-memory) ──────────────────────────────────────────
+# env_prefix: LEX_AI_MEMORY__
+ai_memory:
+  enabled: true
+  default_backend: in_memory                    # in_memory | cache | database | vector
+  ttl_seconds: 0                                # 0 = never expire
+  working:
+    system_prompt_tokens: 1024
+    recent_turns_fraction: 0.6
+    episodic_fraction: 0.2
+    semantic_fraction: 0.1
+    tool_descriptions_fraction: 0.1
+    max_recent_turns: 20
+  episodic:
+    default_top_k: 5
+    recency_weight: 0.3
+    importance_weight: 0.5
+    relevance_weight: 0.2
+    ttl_seconds: 0
+  semantic:
+    min_confidence: 0.5
+    max_facts_per_entity: 50
+  consolidation:
+    enabled: true
+    interval_seconds: 3600.0
+    age_threshold_hours: 24.0
+    importance_prune_threshold: 0.2
+    batch_size: 100
+
+# ── AI — Session Management (lexigram-ai-session) ─────────────────────────────
+# env_prefix: LEX_AI_SESSION__
+ai_session:
+  enabled: true
+  name: ai-session
+  default_system_prompt: null
+  session_ttl: 86400                            # 24 hours; 0 = no expiry
+  cleanup_interval_s: 600
+  max_turns_per_session: 1000
+  max_sessions_per_user: 100
+  auto_checkpoint_interval: 10                  # checkpoint every N turns; null = disabled
+  max_checkpoints_per_session: 50
+  max_branches_per_session: 10
+  max_agents_per_group: 10
+  default_turn_strategy: round_robin            # round_robin | priority | llm_directed
+  backend: in_memory                            # in_memory | cache | database
+  cookie_name: lexigram_session
+  header_name: X-Session-ID
+  consolidate_on_close: true
+
+# ── AI — Agents (lexigram-ai-agents) ──────────────────────────────────────────
+# env_prefix: LEX_AI_AGENTS__
+ai_agents:
+  enabled: true
+  max_iterations: 10
+  default_temperature: 0.7
+  default_max_tokens: 2048
+  enable_tracing: true
+  enable_metrics: true
+
+# ── AI — Workflow (lexigram-ai-workflow) ──────────────────────────────────────
+# env_prefix: LEX_AI_WORKFLOW__
+ai_workflow:
+  enabled: true
+  max_iterations: 25
+  node_timeout: 120.0                           # per-node timeout (seconds); 0 = no limit
+  total_timeout: 0.0                            # total workflow timeout; 0 = no limit
+  checkpoint_enabled: false
+  parallel_branches: true
+  max_parallel_branches: 0                      # 0 = unlimited
+
+# ── AI — Skills (lexigram-ai-skills) ──────────────────────────────────────────
+# env_prefix: LEX_AI_SKILLS__
+ai_skills:
+  name: ai-skills
+  default_timeout_seconds: 30.0
+  max_retries: 3
+  max_concurrent_executions: 10
+  cache_enabled: true
+  cache_ttl_seconds: 3600
+  cache_backend: in_memory                      # in_memory | cache
+  enforce_permissions: true
+  auto_discover: true
+  scan_packages: []
+  enable_builtin: true
+  builtin_skills: []
+
+# ── AI — Prompt (lexigram-ai-prompt) ──────────────────────────────────────────
+# env_prefix: LEX_AI_PROMPT__
+ai_prompt:
+  enabled: true
+  default_format: f_string                      # f_string | jinja2 | mustache
+  sanitize_inputs: true
+  strict_sanitizer: true                        # raise on injection when true; warn-only when false
+  max_variable_length: 0                        # 0 = unlimited
+
+# ── AI — Workers (lexigram-ai-workers) ────────────────────────────────────────
+# env_prefix: LEX_AI_WORKERS__
+ai_workers:
+  enabled: true
+  batch_embedding_concurrency: 3
+  document_ingestion_concurrency: 3
+  enable_maintenance: true
+  dlq_check_interval: 60                        # dead-letter-queue recovery sweep (seconds)
+
+# ── AI — Governance (lexigram-ai-governance) ──────────────────────────────────
+# env_prefix: LEX_AI_GOVERNANCE__
+ai_governance:
+  enabled: true
+  monthly_budget: null                          # USD; null = no budget limit
+  max_tokens_per_request: null
+  rpm_limit: null                               # requests per minute; null = no limit
+  tpm_limit: null                               # tokens per minute; null = no limit
+  restricted_models: []
+  enforce_budget: true
+  soft_limit_pct: null                          # fraction of monthly_budget for a warning (0.0–1.0)
+  model_allowlist: {}                           # {role: [glob_pattern, ...]}
+  model_denylist: {}                            # {role: [glob_pattern, ...]}
+
+# ── AI — Guard (lexigram-ai-guard) ────────────────────────────────────────────
+# env_prefix: LEX_AI_GUARD__
+ai_guard:
+  enabled: true
+  injection_detection: true
+  injection_action: block                       # block | warn
+  pii_detection: true
+  pii_action: redact                            # redact | block | warn
+  pii_entities: []                              # empty = scan for all entity types
+  pii_redaction_output: true
+  max_input_chars: 0                            # 0 = unlimited
+  max_output_chars: 0                           # 0 = unlimited
+  length_action: block
+  restricted_topics: []
+  enable_llm_guards: false
+  guard_model: gpt-4o-mini
+  llm_guard_threshold: 0.7
+  sensitivity_level: medium                     # low | medium | high
+  parallel_execution: false
+
+# ── AI — Feedback (lexigram-ai-feedback) ──────────────────────────────────────
+# env_prefix: LEX_AI_FEEDBACK__
+ai_feedback:
+  enabled: true
+  async_processing: true
+  store_raw_payloads: false
+
+# ── AI — Observability (lexigram-ai-observability) ────────────────────────────
+# env_prefix: LEX_AI_OBSERVABILITY__
+ai_observability:
+  enabled: true
+  metrics_enabled: true
+  tracing_enabled: true
+  health_checks_enabled: true
+
+# ── AI — MCP Server (lexigram-ai-mcp) ─────────────────────────────────────────
+# env_prefix: LEX_AI_MCP__
+ai_mcp:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  path: /mcp
+  enable_sse: true
+  stdio_mode: false
+  server_name: lexigram-mcp
+  server_version: "1.0.0"
+  cors_origins: []
+  max_request_size: 1048576                     # 1 MiB
+  request_timeout: 30.0
+  client_url: null                              # URL of an external MCP server to connect to
+  client_stdio_command: []                      # command to spawn a local MCP server as subprocess
+  connectors:
+    filesystem:
+      root_dir: ""                              # must be set to enable; empty = disabled
+      read_only: false
+    github:
+      token: ""
+      api_url: https://api.github.com
+    web_fetch:
+      enabled: false
+      max_content_bytes: 524288                 # 512 KB
+      user_agent: lexigram-mcp/1.0
+    web_search:
+      provider: brave                           # brave | serpapi | google
+      api_key: ""
+      max_results: 10
+    slack:
+      bot_token: ""
+      max_messages: 100
+    google_drive:
+      service_account_json: ""
+      impersonated_email: ""
+    sql:
+      dsn: ""
+      allowed_tables: []
+      read_only: true
+
+# ── Features / Feature Flags (lexigram-features) ──────────────────────────────
+# env_prefix: LEX_FEATURES__
+features:
+  enabled: true
+  cache_ttl: 300                                # seconds to cache evaluations; 0 = disabled
+  default_enabled: false
+  flag_env_prefix: FEATURE_                    # env-var prefix used by the env provider
+  initial_flags: {}                             # {flag_name: true/false}  seed flags
+
+# ── Resilience (lexigram-resilience) ───────────────────────────────────────────
+# env_prefix: LEX_RESILIENCE__
+resilience:
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout: 60.0
+    success_threshold: 3
+    timeout: 30.0
+    name: ""
+    sliding_window_seconds: 60.0
+    failure_rate_threshold: 0.5
+    backend: memory                             # memory | redis | consul
+  retry:
+    max_attempts: 3
+    base_delay: 1.0
+    max_delay: 60.0
+    backoff_factor: 2.0
+    jitter: true
+  bulkhead:
+    max_concurrent: 10
+    queue_size: 100
+    timeout: 30.0
+    name: ""
+  timeout:
+    timeout: 30.0
+    timeout_message: Operation timed out
+
+# ── Idempotency (lexigram-idempotency) ─────────────────────────────────────────
+# env_prefix: LEX_IDEMPOTENCY__
+idempotency:
+  ttl: 86400                                    # seconds; cached result lifetime
+  max_entries: 10000                            # max in-memory entries before FIFO eviction
+  cleanup_interval: 3600.0                      # background cleanup sweep interval (seconds)
+  auto_cleanup: true
+  key_prefix: "idem:"
+  max_key_length: 255
+
+# ── Object Mapper (lexigram-mapping) ───────────────────────────────────────────
+# env_prefix: LEX_MAPPING__
+mapping:
+  strict: false                                 # raise on missing fields when true
+  auto_map: true                                # fall back to auto-mapping if no mapper registered
+
+# ── Middleware Pipeline (lexigram-middleware) ──────────────────────────────────
+# env_prefix: LEX_MIDDLEWARE__
+middleware:
+  default_retry_count: 3
+  default_retry_delay: 0.5
+  correlation_header: X-Correlation-ID
+
+# ── Plugins (lexigram-plugins) ─────────────────────────────────────────────────
+# env_prefix: LEX_PLUGINS__
+plugins:
+  enabled_plugins: []                           # only these are activated; empty = all
+  disabled_plugins: []
+  plugin_dirs: []                               # extra filesystem directories to scan
+  auto_discover: true
+
+# ── Workflow Engine (lexigram-workflow) ────────────────────────────────────────
+# env_prefix: LEX_WORKFLOW__
+workflow:
+  batch_size: 10
+  max_concurrency: 5
+  timeout: 300.0
+  retry_attempts: 3
+  retry_delay: 1.0
+  enable_progress_tracking: true
+  circuit_breaker_config: null                  # optional CircuitBreakerConfig override
+  pipeline_timeout: 300.0
+
+# ── Admin Panel (lexigram-admin) ───────────────────────────────────────────────
+# env_prefix: LEX_ADMIN__
+admin:
+  name: admin
+  enabled: true
+  title: Lexigram Admin
+  prefix: /admin
+  htmx_prefix: /admin/htmx
+  api_prefix: /admin/api
+  static_prefix: /admin/static
+  require_auth: true
+  debug: false
+  templates_dir: null
+  static_dir: null
+  auth:
+    enabled: true
+    session_secret: "${LEX_ADMIN__AUTH__SESSION_SECRET}"   # REQUIRED
+    login_url: /admin/login
+    logout_url: /admin/logout
+    session_lifetime: 86400
+    permission_cache_ttl: 300
+    oauth_enabled: false
+    oauth_providers: []
+    users: []
+    roles: {}
+  features:
+    command_palette: true
+    keyboard_shortcuts: true
+    theme_toggle: true
+    search: true
+    optimistic_updates: true
+    undo_redo: true
+    autosave: false
+    audit_logging: true
+    activity_feed: false
+    notifications: true
+    webhooks: false
+    api_docs: true
+  ui:
+    theme: system                               # light | dark | system
+    primary_color: "#3B82F6"
+    sidebar_width: 256
+    sidebar_collapsed_width: 64
+    content_max_width: null
+    logo_url: null
+    favicon_url: null
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+    requests_per_hour: 1000
+    burst_size: 10
+    create_per_minute: 30
+    update_per_minute: 60
+    delete_per_minute: 20
+    bulk_per_minute: 5
+  resource_defaults:
+    per_page: 20
+    enable_search: true
+    enable_export: true
+    enable_bulk_actions: true
+    action_layout: horizontal                   # horizontal | vertical | dropdown
+    soft_delete: true
+    timestamp_fields: true
+  table_defaults:
+    reorderable_columns: false
+    enable_column_visibility: true
+    sticky_header: true
+    virtualized: false
+    row_height: 48
+    zebra_stripes: true
+    hover_highlight: true
+  form_defaults:
+    show_required_indicator: true
+    autosave_enabled: false
+    autosave_interval_ms: 30000
+    confirm_unsaved_changes: true
+    inline_validation: true
+  navigation_groups: {}
+  resources: {}
+  commands: []
+  extensions: {}
+
+# ── Testing Utilities (lexigram-testing) ───────────────────────────────────────
+# env_prefix: LEX_TESTING__  (testing only — not loaded in production)
+testing:
+  enabled: true
+  db_reuse: true
+  mock_external_services: true
+  cleanup_temp_files: true

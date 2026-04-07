@@ -1,0 +1,180 @@
+"""{{ action_name }} admin action.
+
+This module provides a custom action for the Lexigram admin UI.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+from lexigram.admin.actions.base import Action, ActionTarget, ActionType
+
+if TYPE_CHECKING:
+    from lexigram.admin.ui.views import AdminView
+
+
+@dataclass
+class {{ action_name }}Config:
+    """Configuration for {{ action_name }} action.
+    
+    Defines how the action appears and behaves in the admin UI.
+    """
+    # Display
+    label: str = "{{ action_name }}"
+    icon: str | None = None
+    style: str = "primary"  # primary, secondary, danger, ghost
+    
+    # Behavior
+    target: str = "{{ target }}"  # dialog, redirect, drawer
+    confirmation: str | None = None
+    
+    # Permissions
+    requires_auth: bool = True
+    required_permissions: list[str] | None = None
+
+
+class {{ action_name }}Action(Action):
+    """Custom action for {{ action_name }}.
+    
+    This action can be added to admin resources to provide custom
+    functionality for users.
+    """
+    
+    type = ActionType.{{ 'ROW' if action_type == 'row' else 'BULK' if action_type == 'bulk' else 'HEADER' }}
+    target = ActionTarget.{{ 'DIALOG' if target == 'dialog' else 'REDIRECT' if target == 'redirect' else 'DRAWER' }}
+    
+    def __init__(self):
+        """Initialize the action."""
+        super().__init__()
+        self.config = {{ action_name }}Config()
+    
+    @property
+    def label(self) -> str:
+        """Action label displayed in the UI."""
+        return self.config.label
+    
+    @property
+    def icon(self) -> str | None:
+        """Icon to display with the action."""
+        return self.config.icon
+    
+    @property
+    def style(self) -> str:
+        """Visual style of the action button."""
+        return self.config.style
+    
+    async def execute(
+        self,
+        resource: Any,
+        record: Any,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Execute the action.
+        
+        Args:
+            resource: The admin resource.
+            record: The record(s) to act on.
+            context: Execution context.
+            
+        Returns:
+            Result dictionary with success status and any data.
+        """
+        # Implement your action logic here
+        # Example:
+        # await self._process_record(record, context)
+        
+        return {
+            "success": True,
+            "message": "{{ action_name }} executed successfully",
+        }
+    
+    async def validate(
+        self,
+        resource: Any,
+        record: Any,
+        context: dict[str, Any],
+    ) -> tuple[bool, str | None]:
+        """Validate the action can be executed.
+        
+        Args:
+            resource: The admin resource.
+            record: The record(s) to validate.
+            context: Validation context.
+            
+        Returns:
+            Tuple of (is_valid, error_message).
+        """
+        # Add validation logic here
+        # Example:
+        # if not record.can_be_modified:
+        #     return False, "Record cannot be modified"
+        
+        return True, None
+    
+    def get_config(self) -> {{ action_name }}Config:
+        """Get the action configuration."""
+        return self.config
+
+
+# =============================================================================
+# Bulk Action Variant (for bulk actions)
+# =============================================================================
+
+{% if action_type == 'bulk' %}
+class {{ action_name }}BulkAction({{ action_name }}Action):
+    """Bulk action variant for {{ action_name }}.
+    
+    Handles multiple records at once.
+    """
+    
+    async def execute(
+        self,
+        resource: Any,
+        records: list[Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Execute the bulk action.
+        
+        Args:
+            resource: The admin resource.
+            records: List of records to act on.
+            context: Execution context.
+            
+        Returns:
+            Result dictionary with success status and summary.
+        """
+        results = []
+        
+        for record in records:
+            result = await self._process_record(record, context)
+            results.append(result)
+        
+        success_count = sum(1 for r in results if r.get("success"))
+        
+        return {
+            "success": True,
+            "processed": len(records),
+            "succeeded": success_count,
+            "failed": len(records) - success_count,
+            "message": f"Processed {len(records)} records",
+        }
+{% endif %}
+
+
+# =============================================================================
+# Registration
+# =============================================================================
+
+# To use this action in a resource:
+#
+# from lexigram.admin import Resource
+# from {{ package_name }}.{{ action_name_snake }}_action import {{ action_name }}Action
+#
+# class MyResource(Resource):
+#     model = MyModel
+#     
+#     # Add as row action
+#     actions = [
+#         {{ action_name }}Action(),
+#     ]

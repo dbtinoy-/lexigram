@@ -1,0 +1,882 @@
+[project]
+name = "lexigram-workspace"
+version = "0.1.2"
+description = "Lexigram Framework Workspace"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "lexigram",
+    "lexigram-ai-agents",
+    "lexigram-admin",
+    "lexigram-ai",
+    "lexigram-auth",
+    "lexigram-cache",
+    "lexigram-cli",
+    "lexigram-sql",
+    "lexigram-events",
+    "lexigram-graphql",
+    "lexigram-notification",
+    "lexigram-queue",
+    "lexigram-monitor",
+    "lexigram-http",
+    "lexigram-workflow",
+    "lexigram-features",
+    "lexigram-resilience",
+    "lexigram-search",
+    "lexigram-storage",
+    "lexigram-tasks",
+    "lexigram-secrets",
+    "lexigram-testing",
+    "lexigram-ui",
+    "lexigram-web",
+    "lexigram-ai-mcp",
+    "lexigram-ai-memory",
+    "lexigram-ai-feedback",
+    "lexigram-ai-governance",
+    "lexigram-ai-guard",
+    "lexigram-ai-prompt",
+    "lexigram-ai-session",
+    "lexigram-ai-skills",
+    "lexigram-ai-workers",
+    "lexigram-ai-observability",
+    "lexigram-vector",
+    "lexigram-nosql",
+    "lexigram-graph",
+    "lexigram-tenancy",
+    "lexigram-audit",
+    "lexigram-webhook",
+    "prometheus-client>=0.19.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "redis>=7.1.1",
+    "pymemcache>=4.0.0",
+    "python-dotenv>=1.2.1",
+    "nh3>=0.3.4",
+    "lexigram-ai-evaluation",
+    "botocore>=1.40.61",
+    "pyyaml>=6.0.3",
+    "openai>=2.33.0",
+]
+
+
+[tool.uv.workspace]
+members = [
+    "lexigram-contracts",
+    "lexigram",
+    "lexigram-ai-agents",
+    "lexigram-admin",
+    "lexigram-ai",
+    "lexigram-ai-llm",
+    "lexigram-ai-rag",
+    "lexigram-auth",
+    "lexigram-cache",
+    "lexigram-cli",
+    "lexigram-sql",
+    "lexigram-events",
+    "lexigram-graphql",
+    "lexigram-notification",
+    "lexigram-queue",
+    "lexigram-monitor",
+    "lexigram-http",
+    "lexigram-workflow",
+    "lexigram-features",
+    "lexigram-resilience",
+    "lexigram-search",
+    "lexigram-storage",
+    "lexigram-tasks",
+    "lexigram-secrets",
+    "lexigram-testing",
+    "lexigram-ai-agents",
+    "lexigram-ai-mcp",
+    "lexigram-ai-memory",
+    "lexigram-ai-observability",
+    "lexigram-ai-prompt",
+    "lexigram-ai-session",
+    "lexigram-ai-skills",
+    "lexigram-ai-workers",
+    "lexigram-ai-feedback",
+    "lexigram-ai-governance",
+    "lexigram-ai-guard",
+    "lexigram-ai-evaluation",
+    "lexigram-ui",
+    "lexigram-web",
+    "lexigram-web/examples/structured_users",
+    "lexigram-web/examples/modular_platform",
+    "example/full-stack",
+    "examples/ai",
+    "examples/api",
+    "examples/worker",
+    "examples/platform",
+    "examples/lexigram-admin-plugin-demo",
+    "lexigram-nosql",
+    "lexigram-vector",
+    "lexigram-graph",
+    "lexigram-tenancy",
+    "lexigram-audit",
+    "lexigram-webhook",
+    "lexigram-multimedia",
+    "lexigram-multimedia-audio-tts",
+    "lexigram-multimedia-audio-music",
+    "lexigram-multimedia-video",
+    "lexigram-multimedia-image",
+]
+
+[tool.uv.sources]
+lexigram = { workspace = true }
+lexigram-admin = { workspace = true }
+lexigram-ai-agents = { workspace = true }
+lexigram-ai-mcp = { workspace = true }
+lexigram-ai-feedback = { workspace = true }
+lexigram-ai-governance = { workspace = true }
+lexigram-ai-guard = { workspace = true }
+lexigram-ai-prompt = { workspace = true }
+lexigram-ai-session = { workspace = true }
+lexigram-ai-skills = { workspace = true }
+lexigram-ai-workers = { workspace = true }
+lexigram-ai = { workspace = true }
+lexigram-ai-llm = { workspace = true }
+lexigram-ai-memory = { workspace = true }
+lexigram-ai-observability = { workspace = true }
+lexigram-ai-rag = { workspace = true }
+lexigram-auth = { workspace = true }
+lexigram-cli = { workspace = true }
+lexigram-sql = { workspace = true }
+lexigram-events = { workspace = true }
+lexigram-graphql = { workspace = true }
+lexigram-notification = { workspace = true }
+lexigram-queue = { workspace = true }
+lexigram-monitor = { workspace = true }
+lexigram-http = { workspace = true }
+lexigram-features = { workspace = true }
+lexigram-resilience = { workspace = true }
+lexigram-search = { workspace = true }
+lexigram-storage = { workspace = true }
+lexigram-tasks = { workspace = true }
+lexigram-secrets = { workspace = true }
+lexigram-testing = { workspace = true }
+lexigram-contracts = { workspace = true }
+lexigram-ui = { workspace = true }
+lexigram-web = { workspace = true }
+lexigram-cache = { workspace = true }
+lexigram-workflow = { workspace = true }
+lexigram-nosql = { workspace = true }
+lexigram-vector = { workspace = true }
+lexigram-graph = { workspace = true }
+lexigram-tenancy = { workspace = true }
+lexigram-audit = { workspace = true }
+lexigram-webhook = { workspace = true }
+lexigram-ai-evaluation = { workspace = true }
+
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "redis>=5.0.0",
+    "motor>=3.3.0",
+    "pymongo>=4.6.0",
+    "asyncpg>=0.29.0",
+    "aiomysql>=0.1.0",
+    "aiosqlite>=0.19.0",
+    "httpx>=0.26.0",
+    "jinja2>=3.1.0",
+    "websockets>=12.0.0",
+    "granian>=1.0.0",
+    "uvicorn[standard]>=0.27.0",
+    "itsdangerous>=2.0.0",
+    "pytest-playwright>=0.4.0",
+]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.0.0",
+]
+security = [
+    "nh3>=0.3.4",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.0.0",
+    "itsdangerous>=2.2.0",
+    "playwright>=1.58.0",
+    "redis>=7.1.1",
+    "import-linter>=2.1.0",
+    "joblib>=1.5.3",
+    "scikit-learn>=1.8.0",
+    "scipy>=1.17.0",
+    "pillow>=12.1.1",
+    "xgboost>=3.2.0",
+    "uvicorn>=0.41.0",
+    "lexigram-nosql",
+    "pytest-timeout>=2.4.0",
+]
+lexigram-tenancy = [
+    "asyncpg>=0.31.0",
+    "pytest-benchmark>=5.2.3",
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "scikit-learn>=1.8.0",
+    "memory-profiler>=0.61.0",
+    "psutil>=6.0.0",
+    "typer>=0.25.0",
+]
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::pytest.PytestAssertRewriteWarning",
+    "ignore::pytest.PytestCollectionWarning",
+]
+addopts = ["--strict-markers", "--strict-config", "--tb=short", "--import-mode=importlib", "-p", "no:cacheprovider", "--ignore=lexigram-testing/src"]
+consider_namespace_packages = true
+norecursedirs = [".worktrees", ".venv", "build", "dist", "example", "lexigram-cli/src/lexigram/cli/templates", "lexigram-testing"]
+testpaths = [
+    "lexigram/tests",
+    "lexigram-admin/tests",
+    "lexigram-ai/tests",
+    "lexigram-ai-agents/tests",
+    "lexigram-ai-feedback/tests",
+    "lexigram-ai-governance/tests",
+    "lexigram-ai-guard/tests",
+    "lexigram-ai-prompt/tests",
+    "lexigram-ai-session/tests",
+    "lexigram-ai-skills/tests",
+    "lexigram-ai-workers/tests",
+    "lexigram-ai-llm/tests",
+    "lexigram-ai-mcp/tests",
+    "lexigram-ai-memory/tests",
+    "lexigram-ai-observability/tests",
+    "lexigram-ai-rag/tests",
+    "lexigram-auth/tests",
+    "lexigram-cache/tests",
+    "lexigram-cli/tests",
+    "lexigram-contracts/tests",
+    "lexigram-events/tests",
+    "lexigram-features/tests",
+    "lexigram-graphql/tests",
+    "lexigram-http/tests",
+    "lexigram-monitor/tests",
+    "lexigram-nosql/tests",
+    "lexigram-resilience/tests",
+    "lexigram-graph/tests",
+    "lexigram-search/tests",
+    "lexigram-sql/tests",
+    "lexigram-storage/tests",
+    "lexigram-tasks/tests",
+    "lexigram-secrets/tests",
+    "lexigram-ui/tests",
+    "lexigram-vector/tests",
+    "lexigram-web/tests",
+    "lexigram-workflow/tests",
+    "lexigram-audit/tests",
+    "lexigram-webhook/tests",
+    "tests",
+]
+pythonpath = [
+    ".",
+    "lexigram/src",
+    "lexigram-admin/src",
+    "lexigram-ai/src",
+    "lexigram-ai-agents/src",
+    "lexigram-ai-feedback/src",
+    "lexigram-ai-governance/src",
+    "lexigram-ai-guard/src",
+    "lexigram-ai-prompt/src",
+    "lexigram-ai-session/src",
+    "lexigram-ai-skills/src",
+    "lexigram-ai-workers/src",
+    "lexigram-ai-rag/src",
+    "lexigram-auth/src",
+    "lexigram-cache/src",
+    "lexigram-cli/src",
+    "lexigram-sql/src",
+    "lexigram-events/src",
+    "lexigram-graphql/src",
+    "lexigram-monitor/src",
+    "lexigram-http/src",
+    "lexigram-workflow/src",
+    "lexigram-features/src",
+    "lexigram-resilience/src",
+    "lexigram-search/src",
+    "lexigram-storage/src",
+    "lexigram-tasks/src",
+    "lexigram-secrets/src",
+    "lexigram-secrets/tests",
+    "lexigram-testing/src",
+    "lexigram-contracts/src",
+    "lexigram-ui/src",
+    "lexigram-web/src",
+    "lexigram-web/examples",
+    "lexigram-web/examples/structured_users/src",
+    "lexigram-web/examples/modular_platform/src",
+    "lexigram-ai-governance/src",
+    "lexigram-ai-observability/src",
+    "lexigram-vector/src",
+    "lexigram-nosql/src",
+    "lexigram-graph/src",
+    "lexigram-audit/src",
+    "lexigram-webhook/src",
+    "examples/ai/src",
+    "examples/api/src",
+    "examples/worker/src",
+    "examples/platform/src",
+]
+markers = [
+    "integration: marks tests as integration tests",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "unit: marks tests as unit tests",
+    "e2e: marks tests as end-to-end tests",
+    "requires_redis: marks tests that require a live Redis connection",
+    "requires_postgres: marks tests that require a live PostgreSQL connection",
+    "requires_elasticsearch: marks tests that require a live Elasticsearch connection",
+    "requires_meilisearch: marks tests that require a live Meilisearch connection",
+    "requires_rabbitmq: marks tests that require a live RabbitMQ connection",
+    "requires_smtp: marks tests that require an SMTP server",
+    "requires_kafka: marks tests that require a live Kafka connection",
+    "requires_minio: marks tests that require a live MinIO/S3 connection",
+    "requires_mongodb: marks tests that require a live MongoDB connection",
+    "requires_qdrant: marks tests that require a live Qdrant connection",
+    "requires_neo4j: marks tests that require a live Neo4j connection",
+    "scenario: marks cross-package scenario integration tests",
+    "performance: mark test as a performance test",
+]
+
+
+[tool.coverage.run]
+source = [
+    "lexigram",
+    "lexigram-contracts",
+    "lexigram-admin",
+    "lexigram-ai",
+    "lexigram-ai-agents",
+    "lexigram-ai-feedback",
+    "lexigram-ai-governance",
+    "lexigram-ai-guard",
+    "lexigram-ai-prompt",
+    "lexigram-ai-session",
+    "lexigram-ai-skills",
+    "lexigram-ai-workers",
+    "lexigram-ai-llm",
+    "lexigram-ai-mcp",
+    "lexigram-ai-memory",
+    "lexigram-ai-observability",
+    "lexigram-ai-rag",
+    "lexigram-auth",
+    "lexigram-cache",
+    "lexigram-cli",
+    "lexigram-events",
+    "lexigram-features",
+    "lexigram-graphql",
+    "lexigram-http",
+    "lexigram-monitor",
+    "lexigram-nosql",
+    "lexigram-notification",
+    "lexigram-queue",
+    "lexigram-resilience",
+    "lexigram-graph",
+    "lexigram-search",
+    "lexigram-sql",
+    "lexigram-storage",
+    "lexigram-tasks",
+    "lexigram-testing",
+    "lexigram-ui",
+    "lexigram-vector",
+    "lexigram-web",
+    "lexigram-workflow",
+    "lexigram-audit",
+    "lexigram-webhook",
+]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/conftest.py",
+    "*/migrations/*",
+    "*/examples/*",
+    "*/__pycache__/*",
+    "lexigram-cli/src/lexigram/cli/templates/*",
+    "lexigram-admin/examples/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@\\(abc\\.\\)?abstractmethod",
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.ruff]
+# Lexigram Framework workspace-level ruff configuration.
+# Sub-packages extend this config via `extend = "../pyproject.toml"`.
+line-length = 88
+target-version = "py311"
+extend-exclude = [
+    # Non-production directories: excluded entirely from linting
+    "**/tests/**",
+    "**/examples/**",
+    "**/docs/**",
+    "**/migrations/**",
+    "**/alembic/**",
+    "**/templates/**",
+    # Root-level helper directories: dev scripts, not production code
+    "scripts",
+    "scripts/**",
+    "tools",
+    "tools/**",
+    # Generated scaffold example files from `lexigram new` command
+    # These are generated application skeletons, not framework source
+    "lexigram-cli/src/admin/**",
+    "lexigram-cli/src/clients/**",
+    "lexigram-cli/src/commands/**",
+    "lexigram-cli/src/consumers/**",
+    "lexigram-cli/src/filters/**",
+    "lexigram-cli/src/graphql/**",
+    "lexigram-cli/src/guards/**",
+    "lexigram-cli/src/health/**",
+    "lexigram-cli/src/queries/**",
+    "lexigram-cli/src/repositories/**",
+    "lexigram-cli/src/search/**",
+    "lexigram-cli/src/storage/**",
+    "lexigram-cli/src/webhooks/**",
+    "lexigram-cli/src/websocket/**",
+    # Benchmarks are not production source
+    "benchmarks/**",
+]
+
+[tool.ruff.lint]
+# Enable a comprehensive rule set for the whole framework
+select = [
+    "PLC",   # Pylint convention
+    "PLE",   # Pylint errors
+    "PLR",   # Pylint refactoring
+    "PLW",   # Pylint warnings
+    "F",     # Pyflakes
+    "E",     # Pycodestyle errors
+    "W",     # Pycodestyle warnings
+    "C90",   # Complexity (mccabe)
+    "N",     # PEP8 naming
+    "UP",    # Pyupgrade
+    "ASYNC", # Async considerations
+    "B",     # Flake8-bugbear
+    "C4",    # Flake8-comprehensions
+    "COM",   # Flake8-commas
+    "ICN",   # Flake8-import-conventions
+    "PIE",   # Flake8-pie
+    "SIM",   # Flake8-simplify
+    "TID",   # Flake8-tidy-imports
+    "ARG",   # Flake8-unused-arguments
+    "S",     # Flake8-bandit (security)
+    "BLE",   # Flake8-blind-except
+    "RSE",   # Flake8-raise
+    "RET",   # Flake8-return
+    "SLF",   # Flake8-self
+    "TRY",   # Tryceratops
+    "LOG",   # Flake8-logging
+    "G",     # Flake8-logging-format
+    "PERF",  # Perflint
+    "PT",    # Flake8-pytest-style
+    "FA",    # Flake8-future-annotations
+    "TCH",   # Flake8-type-checking
+    "FLY",   # Flynt
+    "ERA",   # Eradicate
+    "PTH",   # Flake8-use-pathlib
+    "A",     # Flake8-builtins
+    "FBT",   # Flake8-boolean-trap
+    "RUF",   # Ruff-specific rules
+    "PGH",   # Pygrep-hooks
+    "YTT",   # Flake8-2020
+    "DJ",    # Flake8-django
+    "EM",    # Flake8-errmsg
+    "EXE",   # Flake8-executable
+    "ISC",   # Flake8-implicit-string-concat
+    "INP",   # Flake8-no-pep420
+    "T20",   # Flake8-print
+    "PYI",   # Flake8-pyi
+    "Q",     # Flake8-quotes
+    "SLOT",  # Flake8-slots
+    "INT",   # Flake8-gettext
+    "PD",    # Pandas-vet
+    "NPY",   # Numpy-deprecated
+    "AIR",   # Airflow
+    "I",     # Isort
+]
+
+ignore = [
+    # ── Formatter Conflicts (official ruff recommendation) ──
+    "COM812",  # trailing comma missing — conflicts with ruff format
+    "ISC001",  # single-line implicit string concat — conflicts with ruff format
+
+    # ── Blind Except (fault-tolerance patterns use broad catches) ──
+    "BLE001",  # do not catch blind exception
+
+    # ── Lazy Loading / DI / ORM Patterns ──
+    "E402",    # module-level import not at top of file
+    "PLC0415", # import not at top of module — lazy loading for DI
+    "F822",    # undefined name in `__all__` — lazy registration patterns
+    "F821",    # undefined name — dynamic framework / `__all__` patterns
+
+    # ── Line Length ──
+    "E501",    # line too long — legacy code and long expressions by design
+
+    # ── Whitespace (handled by formatter) ──
+    "W291",    # no trailing whitespace
+    "W293",    # blank line contains whitespace
+
+    # ── Unused Arguments (DI constructor / abstract method signatures) ──
+    "ARG001",  # unused function argument
+    "ARG002",  # unused method argument
+    "ARG003",  # unused class argument
+
+    # ── Private Member Access (testing and serialization) ──
+    "SLF001",  # private member accessed
+
+    # ── Exception Handling Patterns ──
+    "TRY300",  # consider moving this statement to an else block
+    "TRY301",  # abstract raise to an inner function
+    "TRY003",  # avoid specifying long messages outside the exception class
+    "TRY400",  # use logging.exception instead of logging.error
+    "TRY401",  # redundant exception object in logging.exception
+
+    # ── Logging ──
+    "G201",    # logging.exception should be .error
+    "G202",    # logging .exception with traceback
+    "G004",    # logging string uses % formatting
+
+    # ── Security (acceptable patterns in this framework) ──
+    "S101",    # assert used — expected in pytest and contract checks
+    "S104",    # hardcoded binding port
+    "S608",    # possible SQL injection via string-based query construction
+    "S110",    # try-except-pass detected
+    "S105",    # hardcoded password string
+    "S106",    # hardcoded password assignment
+    "S311",    # standard pseudo-random generator
+    "S603",    # subprocess call — check=True is explicit when needed
+
+    # ── Bugbear ──
+    "B023",    # function definition does not bind loop variable
+    "B024",    # abstract base class but no abstract methods
+    "B027",    # empty method in abstract class — allowed in protocols
+    "B904",    # within an except clause, raise from None/...
+    "B011",    # do not assert False — prefer raise AssertionError
+    "B008",    # do not perform function call in default argument — DI patterns
+
+    # ── Pylint Noise ──
+    "PLR0913", # too many arguments — legitimate in constructors/configs
+    "PLR2004", # magic value in comparison
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0915", # too many statements
+    "PLC0414", # useless-import-alias — intentional re-export pattern (`from x import Y as Y`)
+
+    # ── Pyupgrade (intentional patterns) ──
+    "UP042",   # prefer StrEnum — project mandates (str, Enum) for compatibility
+
+    # ── Naming (framework intentionally uses these patterns) ──
+    "N802",    # function name should be lowercase
+    "N803",    # argument name should be lowercase
+    "N806",    # variable in function should be lowercase
+    "A002",    # argument shadows a Python builtin
+    "A003",    # class attribute shadows a Python builtin
+
+    # ── Complexity ──
+    "C901",    # function is too complex
+
+    # ── Async ──
+    "ASYNC100", # async function with no await — allowed for interface compliance
+    "ASYNC109", # async function with timeout parameter — framework timeout patterns
+    "ASYNC110", # async busy-wait — framework-specific polling patterns
+    "ASYNC230", # blocking open() in async context — explicit async file I/O handled separately
+    "ASYNC240", # blocking pathlib method in async context — framework file ops
+
+    # ── Type Annotations ──
+    "ANN401",  # dynamically typed `Any` disallowed — too strict for real framework code
+
+    # ── Type Checking Imports (overly strict; annotation-only imports are fine in-line) ──
+    "TC001",   # move first-party import into a TYPE_CHECKING block
+    "TC002",   # move third-party import into a TYPE_CHECKING block
+    "TC003",   # move stdlib import into a TYPE_CHECKING block
+
+    # ── Boolean Argument Trap (valid patterns in framework configuration) ──
+    "FBT001",  # boolean positional arg in function definition
+    "FBT002",  # boolean default positional arg in function definition
+    "FBT003",  # boolean positional value in function call
+
+    # ── Mutable Class Attributes (ClassVar annotation sometimes omitted intentionally) ──
+    "RUF012",  # mutable class attributes should be annotated with ClassVar
+    "RUF009",  # do not perform function call in dataclass defaults — Pydantic Field() is idiomatic
+
+    # ── Performance (multi-step HTML builders use append deliberately) ──
+    "PERF401", # use list comprehension instead of for-loop with append
+
+    # ── Simplify (style preferences, not correctness) ──
+    "SIM105",  # use contextlib.suppress(...) instead of try-except-pass
+    "SIM102",  # use a single if statement instead of nested ifs
+    "SIM117",  # use a single with statement with multiple contexts
+
+    # ── Commented-out Code (in-progress work is commonly commented) ──
+    "ERA001",  # found commented-out code
+
+    # ── TODO/FIX Comment Style ──
+    "TD002",   # missing author in TODO comment
+    "TD003",   # missing issue link in TODO comment
+    "FIX002",  # FIX comment: consider resolution
+
+    # ── Shebang ──
+    "EXE002",  # shebang is present but file is not executable
+
+    # ── Type: Ignore Comments ──
+    "PGH003",  # use specific error codes when ignoring type issues
+
+    # ── Pathlib (open() preference — PTH109/118 selectively handled) ──
+    "PTH123",  # use Path.open() instead of builtin open()
+
+    # ── Namespace Packages ──
+    "INP001",  # file is part of an implicit namespace package
+
+    # ── Global Statements ──
+    "PLW0603", # using the global statement to update a module-level variable
+
+    # ── Loop Variable Reassignment ──
+    "PLW2901", # redefined loop variable
+
+    # ── Misc ──
+    "F811",    # redefinition of unused name
+    "F841",    # local variable is assigned to but never used
+    "T201",    # print found
+    "EM101",   # exception must not use a string literal
+    "EM102",   # exception must not use an f-string literal
+    "RUF100",  # unused `noqa` directive
+    "RUF002",  # ambiguous unicode character in docstring — legitimate for API docs
+    "EXE001",  # shebang present but file not executable — common in dev scripts
+]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# Disallow direct imports of json/orjson — use lexigram.serialization
+"json" = { msg = "Use lexigram.serialization instead of standard library json for performance and consistency." }
+"orjson" = { msg = "Use lexigram.serialization instead of direct orjson to allow graceful fallback." }
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401", "TID252"]  # relative imports allowed in __init__.py re-exports
+# lexigram-contracts has zero external deps — cannot use lexigram.serialization
+"lexigram-contracts/**" = ["TID251"]
+# Serialization implementation must use stdlib json directly (it IS the json layer)
+"lexigram/src/lexigram/serialization/**" = ["TID251"]
+"lexigram-events/src/lexigram/events/webhooks/dispatcher.py" = ["TID251"]
+"lexigram-queue/src/lexigram/queue/backends/**" = ["TID251"]
+"lexigram-queue/tests/unit/test_tracing_queue_backends.py" = ["TID251"]
+"lexigram-resilience/src/lexigram/resilience/circuit/backend.py" = ["TID251"]
+"lexigram-tasks/src/lexigram/tasks/dlq/backend.py" = ["TID251"]
+"lexigram-tasks/src/lexigram/tasks/results/cache_backend.py" = ["TID251"]
+"lexigram-testing/src/lexigram/testing/snapshots.py" = ["TID251"]
+"lexigram-ai-governance/src/lexigram/ai/governance/audit.py" = ["TID251"]
+"lexigram-audit/src/lexigram/audit/verification/checksum.py" = ["TID251"]
+"lexigram-cli/src/lexigram/cli/commands/mcp.py" = ["TID251"]
+"lexigram-tasks/src/lexigram/tasks/scheduling/persistence.py" = ["TID251"]
+"lexigram-tasks/src/lexigram/tasks/workflows/state.py" = ["TID251"]
+# Utility scripts — broader exception patterns are expected
+"tools/**" = ["T201", "S", "ERA001", "ANN", "INP001"]
+"scripts/**" = ["T201", "S", "ERA001", "INP001", "ANN"]
+"benchmarks/**" = ["T201", "ANN", "INP001"]
+# Root-level migration/patch scripts
+"patch_*.py" = ["ERA001", "T201", "S", "INP001", "ANN", "F821"]
+"*_imports.py" = ["ERA001", "T201", "S", "INP001", "ANN"]
+"fix_*.py" = ["ERA001", "T201", "S", "INP001", "ANN", "F821"]
+"standardize_*.py" = ["ERA001", "T201", "S", "INP001", "ANN"]
+"verify_*.py" = ["T201", "S", "INP001", "ANN"]
+"update_*.py" = ["ERA001", "T201", "S", "INP001", "ANN", "F821"]
+"parse_*.py" = ["ERA001", "T201", "S", "INP001", "ANN", "F821"]
+"check_*.py" = ["ERA001", "T201", "S", "INP001", "ANN"]
+"generate_*.py" = ["ERA001", "T201", "S", "INP001", "ANN"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+# ---------------------------------------------------------------------------
+# import-linter
+# ---------------------------------------------------------------------------
+# Configuration lives in .importlinter (INI format) at the repo root.
+# Run boundary checks via the namespace-aware wrapper (required because
+# grimp's standard package-finder cannot traverse pkgutil.extend_path
+# namespace packages):
+#
+#   make lint-boundaries                       ← preferred Makefile target
+#   uv run python tools/lint_imports.py
+#
+# Do NOT use `uv run lint-imports` directly — it will fail to discover
+# extension packages (lexigram.contracts, lexigram.cache, etc.).
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = [
+    "lexigram/src",
+    "lexigram-contracts/src",
+    "lexigram-admin/src",
+    "lexigram-ai/src",
+    "lexigram-ai-agents/src",
+    "lexigram-ai-evaluation/src",
+    "lexigram-ai-feedback/src",
+    "lexigram-ai-governance/src",
+    "lexigram-ai-guard/src",
+    "lexigram-ai-llm/src",
+    "lexigram-ai-memory/src",
+    "lexigram-ai-observability/src",
+    "lexigram-ai-prompt/src",
+    "lexigram-ai-rag/src",
+    "lexigram-ai-session/src",
+    "lexigram-ai-skills/src",
+    "lexigram-ai-workers/src",
+    "lexigram-ai-mcp/src",
+    "lexigram-auth/src",
+    "lexigram-cache/src",
+    "lexigram-cli/src",
+    "lexigram-events/src",
+    "lexigram-features/src",
+    "lexigram-graphql/src",
+    "lexigram-http/src",
+    "lexigram-monitor/src",
+    "lexigram-nosql/src",
+    "lexigram-notification/src",
+    "lexigram-queue/src",
+    "lexigram-resilience/src",
+    "lexigram-search/src",
+    "lexigram-storage/src",
+    "lexigram-tasks/src",
+    "lexigram-secrets/src",
+    "lexigram-testing/src",
+    "lexigram-ui/src",
+    "lexigram-vector/src",
+    "lexigram-web/src",
+    "lexigram-workflow/src",
+    "lexigram-audit/src",
+    "lexigram-webhook/src",
+    "lexigram-graph/src",
+]
+warn_unused_ignores = true
+exclude = [
+    "lexigram-cli/src/lexigram/cli/templates/.*",
+    "lexigram-contracts/src/lexigram/__init__.py",
+    "lexigram-ai/src/lexigram/__init__.py",
+    "lexigram-admin/src/lexigram/__init__.py",
+    "tests/.*",
+    "examples/.*",
+    "docs/.*",
+    "alembic/.*",
+]
+
+# Per-module overrides for third-party packages that lack type stubs.
+# Keeping this explicit (instead of the global ignore_missing_imports) so that
+# mis-spelled first-party imports still surface as errors.
+[[tool.mypy.overrides]]
+module = [
+    "structlog.*",
+    "asyncpg.*",
+    "aioredis.*",
+    "aiomysql.*",
+    "qdrant_client.*",
+    "chromadb.*",
+    "anthropic.*",
+    "openai.*",
+    "cohere.*",
+    "groq.*",
+    "mistralai.*",
+    "ollama.*",
+    "pinecone.*",
+    "meilisearch.*",
+    "boto3.*",
+    "botocore.*",
+    "google.cloud.*",
+    "authlib.*",
+    "strawberry.*",
+    "mkdocs.*",
+    "aiohttp.*",
+    "aiofiles.*",
+    "alembic.*",
+    "sqlalchemy.*",
+    "pydantic.*",
+    "pydantic_settings.*",
+    "redis.*",
+    "celery.*",
+    "kafka.*",
+    "aiokafka.*",
+    "aio_pika.*",
+    "uvicorn.*",
+    "starlette.*",
+    "httpx.*",
+    "tenacity.*",
+    "cachetools.*",
+    "importlib_metadata.*",
+    "pkg_resources.*",
+    "cryptography.*",
+    "jwt.*",
+    "passlib.*",
+    "bcrypt.*",
+    "yaml.*",
+    "toml.*",
+    "dotenv.*",
+    "orjson.*",
+    "msgpack.*",
+]
+ignore_missing_imports = true
+
+# Pre-existing type errors in implementation internals.
+# These were not introduced by the finalization work; they pre-date the
+# addition of per-module mypy checking (previously masked by a broken
+# 'source file found twice' invocation).  Each file is suppressed
+# individually so that new or edited files remain fully checked.
+#
+# P0 Result unification (spec 2026-04-24) fixed the type errors in these modules.
+# Removed ignore_errors = true — modules now pass type checking.
+# Keeping the module list commented for reference during P1-P2 phases.
+
+# [[tool.mypy.overrides]]
+# module = [
+#     "lexigram.logging.redaction",
+#     "lexigram.validation.rules",
+#     "lexigram.di.function_provider",
+#     "lexigram.di.decorators",
+#     "lexigram.di.module.decorator",
+#     "lexigram.di.module.compiler",
+#     "lexigram.di.module.base",
+#     "lexigram.di.container",
+#     "lexigram.di.orchestrator",
+#     "lexigram.di.integration.provider",
+#     "lexigram.domain.models.base",
+#     "lexigram.config.main",
+#     "lexigram.core",
+#     "lexigram.app.module",
+#     "lexigram.app.base",
+# ]
+# ignore_errors = true

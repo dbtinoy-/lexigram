@@ -1,0 +1,157 @@
+"""{{ class_name }} event module.
+
+{% if doc %}
+{{ doc }}
+{% endif %}
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
+
+from lexigram.contracts.domain import DomainEvent
+from lexigram.events import EventBus, handles
+from lexigram.events.messages import EventMetadata
+
+
+@dataclass
+class {{ class_name }}Event(DomainEvent):
+    """Event triggered when a {{ resource_name }} is created, updated, or deleted.
+    
+    Attributes:
+        id: The {{ resource_name }} ID.
+        action: The action performed (created, updated, deleted).
+        data: The {{ resource_name }} data.
+        timestamp: When the event occurred.
+        metadata: Additional event metadata.
+    """
+    
+    id: int
+    action: str  # "created", "updated", "deleted"
+    data: dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+    metadata: EventMetadata = field(default_factory=EventMetadata)
+    
+    @property
+    def event_type(self) -> str:
+        """Get the event type."""
+        return "{{ resource_name }}.{self.action}"
+    
+    @property
+    def aggregate_id(self) -> str:
+        """Get the aggregate ID for this event."""
+        return str(self.id)
+
+
+class {{ class_name }}EventHandler:
+    """Handler for {{ class_name }} events.
+    
+    This handler processes {{ resource_name }} events and can trigger
+    additional actions like sending notifications, updating caches, etc.
+    """
+    
+    def __init__(self, event_bus: EventBus):
+        """Initialize the event handler.
+        
+        Args:
+            event_bus: The event bus for publishing events.
+        """
+        self.event_bus = event_bus
+        self._logger = None  # Lazy loaded
+    
+    @property
+    def logger(self):
+        """Lazy load logger."""
+        if self._logger is None:
+            from lexigram.logging import get_logger
+            self._logger = get_logger(f"{{ class_name }}EventHandler")
+        return self._logger
+    
+    @handles({{ class_name }}Event)
+    async def handle(self, event: {{ class_name }}Event) -> None:
+        """Handle the {{ class_name }} event.
+        
+        Args:
+            event: The {{ resource_name }} event to handle.
+        """
+        self.logger.info(
+            f"Handling {event.action} event for {{ resource_name }} {event.id}"
+        )
+        
+        if event.action == "created":
+            await self._handle_created(event)
+        elif event.action == "updated":
+            await self._handle_updated(event)
+        elif event.action == "deleted":
+            await self._handle_deleted(event)
+        else:
+            self.logger.warning(f"Unknown action: {event.action}")
+    
+    async def _handle_created(self, event: {{ class_name }}Event) -> None:
+        """Handle creation events.
+        
+        Args:
+            event: The creation event.
+        """
+        self.logger.info(f"{{ resource_name }} created: {event.id}")
+        
+        # Add custom logic here, e.g.:
+        # - Send welcome email
+        # - Update search index
+        # - Trigger webhooks
+        # - Create audit log
+    
+    async def _handle_updated(self, event: {{ class_name }}Event) -> None:
+        """Handle update events.
+        
+        Args:
+            event: The update event.
+        """
+        self.logger.info(f"{{ resource_name }} updated: {event.id}")
+        
+        # Add custom logic here, e.g.:
+        # - Invalidate cache
+        # - Send update notifications
+        # - Log changes
+    
+    async def _handle_deleted(self, event: {{ class_name }}Event) -> None:
+        """Handle deletion events.
+        
+        Args:
+            event: The deletion event.
+        """
+        self.logger.info(f"{{ resource_name }} deleted: {event.id}")
+        
+        # Add custom logic here, e.g.:
+        # - Clean up related data
+        # - Send deletion confirmation
+        # - Update search index
+
+
+# Convenience function to publish events
+async def publish_{{ resource_name }}_event(
+    event_bus: EventBus,
+    {{ resource_name }}_id: int,
+    action: str,
+    data: dict[str, Any] | None = None,
+) -> {{ class_name }}Event:
+    """Publish a {{ resource_name }} event.
+    
+    Args:
+        event_bus: The event bus to publish to.
+        {{ resource_name }}_id: The {{ resource_name }} ID.
+        action: The action performed.
+        data: Optional event data.
+        
+    Returns:
+        The published event.
+    """
+    event = {{ class_name }}Event(
+        id={{ resource_name }}_id,
+        action=action,
+        data=data or {},
+    )
+    
+    await event_bus.publish(event)
+    return event

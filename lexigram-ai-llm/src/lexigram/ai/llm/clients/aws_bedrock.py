@@ -1,0 +1,490 @@
+"""AWS Bedrock LLM client for the Lexigram LLM routing system.
+
+Implements the :class:`~lexigram.contracts.ai.protocols.LLMClientProtocol`
+protocol against the AWS Bedrock ``Converse`` API.  The ``Converse`` API
+provides a unified interface for all Bedrock models and natively supports
+multi-turn conversations and tool (function) calling.
+
+Authentication and request signing use the ``boto3``/``botocore`` AWS SDK,
+which honours the standard AWS credential chain (environment variables, shared
+credentials file, EC2 instance profile, ECS task role, etc.).
+
+Configuration is sourced from ``ClientConfig.extra``:
+
+* ``aws_region``            — AWS region, e.g. ``us-east-1`` (required)
+* ``aws_access_key_id``     — AWS access key ID (optional; from credential chain)
+* ``aws_secret_access_key`` — AWS secret access key (optional; from credential chain)
+* ``aws_session_token``     — AWS session token for temporary credentials (optional)
+* ``aws_profile``           — Named profile from ``~/.aws/credentials`` (optional)
+
+Notes:
+    ``boto3`` and ``botocore`` are optional dependencies.  An
+    :class:`ImportError` is raised at construction time if they are absent.
+
+    The Bedrock ``Converse`` API does not natively expose a server-sent event
+    (SSE) streaming response over HTTP like OpenAI.  Streaming uses
+    ``ConverseStream``, which returns an event-stream that ``botocore``
+    processes asynchronously via ``aiobotocore`` if available, or
+    synchronously via a thread-pool executor otherwise.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from typing import TYPE_CHECKING, Any
+
+from lexigram.ai.llm.clients._bedrock_mappers import (
+    bedrock_stream_chunks,
+    extract_system,
+    parse_bedrock_response,
+    tool_to_bedrock,
+)
+from lexigram.ai.llm.clients.base import AbstractLLMClient
+from lexigram.ai.llm.exceptions import (
+    LLMAuthenticationError,
+    LLMContentFilterError,
+    LLMError,
+    LLMModelNotFoundError,
+    LLMRateLimitError,
+)
+from lexigram.ai.llm.multimodal.fetcher import fetch_image_as_base64
+from lexigram.ai.llm.types import AIError, Completion, StreamChunk
+from lexigram.contracts.ai.multimodal import (
+    ImageBase64Part,
+    ImageUrlPart,
+    MessageContent,
+    TextPart,
+)
+from lexigram.contracts.core import HealthCheckResult, HealthStatus
+from lexigram.logging import (
+    get_logger,
+)
+from lexigram.result import Err, Ok, Result
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from lexigram.ai.llm.config import ClientConfig
+
+logger = get_logger(__name__)
+
+__all__ = ["BedrockClient"]
+
+_THREAD_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="bedrock-sync")
+
+
+class BedrockClient(AbstractLLMClient):
+    """AWS Bedrock client using the ``Converse`` API.
+
+    Routes requests to the Bedrock ``converse`` (non-streaming) and
+    ``converse_stream`` (streaming) endpoints.  The ``Converse`` API
+    normalises request/response format across all Bedrock models, so
+    no per-model message translation is needed.
+
+    Args:
+        config: LLM configuration.  ``config.extra`` must contain
+            ``aws_region``.
+    """
+
+    def __init__(self, config: ClientConfig) -> None:
+        """Initialise the Bedrock client.
+
+        Args:
+            config: LLM configuration with AWS-specific ``extra`` keys.
+
+        Raises:
+            ImportError: If ``boto3`` is not installed.
+            ValueError: If ``aws_region`` is missing from ``config.extra``.
+        """
+        super().__init__(config=config)
+
+        try:
+            import boto3
+        except ImportError as exc:
+            raise ImportError(
+                "BedrockClient requires 'boto3'. "
+                "Install with: pip install lexigram-intelligence[bedrock]"
+            ) from exc
+
+        extra: dict[str, Any] = config.extra or {}
+        region = extra.get("aws_region", "")
+        if not region:
+            raise ValueError(
+                "BedrockClient requires 'aws_region' in ClientConfig.extra"
+            )
+
+        self._region = region
+        boto_kwargs: dict[str, Any] = {"region_name": region}
+        if extra.get("aws_access_key_id"):
+            boto_kwargs["aws_access_key_id"] = extra["aws_access_key_id"]
+        if extra.get("aws_secret_access_key"):
+            boto_kwargs["aws_secret_access_key"] = extra["aws_secret_access_key"]
+        if extra.get("aws_session_token"):
+            boto_kwargs["aws_session_token"] = extra["aws_session_token"]
+        if extra.get("aws_profile"):
+            import boto3
+
+            session = boto3.Session(profile_name=extra["aws_profile"], **boto_kwargs)
+            self._client = session.client("bedrock-runtime")
+        else:
+            import boto3
+
+            self._client = boto3.client("bedrock-runtime", **boto_kwargs)
+
+    # ──────────────────────────────────────────────────────────────────
+    # LLMClientProtocol implementation
+    # ──────────────────────────────────────────────────────────────────
+
+    async def _do_complete(
+        self,
+        messages: list[Any],
+        *,
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int | None = None,
+        **kwargs: Any,
+    ) -> Result[Completion, LLMError]:
+        """Generate completion via Bedrock ``Converse``.
+
+        Args:
+            messages: OpenAI-compatible message list.
+            model: Model ID override (Bedrock model ARN or ID).
+            temperature: Sampling temperature.
+            max_tokens: Maximum output tokens.
+            **kwargs: Ignored for protocol compatibility.
+
+        Returns:
+            ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
+            failures.
+
+        Raises:
+            LLMAuthenticationError: On credential or authorisation failure.
+            AIError: For unexpected infrastructure failures.
+        """
+        active_model = model or self.config.model
+        bedrock_messages = await self._to_bedrock_messages_async(messages)
+        request: dict[str, Any] = {
+            "modelId": active_model,
+            "messages": bedrock_messages,
+            "inferenceConfig": {},
+        }
+        # Extended thinking is incompatible with temperature on Bedrock Claude
+        self._apply_thinking(request)
+        if "additionalModelRequestFields" not in request:
+            request["inferenceConfig"]["temperature"] = temperature
+
+        if max_tokens is not None:
+            request["inferenceConfig"]["maxTokens"] = max_tokens
+
+        system = extract_system(messages)
+        if system:
+            request["system"] = [{"text": system}]
+
+        try:
+            raw = await asyncio.get_event_loop().run_in_executor(
+                _THREAD_POOL,
+                lambda: self._client.converse(**request),
+            )
+        except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
+            return self._handle_error_as_result(exc)
+
+        return Ok(parse_bedrock_response(raw, active_model))
+
+    async def _do_stream_chat(
+        self,
+        messages: list[Any],
+        *,
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int | None = None,
+        **kwargs: Any,
+    ) -> Result[AsyncIterator[StreamChunk], LLMError]:
+        """Stream completion tokens from Bedrock ``ConverseStream``.
+
+        Args:
+            messages: OpenAI-compatible message list.
+            model: Model ID override.
+            temperature: Sampling temperature.
+            max_tokens: Maximum output tokens.
+            **kwargs: Ignored for protocol compatibility.
+
+        Returns:
+            ``Ok(AsyncIterator[StreamChunk])`` on success.
+            ``Err(LLMError)`` for recoverable failures.
+
+        Raises:
+            LLMAuthenticationError: On credential or authorisation failure.
+            AIError: For unexpected infrastructure failures.
+        """
+        active_model = model or self.config.model
+        bedrock_messages = await self._to_bedrock_messages_async(messages)
+        request: dict[str, Any] = {
+            "modelId": active_model,
+            "messages": bedrock_messages,
+            "inferenceConfig": {},
+        }
+        # Extended thinking is incompatible with temperature on Bedrock Claude
+        self._apply_thinking(request)
+        if "additionalModelRequestFields" not in request:
+            request["inferenceConfig"]["temperature"] = temperature
+
+        if max_tokens is not None:
+            request["inferenceConfig"]["maxTokens"] = max_tokens
+
+        system = extract_system(messages)
+        if system:
+            request["system"] = [{"text": system}]
+
+        try:
+            raw_stream = await asyncio.get_event_loop().run_in_executor(
+                _THREAD_POOL,
+                lambda: self._client.converse_stream(**request),
+            )
+        except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
+            return self._handle_error_as_result(exc)
+
+        return Ok(bedrock_stream_chunks(raw_stream, active_model, _THREAD_POOL))
+
+    async def _do_chat(
+        self,
+        messages: list[Any],
+        tools: list[Any] | None = None,
+        *,
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int | None = None,
+        **kwargs: Any,
+    ) -> Result[Completion, LLMError]:
+        """Generate completion with optional tool calling on Bedrock.
+
+        Args:
+            messages: OpenAI-compatible message list.
+            tools: Optional tool descriptors.
+            model: Model ID override.
+            temperature: Sampling temperature.
+            max_tokens: Maximum output tokens.
+            **kwargs: Ignored for protocol compatibility.
+
+        Returns:
+            ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
+            failures.
+
+        Raises:
+            LLMAuthenticationError: On credential or authorisation failure.
+            AIError: For unexpected infrastructure failures.
+        """
+        active_model = model or self.config.model
+        bedrock_messages = await self._to_bedrock_messages_async(messages)
+        request: dict[str, Any] = {
+            "modelId": active_model,
+            "messages": bedrock_messages,
+            "inferenceConfig": {},
+        }
+        # Extended thinking is incompatible with temperature on Bedrock Claude
+        self._apply_thinking(request)
+        if "additionalModelRequestFields" not in request:
+            request["inferenceConfig"]["temperature"] = temperature
+
+        if max_tokens is not None:
+            request["inferenceConfig"]["maxTokens"] = max_tokens
+
+        system = extract_system(messages)
+        if system:
+            request["system"] = [{"text": system}]
+
+        if tools:
+            request["toolConfig"] = {
+                "tools": [tool_to_bedrock(t) for t in tools],
+                "toolChoice": {"auto": {}},
+            }
+
+        try:
+            raw = await asyncio.get_event_loop().run_in_executor(
+                _THREAD_POOL,
+                lambda: self._client.converse(**request),
+            )
+        except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
+            return self._handle_error_as_result(exc)
+
+        return Ok(parse_bedrock_response(raw, active_model))
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Probe Bedrock by listing foundation models.
+
+        Args:
+            timeout: Informational only.
+
+        Returns:
+            Structured :class:`~lexigram.contracts.core.health.HealthCheckResult`.
+        """
+        try:
+            import boto3
+
+            mgmt = boto3.client("bedrock", region_name=self._region)
+            await asyncio.get_event_loop().run_in_executor(
+                _THREAD_POOL,
+                lambda: mgmt.list_foundation_models(maxResults=1),
+            )
+        except Exception as exc:  # noqa: BLE001 - boto3 exposes provider-specific exceptions
+            return HealthCheckResult(
+                component="llm.bedrock",
+                status=HealthStatus.UNHEALTHY,
+                error=str(exc),
+                details={"region": self._region, "model": self.config.model},
+            )
+
+        return HealthCheckResult(
+            component="llm.bedrock",
+            status=HealthStatus.HEALTHY,
+            details={"region": self._region, "model": self.config.model},
+        )
+
+    async def close(self) -> None:
+        """Release the Bedrock boto3 client."""
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+        await super().close()
+
+    def _apply_thinking(self, request: dict[str, Any]) -> None:
+        """Inject Bedrock extended-thinking parameters into the request payload.
+
+        Sets ``additionalModelRequestFields.thinking`` when ``config.thinking``
+        is configured.  Also removes ``temperature`` from ``inferenceConfig``
+        because Bedrock Claude rejects that combination.
+
+        Args:
+            request: Mutable Bedrock request dict.
+        """
+        if self.config.thinking is None:
+            return
+        request["additionalModelRequestFields"] = {
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": self.config.thinking.budget_tokens,
+            }
+        }
+        request.get("inferenceConfig", {}).pop("temperature", None)
+
+    async def _build_content_blocks(
+        self, content: MessageContent
+    ) -> list[dict[str, Any]]:
+        """Convert MessageContent to Bedrock ``Converse`` content blocks.
+
+        Handles plain strings, TextPart, ImageBase64Part, and ImageUrlPart.
+        ImageUrlPart entries are fetched and converted to base64 via
+        ``fetch_image_as_base64``.
+
+        Args:
+            content: Message content (string or list of ContentPart).
+
+        Returns:
+            List of Bedrock content block dicts with wire format:
+            - ``{"type": "text", "text": "..."}``.
+            - ``{"type": "image", "source": {"type": "base64", "mediaType": "...", "data": "..."}}``
+              (camelCase ``mediaType`` as per Bedrock API).
+
+        Raises:
+            LLMError: If image fetching fails (infrastructure error).
+        """
+        if isinstance(content, str):
+            return [{"type": "text", "text": content}]
+
+        blocks: list[dict[str, Any]] = []
+        for part in content:
+            if isinstance(part, TextPart):
+                blocks.append({"type": "text", "text": part.text})
+            elif isinstance(part, ImageBase64Part):
+                blocks.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "mediaType": part.media_type,
+                            "data": part.data,
+                        },
+                    }
+                )
+            elif isinstance(part, ImageUrlPart):
+                # Fetch and convert to base64
+                fetched = await fetch_image_as_base64(part.url)
+                blocks.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "mediaType": fetched.media_type,
+                            "data": fetched.data,
+                        },
+                    }
+                )
+        return blocks
+
+    async def _to_bedrock_messages_async(
+        self, messages: list[Any]
+    ) -> list[dict[str, Any]]:
+        """Async conversion of OpenAI-compatible messages to Bedrock format.
+
+        System messages are excluded (handled separately). Multimodal content
+        is converted using ``_build_content_blocks``.
+
+        Args:
+            messages: OpenAI-compatible message list (dicts or ChatMessage).
+
+        Returns:
+            List of Bedrock ``ConversationTurn`` dicts.
+        """
+        result: list[dict[str, Any]] = []
+        for msg in messages:
+            role = (
+                msg.get("role", "user")
+                if isinstance(msg, dict)
+                else getattr(msg, "role", "user")
+            )
+            role_str = role.value if hasattr(role, "value") else str(role)
+            if role_str == "system":
+                continue
+
+            content_raw = (
+                msg.get("content", "")
+                if isinstance(msg, dict)
+                else getattr(msg, "content", "")
+            )
+
+            # Use _build_content_blocks for content serialization
+            bedrock_content = await self._build_content_blocks(content_raw)
+
+            # Bedrock uses "user" and "assistant" roles only
+            bedrock_role = "assistant" if role_str == "assistant" else "user"
+            result.append({"role": bedrock_role, "content": bedrock_content})
+        return result
+
+    def _handle_error_as_result(self, error: Exception) -> Result[Any, LLMError]:
+        """Map a caught exception to ``Err`` or re-raise for infrastructure failures."""
+        err_str = str(error)
+        err_code = getattr(
+            getattr(error, "response", {}).get("Error", {}), "Code", None
+        )
+        if err_code is None and hasattr(error, "response"):
+            resp = error.response
+            if isinstance(resp, dict):
+                err_code = resp.get("Error", {}).get("Code", "")
+
+        if err_code in (
+            "AccessDeniedException",
+            "AuthorizationException",
+            "UnauthorizedException",
+        ):
+            raise LLMAuthenticationError(f"bedrock: auth failed: {error}") from error
+        if err_code in ("ThrottlingException", "TooManyRequestsException"):
+            return Err(LLMRateLimitError(f"bedrock: rate limit: {error}"))
+        if err_code in (
+            "ModelNotReadyException",
+            "ModelNotFoundException",
+            "ResourceNotFoundException",
+        ):
+            return Err(LLMModelNotFoundError(f"bedrock: model not found: {error}"))
+        if err_code == "ValidationException" and "content filter" in err_str.lower():
+            return Err(LLMContentFilterError(f"bedrock: content filtered: {error}"))
+        raise AIError(f"bedrock: infrastructure error: {error}") from error

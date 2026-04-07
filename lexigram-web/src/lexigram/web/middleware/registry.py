@@ -1,0 +1,109 @@
+"""Middleware registry for lexigram-web.
+
+Enables extensible adaptation of various middleware types (Starlette,
+DIScope, Lexigram-native) into the final Starlette middleware stack.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Protocol, cast, runtime_checkable
+
+from starlette.middleware import Middleware as StarletteMiddleware
+
+
+@runtime_checkable
+class _MiddlewareAdapterProtocol(Protocol):
+    """Protocol for middleware adapters."""
+
+    def can_adapt(self, middleware: Any) -> bool:
+        """Return True if this adapter can handle the given middleware."""
+        ...
+
+    def adapt(self, middleware: Any) -> StarletteMiddleware:
+        """Convert the middleware into a Starlette-compatible Middleware object."""
+        ...
+
+
+class _StarletteMiddlewareAdapter:
+    """Handles native Starlette Middleware objects."""
+
+    def can_adapt(self, middleware: Any) -> bool:
+        return isinstance(middleware, StarletteMiddleware)
+
+    def adapt(self, middleware: Any) -> StarletteMiddleware:
+        return middleware
+
+
+class _TupleMiddlewareAdapter:
+    """Handles (MiddlewareClass, kwargs_dict) tuples."""
+
+    def can_adapt(self, middleware: Any) -> bool:
+        return isinstance(middleware, tuple) and len(middleware) >= 1
+
+    def adapt(self, middleware: Any) -> StarletteMiddleware:
+        if len(middleware) == 2 and isinstance(middleware[1], dict):
+            return StarletteMiddleware(middleware[0], **middleware[1])
+        # Positional args (deprecated)
+        return StarletteMiddleware(middleware[0], *middleware[1:])
+
+
+class _DIScopeMiddlewareAdapter:
+    """Handles DIScopeMiddleware instances."""
+
+    def can_adapt(self, middleware: Any) -> bool:
+        # Check by class name to avoid direct dependency if possible
+        return type(middleware).__name__ == "DIScopeMiddleware"
+
+    def adapt(self, middleware: Any) -> StarletteMiddleware:
+        return StarletteMiddleware(
+            cast("Any", type(middleware)),
+            container=getattr(middleware, "container", None),
+        )
+
+
+class _HTTPMiddlewareAdapterBase:
+    """Handles Starlette BaseHTTPMiddleware instances."""
+
+    def can_adapt(self, middleware: Any) -> bool:
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        return isinstance(middleware, BaseHTTPMiddleware)
+
+    def adapt(self, middleware: Any) -> StarletteMiddleware:
+        return StarletteMiddleware(
+            cast("Any", type(middleware)),
+            container=getattr(middleware, "container", None),
+        )
+
+
+class MiddlewareAdapterRegistry:
+    """Registry for middleware adapters."""
+
+    def __init__(self) -> None:
+        self._adapters: list[_MiddlewareAdapterProtocol] = []
+        self._register_defaults()
+
+    def _register_defaults(self) -> None:
+        # Default order matters: more specific adapters first
+        self.add_adapter(_StarletteMiddlewareAdapter())
+        self.add_adapter(_DIScopeMiddlewareAdapter())
+        self.add_adapter(_HTTPMiddlewareAdapterBase())
+        self.add_adapter(_TupleMiddlewareAdapter())
+
+    def add_adapter(self, adapter: _MiddlewareAdapterProtocol) -> None:
+        """Add a custom middleware adapter."""
+        self._adapters.insert(
+            0,
+            adapter,
+        )  # LIFO order so custom adapters take precedence
+
+    def adapt(self, middleware: Any) -> StarletteMiddleware:
+        """Adapt a middleware object using registered adapters."""
+        for adapter in self._adapters:
+            if adapter.can_adapt(middleware):
+                return adapter.adapt(middleware)
+
+        # Final fallback: Lexigram Middleware Adapter
+        from lexigram.web.middleware.adapter import _LexigramMiddlewareAdapter
+
+        return StarletteMiddleware(_LexigramMiddlewareAdapter, lexigram_mw=middleware)

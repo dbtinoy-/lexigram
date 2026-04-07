@@ -1,0 +1,131 @@
+"""{{ class_name }} provider module.
+
+{% if doc %}
+{{ doc }}
+{% endif %}
+"""
+from typing import TYPE_CHECKING, Any
+
+from lexigram.di import Container, Provider, ProviderPriority
+
+if TYPE_CHECKING:
+    from lexigram.app import Application
+
+
+class {{ class_name }}Provider(Provider):
+    """{{ class_name }} provider for Lexigram application.
+    
+    This provider registers the {{ resource_name }} component in the DI container
+    and performs any necessary initialization.
+    
+    Priority: Controls initialization order (lower = earlier)
+    """
+    
+    name = "{{ name | lower }}"
+    priority = ProviderPriority.NORMAL
+    
+    def __init__(self, config: dict[str, Any] | None = None):
+        """Initialize the provider.
+        
+        Args:
+            config: Provider configuration dictionary.
+        """
+        self.config = config or {}
+        self._enabled = self.config.get("enabled", True)
+    
+    async def register(self, container: Container) -> None:
+        """Register provider dependencies in the container.
+        
+        Args:
+            container: The DI container.
+        """
+        if not self._enabled:
+            return
+        
+        # Register the model
+        # Example: container.register({{ resource_name }}_model, {{ class_name }}Model)
+        
+        # Register the service
+        # Example: container.register_singleton({{ resource_name }}_service, {{ class_name }}Service)
+        
+        # Register the controller
+        # Example: container.register({{ resource_name }}_controller, {{ class_name }}Controller)
+        
+        pass
+    
+    async def boot(self, app: "Application") -> None:
+        """Boot the provider after app initialization.
+        
+        This is called after the application is fully initialized.
+        
+        Args:
+            app: The Lexigram application instance.
+        """
+        if not self._enabled:
+            return
+        
+        # Add routes to the application
+        # Example:
+        # from lexigram.web import Router
+        # router = Router()
+        # router.add_controller({{ class_name }}Controller)
+        # app.mount_router(router)
+        
+        pass
+    
+    async def shutdown(self, app: "Application") -> None:
+        """Shutdown the provider.
+        
+        Called when the application is shutting down.
+        
+        Args:
+            app: The Lexigram application instance.
+        """
+        # Cleanup resources
+        # Example:
+        # await self._cleanup_connections()
+        pass
+    
+    def get_config_schema(self) -> dict[str, Any]:
+        """Get the configuration schema for this provider.
+        
+        Returns:
+            Dictionary describing the configuration options.
+        """
+        return {
+            "enabled": {
+                "type": "boolean",
+                "default": True,
+                "description": "Enable or disable this provider",
+            },
+            {% if config_options %}
+            {% for option in config_options %}
+            "{{ option.name }}": {
+                "type": "{{ option.type }}",
+                "default": {{ option.default }},
+                "description": "{{ option.description }}",
+            },
+            {% endfor %}
+            {% else %}
+            # Add your config options here:
+            # "timeout": {
+            #     "type": "integer",
+            #     "default": 30,
+            #     "description": "Connection timeout in seconds",
+            # },
+            {% endif %}
+        }
+
+
+def create_{{ name | lower }}_provider(
+    config: dict[str, Any] | None = None,
+) -> {{ class_name }}Provider:
+    """Factory function to create the provider.
+    
+    Args:
+        config: Provider configuration.
+        
+    Returns:
+        Configured provider instance.
+    """
+    return {{ class_name }}Provider(config=config)

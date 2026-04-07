@@ -1,0 +1,196 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "lexigram-auth"
+version = "0.1.2"
+description = "Authentication and authorization for Lexigram Framework - JWT, OAuth2, SAML, LDAP, RBAC, and multi-tenancy"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "auth",
+    "authentication",
+    "authorization",
+    "jwt",
+    "oauth2",
+    "saml",
+    "ldap",
+    "rbac",
+    "security",
+    "multi-tenancy",
+    "framework",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.0",
+    "orjson>=3.9.0",
+    "passlib[bcrypt]>=1.7.0",
+    "pyjwt>=2.0.0",
+    "python-jose>=3.3.0",
+    "typing-extensions>=4.0.0",
+    "cryptography>=46.0.5",
+]
+authors = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+maintainers = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+admin = [
+    "lexigram-admin>=0.1.1",
+]
+oauth2 = [
+    "authlib>=1.0.0",
+]
+saml = [
+    "pysaml2>=7.0.0",
+    "xmlsec>=1.3.0",
+]
+ldap = [
+    "ldap3>=2.9.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+all = [
+    "authlib>=1.0.0",
+    "pysaml2>=7.0.0",
+    "xmlsec>=1.3.0",
+    "ldap3>=2.9.0",
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.entry-points."lexigram.modules"]
+auth = "lexigram.auth.module:AuthModule"
+
+[project.entry-points."lexigram.admin.contributors"]
+auth = "lexigram.auth.admin.contributor:AuthAdminContributor"
+
+[project.entry-points."lexigram.providers"]
+auth = "lexigram.auth.di.provider:AuthProvider"
+
+[project.entry-points."lexigram.config"]
+auth = "lexigram.auth.config:AuthConfig"
+
+[project.entry-points."lexigram.cli.contributors"]
+auth = "lexigram.auth.cli.contributor:AuthCliContributor"
+
+[dependency-groups]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "TID252"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = "examples.*", ignore_errors = true },
+    { module = "docs.*", ignore_errors = true },
+]
+
+[tool.uv.sources.lexigram]
+workspace = true
+
+[tool.uv.sources.lexigram-admin]
+workspace = true
+
+[tool.uv.sources.lexigram-testing]
+workspace = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = ["--cov=lexigram.auth", "--cov-report=html", "--cov-report=term", "--cov-fail-under=80"]
+testpaths = ["tests"]
+markers = [
+    "integration: mark a test as an integration test",
+    "scenario: marks cross-package scenario integration tests",
+    "requires_redis: marks tests that require a live Redis connection",
+    "requires_postgres: marks tests that require a live PostgreSQL connection",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/lexigram",
+]

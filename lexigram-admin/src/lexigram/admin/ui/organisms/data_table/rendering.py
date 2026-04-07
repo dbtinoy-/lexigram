@@ -1,0 +1,409 @@
+"""Main rendering logic for data table component with HTMX/Alpine integration."""
+
+from __future__ import annotations
+
+from typing import Any
+from urllib.parse import urlencode
+
+from lexigram.admin.config import TableConfiguration
+from lexigram.admin.ui.organisms.data_table.actions import ActionManager
+from lexigram.admin.ui.organisms.data_table.layout import LayoutComposer
+from lexigram.admin.ui.organisms.data_table.permissions import PermissionManager
+from lexigram.admin.ui.organisms.data_table.states import StateRenderer
+from lexigram.admin.ui.organisms.data_table.views import ViewFactory
+from lexigram.admin.ui.organisms.pagination import Pagination
+from lexigram.admin.ui.state import TableState
+from lexigram.serialization import dumps_str
+from lexigram.ui import Zones, el, render_to_string
+
+
+class DataTableRenderer:
+    """Main renderer for data table component."""
+
+    def __init__(
+        self,
+        data: list[dict],
+        config: TableConfiguration,
+        state: TableState,
+        total: int | None = None,
+        user: Any = None,
+        loading: bool = False,
+        error: Any = None,
+        next_cursor: str | None = None,
+        summary: dict[str, Any] | None = None,
+        props: dict[str, Any] | None = None,
+    ):
+        self.data = data
+        self.config = config
+        self.state = state
+        self.total = total
+        self.user = user
+        self.loading = loading
+        self.error = error
+        self.next_cursor = next_cursor
+        self.summary = summary
+        self.props = props or {}
+
+        # Initialize managers
+        self.permission_manager = PermissionManager(user, config.resource_name)
+        self.permissions = self.permission_manager.check_permissions()
+
+        self.action_manager = ActionManager(config, self.permissions)
+        self.action_manager.configure_actions()
+
+        self.layout_composer = LayoutComposer(config, state)
+        self.state_renderer = StateRenderer(config, state)
+
+        # Pre-compute IDs
+        self._all_ids = self._extract_all_ids()
+
+    def _extract_all_ids(self) -> list[str]:
+        """Extract all record IDs from data."""
+        ids = []
+        for item in self.data:
+            if isinstance(item, dict):
+                item_id = item.get("id", item.get("user_id", item.get("pk")))
+            elif hasattr(item, "id"):
+                item_id = item.id
+            elif hasattr(item, "user_id"):
+                item_id = item.user_id
+            elif hasattr(item, "pk"):
+                item_id = item.pk
+            elif hasattr(item, "__getitem__"):
+                try:
+                    item_id = item[0]
+                except (IndexError, TypeError):
+                    item_id = None
+            else:
+                item_id = None
+
+            if item_id is not None:
+                ids.append(str(item_id))
+            else:
+                ids.append("")
+
+        return ids
+
+    @property
+    def all_ids_json(self) -> str:
+        """JSON serialization of all IDs for Alpine.js."""
+        return dumps_str(self._all_ids)
+
+    def render(self) -> str:
+        """Render the complete data table."""
+        # Toolbar sections
+        toolbar = self._render_toolbar()
+        header_section = toolbar.get("header", "")
+        search_section = toolbar.get("search", "")
+        filter_section = toolbar.get("filter", "")
+
+        is_htmx = self.props.get("htmx_request", False)
+
+        # Scope tabs — inline for full render, OOB for HTMX data-only
+        tabs_html = ""
+        if not (self.props.get("render_fragment") or is_htmx):
+            tabs_html = self._render_scope_tabs()
+
+        # View content
+        view_content = self._render_view_content()
+
+        # Pagination
+        pagination_el = self._render_pagination()
+
+        # Hidden state inputs
+        hidden_state_inputs = self._render_hidden_inputs()
+
+        # Table content
+        table_content = el(
+            "div",
+            *hidden_state_inputs,
+            view_content,
+            pagination_el if pagination_el else "",
+            id=Zones.DATA.id,
+        )
+
+        # HTMX wrapper
+        table_wrapper = self._render_htmx_wrapper(table_content)
+
+        # Fragment logic
+        if self.props.get("render_fragment", False):
+            return render_to_string(table_wrapper)
+
+        # HTMX data-only request: return data zone + OOB control fragments
+        if is_htmx:
+            oob_fragments = self._render_oob_fragments()
+            return render_to_string([table_wrapper, *oob_fragments])
+
+        if self.props.get("render_controls", False):
+            return render_to_string(header_section)
+
+        # Form wrapper
+        inner_form = el(
+            "form",
+            table_wrapper,
+            method="get",
+            x_ref="bulkForm",
+            class_="space-y-4",
+            **{"@submit.prevent": ""},
+        )
+
+        # Layout composition
+        container = self.layout_composer.compose(
+            search_section,
+            filter_section,
+            inner_form,
+        )
+
+        # Script and final markup
+        script = self._render_script()
+
+        return render_to_string(
+            [
+                script,
+                el(
+                    "div",
+                    header_section,
+                    tabs_html,
+                    container,
+                    id=Zones.TABLE.id,
+                    x_data=f"{{ selectedIds: [], expandedIds: [], collapsedGroups: [], lastSelected: null, focusedId: null, hasActiveFiltersState: false, allIds: {self.all_ids_json}, ...window.LexigramTableLogic }}",
+                    **{
+                        "@keydown.window": "handleKeydown($event)",
+                        "@htmx:after-swap.window": "$nextTick(() => updateActiveFiltersState())",
+                        "@input.window": f"if ($event.target.closest('{Zones.SEARCH.selector}') || $event.target.closest('{Zones.FILTERS.selector}')) $nextTick(() => updateActiveFiltersState())",
+                        "@change.window": f"if ($event.target.closest('{Zones.SEARCH.selector}') || $event.target.closest('{Zones.FILTERS.selector}')) $nextTick(() => updateActiveFiltersState())",
+                    },
+                ),
+            ],
+        )
+
+    def _render_toolbar(self) -> dict[str, Any]:
+        """Render toolbar sections."""
+        from lexigram.admin.ui.organisms.table.toolbar import TableToolbar
+
+        toolbar = TableToolbar(self.config, self.state)
+        return {
+            "header": toolbar.render_header(bulk_actions=self.config.bulk_actions)
+            if self.config.resource_prefix
+            else "",
+            "search": toolbar.render_search() if self.config.resource_prefix else "",
+            "filter": toolbar.render_filters(),
+        }
+
+    def _render_scope_tabs(self, oob: bool = False) -> str:
+        """Render Active/Trash scope tabs for soft-delete toggling."""
+        from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+
+        state = self.state
+        prefix = self.config.resource_prefix or ""
+        active = not state.include_deleted
+
+        active_state = state.with_include_deleted(False)
+        trash_state = state.with_include_deleted(True)
+
+        active_url = active_state.to_url(prefix)
+        trash_url = trash_state.to_url(prefix)
+
+        active_attrs = HTMXAttrs.for_full_refresh(active_state, prefix, push_url=True)
+        trash_attrs = HTMXAttrs.for_full_refresh(trash_state, prefix, push_url=True)
+
+        def _tab(label: str, is_active: bool, url: str, htmx_attrs: dict) -> Any:
+            """Render a single tab button or link."""
+            cls = (
+                "px-4 py-2 text-sm font-medium border-b-2 transition-colors "
+                "border-primary-500 text-primary-600"
+                if is_active
+                else (
+                    "px-4 py-2 text-sm font-medium border-b-2 transition-colors "
+                    "border-transparent text-gray-500 hover:text-gray-700 "
+                    "hover:border-gray-300"
+                )
+            )
+
+            if is_active:
+                return el("span", label, class_=cls)
+
+            return el(
+                "a",
+                label,
+                href=url,
+                class_=cls,
+                **htmx_attrs,
+            )
+
+        outer_attrs: dict[str, Any] = {"class_": "mb-4", "id": "table-scope-tabs"}
+        if oob:
+            outer_attrs["hx_swap_oob"] = "outerHTML"
+
+        return render_to_string(
+            el(
+                "div",
+                el(
+                    "div",
+                    el(
+                        "nav",
+                        _tab("Active", active, active_url, active_attrs),
+                        _tab("Trash", not active, trash_url, trash_attrs),
+                        class_="flex space-x-8 border-b border-gray-200",
+                    ),
+                    class_="px-6",
+                ),
+                **outer_attrs,
+            )
+        )
+
+    def _render_oob_fragments(self) -> list[Any]:
+        """Render OOB fragments for toolbar controls during data-only HTMX requests.
+
+        Returns a list of htpy elements with hx-swap-oob attributes.
+        """
+        from lexigram.admin.ui.organisms.table.toolbar import TableToolbar
+
+        fragments: list[Any] = []
+
+        # Toolbar switchers + clear button (existing OOB method)
+        toolbar = TableToolbar(self.config, self.state)
+        switchers = toolbar.render_switchers_oob()
+        if switchers is not None:
+            fragments.append(switchers)
+
+        # Scope tabs as OOB fragment
+        tabs = self._render_scope_tabs(oob=True)
+        if tabs:
+            fragments.append(tabs)
+
+        return fragments
+
+    def _render_view_content(self) -> Any:
+        """Render the appropriate view content based on state."""
+        if self.loading:
+            return self.state_renderer.render_skeleton()
+        if self.error:
+            return self.state_renderer.render_error(self.error)
+        if not self.data:
+            return self.state_renderer.render_empty()
+        view_strategy = ViewFactory.create_view(
+            self.state.view or "tabular",
+            self.data,
+            self.config,
+            self.state,
+            self.total,
+            self.summary,
+            self.user,
+            self.config.resource_name,
+        )
+        return view_strategy.render()
+
+    def _render_pagination(self) -> Any:
+        """Render pagination if needed."""
+        if self.total is None or self.total <= 0:
+            return None
+
+        params = self.state.to_query_params()
+        params.pop("page", None)
+        params.pop("per_page", None)
+        base_query = "&" + urlencode(params) if params else ""
+        base_url = (
+            f"{self.config.resource_prefix}/" if self.config.resource_prefix else ""
+        )
+
+        return Pagination(
+            page=self.state.page,
+            total=self.total,
+            per_page=self.state.per_page,
+            base_url=base_url,
+            extra_query=base_query,
+            hx_target=Zones.DATA.selector,
+            hx_swap="innerHTML",
+            show_size_selector=True,
+            next_cursor=self.next_cursor,
+            state=self.state,
+        )
+
+    def _render_hidden_inputs(self) -> list[Any]:
+        """Render hidden inputs for state preservation."""
+        exclude_keys = ["page", "per_page"]
+        if self.config.enable_search:
+            exclude_keys.append("search")
+
+        if self.config.filters:
+            if isinstance(self.config.filters, list):
+                exclude_keys.extend([f.name for f in self.config.filters])
+            elif isinstance(self.config.filters, dict):
+                exclude_keys.extend(self.config.filters.keys())
+
+        return self.state.render_hidden_inputs(exclude=exclude_keys)
+
+    def _render_htmx_wrapper(self, table_content: Any) -> Any:
+        """Render HTMX wrapper with appropriate attributes."""
+        from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+
+        htmx_attrs = {}
+        if self.state and self.config.resource_prefix:
+            htmx_attrs = HTMXAttrs.for_data_refresh(
+                self.state,
+                self.config.resource_prefix,
+                push_url=False,
+            )
+
+        return el(
+            "div",
+            table_content,
+            id=Zones.TABLE.id + "-inner",
+            hx_trigger="refreshTable from:body",
+            hx_disinherit="hx-select",
+            **htmx_attrs,
+        )
+
+    def _render_script(self) -> str:
+        """Render Alpine.js script."""
+        from lexigram.admin.ui.organisms.table.client_logic import (
+            DataTableScriptRenderer,
+        )
+
+        return DataTableScriptRenderer.render(self._all_ids)
+
+    def render_bulk_actions(self) -> Any:
+        """Render bulk actions bar."""
+        if not self.config.bulk_actions:
+            return None
+
+        from lexigram.admin.ui.organisms.data_table.actions import (
+            render_bulk_action_button,
+        )
+
+        bulk_buttons = []
+        for action in self.config.bulk_actions:
+            if not action.is_visible(None):
+                continue
+            btn = render_bulk_action_button(action)
+            if btn:
+                bulk_buttons.append(btn)
+
+        return el(
+            "div",
+            el(
+                "div",
+                el(
+                    "span",
+                    el("strong", x_text="selectedIds.length"),
+                    " items selected",
+                    class_="text-sm font-medium text-primary-600 dark:text-primary-400 mr-2",
+                ),
+                *bulk_buttons,
+                class_="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 flex items-center justify-between",
+            ),
+            role="alert",
+            aria_live="polite",
+            class_="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg transition-transform duration-200 z-50",
+            x_show="selectedIds.length > 0",
+            style="display: none;",
+            **{
+                "x-transition:enter": "transform ease-out duration-200",
+                "x-transition:enter-start": "translate-y-full",
+                "x-transition:enter-end": "translate-y-0",
+                "x-transition:leave": "transform ease-in duration-200",
+                "x-transition:leave-start": "translate-y-0",
+                "x-transition:leave-end": "translate-y-full",
+            },
+        )

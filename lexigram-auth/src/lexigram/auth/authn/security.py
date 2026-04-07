@@ -1,0 +1,347 @@
+"""Password security utilities using Passlib with a lightweight fallback."""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+import hashlib
+import importlib
+from pathlib import Path
+from types import ModuleType
+from typing import TYPE_CHECKING, Any, cast
+
+from lexigram.contracts.auth import PasswordHasherProtocol, PasswordPolicyProtocol
+from lexigram.logging import get_logger
+
+if TYPE_CHECKING:
+    from lexigram.auth.config import PasswordConfig
+
+__all__ = [
+    "DUMMY_PASSWORD_HASH",
+    "PasswordHasher",
+    "PasswordPolicy",
+    "UnknownHashError",
+]
+
+logger = get_logger(__name__)
+
+try:
+    _bcrypt: ModuleType | None = importlib.import_module("bcrypt")
+except ImportError:
+    _bcrypt = None
+bcrypt_available = _bcrypt is not None
+
+if not bcrypt_available:
+    logger.warning("bcrypt not available - password hashing will be limited")
+
+try:
+    pyotp: ModuleType | None = importlib.import_module("pyotp")
+except ImportError:
+    pyotp = None
+pyotp_available = pyotp is not None
+
+UnknownHashError = Exception
+
+
+_MAX_PASSWORD_BYTES = 72
+_WARN_PASSWORD_BYTES = 64
+_DEFAULT_BCRYPT_ROUNDS = 12
+
+
+def _prehash(password: str) -> str:
+    """Pre-hash *password* with SHA-256 to avoid bcrypt's 72-byte truncation.
+
+    The SHA-256 digest (32 bytes) is base64-encoded to a 44-byte ASCII string,
+    which is always well within bcrypt's 72-byte limit.  This must be applied
+    consistently in both :meth:`PasswordHasher.hash` and
+    :meth:`PasswordHasher.verify` so that hashes computed with pre-hashing can
+    be verified correctly.
+
+    Args:
+        password: Plain-text password string.
+
+    Returns:
+        Base64-encoded SHA-256 digest of the UTF-8 encoded password.
+    """
+    return base64.b64encode(hashlib.sha256(password.encode()).digest()).decode()
+
+
+def _prepare_password_bytes(password: str) -> bytes:
+    """Return the bytes that bcrypt should hash for *password*.
+
+    * Passwords **≤ 64 bytes**: encoded directly — no transformation.
+    * Passwords **> 64 bytes and ≤ 72 bytes**: a structured warning is emitted
+      because these are in the borderline range where bcrypt's limit is close.
+    * Passwords **> 72 bytes**: pre-hashed with SHA-256 via :func:`_prehash`
+      so that bcrypt sees a 44-byte ASCII string rather than silently
+      truncating the input.
+
+    Args:
+        password: Plain-text password string.
+
+    Returns:
+        Bytes ready to pass to ``bcrypt.hashpw`` / ``bcrypt.checkpw``.
+
+    Raises:
+        RuntimeError: If bcrypt is not installed.
+    """
+    if not bcrypt_available:
+        raise RuntimeError("bcrypt library is not available")
+
+    password_bytes = password.encode("utf-8")
+    byte_length = len(password_bytes)
+
+    if byte_length > _MAX_PASSWORD_BYTES:
+        # Pre-hash to avoid silent bcrypt truncation.
+        return _prehash(password).encode("ascii")
+
+    if byte_length > _WARN_PASSWORD_BYTES:
+        logger.warning(
+            "password_near_bcrypt_limit",
+            byte_length=byte_length,
+            limit=_MAX_PASSWORD_BYTES,
+            message=(
+                "Password is between 64 and 72 bytes; "
+                "it is close to bcrypt's 72-byte truncation limit."
+            ),
+        )
+
+    return password_bytes
+
+
+class PasswordHasher(PasswordHasherProtocol):
+    """Bcrypt password hasher implementing the PasswordHasherProtocol.
+
+    Provides secure password hashing using bcrypt with UTF-8 aware truncation.
+    ``hash`` and ``verify`` are static methods so they can be called directly
+    on the class (``await PasswordHasher.hash(password)``) or on an instance.
+    """
+
+    MAX_PASSWORD_BYTES = _MAX_PASSWORD_BYTES
+
+    def __init__(self, rounds: int = _DEFAULT_BCRYPT_ROUNDS) -> None:
+        self._rounds = rounds
+
+    @staticmethod
+    async def hash(password: str) -> str:
+        """Hash a password using bcrypt with UTF-8 aware truncation."""
+        if not bcrypt_available:
+            raise RuntimeError("bcrypt library is not available")
+
+        password_bytes = _prepare_password_bytes(password)
+
+        def _hash_sync(pwd_bytes: bytes) -> str:
+            bcrypt = cast("Any", _bcrypt)
+            salt = bcrypt.gensalt(rounds=_DEFAULT_BCRYPT_ROUNDS)
+            hashed = bcrypt.hashpw(pwd_bytes, salt)
+            return str(hashed.decode("ascii"))
+
+        return await asyncio.to_thread(_hash_sync, password_bytes)
+
+    @staticmethod
+    async def verify(password: str, hashed_password: str) -> bool:
+        """Verify a password against its hash asynchronously."""
+        if not bcrypt_available:
+            raise RuntimeError("bcrypt library is not available")
+
+        def _verify_sync(pwd_bytes: bytes, hash_bytes: bytes) -> bool:
+            try:
+                bcrypt = cast("Any", _bcrypt)
+                return bool(bcrypt.checkpw(pwd_bytes, hash_bytes))
+            except ValueError:
+                return False
+
+        password_bytes = _prepare_password_bytes(password)
+
+        if isinstance(hashed_password, str):
+            hashed_bytes = hashed_password.encode("ascii")
+        else:
+            hashed_bytes = hashed_password
+
+        return await asyncio.to_thread(_verify_sync, password_bytes, hashed_bytes)
+
+    def needs_rehash(self, hashed_password: str) -> bool:
+        """Check if the hash needs to be rehashed."""
+        return False
+
+    async def rehash_if_needed(
+        self,
+        password: str,
+        hashed_password: str | None,
+    ) -> str | None:
+        """Rehash the password if needed."""
+        if not hashed_password:
+            return None
+        if self.needs_rehash(hashed_password):
+            return await PasswordHasher.hash(password)
+        return None
+
+
+# A constant dummy hash used to ensure password verification is always executed
+# to prevent timing side-channels that reveal whether a username exists.
+# This must be a valid bcrypt hash string to avoid verification errors.
+#
+# SECURITY: This is intentionally weak (not a real hash) - it is used ONLY to
+# ensure that password verification runs for non-existent users, preventing
+# attackers from distinguishing between "user not found" and "wrong password"
+# via timing attacks. The hash is valid bcrypt format but the password that
+# produces it is unknown/impossible to guess.
+DUMMY_PASSWORD_HASH = "$2b$12$OMAqo55i5DcmvOMAqo55i5DcmvOMAqo55i5DcmvOMAqo55i5Dcmv"
+
+
+class PasswordPolicy(PasswordPolicyProtocol):
+    """Password policy configuration.
+
+    Lazy-loads common passwords file only when needed.
+    Implements PasswordPolicyProtocol for dependency injection compatibility.
+    """
+
+    _DEFAULT_COMMON_PASSWORDS: set[str] | None = None
+
+    def __init__(
+        self,
+        min_length: int = 8,  # NIST SP 800-63B minimum
+        max_length: int = 128,
+        require_uppercase: bool = True,
+        require_lowercase: bool = True,
+        require_digits: bool = False,
+        require_special: bool = False,
+        prevent_common: bool = True,  # NIST SP 800-63B: check against breach lists
+        prevent_reuse: bool = False,
+        history_size: int = 5,
+        common_passwords_file: str | None = None,
+        banned_patterns: list[str] | None = None,
+    ):
+        self.min_length = min_length
+        self.max_length = max_length
+        self.require_uppercase = require_uppercase
+        self.require_lowercase = require_lowercase
+        self.require_digits = require_digits
+        self.require_special = require_special
+        self.prevent_common = prevent_common
+        self.prevent_reuse = prevent_reuse
+        self.history_size = history_size
+        self._common_passwords_file = common_passwords_file
+        self._common_passwords: set[str] | None = None
+        self.banned_patterns: list[str] = banned_patterns or []
+
+    @classmethod
+    def from_config(cls, config: PasswordConfig) -> PasswordPolicy:
+        """Build a ``PasswordPolicy`` from a ``PasswordConfig`` dataclass.
+
+        Args:
+            config: Password complexity configuration from ``AuthConfig.password``.
+
+        Returns:
+            A configured :class:`PasswordPolicy` instance.
+        """
+        return cls(
+            min_length=config.min_length,
+            max_length=config.max_length,
+            require_uppercase=config.require_uppercase,
+            require_lowercase=config.require_lowercase,
+            require_digits=config.require_digits,
+            require_special=config.require_special,
+            banned_patterns=list(config.banned_patterns),
+        )
+
+    def _load_common_passwords(self, file_path: str | None) -> set[str]:
+        """Load common passwords from file (lazy-loaded)."""
+        if not file_path:
+            if PasswordPolicy._DEFAULT_COMMON_PASSWORDS is None:
+                PasswordPolicy._DEFAULT_COMMON_PASSWORDS = {
+                    "password",
+                    "123456",
+                    "123456789",
+                    "qwerty",
+                    "abc123",
+                    "password123",
+                    "admin",
+                    "letmein",
+                    "welcome",
+                    "monkey",
+                    "1234567890",
+                    "password1",
+                    "qwerty123",
+                    "welcome123",
+                }
+            return PasswordPolicy._DEFAULT_COMMON_PASSWORDS
+
+        try:
+            with Path(file_path).open() as f:
+                return {line.strip().lower() for line in f if line.strip()}
+        except FileNotFoundError:
+            return set()
+
+    def _get_common_passwords(self) -> set[str]:
+        """Return common passwords set, loading lazily on first access."""
+        if self._common_passwords is None:
+            self._common_passwords = self._load_common_passwords(
+                self._common_passwords_file
+            )
+        return self._common_passwords
+
+    def validate(self, password: str) -> None:
+        """Validate password against policy.
+
+        Args:
+            password: Plain text password to validate.
+
+        Raises:
+            ValueError: If the password violates the policy.
+        """
+        errors = []
+
+        # Length check
+        if len(password) < self.min_length:
+            errors.append(
+                f"Password must be at least {self.min_length} characters long",
+            )
+
+        if len(password) > self.max_length:
+            errors.append(
+                f"Password must be at most {self.max_length} characters long",
+            )
+
+        # Banned pattern check
+        lower = password.lower()
+        for pattern in self.banned_patterns:
+            if pattern.lower() in lower:
+                errors.append(
+                    f"Password must not contain the substring '{pattern}'",
+                )
+
+        # Character requirements
+        if self.require_uppercase and not any(c.isupper() for c in password):
+            errors.append("Password must contain at least one uppercase letter")
+
+        if self.require_lowercase and not any(c.islower() for c in password):
+            errors.append("Password must contain at least one lowercase letter")
+
+        if self.require_digits and not any(c.isdigit() for c in password):
+            errors.append("Password must contain at least one digit")
+
+        if self.require_special and not any(not c.isalnum() for c in password):
+            errors.append("Password must contain at least one special character")
+
+        # Common password check
+        if self.prevent_common and password.lower() in self._get_common_passwords():
+            errors.append("Password is too common, please choose a different one")
+
+        if errors:
+            raise ValueError("; ".join(errors))
+
+    def is_valid(self, password: str) -> bool:
+        """Return True if the password satisfies the policy without raising.
+
+        Args:
+            password: Plain text password.
+
+        Returns:
+            True if valid, False otherwise.
+        """
+        try:
+            self.validate(password)
+            return True
+        except ValueError:
+            return False

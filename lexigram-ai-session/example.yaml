@@ -1,0 +1,47 @@
+# session.yaml.example
+# Lexigram AI Session Configuration Template
+# YAML key: ai_session:
+# Environment variable prefix: LEX_AI_SESSION__
+
+ai_session:
+  # Master on/off switch for the AI session subsystem.
+  enabled: true
+
+  # Logical name used for DI registration keys.
+  name: "ai-session"
+
+  # -- Lifecycle -------------------------------------------------------------
+
+  default_system_prompt: null   # System prompt injected into every new session (null = none)
+  session_ttl: 86400            # Maximum session age in seconds (0 = never expire; default: 24 h)
+  cleanup_interval_s: 600       # How often the cleanup scheduler sweeps for expired sessions (seconds)
+  max_turns_per_session: 1000   # Hard cap on conversation turns before the session is closed
+  max_sessions_per_user: 100    # Maximum concurrent open sessions per user
+
+  # -- Checkpointing ---------------------------------------------------------
+
+  auto_checkpoint_interval: 10  # Save a checkpoint every N turns (null = disabled)
+  max_checkpoints_per_session: 50  # Maximum retained checkpoints per session
+
+  # -- Branching -------------------------------------------------------------
+
+  max_branches_per_session: 10  # Maximum forked branches per session
+
+  # -- Multi-Agent -----------------------------------------------------------
+
+  max_agents_per_group: 10      # Maximum agents in a multi-agent group session
+  default_turn_strategy: "round_robin"  # Turn-selection strategy: "round_robin", "priority", "llm_directed"
+
+  # -- Persistence -----------------------------------------------------------
+
+  backend: "in_memory"          # Storage backend: "in_memory", "cache", "database"
+                                # WARNING: use "cache" or "database" in production
+
+  # -- Web Middleware --------------------------------------------------------
+
+  cookie_name: "lexigram_session"  # Cookie name for web session ID (null = disable cookie transport)
+  header_name: "X-Session-ID"     # HTTP header name used to pass session IDs
+
+  # -- Integration -----------------------------------------------------------
+
+  consolidate_on_close: true    # Trigger memory consolidation when a session is closed

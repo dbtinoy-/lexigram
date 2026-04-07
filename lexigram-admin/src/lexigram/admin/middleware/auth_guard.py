@@ -1,0 +1,114 @@
+"""Session-based auth guard middleware for the Lexigram Admin panel.
+
+Redirects unauthenticated requests to the login page.  Bypass paths
+(login, setup, static assets, health) are always passed through so
+authentication pages remain accessible before a session exists.
+"""
+
+from __future__ import annotations
+
+from urllib.parse import quote
+
+from starlette.responses import RedirectResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
+
+# Paths (or path suffixes) that are always accessible without a session.
+_BYPASS_SUFFIXES: frozenset[str] = frozenset(
+    {
+        "/login",
+        "/login/",
+        "/logout",
+        "/logout/",
+        "/setup",
+        "/setup/",
+        "/health",
+        "/health/",
+    }
+)
+
+_BYPASS_PREFIXES: tuple[str, ...] = (
+    "/static/",
+    "/admin/static/",
+)
+
+
+class AdminAuthGuardMiddleware:
+    """Pure ASGI middleware that enforces session-based authentication.
+
+    Any request whose path is not in the bypass list must carry a
+    Starlette session with ``admin_user_id`` set.  If the session is
+    missing or empty the client is redirected to ``/admin/login``.
+
+    This middleware is intentionally lightweight — it does not touch the
+    database.  It relies solely on the signed session cookie that
+    ``AuthController`` writes on successful login.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        """Initialise the middleware.
+
+        Args:
+            app: The next ASGI application in the stack.
+        """
+        self._app = app
+
+    # ------------------------------------------------------------------
+    # ASGI callable
+    # ------------------------------------------------------------------
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Process an incoming HTTP request.
+
+        Args:
+            scope: ASGI connection scope.
+            receive: ASGI receive callable.
+            send: ASGI send callable.
+        """
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+
+        path: str = scope.get("path", "")
+
+        if self._is_bypass_path(path):
+            await self._app(scope, receive, send)
+            return
+
+        # Inspect the Starlette session (populated by SessionMiddleware).
+        if "session" in scope:
+            user_id = scope["session"].get("admin_user_id")
+            if user_id:
+                await self._app(scope, receive, send)
+                return
+
+        # No valid session — redirect to login preserving the original URL.
+        logger.debug("auth_guard.unauthenticated path=%s", path)
+        next_url = quote(path, safe="/")
+        redirect = RedirectResponse(
+            url=f"/admin/login?next={next_url}",
+            status_code=307,
+        )
+        await redirect(scope, receive, send)
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _is_bypass_path(self, path: str) -> bool:
+        """Return True if the path should bypass auth enforcement.
+
+        Args:
+            path: The request path.
+
+        Returns:
+            True when the path maps to a public endpoint or static asset.
+        """
+        for suffix in _BYPASS_SUFFIXES:
+            if path == suffix or path.endswith(suffix):
+                return True
+
+        return any(path.startswith(prefix) for prefix in _BYPASS_PREFIXES)

@@ -1,0 +1,325 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: ai_rag:
+# Environment variable prefix: LEX_AI_RAG__
+
+ai_rag:
+
+  # ============================================================================
+  # Root RAG Configuration
+  # ============================================================================
+
+  # Enable/disable the entire RAG pipeline
+  enabled: true
+
+  # Local persistence directory for vector store (e.g., Chroma)
+  persist_directory: ~
+
+  # Vector store backend selection
+  # Options: pgvector, chroma, qdrant, mock
+  vector_store_type: pgvector
+
+  # Embedding vector dimension (1536 for OpenAI ada-002)
+  vector_dimension: 1536
+
+  # Collection/index name in the vector store
+  collection_name: default
+
+  # Number of documents to retrieve from vector store
+  top_k: 5
+
+  # Minimum similarity score threshold (0-1)
+  similarity_threshold: 0.7
+
+  # Enable hybrid search combining semantic + keyword search
+  use_hybrid_search: true
+
+  # Embedding provider
+  # Options: openai, cohere, huggingface
+  embedding_provider: openai
+
+  # Embedding model identifier (required)
+  # Examples: text-embedding-ada-002, embed-english-v3.0
+  embedding_model: text-embedding-ada-002
+
+  # Include source citations in responses
+  enable_citations: true
+
+  # Citation style in output
+  # Options: inline, footnote, numbered
+  citation_style: inline
+
+  # Minimum confidence for citations (0-1)
+  min_citation_confidence: 0.6
+
+  # Text chunk size in tokens
+  chunk_size: 512
+
+  # Overlap between consecutive chunks (tokens)
+  chunk_overlap: 50
+
+  # Chunking strategy
+  # Options: recursive, semantic, token
+  chunking_strategy: recursive
+
+  # Enable query expansion techniques
+  enable_query_expansion: true
+
+  # Enable Hypothetical Document Embeddings (HyDE)
+  enable_hyde: false
+
+  # Response synthesis strategy
+  # Options: direct, extractive, abstractive, hybrid
+  synthesis_strategy: hybrid
+
+  # Detect hallucinations in AI-generated responses
+  enable_hallucination_detection: true
+
+  # Cache RAG query results
+  enable_caching: true
+
+  # Cache TTL in seconds (3600 = 1 hour, 0 = disabled)
+  cache_ttl: 3600
+
+  # ============================================================================
+  # Document Ingestion Stage Configuration
+  # ============================================================================
+  ingestion:
+    enabled: true
+
+    # Supported document formats for ingestion
+    document_formats:
+      - text
+      - pdf
+      - markdown
+
+    # Preprocess documents before chunking
+    preprocessing_enabled: false
+
+    # Enable OCR for scanned documents
+    ocr_enabled: false
+
+    # Extract tables from documents
+    table_extraction_enabled: false
+
+    # Enrich documents with metadata
+    metadata_enrichment_enabled: false
+
+    # Chunking strategy during ingestion
+    chunking_strategy: recursive
+
+    # Document chunk size in tokens
+    chunk_size: 1000
+
+    # Overlap between chunks
+    chunk_overlap: 200
+
+    # Minimum chunk size to keep
+    min_chunk_size: 100
+
+    # Error handling strategy
+    # Options: graceful, fail_fast
+    error_strategy: graceful
+
+    # Halt ingestion on first error
+    fail_fast: false
+
+  # ============================================================================
+  # Query Processing Stage Configuration
+  # ============================================================================
+  query_processing:
+    enabled: true
+
+    # Transform/enhance user queries
+    transformation_enabled: false
+
+    # Query transformation strategies
+    transformation_strategies:
+      - expansion
+
+    # Enable Hypothetical Document Embeddings
+    hyde_enabled: false
+
+    # Number of hypothetical documents to generate
+    hyde_num_documents: 1
+
+    # Route queries to different backends
+    routing_enabled: false
+
+    # Query routing strategy
+    routing_strategy: rule_based
+
+    # Error strategy for query processing
+    error_strategy: graceful
+
+  # ============================================================================
+  # Retrieval Stage Configuration
+  # ============================================================================
+  retrieval:
+    enabled: true
+
+    # Use vector search for retrieval
+    vector_search_enabled: true
+
+    # Number of documents to retrieve
+    top_k: 10
+
+    # Similarity threshold for retrieval
+    similarity_threshold: 0.0
+
+    # Enable knowledge graph-based retrieval
+    knowledge_graph_enabled: false
+
+    # Maximum depth for graph traversal
+    max_graph_depth: 2
+
+    # Enable multi-hop graph retrieval
+    multi_hop_enabled: false
+
+    # Maximum hops for multi-hop retrieval
+    max_hops: 3
+
+    # Error strategy for retrieval failures
+    error_strategy: fail_fast
+
+  # ============================================================================
+  # Context Optimization Stage Configuration
+  # ============================================================================
+  context_optimization:
+    enabled: true
+
+    # Rank retrieved documents by relevance
+    ranking_enabled: true
+
+    # Compress context to fit token limits
+    compression_enabled: false
+
+    # Context compression strategy
+    compression_strategy: hybrid
+
+    # Maximum tokens for context window
+    max_context_tokens: 4000
+
+    # Deduplicate similar documents
+    deduplication_enabled: true
+
+    # Similarity threshold for deduplication (0-1)
+    deduplication_threshold: 0.9
+
+    # Enable citations for sources
+    citations_enabled: true
+
+    # Error strategy for optimization
+    error_strategy: graceful
+
+  # ============================================================================
+  # Response Synthesis Stage Configuration
+  # ============================================================================
+  synthesis:
+    enabled: true
+
+    # Synthesis strategy
+    strategy: hybrid
+
+    # Maximum response length in tokens
+    max_response_length: 500
+
+    # Include source citations
+    include_citations: true
+
+    # Output format
+    output_format: markdown
+
+    # Error handling strategy
+    error_strategy: fallback
+
+    # Fallback synthesis strategy on error
+    fallback_strategy: direct
+
+  # ============================================================================
+  # Quality Assurance Stage Configuration
+  # ============================================================================
+  quality_assurance:
+    enabled: true
+
+    # Minimum faithfulness score (0-1)
+    min_faithfulness: 0.7
+
+    # Minimum relevance score (0-1)
+    min_relevance: 0.6
+
+    # Minimum confidence score (0-1)
+    min_confidence: 0.5
+
+    # Detect hallucinations in responses
+    hallucination_detection_enabled: true
+
+    # Strict mode for hallucination detection
+    hallucination_strict_mode: false
+
+    # Reject low-quality responses
+    reject_low_quality: false
+
+    # Warn on low-quality responses (when not rejecting)
+    warn_low_quality: true
+
+    # Error strategy for QA failures
+    error_strategy: graceful
+
+  # ============================================================================
+  # Post-Processing Stage Configuration
+  # ============================================================================
+  post_processing:
+    enabled: true
+
+    # Enable result caching
+    cache_enabled: true
+
+    # Cache responses for reuse
+    cache_results: true
+
+    # Collect performance metrics
+    collect_metrics: true
+
+    # Enable detailed logging for debugging
+    detailed_logging: false
+
+    # Error strategy for post-processing
+    error_strategy: skip
+
+  # ============================================================================
+  # Pipeline Execution Configuration
+  # ============================================================================
+
+  # Unique pipeline name
+  pipeline_name: default-rag-pipeline
+
+  # Pipeline description
+  pipeline_description: Default RAG pipeline with standard configuration
+
+  # Ordered list of pipeline stages to execute
+  # Omit stages to skip them
+  stages:
+    - retrieval
+    - synthesis
+    - quality_assurance
+
+  # Maximum retry attempts for pipeline execution
+  max_retries: 3
+
+  # Delay (seconds) between retries
+  retry_delay: 1.0
+
+  # Default error strategy for stages without explicit strategy
+  default_error_strategy: graceful
+
+  # Custom metadata attached to pipeline
+  metadata: {}
+
+  # Auto-evaluation configuration
+  # Run automatic evaluation every N pipeline requests
+  # Set to null to disable
+  auto_evaluate_every_n: ~
+
+  # Require citations in synthesis output
+  require_citations: false

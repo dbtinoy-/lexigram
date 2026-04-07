@@ -1,0 +1,76 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: nosql:
+# Environment variable prefix: LEX_NOSQL__
+
+nosql:
+  enabled: true
+  driver: "mongodb"  # mongodb, firestore, dynamodb (LEX_NOSQL__DRIVER)
+
+  # MongoDB Configuration (used when driver='mongodb')
+  mongodb:
+    uri: "mongodb://localhost:27017"        # LEX_NOSQL__MONGODB__URI
+    database: "lexigram"
+    max_pool_size: 100
+    min_pool_size: 10
+    server_selection_timeout_ms: 5000       # ms
+    connect_timeout_ms: 10000              # ms
+    socket_timeout_ms: 30000              # ms
+    retry_writes: true
+    retry_reads: true
+    read_preference: "primaryPreferred"    # primary, primaryPreferred, secondary, secondaryPreferred, nearest
+    write_concern_w: "majority"            # majority, 1, 2, 0
+    auth_source: "admin"
+
+  # Firestore Configuration (used when driver='firestore')
+  firestore: null
+  # firestore:
+  #   project_id: "my-gcp-project"         # LEX_NOSQL__FIRESTORE__PROJECT_ID (required)
+  #   credentials_json: null               # Path to .json key file, raw JSON, or null for ADC
+  #   database_id: "(default)"
+
+  # Named Multi-Backend Support
+  # When non-empty, the provider registers each backend under Named(entry.name).
+  # The first entry (or primary: true) also receives the unnamed DocumentStoreProtocol binding.
+  backends: []
+  # Example:
+  # backends:
+  #   - name: primary
+  #     primary: true
+  #     driver: mongodb
+  #     mongodb:
+  #       uri: "mongodb://primary-host:27017"
+  #       database: "app"
+  #       max_pool_size: 100
+  #       min_pool_size: 10
+  #       server_selection_timeout_ms: 5000
+  #       connect_timeout_ms: 10000
+  #       socket_timeout_ms: 30000
+  #       retry_writes: true
+  #       retry_reads: true
+  #       read_preference: "primaryPreferred"
+  #       write_concern_w: "majority"
+  #       auth_source: "admin"
+  #
+  #   - name: analytics
+  #     driver: mongodb
+  #     mongodb:
+  #       uri: "mongodb://analytics-host:27017"
+  #       database: "analytics"
+  #       max_pool_size: 50
+  #       min_pool_size: 5
+  #       server_selection_timeout_ms: 5000
+  #       connect_timeout_ms: 10000
+  #       socket_timeout_ms: 30000
+  #       retry_writes: true
+  #       retry_reads: true
+  #       read_preference: "secondaryPreferred"
+  #       write_concern_w: 1
+  #       auth_source: "admin"
+  #
+  #   - name: events
+  #     driver: firestore
+  #     firestore:
+  #       project_id: "my-gcp-project"
+  #       credentials_json: null
+  #       database_id: "(default)"

@@ -1,0 +1,131 @@
+"""WebSocket message handler registry for event streaming."""
+
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+from lexigram.events.constants import WebSocketMessageType
+
+
+class WSMessageHandler(Protocol):
+    """Protocol for WebSocket message handlers."""
+
+    def can_handle(self, message_type: str | None) -> bool:
+        """Check if this handler can handle the message type."""
+        ...
+
+    async def handle_message(
+        self,
+        stream: Any,
+        connection: Any,
+        message: dict[str, Any],
+    ) -> None:
+        """Handle the WebSocket message."""
+        ...
+
+
+class SubscribeMessageHandler:
+    """Handler for subscribe messages."""
+
+    def can_handle(self, message_type: str | None) -> bool:
+        return message_type == WebSocketMessageType.SUBSCRIBE
+
+    async def handle_message(
+        self,
+        stream: Any,
+        connection: Any,
+        message: dict[str, Any],
+    ) -> None:
+        await stream._handle_subscribe(connection, message)
+
+
+class UnsubscribeMessageHandler:
+    """Handler for unsubscribe messages."""
+
+    def can_handle(self, message_type: str | None) -> bool:
+        return message_type == WebSocketMessageType.UNSUBSCRIBE
+
+    async def handle_message(
+        self,
+        stream: Any,
+        connection: Any,
+        message: dict[str, Any],
+    ) -> None:
+        await stream._handle_unsubscribe(connection, message)
+
+
+class PingMessageHandler:
+    """Handler for ping messages."""
+
+    def can_handle(self, message_type: str | None) -> bool:
+        return message_type == WebSocketMessageType.PING
+
+    async def handle_message(
+        self,
+        stream: Any,
+        connection: Any,
+        message: dict[str, Any],
+    ) -> None:
+        await stream._send_message(
+            connection,
+            {"type": WebSocketMessageType.PONG},
+        )
+
+
+class WSMessageHandlerRegistry:
+    """Central registry for WebSocket message handlers."""
+
+    def __init__(self) -> None:
+        self._handlers: list[WSMessageHandler] = []
+
+    @classmethod
+    def with_defaults(cls) -> WSMessageHandlerRegistry:
+        """Create a registry pre-populated with the built-in default handlers.
+
+        Returns:
+            A new registry instance with all default handlers registered.
+        """
+        instance = cls()
+        instance._register_defaults()
+        return instance
+
+    def _register_defaults(self) -> None:
+        self._handlers = [
+            SubscribeMessageHandler(),
+            UnsubscribeMessageHandler(),
+            PingMessageHandler(),
+        ]
+
+    def register(self, handler: WSMessageHandler) -> None:
+        """Register a new message handler."""
+        self._handlers.insert(0, handler)
+
+    async def handle_message(
+        self,
+        stream: Any,
+        connection: Any,
+        message: dict[str, Any],
+    ) -> bool:
+        """Handle message using the appropriate handler. Returns True if handled."""
+        msg_type = message.get("type")
+        for handler in self._handlers:
+            if handler.can_handle(msg_type):
+                await handler.handle_message(stream, connection, message)
+                return True
+        return False
+
+
+_ws_message_handler_registry = WSMessageHandlerRegistry.with_defaults()
+
+
+def get_ws_message_handler_registry(
+    context: Any | None = None,
+) -> WSMessageHandlerRegistry:
+    """Get the global WebSocket message handler registry."""
+    from lexigram.di.resolution.context import get_resolver
+
+    resolver = get_resolver(context)
+    if resolver:
+        return resolver.resolve_sync(WSMessageHandlerRegistry)  # type: ignore[attr-defined]
+
+    return _ws_message_handler_registry

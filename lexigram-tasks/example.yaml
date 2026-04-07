@@ -1,0 +1,83 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+
+tasks:
+  # Environment: development, staging, production
+  env: development
+
+  # Queue Backend
+  backend: "redis"  # Options: redis, rabbitmq, postgres, sqs, memory
+  
+  # Redis Queue
+  redis:
+    url: "redis://localhost:6379/0"
+    queue_name: "lexigram_tasks"
+    connection_pool_size: 10
+    
+  # RabbitMQ Queue
+  rabbitmq:
+    uri: "amqp://guest:guest@localhost:5672//"
+    queue_name: "lexigram_tasks"
+    exchange: "lexigram.tasks"
+    prefetch_count: 10
+    
+  # PostgreSQL Queue (Heavy-Duty)
+  postgres:
+    dsn: "${DATABASE_URL}"
+    queue_table: "async_tasks"
+    
+  # AWS SQS
+  sqs:
+    queue_url: "${SQS_QUEUE_URL}"
+    region: "us-east-1"
+    
+  # Worker Configuration
+  worker:
+    worker_count: 4
+    max_concurrent_tasks: 10
+    poll_interval: 1  # Seconds
+    shutdown_timeout: 30  # Graceful shutdown
+    
+    # Task execution
+    default_timeout: 300  # 5 minutes
+    max_timeout: 3600  # 1 hour
+    enforce_timeout: true
+    
+    # Task retries
+    max_retries: 3
+    retry_backoff: "exponential"
+    retry_backoff_base: 2
+    
+  # Task Scheduler (Cron-like)
+  scheduler:
+    enabled: true
+    check_interval: 60  # Seconds
+    timezone: "UTC"
+    
+    # Built-in scheduled tasks
+    schedules:
+      - name: "cleanup_expired_sessions"
+        schedule: "0 * * * *"  # Every hour
+        task: "auth:cleanup_sessions"
+        
+      - name: "sync_cache"
+        schedule: "*/15 * * * *"  # Every 15 minutes
+        task: "cache:sync"
+        
+      - name: "generate_reports"
+        schedule: "0 0 * * *"  # Daily at midnight
+        task: "reporting:generate_daily_report"
+        
+  # Rate Limiting for Tasks
+  rate_limit:
+    enabled: false
+    rate: 100  # Max tasks per time period
+    time_window: 60  # Seconds
+    per_user: true
+    
+  # Monitoring
+  monitoring:
+    enabled: true
+    track_task_duration: true
+    track_failures: true
+    metrics_prefix: "tasks"

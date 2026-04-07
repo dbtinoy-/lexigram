@@ -1,0 +1,174 @@
+"""{{ index_name }} search index.
+
+This module provides search indexing for {{ index_name }} entities.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+from pydantic import BaseModel, Field
+
+from lexigram.search.engine import SearchableModel, SearchEngine
+
+if TYPE_CHECKING:
+    from lexigram.search.core.engine import SearchQuery
+
+
+class {{ index_name }}Document(BaseModel):
+    """Search document model for {{ index_name }}.
+    
+    This represents a document that can be indexed and searched.
+    """
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }}{% if not field.required %} = None{% endif %} = Field(
+        description="{{ field.description | default(field.name) }}"
+    )
+{% endfor %}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        """Pydantic config."""
+        from_attributes = True
+
+
+class {{ index_name }}Searchable(SearchableModel):
+    """Searchable model mixin for {{ index_name }}.
+    
+    Use this mixin to make your model searchable.
+    """
+    
+    # Map model fields to search document fields
+    search_document: type[BaseModel] = {{ index_name }}Document
+    
+    # Fields to index for full-text search
+    searchable_fields: list[str] = [
+{% for field in fields %}
+        "{{ field.name }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+    ]
+    
+    # Fields to filter on
+    filterable_fields: list[str] = [
+        "id",
+        "created_at",
+        "updated_at",
+    ]
+    
+    # Fields to sort by
+    sortable_fields: list[str] = [
+        "created_at",
+        "updated_at",
+    ]
+
+
+class {{ index_name }}SearchService:
+    """Search service for {{ index_name }}.
+    
+    Provides methods for indexing, searching, and managing {{ index_name }} documents.
+    """
+    
+    def __init__(self, search_engine: SearchEngine):
+        """Initialize the search service.
+        
+        Args:
+            search_engine: The search engine to use.
+        """
+        self.search_engine = search_engine
+        self.index_name = "{{ index_name_snake }}"
+    
+    async def index_document(self, document: {{ index_name }}Document) -> None:
+        """Index a single document.
+        
+        Args:
+            document: The document to index.
+        """
+        await self.search_engine.index(
+            index=self.index_name,
+            document=document.model_dump(),
+        )
+    
+    async def index_documents(self, documents: list[{{ index_name }}Document]) -> None:
+        """Index multiple documents in batch.
+        
+        Args:
+            documents: The documents to index.
+        """
+        await self.search_engine.index_many(
+            index=self.index_name,
+            documents=[doc.model_dump() for doc in documents],
+        )
+    
+    async def search(
+        self,
+        query: str | SearchQuery,
+        filters: dict[str, Any] | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[{{ index_name }}Document]:
+        """Search for documents matching the query.
+        
+        Args:
+            query: Search query string or SearchQuery object.
+            filters: Optional filters to apply.
+            limit: Maximum number of results.
+            offset: Offset for pagination.
+            
+        Returns:
+            List of matching documents.
+        """
+        results = await self.search_engine.search(
+            index=self.index_name,
+            query=query,
+            filters=filters,
+            limit=limit,
+            offset=offset,
+        )
+        
+        return [
+            {{ index_name }}Document(**hit)
+            for hit in results.get("hits", [])
+        ]
+    
+    async def delete_document(self, document_id: str) -> None:
+        """Delete a document from the index.
+        
+        Args:
+            document_id: The document ID to delete.
+        """
+        await self.search_engine.delete(
+            index=self.index_name,
+            document_id=document_id,
+        )
+    
+    async def delete_all(self) -> None:
+        """Delete all documents from the index."""
+        await self.search_engine.delete_all(index=self.index_name)
+    
+    async def get_document(self, document_id: str) -> {{ index_name }}Document | None:
+        """Get a document by ID.
+        
+        Args:
+            document_id: The document ID.
+            
+        Returns:
+            The document if found, None otherwise.
+        """
+        result = await self.search_engine.get(
+            index=self.index_name,
+            document_id=document_id,
+        )
+        
+        if result:
+            return {{ index_name }}Document(**result)
+        return None
+    
+    async def count(self) -> int:
+        """Get the total number of documents in the index.
+        
+        Returns:
+            Document count.
+        """
+        return await self.search_engine.count(index=self.index_name)

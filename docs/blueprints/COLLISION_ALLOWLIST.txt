@@ -1,0 +1,241 @@
+# Accepted cross-extension collisions — same-name parallel implementations
+# Format: one symbol name per line; lines starting with # are comments
+# These are domain-specific implementations that legitimately share a name.
+
+# ── Domain-typed StrEnums ────────────────────────────────────────────────────
+# Each extension defines its own BackendType/StoreBackend/etc. for its domain.
+BackendType
+ChartType
+FieldType
+MetricType
+MigrationStatus
+PolicyEffect
+StoreBackend
+
+# ── Per-extension config dataclasses ─────────────────────────────────────────
+# Each package defines its own config model; name collision is cosmetic only.
+BatchConfig
+CacheConfig
+GraphConfig
+GuardConfig
+MemoryConfig
+MetricsConfig
+MongoDBConfig
+RateLimitConfig
+ServerConfig
+TenancyConfig
+TracingConfig
+
+# ── Processor / result types ─────────────────────────────────────────────────
+BatchProcessor
+BatchResult
+IdempotencyResult
+MigrationResult
+TaskResult
+
+# ── Cache primitives ─────────────────────────────────────────────────────────
+CacheEntry
+CacheIntegration
+CacheMetrics
+CacheProvider
+CacheStats
+
+# ── Circuit-breaker primitives ───────────────────────────────────────────────
+CircuitBreakerBackend
+CircuitBreakerState
+
+# ── Guards / policies ────────────────────────────────────────────────────────
+# auth, admin, and web each implement their own guard hierarchy.
+AuthGuard
+CompositeGuard
+PermissionGuard
+RoleGuard
+
+# ── Per-domain error classes ──────────────────────────────────────────────────
+# Each domain independently defines errors in its own hierarchy.
+AccountLockedError
+ForbiddenError
+InvalidCredentialsError
+MethodNotAllowedError
+PasswordPolicyError
+ParseError
+QueryError
+RateLimitExceededError
+SchemaError
+SecretRotationError
+SessionExpiredError
+SessionNotFoundError
+TransactionError
+
+# ── Per-domain middleware ─────────────────────────────────────────────────────
+AbstractMiddleware
+AuthMiddleware
+MetricsMiddleware
+RateLimitMiddleware
+SecurityHeadersMiddleware
+
+# ── Provider DI registrations ─────────────────────────────────────────────────
+# cli/registry mirrors each extension's own Provider with its own subclass.
+AIProvider
+AdminProvider
+AuthProvider
+CacheProvider
+EventsProvider
+GraphQLProvider
+LLMProvider
+MonitorProvider
+NotificationProvider
+QueueProvider
+ResilienceProvider
+SearchProvider
+SessionProvider
+StorageProvider
+WebProvider
+
+# ── In-memory store / testing fakes ──────────────────────────────────────────
+InMemoryAuditLogger
+InMemoryAuditStore
+InMemoryIdempotencyStore
+InMemorySessionStore
+
+# ── Registry / manager patterns ───────────────────────────────────────────────
+HandlerRegistry
+HealthCheckRegistry
+LockManager
+MemoryBackendRegistry
+MigrationManager
+QueryOperatorRegistry
+
+# ── UI atoms — admin duplicates lexigram-ui at component level ────────────────
+ActivityFeed
+Form
+Grid
+KeyValueField
+NavItem
+Pagination
+Section
+StatCard
+Tabs
+ThemeToggle
+
+# ── Shared-name utility / service classes ─────────────────────────────────────
+ConnectionManager
+Counter
+DatabaseConnection
+DatabaseService
+DeadLetterEntry
+DeadLetterQueue
+EmbeddingCache
+EntityExtractor
+HealthCheck
+HealthCheckRunHook
+Histogram
+JSONFormatter
+JSONSerializer
+Migration
+OutboxEntry
+OutboxPublisher
+PackageWidgetRenderer
+PickleSerializer
+ProgressTracker
+ProviderInfo
+QueryAnalyzer
+QueryBuilder
+QueryMetrics
+QueryOperator
+RateLimiter
+ReasoningStep
+ResourceHandler
+RetryPolicy
+SearchQueryBuilder
+SkillToolAdapter
+TaskScheduler
+TemplateRenderer
+TemplatedTenantCollectionResolver
+TokenBucket
+WSMessageHandler
+WebSocket
+
+# ── Same-name policy / engine ──────────────────────────────────────────────────
+Condition
+Policy
+PolicyEngine
+
+# ── Operator classes defined in both auth-policies and sql-query ──────────────
+GreaterThanOperator
+InOperator
+LessThanOperator
+NotInOperator
+
+# ── Per-extension decorators / functions ──────────────────────────────────────
+cacheable
+create_provider_from_config
+distributed_lock
+idempotent
+retry
+saga_step
+throttle
+transaction
+validate
+version
+
+# ── Parallel pagination helpers ───────────────────────────────────────────────
+# graphql and sql each have cursor helpers; they serve different wire formats.
+decode_cursor
+encode_cursor
+
+# ── Other parallel-implementation functions ───────────────────────────────────
+get_content_type
+get_health_status
+get_request_cache
+get_version
+query
+render_template
+require_admin
+require_auth
+require_permission
+require_role
+trace
+validate_positive_int
+validate_query
+
+# ── Misc per-domain types ─────────────────────────────────────────────────────
+BelongsTo
+DeadLetterQueue
+ErrorCode
+ErrorResponse
+FieldSchema
+FieldSpecification
+FileUpload
+FilterCondition
+Gauge
+Histogram
+LLMRouter
+LogEntry
+PagedResult
+PaginationResult
+PasswordChanged
+PickleSerializer
+Pipeline
+StreamingResponse
+TestEnvironment
+
+# ── Per-package environment constants ─────────────────────────────────────────
+# Every package defines its own ENV_PREFIX / ENV_NESTED_DELIMITER by design.
+ENTRY_POINT_GROUP
+ENV_NESTED_DELIMITER
+ENV_PREFIX
+
+# ── Domain-appropriate default constants (different values are intentional) ───
+DEFAULT_BACKEND
+DEFAULT_BULK_BATCH_SIZE
+DEFAULT_CONNECT_TIMEOUT
+DEFAULT_HEADER_NAME
+DEFAULT_MAX_RETRIES
+DEFAULT_MAX_TOKENS
+DEFAULT_RATE_LIMIT_WINDOW
+DEFAULT_RETRY_DELAY
+DEFAULT_SMTP_PORT
+DEFAULT_STORE_BACKEND
+DEFAULT_TIMEOUT
+DEFAULT_TIMEOUT_S

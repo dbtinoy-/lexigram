@@ -1,0 +1,192 @@
+"""{{ query_name }} query handler.
+
+This module provides a CQRS query handler for {{ query_name }} queries.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from lexigram.events.handlers.base import QueryHandler
+from lexigram.events.messages.query import Query
+
+
+# =============================================================================
+# Query
+# =============================================================================
+
+@dataclass
+class {{ query_name }}Query(Query):
+    """Query for {{ query_name }} operations.
+    
+    This query represents a request for data.
+    """
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }} = None
+{% endfor %}
+    
+    # Pagination
+    limit: int = 20
+    offset: int = 0
+    
+    # Sorting
+    sort_by: str | None = None
+    sort_order: str = "asc"
+    
+    query_type: str = "{{ query_name }}"
+
+
+# =============================================================================
+# Result
+# =============================================================================
+
+@dataclass
+class {{ query_name }}Result:
+    """Result of {{ query_name }} query execution.
+    
+    Contains the query results and metadata.
+    """
+    success: bool
+    data: list[Any] | dict[str, Any] | None = None
+    total: int = 0
+    message: str = ""
+    error: str | None = None
+
+
+# =============================================================================
+# Handler
+# =============================================================================
+
+class {{ query_name }}Handler(QueryHandler[{{ query_name }}Query, {{ query_name }}Result]):
+    """Handler for {{ query_name }} queries.
+    
+    Implements the data fetching logic for {{ query_name }} queries.
+    """
+    
+    def __init__(
+        self,
+        repository: Any = None,
+    ):
+        """Initialize the handler.
+        
+        Args:
+            repository: The repository for data access.
+        """
+        self.repository = repository
+    
+    async def handle(
+        self,
+        query: {{ query_name }}Query,
+    ) -> {{ query_name }}Result:
+        """Handle the {{ query_name }} query.
+        
+        Args:
+            query: The query to execute.
+            
+        Returns:
+            The query results.
+        """
+        try:
+            # Validate query
+            await self._validate(query)
+            
+            # Execute query
+            data, total = await self._execute(query)
+            
+            return {{ query_name }}Result(
+                success=True,
+                data=data,
+                total=total,
+                message="Query executed successfully",
+            )
+            
+        except Exception as e:  # noqa: BLE001
+            return {{ query_name }}Result(
+                success=False,
+                error=str(e),
+            )
+    
+    async def _validate(self, query: {{ query_name }}Query) -> None:
+        """Validate the query.
+        
+        Args:
+            query: The query to validate.
+            
+        Raises:
+            ValidationError: If validation fails.
+        """
+        # Add validation logic here
+        # Example:
+        # if query.limit > 100:
+        #     raise ValidationError("Limit cannot exceed 100")
+        pass
+    
+    async def _execute(self, query: {{ query_name }}Query) -> tuple[list[Any], int]:
+        """Execute the query.
+        
+        Args:
+            query: The query to execute.
+            
+        Returns:
+            Tuple of (data, total_count).
+        """
+        # Add query execution logic here
+        # Example:
+        # return await self.repository.find(
+        #     filters=query.filters,
+        #     limit=query.limit,
+        #     offset=query.offset,
+        # )
+        return [], 0
+
+
+# =============================================================================
+# Read Model (optional)
+# =============================================================================
+
+class {{ query_name }}DTO:
+    """Data Transfer Object for {{ query_name }} results.
+    
+    Used to shape query results.
+    """
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }}
+{% endfor %}
+    
+    def __init__(self, **data):
+        """Initialize DTO from data."""
+        for key, value in data.items():
+            setattr(self, key, value)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert DTO to dictionary."""
+        return self.__dict__
+
+
+# =============================================================================
+# Usage Example
+# =============================================================================
+
+# Register the handler:
+#
+# from lexigram.events.buses.query import query_bus
+# from lexigram.events.decorators.handlers import query_handler
+#
+# @query_handler({{ query_name }}Query)
+# class {{ query_name }}HandlerWrapper:
+#     def __init__(self, handler: {{ query_name }}Handler):
+#         self.handler = handler
+#     
+#     async def handle(self, query: {{ query_name }}Query):
+#         return await self.handler.handle(query)
+#
+# query_bus.register({{ query_name }}Query, {{ query_name }}HandlerWrapper)
+#
+# Execute the query:
+#
+# query = {{ query_name }}Query(
+#     id="123",
+#     limit=10,
+# )
+# result = await query_bus.dispatch(query)

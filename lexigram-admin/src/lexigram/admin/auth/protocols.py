@@ -1,0 +1,445 @@
+"""Admin authentication service protocols.
+
+All protocols remain in lexigram-admin (not lexigram-contracts) because they
+are admin-specific and not consumed by other extension packages.
+
+``AdminAuditLogServiceProtocol`` extends the framework-wide
+``AuditLoggerProtocol`` from ``lexigram.contracts.audit`` so that admin audit
+implementations satisfy the cross-package contract.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+from lexigram.contracts.audit import AuditLoggerProtocol
+
+if TYPE_CHECKING:
+    from lexigram.admin.auth.errors import AdminAuthError
+    from lexigram.admin.auth.types import (
+        AdminAuthResult,
+        AdminLockoutInfo,
+        AdminLoginAttempt,
+        AdminPasswordValidationResult,
+        AdminSecurityEvent,
+        AdminSecurityEventType,
+    )
+    from lexigram.result import Result
+
+
+@runtime_checkable
+class AdminAuthServiceProtocol(Protocol):
+    """Main authentication orchestration service protocol.
+
+    Coordinates credential verification, rate limiting, lockout checks,
+    session issuance, and audit logging.
+    """
+
+    async def authenticate(
+        self,
+        email: str,
+        password: str,
+        ip_address: str,
+        user_agent: str,
+    ) -> Result[AdminAuthResult, AdminAuthError]:
+        """Authenticate an admin user with full security pipeline.
+
+        Args:
+            email: Admin user email.
+            password: Plain-text password.
+            ip_address: Client IP for rate limiting.
+            user_agent: Client user agent for audit.
+
+        Returns:
+            Ok(AdminAuthResult) with session details on success.
+            Err with specific AdminAuthError subclass on failure.
+        """
+        ...
+
+    async def invalidate_session(self, session_id: str) -> None:
+        """Invalidate a session (logout).
+
+        Args:
+            session_id: Session identifier to revoke.
+        """
+        ...
+
+    async def invalidate_all_user_sessions(self, user_id: str) -> None:
+        """Revoke all active sessions for a user (e.g., after password change).
+
+        Args:
+            user_id: Admin user UUID whose sessions to revoke.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminLoginAttemptStoreProtocol(Protocol):
+    """Persistence protocol for login attempt records."""
+
+    async def ensure_schema(self) -> None:
+        """Create the admin_login_attempts table if it does not exist."""
+        ...
+
+    async def insert(self, attempt: AdminLoginAttempt) -> None:
+        """Persist a login attempt record.
+
+        Args:
+            attempt: The attempt to store.
+        """
+        ...
+
+    async def count_recent_failures(self, email: str, since_seconds: int) -> int:
+        """Count failed attempts for email within the given window.
+
+        Args:
+            email: Email address to query.
+            since_seconds: Look-back window in seconds.
+
+        Returns:
+            Number of failed attempts.
+        """
+        ...
+
+    async def count_recent_failures_by_ip(
+        self, ip_address: str, since_seconds: int
+    ) -> int:
+        """Count failed attempts from an IP within the given window.
+
+        Args:
+            ip_address: IP address to query.
+            since_seconds: Look-back window in seconds.
+
+        Returns:
+            Number of failed attempts.
+        """
+        ...
+
+    async def clear_failures(self, email: str) -> None:
+        """Clear failure records for email (called on successful login).
+
+        Args:
+            email: Email to clear.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminAccountLockoutStoreProtocol(Protocol):
+    """Persistence protocol for account lockout records."""
+
+    async def ensure_schema(self) -> None:
+        """Create the admin_account_lockouts table if it does not exist."""
+        ...
+
+    async def get_active_lockout(self, email: str) -> AdminLockoutInfo | None:
+        """Get active lockout for email, or None if not locked.
+
+        Args:
+            email: Email to check.
+
+        Returns:
+            AdminLockoutInfo if active lockout exists, None otherwise.
+        """
+        ...
+
+    async def create_lockout(
+        self,
+        email: str,
+        consecutive_failures: int,
+        unlock_at: Any | None,
+        is_permanent: bool,
+    ) -> None:
+        """Create or update a lockout record for email.
+
+        Args:
+            email: Email to lock.
+            consecutive_failures: Total consecutive failures.
+            unlock_at: UTC datetime when lock expires (None if permanent).
+            is_permanent: Whether this requires manual admin unlock.
+        """
+        ...
+
+    async def clear_lockout(self, email: str) -> None:
+        """Remove active lockout for email (on successful login or admin unlock).
+
+        Args:
+            email: Email to unlock.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminLoginAttemptServiceProtocol(Protocol):
+    """Service for IP rate limiting and account lockout enforcement."""
+
+    async def check_ip_rate_limit(self, ip_address: str) -> None:
+        """Check IP rate limit. Raises RateLimitExceededError if exceeded.
+
+        Args:
+            ip_address: Client IP to check.
+
+        Raises:
+            RateLimitExceededError: When the IP is rate-limited.
+        """
+        ...
+
+    async def check_account_lockout(self, email: str) -> None:
+        """Check account lockout status. Raises AccountLockedError if locked.
+
+        Args:
+            email: Email address to check.
+
+        Raises:
+            AccountLockedError: When the account is locked.
+        """
+        ...
+
+    async def record_attempt(
+        self,
+        email: str,
+        ip_address: str,
+        user_agent: str,
+        success: bool,
+        failure_reason: str | None = None,
+    ) -> None:
+        """Record a login attempt and update lockout state on failure.
+
+        Args:
+            email: Email that attempted login.
+            ip_address: Client IP.
+            user_agent: Client user agent.
+            success: Whether the attempt succeeded.
+            failure_reason: Short failure code when success=False.
+        """
+        ...
+
+    async def clear_lockout(self, email: str) -> None:
+        """Clear lockout and failure records on successful login.
+
+        Args:
+            email: Email to clear.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminAuditLogStoreProtocol(Protocol):
+    """Persistence protocol for security audit log entries."""
+
+    async def ensure_schema(self) -> None:
+        """Create the admin_security_audit_log table if it does not exist."""
+        ...
+
+    async def insert(self, event: AdminSecurityEvent) -> None:
+        """Persist a security event.
+
+        Args:
+            event: Security event to store.
+        """
+        ...
+
+    async def query_recent(
+        self,
+        admin_user_id: str | None = None,
+        event_type: AdminSecurityEventType | None = None,
+        since_seconds: int = 3600,
+        limit: int = 100,
+    ) -> list[AdminSecurityEvent]:
+        """Query recent security events with optional filters.
+
+        Args:
+            admin_user_id: Filter to specific user (None = all users).
+            event_type: Filter to specific event type (None = all types).
+            since_seconds: Look-back window in seconds.
+            limit: Maximum records to return.
+
+        Returns:
+            List of matching security events, newest first.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminAuditLogServiceProtocol(AuditLoggerProtocol, Protocol):
+    """Service for recording admin security events.
+
+    Extends the framework-wide ``AuditLoggerProtocol`` so that admin audit
+    implementations satisfy the cross-package contract. Adds admin-specific
+    methods (``log_event``, ``get_recent_events``) on top of the base
+    ``log()`` and ``query()`` methods from ``AuditLoggerProtocol``.
+
+    Implementations must never raise — audit failures are swallowed so that
+    an audit store outage cannot interrupt authentication flows.
+    """
+
+    async def log_event(
+        self,
+        event_type: AdminSecurityEventType,
+        ip_address: str,
+        user_agent: str,
+        success: bool,
+        admin_user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Record a security event. Implementation must never raise.
+
+        Args:
+            event_type: Type of security event.
+            ip_address: Client IP.
+            user_agent: Client user agent.
+            success: Whether the operation succeeded.
+            admin_user_id: Associated admin user (None for pre-auth events).
+            metadata: Optional structured context.
+        """
+        ...
+
+    async def get_recent_events(
+        self,
+        admin_user_id: str | None = None,
+        since_seconds: int = 3600,
+        limit: int = 50,
+    ) -> list[AdminSecurityEvent]:
+        """Retrieve recent security events for display.
+
+        Args:
+            admin_user_id: Filter to specific user.
+            since_seconds: Look-back window.
+            limit: Maximum results.
+
+        Returns:
+            List of security events, newest first.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminPasswordPolicyServiceProtocol(Protocol):
+    """Password policy validation service."""
+
+    def validate(
+        self,
+        password: str,
+        email: str | None = None,
+    ) -> AdminPasswordValidationResult:
+        """Validate a password against all configured policy rules.
+
+        Returns ALL violations, not just the first one.
+
+        Args:
+            password: Plain-text password to validate.
+            email: Optional email — used to check if password contains it.
+
+        Returns:
+            AdminPasswordValidationResult with is_valid and full violations list.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminCsrfServiceProtocol(Protocol):
+    """CSRF token generation and validation service."""
+
+    def generate_token(self, session_id: str) -> str:
+        """Generate a CSRF token scoped to the given session.
+
+        Token format: base64url(timestamp:nonce:hmac_signature)
+
+        Args:
+            session_id: Session ID to scope the token to.
+
+        Returns:
+            CSRF token string.
+        """
+        ...
+
+    def validate_token(self, session_id: str, token: str) -> bool:
+        """Validate a CSRF token against the session.
+
+        Uses hmac.compare_digest for timing-safe comparison.
+
+        Args:
+            session_id: Session ID the token was generated for.
+            token: Token to validate.
+
+        Returns:
+            True if valid and not expired, False otherwise.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminSessionServiceProtocol(Protocol):
+    """Admin session lifecycle management service."""
+
+    async def create_session(
+        self,
+        user_id: str,
+        email: str,
+        roles: list[str],
+        ip_address: str,
+        user_agent: str,
+    ) -> str:
+        """Create a new session and return the session ID.
+
+        Args:
+            user_id: Admin user UUID.
+            email: Admin user email.
+            roles: User's roles.
+            ip_address: Client IP.
+            user_agent: Client user agent.
+
+        Returns:
+            New session identifier (secrets.token_urlsafe(32)).
+        """
+        ...
+
+    async def get_session(self, session_id: str) -> dict[str, Any] | None:
+        """Retrieve session data if valid (not expired, not revoked).
+
+        Checks both idle timeout and absolute expiry.
+
+        Args:
+            session_id: Session to retrieve.
+
+        Returns:
+            Session data dict or None if not found/expired.
+        """
+        ...
+
+    async def touch_session(self, session_id: str) -> None:
+        """Update session last-active timestamp.
+
+        Args:
+            session_id: Session to touch.
+        """
+        ...
+
+    async def revoke_session(self, session_id: str) -> None:
+        """Revoke a single session.
+
+        Args:
+            session_id: Session to revoke.
+        """
+        ...
+
+    async def revoke_all_user_sessions(self, user_id: str) -> None:
+        """Revoke all sessions for a user.
+
+        Args:
+            user_id: Admin user UUID.
+        """
+        ...
+
+
+__all__ = [
+    "AdminAccountLockoutStoreProtocol",
+    "AdminAuditLogServiceProtocol",
+    "AdminAuditLogStoreProtocol",
+    "AdminAuthServiceProtocol",
+    "AdminCsrfServiceProtocol",
+    "AdminLoginAttemptServiceProtocol",
+    "AdminLoginAttemptStoreProtocol",
+    "AdminPasswordPolicyServiceProtocol",
+    "AdminSessionServiceProtocol",
+]

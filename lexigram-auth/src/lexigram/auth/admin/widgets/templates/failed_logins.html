@@ -1,0 +1,15 @@
+{# Failed Logins Widget Template #}
+<div class="card">
+  <div class="card-body">
+    <h6 class="card-subtitle mb-3 text-muted">Failed Logins (1 hour)</h6>
+    <h3 class="card-title">
+      {{ count }}
+      {% if is_elevated %}
+      <span class="badge bg-danger ms-2">Elevated</span>
+      {% endif %}
+    </h3>
+    {% if unique_ips > 0 %}
+    <p class="small text-muted mb-0">Unique IPs: <strong>{{ unique_ips }}</strong></p>
+    {% endif %}
+  </div>
+</div>

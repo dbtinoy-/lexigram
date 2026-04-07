@@ -1,0 +1,211 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+
+# ============================================================================
+# Search Core Configuration
+# ============================================================================
+
+# Search backend type
+# Options: pgvector, meilisearch, elasticsearch, typesense, chroma, qdrant, memory
+backend_type: memory
+# Alias accepted: provider
+
+# Default request timeout in seconds
+timeout: 30.0
+
+# ============================================================================
+# Query Building Configuration
+# ============================================================================
+query:
+  # Query building strategy
+  # Options: 'fuzzy', 'exact', 'semantic', 'hybrid'
+  strategy: fuzzy
+
+  # Default query result limit
+  default_limit: 10
+
+  # Maximum allowed query result limit
+  max_limit: 100
+
+  # Enable result highlighting of matched terms
+  enable_highlighting: true
+
+  # Enable faceted search results
+  enable_faceting: true
+
+  # Enable result aggregations
+  enable_aggregations: false
+
+  # Fuzzy matching threshold (0-1, where 1 is exact match)
+  fuzzy_threshold: 0.8
+
+# ============================================================================
+# MeiliSearch Backend Configuration
+# ============================================================================
+meilisearch:
+  # MeiliSearch server URL
+  url: http://localhost:7700
+
+  # API key for authentication (optional)
+  api_key: ~
+
+  # Request timeout in seconds
+  timeout: 30
+
+  # Maximum concurrent connections
+  max_connections: 10
+
+  # Fields to search by default
+  searchable_attributes:
+    - title
+    - name
+    - description
+    - content
+    - text
+    - body
+
+  # Fields to return in search results
+  displayed_attributes:
+    - id
+    - title
+    - name
+    - description
+    - created_at
+    - updated_at
+
+  # Attributes that can be filtered
+  filterable_attributes: []
+
+  # Attributes that can be sorted
+  sortable_attributes:
+    - created_at
+    - updated_at
+
+  # Enable typo tolerance during search
+  typo_tolerance_enabled: true
+
+  # Minimum word size for typo tolerance
+  min_word_size_for_typos:
+    oneTypo: 4
+    twoTypos: 8
+
+  # Ranking rules in priority order
+  ranking_rules:
+    - words
+    - typo
+    - proximity
+    - attribute
+    - sort
+    - exactness
+
+# ============================================================================
+# Elasticsearch / OpenSearch Backend Configuration
+# ============================================================================
+elasticsearch:
+  # Elasticsearch cluster hosts
+  hosts:
+    - http://localhost:9200
+
+  # API key for authentication
+  api_key: ~
+
+  # Basic auth username
+  username: ~
+
+  # Basic auth password
+  password: ~
+
+  # Use HTTPS for cluster connections
+  use_ssl: false
+
+  # Verify SSL certificates
+  verify_certs: true
+
+  # Prefix for all index names
+  index_prefix: lexigram_search_
+
+  # Number of shards per index
+  number_of_shards: 1
+
+  # Number of replicas per shard
+  number_of_replicas: 0
+
+# ============================================================================
+# Typesense Backend Configuration
+# ============================================================================
+typesense:
+  # Typesense API key
+  api_key: ~
+
+  # Typesense node connections
+  nodes:
+    - host: localhost
+      port: 8108
+      protocol: http
+
+  # Connection timeout in seconds
+  connection_timeout: 30
+
+  # Health check interval in seconds
+  health_check_interval: 60
+
+# ============================================================================
+# PostgreSQL Full-Text Search Configuration
+# ============================================================================
+postgres:
+  # PostgreSQL connection string
+  # Format: postgresql://user:password@host:port/database
+  connection_string: ''
+
+  # PostgreSQL text search config
+  # Options: english, french, german, simple, etc.
+  text_search_config: english
+
+  # Enable pg_trgm trigram fuzzy matching
+  enable_trigram: true
+
+  # Automatically create required PostgreSQL tables
+  auto_create_tables: true
+
+# ============================================================================
+# MySQL FULLTEXT Search Configuration
+# ============================================================================
+mysql:
+  # MySQL connection string
+  connection_string: ''
+
+  # FULLTEXT search mode
+  # Options: natural_language, boolean, with_query_expansion
+  fulltext_mode: natural_language
+
+  # Minimum word length for indexing
+  min_word_length: 3
+
+# ============================================================================
+# SQLite FTS5 Configuration
+# ============================================================================
+sqlite:
+  # Database file path (use ':memory:' for in-memory database)
+  db_path: ':memory:'
+
+  # FTS5 tokenizer
+  tokenizer: 'porter unicode61'
+
+  # Automatically create FTS5 tables on init
+  auto_create_tables: true
+
+# ============================================================================
+# Search Operations Configuration
+# ============================================================================
+operations:
+  # Maximum retry attempts on search failures
+  max_retries: 3
+
+  # Backoff multiplier between retry attempts
+  retry_backoff: 0.5
+
+  # Individual request timeout in seconds
+  request_timeout: 30.0
+
+  # Documents per bulk index request
+  bulk_chunk_size: 500

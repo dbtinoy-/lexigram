@@ -1,0 +1,74 @@
+"""{{ entity_name }} repository."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from lexigram.sql.repositories.base import Repository
+
+
+class {{ entity_name }}Entity:
+    """{{ entity_name }} entity."""
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }}
+{% endfor %}
+
+
+class {{ repo_name }}Repository(Repository[{{ entity_name }}Entity, int]):
+    """Repository for {{ entity_name }} entities."""
+
+    def __init__(self, db_provider: Any) -> None:
+        self.db_provider = db_provider
+
+    @property
+    def model_class(self) -> type[{{ entity_name }}Entity]:
+        return {{ entity_name }}Entity
+
+    async def get_by_id(self, id: int) -> {{ entity_name }}Entity | None:
+        return None
+
+    async def get_all(self) -> list[{{ entity_name }}Entity]:
+        return []
+
+    async def create(self, entity: {{ entity_name }}Entity) -> {{ entity_name }}Entity:
+        return entity
+
+    async def update(self, id: int, entity: {{ entity_name }}Entity) -> {{ entity_name }}Entity:
+        return entity
+
+    async def delete(self, id: int) -> None:
+        return None
+
+    async def find(
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[{{ entity_name }}Entity]:
+        return []
+
+    async def count(self, filters: dict[str, Any] | None = None) -> int:
+        return 0
+
+    async def find_by_{{ fields[0].name if fields else 'id' }}(
+        self,
+        {{ fields[0].name if fields else 'id' }}: {{ fields[0].type if fields else 'int' }},
+    ) -> {{ entity_name }}Entity | None:
+        return await self.find_one({
+            "{{ fields[0].name if fields else 'id' }}": {{ fields[0].name if fields else 'id' }},
+        })
+
+    async def exists(
+        self,
+        {{ fields[0].name if fields else 'id' }}: {{ fields[0].type if fields else 'int' }},
+    ) -> bool:
+        entity = await self.find_one({
+            "{{ fields[0].name if fields else 'id' }}": {{ fields[0].name if fields else 'id' }},
+        })
+        return entity is not None
+
+    def _to_entity(self, model: Any) -> {{ entity_name }}Entity:
+        return {{ entity_name }}Entity(**model.__dict__)
+
+    def _to_model(self, entity: {{ entity_name }}Entity) -> Any:
+        return entity

@@ -1,0 +1,140 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lexigram-ai-prompt"
+version = "0.1.2"
+description = "AI prompt management for the Lexigram Framework — templates, composition, optimization"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["lexigram", "prompt", "prompt-engineering", "templates", "ai", "framework", "async", "python"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+authors = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }]
+maintainers = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }]
+dependencies = [
+    "lexigram-contracts>=0.1.0",
+    "lexigram>=0.1.1",
+    "jinja2>=3.0",
+    "typing-extensions>=4.0.0",
+]
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+jinja2 = [
+    "jinja2>=3.0.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.0.0",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.8.0", "mypy>=1.0.0"]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[project.entry-points."lexigram.ai.subsystems"]
+prompt = "lexigram.ai.prompt.di.provider:PromptProvider"
+
+[project.entry-points."lexigram.providers"]
+ai-prompt = "lexigram.ai.prompt.di.provider:PromptProvider"
+
+[project.entry-points."lexigram.config"]
+ai-prompt = "lexigram.ai.prompt.config:PromptConfig"
+
+[project.entry-points."lexigram.ai.modules"]
+prompt = "lexigram.ai.prompt.module:PromptModule"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lexigram"]
+
+[tool.uv.sources]
+lexigram = { workspace = true }
+lexigram-contracts = { workspace = true }
+lexigram-testing = { workspace = true }
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+disable_error_code = ["attr-defined", "unused-ignore", "unreachable", "no-untyped-def", "type-arg", "misc", "arg-type", "assignment", "return-value", "override", "call-arg", "no-any-return", "operator", "dict-item", "import-not-found"]
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+strict = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = "examples.*", ignore_errors = true },
+]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "TID252"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = [
+    "--cov=lexigram.ai.prompt",
+    "--cov-report=term",
+    "--cov-report=html",
+    "--cov-fail-under=60",
+]
+markers = [
+    "integration: mark a test as an integration test",
+    "scenario: marks cross-package scenario integration tests",
+]

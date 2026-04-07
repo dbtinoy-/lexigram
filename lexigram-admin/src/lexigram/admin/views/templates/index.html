@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - {{ category | capitalize }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="md:flex md:items-center md:justify-between mb-8">
+        <div class="flex-1 min-w-0">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                {{ category | capitalize }} Configuration
+            </h2>
+            <p class="mt-1 text-sm text-gray-500">
+                Manage your {{ category }} settings and environment variables.
+            </p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="md:grid md:grid-cols-12 md:divide-x md:divide-gray-100 min-h-[600px]">
+            <!-- Sidebar Tabs -->
+            <aside class="md:col-span-3 bg-gray-50/50 p-6">
+                <nav class="space-y-1">
+                    {% for spec in specs %}
+                    <a href="?ns={{ spec.namespace }}" 
+                       class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                       {% if spec.namespace == active_ns %}
+                       bg-primary-50 text-primary-700
+                       {% else %}
+                       text-gray-600 hover:bg-gray-100 hover:text-gray-900
+                       {% endif %}">
+                        {% if spec.icon %}
+                        <span class="mr-3 text-lg opacity-70">{{ spec.icon }}</span>
+                        {% endif %}
+                        {{ spec.label }}
+                    </a>
+                    {% endfor %}
+                    
+                    {% if not specs %}
+                    <div class="text-center py-10">
+                        <p class="text-xs text-gray-400 italic">No configuration groups found for this category.</p>
+                    </div>
+                    {% endif %}
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="md:col-span-9 p-8">
+                {% if active_spec %}
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-gray-900 mb-1">{{ active_spec.label }}</h3>
+                    <p class="text-sm text-gray-500">Namespace: <code class="bg-gray-100 px-1 rounded">{{ active_spec.namespace }}</code></p>
+                </div>
+
+                <form method="POST" action="" class="space-y-6 max-w-2xl">
+                    <input type="hidden" name="_ns" value="{{ active_spec.namespace }}">
+                    
+                    {% for node in active_spec.nodes %}
+                    <div class="space-y-1">
+                         <div class="flex items-center justify-between">
+                            <label for="{{ node.name }}" class="block text-sm font-semibold text-gray-700">
+                                {{ node.label }}
+                                {% if node.required %}<span class="text-red-500">*</span>{% endif %}
+                            </label>
+                            {% if node.icon %}
+                            <span class="text-gray-400 text-xs">{{ node.icon }}</span>
+                            {% endif %}
+                         </div>
+                         
+                         {% if node.type == "boolean" %}
+                         <div class="flex items-center h-5 mt-2">
+                             <input id="{{ node.name }}" name="{{ node.name }}" type="checkbox" 
+                                    {% if values.get(node.name) %}checked{% endif %}
+                                    {% if node.readonly %}disabled{% endif %}
+                                    class="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded cursor-pointer transition-all">
+                             <span class="ml-3 text-sm text-gray-500">Enabled</span>
+                         </div>
+                         
+                         {% elif node.type == "enum" %}
+                         <select id="{{ node.name }}" name="{{ node.name }}" 
+                                 {% if node.readonly %}disabled{% endif %}
+                                 class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md shadow-sm">
+                             {% for opt in node.options %}
+                             <option value="{{ opt }}" {% if values.get(node.name) == opt %}selected{% endif %}>{{ opt }}</option>
+                             {% endfor %}
+                         </select>
+
+                         {% elif node.type == "secret" %}
+                         <input type="password" name="{{ node.name }}" id="{{ node.name }}" 
+                                value="{{ values.get(node.name, '') }}"
+                                {% if node.readonly %}readonly{% endif %}
+                                placeholder="••••••••"
+                                class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+
+                         {% elif node.type == "int" %}
+                         <input type="number" name="{{ node.name }}" id="{{ node.name }}" 
+                                value="{{ values.get(node.name, '') }}"
+                                {% if node.readonly %}readonly{% endif %}
+                                class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+
+                         {% else %}
+                         <input type="text" name="{{ node.name }}" id="{{ node.name }}" 
+                                value="{{ values.get(node.name, '') }}"
+                                {% if node.readonly %}readonly{% endif %}
+                                class="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                         {% endif %}
+
+                         {% if node.help_text %}
+                         <p class="mt-2 text-xs text-gray-400">{{ node.help_text }}</p>
+                         {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="pt-6 border-t border-gray-100 flex justify-end gap-3">
+                        <button type="reset" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                            Reset
+                        </button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 shadow-sm transition-all transform hover:scale-105">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="flex flex-col items-center justify-center h-full text-center py-20">
+                    <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                        <span class="text-3xl">⚙️</span>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">Select a Configuration Group</h3>
+                    <p class="mt-1 text-sm text-gray-500 max-w-xs mx-auto">
+                        Choose a configuration group from the sidebar to view and modify its settings.
+                    </p>
+                </div>
+                {% endif %}
+            </main>
+        </div>
+    </div>
+</div>
+{% endblock %}

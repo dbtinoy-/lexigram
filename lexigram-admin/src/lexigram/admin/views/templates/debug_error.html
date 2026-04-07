@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Error: {{ exc_type }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .error-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .error-header {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3);
+    }
+
+    .error-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+
+    .error-header p {
+        margin: 0;
+        font-size: 16px;
+        opacity: 0.95;
+    }
+
+    .copy-section {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .copy-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .copy-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .copy-btn.copied {
+        background: rgba(34, 197, 94, 0.3);
+        border-color: rgba(34, 197, 94, 0.5);
+    }
+
+    .error-section {
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #3a3a3a;
+    }
+
+    .error-section h2 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .traceback {
+        background: #1e1e1e;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 400px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        border: 1px solid #3a3a3a;
+    }
+
+    .tb-line {
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .error-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .error-table td {
+        padding: 10px;
+        border-bottom: 1px solid #3a3a3a;
+        vertical-align: top;
+    }
+
+    .error-table td:first-child {
+        width: 150px;
+        font-weight: 500;
+    }
+
+    .error-code {
+        background: #1e1e1e;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+    }
+
+    .icon {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-header">
+        <h1>🔥 {{ exc_type }}</h1>
+        <p id="error-message">{{ exc_message }}</p>
+        <div class="copy-section">
+            <button type="button" class="copy-btn" onClick="copyError(event)">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                    </path>
+                </svg>
+                Copy Error
+            </button>
+            <span id="copy-feedback" style="color: #a5b4fc; font-size: 14px; display: none;">✓ Copied!</span>
+        </div>
+    </div>
+
+    <div class="error-section">
+        <h2 class="text-primary-400">Stack Trace</h2>
+        <div class="traceback text-gray-300">{{ traceback | safe }}</div>
+    </div>
+
+    <div class="error-section">
+        <h2 class="text-primary-400">Request Details</h2>
+        <table class="error-table">
+            <tr>
+                <td class="text-gray-400"><strong>Method:</strong></td>
+                <td class="text-gray-200">{{ request_method }}</td>
+            </tr>
+            <tr>
+                <td class="text-gray-400"><strong>URL:</strong></td>
+                <td class="text-gray-200">{{ request_url }}</td>
+            </tr>
+            <tr>
+                <td class="text-gray-400"><strong>Path:</strong></td>
+                <td id="request-path" class="text-gray-200">{{ request_path }}</td>
+            </tr>
+            <tr>
+                <td class="text-gray-400"><strong>Query:</strong></td>
+                <td class="text-gray-200">{{ request_query }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if local_vars %}
+    <div class="error-section">
+        <h2 class="text-primary-400">Local Variables</h2>
+        <table class="error-table">
+            {% for key, value in local_vars.items() %}
+            <tr>
+                <td class="text-gray-400"><strong>{{ key }}:</strong></td>
+                <td><code class="error-code text-primary-300">{{ value }}</code></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function copyError(e) {
+        if (e && e.preventDefault) e.preventDefault();
+
+        const btn = document.querySelector('.copy-btn');
+        const feedback = document.getElementById('copy-feedback');
+        const originalHTML = btn ? btn.innerHTML : null;
+
+        const errorEl = document.getElementById('error-message');
+        const pathEl = document.getElementById('request-path');
+        const tracebackEl = document.querySelector('.traceback');
+
+        const exc = errorEl ? errorEl.innerText.trim() : `{{ exc_type }}: {{ exc_message }}`;
+        const path = pathEl ? pathEl.innerText.trim() : `{{ request_path }}`;
+        const traceback = tracebackEl ? tracebackEl.innerText.trim() : `{{ traceback_plain }}`;
+
+        const errorText = `${exc}\n\nLocation: ${path}\n\n${traceback}`;
+
+        function showCopied() {
+            if (!btn) return;
+            btn.classList.add('copied');
+            btn.innerHTML = '<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!';
+            if (feedback) feedback.style.display = 'inline';
+            setTimeout(() => {
+                if (!btn) return;
+                btn.classList.remove('copied');
+                if (originalHTML) btn.innerHTML = originalHTML;
+                if (feedback) feedback.style.display = 'none';
+            }, 2000);
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(errorText).then(showCopied).catch(() => {
+                fallbackCopy(errorText, showCopied);
+            });
+        } else {
+            fallbackCopy(errorText, showCopied);
+        }
+
+        function fallbackCopy(text, onSuccess) {
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+                const ok = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (ok && onSuccess) onSuccess();
+                if (!ok) window.prompt('Copy the error text:', text);
+            } catch (err) {
+                window.prompt('Copy the error text:', text);
+            }
+        }
+    }
+</script>
+{% endblock %}

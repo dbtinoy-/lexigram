@@ -1,0 +1,175 @@
+"""{{ consumer_name }} message consumer.
+
+This module provides a message consumer for processing messages from a queue.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import TYPE_CHECKING, Any, Callable
+
+from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from lexigram.messaging.brokers.base import BrokerBase
+
+logger = logging.getLogger(__name__)
+
+
+class {{ consumer_name }}Message(BaseModel):
+    """Message schema for {{ consumer_name }}.
+    
+    Defines the expected message format for this consumer.
+    """
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }}{% if not field.required %} = None{% endif %} = Field(
+        description="{{ field.description | default(field.name) }}"
+    )
+{% endfor %}
+
+    class Config:
+        """Pydantic config."""
+        from_attributes = True
+
+
+class {{ consumer_name }}Consumer:
+    """Message consumer for {{ consumer_name }}.
+    
+    This consumer processes messages from the {{ queue_name }} queue.
+    """
+    
+    def __init__(
+        self,
+        broker: "BrokerBase",
+        queue_name: str = "{{ queue_name }}",
+        error_queue: str | None = None,
+    ):
+        """Initialize the consumer.
+        
+        Args:
+            broker: The message broker to use.
+            queue_name: The queue to consume from.
+            error_queue: Optional queue for failed messages.
+        """
+        self.broker = broker
+        self.queue_name = queue_name
+        self.error_queue = error_queue
+        self._running = False
+        self._handlers: dict[str, Callable] = {}
+    
+    async def start(self) -> None:
+        """Start consuming messages."""
+        if self._running:
+            return
+        
+        await self.broker.connect()
+        self._running = True
+        
+        # Register default handlers
+        self._register_default_handlers()
+        
+        # Start consuming
+        await self.broker.consume(
+            queue=self.queue_name,
+            callback=self._process_message,
+        )
+        
+        logger.info(f"Started consuming from {self.queue_name}")
+    
+    async def stop(self) -> None:
+        """Stop consuming messages."""
+        if not self._running:
+            return
+        
+        self._running = False
+        await self.broker.disconnect()
+        
+        logger.info(f"Stopped consuming from {self.queue_name}")
+    
+    def _register_default_handlers(self) -> None:
+        """Register default message handlers."""
+        # Override this method to register custom handlers
+        # Example:
+        # self.register_handler("order_created", self.handle_order_created)
+        pass
+    
+    def register_handler(self, message_type: str, handler: Callable) -> None:
+        """Register a handler for a specific message type.
+        
+        Args:
+            message_type: The type of message to handle.
+            handler: The async function to handle the message.
+        """
+        self._handlers[message_type] = handler
+        logger.debug(f"Registered handler for {message_type}")
+    
+    async def _process_message(self, message: bytes) -> None:
+        """Process an incoming message.
+        
+        Args:
+            message: The raw message bytes.
+        """
+        try:
+            # Parse message
+            data = json.loads(message.decode("utf-8"))
+            
+            # Validate message
+            message_obj = {{ consumer_name }}Message(**data)
+            
+            # Get handler for message type
+            message_type = getattr(message_obj, "type", "default")
+            handler = self._handlers.get(message_type)
+            
+            if handler:
+                await handler(message_obj)
+            else:
+                await self._handle_default(message_obj)
+            
+            logger.debug(f"Processed message: {message_type}")
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode message: {e}")
+            await self._handle_error(message, e)
+            
+        except Exception as e:  # noqa: BLE001
+            logger.exception(f"Error processing message: {e}")
+            await self._handle_error(message, e)
+    
+    async def _handle_default(self, message: {{ consumer_name }}Message) -> None:
+        """Handle messages without a specific handler.
+        
+        Args:
+            message: The message to handle.
+        """
+        # Default handling logic
+        logger.info(f"Received message: {message}")
+    
+    async def _handle_error(self, message: bytes, error: Exception) -> None:
+        """Handle failed messages.
+        
+        Args:
+            message: The original message that failed.
+            error: The exception that occurred.
+        """
+        if self.error_queue:
+            # Send to error queue for later processing
+            error_message = {
+                "original_message": message.decode("utf-8", errors="replace"),
+                "error": str(error),
+                "error_type": type(error).__name__,
+            }
+            
+            await self.broker.publish(
+                queue=self.error_queue,
+                message=json.dumps(error_message).encode("utf-8"),
+            )
+            
+            logger.warning(f"Message sent to error queue: {self.error_queue}")
+    
+    # Add custom handler methods here
+    # Example:
+    # async def handle_order_created(self, message: {{ consumer_name }}Message) -> None:
+    #     """Handle order created events."""
+    #     logger.info(f"Processing order: {message.order_id}")
+    #     # Add processing logic here

@@ -1,0 +1,31 @@
+Lexigram Commercial / Proprietary License
+
+Copyright © 2026 Lexigram. All rights reserved.
+
+This license applies ONLY to packages explicitly designated as proprietary in
+LICENSING.md (currently: lexigram-admin, lexigram-ui, lexigram-ai-guard,
+lexigram-ai-governance, lexigram-ai-evaluation, lexigram-ai-prompt). It does NOT
+apply to the MIT-licensed packages, which are governed by the root LICENSE.
+
+LICENSE TERMS
+
+This software and its associated documentation are proprietary and confidential.
+
+Permitted Uses
+  - Internal company use and development
+  - Authorized contractor/partner access (with signed agreement)
+
+Restrictions
+  - No redistribution without written permission
+  - No modification or derivative works without explicit approval
+  - No reverse engineering or attempt to derive proprietary information
+  - No sublicensing to third parties
+  - No open-sourcing without owner approval
+
+Warranty Disclaimer
+  THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+Limitation of Liability
+  IN NO EVENT SHALL Lexigram BE LIABLE FOR ANY DAMAGES.
+
+For licensing questions or requests, contact: legal@lexigram.dev

@@ -1,0 +1,82 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: ai_memory:
+# Environment variable prefix: LEX_AI_MEMORY__
+
+ai_memory:
+  # Default persistence backend.
+  # Options: "in_memory", "cache", "database", "vector"
+  default_backend: "in_memory"
+
+  # Default TTL for memory entries (seconds). 0 = never expire.
+  ttl_seconds: 2592000  # 30 days
+
+  # -------------------------------------------------------------------------
+  # Working Memory — token-budget allocation for context assembly
+  # -------------------------------------------------------------------------
+  working:
+    # Fixed token allocation reserved for the system prompt.
+    system_prompt_tokens: 512
+
+    # Fraction of the remaining token budget allocated to recent conversation turns.
+    recent_turns_fraction: 0.4
+
+    # Fraction allocated to episodic recall results.
+    episodic_fraction: 0.3
+
+    # Fraction allocated to semantic fact results.
+    semantic_fraction: 0.2
+
+    # Fraction allocated to tool descriptions.
+    tool_descriptions_fraction: 0.1
+
+    # Hard cap on the number of recent turns included regardless of budget.
+    max_recent_turns: 20
+
+  # -------------------------------------------------------------------------
+  # Episodic Memory — retrievable past interactions
+  # -------------------------------------------------------------------------
+  episodic:
+    # Number of episodes to retrieve per query.
+    default_top_k: 10
+
+    # Weight applied to temporal recency during scoring (0.0–1.0).
+    recency_weight: 0.3
+
+    # Weight applied to entry importance during scoring (0.0–1.0).
+    importance_weight: 0.2
+
+    # Weight applied to semantic similarity during scoring (0.0–1.0).
+    relevance_weight: 0.5
+
+    # Time-to-live for episodic entries (seconds). 0 = never expire.
+    ttl_seconds: 0
+
+  # -------------------------------------------------------------------------
+  # Semantic Memory — structured factual knowledge
+  # -------------------------------------------------------------------------
+  semantic:
+    # Minimum confidence score required to store a fact (0.0–1.0).
+    min_confidence: 0.5
+
+    # Hard cap on stored facts per entity.
+    max_facts_per_entity: 100
+
+  # -------------------------------------------------------------------------
+  # Consolidation — background memory cleanup and compression
+  # -------------------------------------------------------------------------
+  consolidation:
+    # Enable automatic background consolidation.
+    enabled: true
+
+    # How often to run a consolidation pass (seconds).
+    interval_seconds: 3600.0  # 1 hour
+
+    # Minimum entry age (hours) before it becomes eligible for consolidation.
+    age_threshold_hours: 24.0
+
+    # Entries with importance below this threshold are pruned (0.0–1.0).
+    importance_prune_threshold: 0.1
+
+    # Maximum entries processed per consolidation pass.
+    batch_size: 100

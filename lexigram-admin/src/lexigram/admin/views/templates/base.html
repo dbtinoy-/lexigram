@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Lexigram Admin{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="{% block favicon %}{{ favicon_url | default('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>') }}{% endblock %}">
+
+    <!-- Meta -->
+    {% block meta %}{% endblock %}
+
+    <!-- Global Styles -->
+    <style type="text/css">
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* Modern Scrollbar Styling */
+        /* Webkit (Chrome, Edge, Safari) */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 3px;
+        }
+        
+        /* Show scrollbar thumb on hover */
+        *:hover::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1; /* gray-300 */
+        }
+        
+        .dark *:hover::-webkit-scrollbar-thumb {
+            background-color: #4b5563; /* gray-600 */
+        }
+
+        /* Smooth animations for drawer and overlays */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-in-right {
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        /* Smooth transitions for all interactive elements */
+        * {
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/htmx.org@2.0.7"></script>
+    <script src="https://unpkg.com/@alpinejs/focus@3.12.0/dist/cdn.min.js" defer></script>
+    <script src="https://unpkg.com/alpinejs@3.12.0" defer></script>
+    <script defer>var origToggle=Element.prototype._x_toggleAndCascadeWithTransitions;origToggle&&(Element.prototype._x_toggleAndCascadeWithTransitions=function(e,t,r,n){var o=origToggle.call(this,e,t,r,n);if(!t&&this._x_hidePromise)this._x_hidePromise.catch(function(a){});return o})</script>
+    <script>window.addEventListener("unhandledrejection",function(e){e.promise&&e.promise.catch(function(){});if(!e.reason)return;var r=e.reason;if(r.isFromCancelledTransition||r instanceof TypeError){e.preventDefault();e.stopImmediatePropagation()}})</script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+
+    <!-- HTMX Error Debugging -->
+    <script>
+        document.addEventListener("htmx:swapError", function (evt) {
+            console.error("HTMX Swap Error:", evt.detail);
+            var path = evt.detail.requestConfig && evt.detail.requestConfig.path;
+            console.error("Request URL:", path);
+            console.error("Response:", evt.detail.serverResponse);
+            console.error("Target:", evt.detail.target);
+        });
+
+        document.addEventListener("htmx:responseError", function (evt) {
+            if (evt.detail.isFromCancelledTransition) return;
+            console.error("HTMX Response Error:", evt.detail);
+        });
+
+        document.addEventListener("htmx:afterSwap", function () {
+            document.body.classList.remove('overflow-hidden');
+        });
+
+        window.addEventListener("beforeunload", function () {
+            document.body.classList.remove('overflow-hidden');
+        });
+    </script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-screen{% endblock %}" {%
+    block body_attrs %}{% endblock %}>
+    {% block content %}{% endblock %}
+
+    <!-- Global UI Containers for Overlays -->
+    <div id="modal-container"></div>
+    <div id="slide-over-container"></div>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

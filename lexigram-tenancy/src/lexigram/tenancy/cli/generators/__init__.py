@@ -1,0 +1,1 @@
+"""Tenancy CLI generators."""
