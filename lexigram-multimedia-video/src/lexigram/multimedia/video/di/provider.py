@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
@@ -34,6 +34,12 @@ logger = get_logger(__name__)
 __all__ = ["VideoGenerationProvider"]
 
 
+class _TimeoutKwargs(TypedDict, total=False):
+    """Keyword arguments for backend constructor timeouts."""
+
+    timeout: float
+
+
 class VideoGenerationProvider(Provider):
     """Provider that registers a configured VideoProvider backend."""
 
@@ -62,6 +68,9 @@ class VideoGenerationProvider(Provider):
         from lexigram.contracts.security.stores import AsyncSecretStoreProtocol
 
         self._config = self._requested_config or self._config or VideoConfig()
+        self._timeout_kwargs: _TimeoutKwargs = (
+            {"timeout": self._config.timeout} if self._config.timeout is not None else {}
+        )
         container.singleton(VideoConfig, self._config)
 
         self._secret_store = await resolve_optional(container, AsyncSecretStoreProtocol)
@@ -79,7 +88,7 @@ class VideoGenerationProvider(Provider):
                 "VideoProvider",
                 LocalHttpVideoProvider(
                     base_url=self._config.local_http_base_url,
-                    timeout=self._config.timeout,
+                    **self._timeout_kwargs,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -100,7 +109,7 @@ class VideoGenerationProvider(Provider):
                 "VideoProvider",
                 RunwayVideoProvider(
                     api_key=api_key,
-                    timeout=self._config.timeout,
+                    **self._timeout_kwargs,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -121,7 +130,7 @@ class VideoGenerationProvider(Provider):
                     api_key=api_key or "",
                     model=self._config.openai_model,
                     base_url=self._config.openai_base_url,
-                    timeout=self._config.timeout,
+                    **self._timeout_kwargs,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -134,7 +143,7 @@ class VideoGenerationProvider(Provider):
                 "VideoProvider",
                 Wan22VideoProvider(
                     base_url=self._config.wan22_base_url,
-                    timeout=self._config.timeout,
+                    **self._timeout_kwargs,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -149,7 +158,7 @@ class VideoGenerationProvider(Provider):
                 "VideoProvider",
                 CogVideoXVideoProvider(
                     base_url=self._config.cogvideox_base_url,
-                    timeout=self._config.timeout,
+                    **self._timeout_kwargs,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -162,7 +171,7 @@ class VideoGenerationProvider(Provider):
                 "VideoProvider",
                 SVDVideoProvider(
                     base_url=self._config.svd_base_url,
-                    timeout=self._config.timeout,
+                    **self._timeout_kwargs,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
@@ -182,7 +191,7 @@ class VideoGenerationProvider(Provider):
                     fps=self._config.comfyui_fps,
                     motion_bucket_id=self._config.comfyui_motion_bucket_id,
                     poll_interval=self._config.comfyui_poll_interval,
-                    timeout=self._config.timeout,
+                    **self._timeout_kwargs,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),

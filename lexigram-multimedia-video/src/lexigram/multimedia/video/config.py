@@ -39,7 +39,7 @@ class VideoConfig(BaseConfig):
     comfyui_fps: int = 6
     comfyui_motion_bucket_id: int = 127
     comfyui_poll_interval: float = 1.0
-    timeout: float = 60.0
+    timeout: float | None = None
     processing: VideoProcessingConfig = Field(default_factory=VideoProcessingConfig)
 
 

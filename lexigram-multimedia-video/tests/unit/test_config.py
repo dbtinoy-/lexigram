@@ -20,7 +20,7 @@ def test_default_config_points_at_local_http() -> None:
     assert config.backend == "local-http"
     assert config.local_http_base_url == "http://localhost:5004"
     assert config.runway_api_key_secret_name == "runway_api_key"
-    assert config.timeout == 60.0
+    assert config.timeout is None
 
 
 def test_runway_backend_configured_explicitly() -> None:
