@@ -1,23 +1,30 @@
-"""Multimedia generation contracts — audio, music, video, image."""
+"""Multimedia generation contracts — audio, music, video, image, upscale, interpolation, and beat analysis."""
 
 from __future__ import annotations
 
 from lexigram.contracts.multimedia.exceptions import (
+    BeatAnalysisError,
     ImageGenerationError,
     MultimediaError,
     MusicGenerationError,
     ProviderNotInstalledError,
     TTSError,
+    UpscaleError,
     VideoGenerationError,
 )
 from lexigram.contracts.multimedia.protocols import (
+    BeatAnalysisProvider,
     ImageProvider,
+    InterpolationProvider,
     MusicProvider,
     TTSProvider,
+    UpscaleProvider,
     VideoProcessor,
     VideoProvider,
 )
 from lexigram.contracts.multimedia.types import (
+    BeatAnalysisRequest,
+    BeatAnalysisResult,
     BurnSubtitles,
     ChangeSpeed,
     ColorFilter,
@@ -29,6 +36,7 @@ from lexigram.contracts.multimedia.types import (
     EncodeSpec,
     ExtractThumbnail,
     ImageRequest,
+    InterpolationRequest,
     MediaAsset,
     MusicRequest,
     MuxAudio,
@@ -42,12 +50,17 @@ from lexigram.contracts.multimedia.types import (
     TransitionSpec,
     Trim,
     TTSRequest,
+    UpscaleRequest,
     VideoMode,
     VideoOperation,
     VideoRequest,
 )
 
 __all__ = [
+    "BeatAnalysisError",
+    "BeatAnalysisProvider",
+    "BeatAnalysisRequest",
+    "BeatAnalysisResult",
     "BurnSubtitles",
     "ChangeSpeed",
     "ColorFilter",
@@ -61,6 +74,8 @@ __all__ = [
     "ImageGenerationError",
     "ImageProvider",
     "ImageRequest",
+    "InterpolationProvider",
+    "InterpolationRequest",
     "MediaAsset",
     "MultimediaError",
     "MusicGenerationError",
@@ -80,6 +95,9 @@ __all__ = [
     "Transcode",
     "TransitionSpec",
     "Trim",
+    "UpscaleError",
+    "UpscaleProvider",
+    "UpscaleRequest",
     "VideoGenerationError",
     "VideoMode",
     "VideoOperation",
