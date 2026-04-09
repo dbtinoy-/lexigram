@@ -36,12 +36,9 @@ class SubsystemAccessor(Generic[_Req]):
     async def generate(self, request: _Req) -> Result[MediaAsset, MultimediaError]:
         from typing import cast
 
-        from lexigram.contracts.core.result import Result
-        from lexigram.contracts.multimedia.exceptions import MultimediaError
-        from lexigram.contracts.multimedia.types import MediaAsset
 
         result = await self._backend.generate(request)
-        return cast(Result[MediaAsset, MultimediaError], result)
+        return cast("Result[MediaAsset, MultimediaError]", result)
 
     async def submit(self, request: _Req, idempotency_key: str | None = None) -> JobHandle:
         from dataclasses import asdict
