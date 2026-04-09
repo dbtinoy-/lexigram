@@ -25,6 +25,7 @@ class SubsystemAccessor(Generic[_Req]):
         storage: Any,
         path_prefix: str,
         idempotency_manager: Any = None,
+        cache_backend: Any = None,
     ) -> None:
         self._backend = backend
         self._task_manager = task_manager
@@ -32,10 +33,33 @@ class SubsystemAccessor(Generic[_Req]):
         self._storage = storage
         self._path_prefix = path_prefix
         self._idempotency_manager = idempotency_manager
+        self._cache_backend = cache_backend
 
     async def generate(self, request: _Req) -> Result[MediaAsset, MultimediaError]:
         from typing import cast
 
+
+        if self._cache_backend is not None:
+            import hashlib
+            from dataclasses import asdict
+
+            from lexigram.serialization import dumps_str
+
+            # hash(frozenset(...)) would crash — dict values (e.g. an `extra`
+            # field) aren't hashable. Canonical-JSON + sha256 mirrors the
+            # approach IdempotencyManager.generate_key() already uses elsewhere
+            # in the framework for the same problem.
+            digest = hashlib.sha256(
+                dumps_str(asdict(request), sort_keys=True, separators=(",", ":")).encode()  # type: ignore[call-overload]
+            ).hexdigest()
+            cache_key = f"multimedia:{self._task_name}:{digest}"
+            cached = await self._cache_backend.get(cache_key)
+            if cached.is_ok() and cached.unwrap() is not None:
+                return cast("Result[MediaAsset, MultimediaError]", cached)
+            result = await self._backend.generate(request)
+            if result.is_ok():
+                await self._cache_backend.set(cache_key, result.unwrap())
+            return cast("Result[MediaAsset, MultimediaError]", result)
 
         result = await self._backend.generate(request)
         return cast("Result[MediaAsset, MultimediaError]", result)
