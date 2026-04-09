@@ -32,3 +32,27 @@ async def test_register_hardcodes_all_four_siblings() -> None:
 
     for protocol in (TTSProvider, MusicProvider, VideoProvider, ImageProvider):
         assert protocol in container.bindings
+
+
+@pytest.mark.asyncio
+async def test_tts_accessor_generate_delegates_to_backend() -> None:
+    from unittest.mock import AsyncMock
+
+    from lexigram.contracts.core.result import Ok
+    from lexigram.contracts.multimedia.types import MediaAsset, TTSRequest
+
+    provider = MultimediaProvider(config=MultimediaConfig())
+    container = _FakeContainer()
+    await provider.register(container)
+
+    fake_backend = AsyncMock()
+    fake_backend.generate.return_value = Ok(
+        MediaAsset(mime_type="audio/mpeg", provider="local-http", bytes_data=b"x")
+    )
+    provider._sub_providers["audio-tts"]._backend = fake_backend
+
+    accessor = provider.tts
+    result = await accessor.generate(TTSRequest(text="hi"))
+
+    assert result.is_ok()
+    fake_backend.generate.assert_awaited_once()
