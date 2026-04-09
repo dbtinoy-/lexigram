@@ -157,6 +157,8 @@ forbidden_modules =
     lexigram.workflow
     # AI family
     lexigram.ai
+    # Multimedia family
+    lexigram.multimedia
 # ---------------------------------------------------------------------------
 # TRACKED VIOLATIONS — to be fixed in feat/core-cleanup
 # ---------------------------------------------------------------------------
@@ -233,7 +235,10 @@ forbidden_modules =
     lexigram.vector
     lexigram.web
     lexigram.workflow
+    # AI family
     lexigram.ai
+    # Multimedia family
+    lexigram.multimedia
 
 # =============================================================================
 # Contract 4 — Regular extension packages are independent of each other
@@ -319,6 +324,16 @@ ignore_imports =
     # Documented allowance: lexigram.ai imports lexigram.vector for
     # vector store integration and composition.
     lexigram.ai.** -> lexigram.vector.**
+    # Documented allowance: lexigram.multimedia is the orchestrator and is
+    # intentionally allowed to import from its sub-packages for composition
+    # and wiring (mirrors the lexigram.ai allowance above).
+    lexigram.multimedia.** -> lexigram.multimedia.beat.**
+    lexigram.multimedia.** -> lexigram.multimedia.image.**
+    lexigram.multimedia.** -> lexigram.multimedia.interpolate.**
+    lexigram.multimedia.** -> lexigram.multimedia.music.**
+    lexigram.multimedia.** -> lexigram.multimedia.tts.**
+    lexigram.multimedia.** -> lexigram.multimedia.upscale.**
+    lexigram.multimedia.** -> lexigram.multimedia.video.**
 unmatched_ignore_imports_alerting = warn
 
 # =============================================================================
@@ -348,6 +363,29 @@ modules =
     lexigram.ai.skills
     lexigram.vector
     lexigram.ai.workers
+
+# =============================================================================
+# Contract 5b — Multimedia sub-packages are independent of each other
+# =============================================================================
+# Mirrors Contract 5 (ai-sub-independence). The multimedia parent package
+# (lexigram.multimedia) acts as the orchestrator/facade and is intentionally
+# excluded from this independence list — it IS allowed to import from
+# sub-packages to wire them together. Per each sub-package's own docstrings
+# (e.g. video_upscale_service.py: "never a direct import of
+# lexigram-multimedia-video (design spec §4.3)"), siblings must depend on
+# each other only through lexigram-contracts protocols.
+
+[importlinter:contract:multimedia-sub-independence]
+name = Multimedia sub-packages do not import from each other
+type = independence
+modules =
+    lexigram.multimedia.beat
+    lexigram.multimedia.image
+    lexigram.multimedia.interpolate
+    lexigram.multimedia.music
+    lexigram.multimedia.tts
+    lexigram.multimedia.upscale
+    lexigram.multimedia.video
 
 # =============================================================================
 # Contract 6 — AI sub-packages do not import from the AI parent (lexigram.ai)
