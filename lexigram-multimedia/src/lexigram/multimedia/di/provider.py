@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
@@ -71,9 +72,7 @@ class MultimediaProvider(Provider):
         # "lexigram.ai.subsystems" loop, including skipping the core names.
         # ------------------------------------------------------------------
         try:
-            from importlib.metadata import entry_points as _entry_points
-
-            for _ep in _entry_points(group="lexigram.multimedia.subsystems"):
+            for _ep in importlib.metadata.entry_points(group="lexigram.multimedia.subsystems"):
                 if _ep.name in _CORE_SUBSYSTEMS:
                     continue
                 _provider_cls = _ep.load()
