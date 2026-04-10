@@ -10,6 +10,7 @@ from lexigram.admin.config import AdminConfig
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.exceptions import DataError
 from lexigram.admin.observability.admin_metrics import AdminMetrics, OperationTimer
+from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.ui import el, render_to_string
@@ -58,7 +59,7 @@ class DetailRenderer:
         </div>
         """
 
-        is_htmx = "HX-Request" in request.headers
+        is_htmx = wants_fragment(request)
         if is_htmx:
             self._metrics.record_operation(
                 "detail",
@@ -247,7 +248,7 @@ class DetailRenderer:
         <div class="resource-content">{table_html}</div>
         """
 
-        is_htmx = "HX-Request" in request.headers
+        is_htmx = wants_fragment(request)
         if is_htmx:
             return HTMLResponse(content)
 

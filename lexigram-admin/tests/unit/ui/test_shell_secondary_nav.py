@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
 from lexigram.admin.ui.templates.shell import AdminShell
-from lexigram.ui.core.base import el, raw, render_to_string
+from lexigram.ui import el, raw, render_to_string
 
 
 def test_main_content_has_constant_classes() -> None:

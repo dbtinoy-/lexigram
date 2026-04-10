@@ -1,6 +1,6 @@
 # lexigram
 
-*async-first DI/IoC framework for python — one container, no glue code.*
+*the async python backend where the glue is already written.*
 
 [![PyPI version](https://img.shields.io/pypi/v/lexigram?color=%2334D058&label=pypi%20package)](https://pypi.org/project/lexigram/)
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram?color=%2334D058)](https://pypi.org/project/lexigram/)
@@ -10,12 +10,12 @@ hey — wanna ship a real app this weekend?
 
 ![Lexigram demo](lexigram/docs/gifs/hero/lexigram-hero.gif)
 
-Lexigram is a python framework built around one idea: everything you need is already wired together. Modules register providers, providers bind contracts, and the container resolves the rest — so web, sql, cache, auth, queues, events, and the whole async backend plug in without glue code, without 200-line config files. It's async-native end to end, and every package talks through contracts, so swapping an implementation never ripples. Pick a few packages, boot the application, ship the thing.
+glue code is the boring 30% of every backend — the session factory, the middleware order, the retry wiring, the dozen init functions that have to boot in exactly the right order. lexigram is the async-first framework that already wrote that part: modules register providers, providers bind contracts, and one container resolves and boots web, sql, cache, auth, queues, events — and the whole ai and multimedia families — in a single call. no glue code, no 200-line config files, and nothing is bolted on: swap redis for in-memory, postgres for sqlite, or openai for ollama with a config line, not a refactor.
 
-- **wired, not glued.** providers, modules, controllers — one container, one boot call.
+- **the glue, already written.** providers, modules, controllers — one container, one boot call, instead of a hundred lines of init.
+- **swap without ripples.** redis ↔ in-memory, postgres ↔ sqlite, openai ↔ ollama — one contract, a config line away.
 - **async, end to end.** the container, the modules, the controllers — concurrency-safe by construction.
 - **contracts everywhere.** every package talks through protocols, so swapping an implementation never ripples.
-- **swappable backends.** in-memory, redis, sqlite, postgres — the same contract, a config change away.
 
 → full docs at [docs.lexigram.dev](https://docs.lexigram.dev)
 

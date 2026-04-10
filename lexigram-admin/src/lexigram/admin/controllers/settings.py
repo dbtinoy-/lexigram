@@ -154,7 +154,15 @@ class SettingsController(AdminController):
             content=None,
             title="Settings",
         )
-        return await self.render_admin(request, layout, title="Settings")
+        return await self.render_admin(
+            request,
+            layout,
+            title="Settings",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                current="Settings",
+            ),
+        )
 
     @get("/{namespace:path}")
     async def spec_view(self, request: Request) -> Response:
@@ -188,6 +196,11 @@ class SettingsController(AdminController):
             request,
             layout,
             title=f"{spec.label or namespace} - Settings",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                ("Settings", "/admin/settings"),
+                current=spec.label or namespace,
+            ),
         )
 
     @post("/{namespace:path}")

@@ -9,7 +9,7 @@ import pytest
 from lexigram.admin.controllers.infrastructure import InfrastructureController
 from lexigram.admin.navigation.clusters import CLUSTER_GROUP
 from lexigram.contracts.admin.types import NavigationContribution
-from lexigram.ui.core.base import render_to_string
+from lexigram.ui import render_to_string
 
 
 def _mock_request(groups: dict | None = None) -> MagicMock:

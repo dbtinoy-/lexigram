@@ -71,7 +71,15 @@ class InfrastructureController(AdminController):
         _, _, secondary_nav = resolve_admin_nav(request)
         if secondary_nav:
             content = ClusterLayout(items=secondary_nav, content=content).render()
-        return await self.render_admin(request, content, title="Infrastructure")
+        return await self.render_admin(
+            request,
+            content,
+            title="Infrastructure",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                current="Infrastructure",
+            ),
+        )
 
     def _render_overview(self, items: list[Any]) -> Any:
         header = el(

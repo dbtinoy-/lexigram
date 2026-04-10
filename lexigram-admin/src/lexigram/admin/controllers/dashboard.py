@@ -210,11 +210,14 @@ class DashboardController(AdminController):
   }
 
   initSortable();
-  document.body.addEventListener('htmx:afterSwap', initSortable);
-  document.body.addEventListener('htmx:afterSwap', function(e) {
-    var t = e.detail && e.detail.target;
-    if (t && window.htmx) { try { htmx.process(t); } catch (err) {} }
-  });
+  if (!window.__adminDashboardListeners) {
+    window.__adminDashboardListeners = 1;
+    document.body.addEventListener('htmx:afterSwap', initSortable);
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+      var t = e.detail && e.detail.target;
+      if (t && window.htmx) { try { htmx.process(t); } catch (err) {} }
+    });
+  }
 
   if (saveBtn) {
     saveBtn.addEventListener('click', async function() {

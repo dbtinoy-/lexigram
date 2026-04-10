@@ -6,8 +6,8 @@ paths. This test scans every .py file under src/ and rejects forbidden patterns.
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
+import re
 
 FORBIDDEN_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^from lexigram\.ui\.atoms[\.\s]", re.MULTILINE),
@@ -66,7 +66,7 @@ TEST_ALLOWLIST: set[str] = {
     "tests/unit/ui/test_searchbar.py",
     "tests/unit/ui/test_section.py",
     "tests/unit/ui/test_slide_over.py",
-    "tests/unit/ui/test_table_width_filament_style.py",
+    "tests/unit/ui/test_table_width_style.py",
     "tests/unit/ui/test_task_progress_retry.py",
     "tests/unit/ui/test_toggle.py",
     "tests/unit/ui/test_zones.py",

@@ -2,7 +2,7 @@
 
 Provides an HTMX-powered ``AutoRefreshWidget`` that automatically
 re-fetches content at a configurable interval — the "Live polling /
-auto-refresh" feature from the benchmark matrix (FilamentPHP Y, React Admin Y).
+auto-refresh" feature common in modern admin panels.
 
 Usage in a controller::
 

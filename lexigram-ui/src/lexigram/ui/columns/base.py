@@ -1,5 +1,5 @@
 """
-FilamentPHP-style Column base class with Fluent API.
+Column base class with Fluent API.
 
 Provides a fluent API (Builder pattern) for defining table columns with sorting,
 searching, formatting, and custom rendering. All configuration methods return

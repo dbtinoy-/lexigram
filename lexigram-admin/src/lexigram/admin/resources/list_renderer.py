@@ -12,6 +12,7 @@ from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.exceptions import DataError
 from lexigram.admin.observability.admin_metrics import AdminMetrics, OperationTimer
 from lexigram.admin.resources.config import TableConfiguration
+from lexigram.admin.state.context import wants_fragment
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -135,7 +136,7 @@ class ListRenderer:
             loading=False,
         )
 
-        is_htmx = "HX-Request" in request.headers
+        is_htmx = wants_fragment(request)
         if is_htmx:
             hx_target = request.headers.get("HX-Target", "")
 

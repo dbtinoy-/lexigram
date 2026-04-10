@@ -116,10 +116,6 @@ class SidebarItem(Component):
                 "x-bind:class": "sidebarMini ? 'justify-center' : ''",
                 "aria-current": "page" if self.active else "false",
             },
-            hx_get=self.href,
-            hx_target="#main-content",
-            hx_swap="innerHTML",
-            hx_push_url="true",
             title=self.label,
         )
 
@@ -298,12 +294,6 @@ class Sidebar(Component):
                 ),
                 class_="block flex-shrink-0",
                 href="/admin",
-                **{
-                    "hx-get": "/admin",
-                    "hx-target": "#main-content",
-                    "hx-swap": "innerHTML",
-                    "hx-push-url": "true",
-                },
             )
         else:
             logo_icon = el(
@@ -311,12 +301,6 @@ class Sidebar(Component):
                 el("span", self.logo_text[0].upper(), class_="text-white"),
                 class_="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20 flex-shrink-0 cursor-pointer hover:bg-primary-700 transition-colors",
                 href="/admin",
-                **{
-                    "hx-get": "/admin",
-                    "hx-target": "#main-content",
-                    "hx-swap": "innerHTML",
-                    "hx-push-url": "true",
-                },
             )
 
         # Toggle Button - chevron to collapse/expand sidebar

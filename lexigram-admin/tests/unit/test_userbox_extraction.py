@@ -1,12 +1,10 @@
 """Tests for UserBox extraction and basic rendering."""
 
-from pathlib import Path
-import sys
 
 # Ensure package src and sibling packages are importable in test environment
 
-from lexigram.ui.core.base import render_to_string
 from lexigram.ui import UserBox
+from lexigram.ui.core.base import render_to_string
 
 
 def test_userbox_renders_menu_items():
@@ -26,7 +24,7 @@ def test_userbox_renders_menu_items():
 
     assert "Settings" in html
     assert "/admin/settings" in html
-    # HTMX-enabled anchor should be present
-    assert 'hx-get="/admin/settings"' in html
+    # Anchor should be present
+    assert 'href="/admin/settings"' in html
     # Data-test attr should come from menu attrs
     assert 'data-test="system-settings"' in html

@@ -1,11 +1,11 @@
-from lexigram.ui.core.base import render_to_string
-from lexigram.ui.columns.types import TextColumn
 from lexigram.admin.resources.config import TableConfiguration
 from lexigram.admin.ui.organisms.table.views.tabular import TabularView
+from lexigram.ui.columns.types import TextColumn
+from lexigram.ui.core.base import render_to_string
 from lexigram.ui.state import TableState
 
 
-def test_filament_style_width_and_grow():
+def test_width_and_grow():
     cols = [
         TextColumn("a").width(4),
         TextColumn("b").width(3),

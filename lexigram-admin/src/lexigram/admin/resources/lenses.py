@@ -1,8 +1,8 @@
 """Resource Lenses — alternative filtered/customised views on a resource.
 
-Inspired by Laravel Nova's Lens feature.  A **Lens** is a named view of a
-resource that applies a pre-defined query, restricts columns, or changes
-the default sort — without creating a separate resource class.
+A **Lens** is a named view of a resource that applies a pre-defined query,
+restricts columns, or changes the default sort — without creating a
+separate resource class.
 
 Example::
 
@@ -103,9 +103,9 @@ class ResourceLens:
         """Apply :attr:`query_filters` to *queryset*.
 
         The default implementation calls ``queryset.filter(**cls.query_filters)``
-        which is compatible with Django ORM, SQLAlchemy ``Select`` objects
-        that expose a ``.filter()`` method, and the Lexigram
-        ``RepositoryProtocol`` query builder.
+        which is compatible with SQLAlchemy ``Select`` objects that expose
+        a ``.filter()`` method, and the Lexigram ``RepositoryProtocol``
+        query builder.
 
         Override for custom query logic::
 

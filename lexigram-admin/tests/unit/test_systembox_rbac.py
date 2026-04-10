@@ -1,9 +1,7 @@
-from pathlib import Path
-import sys
 
 
-from lexigram.ui.core.base import render_to_string
 from lexigram.ui import SystemBox
+from lexigram.ui.core.base import render_to_string
 
 
 class MockUser:
@@ -32,7 +30,7 @@ def test_systembox_hides_items_when_no_permission():
     sb = SystemBox(system_menu_items=items, user=user)
     out = render_to_string(sb)
 
-    assert 'hx-get="/admin/settings"' not in out
+    assert 'href="/admin/settings"' not in out
     assert 'data-test="system-settings"' not in out
 
 
@@ -51,5 +49,5 @@ def test_systembox_shows_items_with_permission():
     sb = SystemBox(system_menu_items=items, user=user)
     out = render_to_string(sb)
 
-    assert 'hx-get="/admin/settings"' in out
+    assert 'href="/admin/settings"' in out
     assert 'data-test="system-settings"' in out

@@ -13,6 +13,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from lexigram.admin.exceptions import NotFoundError
+from lexigram.admin.state.context import wants_fragment
 from lexigram.logging import get_logger
 from lexigram.ui import el, render_to_string
 
@@ -68,8 +69,8 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
         return False
 
     def _is_htmx(self, request: Request) -> bool:
-        """Check if request is from HTMX."""
-        return request.headers.get("hx-request") == "true"
+        """Check if request expects a fragment swap."""
+        return wants_fragment(request)
 
     async def handle(self, request: Request, exc: Exception) -> Response:
         """Handle exceptions and return a Response object.

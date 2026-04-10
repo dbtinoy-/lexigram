@@ -1,9 +1,7 @@
-from pathlib import Path
-import sys
 
 
-from lexigram.ui.core.base import render_to_string
 from lexigram.admin.ui.organisms.sidebar import Sidebar
+from lexigram.ui.core.base import render_to_string
 
 
 def test_settings_renders_as_block_when_flagged():
@@ -28,7 +26,7 @@ def test_settings_renders_as_block_when_flagged():
 
     # Block-style items are rendered inside the system dropdown; assert the
     # anchor and data-test attribute are present in the rendered output
-    assert 'hx-get="/admin/settings"' in html
+    assert 'href="/admin/settings"' in html
     # Data-test hook should come from the nav attrs
     assert 'data-test="system-settings"' in html
     # The block item should be rendered directly as a stacked list
