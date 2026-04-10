@@ -1,33 +1,22 @@
-"""Adapter that delegates admin event dispatch to ``lexigram-events``.
+"""Adapter that delegates admin event dispatch to an ``EventBusProtocol`` bus.
 
-When ``lexigram-events`` is installed, ``AdminEventBusAdapter`` wraps
-``lexigram.events.buses.event.EventBusImpl`` for pub/sub event dispatch
-with middleware, retry, and dead letter queue support.  When not installed,
-it falls back to a simple synchronous dispatcher.
+``AdminEventBusAdapter`` wraps a container-provided event bus (typically a
+``lexigram-events`` implementation) for pub/sub event dispatch.  When no
+bus is configured, it falls back to a simple in-process dispatcher.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.events import EventBusProtocol
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-try:
-    from lexigram.events.buses.event import DispatchResult as _DispatchResult
-    from lexigram.events.buses.event import EventBusImpl as _EventBusImpl
-    from lexigram.events.messages.event import Event as _Event
-
-    _HAS_EVENTS = True
-except ImportError:  # noqa: F841
-    _HAS_EVENTS = False
-    _EventBusImpl = object  # type: ignore[assignment,misc]
-    _DispatchResult = object  # type: ignore[assignment,misc]
-    _Event = object  # type: ignore[assignment,misc]
-
 
 class _SimpleDispatcher:
-    """Fallback in-process event dispatcher when lexigram-events is not installed."""
+    """Fallback in-process event dispatcher when no bus is configured."""
 
     def __init__(self) -> None:
         self._handlers: dict[str, list[Callable[..., Any]]] = {}
@@ -49,7 +38,7 @@ class _SimpleDispatcher:
 
 
 class AdminEventBusAdapter:
-    """Bridge between admin's event dispatch and ``lexigram-events``'s ``EventBusImpl``.
+    """Bridge between admin's event dispatch and an ``EventBusProtocol`` bus.
 
     Usage::
 
@@ -59,9 +48,9 @@ class AdminEventBusAdapter:
 
     def __init__(
         self,
-        event_bus: Any | None = None,
+        event_bus: EventBusProtocol | None = None,
     ) -> None:
-        self._bus = event_bus or _SimpleDispatcher()
+        self._bus: Any = event_bus or _SimpleDispatcher()
 
     async def publish(self, event: Any) -> Any:
         """Publish an event to all registered handlers.
@@ -70,7 +59,7 @@ class AdminEventBusAdapter:
             event: The event instance to publish.
 
         Returns:
-            Dispatch result from lexigram-events if available, else None.
+            Dispatch result from the bus if available, else None.
         """
         if self._bus is None:
             return None
