@@ -40,8 +40,8 @@ class SubsystemAccessor(Generic[_Req]):
 
 
         if self._cache_backend is not None:
-            import hashlib
             from dataclasses import asdict
+            import hashlib
 
             from lexigram.serialization import dumps_str
 
