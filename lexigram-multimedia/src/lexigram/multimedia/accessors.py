@@ -53,7 +53,11 @@ class SubsystemAccessor(Generic[_Req]):
             # approach IdempotencyManager.generate_key() already uses elsewhere
             # in the framework for the same problem.
             digest = hashlib.sha256(
-                dumps_str(asdict(request), sort_keys=True, separators=(",", ":")).encode()  # type: ignore[call-overload]
+                dumps_str(
+                    asdict(cast("Any", request)),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
             ).hexdigest()
             cache_key = f"multimedia:{self._task_name}:{digest}"
             cached = await self._cache_backend.get(cache_key)
@@ -81,12 +85,16 @@ class SubsystemAccessor(Generic[_Req]):
             MultimediaGenerationEvent(
                 media_type=self._media_type,
                 provider=asset.provider,
-                size_bytes=len(asset.bytes_data) if asset.bytes_data is not None else None,
+                size_bytes=len(asset.bytes_data)
+                if asset.bytes_data is not None
+                else None,
                 duration_seconds=asset.metadata.get("duration_seconds"),
             )
         )
 
-    async def submit(self, request: _Req, idempotency_key: str | None = None) -> JobHandle:
+    async def submit(
+        self, request: _Req, idempotency_key: str | None = None
+    ) -> JobHandle:
         from dataclasses import asdict
 
         from lexigram.multimedia.jobs import JobHandle
@@ -107,7 +115,9 @@ class SubsystemAccessor(Generic[_Req]):
             key = self._idempotency_manager.generate_key(
                 self._task_name, params, idempotency_key
             )
-            is_duplicate = await self._idempotency_manager.check_duplicate(key) is not None
+            is_duplicate = (
+                await self._idempotency_manager.check_duplicate(key) is not None
+            )
 
         result = await self._task_manager.submit_task(
             self._task_name, params, idempotency_key=idempotency_key
