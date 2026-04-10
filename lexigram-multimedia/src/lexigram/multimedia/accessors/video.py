@@ -83,6 +83,27 @@ class VideoAccessor:
     async def upscale_video(
         self, asset: MediaAsset, *, scale_factor: Literal[2, 4] = 4
     ) -> Result[MediaAsset, MultimediaError]:
+        """
+        Upscale a whole video by a factor of 2 or 4.
+
+        Requires a whole-video upscaling service, which is only built when a
+        ``VideoProcessor`` was configured in the upscale subsystem.
+
+        Args:
+            asset: Source video asset to upscale.
+            scale_factor: Upscale multiplier, 2 or 4. Defaults to 4.
+
+        Returns:
+            Ok(upscaled_asset) on success, Err(ProviderNotInstalledError) if no
+            VideoProcessor was configured.
+
+        Example:
+            ```python
+            result = await video.upscale_video(asset, scale_factor=2)
+            if result.is_ok():
+                print(result.unwrap().url)
+            ```
+        """
         from lexigram.contracts.core.result import Err
         from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 
@@ -101,6 +122,28 @@ class VideoAccessor:
     async def interpolate_video(
         self, asset: MediaAsset, *, factor: Literal[2, 4] = 2, fps: float
     ) -> Result[MediaAsset, MultimediaError]:
+        """
+        Interpolate a whole video to a higher frame rate (motion smoothing).
+
+        Requires a whole-video interpolation service, which is only built when
+        a ``VideoProcessor`` was configured in the interpolate subsystem.
+
+        Args:
+            asset: Source video asset to interpolate.
+            factor: Frame multiplier, 2 or 4. Defaults to 2.
+            fps: Output target frame rate in frames per second.
+
+        Returns:
+            Ok(interpolated_asset) on success, Err(ProviderNotInstalledError) if
+            no VideoProcessor was configured.
+
+        Example:
+            ```python
+            result = await video.interpolate_video(asset, factor=2, fps=60.0)
+            if result.is_ok():
+                print(result.unwrap().url)
+            ```
+        """
         from lexigram.contracts.core.result import Err
         from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 
