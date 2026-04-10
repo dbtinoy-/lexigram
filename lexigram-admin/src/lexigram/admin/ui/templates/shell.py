@@ -63,7 +63,12 @@ class AdminShell(Component):
         self.sidebar_instance = sidebar
         self.topbar_instance = topbar
         self.flash_messages = flash_messages or []
-        self.breadcrumbs = breadcrumbs or []
+        if breadcrumbs is None:
+            breadcrumbs = [
+                {"label": "Home", "url": "/admin/"},
+                {"label": title, "url": ""},
+            ]
+        self.breadcrumbs = breadcrumbs
 
     def _prepare_navigation(self) -> Any:
         """Transform raw nav_items into SidebarItem and SidebarSection instances."""
@@ -182,6 +187,9 @@ class AdminShell(Component):
         search_overlay = raw(
             """
             <style>
+                [x-cloak] {
+                    display: none !important;
+                }
                 #search-results {
                     position: fixed;
                     top: 64px;
@@ -213,8 +221,11 @@ class AdminShell(Component):
                 }
             </style>
             <script>
-                var searchResults = document.getElementById('search-results');
-                var searchFocusedIndex = -1;
+                (function() {
+                    if (window.__adminShellSearchInit) return;
+                    window.__adminShellSearchInit = 1;
+                    var searchResults = document.getElementById('search-results');
+                    var searchFocusedIndex = -1;
 
                 document.addEventListener('click', function(e) {
                     var results = document.getElementById('search-results');
@@ -285,6 +296,37 @@ class AdminShell(Component):
                         searchFocusedIndex = -1;
                     }
                 });
+
+                // SPA navigation: intercept plain same-origin link clicks and
+                // swap the full page response into the body. Handled here via
+                // document-level delegation so it survives body swaps.
+                document.addEventListener('click', function(e) {
+                    if (e.defaultPrevented || e.button !== 0) return;
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    var el = e.target instanceof Element ? e.target.closest('a[href]') : null;
+                    if (!el) return;
+                    if (el.getAttribute('target') === '_blank' || el.hasAttribute('download')) return;
+                    if (el.hasAttribute('hx-get') || el.hasAttribute('hx-post') || el.hasAttribute('hx-delete')) return;
+                    var href = el.getAttribute('href');
+                    if (!href || href.startsWith('#')) return;
+                    var url;
+                    try { url = new URL(el.href, location.href); } catch (err) { return; }
+                    if (url.origin !== location.origin) return;
+                    e.preventDefault();
+                    if (window.htmx) {
+                        // Abort stale in-flight widget loads — they belong to the
+                        // page we are leaving and would otherwise hold browser
+                        // connection slots until the swap completes.
+                        document.querySelectorAll('.widget-body[hx-get]').forEach(function(w) {
+                            w.dispatchEvent(new Event('htmx:abort', { bubbles: true }));
+                        });
+                        window.htmx.ajax('GET', url.href, { target: 'body', swap: 'innerHTML' });
+                    } else {
+                        location.href = url.href;
+                    }
+                    window.scrollTo(0, 0);
+                });
+                })();
             </script>
             """,
         )
@@ -395,7 +437,24 @@ class AdminShell(Component):
                 <div class="h-full bg-primary-400 animate-pulse"></div>
             </div>
             <script>
-                // Loading bar
+                (function() {{
+                    if (window.__adminShellInit) return;
+                    window.__adminShellInit = 1;
+                    // Apply the sidebar width class synchronously on first
+                    // load so the shell paints at the right width before
+                    // Alpine's deferred scripts start. Also pre-inject the
+                    // width utility rules: the Tailwind CDN regenerates its
+                    // stylesheet after htmx body swaps and would not have
+                    // these rules at swap time, flashing the sidebar at
+                    // auto width until it re-scans.
+                    var sideWidthStyle = document.createElement('style');
+                    sideWidthStyle.textContent = '.w-24 {{ width: 6rem; }} .w-72 {{ width: 18rem; }}';
+                    document.head.appendChild(sideWidthStyle);
+                    var aside = document.getElementById('main-sidebar');
+                    if (aside) {{
+                        aside.classList.add(localStorage.getItem('sidebarMini') === 'true' ? 'w-24' : 'w-72');
+                    }}
+                    // Loading bar
                 document.body.addEventListener('htmx:beforeRequest', function(e) {{
                     document.getElementById('htmx-loading-bar').classList.remove('hidden');
                     
@@ -410,6 +469,44 @@ class AdminShell(Component):
                 }});
                 document.body.addEventListener('htmx:afterRequest', function() {{
                     document.getElementById('htmx-loading-bar').classList.add('hidden');
+                }});
+
+                // Body swaps can leave Alpine components partially initialized
+                // (bindings registered but effects never run) because Alpine's
+                // observer and this initTree race each other through the same
+                // directive deferral queue. Wait for the observer to settle,
+                // then run initTree — it is idempotent and completes missing
+                // initialization. Only run on full body swaps, not widget
+                // fragment swaps.
+                document.body.addEventListener('htmx:afterSwap', function(evt) {{
+                    if (evt.detail && evt.detail.elt !== document.body) return;
+                    // Apply the sidebar width class synchronously (before the
+                    // next paint) so a fresh sidebar never flashes at auto
+                    // width while initTree below is deferred.
+                    var aside = document.getElementById('main-sidebar');
+                    if (aside) {{
+                        aside.classList.remove('w-24', 'w-72');
+                        aside.classList.add(localStorage.getItem('sidebarMini') === 'true' ? 'w-24' : 'w-72');
+                    }}
+                    setTimeout(function() {{
+                        try {{
+                            if (window.Alpine) window.Alpine.initTree(document.body);
+                        }} catch (err) {{ /* noop: initTree is best-effort */ }}
+                    }}, 200);
+                }});
+
+                // htmx's handleAttributes restore step runs right before
+                // htmx:afterSettle and resets each node with an id back to
+                // its pristine server markup -- which wipes the width class
+                // we applied above. Re-apply it after the restore so the
+                // sidebar never paints at auto width.
+                document.body.addEventListener('htmx:afterSettle', function(evt) {{
+                    if (evt.detail && evt.detail.elt !== document.body) return;
+                    var aside = document.getElementById('main-sidebar');
+                    if (aside) {{
+                        aside.classList.remove('w-24', 'w-72');
+                        aside.classList.add(localStorage.getItem('sidebarMini') === 'true' ? 'w-24' : 'w-72');
+                    }}
                 }});
 
                 // Error handling for HTMX requests
@@ -496,6 +593,7 @@ class AdminShell(Component):
                         </div>`;
                     }}
                 }});
+                }})();
             </script>
         """,
         )
@@ -530,6 +628,10 @@ class AdminShell(Component):
             # Modal container for HTMX modals
             el("div", id=Zones.MODAL.id, class_="absolute z-[100]"),
             # Slide-over container for side panels
-            el("div", id=Zones.SLIDE_OVER.id, class_="fixed inset-0 z-[100] pointer-events-none"),
+            el(
+                "div",
+                id=Zones.SLIDE_OVER.id,
+                class_="fixed inset-0 z-[100] pointer-events-none",
+            ),
             CommandPalette(commands=self.commands),
         )
