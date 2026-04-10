@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
 from starlette.requests import Request
@@ -11,6 +12,7 @@ from starlette.responses import StreamingResponse
 from lexigram.admin.controllers.base import AdminController
 from lexigram.contracts.infra.tasks.progress import (
     ProgressSnapshot,
+    ProgressStatus,
     ProgressTrackerProtocol,
 )
 from lexigram.contracts.web import get
@@ -34,12 +36,92 @@ def _snap_to_dict(snap: ProgressSnapshot) -> dict[str, Any]:
     }
 
 
+class LocalProgressTracker:
+    """In-process :class:`ProgressTrackerProtocol` implementation owned by lexigram-admin.
+
+    Used as the DI-resolution fallback when no integrator (e.g. lexigram-tasks)
+    has registered a real tracker — keeps :class:`ProgressController` mountable
+    without a direct import of any sibling package. State is process-local and
+    lost on restart, matching the previous `InMemoryProgressTracker` fallback's
+    behavior.
+    """
+
+    def __init__(self) -> None:
+        self._snapshots: dict[str, ProgressSnapshot] = {}
+        self._subscribers: dict[str, list[asyncio.Queue[ProgressSnapshot]]] = {}
+
+    async def update(
+        self, task_id: str, current: int, total: int, message: str = ""
+    ) -> None:
+        await self._publish(
+            ProgressSnapshot(
+                task_id=task_id,
+                current=current,
+                total=total,
+                status=ProgressStatus.RUNNING,
+                message=message,
+            )
+        )
+
+    async def complete(self, task_id: str, result: str = "") -> None:
+        prev = self._snapshots.get(task_id)
+        await self._publish(
+            ProgressSnapshot(
+                task_id=task_id,
+                current=prev.current if prev else 0,
+                total=prev.total if prev else 0,
+                status=ProgressStatus.COMPLETE,
+                message=result,
+            )
+        )
+
+    async def fail(self, task_id: str, error: str) -> None:
+        prev = self._snapshots.get(task_id)
+        await self._publish(
+            ProgressSnapshot(
+                task_id=task_id,
+                current=prev.current if prev else 0,
+                total=prev.total if prev else 0,
+                status=ProgressStatus.FAILED,
+                error=error,
+            )
+        )
+
+    async def get(self, task_id: str) -> ProgressSnapshot | None:
+        return self._snapshots.get(task_id)
+
+    async def subscribe(self, task_id: str) -> AsyncIterator[ProgressSnapshot]:
+        existing = self._snapshots.get(task_id)
+        if existing is not None and existing.status in (
+            ProgressStatus.COMPLETE,
+            ProgressStatus.FAILED,
+        ):
+            yield existing
+            return
+
+        queue: asyncio.Queue[ProgressSnapshot] = asyncio.Queue()
+        self._subscribers.setdefault(task_id, []).append(queue)
+        try:
+            while True:
+                snap = await queue.get()
+                yield snap
+                if snap.status in (ProgressStatus.COMPLETE, ProgressStatus.FAILED):
+                    return
+        finally:
+            self._subscribers.get(task_id, []).remove(queue)
+
+    async def _publish(self, snap: ProgressSnapshot) -> None:
+        self._snapshots[snap.task_id] = snap
+        for queue in self._subscribers.get(snap.task_id, []):
+            await queue.put(snap)
+
+
 @inject
 class ProgressController(AdminController):
     """Controller for progress tracking endpoints.
 
     Exposes SSE streaming and point-in-time status queries backed by
-    :class:`ProgressTrackerProtocol`.  Inject :class:`InMemoryProgressTracker`
+    :class:`ProgressTrackerProtocol`.  Inject :class:`LocalProgressTracker`
     (or any conforming implementation) via the DI container.
     """
 
