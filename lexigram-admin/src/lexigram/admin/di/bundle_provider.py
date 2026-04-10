@@ -450,9 +450,7 @@ class AdminProvider(Provider):
                     bypass_visibility=True,
                 )
             except Exception:
-                progress_controller = ProgressController(
-                    tracker=LocalProgressTracker()
-                )
+                progress_controller = ProgressController(tracker=LocalProgressTracker())
             controller_instances.append(progress_controller)
         except ModuleNotFoundError as exc:
             _log.info(
