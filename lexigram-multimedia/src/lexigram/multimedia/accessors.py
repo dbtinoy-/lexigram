@@ -26,6 +26,8 @@ class SubsystemAccessor(Generic[_Req]):
         path_prefix: str,
         idempotency_manager: Any = None,
         cache_backend: Any = None,
+        event_bus: Any = None,
+        media_type: str = "",
     ) -> None:
         self._backend = backend
         self._task_manager = task_manager
@@ -34,10 +36,11 @@ class SubsystemAccessor(Generic[_Req]):
         self._path_prefix = path_prefix
         self._idempotency_manager = idempotency_manager
         self._cache_backend = cache_backend
+        self._event_bus = event_bus
+        self._media_type = media_type
 
     async def generate(self, request: _Req) -> Result[MediaAsset, MultimediaError]:
         from typing import cast
-
 
         if self._cache_backend is not None:
             from dataclasses import asdict
@@ -59,10 +62,29 @@ class SubsystemAccessor(Generic[_Req]):
             result = await self._backend.generate(request)
             if result.is_ok():
                 await self._cache_backend.set(cache_key, result.unwrap())
-            return cast("Result[MediaAsset, MultimediaError]", result)
+        else:
+            result = await self._backend.generate(request)
 
-        result = await self._backend.generate(request)
+        await self._publish_generation_event(result)
         return cast("Result[MediaAsset, MultimediaError]", result)
+
+    async def _publish_generation_event(
+        self, result: Result[MediaAsset, MultimediaError]
+    ) -> None:
+        if self._event_bus is None or not result.is_ok():
+            return
+
+        from lexigram.multimedia.events import MultimediaGenerationEvent
+
+        asset = result.unwrap()
+        await self._event_bus.publish(
+            MultimediaGenerationEvent(
+                media_type=self._media_type,
+                provider=asset.provider,
+                size_bytes=len(asset.bytes_data) if asset.bytes_data is not None else None,
+                duration_seconds=asset.metadata.get("duration_seconds"),
+            )
+        )
 
     async def submit(self, request: _Req, idempotency_key: str | None = None) -> JobHandle:
         from dataclasses import asdict
