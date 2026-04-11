@@ -20,6 +20,14 @@ async def test_get_missing_key_returns_none() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_record_aliases_get() -> None:
+    store = InMemoryIdempotencyStoreFallback()
+    await store.set("key-1", {"status": "submitted"})
+
+    assert await store.get_record("key-1") == {"status": "submitted"}
+
+
+@pytest.mark.asyncio
 async def test_delete_removes_key() -> None:
     store = InMemoryIdempotencyStoreFallback()
     await store.set("key-1", {"status": "submitted"})
