@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         RetryPolicyProtocol,
     )
 
+
 class LocalHttpVideoProvider:
     """Talks to a self-hosted video generation HTTP server.
 
