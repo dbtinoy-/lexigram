@@ -135,12 +135,26 @@ class SetupTokenInvalidError(AdminAuthError):
     _code: str = "LEX_ERR_ADMIN_019"
 
 
+class PasswordResetTokenInvalidError(AdminAuthError):
+    """Raised when a password reset token is unknown or already consumed."""
+
+    _code: str = "LEX_ERR_ADMIN_020"
+
+
+class PasswordResetTokenExpiredError(AdminAuthError):
+    """Raised when a password reset token has expired."""
+
+    _code: str = "LEX_ERR_ADMIN_021"
+
+
 __all__ = [
     "AccountLockedError",
     "AdminAuthError",
     "CsrfValidationError",
     "InvalidCredentialsError",
     "PasswordPolicyError",
+    "PasswordResetTokenExpiredError",
+    "PasswordResetTokenInvalidError",
     "RateLimitExceededError",
     "SessionExpiredError",
     "SessionNotFoundError",

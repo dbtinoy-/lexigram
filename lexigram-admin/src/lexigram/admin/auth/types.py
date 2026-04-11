@@ -167,11 +167,30 @@ class AdminSecurityEvent:
     created_at: datetime
 
 
+@dataclass(frozen=True)
+class AdminPasswordResetToken:
+    """Persisted password reset token record (sha256 of the raw token).
+
+    Attributes:
+        email: Email the reset token was issued for.
+        token_hash: sha256 hex digest of the raw token — the raw token
+            itself is never persisted.
+        expires_at: UTC expiry timestamp.
+        consumed_at: UTC consumption timestamp; ``None`` while unused.
+    """
+
+    email: str
+    token_hash: str
+    expires_at: datetime
+    consumed_at: datetime | None = None
+
+
 __all__ = [
     "AdminAuthResult",
     "AdminLockoutInfo",
     "AdminLockoutStatus",
     "AdminLoginAttempt",
+    "AdminPasswordResetToken",
     "AdminPasswordRule",
     "AdminPasswordValidationResult",
     "AdminPasswordViolation",
