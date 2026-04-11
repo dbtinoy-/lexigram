@@ -151,6 +151,8 @@ class AdminAuthSubProvider:
             AdminLoginAttemptServiceProtocol,
             AdminLoginAttemptStoreProtocol,
             AdminPasswordPolicyServiceProtocol,
+            AdminPasswordResetServiceProtocol,
+            AdminPasswordResetTokenStoreProtocol,
             AdminSessionServiceProtocol,
         )
         from lexigram.admin.auth.services.audit_log_service import AdminAuditLogService
@@ -162,11 +164,17 @@ class AdminAuthSubProvider:
         from lexigram.admin.auth.services.password_policy_service import (
             AdminPasswordPolicyService,
         )
+        from lexigram.admin.auth.services.password_reset_service import (
+            AdminPasswordResetService,
+        )
         from lexigram.admin.auth.services.session_service import AdminSessionService
         from lexigram.admin.auth.store.audit_log_sql import AdminAuditLogSqlStore
         from lexigram.admin.auth.store.lockout_sql import AdminAccountLockoutSqlStore
         from lexigram.admin.auth.store.login_attempt_sql import (
             AdminLoginAttemptSqlStore,
+        )
+        from lexigram.admin.auth.store.password_reset_token_sql import (
+            AdminPasswordResetTokenSqlStore,
         )
         from lexigram.di.decorators import inject
 
@@ -176,6 +184,9 @@ class AdminAuthSubProvider:
             AdminAccountLockoutStoreProtocol, AdminAccountLockoutSqlStore
         )
         container.singleton(AdminAuditLogStoreProtocol, AdminAuditLogSqlStore)
+        container.singleton(
+            AdminPasswordResetTokenStoreProtocol, AdminPasswordResetTokenSqlStore
+        )
 
         # ── Config extraction (safe getattr — works even when config is None) ──
         _auth_cfg = getattr(self._config, "auth", None)
@@ -253,6 +264,15 @@ class AdminAuthSubProvider:
         # ── AdminAuthService — DI-wired orchestrator ──────────────────────
         container.singleton(AdminAuthServiceProtocol, AdminAuthService)
 
+        # ── AdminPasswordResetService — DI-wired orchestrator ─────────────
+        # Resolves user_store, token_store, audit, auth, and policy services
+        # from the container. hasher and notification_service stay optional:
+        # the hasher falls back to lexigram-auth's PasswordHasher at runtime,
+        # and notifications are skipped when no service is bound.
+        container.singleton(
+            AdminPasswordResetServiceProtocol, AdminPasswordResetService
+        )
+
         logger.debug("admin_auth.new_services_registered")
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
@@ -276,12 +296,14 @@ class AdminAuthSubProvider:
             AdminAuditLogStoreProtocol,
             AdminLoginAttemptServiceProtocol,
             AdminLoginAttemptStoreProtocol,
+            AdminPasswordResetTokenStoreProtocol,
         )
 
         for _store_protocol in (
             AdminLoginAttemptStoreProtocol,
             AdminAccountLockoutStoreProtocol,
             AdminAuditLogStoreProtocol,
+            AdminPasswordResetTokenStoreProtocol,
         ):
             try:
                 _store = await container.resolve(
