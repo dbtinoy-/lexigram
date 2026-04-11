@@ -16,6 +16,7 @@ from lexigram.admin.auth.errors import (
     PasswordPolicyError,
     PasswordResetTokenExpiredError,
     PasswordResetTokenInvalidError,
+    RateLimitExceededError,
 )
 from lexigram.admin.auth.protocols import (
     AdminAuditLogServiceProtocol,
@@ -26,6 +27,7 @@ from lexigram.admin.auth.protocols import (
 from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.contracts.auth import PasswordHasherProtocol
+from lexigram.contracts.infra.cache import CacheBackendProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
@@ -51,6 +53,10 @@ class AdminPasswordResetService:
         notification_service: Optional email notification; ``None`` skips
             sending.
         token_lifetime: Token validity in seconds (default 3600 = 1 hour).
+        cache: Optional cache backend for request rate limiting; ``None`` (or
+            a failing cache) skips limiting (fail open).
+        reset_request_limit: Max request-reset calls per IP per window.
+        reset_request_window_seconds: Rate-limit window length in seconds.
     """
 
     def __init__(
@@ -63,6 +69,9 @@ class AdminPasswordResetService:
         hasher: PasswordHasherProtocol | None = None,
         notification_service: object | None = None,
         token_lifetime: int = 3600,
+        cache: CacheBackendProtocol | None = None,
+        reset_request_limit: int = 5,
+        reset_request_window_seconds: int = 3600,
     ) -> None:
         self._user_store = user_store
         self._token_store = token_store
@@ -72,6 +81,9 @@ class AdminPasswordResetService:
         self._hasher = hasher
         self._notification_service = notification_service
         self._token_lifetime = token_lifetime
+        self._cache = cache
+        self._reset_request_limit = reset_request_limit
+        self._reset_request_window_seconds = reset_request_window_seconds
 
     # ------------------------------------------------------------------
     # Public API
@@ -93,14 +105,26 @@ class AdminPasswordResetService:
 
         Args:
             email: Email to send the reset link to.
-            ip_address: Client IP for audit.
+            ip_address: Client IP for audit and rate limiting.
             user_agent: Client user agent for audit.
             base_url: Request base URL used to build the reset link.
 
         Returns:
-            ``Ok(None)`` — always, regardless of whether the email exists.
+            ``Ok(None)`` — always, regardless of whether the email exists —
+            or ``Err(RateLimitExceededError)`` when this IP exceeds the
+            request limit.
         """
         email = email.strip().lower()
+
+        if self._cache is not None and await self._is_rate_limited(ip_address):
+            logger.warning("admin.password_reset_rate_limited", ip=ip_address)
+            return Err(
+                RateLimitExceededError(
+                    "Too many password reset requests. Please try again later.",
+                    reason="rate_limit",
+                )
+            )
+
         user = await self._user_store.get_user_by_email(email)
         if user is None:
             logger.info("admin.password_reset_unknown_email", email=email)
@@ -136,6 +160,34 @@ class AdminPasswordResetService:
         )
         logger.info("admin.password_reset_requested", email=email)
         return Ok(None)
+
+    async def _is_rate_limited(self, ip_address: str) -> bool:
+        """Check and increment the per-IP request counter. Fail open.
+
+        Uses a fixed-window counter keyed by a sha256 hash of the client IP
+        (avoids PII in cache key listings). Any cache failure is treated as
+        "not limited" so a cache outage never blocks password resets.
+
+        Args:
+            ip_address: Client IP address.
+
+        Returns:
+            ``True`` when the IP exceeds ``reset_request_limit``.
+        """
+        try:
+            ip_hash = hashlib.sha256(ip_address.encode()).hexdigest()[:16]
+            key = f"admin:password-reset:ip:{ip_hash}"
+            result = await self._cache.get(key)
+            count = int(result.unwrap()) if result.is_ok() and result.unwrap() else 0
+            if count >= self._reset_request_limit:
+                return True
+            await self._cache.set(
+                key, str(count + 1), ttl=self._reset_request_window_seconds
+            )
+            return False
+        except Exception:  # noqa: BLE001
+            logger.warning("admin.password_reset_rate_limit_unavailable")
+            return False
 
     async def confirm_reset(
         self,

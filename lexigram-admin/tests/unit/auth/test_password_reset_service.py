@@ -11,6 +11,7 @@ from lexigram.admin.auth.errors import (
     PasswordPolicyError,
     PasswordResetTokenExpiredError,
     PasswordResetTokenInvalidError,
+    RateLimitExceededError,
 )
 from lexigram.admin.auth.services.password_policy_service import (
     AdminPasswordPolicyService,
@@ -93,11 +94,32 @@ class FakeHasher:
         return hashed == f"fake-hash:{password}"
 
 
+class FakeCache:
+    """In-memory CacheBackendProtocol (get/set with TTL)."""
+
+    def __init__(self, *, fail: bool = False) -> None:
+        self._store: dict[str, str] = {}
+        self._fail = fail
+
+    async def get(self, key: str) -> object:
+        if self._fail:
+            raise ConnectionError("cache down")
+        return Ok(self._store.get(key))
+
+    async def set(self, key: str, value: str, ttl: int = 60) -> object:
+        if self._fail:
+            raise ConnectionError("cache down")
+        self._store[key] = value
+        return Ok(True)
+
+
 def _make_service(
     *,
     users: list[dict] | None = None,
     notification: object | None = None,
     token_lifetime: int = 3600,
+    cache: object | None = None,
+    reset_request_limit: int = 5,
 ) -> tuple[
     AdminPasswordResetService,
     FakeUserStore,
@@ -120,6 +142,8 @@ def _make_service(
         hasher=FakeHasher(),
         notification_service=notification,
         token_lifetime=token_lifetime,
+        cache=cache,
+        reset_request_limit=reset_request_limit,
     )
     return service, user_store, token_store, audit, auth_service
 
@@ -326,3 +350,89 @@ async def test_confirm_reset_weak_password_returns_policy_error() -> None:
 
     assert result.is_err()
     assert isinstance(result.unwrap_err(), PasswordPolicyError)
+
+
+# ---------------------------------------------------------------------------
+# Request rate limiting
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_request_reset_under_limit_ok_and_increments_counter() -> None:
+    cache = FakeCache()
+    service, _, _, _, _ = _make_service(cache=cache, reset_request_limit=2)
+
+    for _ in range(2):
+        result = await service.request_reset(
+            EMAIL, "10.0.0.1", "agent", "http://localhost"
+        )
+        assert result.is_ok()
+
+    values = list(cache._store.values())
+    assert values == ["2"]
+    assert "admin:password-reset:ip:" in next(iter(cache._store))
+
+
+@pytest.mark.asyncio
+async def test_request_reset_over_limit_returns_rate_limit_error() -> None:
+    cache = FakeCache()
+    service, _, _, _, _ = _make_service(cache=cache, reset_request_limit=2)
+    for _ in range(2):
+        await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
+
+    result = await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), RateLimitExceededError)
+
+
+@pytest.mark.asyncio
+async def test_request_reset_rate_limit_is_per_ip() -> None:
+    cache = FakeCache()
+    service, _, _, _, _ = _make_service(cache=cache, reset_request_limit=2)
+    for _ in range(2):
+        await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
+
+    result = await service.request_reset(EMAIL, "10.0.0.2", "agent", "http://localhost")
+
+    assert result.is_ok()
+
+
+@pytest.mark.asyncio
+async def test_request_reset_without_cache_fails_open() -> None:
+    service, _, token_store, _, _ = _make_service(
+        users=[
+            {
+                "user_id": "u1",
+                "name": "Admin",
+                "email": EMAIL,
+                "hashed_password": "old",
+            }
+        ]
+    )
+
+    result = await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
+
+    assert result.is_ok()
+    assert len(token_store.created) == 1
+
+
+@pytest.mark.asyncio
+async def test_request_reset_cache_error_fails_open() -> None:
+    cache = FakeCache(fail=True)
+    service, _, token_store, _, _ = _make_service(
+        cache=cache,
+        users=[
+            {
+                "user_id": "u1",
+                "name": "Admin",
+                "email": EMAIL,
+                "hashed_password": "old",
+            }
+        ],
+    )
+
+    result = await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
+
+    assert result.is_ok()
+    assert len(token_store.created) == 1

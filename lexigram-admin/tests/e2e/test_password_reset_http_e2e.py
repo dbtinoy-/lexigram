@@ -15,9 +15,16 @@ from lexigram.admin.controllers.auth import AuthController
 from lexigram.result import Err, Ok
 
 
-def _make_reset_service(*, ok: bool = True) -> MagicMock:
+def _make_reset_service(*, ok: bool = True, rate_limited: bool = False) -> MagicMock:
     svc = MagicMock()
-    if ok:
+    if rate_limited:
+        from lexigram.admin.auth.errors import RateLimitExceededError
+
+        svc.request_reset = AsyncMock(
+            return_value=Err(RateLimitExceededError("Too many requests."))
+        )
+        svc.confirm_reset = AsyncMock(return_value=Ok(None))
+    elif ok:
         svc.request_reset = AsyncMock(return_value=Ok(None))
         svc.confirm_reset = AsyncMock(return_value=Ok(None))
     else:
@@ -42,12 +49,16 @@ class _DummyRenderer:
         return PlainTextResponse(str(content))
 
 
-def create_app(*, reset_ok: bool = True, csrf_valid: bool = True) -> Starlette:
+def create_app(
+    *, reset_ok: bool = True, csrf_valid: bool = True, rate_limited: bool = False
+) -> Starlette:
     controller = AuthController(
         auth_service=MagicMock(),
         csrf_service=_make_csrf_service(valid=csrf_valid),
         renderer=_DummyRenderer(),
-        password_reset_service=_make_reset_service(ok=reset_ok),
+        password_reset_service=_make_reset_service(
+            ok=reset_ok, rate_limited=rate_limited
+        ),
     )
 
     async def request_form(request):
@@ -118,6 +129,24 @@ async def test_post_request_invalid_csrf_redirects_with_error() -> None:
             data={"email": "admin@example.com", "csrf_token": "csrf-test-token"},
         )
         assert r.status_code == 302
+        assert "error=" in r.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_post_request_rate_limited_redirects_with_error() -> None:
+    app = create_app(rate_limited=True)
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        await client.get("/admin/password-reset")
+        r = await client.post(
+            "/admin/password-reset",
+            data={"email": "admin@example.com", "csrf_token": "csrf-test-token"},
+        )
+        assert r.status_code == 302
+        assert "sent=1" not in r.headers["location"]
         assert "error=" in r.headers["location"]
 
 
