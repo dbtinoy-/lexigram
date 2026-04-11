@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, AsyncMock
 
 from lexigram.storage.backends.base import AbstractDriver
-from lexigram.storage.types import UploadOptions
+from lexigram.contracts.infra.storage import UploadOptions
 
 
 class ConcreteTestDriver(AbstractDriver):

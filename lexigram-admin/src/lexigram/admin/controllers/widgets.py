@@ -116,6 +116,7 @@ class WidgetController:
             cfg = prefs.get("configs", {}).get(full_name, {})
             if "time_window_minutes" in cfg:
                 from lexigram.contracts.admin.types import WidgetParams
+
                 params = WidgetParams(
                     page=params.page,
                     page_size=params.page_size,
@@ -123,7 +124,9 @@ class WidgetController:
                     raw=params.raw,
                 )
 
-        result = await contributor.render_widget(widget_name, params, resolver=self._resolver)
+        result = await contributor.render_widget(
+            widget_name, params, resolver=self._resolver
+        )
 
         if result.is_ok():
             vm = result.unwrap()
@@ -231,7 +234,6 @@ class WidgetController:
         error = result.unwrap_err()
         return Response(content=str(error), status_code=422)
 
-
     @get("/core/widgets/{name}/config")
     async def widget_config_popup(
         self,
@@ -262,7 +264,11 @@ class WidgetController:
 
         schema = getattr(contributor, "get_widget_config_schema", lambda _: [])(name)
 
-        prefs = await self._settings_service.get_widget_prefs(tenant_id, user_id) if self._settings_service else {}
+        prefs = (
+            await self._settings_service.get_widget_prefs(tenant_id, user_id)
+            if self._settings_service
+            else {}
+        )
         enabled = name in prefs.get("enabled", [])
         cfg = prefs.get("configs", {}).get(name, {})
 
@@ -286,7 +292,11 @@ class WidgetController:
             if k.startswith("param_")
         }
 
-        prefs = await self._settings_service.get_widget_prefs(tenant_id, user_id) if self._settings_service else {}
+        prefs = (
+            await self._settings_service.get_widget_prefs(tenant_id, user_id)
+            if self._settings_service
+            else {}
+        )
         enabled_list = prefs.get("enabled", [])
         if enabled and widget_name not in enabled_list:
             enabled_list.append(widget_name)
@@ -315,7 +325,11 @@ class WidgetController:
 
         data = await request.json()
         order_list = data.get("order", [])
-        prefs = await self._settings_service.get_widget_prefs(tenant_id, user_id) if self._settings_service else {}
+        prefs = (
+            await self._settings_service.get_widget_prefs(tenant_id, user_id)
+            if self._settings_service
+            else {}
+        )
         prefs["order"] = {name: idx for idx, name in enumerate(order_list)}
         if self._settings_service:
             await self._settings_service.set_widget_prefs(tenant_id, user_id, prefs)
@@ -331,21 +345,30 @@ class WidgetController:
         tenant_id = "default"
         user_id = "default"
 
-        prefs = await self._settings_service.get_widget_prefs(tenant_id, user_id) if self._settings_service else {}
+        prefs = (
+            await self._settings_service.get_widget_prefs(tenant_id, user_id)
+            if self._settings_service
+            else {}
+        )
         enabled_list = prefs.get("enabled", [])
         configs = prefs.get("configs", {})
 
         rows: list[Any] = [
             el("h3", "Customize Dashboard", class_="text-xl font-semibold mb-4"),
-            el("p", "Enable/disable widgets and configure their parameters.",
-               class_="text-sm text-gray-500 mb-6"),
+            el(
+                "p",
+                "Enable/disable widgets and configure their parameters.",
+                class_="text-sm text-gray-500 mb-6",
+            ),
         ]
 
         for contributor in self._registry.get_all():
             for wdef in contributor.get_dashboard_widgets():
                 name = wdef.name
                 enabled = name in enabled_list
-                schema = getattr(contributor, "get_widget_config_schema", lambda _: [])(name)
+                schema = getattr(contributor, "get_widget_config_schema", lambda _: [])(
+                    name
+                )
                 cfg = configs.get(name, {})
 
                 from lexigram.admin.dashboard.widget_types import ConfigField
@@ -356,21 +379,37 @@ class WidgetController:
                         f = ConfigField(**f)
                     value = cfg.get(f.name, f.default)
                     field_inputs.append(
-                        el("div",
-                           el("label", f.label, class_="block text-xs font-medium mb-1"),
-                           _render_field_input(f, value, widget_name=name),
-                           class_="mb-2"),
+                        el(
+                            "div",
+                            el(
+                                "label",
+                                f.label,
+                                class_="block text-xs font-medium mb-1",
+                            ),
+                            _render_field_input(f, value, widget_name=name),
+                            class_="mb-2",
+                        ),
                     )
 
                 widget_row = el(
                     "div",
-                    el("label",
-                       el("input", type_="checkbox", name=f"enabled_{name}",
-                          value="1", checked="checked" if enabled else None),
-                       el("span", wdef.title, class_="font-medium ml-2"),
-                       el("span", f" ({wdef.contributor})",
-                          class_="text-xs text-gray-400 ml-1"),
-                       class_="flex items-center mb-2"),
+                    el(
+                        "label",
+                        el(
+                            "input",
+                            type_="checkbox",
+                            name=f"enabled_{name}",
+                            value="1",
+                            checked="checked" if enabled else None,
+                        ),
+                        el("span", wdef.title, class_="font-medium ml-2"),
+                        el(
+                            "span",
+                            f" ({wdef.contributor})",
+                            class_="text-xs text-gray-400 ml-1",
+                        ),
+                        class_="flex items-center mb-2",
+                    ),
                     el("div", *field_inputs, class_="ml-6"),
                     class_="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700 last:border-0",
                 )
@@ -379,15 +418,28 @@ class WidgetController:
         form = el(
             "form",
             *rows,
-            el("div",
-               el("button", "Save All Changes", type_="submit",
-                  class_="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"),
-               el("button", "Cancel", type_="button",
-                  class_="ml-2 text-gray-600 px-4 py-2 rounded hover:bg-gray-100",
-                  onclick="this.closest('dialog').close()"),
-               class_="mt-6 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-gray-800 py-3 border-t"),
-            **{"hx-post": "/admin/core/widgets/customize/save", "hx-swap": "none",
-               "hx-on:htmx:afterRequest": "document.getElementById('widget-config-dialog').close()"},
+            el(
+                "div",
+                el(
+                    "button",
+                    "Save All Changes",
+                    type_="submit",
+                    class_="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700",
+                ),
+                el(
+                    "button",
+                    "Cancel",
+                    type_="button",
+                    class_="ml-2 text-gray-600 px-4 py-2 rounded hover:bg-gray-100",
+                    onclick="this.closest('dialog').close()",
+                ),
+                class_="mt-6 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-gray-800 py-3 border-t",
+            ),
+            **{
+                "hx-post": "/admin/core/widgets/customize/save",
+                "hx-swap": "none",
+                "hx-on:htmx:afterRequest": "document.getElementById('widget-config-dialog').close()",
+            },
             class_="p-6 max-h-[80vh] overflow-y-auto",
         )
 
@@ -421,7 +473,11 @@ class WidgetController:
                 wname, pname = rest.split("__", 1)
                 configs.setdefault(wname, {})[pname] = val
 
-        existing = await self._settings_service.get_widget_prefs(tenant_id, user_id) if self._settings_service else {}
+        existing = (
+            await self._settings_service.get_widget_prefs(tenant_id, user_id)
+            if self._settings_service
+            else {}
+        )
         prefs = {
             "enabled": enabled_list,
             "configs": configs,

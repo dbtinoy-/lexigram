@@ -1,7 +1,7 @@
 """Tests for storage types module."""
 
 import pytest
-from lexigram.storage.types import UploadOptions
+from lexigram.contracts.infra.storage import UploadOptions
 
 
 class TestUploadOptions:

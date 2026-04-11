@@ -1,4 +1,5 @@
 """Field type specification parser for CLI code generators."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -50,7 +51,7 @@ def _parse_field(field_text: str) -> FieldSpec:
     while rest:
         if rest.startswith("!unique"):
             unique = True
-            rest = rest[len("!unique"):]
+            rest = rest[len("!unique") :]
         elif rest.startswith("!fk="):
             fk, rest = _parse_foreign_key(rest, field_text)
         elif rest.startswith("="):
@@ -58,11 +59,13 @@ def _parse_field(field_text: str) -> FieldSpec:
             rest = ""
         else:
             raise ValueError(f"Invalid field specification: {field_text!r}")
-    return FieldSpec(name=name, type=type_, required=required, unique=unique, fk=fk, default=default)
+    return FieldSpec(
+        name=name, type=type_, required=required, unique=unique, fk=fk, default=default
+    )
 
 
 def _parse_foreign_key(remainder: str, field_text: str) -> tuple[str, str]:
-    value = remainder[len("!fk="):]
+    value = remainder[len("!fk=") :]
     idxs = [i for i in (value.find("!"), value.find("=")) if i != -1]
     split = min(idxs, default=-1)
     if split == -1:

@@ -67,7 +67,9 @@ class Action(ABC, Generic[R, Outcome]):
         """
         return True
 
-    def is_visible(self, user: Any = None, resource_name: str | None = None, record: Any = None) -> bool:
+    def is_visible(
+        self, user: Any = None, resource_name: str | None = None, record: Any = None
+    ) -> bool:
         """Determine whether this action is visible in the current context.
 
         Legacy compatibility shim called by rendering code. Defaults to True.

@@ -340,7 +340,11 @@ def render_error_page(
         </details>
         """
 
-    icon_html = f'<div style="font-size: 3rem; margin-bottom: 0.5rem;">{icon}</div>' if icon else ""
+    icon_html = (
+        f'<div style="font-size: 3rem; margin-bottom: 0.5rem;">{icon}</div>'
+        if icon
+        else ""
+    )
 
     content = f"""
     <div class="error-container">

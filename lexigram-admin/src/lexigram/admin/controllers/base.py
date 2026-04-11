@@ -131,7 +131,13 @@ class AdminController(ControllerProtocol):
 
             tenant = await resolve_tenant_id(request, default="default")
             overrides = await self._settings_service.get_all(tenant)
-            for field in ("primary_color", "site_name", "logo_url", "favicon_url", "dark_mode"):
+            for field in (
+                "primary_color",
+                "site_name",
+                "logo_url",
+                "favicon_url",
+                "dark_mode",
+            ):
                 if overrides.get(field):
                     extra_context.setdefault(field, overrides[field])
         except Exception:  # noqa: BLE001 — non-fatal

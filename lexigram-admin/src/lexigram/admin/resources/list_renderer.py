@@ -192,7 +192,9 @@ class ListRenderer:
             return items, total
 
         # Use resource search_fields when available, otherwise derive from columns
-        resource_search_fields: list[str] | None = getattr(resource, "search_fields", None)
+        resource_search_fields: list[str] | None = getattr(
+            resource, "search_fields", None
+        )
         if resource_search_fields:
             search_fields = list(resource_search_fields)
         else:

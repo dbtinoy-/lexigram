@@ -25,7 +25,13 @@ class SearchQueryDataSourceWrapper:
     falls through without search filtering (no FTS, no ILIKE).
     """
 
-    def __init__(self, inner: Any, search_engine: Any, index_name: str, fallback_to_like: bool = True) -> None:
+    def __init__(
+        self,
+        inner: Any,
+        search_engine: Any,
+        index_name: str,
+        fallback_to_like: bool = True,
+    ) -> None:
         self._inner = inner
         self._search_engine = search_engine
         self._index_name = index_name
@@ -58,7 +64,9 @@ class SearchQueryDataSourceWrapper:
                 return QueryResult(items=[], total=0)
             page_size = max(query.per_page, 1)
             page_offset = max(query.page, 1) - 1
-            page_ids = matched_ids[page_offset * page_size: (page_offset + 1) * page_size]
+            page_ids = matched_ids[
+                page_offset * page_size : (page_offset + 1) * page_size
+            ]
             filtered = replace(query, search=None, search_fields=[])
             if page_ids:
                 filtered = filtered.with_filters(id__in=page_ids)
@@ -135,7 +143,11 @@ class SearchQueryDataSourceWrapper:
 
         ids = []
         for r in results_list:
-            rid = r.id if hasattr(r, "id") else (r.get("id") if isinstance(r, dict) else None)
+            rid = (
+                r.id
+                if hasattr(r, "id")
+                else (r.get("id") if isinstance(r, dict) else None)
+            )
             if rid is not None:
                 ids.append(str(rid))
 

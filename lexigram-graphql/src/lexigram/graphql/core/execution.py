@@ -291,9 +291,9 @@ class GraphQLExecutorProtocol:
                             # aren't Lexigram GraphQLErrors but have safe user-facing messages.
                             # Wrap them in a transient GraphQLError so format_error sees them.
                             from lexigram.graphql.exceptions import (
-                                GraphQLError as _safe_err,
+                                GraphQLError as LexigramGraphQLError,
                             )
-                            effective_error = _safe_err(str(original))
+                            effective_error = LexigramGraphQLError(str(original))
                             effective_error.safe = True
                     formatted = self._error_formatter.format_error(effective_error)
                     # Thread request_id into extensions (cross-cutting concern via context)

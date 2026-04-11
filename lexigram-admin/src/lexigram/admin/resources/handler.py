@@ -449,7 +449,9 @@ class BulkActionHandler:
         if request.method == "GET":
             ids = request.query_params.getlist("ids")
             record_count = len(ids)
-            resource_prefix = request.scope.get("admin_resource_prefix", resource.name or "")
+            resource_prefix = request.scope.get(
+                "admin_resource_prefix", resource.name or ""
+            )
             bulk_url = f"/admin/{resource_prefix}/bulk"
             html = render_bulk_delete_confirm(
                 record_count=record_count,

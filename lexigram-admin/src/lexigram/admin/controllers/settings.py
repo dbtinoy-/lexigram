@@ -147,13 +147,19 @@ class SettingsController(AdminController):
         if self._settings_service:
             overrides = await self._settings_service.get_all(tenant)
             settings.update(overrides)
-        content = _render_settings_form(settings, csrf_token=self._get_csrf_token(request))
+        content = _render_settings_form(
+            settings, csrf_token=self._get_csrf_token(request)
+        )
         return await self.render_admin(request, content, title="Settings")
 
     @post("/")
     async def save(self, request: Request) -> HTMLResponse:
         tenant = await self._get_tenant(request)
-        logger.debug("settings.save_called", tenant=tenant, csrf_service=self._csrf_service is not None)
+        logger.debug(
+            "settings.save_called",
+            tenant=tenant,
+            csrf_service=self._csrf_service is not None,
+        )
         body_scope = request.scope.get("admin_form_data")
         if body_scope is not None:
             form = body_scope
@@ -177,7 +183,9 @@ class SettingsController(AdminController):
 
         settings = dict(DEFAULT_SETTINGS, **settings)
         content = _render_settings_form(
-            settings, csrf_token=self._get_csrf_token(request), message="Settings saved successfully."
+            settings,
+            csrf_token=self._get_csrf_token(request),
+            message="Settings saved successfully.",
         )
         return await self.render_admin(request, content, title="Settings")
 

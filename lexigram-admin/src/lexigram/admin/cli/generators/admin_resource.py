@@ -22,9 +22,7 @@ class AdminResourceGenerator(GeneratorBase):
             template_root=Path(__file__).parent.parent / "templates",
         )
 
-    def generate(
-        self, name: str, **kwargs: Any
-    ) -> GenerationResult:
+    def generate(self, name: str, **kwargs: Any) -> GenerationResult:
         """Generate an admin resource file.
 
         Args:
