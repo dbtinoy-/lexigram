@@ -1,4 +1,4 @@
-from lexigram.multimedia.video.config import VideoConfig
+from lexigram.multimedia.video.config import VideoConfig, VideoProcessingConfig
 
 
 def test_default_config_points_at_local_http() -> None:
@@ -16,3 +16,16 @@ def test_runway_backend_configured_explicitly() -> None:
     )
     assert config.backend == "runway"
     assert config.runway_api_key_secret_name == "lex_my_runway_key"
+
+
+def test_video_processing_config_defaults() -> None:
+    cfg = VideoProcessingConfig()
+    assert cfg.ffmpeg_binary == "ffmpeg"
+    assert cfg.max_concurrent_jobs == 2
+    assert cfg.temp_dir is None
+    assert cfg.timeout == 300.0
+
+
+def test_video_config_has_processing_field() -> None:
+    cfg = VideoConfig()
+    assert isinstance(cfg.processing, VideoProcessingConfig)

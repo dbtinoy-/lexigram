@@ -7,6 +7,7 @@ from lexigram.contracts.multimedia.exceptions import VideoGenerationError
 __all__ = [
     "VideoGenerationAuthenticationError",
     "VideoGenerationError",
+    "VideoProcessingError",
     "VideoTimeoutError",
 ]
 
@@ -14,10 +15,16 @@ __all__ = [
 class VideoTimeoutError(VideoGenerationError):
     """Raised when a video generation operation exceeds its timeout."""
 
-    code = "LEX_ERR_MM_VIDEO_001"
+    _code = "LEX_ERR_MM_VIDEO_001"
 
 
 class VideoGenerationAuthenticationError(VideoGenerationError):
     """Raised when the video backend rejects the configured API credentials."""
 
-    code = "LEX_ERR_MM_VIDEO_002"
+    _code = "LEX_ERR_MM_VIDEO_002"
+
+
+class VideoProcessingError(VideoGenerationError):
+    """Raised when an ffmpeg processing operation fails."""
+
+    _code = "LEX_ERR_MM_VIDEO_003"
