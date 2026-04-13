@@ -265,6 +265,20 @@ class AuthorizationService(_AuthCheckMixin):
         effective_roles = self._flatten_roles({role})
         return self._get_user_permissions(effective_roles)
 
+    def remove_role(self, name: str) -> None:
+        """Remove a role definition and invalidate dependent caches.
+
+        Missing roles are a no-op.  In-memory merges mean a removed role
+        can reappear if DB-synced again; callers persist the deletion.
+
+        Args:
+            name: Role name to remove.
+        """
+        self._roles.pop(name, None)
+        self._role_flatten_cache.clear()
+        self._permission_cache.clear()
+        logger.debug("Removed role: %s", name)
+
     def invalidate_user(self, user_id: str) -> None:
         """Invalidate the permission cache for a specific user."""
         self._permission_cache.pop(user_id, None)
