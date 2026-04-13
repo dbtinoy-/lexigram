@@ -12,12 +12,16 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.result import Result
-    from lexigram.contracts.multimedia.exceptions import MultimediaError
+    from lexigram.contracts.multimedia.exceptions import (
+        MultimediaError,
+        VideoGenerationError,
+    )
     from lexigram.contracts.multimedia.types import (
         ImageRequest,
         MediaAsset,
         MusicRequest,
         TTSRequest,
+        VideoOperation,
         VideoRequest,
     )
 
@@ -50,6 +54,15 @@ class VideoProvider(Protocol):
 
 
 @runtime_checkable
+class VideoProcessor(Protocol):
+    """Protocol for ffmpeg-backed video processing/editing backends."""
+
+    async def process(
+        self, operation: VideoOperation
+    ) -> Result[MediaAsset, VideoGenerationError]: ...
+
+
+@runtime_checkable
 class ImageProvider(Protocol):
     """Protocol for still-image generation backends."""
 
@@ -58,4 +71,10 @@ class ImageProvider(Protocol):
     ) -> Result[MediaAsset, MultimediaError]: ...
 
 
-__all__ = ["ImageProvider", "MusicProvider", "TTSProvider", "VideoProvider"]
+__all__ = [
+    "ImageProvider",
+    "MusicProvider",
+    "TTSProvider",
+    "VideoProcessor",
+    "VideoProvider",
+]
