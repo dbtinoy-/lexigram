@@ -1,6 +1,7 @@
 from lexigram.ui.core.base import render_to_string
 from lexigram.ui.columns.types import TextColumn
 from lexigram.admin.config import TableConfiguration
+from lexigram.admin.resources.base import Resource
 from lexigram.admin.ui.organisms.data_table import DataTable
 
 
@@ -53,3 +54,35 @@ def test_group_by_handles_missing_keys():
     # Check for "Unknown" group
     assert "Unknown" in html
     assert "(1)" in html
+
+
+def test_resource_group_by_class_attr_flows_through_config():
+    class OrderResource(Resource):
+        group_by = "status"
+
+    assert OrderResource.get_table_config().group_by == "status"
+
+
+def test_renders_group_by_switcher_in_toolbar():
+    data = [
+        {"id": 1, "name": "Alice", "role": "Admin"},
+        {"id": 2, "name": "Bob", "role": "User"},
+    ]
+
+    config = TableConfiguration(
+        columns=[TextColumn("name"), TextColumn("role")],
+        group_by="role",
+        resource_prefix="/admin/users",
+    )
+
+    dt = DataTable(config=config, data=data, resource_prefix="/admin/users")
+    html = render_to_string(dt)
+
+    assert "Group by" in html
+    # Column options appear in the grouping dropdown
+    assert "Role" in html
+    assert "No grouping" in html
+    # Current group is surfaced in the trigger label
+    assert "Group by: Role" in html
+    # HTMX navigation to the resource with group_by param
+    assert "group_by=" in html

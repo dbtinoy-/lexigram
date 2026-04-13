@@ -36,10 +36,37 @@ class ConcreteBelongsToMany(BelongsToManyRelationManager):
         return None
 
 
+class _FakeDataSource:
+    """Minimal in-memory data source for pivot persistence."""
+
+    def __init__(self) -> None:
+        self.rows: list[Any] = []
+
+    async def find_many(self, query: Any) -> Any:
+        return type("Result", (), {"items": list(self.rows), "total": len(self.rows)})()
+
+    async def create(self, data: dict[str, Any]) -> Any:
+        self.rows.append(data)
+        return data
+
+    async def bulk_delete(self, ids: list[Any]) -> int:
+        self.rows = [r for r in self.rows if r.get("id") not in ids]
+        return len(ids)
+
+    async def update(self, item_id: Any, data: dict[str, Any]) -> Any:
+        for row in self.rows:
+            if row.get("id") == item_id:
+                row.update(data)
+                return row
+        return None
+
+
 class TestBelongsToManyRelationManager:
     @pytest.fixture
     def manager(self) -> BelongsToManyRelationManager:
-        return ConcreteBelongsToMany(parent_id="parent-1")
+        manager = ConcreteBelongsToMany(parent_id="parent-1")
+        manager.set_data_source(_FakeDataSource())
+        return manager
 
     def test_construct(self, manager: BelongsToManyRelationManager) -> None:
         assert manager.relationship_name == "roles"

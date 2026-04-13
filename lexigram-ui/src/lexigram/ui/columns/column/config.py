@@ -4,11 +4,32 @@ Column configuration methods for fluent API.
 
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 
 class ColumnConfigMixin:
     """Mixin class containing all column configuration methods."""
+
+    def summarizer(self, operator: Literal["sum", "average", "count", "range"]) -> Self:
+        """Show an aggregate footer value for this column.
+
+        The footer row displays the aggregate computed over the
+        currently visible page of records.
+
+        Args:
+            operator: Aggregate to compute: ``"sum"``, ``"average"``,
+                ``"count"`` (non-empty values), or ``"range"``
+                (min – max of numeric values).
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            >>> TextColumn("price").summarizer("sum")
+            >>> TextColumn("quantity").summarizer("count")
+        """
+        self._summarizer = operator
+        return self
 
     def sortable(self, sortable: bool = True) -> Self:
         """Make column sortable in the DataTable.

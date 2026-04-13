@@ -76,9 +76,10 @@ class StateRenderer:
         )
 
     def render_empty(self) -> Any:
-        """Render empty state."""
+        """Render empty state, honoring configure table overrides."""
         return EmptyState(
-            title="No results found",
-            message="Try adjusting your filters or search terms.",
-            icon="🔍",
+            title=self.config.empty_state_title or "No results found",
+            message=self.config.empty_state_message
+            or "Try adjusting your filters or search terms.",
+            icon=self.config.empty_state_icon or "🔍",
         )

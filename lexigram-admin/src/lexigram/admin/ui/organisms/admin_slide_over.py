@@ -250,29 +250,45 @@ def render_bulk_delete_confirm(
     record_count: int,
     bulk_url: str,
     action: str = "delete",
+    title: str = "Delete Records",
+    heading: str = "Confirm Bulk Deletion",
+    confirm_phrase: str = "DELETE",
+    subtitle: str | None = None,
     cancel_label: str = "Cancel",
     confirm_label: str = "Delete",
     message: str | None = None,
     extra_warning: str | None = None,
     hx_target: str | None = None,
     hx_swap: str | None = None,
+    variant: str = "danger",
+    confirm_button_class: str | None = None,
 ) -> str:
     """
     Render a bulk-delete-confirmation slide-over fragment.
 
     Like ``render_delete_confirm`` but for multiple records — the confirm
     button issues an ``hx-post`` with ``hx-include`` for the checked IDs
-    rather than a single ``hx-delete``.
+    rather than a single ``hx-delete``. Reusable for any bulk action via
+    the ``action``, ``title``, ``heading``, ``confirm_phrase``, ``variant``,
+    and ``confirm_button_class`` parameters.
 
     Args:
-        record_count: Number of records being deleted.
+        record_count: Number of records being affected.
         bulk_url: HTMX POST endpoint for the bulk action.
+        action: Value posted in the ``action`` field (default ``"delete"``).
+        title: Slide-over panel title (default ``"Delete Records"``).
+        heading: Body heading text (default ``"Confirm Bulk Deletion"``).
+        confirm_phrase: Phrase the user must type to confirm (default ``"DELETE"``).
+        subtitle: Secondary heading text (default ``"Deleting N records"``).
         cancel_label: Cancel button label.
         confirm_label: Confirm button label.
         message: Custom body message (overrides default).
         extra_warning: Optional secondary warning paragraph.
-        hx_target: HTMX target zone after deletion (default: DATA zone).
+        hx_target: HTMX target zone after the action (default: DATA zone).
         hx_swap: HTMX swap mode (default: DATA zone swap mode).
+        variant: Slide-over variant (``"default"`` or ``"danger"``).
+        confirm_button_class: Tailwind classes for the confirm button
+            (default: destructive styling).
     """
     target = hx_target or Zones.DATA.selector
     swap = hx_swap or Zones.DATA.swap_mode.value
@@ -306,7 +322,7 @@ def render_bulk_delete_confirm(
                 el(
                     "p",
                     {"class": "text-sm font-semibold text-destructive"},
-                    "Confirm Bulk Deletion",
+                    heading,
                 ),
                 el(
                     "p",
@@ -338,7 +354,7 @@ def render_bulk_delete_confirm(
                     "for": "bulk-delete-confirm-input",
                     "class": "block text-sm font-medium text-foreground mb-1",
                 },
-                'Type <span class="font-bold tracking-wider">DELETE</span> to confirm:',
+                f'Type <span class="font-bold tracking-wider">{confirm_phrase}</span> to confirm:',
             ),
             el(
                 "input",
@@ -347,7 +363,7 @@ def render_bulk_delete_confirm(
                     "id": "bulk-delete-confirm-input",
                     "name": "delete_confirm",
                     "x-model": "confirmText",
-                    "placeholder": "Type DELETE here",
+                    "placeholder": f"Type {confirm_phrase} here",
                     "class": (
                         "block w-full rounded-lg border border-border "
                         "bg-background px-3 py-2 text-sm "
@@ -379,6 +395,13 @@ def render_bulk_delete_confirm(
         },
         cancel_label,
     )
+    default_button_class = (
+        "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium "
+        "text-white bg-destructive hover:bg-destructive/90 "
+        "focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 "
+        "transition-colors shadow-sm "
+        "disabled:opacity-50 disabled:cursor-not-allowed"
+    )
     confirm_btn = el(
         "button",
         {
@@ -389,14 +412,8 @@ def render_bulk_delete_confirm(
             "hx-vals": f'{{"action":"{action}"}}',
             "hx-include": "#lexigram-table [name='ids']:checked",
             "x-on:click": "open = false",
-            "x-bind:disabled": "confirmText !== 'DELETE'",
-            "class": (
-                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium "
-                "text-white bg-destructive hover:bg-destructive/90 "
-                "focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 "
-                "transition-colors shadow-sm "
-                "disabled:opacity-50 disabled:cursor-not-allowed"
-            ),
+            "x-bind:disabled": f"confirmText !== '{confirm_phrase}'",
+            "class": confirm_button_class or default_button_class,
         },
         raw(
             '<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">'
@@ -408,12 +425,13 @@ def render_bulk_delete_confirm(
     )
 
     return render_slide_over_fragment(
-        title="Delete Records",
+        title=title,
         content=body,
-        subtitle=f"Deleting {record_count} record{'s' if record_count != 1 else ''}",
+        subtitle=subtitle
+        or f"Deleting {record_count} record{'s' if record_count != 1 else ''}",
         footer=[cancel_btn, confirm_btn],
         size="md",
-        variant="danger",
+        variant=variant,
     )
 
 

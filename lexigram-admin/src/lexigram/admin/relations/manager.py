@@ -37,15 +37,28 @@ class AbstractRelationManager(ABC):
 
     relationship_name: ClassVar[str] = ""
 
-    def __init__(self, parent_id: Any = None, parent: Any = None):
+    def __init__(
+        self,
+        parent_id: Any = None,
+        parent: Any = None,
+        data_source: Any = None,
+    ):
         """Initialize relation manager.
 
         Args:
             parent_id: ID of the parent entity
             parent: The parent entity object (optional)
+            data_source: Optional data source used for persisting
+                pivot/relation operations. Subclasses may also attach
+                one later via :meth:`set_data_source`.
         """
         self.parent_id = parent_id
         self.parent = parent
+        self._data_source = data_source
+
+    def set_data_source(self, data_source: Any) -> None:
+        """Attach a data source for pivot persistence operations."""
+        self._data_source = data_source
 
     @classmethod
     @abstractmethod

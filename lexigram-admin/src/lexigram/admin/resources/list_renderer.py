@@ -129,6 +129,17 @@ class ListRenderer:
                 default_sort_order=state.sort_order,
                 default_layout=table_config.default_layout if table_config else "stack",
                 default_view=table_config.default_view if table_config else "tabular",
+                group_by=state.group_by
+                or (table_config.group_by if table_config else None),
+                empty_state_title=(
+                    table_config.empty_state_title if table_config else None
+                ),
+                empty_state_message=(
+                    table_config.empty_state_message if table_config else None
+                ),
+                empty_state_icon=(
+                    table_config.empty_state_icon if table_config else None
+                ),
                 search_fields=getattr(resource, "search_fields", None),
             ),
             total=total,

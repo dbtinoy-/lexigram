@@ -6,11 +6,20 @@ are properly wired for the soft-delete feature.
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
+
+import pytest
+from starlette.requests import Request
 
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.core.routing import AdminRouter
-from lexigram.admin.resources.handler import PurgeActionHandler, RestoreActionHandler
+from lexigram.admin.resources.base import Resource
+from lexigram.admin.resources.handler import (
+    BulkActionHandler,
+    PurgeActionHandler,
+    RestoreActionHandler,
+)
 
 
 class TestRestoreActionHandler:
@@ -104,3 +113,163 @@ class TestRestorePurgeRouteRegistration:
         assert any("/purge" in p for p in users_paths)
         assert any("/restore" in p for p in posts_paths)
         assert any("/purge" in p for p in posts_paths)
+
+
+class _FakeDataSource:
+    """In-memory IDataSource fake for bulk handler tests."""
+
+    def __init__(self) -> None:
+        self._store: dict[str, dict[str, Any]] = {
+            "1": {"id": "1", "name": "one"},
+            "2": {"id": "2", "name": "two"},
+        }
+
+    async def find_one(self, item_id: Any) -> dict[str, Any] | None:
+        return self._store.get(str(item_id))
+
+    async def update(self, item_id: Any, data: dict[str, Any]) -> dict[str, Any] | None:
+        record = self._store.get(str(item_id))
+        if record is None:
+            return None
+        record.update(data)
+        return record
+
+    async def bulk_delete(self, ids: list[str]) -> int:
+        deleted = 0
+        for id_ in ids:
+            if self._store.pop(str(id_), None) is not None:
+                deleted += 1
+        return deleted
+
+
+class _BulkResource(Resource):
+    """Concrete Resource for bulk handler tests."""
+
+
+class TestBulkActionHandlerPurgeRestore:
+    """Tests for BulkActionHandler purge and restore dispatch."""
+
+    def setup_method(self) -> None:
+        self.handler = BulkActionHandler()
+        self.ds = _FakeDataSource()
+        self.resource = _BulkResource()
+        self.resource._data_source = self.ds
+
+    def _make_scope(
+        self,
+        method: str,
+        *,
+        query: dict[str, list[str]] | None = None,
+        scope_extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        scope: dict[str, Any] = {
+            "type": "http",
+            "method": method,
+            "path": "/admin/users/bulk",
+            "query_string": b"",
+            "headers": [],
+            "path_params": {},
+            "app": None,
+            "state": MagicMock(),
+        }
+        if query:
+            scope["query_string"] = (
+                "&".join(f"{k}={v}" for k, vals in query.items() for v in vals)
+            ).encode()
+        scope.update(scope_extra or {})
+        return scope
+
+    def test_can_handle_purge_and_restore_confirms(self) -> None:
+        assert self.handler.can_handle("bulk")
+        assert self.handler.can_handle("bulk-delete-confirm")
+        assert self.handler.can_handle("bulk-purge-confirm")
+        assert self.handler.can_handle("bulk-restore-confirm")
+
+    @pytest.mark.asyncio
+    async def test_get_purge_confirm_renders_purge_slide_over(self) -> None:
+        scope = self._make_scope(
+            "GET",
+            query={"ids": ["1", "2"]},
+            scope_extra={
+                "admin_action": "bulk-purge-confirm",
+                "admin_resource_prefix": "users",
+            },
+        )
+        request = Request(scope)
+        response = await self.handler.handle(request, self.resource)
+        assert response.status_code == 200
+        body = response.body.decode()
+        assert "PURGE" in body
+        assert "{&quot;action&quot;:&quot;purge&quot;}" in body
+        assert "Purge" in body
+
+    @pytest.mark.asyncio
+    async def test_get_restore_confirm_renders_restore_slide_over(self) -> None:
+        scope = self._make_scope(
+            "GET",
+            query={"ids": ["1", "2"]},
+            scope_extra={
+                "admin_action": "bulk-restore-confirm",
+                "admin_resource_prefix": "users",
+            },
+        )
+        request = Request(scope)
+        response = await self.handler.handle(request, self.resource)
+        assert response.status_code == 200
+        body = response.body.decode()
+        assert "RESTORE" in body
+        assert "{&quot;action&quot;:&quot;restore&quot;}" in body
+
+    @pytest.mark.asyncio
+    async def test_get_delete_confirm_defaults_to_delete(self) -> None:
+        scope = self._make_scope(
+            "GET",
+            query={"ids": ["1"]},
+            scope_extra={"admin_resource_prefix": "users"},
+        )
+        request = Request(scope)
+        response = await self.handler.handle(request, self.resource)
+        assert response.status_code == 200
+        body = response.body.decode()
+        assert "DELETE" in body
+        assert "{&quot;action&quot;:&quot;delete&quot;}" in body
+
+    @pytest.mark.asyncio
+    async def test_post_purge_removes_records(self) -> None:
+        scope = self._make_scope(
+            "POST",
+            scope_extra={"admin_resource_prefix": "users"},
+        )
+        request = Request(scope)
+        form = MagicMock()
+        form.get = lambda k, d=None: {"action": "purge"}.get(k, d)
+        form.getlist = lambda k: {"ids": ["1", "2"]}.get(k, [])
+        request.scope["admin_form_data"] = form
+        response = await self.handler.handle(request, self.resource)
+        assert response.status_code == 302
+        assert self.ds._store == {}
+
+    @pytest.mark.asyncio
+    async def test_post_restore_clears_deleted_at(self) -> None:
+        self.ds._store["1"] = {"id": "1", "name": "one", "deleted_at": "2026-01-01"}
+        scope = self._make_scope("POST", scope_extra={"admin_resource_prefix": "users"})
+        request = Request(scope)
+        form = MagicMock()
+        form.get = lambda k, d=None: {"action": "restore"}.get(k, d)
+        form.getlist = lambda k: {"ids": ["1", "2"]}.get(k, [])
+        request.scope["admin_form_data"] = form
+        response = await self.handler.handle(request, self.resource)
+        assert response.status_code == 302
+        assert self.ds._store["1"]["deleted_at"] is None
+        assert "2" in self.ds._store
+
+    @pytest.mark.asyncio
+    async def test_post_unknown_action_returns_400(self) -> None:
+        scope = self._make_scope("POST", scope_extra={"admin_resource_prefix": "users"})
+        request = Request(scope)
+        form = MagicMock()
+        form.get = lambda k, d=None: {"action": "explode"}.get(k, d)
+        form.getlist = lambda k: {"ids": ["1"]}.get(k, [])
+        request.scope["admin_form_data"] = form
+        response = await self.handler.handle(request, self.resource)
+        assert response.status_code == 400

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.admin.data.query import QuerySpec
+from lexigram.admin.relations.errors import RelationPersistenceError
 from lexigram.admin.relations.manager_ext import RelationManager
 from lexigram.serialization import loads_str
 
@@ -41,13 +43,92 @@ class BelongsToManyRelationManager(RelationManager):
     def table(cls, table_config: Any = None) -> list[Any]:
         return []
 
+    def _require_persistence(self) -> None:
+        """Raise unless pivot persistence is configured."""
+        if not self.pivot_table:
+            raise RelationPersistenceError(
+                "BelongsToManyRelationManager requires a pivot_table "
+                f"({self.get_relationship_name()})"
+            )
+        if self._data_source is None:
+            raise RelationPersistenceError(
+                "BelongsToManyRelationManager requires an attached data source; "
+                "pass data_source to the constructor or call set_data_source()"
+            )
+
+    def _row_id(self, row: Any) -> Any:
+        """Extract a row's primary key."""
+        if isinstance(row, dict):
+            return row.get("id") or row.get("pk")
+        return getattr(row, "id", None) or getattr(row, "pk", None)
+
+    def _row_value(self, row: Any, field: str) -> Any:
+        """Extract a field value from a record."""
+        if isinstance(row, dict):
+            return row.get(field)
+        return getattr(row, field, None)
+
+    async def _find_pivot_rows(self) -> list[Any]:
+        """Look up pivot rows for the current parent through the data source."""
+        query = QuerySpec().with_where_eq(self.related_key_local, self.parent_id)
+        result = await self._data_source.find_many(query)
+        if result is None:
+            return []
+        return list(result.items) if hasattr(result, "items") else []
+
+    async def _matching_pivot_rows(self, related_id: str) -> list[Any]:
+        """Pivot rows linking the current parent to the given related record."""
+        rows = await self._find_pivot_rows()
+        return [
+            row
+            for row in rows
+            if str(self._row_value(row, self.related_key)) == str(related_id)
+        ]
+
     async def attach(
         self, related_id: str, pivot_data: dict[str, Any] | None = None
     ) -> None:
-        """Attach a related record with optional pivot data."""
+        """Attach a related record with optional pivot data.
+
+        Persists a pivot row through the attached data source.
+
+        Args:
+            related_id: ID of the related record to attach.
+            pivot_data: Optional values for configured pivot columns.
+
+        Raises:
+            RelationPersistenceError: When no pivot table or data
+                source is configured.
+        """
+        self._require_persistence()
+        row: dict[str, Any] = {
+            self.related_key_local: self.parent_id,
+            self.related_key: related_id,
+        }
+        if pivot_data:
+            if self.pivot_columns:
+                row.update(
+                    {k: v for k, v in pivot_data.items() if k in self.pivot_columns}
+                )
+            else:
+                row.update(pivot_data)
+        await self._data_source.create(row)
 
     async def detach(self, related_id: str) -> None:
-        """Detach a related record."""
+        """Detach a related record by removing its pivot rows.
+
+        Args:
+            related_id: ID of the related record to detach.
+
+        Raises:
+            RelationPersistenceError: When no pivot table or data
+                source is configured.
+        """
+        self._require_persistence()
+        rows = await self._matching_pivot_rows(related_id)
+        ids = [self._row_id(row) for row in rows if self._row_id(row) is not None]
+        if ids:
+            await self._data_source.bulk_delete(ids)
 
     async def sync(
         self,
@@ -59,18 +140,74 @@ class BelongsToManyRelationManager(RelationManager):
         Args:
             related_ids: IDs to keep attached.
             pivot_data_map: Optional mapping of related_id -> pivot data.
+
+        Raises:
+            RelationPersistenceError: When no pivot table or data
+                source is configured.
         """
+        current = await self.get_attached_ids()
+        pivot_data_map = pivot_data_map or {}
+        for related_id in current:
+            if related_id not in related_ids:
+                await self.detach(related_id)
+        for related_id in related_ids:
+            if related_id not in current:
+                await self.attach(related_id, pivot_data_map.get(related_id))
 
     async def get_attached_ids(self) -> list[str]:
         """Return IDs of currently attached related records."""
-        return []
+        if self._data_source is None:
+            return []
+        rows = await self._find_pivot_rows()
+        return [
+            str(self._row_value(row, self.related_key))
+            for row in rows
+            if self._row_value(row, self.related_key) is not None
+        ]
 
     async def get_pivot_data(self, related_id: str) -> dict[str, Any] | None:
         """Return pivot data for a single attached record."""
-        return None
+        if self._data_source is None:
+            return None
+        rows = await self._matching_pivot_rows(related_id)
+        if not rows:
+            return None
+        row = rows[0]
+        if self.pivot_columns:
+            return {col: self._row_value(row, col) for col in self.pivot_columns}
+        if isinstance(row, dict):
+            return dict(row)
+        return (
+            {key: getattr(row, key) for key in vars(row) if not key.startswith("_")}
+            if hasattr(row, "__dict__")
+            else None
+        )
 
     async def update_pivot(self, related_id: str, pivot_data: dict[str, Any]) -> None:
-        """Update pivot data for an attached record."""
+        """Update pivot data for an attached record.
+
+        Args:
+            related_id: ID of the attached related record.
+            pivot_data: Values for configured pivot columns.
+
+        Raises:
+            RelationPersistenceError: When no pivot table or data
+                source is configured.
+        """
+        self._require_persistence()
+        rows = await self._matching_pivot_rows(related_id)
+        if not rows:
+            return
+        row_id = self._row_id(rows[0])
+        if row_id is None:
+            return
+        updates = (
+            {k: v for k, v in pivot_data.items() if k in self.pivot_columns}
+            if self.pivot_columns
+            else dict(pivot_data)
+        )
+        if updates:
+            await self._data_source.update(row_id, updates)
 
     async def render(self, request: Request, resource_name: str = "") -> str:
         items = await self.get_query()

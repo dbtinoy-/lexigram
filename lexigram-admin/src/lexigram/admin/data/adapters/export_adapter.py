@@ -34,7 +34,10 @@ class ExportDataSourceAdapter(IExportDataSource):
 
         # Add filters
         for field, val in filters.items():
-            qs = qs.with_where_eq(field, val)
+            if field.endswith("__in"):
+                qs = qs.with_where_in(field[:-4], list(val))
+            else:
+                qs = qs.with_where_eq(field, val)
 
         # Sort
         if sort_by:
@@ -58,7 +61,10 @@ class ExportDataSourceAdapter(IExportDataSource):
         """Implementation for IExportDataSource.get_export_count."""
         qs = QuerySpec()
         for field, val in filters.items():
-            qs = qs.with_where_eq(field, val)
+            if field.endswith("__in"):
+                qs = qs.with_where_in(field[:-4], list(val))
+            else:
+                qs = qs.with_where_eq(field, val)
 
         return await self.data_source.count(qs)
 

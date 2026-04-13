@@ -29,8 +29,9 @@ class ActionContext:
     """Contextual information passed to action execution.
 
     Carries the request, authenticated user, resource name,
-    authorizer, audit writer, and request-metadata fields
-    that together describe the environment in which an action runs.
+    authorizer, audit writer, request-metadata fields, and an
+    optional data source that together describe the environment
+    in which an action runs.
     """
 
     request: Any | None = None
@@ -44,6 +45,7 @@ class ActionContext:
     request_ip: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     record_id: str | None = None
+    data_source: Any | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

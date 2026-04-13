@@ -43,6 +43,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from lexigram.admin.services.export import ExportFormat
 from lexigram.contracts.infra.tasks.progress import ProgressTrackerProtocol
 from lexigram.logging import get_logger
 from lexigram.serialization import dumps_str
@@ -118,6 +119,8 @@ class BackgroundJobService:
             UI works automatically.
         import_service: Optional ``AdminImportService`` instance.
         export_service: Optional ``ExportService`` instance.
+        export_data_source: Optional ``IExportDataSource`` instance used by
+            ``export_service`` to read rows for a queued export.
         max_retained_jobs: Maximum number of completed/failed jobs to keep
             in memory before oldest are evicted.
     """
@@ -127,11 +130,13 @@ class BackgroundJobService:
         progress_tracker: ProgressTrackerProtocol | None = None,
         import_service: Any = None,
         export_service: Any = None,
+        export_data_source: Any | None = None,
         max_retained_jobs: int = 200,
     ) -> None:
         self._progress = progress_tracker
         self._importer = import_service
         self._exporter = export_service
+        self._export_data_source = export_data_source
         self._max_retained = max_retained_jobs
         self._jobs: dict[str, BackgroundJob] = {}
         self._tasks: dict[str, asyncio.Task[None]] = {}
@@ -259,12 +264,16 @@ class BackgroundJobService:
                 return
 
             await self._update(job, 20)
+            filename = job.metadata.get("filename") or f"upload.{file_format}"
             import_job = await self._importer.parse(
-                file_content, file_format=file_format, **options
+                file_content, filename=filename, **options
             )
+            if import_job.is_err():
+                await self._fail(job, str(import_job.unwrap_err()))
+                return
             await self._update(job, 60)
 
-            result = await self._importer.commit(import_job)
+            result = await self._importer.commit(import_job.unwrap())
             await self._update(job, 95)
 
             if result.is_ok():
@@ -272,8 +281,7 @@ class BackgroundJobService:
                 await self._finish(
                     job,
                     {
-                        "rows_imported": getattr(r, "imported", 0),
-                        "rows_skipped": getattr(r, "skipped", 0),
+                        "rows_imported": getattr(r, "created", 0),
                         "rows_failed": getattr(r, "failed", 0),
                     },
                 )
@@ -347,22 +355,40 @@ class BackgroundJobService:
                 )
                 return
 
+            if self._export_data_source is None:
+                await self._fail(
+                    job,
+                    "Export requires a data source; pass export_data_source to "
+                    "BackgroundJobService.",
+                )
+                return
+
             await self._update(job, 30)
-            output = await self._exporter.export(
-                job.resource_type,
-                format=export_format,
+            job_id = self._exporter.create_job(
+                resource_name=job.resource_type,
+                file_format=ExportFormat(export_format),
                 filters=filters,
                 columns=columns,
+                user_id=job.actor_id,
+            )
+            result = await self._exporter.execute_export(
+                job_id, self._export_data_source
             )
             await self._update(job, 90)
-            await self._finish(
-                job,
-                {
-                    "rows_exported": getattr(output, "row_count", 0),
-                    "download_url": getattr(output, "download_url", ""),
-                    "export_format": export_format,
-                },
-            )
+
+            if result.is_ok():
+                output = result.unwrap()
+                await self._finish(
+                    job,
+                    {
+                        "rows_exported": getattr(output, "total_records", 0),
+                        "download_url": getattr(output, "download_url", "") or "",
+                        "file_path": getattr(output, "file_path", "") or "",
+                        "export_format": export_format,
+                    },
+                )
+            else:
+                await self._fail(job, str(result.unwrap_err()))
 
         except Exception as exc:  # noqa: BLE001 — top-level task runner must capture all failures to mark job as failed
             logger.exception("Export job %s failed: %s", job.job_id, exc)

@@ -169,7 +169,7 @@ class TestResourceControllerRoutes:
 
     def test_get_routes_returns_all_routes(self) -> None:
         routes = self.controller.get_routes()
-        assert len(routes) == 10
+        assert len(routes) == 14
 
     def test_list_route_registered(self) -> None:
         routes = self.controller.get_routes()
@@ -190,7 +190,14 @@ class TestResourceControllerRoutes:
 
     def test_detail_route_registered(self) -> None:
         routes = self.controller.get_routes()
-        detail = [r for r in routes if "{id}" in r.path and "GET" in r.methods and "/edit" not in r.path and "/delete" not in r.path]
+        detail = [
+            r
+            for r in routes
+            if "{id}" in r.path
+            and "GET" in r.methods
+            and "/edit" not in r.path
+            and "/delete" not in r.path
+        ]
         assert len(detail) >= 1
 
     def test_edit_form_route_registered(self) -> None:
@@ -521,8 +528,8 @@ class TestBulkAction:
 
         async def _form():
             data = MagicMock()
-            data.get = lambda k, d=None: None
-            data.getlist = lambda k: []
+            data.get = lambda _k, _d=None: None
+            data.getlist = lambda _k: []
             return data
 
         request.form = _form  # type: ignore[method-assign]
@@ -563,6 +570,70 @@ class TestBulkAction:
         response = await self.controller.bulk_action(request)
         # Non-HTMX unknown action redirects (302) or renders (200); either is valid
         assert response.status_code in (200, 302)
+
+    @pytest.mark.asyncio
+    async def test_bulk_purge_removes_items(self) -> None:
+        assert len(self.ds._items) == 2
+        request = _make_request(
+            "POST",
+            "/admin/item/bulk",
+            form_data={"action": "purge", "ids": ["1", "2"]},
+        )
+
+        async def _form():
+            data = MagicMock()
+            data.get = lambda k, d=None: {"action": "purge"}.get(k, d)
+            data.getlist = lambda k: {"ids": ["1", "2"]}.get(k, [])
+            return data
+
+        request.form = _form  # type: ignore[method-assign]
+        response = await self.controller.bulk_action(request)
+        assert response.status_code == 302
+        assert len(self.ds._items) == 0
+
+    @pytest.mark.asyncio
+    async def test_bulk_restore_clears_deleted_at(self) -> None:
+        request = _make_request(
+            "POST",
+            "/admin/item/bulk",
+            form_data={"action": "restore", "ids": ["1"]},
+        )
+
+        async def _form():
+            data = MagicMock()
+            data.get = lambda k, d=None: {"action": "restore"}.get(k, d)
+            data.getlist = lambda k: {"ids": ["1"]}.get(k, [])
+            return data
+
+        request.form = _form  # type: ignore[method-assign]
+        response = await self.controller.bulk_action(request)
+        assert response.status_code == 302
+
+    @pytest.mark.asyncio
+    async def test_bulk_purge_confirm_renders_slide_over(self) -> None:
+        request = _make_request("GET", "/admin/item/bulk-purge-confirm")
+        request.scope["query_string"] = b"ids=1&ids=2"
+        response = await self.controller.bulk_purge_confirm(request)
+        assert response.status_code == 200
+        body = response.body.decode()
+        assert "PURGE" in body
+        assert "{&quot;action&quot;:&quot;purge&quot;}" in body
+
+    @pytest.mark.asyncio
+    async def test_bulk_restore_confirm_renders_slide_over(self) -> None:
+        request = _make_request("GET", "/admin/item/bulk-restore-confirm")
+        request.scope["query_string"] = b"ids=1&ids=2"
+        response = await self.controller.bulk_restore_confirm(request)
+        assert response.status_code == 200
+        body = response.body.decode()
+        assert "RESTORE" in body
+        assert "{&quot;action&quot;:&quot;restore&quot;}" in body
+
+    def test_bulk_purge_restore_routes_registered(self) -> None:
+        routes = self.controller.get_routes()
+        paths = [r.path for r in routes]
+        assert "/item/bulk-purge-confirm" in paths
+        assert "/item/bulk-restore-confirm" in paths
 
 
 # ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ from lexigram.admin.ui.molecules.filter_bar import FilterBar
 from lexigram.ui import (
     ActionButton,
     Component,
+    GroupBySwitcher,
     LayoutSwitcher,
     SearchBar,
     ViewSwitcher,
@@ -215,6 +216,12 @@ class TableToolbar(Component):
             resource_prefix=self.config.resource_prefix,
             state=self.state,
         )
+        group_by_switch = GroupBySwitcher(
+            current=self.state.group_by or self.config.group_by,
+            resource_prefix=self.config.resource_prefix,
+            columns=self.config.columns,
+            state=self.state,
+        )
 
         # Structure: [Left: Switchers] [Right: Bulk Actions | Header Buttons]
         # - Bulk actions hidden until selected (x-show/x-cloak)
@@ -226,6 +233,7 @@ class TableToolbar(Component):
                 "div",
                 layout_switch.render(),
                 view_switch.render(),
+                group_by_switch.render(),
                 *clear_buttons,
                 class_="flex items-center gap-2",
                 id=Zones.TOOLBAR.id + "-switchers",
@@ -349,11 +357,18 @@ class TableToolbar(Component):
             resource_prefix=self.config.resource_prefix,
             state=self.state,
         )
+        group_by_switch = GroupBySwitcher(
+            current=self.state.group_by or self.config.group_by,
+            resource_prefix=self.config.resource_prefix,
+            columns=self.config.columns,
+            state=self.state,
+        )
 
         return el(
             "div",
             layout_switch.render(),
             view_switch.render(),
+            group_by_switch.render(),
             *clear_buttons,
             class_="flex items-center gap-2",
             id=Zones.TOOLBAR.id + "-switchers",

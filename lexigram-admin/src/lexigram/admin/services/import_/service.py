@@ -101,6 +101,40 @@ class ImportResult:
         return self.created + self.failed
 
 
+@dataclass
+class ImportReport:
+    """Stored failed-import report for post-hoc download.
+
+    Persisted by :class:`AdminImportService` whenever a commit has
+    failed rows, so callers can surface a downloadable error report
+    (mirrors Filament's "Reviewing failed rows" flow).
+
+    Attributes:
+        id: Unique report identifier.
+        source_filename: Original uploaded filename.
+        created_at: ISO-8601 timestamp of report creation.
+        total_rows: Number of data rows attempted.
+        failed_rows: Number of rows that failed.
+        failures: Per-row validation/commit errors.
+    """
+
+    id: str
+    source_filename: str
+    created_at: str
+    total_rows: int
+    failed_rows: int
+    failures: list[ImportRowError]
+
+    def to_csv(self) -> str:
+        """Serialize failed rows as CSV (row number, field, message)."""
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, lineterminator="\n")
+        writer.writerow(["row", "field", "message"])
+        for err in self.failures:
+            writer.writerow([err.row, err.field, err.message])
+        return buffer.getvalue()
+
+
 # ---------------------------------------------------------------------------
 # Parsers
 # ---------------------------------------------------------------------------
@@ -222,6 +256,65 @@ class AdminImportService:
         self._data_source = data_source
         self._required_fields: list[str] = required_fields or []
         self._max_rows = max_rows
+        self._reports: list[ImportReport] = []
+
+    # ------------------------------------------------------------------
+    # Failed-import reports
+    # ------------------------------------------------------------------
+
+    def reports(self) -> list[ImportReport]:
+        """Return all stored failed-import reports (most recent last).
+
+        Returns:
+            Copy of the in-memory report list; empty when no imports
+            have failed.
+        """
+        return list(self._reports)
+
+    def get_report(self, report_id: str) -> ImportReport | None:
+        """Look up a stored failed-import report by id.
+
+        Args:
+            report_id: Report identifier from :meth:`reports`.
+
+        Returns:
+            The matching report, or None when unknown.
+        """
+        for report in self._reports:
+            if report.id == report_id:
+                return report
+        return None
+
+    def delete_report(self, report_id: str) -> bool:
+        """Remove a stored failed-import report.
+
+        Args:
+            report_id: Report identifier from :meth:`reports`.
+
+        Returns:
+            True when the report was removed, False when unknown.
+        """
+        for index, report in enumerate(self._reports):
+            if report.id == report_id:
+                del self._reports[index]
+                return True
+        return False
+
+    def _store_report(self, job: ImportJob, result: ImportResult) -> None:
+        """Persist a failed-import report for the given commit result."""
+        from lexigram.identity import ambient as identity
+        from lexigram.primitives import clock
+
+        self._reports.append(
+            ImportReport(
+                id=identity.new_uuid(),
+                source_filename=job.source_filename,
+                created_at=clock.now().isoformat(),
+                total_rows=len(job.rows),
+                failed_rows=result.failed,
+                failures=[*job.errors, *result.errors],
+            )
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -330,6 +423,8 @@ class AdminImportService:
                 logger.warning("Import commit error at row %d: %s", row_num, exc)
 
         result = ImportResult(created=created, failed=failed, errors=commit_errors)
+        if result.failed:
+            self._store_report(job, result)
         logger.info(
             "Import committed: filename=%s created=%d failed=%d",
             job.source_filename,

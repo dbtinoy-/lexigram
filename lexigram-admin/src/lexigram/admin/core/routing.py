@@ -266,6 +266,38 @@ class AdminRouter:
                 methods=["GET"],
             ),
             Route(
+                f"{prefix}/bulk-purge-confirm",
+                ResourceHandler(
+                    self._config, name, "bulk-purge-confirm", resources=resources_dict
+                ),
+                name=f"admin_{name}_bulk_purge_confirm",
+                methods=["GET"],
+            ),
+            Route(
+                f"{prefix}/bulk-restore-confirm",
+                ResourceHandler(
+                    self._config, name, "bulk-restore-confirm", resources=resources_dict
+                ),
+                name=f"admin_{name}_bulk_restore_confirm",
+                methods=["GET"],
+            ),
+            Route(
+                f"{prefix}/import-example",
+                ResourceHandler(
+                    self._config, name, "import-example", resources=resources_dict
+                ),
+                name=f"admin_{name}_import_example",
+                methods=["GET"],
+            ),
+            Route(
+                f"{prefix}/import-report",
+                ResourceHandler(
+                    self._config, name, "import-report", resources=resources_dict
+                ),
+                name=f"admin_{name}_import_report",
+                methods=["GET"],
+            ),
+            Route(
                 f"{prefix}/{{id}}",
                 ResourceHandler(self._config, name, "detail", resources=resources_dict),
                 name=f"admin_{name}_detail",

@@ -347,6 +347,71 @@ class PurgeActionHandler:
         )
 
 
+class ImportActionHandler:
+    """Handler for import download routes (example CSV, failed-import report).
+
+    Serves GET ``import-example`` (the resource's declared
+    :class:`~lexigram.admin.actions.standard.ImportAction` template) and
+    GET ``import-report`` (a stored failed-import report as CSV).
+    """
+
+    _ACTIONS = ("import-example", "import-report")
+
+    def can_handle(self, action: str) -> bool:
+        """Whether this handler serves the given route action."""
+        return action in self._ACTIONS
+
+    @staticmethod
+    def _find_import_action(resource: Any) -> Any:
+        """Locate the resource's declared ImportAction, if any."""
+        from lexigram.admin.actions.standard import ImportAction
+
+        for collection in ("header_actions", "actions"):
+            for action in getattr(resource, collection, None) or []:
+                if isinstance(action, ImportAction):
+                    return action
+        return None
+
+    @staticmethod
+    def _csv_response(content: str, filename: str) -> Any:
+        """Build an attachment CSV response."""
+        from starlette.responses import Response
+
+        return Response(
+            content=content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    async def handle(self, request: StarletteRequest, resource: Any, **kwargs) -> Any:
+        from starlette.responses import HTMLResponse
+
+        action = self._find_import_action(resource)
+        if action is None:
+            return HTMLResponse(
+                "<h1>Import not configured for this resource</h1>",
+                status_code=404,
+            )
+        if request.method != "GET":
+            return HTMLResponse("Method not allowed", status_code=405)
+
+        requested = request.scope.get("admin_action", "")
+        if requested == "import-example":
+            content = action.example_csv()
+            if not content:
+                return HTMLResponse(
+                    "<h1>No example CSV configured</h1>", status_code=404
+                )
+            return self._csv_response(content, action.example_filename)
+
+        report_id = request.query_params.get("report_id", "")
+        content = action.report_csv(report_id)
+        if content is None:
+            return HTMLResponse("<h1>Report not found</h1>", status_code=404)
+        filename = action.report_filename(report_id) or "import-errors.csv"
+        return self._csv_response(content, filename)
+
+
 class DeleteActionHandler:
     """Handler for delete-confirm and delete actions."""
 
@@ -430,8 +495,19 @@ class DeleteActionHandler:
 class BulkActionHandler:
     """Handler for the ``bulk`` action — processes bulk operations."""
 
+    _CONFIRM_LABELS = {
+        "bulk-delete-confirm": ("delete", "Delete", "DELETE"),
+        "bulk-purge-confirm": ("purge", "Purge", "PURGE"),
+        "bulk-restore-confirm": ("restore", "Restore", "RESTORE"),
+    }
+
     def can_handle(self, action: str) -> bool:
-        return action in ("bulk", "bulk-delete-confirm")
+        return action in (
+            "bulk",
+            "bulk-delete-confirm",
+            "bulk-purge-confirm",
+            "bulk-restore-confirm",
+        )
 
     async def handle(self, request: StarletteRequest, resource: Any, **kwargs) -> Any:
         from lexigram.admin.resources.base import Resource as AdminResource
@@ -445,7 +521,7 @@ class BulkActionHandler:
                 status_code=400,
             )
 
-        # ── Bulk delete confirmation (GET) ──
+        # ── Bulk confirmation (GET) ──
         if request.method == "GET":
             ids = request.query_params.getlist("ids")
             record_count = len(ids)
@@ -453,9 +529,16 @@ class BulkActionHandler:
                 "admin_resource_prefix", resource.name or ""
             )
             bulk_url = f"/admin/{resource_prefix}/bulk"
+            confirm_action = request.scope.get("admin_action", "bulk-delete-confirm")
+            action, confirm_label, confirm_phrase = self._CONFIRM_LABELS.get(
+                confirm_action, ("delete", "Delete", "DELETE")
+            )
             html = render_bulk_delete_confirm(
                 record_count=record_count,
                 bulk_url=bulk_url,
+                action=action,
+                confirm_label=confirm_label,
+                confirm_phrase=confirm_phrase,
             )
             return HTMLResponse(html)
 
@@ -474,21 +557,33 @@ class BulkActionHandler:
         if action_name == "delete":
             count = await resource._data_source.bulk_delete(form_ids)
             message = f"Deleted {count} item(s)"
-
-            if is_htmx:
-                response = HTMLResponse(f"<p>{message}</p>")
-                response.headers["HX-Trigger"] = (
-                    '{"refresh-list":true,"show-toast":{"message":"'
-                    + message.replace('"', '\\"')
-                    + '","type":"success"}}'
+        elif action_name == "purge":
+            count = await resource._data_source.bulk_delete(form_ids)
+            message = f"Purged {count} item(s)"
+        elif action_name == "restore":
+            count = 0
+            for item_id in form_ids:
+                updated = await resource._data_source.update(
+                    item_id, {"deleted_at": None}
                 )
-                return response
-            resource_prefix = request.scope.get(
-                "admin_resource_prefix", resource.name or ""
-            )
-            return RedirectResponse(url=f"/admin/{resource_prefix}", status_code=302)
+                if updated is not None:
+                    count += 1
+            message = f"Restored {count} item(s)"
+        else:
+            return HTMLResponse(f"Unknown action: {action_name}", status_code=400)
 
-        return HTMLResponse(f"Unknown action: {action_name}", status_code=400)
+        if is_htmx:
+            response = HTMLResponse(f"<p>{message}</p>")
+            response.headers["HX-Trigger"] = (
+                '{"refresh-list":true,"show-toast":{"message":"'
+                + message.replace('"', '\\"')
+                + '","type":"success"}}'
+            )
+            return response
+        resource_prefix = request.scope.get(
+            "admin_resource_prefix", resource.name or ""
+        )
+        return RedirectResponse(url=f"/admin/{resource_prefix}", status_code=302)
 
 
 class DefaultActionHandler:
@@ -532,6 +627,7 @@ class ActionHandlerRegistry:
             RestoreActionHandler(),
             PurgeActionHandler(),
             DeleteActionHandler(),
+            ImportActionHandler(),
             BulkActionHandler(),
             DefaultActionHandler(),
         ]
@@ -565,6 +661,7 @@ class ResourceHandler:
     async def __call__(self, scope, receive, send) -> Any:
         request = StarletteRequest(scope, receive, send)
         scope["admin_resource_prefix"] = self.name
+        scope["admin_action"] = self.action
         resource = self._resources.get(self.name) if self._resources else None
         response = await self._registry.handle(request, resource, self.action)
         await response(scope, receive, send)
