@@ -418,3 +418,255 @@ def render_template(
 
     layout = StandaloneLayout(config=config, context=layout_context)
     return layout.render(page_content)
+
+
+def _page_shell(title: str, content: str) -> str:
+    """Wrap standalone page content in the standard admin layout.
+
+    Args:
+        title: Page title for the layout header.
+        content: Inner HTML body.
+
+    Returns:
+        Fully rendered HTML string.
+    """
+    config = StandaloneLayoutConfig(
+        app_name="Lexigram Admin",
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title=title,
+        flash_messages=[],
+    )
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
+
+
+def _flash(error: str, notice: str) -> str:
+    """Render inline error/notice flash messages.
+
+    Args:
+        error: Error message to display (empty hides the block).
+        notice: Success notice to display (empty hides the block).
+
+    Returns:
+        HTML string with the flash blocks.
+    """
+    parts = []
+    if error:
+        parts.append(f'<div class="text-sm text-destructive">{escape(error)}</div>')
+    if notice:
+        parts.append(f'<div class="text-sm text-emerald-600">{escape(notice)}</div>')
+    return "\n".join(parts)
+
+
+def render_roles_list_page(
+    roles: list[Any],
+    *,
+    error: str = "",
+    notice: str = "",
+    csrf_token: str = "",
+) -> str:
+    """Render the roles management list page.
+
+    Args:
+        roles: Roles to display.
+        error: Optional error flash message.
+        notice: Optional success flash message.
+        csrf_token: CSRF token for the inline delete forms.
+
+    Returns:
+        HTML string for the roles list page.
+    """
+    rows = "\n".join(
+        f"""
+        <tr>
+          <td>{escape(role.name)}</td>
+          <td>{escape(role.description or "")}</td>
+          <td>{len(role.permissions)}</td>
+          <td>{"system" if role.is_system else "custom"}</td>
+          <td>
+            <a href="/admin/roles/{escape(role.name)}/edit">Edit</a>
+            <form method="post" action="/admin/roles/{escape(role.name)}/delete" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
+              <button type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        """
+        for role in roles
+    )
+    return _page_shell(
+        "Roles",
+        f"""
+        <p><a href="/admin/roles/new">Create role</a></p>
+        {_flash(error, notice)}
+        <table>
+          <thead><tr><th>Name</th><th>Description</th><th>Permissions</th><th>Type</th><th>Actions</th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+        """,
+    )
+
+
+def render_role_form_page(
+    *,
+    role: Any = None,
+    permission_options: dict[str, list[str]] | None = None,
+    selected: set[str] | None = None,
+    error: str = "",
+    notice: str = "",
+    csrf_token: str = "",
+) -> str:
+    """Render the role create/edit form page.
+
+    Args:
+        role: Role being edited, or ``None`` for create.
+        permission_options: Grouped permission inventory
+            ``{resource: [perm, ...]}``.
+        selected: Currently selected permission strings.
+        error: Optional error flash message.
+        notice: Optional success flash message.
+        csrf_token: CSRF token for the form.
+
+    Returns:
+        HTML string for the role form page.
+    """
+    selected = selected or set()
+    options = permission_options or {}
+    groups = "\n".join(
+        f"""
+        <fieldset>
+          <legend>{escape(resource)}</legend>
+          {
+            "".join(
+                f'<label><input type="checkbox" name="permissions" value="{escape(perm)}" '
+                f"{'checked' if perm in selected else ''}/> {escape(perm)}</label><br/>"
+                for perm in perms
+            )
+        }
+        </fieldset>
+        """
+        for resource, perms in options.items()
+    )
+    # Preserve permissions that exist on the role but are not part of the
+    # built-in inventory (e.g. wildcards like "*" or app-defined strings):
+    # hidden inputs carry them through the form untouched.
+    all_options = {p for perms in options.values() for p in perms}
+    preserved = "\n".join(
+        f'<input type="hidden" name="permissions" value="{escape(perm)}" />'
+        for perm in sorted(selected - all_options)
+    )
+    name_value = f'value="{escape(role.name)}"' if role else ""
+    name_disabled = 'disabled="disabled"' if role and role.is_system else ""
+    action = f"/admin/roles/{escape(role.name)}/edit" if role else "/admin/roles/new"
+    return _page_shell(
+        f"{'Edit' if role else 'Create'} role",
+        f"""
+        <form method="post" action="{action}">
+          <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
+          {preserved}
+          <label>Name
+            <input type="text" name="name" {name_value} {name_disabled} required />
+          </label>
+          <label>Description
+            <input type="text" name="description" value="{escape(role.description) if role else ""}" />
+          </label>
+          {groups}
+          <input type="hidden" name="name" value="{escape(role.name) if role else ""}" />
+          <button type="submit">Save</button>
+        </form>
+        {_flash(error, notice)}
+        """,
+    )
+
+
+def render_users_list_page(
+    users: list[Any],
+    *,
+    error: str = "",
+    notice: str = "",
+) -> str:
+    """Render the admin users list page with role badges.
+
+    Args:
+        users: Admin user records to display.
+        error: Optional error flash message.
+        notice: Optional success flash message.
+
+    Returns:
+        HTML string for the users list page.
+    """
+    rows = "\n".join(
+        f"""
+        <tr>
+          <td>{escape(getattr(user, "name", "") or "")}</td>
+          <td>{escape(getattr(user, "email", "") or "")}</td>
+          <td>
+            {", ".join(escape(str(r)) for r in (getattr(user, "roles", None) or []))}
+          </td>
+          <td>
+            <a href="/admin/users/{escape(str(getattr(user, "user_id", "")))}/roles">Edit roles</a>
+          </td>
+        </tr>
+        """
+        for user in users
+    )
+    return _page_shell(
+        "Users",
+        f"""
+        {_flash(error, notice)}
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Actions</th></tr></thead>
+          <tbody>{rows}</tbody>
+        </table>
+        """,
+    )
+
+
+def render_user_roles_page(
+    user: Any,
+    roles: list[Any],
+    *,
+    role_names: set[str] | None = None,
+    error: str = "",
+    notice: str = "",
+    csrf_token: str = "",
+) -> str:
+    """Render the user role assignment form.
+
+    Args:
+        user: The admin user being edited (or ``None`` when unknown).
+        roles: Available roles to offer as checkboxes.
+        role_names: Role names currently assigned to the user.
+        error: Optional error flash message.
+        notice: Optional success flash message.
+        csrf_token: CSRF token for the form.
+
+    Returns:
+        HTML string for the user roles page.
+    """
+    role_names = role_names or set()
+    checkboxes = "\n".join(
+        f'<label><input type="checkbox" name="roles" value="{escape(r.name)}" '
+        f"{'checked' if r.name in role_names else ''}/> {escape(r.name)}</label><br/>"
+        for r in roles
+    )
+    user_label = escape(
+        f"{getattr(user, 'name', '')} <{getattr(user, 'email', '')}>"
+        if user
+        else "unknown user"
+    )
+    return _page_shell(
+        "User roles",
+        f"""
+        <form method="post" action="/admin/users/{escape(str(getattr(user, "user_id", "")))}/roles">
+          <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
+          <p>{user_label}</p>
+          {checkboxes}
+          <button type="submit">Save</button>
+        </form>
+        {_flash(error, notice)}
+        """,
+    )
