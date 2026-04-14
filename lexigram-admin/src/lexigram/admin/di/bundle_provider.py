@@ -393,6 +393,25 @@ class AdminProvider(Provider):
             if self._config.strict_resource_resolution:
                 raise
 
+        # Resolve built-in RbacController (roles and users pages)
+        try:
+            from lexigram.admin.controllers.rbac import RbacController
+
+            rbac_controller = await admin_resolver.resolve(
+                RbacController,
+                bypass_visibility=True,
+            )
+            controller_instances.append(rbac_controller)
+        except Exception as exc:
+            _log.error(
+                "admin.rbac_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:RbacController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Mount ErrorController (styled error pages) — best-effort
         try:
             from lexigram.admin.controllers.error import ErrorController

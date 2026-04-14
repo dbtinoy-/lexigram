@@ -273,6 +273,20 @@ class AdminAuthSubProvider:
             AdminPasswordResetServiceProtocol, AdminPasswordResetService
         )
 
+        # ── AdminRoleService — DI-wired RBAC orchestrator ────────────────
+        # The @inject decorator resolves role_store from the container.
+        # authorization_service and audit_service are optional (None when
+        # unbound — the service skips mirror/audit, fail open).
+        from lexigram.admin.rbac.protocols import (
+            AdminRoleServiceProtocol,
+            AdminRoleStoreProtocol,
+        )
+        from lexigram.admin.rbac.role_service import AdminRoleService
+        from lexigram.admin.rbac.roles_sql import AdminRoleSqlStore
+
+        container.singleton(AdminRoleStoreProtocol, AdminRoleSqlStore)
+        container.singleton(AdminRoleServiceProtocol, AdminRoleService)
+
         logger.debug("admin_auth.new_services_registered")
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
@@ -299,12 +313,14 @@ class AdminAuthSubProvider:
             AdminPasswordResetServiceProtocol,
             AdminPasswordResetTokenStoreProtocol,
         )
+        from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
 
         for _store_protocol in (
             AdminLoginAttemptStoreProtocol,
             AdminAccountLockoutStoreProtocol,
             AdminAuditLogStoreProtocol,
             AdminPasswordResetTokenStoreProtocol,
+            AdminRoleStoreProtocol,
         ):
             try:
                 _store = await container.resolve(
