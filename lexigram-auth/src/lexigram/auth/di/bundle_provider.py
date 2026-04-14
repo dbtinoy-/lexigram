@@ -80,7 +80,13 @@ class AuthBundleProvider(Provider):
             config=config, initial_roles=initial_roles or {}
         )
         self._admin = AuthAdminProvider(config=config)
-        self._sub_providers = [self._authn, self._token, self._session, self._authz, self._admin]
+        self._sub_providers = [
+            self._authn,
+            self._token,
+            self._session,
+            self._authz,
+            self._admin,
+        ]
         google_oauth_config = (
             getattr(config, "oauth2_providers", {}).get("google", {})
             if config is not None
