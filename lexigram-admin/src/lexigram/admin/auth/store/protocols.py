@@ -35,6 +35,10 @@ class AdminUserStoreProtocol(Protocol):
         """
         ...
 
+    async def list_users(self) -> list[Any]:
+        """Return all admin users ordered by creation time."""
+        ...
+
     async def create_user(
         self,
         name: str,
