@@ -21,6 +21,7 @@ from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import (
     render_role_form_page,
     render_roles_list_page,
+    render_user_permissions_page,
     render_user_roles_page,
     render_users_list_page,
 )
@@ -345,6 +346,75 @@ class RbacController(AdminController):
             await self._user_store.update_user(user)
         return RedirectResponse(
             url="/admin/users?notice=User roles updated.", status_code=302
+        )
+
+    # ------------------------------------------------------------------
+    # GET/POST /users/{user_id}/permissions — direct permission editing
+    # ------------------------------------------------------------------
+
+    @get("/users/{user_id}/permissions")
+    async def user_permissions_form(self, request: Request) -> HTMLResponse:
+        """Render the user direct-permission editing form.
+
+        Args:
+            request: Incoming HTTP request (user id in path).
+
+        Returns:
+            HTMLResponse with grouped permission checkboxes.
+        """
+        user = None
+        user_id = str(request.path_params.get("user_id", ""))
+        if self._user_store is not None:
+            users = await self._user_store.list_users()
+            user = next(
+                (u for u in users if str(getattr(u, "user_id", "")) == user_id),
+                None,
+            )
+        csrf_token = self._get_csrf_token(request)
+        html = render_user_permissions_page(
+            user,
+            permission_options=_permission_options(),
+            selected=set(getattr(user, "permissions", []) if user else []),
+            error=str(request.query_params.get("error", "")),
+            csrf_token=csrf_token,
+        )
+        return HTMLResponse(content=html)
+
+    @post("/users/{user_id}/permissions")
+    async def user_permissions_submit(self, request: Request) -> RedirectResponse:
+        """Persist direct user permissions via ``update_user``.
+
+        Args:
+            request: Incoming HTTP request (user id in path + permissions).
+
+        Returns:
+            RedirectResponse with ``notice`` or ``error`` flash.
+        """
+        form = await request.form()
+        if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
+            return self._error_redirect(
+                "/admin/users", "Invalid or expired security token. Please try again."
+            )
+        user_id = str(request.path_params.get("user_id", ""))
+        permissions = self._collect_permissions(form)
+        if self._user_store is not None:
+            try:
+                users = await self._user_store.list_users()
+                user = next(
+                    (u for u in users if str(getattr(u, "user_id", "")) == user_id),
+                    None,
+                )
+                if user is None:
+                    return self._error_redirect("/admin/users", "User not found.")
+                user.permissions = permissions
+                await self._user_store.update_user(user)
+            except Exception as exc:
+                logger.warning("admin.user_permissions_update_failed", error=str(exc))
+                return self._error_redirect(
+                    "/admin/users", "Could not update permissions."
+                )
+        return RedirectResponse(
+            url="/admin/users?notice=User permissions updated.", status_code=302
         )
 
     # ------------------------------------------------------------------

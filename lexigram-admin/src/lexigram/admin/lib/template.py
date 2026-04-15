@@ -627,6 +627,7 @@ def render_users_list_page(
           </td>
           <td>
             <a href="/admin/users/{escape(str(getattr(user, "user_id", "")))}/roles">Edit roles</a>
+            <a href="/admin/users/{escape(str(getattr(user, "user_id", "")))}/permissions">Edit permissions</a>
           </td>
         </tr>
         """
@@ -684,6 +685,71 @@ def render_user_roles_page(
           <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
           <p>{user_label}</p>
           {checkboxes}
+          <button type="submit">Save</button>
+        </form>
+        {_flash(error, notice)}
+        """,
+    )
+
+
+def render_user_permissions_page(
+    user: Any,
+    *,
+    permission_options: dict[str, list[str]] | None = None,
+    selected: set[str] | None = None,
+    error: str = "",
+    notice: str = "",
+    csrf_token: str = "",
+) -> str:
+    """Render the user direct-permission editing form.
+
+    Args:
+        user: The admin user being edited (or ``None`` when unknown).
+        permission_options: Grouped permission inventory
+            ``{resource: [perm, ...]}``.
+        selected: Permission strings currently held by the user.
+        error: Optional error flash message.
+        notice: Optional success flash message.
+        csrf_token: CSRF token for the form.
+
+    Returns:
+        HTML string for the user permissions page.
+    """
+    selected = selected or set()
+    options = permission_options or {}
+    groups = "\n".join(
+        f"""
+        <fieldset>
+          <legend>{escape(resource)}</legend>
+          {
+            "".join(
+                f'<label><input type="checkbox" name="permissions" value="{escape(perm)}" '
+                f"{'checked' if perm in selected else ''}/> {escape(perm)}</label><br/>"
+                for perm in perms
+            )
+        }
+        </fieldset>
+        """
+        for resource, perms in options.items()
+    )
+    all_options = {p for perms in options.values() for p in perms}
+    preserved = "\n".join(
+        f'<input type="hidden" name="permissions" value="{escape(perm)}" />'
+        for perm in sorted(selected - all_options)
+    )
+    user_label = escape(
+        f"{getattr(user, 'name', '')} <{getattr(user, 'email', '')}>"
+        if user
+        else "unknown user"
+    )
+    return _page_shell(
+        "User permissions",
+        f"""
+        <form method="post" action="/admin/users/{escape(str(getattr(user, "user_id", "")))}/permissions">
+          <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
+          <p>{user_label}</p>
+          {preserved}
+          {groups}
           <button type="submit">Save</button>
         </form>
         {_flash(error, notice)}
