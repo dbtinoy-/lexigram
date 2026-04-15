@@ -515,6 +515,8 @@ def render_role_form_page(
     role: Any = None,
     permission_options: dict[str, list[str]] | None = None,
     selected: set[str] | None = None,
+    inherits_options: list[str] | None = None,
+    inherited: set[str] | None = None,
     error: str = "",
     notice: str = "",
     csrf_token: str = "",
@@ -526,6 +528,9 @@ def render_role_form_page(
         permission_options: Grouped permission inventory
             ``{resource: [perm, ...]}``.
         selected: Currently selected permission strings.
+        inherits_options: Role names offered as inheritance checkboxes
+            (the role's own name must be excluded by the caller).
+        inherited: Currently inherited role names.
         error: Optional error flash message.
         notice: Optional success flash message.
         csrf_token: CSRF token for the form.
@@ -558,6 +563,19 @@ def render_role_form_page(
         f'<input type="hidden" name="permissions" value="{escape(perm)}" />'
         for perm in sorted(selected - all_options)
     )
+    inherited = inherited or set()
+    inherits_group = ""
+    if inherits_options:
+        inherits_group = "\n".join(
+            f'<label><input type="checkbox" name="inherits" value="{escape(name)}" '
+            f"{'checked' if name in inherited else ''}/> {escape(name)}</label><br/>"
+            for name in inherits_options
+        )
+    inherits_html = (
+        f"<fieldset><legend>Inherits</legend>{inherits_group}</fieldset>"
+        if inherits_group
+        else ""
+    )
     name_value = f'value="{escape(role.name)}"' if role else ""
     name_disabled = 'disabled="disabled"' if role and role.is_system else ""
     action = f"/admin/roles/{escape(role.name)}/edit" if role else "/admin/roles/new"
@@ -574,6 +592,7 @@ def render_role_form_page(
             <input type="text" name="description" value="{escape(role.description) if role else ""}" />
           </label>
           {groups}
+          {inherits_html}
           <input type="hidden" name="name" value="{escape(role.name) if role else ""}" />
           <button type="submit">Save</button>
         </form>

@@ -20,7 +20,14 @@ def _make_role_service() -> MagicMock:
     svc = MagicMock()
     svc.list_roles = AsyncMock(
         return_value=[
-            AdminRole("admin", "Admins", ["roles.view", "roles.update"], [], True)
+            AdminRole(
+                "admin",
+                "Admins",
+                ["roles.view", "roles.update"],
+                ["viewer"],
+                True,
+            ),
+            AdminRole("viewer", "Viewers", [], [], False),
         ]
     )
     svc.create_role = AsyncMock(return_value=Ok(AdminRole("editor", "Editors")))
@@ -136,6 +143,8 @@ async def test_role_new_form_has_csrf_and_groups() -> None:
         assert "csrf-test-token" in r.text
         assert 'name="permissions"' in r.text
         assert "roles.list" in r.text
+        assert 'name="inherits"' in r.text
+        assert 'value="admin"' in r.text
 
 
 @pytest.mark.asyncio
@@ -153,11 +162,16 @@ async def test_role_new_submit_redirects_with_notice() -> None:
                 "name": "editor",
                 "description": "Editors",
                 "permissions": "roles.view",
+                "inherits": "viewer",
                 "csrf_token": "csrf-test-token",
             },
         )
         assert r.status_code == 302
         assert "notice=" in r.headers["location"]
+        svc = app.state.role_service
+        svc.create_role.assert_awaited_once_with(
+            "editor", "Editors", ["roles.view"], ["viewer"]
+        )
 
 
 @pytest.mark.asyncio
@@ -186,6 +200,8 @@ async def test_role_edit_form_pre_checks_permissions() -> None:
         r = await client.get("/admin/roles/admin/edit")
         assert r.status_code == 200
         assert "checked" in r.text
+        assert 'name="inherits"' in r.text
+        assert 'value="viewer" checked' in r.text
 
 
 @pytest.mark.asyncio
