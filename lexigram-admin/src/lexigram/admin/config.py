@@ -171,6 +171,27 @@ class AdminSecurityConfig(DomainModel):
 
 
 @dataclass(init=False)
+class AdminMfaConfig(DomainModel):
+    """Two-factor authentication (TOTP) configuration.
+
+    Controls whether TOTP 2FA is offered, the issuer label embedded in
+    provisioning URIs, and the allowed clock-skew window for codes.
+    """
+
+    enabled: bool = Field(default=True, description="Enable TOTP 2FA")
+    issuer: str = Field(
+        default="Lexigram Admin",
+        description="TOTP issuer label shown in authenticator apps",
+    )
+    skew: int = Field(
+        default=1,
+        ge=0,
+        le=2,
+        description="Allowed clock skew in 30 second steps",
+    )
+
+
+@dataclass(init=False)
 class AdminAuthConfig(DomainModel):
     """Authentication configuration."""
 
@@ -201,6 +222,7 @@ class AdminAuthConfig(DomainModel):
     security: AdminSecurityConfig = Field(
         default_factory=AdminSecurityConfig,
     )
+    mfa: AdminMfaConfig = Field(default_factory=AdminMfaConfig)
 
     # Users and Roles (Sync)
     users: list[Any] = Field(default_factory=list)
@@ -656,6 +678,7 @@ __all__ = [
     "AdminDataConfig",
     "AdminFeaturesConfig",
     "AdminIntegrationsConfig",
+    "AdminMfaConfig",
     "AdminNavigationGroup",
     "AdminNotificationConfig",
     "AdminObservabilityConfig",
