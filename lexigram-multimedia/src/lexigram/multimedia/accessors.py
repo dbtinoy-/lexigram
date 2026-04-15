@@ -28,6 +28,7 @@ class SubsystemAccessor(Generic[_Req]):
         cache_backend: Any = None,
         event_bus: Any = None,
         media_type: str = "",
+        backend_method: str = "generate",
     ) -> None:
         self._backend = backend
         self._task_manager = task_manager
@@ -38,6 +39,7 @@ class SubsystemAccessor(Generic[_Req]):
         self._cache_backend = cache_backend
         self._event_bus = event_bus
         self._media_type = media_type
+        self._backend_method = backend_method
 
     async def generate(self, request: _Req) -> Result[MediaAsset, MultimediaError]:
         from typing import cast
@@ -63,11 +65,11 @@ class SubsystemAccessor(Generic[_Req]):
             cached = await self._cache_backend.get(cache_key)
             if cached.is_ok() and cached.unwrap() is not None:
                 return cast("Result[MediaAsset, MultimediaError]", cached)
-            result = await self._backend.generate(request)
+            result = await getattr(self._backend, self._backend_method)(request)
             if result.is_ok():
                 await self._cache_backend.set(cache_key, result.unwrap())
         else:
-            result = await self._backend.generate(request)
+            result = await getattr(self._backend, self._backend_method)(request)
 
         await self._publish_generation_event(result)
         return cast("Result[MediaAsset, MultimediaError]", result)
