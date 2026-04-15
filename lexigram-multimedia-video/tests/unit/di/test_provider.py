@@ -1,6 +1,6 @@
 import pytest
 
-from lexigram.contracts.multimedia.protocols import VideoProvider
+from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
 from lexigram.multimedia.video.config import VideoConfig
 from lexigram.multimedia.video.di.provider import VideoGenerationProvider
 from lexigram.multimedia.video.providers.local_http import LocalHttpVideoProvider
@@ -75,3 +75,15 @@ async def test_unknown_backend_raises_not_installed() -> None:
 
     with pytest.raises(ProviderNotInstalledError):
         await provider.register(container)
+
+
+@pytest.mark.asyncio
+async def test_register_binds_video_processor() -> None:
+    provider = VideoGenerationProvider(config=VideoConfig())
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    assert VideoProcessor in container.bindings
+    assert provider._processing_backend is not None
+    assert provider._processing_task_handler is not None
