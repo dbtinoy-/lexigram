@@ -8,8 +8,7 @@ permissions changed but can never be renamed or deleted.
 
 from __future__ import annotations
 
-from typing import Any
-
+from lexigram.admin.auth.protocols import AdminAuditLogServiceProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.rbac.errors import (
     AdminRoleError,
@@ -17,7 +16,9 @@ from lexigram.admin.rbac.errors import (
     RoleNotFoundError,
     SystemRoleError,
 )
+from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
 from lexigram.admin.rbac.types import AdminRole
+from lexigram.auth.authz.service import AuthorizationService
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
@@ -38,9 +39,9 @@ class AdminRoleService:
 
     def __init__(
         self,
-        role_store: Any,
-        authorization_service: Any | None = None,
-        audit_service: Any | None = None,
+        role_store: AdminRoleStoreProtocol,
+        authorization_service: AuthorizationService | None = None,
+        audit_service: AdminAuditLogServiceProtocol | None = None,
     ) -> None:
         self._role_store = role_store
         self._authorization_service = authorization_service

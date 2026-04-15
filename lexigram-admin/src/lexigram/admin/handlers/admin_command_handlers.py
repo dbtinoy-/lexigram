@@ -16,6 +16,7 @@ from lexigram.admin.events import (
     ResourceDeleted,
     ResourceUpdated,
 )
+from lexigram.admin.exceptions import AdminError, NotFoundError
 from lexigram.contracts.events import CommandHandlerProtocol as BaseCommandHandler
 from lexigram.contracts.events import EventBusProtocol
 from lexigram.di.decorators import inject
@@ -53,7 +54,7 @@ class ResourceCommandHandler(BaseCommandHandler):
             raise ValueError(f"Unknown resource type: {resource_type}")
         return self.data_sources[resource_type]
 
-    async def handle_create(self, command: CreateResource) -> Result[Any, str]:
+    async def handle_create(self, command: CreateResource) -> Result[Any, AdminError]:
         """Handle CreateResource command."""
         try:
             data_source = self.get_data_source(command.resource_type)
@@ -79,18 +80,20 @@ class ResourceCommandHandler(BaseCommandHandler):
 
             return Ok(result)
 
-        except (ValueError, ConnectionError, TimeoutError, OSError, KeyError) as e:
+        except ValueError as e:
             logger.exception("Failed to create %s", command.resource_type)
-            return Err(str(e))
+            return Err(AdminError(str(e)))
 
-    async def handle_update(self, command: UpdateResource) -> Result[Any, str]:
+    async def handle_update(
+        self, command: UpdateResource
+    ) -> Result[Any, NotFoundError | AdminError]:
         """Handle UpdateResource command."""
         try:
             data_source = self.get_data_source(command.resource_type)
 
             old_item = await data_source.find_one(command.resource_id)
             if old_item is None:
-                return Err(f"{command.resource_type} not found")
+                return Err(NotFoundError(f"{command.resource_type} not found"))
 
             result = await data_source.update(command.resource_id, command.data)
 
@@ -118,11 +121,13 @@ class ResourceCommandHandler(BaseCommandHandler):
 
             return Ok(result)
 
-        except (ValueError, ConnectionError, TimeoutError, OSError, KeyError) as e:
+        except ValueError as e:
             logger.exception("Failed to update %s", command.resource_type)
-            return Err(str(e))
+            return Err(AdminError(str(e)))
 
-    async def handle_delete(self, command: DeleteResource) -> Result[Any, str]:
+    async def handle_delete(
+        self, command: DeleteResource
+    ) -> Result[Any, NotFoundError | AdminError]:
         """Handle DeleteResource command."""
         try:
             data_source = self.get_data_source(command.resource_type)
@@ -130,7 +135,7 @@ class ResourceCommandHandler(BaseCommandHandler):
             success = await data_source.delete(command.resource_id)
 
             if not success:
-                return Err(f"{command.resource_type} not found")
+                return Err(NotFoundError(f"{command.resource_type} not found"))
 
             if self.event_bus:
                 event = ResourceDeleted(
@@ -150,13 +155,13 @@ class ResourceCommandHandler(BaseCommandHandler):
 
             return Ok(None)
 
-        except (ValueError, ConnectionError, TimeoutError, OSError, KeyError) as e:
+        except ValueError as e:
             logger.exception("Failed to delete %s", command.resource_type)
-            return Err(str(e))
+            return Err(AdminError(str(e)))
 
     async def handle_bulk_delete(
         self, command: BulkDeleteResources
-    ) -> Result[Any, str]:
+    ) -> Result[Any, AdminError]:
         """Handle BulkDeleteResources command."""
         try:
             data_source = self.get_data_source(command.resource_type)
@@ -183,9 +188,9 @@ class ResourceCommandHandler(BaseCommandHandler):
 
             return Ok({"deleted": count})
 
-        except (ValueError, ConnectionError, TimeoutError, OSError, KeyError) as e:
+        except ValueError as e:
             logger.exception("Failed to bulk delete %s", command.resource_type)
-            return Err(str(e))
+            return Err(AdminError(str(e)))
 
 
 @inject
@@ -210,7 +215,7 @@ class ExportCommandHandler(BaseCommandHandler):
             temp_dir.mkdir(parents=True, exist_ok=True)
             self.export_dir = str(temp_dir)
 
-    async def handle_export(self, command: ExportResources) -> Result[Any, str]:
+    async def handle_export(self, command: ExportResources) -> Result[Any, AdminError]:
         """Handle ExportResources command."""
         import csv
         from pathlib import Path
@@ -223,7 +228,7 @@ class ExportCommandHandler(BaseCommandHandler):
         try:
             if command.resource_type not in self.data_sources:
                 return Err(
-                    f"Unknown resource type: {command.resource_type}",
+                    AdminError(f"Unknown resource type: {command.resource_type}"),
                 )
 
             data_source = self.data_sources[command.resource_type]
@@ -322,6 +327,6 @@ class ExportCommandHandler(BaseCommandHandler):
                 },
             )
 
-        except (ValueError, ConnectionError, TimeoutError, OSError) as e:
+        except ValueError as e:
             logger.exception("Export failed")
-            return Err(str(e))
+            return Err(AdminError(str(e)))

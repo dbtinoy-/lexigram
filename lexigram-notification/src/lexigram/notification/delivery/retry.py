@@ -41,7 +41,7 @@ class RetryingMailer:
         self._max_retries = max_retries
         self._base_delay = base_delay
 
-    async def send(self, message: Any) -> Result[str, Any]:
+    async def send(self, message: Any) -> Result[str, PermanentDeliveryFailure]:
         """Send a message, scheduling a retry on transient failure.
 
         Delegates to the backend. On ``Ok``, marks delivered. On ``Err``,

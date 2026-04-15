@@ -33,7 +33,7 @@ from datetime import UTC, datetime
 from typing import Any
 import uuid
 
-from lexigram.admin.exceptions import PermissionDeniedError
+from lexigram.admin.exceptions import NotFoundError, PermissionDeniedError
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity, AuditLoggerProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -190,7 +190,7 @@ class ImpersonationService:
         self,
         actor: Any,
         request: Any | None = None,
-    ) -> Result[str, str]:
+    ) -> Result[str, NotFoundError]:
         """End the active impersonation session for *actor*.
 
         Args:
@@ -199,7 +199,8 @@ class ImpersonationService:
                 when provided.
 
         Returns:
-            ``Ok(original_user_id)`` or ``Err("no_active_session")``.
+            ``Ok(original_user_id)`` or ``Err(NotFoundError)`` when no
+            active session exists.
         """
         actor_id: str = getattr(actor, "id", str(actor))
 
@@ -218,7 +219,7 @@ class ImpersonationService:
                     )
 
         if session is None:
-            return Err("no_active_session")
+            return Err(NotFoundError("No active impersonation session"))
 
         if request is not None:
             req_session = getattr(request, "session", None)

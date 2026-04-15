@@ -147,7 +147,7 @@ class GraphQLExecutorProtocol:
         operation_name: str | None = None,
         context: GraphQLContext | None = None,
         timeout_secs: float | None = None,
-    ) -> Result[GraphQLResponse[Any], Exception]:
+    ) -> Result[GraphQLResponse[Any], GraphQLError]:
         """Execute a GraphQL query.
 
         Args:
@@ -159,11 +159,11 @@ class GraphQLExecutorProtocol:
             timeout: Timeout in seconds (overrides default).
 
         Returns:
-            Result[GraphQLResponse, Exception]: Result wrapping the response
-                or an infrastructure error.
+            ``Ok(GraphQLResponse)`` or ``Err(GraphQLError)`` when execution
+            failed.
 
         Raises:
-            None: Infrastructure errors are wrapped in Err.
+            None: Infrastructure errors are wrapped in ``Err``.
         """
         from lexigram.result import Err, Ok
 
@@ -229,7 +229,9 @@ class GraphQLExecutorProtocol:
                 await self._event_bus.publish(
                     OnErrorEvent(execution_context=execution_context, error=e),
                 )
-            return Err(e)
+            if isinstance(e, GraphQLError):
+                return Err(e)
+            return Err(ExecutionError(str(e)))
 
         finally:
             # Release any scoped DI services created for this request.

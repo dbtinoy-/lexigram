@@ -42,7 +42,7 @@ def _make_user_store() -> MagicMock:
     user.user_id = "u1"
     user.name = "Admin"
     user.email = "admin@example.com"
-    user.roles = ["admin"]
+    user.roles = ["admin", "superadmin"]
     store.list_users = AsyncMock(return_value=[user])
     store.update_user = AsyncMock(return_value=user)
     return store
@@ -60,7 +60,12 @@ class _DummyRenderer:
         return PlainTextResponse(str(content))
 
 
-def create_app(*, csrf_valid: bool = True, delete_error: bool = False) -> Starlette:
+def create_app(
+    *,
+    csrf_valid: bool = True,
+    delete_error: bool = False,
+    inventory: object | None = None,
+) -> Starlette:
     role_service = _make_role_service()
     user_store = _make_user_store()
     if delete_error:
@@ -72,6 +77,7 @@ def create_app(*, csrf_valid: bool = True, delete_error: bool = False) -> Starle
         renderer=_DummyRenderer(),
         role_service=role_service,
         user_store=user_store,
+        inventory=inventory,
     )
 
     async def roles_list(request):
@@ -284,6 +290,7 @@ async def test_users_list_renders_users_with_roles() -> None:
         assert r.status_code == 200
         assert "admin@example.com" in r.text
         assert "admin" in r.text
+        assert "Super admin" in r.text
 
 
 @pytest.mark.asyncio
@@ -362,3 +369,49 @@ async def test_user_permissions_submit_updates_user() -> None:
         updated = store.update_user.await_args.args[0]
         assert updated.user_id == "u1"
         assert updated.permissions == ["roles.view"]
+
+
+@pytest.mark.asyncio
+async def test_role_new_form_shows_discovered_resources() -> None:
+    from lexigram.admin.rbac.inventory import PermissionInventoryService
+
+    inventory = PermissionInventoryService()
+    inventory.register_resources(["products"])
+    app = create_app(inventory=inventory)
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as client:
+        r = await client.get("/admin/roles/new")
+        assert r.status_code == 200
+        assert "products.list" in r.text
+
+
+@pytest.mark.asyncio
+async def test_role_delete_superadmin_role_redirects_with_error() -> None:
+    app = create_app()
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        await client.get("/admin/roles")
+        r = await client.post(
+            "/admin/roles/superadmin/delete",
+            data={"csrf_token": "csrf-test-token"},
+        )
+        assert r.status_code == 302
+        assert "error=" in r.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_roles_list_hides_delete_for_superadmin_role() -> None:
+    app = create_app()
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as client:
+        r = await client.get("/admin/roles")
+        assert r.status_code == 200
+        assert "Super admin cannot be deleted" not in r.text
+        # The superadmin role never appears in the mock; the admin role is
+        # system (no delete form) while the custom viewer role keeps one.
+        assert "/admin/roles/viewer/delete" in r.text

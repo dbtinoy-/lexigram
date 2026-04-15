@@ -249,6 +249,7 @@ class CoreModule(Module):
             module=cls,
             providers=providers,  # type: ignore[arg-type]
             exports=list(_CORE_EXPORTS),
+            is_global=True,
         )
 
 
