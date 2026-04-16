@@ -27,6 +27,8 @@ _BYPASS_SUFFIXES: frozenset[str] = frozenset(
         "/setup/",
         "/health",
         "/health/",
+        "/login/2fa",
+        "/login/2fa/",
     }
 )
 
