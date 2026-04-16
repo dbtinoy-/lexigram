@@ -1,4 +1,4 @@
-from lexigram.multimedia.jobs import JobHandle
+from lexigram.multimedia.types import JobHandle
 
 
 def test_job_handle_wraps_idempotency_result_fields() -> None:

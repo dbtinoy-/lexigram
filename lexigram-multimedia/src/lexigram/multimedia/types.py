@@ -1,8 +1,4 @@
-"""Thin wrapper around lexigram-tasks' IdempotencyResult.
-
-Exists so multimedia callers don't need to import lexigram-tasks types
-directly — see design spec 'Async job model'.
-"""
+"""Shared value types for the multimedia umbrella subsystem."""
 
 from __future__ import annotations
 
@@ -12,6 +8,12 @@ from typing import Any
 
 @dataclass(frozen=True)
 class JobHandle:
+    """Thin wrapper around lexigram-tasks' IdempotencyResult.
+
+    Exists so multimedia callers don't need to import lexigram-tasks types
+    directly — see design spec 'Async job model'.
+    """
+
     job_id: str
     status: str
     is_duplicate: bool = False
