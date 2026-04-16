@@ -75,6 +75,36 @@ class AdminAuthServiceProtocol(Protocol):
         """
         ...
 
+    async def complete_mfa_login(
+        self,
+        user_id: str,
+        email: str,
+        roles: list[str],
+        code: str,
+        ip_address: str,
+        user_agent: str,
+    ) -> Result[AdminAuthResult, AdminAuthError]:
+        """Complete a login after a successful TOTP challenge.
+
+        Verifies the code, then runs the post-credential pipeline
+        (attempt recording, lockout clearance, session creation, audits)
+        that was deferred when ``authenticate`` returned ``mfa_required``.
+
+        Args:
+            user_id: Admin user UUID (from the pending challenge).
+            email: Admin user email (from the pending challenge).
+            roles: Role names for the user (from the pending challenge).
+            code: TOTP code to verify.
+            ip_address: Client IP for rate limiting.
+            user_agent: Client user agent for audit.
+
+        Returns:
+            Ok(AdminAuthResult) with a real session on success.
+            Err(MfaVerificationFailedError) when the code is invalid.
+            Err(MfaNotEnabledError) when 2FA is unavailable.
+        """
+        ...
+
 
 @runtime_checkable
 class AdminLoginAttemptStoreProtocol(Protocol):
