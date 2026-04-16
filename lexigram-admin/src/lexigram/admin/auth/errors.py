@@ -147,11 +147,25 @@ class PasswordResetTokenExpiredError(AdminAuthError):
     _code: str = "LEX_ERR_ADMIN_021"
 
 
+class MfaNotEnabledError(AdminAuthError):
+    """Raised when 2FA is required but not configured/enabled."""
+
+    _code: str = "LEX_ERR_ADMIN_022"
+
+
+class MfaVerificationFailedError(AdminAuthError):
+    """Raised when a TOTP code is missing, invalid, or expired."""
+
+    _code: str = "LEX_ERR_ADMIN_023"
+
+
 __all__ = [
     "AccountLockedError",
     "AdminAuthError",
     "CsrfValidationError",
     "InvalidCredentialsError",
+    "MfaNotEnabledError",
+    "MfaVerificationFailedError",
     "PasswordPolicyError",
     "PasswordResetTokenExpiredError",
     "PasswordResetTokenInvalidError",
