@@ -21,8 +21,7 @@ from lexigram.multimedia.config import MultimediaConfig
 from lexigram.multimedia.di.provider import MultimediaProvider
 from lexigram.multimedia.events import MultimediaGenerationEvent
 from lexigram.multimedia.module import MultimediaModule
-from lexigram.multimedia.tasks import TimelineRenderTask
-from lexigram.multimedia.timeline import Timeline
+from lexigram.multimedia.timeline import Timeline, TimelineRenderTask
 from lexigram.multimedia.types import JobHandle
 
 __all__ = [

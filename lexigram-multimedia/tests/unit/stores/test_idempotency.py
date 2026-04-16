@@ -1,6 +1,6 @@
 import pytest
 
-from lexigram.multimedia.idempotency_store import InMemoryIdempotencyStoreFallback
+from lexigram.multimedia.stores import InMemoryIdempotencyStoreFallback
 
 
 @pytest.mark.asyncio
