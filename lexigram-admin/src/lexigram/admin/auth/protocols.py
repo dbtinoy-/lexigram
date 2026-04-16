@@ -481,6 +481,35 @@ class AdminPasswordResetTokenStoreProtocol(Protocol):
 
 
 @runtime_checkable
+class AdminMfaStoreProtocol(Protocol):
+    """Persistence contract for per-user TOTP secrets.
+
+    Implementations:
+        - :class:`~lexigram.admin.auth.store.mfa_sql.AdminMfaSqlStore`
+    """
+
+    async def ensure_schema(self) -> None:
+        """Create the MFA table if it does not exist."""
+        ...
+
+    async def is_enabled(self, user_id: str) -> bool:
+        """Return True when 2FA is enabled for the user."""
+        ...
+
+    async def get_secret(self, user_id: str) -> str | None:
+        """Return the stored TOTP secret (None when disabled)."""
+        ...
+
+    async def save_secret(self, user_id: str, secret: str) -> None:
+        """Persist (or refresh) the TOTP secret for a user."""
+        ...
+
+    async def disable(self, user_id: str) -> None:
+        """Remove the TOTP secret (2FA off)."""
+        ...
+
+
+@runtime_checkable
 class AdminPasswordResetServiceProtocol(Protocol):
     """Password reset orchestration contract."""
 
@@ -519,6 +548,7 @@ __all__ = [
     "AdminCsrfServiceProtocol",
     "AdminLoginAttemptServiceProtocol",
     "AdminLoginAttemptStoreProtocol",
+    "AdminMfaStoreProtocol",
     "AdminPasswordPolicyServiceProtocol",
     "AdminPasswordResetServiceProtocol",
     "AdminPasswordResetTokenStoreProtocol",
