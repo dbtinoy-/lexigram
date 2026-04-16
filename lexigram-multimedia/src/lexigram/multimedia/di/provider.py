@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     )
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
     from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
+    from lexigram.multimedia.compose_accessor import ComposeAccessor
+    from lexigram.multimedia.timeline_task import TimelineRenderTask
+    from lexigram.multimedia.video_accessor import VideoAccessor
 
 logger = get_logger(__name__)
 
@@ -46,6 +49,7 @@ class MultimediaProvider(Provider):
         self._idempotency_manager: Any | None = None
         self._event_bus: Any | None = None
         self._wrapped_task_handlers: dict[str, Any] = {}
+        self._timeline_task_handler: TimelineRenderTask | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.multimedia.audio_music.di.provider import AudioMusicProvider
@@ -198,21 +202,46 @@ class MultimediaProvider(Provider):
 
             return _adapter
 
-        _TASK_NAMES = {
-            "audio-tts": ("tts_generation", "tts/"),
-            "audio-music": ("music_generation", "music/"),
-            "video": ("video_generation", "video/"),
-            "image": ("image_generation", "image/"),
-        }
-        for key, (task_name, segment) in _TASK_NAMES.items():
-            sub = self._sub_providers[key]
+        _TASK_HANDLER_SPECS = [
+            ("audio-tts", "tts_generation", "tts/", "_task_handler"),
+            ("audio-music", "music_generation", "music/", "_task_handler"),
+            ("video", "video_generation", "video/", "_task_handler"),
+            ("image", "image_generation", "image/", "_task_handler"),
+            (
+                "video",
+                "video_processing",
+                "video/processed/",
+                "_processing_task_handler",
+            ),
+        ]
+        for sub_key, task_name, segment, handler_attr in _TASK_HANDLER_SPECS:
+            sub = self._sub_providers[sub_key]
+            inner = getattr(sub, handler_attr)
             wrapped = _WrappedTaskHandler(
-                inner=sub._task_handler,
+                inner=inner,
                 storage=self._storage,
                 path_prefix=f"{self._multimedia_config.storage_path_prefix}{segment}",
             )
             self._wrapped_task_handlers[task_name] = wrapped
             task_provider.register_handler(task_name, _make_handler_adapter(wrapped))
+
+        from lexigram.multimedia.timeline_task import TimelineRenderTask
+
+        video_sub = self._sub_providers["video"]
+        self._timeline_task_handler = TimelineRenderTask(
+            processor=video_sub._processing_backend
+        )
+        timeline_wrapped = _WrappedTaskHandler(
+            inner=self._timeline_task_handler,
+            storage=self._storage,
+            path_prefix=(
+                f"{self._multimedia_config.storage_path_prefix}video/composed/"
+            ),
+        )
+        self._wrapped_task_handlers["timeline_render"] = timeline_wrapped
+        task_provider.register_handler(
+            "timeline_render", _make_handler_adapter(timeline_wrapped)
+        )
 
     async def shutdown(self) -> None:
         for sub in self._sub_providers.values():
@@ -270,11 +299,12 @@ class MultimediaProvider(Provider):
         )
 
     @property
-    def video(self) -> Any:
+    def video(self) -> VideoAccessor:
         from lexigram.multimedia.accessors import SubsystemAccessor
+        from lexigram.multimedia.video_accessor import VideoAccessor
 
         sub = self._sub_providers["video"]
-        return SubsystemAccessor(
+        generation = SubsystemAccessor(
             backend=sub._backend,
             task_manager=self._task_manager,
             task_name="video_generation",
@@ -286,6 +316,39 @@ class MultimediaProvider(Provider):
             else None,
             event_bus=self._event_bus,
             media_type="video",
+        )
+        processing = SubsystemAccessor(
+            backend=sub._processing_backend,
+            task_manager=self._task_manager,
+            task_name="video_processing",
+            storage=self._storage,
+            path_prefix=f"{self._multimedia_config.storage_path_prefix}video/processed/",
+            idempotency_manager=self._idempotency_manager,
+            backend_method="process",
+        )
+        return VideoAccessor(
+            generation=generation,
+            processing=processing,
+            storage=self._storage,
+            path_prefix=(
+                f"{self._multimedia_config.storage_path_prefix}video/processed/in/"
+            ),
+        )
+
+    @property
+    def compose(self) -> ComposeAccessor:
+        from lexigram.multimedia.compose_accessor import ComposeAccessor
+
+        sub = self._sub_providers["video"]
+        return ComposeAccessor(
+            processor=sub._processing_backend,
+            task_manager=self._task_manager,
+            task_name="timeline_render",
+            storage=self._storage,
+            path_prefix=(
+                f"{self._multimedia_config.storage_path_prefix}video/composed/in/"
+            ),
+            idempotency_manager=self._idempotency_manager,
         )
 
     @property
