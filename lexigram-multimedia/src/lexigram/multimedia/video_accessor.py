@@ -58,7 +58,7 @@ class VideoAccessor:
         normalized = await normalize_operation_assets(
             operation, storage=self._storage, path_prefix=self._path_prefix
         )
-        params = dataclasses.asdict(normalized)  # type: ignore[call-overload]
+        params = dataclasses.asdict(normalized)
         params["operation_type"] = type(normalized).__name__
 
         is_duplicate = False

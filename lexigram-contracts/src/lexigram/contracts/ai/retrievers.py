@@ -14,6 +14,14 @@ if TYPE_CHECKING:
 
 from lexigram.contracts.ai.exceptions import RetrieverError
 
+__all__ = [
+    "NodePostprocessorProtocol",
+    "RetrievalQuery",
+    "RetrievedNode",
+    "RetrieverError",
+    "RetrieverProtocol",
+]
+
 
 @dataclass(frozen=True)
 class RetrievalQuery:

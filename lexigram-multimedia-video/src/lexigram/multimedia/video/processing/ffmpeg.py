@@ -79,7 +79,7 @@ class FFmpegVideoProcessor:
 
         result = await self._run(argv)
         if result.is_err():
-            return result
+            return Err(result.unwrap_err())
 
         # Read bytes into memory now — the workdir (including this output
         # file) is removed by process()'s finally block once we return.

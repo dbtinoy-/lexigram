@@ -6,10 +6,8 @@ Defines output parsers analogous to LangChain's output parsers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-import importlib
-from typing import Any
-
-_json_module = importlib.import_module("json")
+import json
+from typing import Any, cast
 
 
 class BaseOutputParser(ABC):
@@ -56,7 +54,7 @@ class JSONOutputParser(BaseOutputParser):
         if text.endswith("```"):
             text = text[:-3]
         text = text.strip()
-        return _json_module.loads(text)
+        return cast("dict[str, Any]", json.loads(text))
 
     def get_format_instructions(self) -> str:
         return "Return a valid JSON object."
@@ -88,7 +86,7 @@ class PydanticOutputParser(BaseOutputParser):
             text = text[3:]
         if text.endswith("```"):
             text = text[:-3]
-        data = _json_module.loads(text.strip())
+        data = json.loads(text.strip())
         return self.model(**data)
 
     def get_format_instructions(self) -> str:

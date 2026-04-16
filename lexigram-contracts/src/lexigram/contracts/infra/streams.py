@@ -17,6 +17,7 @@ class _StoredStreamError(Exception, Generic[E]):
     """Internal carrier for propagating typed stream failures."""
 
     _code: str = "LEX_ERR_INFRA_011"
+    error: E
 
     def __init__(self, error: E) -> None:
         super().__init__(str(error))
@@ -271,7 +272,7 @@ class AsyncStream(Generic[T, E]):
 
     def _coerce_error(self, exc: Exception) -> E:
         if isinstance(exc, _StoredStreamError):
-            return exc.error
+            return cast("E", exc.error)
         return self._error_adapter(exc)
 
     def _raise_if_failed(self) -> None:

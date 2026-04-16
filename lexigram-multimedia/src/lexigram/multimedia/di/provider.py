@@ -304,7 +304,7 @@ class MultimediaProvider(Provider):
         from lexigram.multimedia.video_accessor import VideoAccessor
 
         sub = self._sub_providers["video"]
-        generation = SubsystemAccessor(
+        generation: SubsystemAccessor[Any] = SubsystemAccessor(
             backend=sub._backend,
             task_manager=self._task_manager,
             task_name="video_generation",
@@ -317,7 +317,7 @@ class MultimediaProvider(Provider):
             event_bus=self._event_bus,
             media_type="video",
         )
-        processing = SubsystemAccessor(
+        processing: SubsystemAccessor[Any] = SubsystemAccessor(
             backend=sub._processing_backend,
             task_manager=self._task_manager,
             task_name="video_processing",

@@ -122,13 +122,13 @@ class VideoGenerationProvider(Provider):
             raise ProviderNotInstalledError(
                 "ffmpeg not found on PATH — install it: `apt install ffmpeg` / `brew install ffmpeg`"
             )
-        self._processing_backend = FFmpegVideoProcessor(
-            config=self._video_config.processing
+        processing_backend: VideoProcessor = cast(
+            "VideoProcessor",
+            FFmpegVideoProcessor(config=self._video_config.processing),
         )
-        container.singleton(VideoProcessor, self._processing_backend)
-        self._processing_task_handler = VideoProcessingTask(
-            backend=self._processing_backend
-        )
+        self._processing_backend = processing_backend
+        container.singleton(VideoProcessor, processing_backend)
+        self._processing_task_handler = VideoProcessingTask(backend=processing_backend)
         container.singleton(VideoProcessingTask, self._processing_task_handler)
         logger.info("video_registered", backend=self._video_config.backend)
 
