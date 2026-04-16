@@ -17,9 +17,8 @@ if TYPE_CHECKING:
     )
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
     from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
-    from lexigram.multimedia.compose_accessor import ComposeAccessor
-    from lexigram.multimedia.timeline_task import TimelineRenderTask
-    from lexigram.multimedia.video_accessor import VideoAccessor
+    from lexigram.multimedia.accessors import ComposeAccessor, VideoAccessor
+    from lexigram.multimedia.tasks import TimelineRenderTask
 
 logger = get_logger(__name__)
 
@@ -225,7 +224,7 @@ class MultimediaProvider(Provider):
             self._wrapped_task_handlers[task_name] = wrapped
             task_provider.register_handler(task_name, _make_handler_adapter(wrapped))
 
-        from lexigram.multimedia.timeline_task import TimelineRenderTask
+        from lexigram.multimedia.tasks import TimelineRenderTask
 
         video_sub = self._sub_providers["video"]
         self._timeline_task_handler = TimelineRenderTask(
@@ -300,8 +299,7 @@ class MultimediaProvider(Provider):
 
     @property
     def video(self) -> VideoAccessor:
-        from lexigram.multimedia.accessors import SubsystemAccessor
-        from lexigram.multimedia.video_accessor import VideoAccessor
+        from lexigram.multimedia.accessors import SubsystemAccessor, VideoAccessor
 
         sub = self._sub_providers["video"]
         generation: SubsystemAccessor[Any] = SubsystemAccessor(
@@ -337,7 +335,7 @@ class MultimediaProvider(Provider):
 
     @property
     def compose(self) -> ComposeAccessor:
-        from lexigram.multimedia.compose_accessor import ComposeAccessor
+        from lexigram.multimedia.accessors import ComposeAccessor
 
         sub = self._sub_providers["video"]
         return ComposeAccessor(

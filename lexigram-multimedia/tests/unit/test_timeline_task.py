@@ -5,7 +5,7 @@ import pytest
 from lexigram.contracts.core.result import Ok
 from lexigram.contracts.multimedia.types import MediaAsset
 from lexigram.multimedia.timeline import Timeline
-from lexigram.multimedia.timeline_task import TimelineRenderTask
+from lexigram.multimedia.tasks import TimelineRenderTask
 
 CLIP = MediaAsset(mime_type="video/mp4", provider="local-http", uri="clip1.mp4")
 

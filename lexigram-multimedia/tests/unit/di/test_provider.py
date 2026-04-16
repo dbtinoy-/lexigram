@@ -114,7 +114,7 @@ async def test_all_four_accessors_are_exposed_with_task_names() -> None:
 
     # .video is now a VideoAccessor composing generation + processing
     # SubsystemAccessors (video-processing spec).
-    from lexigram.multimedia.video_accessor import VideoAccessor
+    from lexigram.multimedia.accessors import VideoAccessor
 
     video = provider.video
     assert isinstance(video, VideoAccessor)

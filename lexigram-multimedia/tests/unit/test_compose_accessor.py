@@ -4,7 +4,7 @@ import pytest
 
 from lexigram.contracts.core.result import Ok
 from lexigram.contracts.multimedia.types import MediaAsset
-from lexigram.multimedia.compose_accessor import ComposeAccessor
+from lexigram.multimedia.accessors import ComposeAccessor
 from lexigram.multimedia.timeline import Timeline
 
 CLIP = MediaAsset(mime_type="video/mp4", provider="local-http", uri="clip1.mp4")

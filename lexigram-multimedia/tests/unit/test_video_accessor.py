@@ -4,8 +4,7 @@ import pytest
 
 from lexigram.contracts.core.result import Ok
 from lexigram.contracts.multimedia.types import MediaAsset, Trim
-from lexigram.multimedia.accessors import SubsystemAccessor
-from lexigram.multimedia.video_accessor import VideoAccessor
+from lexigram.multimedia.accessors import SubsystemAccessor, VideoAccessor
 
 
 @pytest.mark.asyncio
