@@ -653,6 +653,54 @@ class AdminEmailVerificationStoreProtocol(Protocol):
 
 
 @runtime_checkable
+class AdminEmailOtpStoreProtocol(Protocol):
+    """Persistence contract for email one-time-password codes.
+
+    Implementations:
+        - :class:`~lexigram.admin.auth.store.email_otp_sql.AdminEmailOtpSqlStore`
+    """
+
+    async def ensure_schema(self) -> None:
+        """Create the OTP table if it does not exist."""
+        ...
+
+    async def save(
+        self, user_id: str, code_hash: str, expires_at: datetime
+    ) -> None:
+        """Persist a new emailed code.
+
+        Args:
+            user_id: Admin user UUID.
+            code_hash: sha256 hex digest of the raw code.
+            expires_at: UTC expiry timestamp.
+        """
+        ...
+
+    async def consume(self, user_id: str, code_hash: str) -> bool:
+        """Atomically consume a matching unexpired code.
+
+        Args:
+            user_id: Admin user UUID.
+            code_hash: sha256 hex digest of the raw code.
+
+        Returns:
+            ``True`` when an unexpired, unused code matched and was consumed.
+        """
+        ...
+
+    async def last_sent_at(self, user_id: str) -> datetime | None:
+        """Return the creation time of the most recent code.
+
+        Args:
+            user_id: Admin user UUID.
+
+        Returns:
+            UTC datetime of the newest code, or ``None`` when none exists.
+        """
+        ...
+
+
+@runtime_checkable
 class AdminPasswordResetServiceProtocol(Protocol):
     """Password reset orchestration contract."""
 
@@ -689,6 +737,7 @@ __all__ = [
     "AdminAuditLogStoreProtocol",
     "AdminAuthServiceProtocol",
     "AdminCsrfServiceProtocol",
+    "AdminEmailOtpStoreProtocol",
     "AdminEmailVerificationStoreProtocol",
     "AdminLoginAttemptServiceProtocol",
     "AdminLoginAttemptStoreProtocol",
