@@ -179,6 +179,10 @@ class AdminMfaConfig(DomainModel):
     """
 
     enabled: bool = Field(default=True, description="Enable TOTP 2FA")
+    factor: str = Field(
+        default="totp",
+        description="Second factor used at login: 'totp' (authenticator app) or 'email' (one-time code)",
+    )
     issuer: str = Field(
         default="Lexigram Admin",
         description="TOTP issuer label shown in authenticator apps",
@@ -188,6 +192,50 @@ class AdminMfaConfig(DomainModel):
         ge=0,
         le=2,
         description="Allowed clock skew in 30 second steps",
+    )
+
+
+@dataclass(init=False)
+class AdminEmailOtpConfig(DomainModel):
+    """Email one-time-password (login factor) configuration.
+
+    Controls whether the email-OTP factor is available, how long a code
+    stays valid, and the minimum interval between sends.
+    """
+
+    enabled: bool = Field(default=True, description="Enable email OTP factor")
+    ttl_minutes: int = Field(
+        default=10,
+        ge=1,
+        le=60,
+        description="Code validity window in minutes",
+    )
+    resend_cooldown_seconds: int = Field(
+        default=60,
+        ge=5,
+        le=600,
+        description="Minimum seconds between email OTP sends",
+    )
+
+
+@dataclass(init=False)
+class AdminEmailVerificationConfig(DomainModel):
+    """Email verification (login gate) configuration.
+
+    Controls the verify-your-email flow: whether it is offered, whether
+    unverified users are blocked at login, and the verify-link lifetime.
+    """
+
+    enabled: bool = Field(default=True, description="Enable email verification flow")
+    enforcement: bool = Field(
+        default=True,
+        description="Block login until the email is verified",
+    )
+    token_ttl_hours: int = Field(
+        default=24,
+        ge=1,
+        le=168,
+        description="Verify link validity in hours",
     )
 
 
@@ -223,6 +271,10 @@ class AdminAuthConfig(DomainModel):
         default_factory=AdminSecurityConfig,
     )
     mfa: AdminMfaConfig = Field(default_factory=AdminMfaConfig)
+    email_otp: AdminEmailOtpConfig = Field(default_factory=AdminEmailOtpConfig)
+    email_verification: AdminEmailVerificationConfig = Field(
+        default_factory=AdminEmailVerificationConfig
+    )
 
     # Users and Roles (Sync)
     users: list[Any] = Field(default_factory=list)
@@ -676,6 +728,8 @@ __all__ = [
     "AdminAuthConfig",
     "AdminConfig",
     "AdminDataConfig",
+    "AdminEmailOtpConfig",
+    "AdminEmailVerificationConfig",
     "AdminFeaturesConfig",
     "AdminIntegrationsConfig",
     "AdminMfaConfig",
