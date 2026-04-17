@@ -159,10 +159,38 @@ class MfaVerificationFailedError(AdminAuthError):
     _code: str = "LEX_ERR_ADMIN_023"
 
 
+class EmailVerificationRequiredError(AdminAuthError):
+    """Raised when login is blocked because the email is unverified."""
+
+    _code: str = "LEX_ERR_ADMIN_024"
+
+
+class EmailVerificationTokenInvalidError(AdminAuthError):
+    """Raised when a verification token is missing, invalid, used, or expired."""
+
+    _code: str = "LEX_ERR_ADMIN_025"
+
+
+class EmailOtpDeliveryError(AdminAuthError):
+    """Raised when an email OTP cannot be delivered."""
+
+    _code: str = "LEX_ERR_ADMIN_026"
+
+
+class EmailOtpCooldownError(AdminAuthError):
+    """Raised when an email OTP resend is attempted too soon."""
+
+    _code: str = "LEX_ERR_ADMIN_027"
+
+
 __all__ = [
     "AccountLockedError",
     "AdminAuthError",
     "CsrfValidationError",
+    "EmailOtpCooldownError",
+    "EmailOtpDeliveryError",
+    "EmailVerificationRequiredError",
+    "EmailVerificationTokenInvalidError",
     "InvalidCredentialsError",
     "MfaNotEnabledError",
     "MfaVerificationFailedError",
