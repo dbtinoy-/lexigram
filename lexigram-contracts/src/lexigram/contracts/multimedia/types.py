@@ -124,6 +124,64 @@ class OverlayImage:
 
 
 @dataclass(frozen=True)
+class ComposeLayer:
+    """A full-canvas transparent overlay placed on the base at a time offset.
+
+    `start`/`end` are seconds on the composed timeline. `fade_in`/`fade_out`
+    are durations in seconds on the layer's own timeline (fade-in starts when
+    the layer appears; fade-out ends at the layer's end).
+    """
+
+    asset: MediaAsset
+    start: float = 0.0
+    end: float | None = None
+    fade_in: float = 0.0
+    fade_out: float = 0.0
+
+
+@dataclass(frozen=True)
+class ComposeAudioLayer:
+    """An audio input placed at a time offset on the composed timeline."""
+
+    asset: MediaAsset
+    start: float = 0.0
+    volume: float = 1.0
+
+
+@dataclass(frozen=True)
+class EncodeSpec:
+    """Output encoding parameters for the finished composition."""
+
+    codec: str = "libx264"
+    bitrate: str | None = None
+    resolution: str | None = None
+    fps: int | None = None
+
+
+@dataclass(frozen=True)
+class ComposeVideo:
+    """Compose a base video with timed overlays, fades, and audio layers.
+
+    Semantics:
+    - Output duration == base asset duration.
+    - The base's audio is dropped unless `audio_layers` is non-empty.
+    - `fade_in`/`fade_out` fade the whole composition from/to black.
+    - `base_fade_out` fades the BASE stream to black before its end (e.g. a CTA
+      lead-in) while later overlay layers keep compositing on top.
+    - `layers` composite over the base in list order (later layers on top) and
+      are only visible within their `[start, end)` window.
+    """
+
+    asset: MediaAsset
+    layers: list[ComposeLayer] = field(default_factory=list)
+    audio_layers: list[ComposeAudioLayer] = field(default_factory=list)
+    fade_in: float = 0.0
+    fade_out: float = 0.0
+    base_fade_out: float = 0.0
+    encode: EncodeSpec | None = None
+
+
+@dataclass(frozen=True)
 class BurnSubtitles:
     asset: MediaAsset
     cues: list[SubtitleCue]
@@ -199,6 +257,7 @@ VideoOperation = (
     | Concat
     | OverlayText
     | OverlayImage
+    | ComposeVideo
     | BurnSubtitles
     | MuxAudio
     | ExtractThumbnail
@@ -215,8 +274,12 @@ __all__ = [
     "BurnSubtitles",
     "ChangeSpeed",
     "ColorFilter",
+    "ComposeAudioLayer",
+    "ComposeLayer",
+    "ComposeVideo",
     "Concat",
     "Crop",
+    "EncodeSpec",
     "ExtractThumbnail",
     "ImageRequest",
     "MediaAsset",
