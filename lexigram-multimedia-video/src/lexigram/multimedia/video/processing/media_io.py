@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 import tempfile
+from urllib.parse import unquote, urlparse
 import uuid
 
 import aiohttp
@@ -16,14 +18,21 @@ async def materialize_asset(asset: MediaAsset, *, temp_dir: str | None = None) -
 
     Returns the local filesystem path ffmpeg can read.
     """
-    suffix = _suffix_from_mime(asset.mime_type)
-    path = f"{tempfile.gettempdir() if temp_dir is None else temp_dir}/{uuid.uuid4().hex}{suffix}"
-
     if asset.has_bytes:
+        suffix = _suffix_from_mime(asset.mime_type)
+        path = f"{tempfile.gettempdir() if temp_dir is None else temp_dir}/{uuid.uuid4().hex}{suffix}"
         with open(path, "wb") as f:
             f.write(asset.bytes_data or b"")
         return path
 
+    if asset.uri is not None and asset.uri.startswith("file://"):
+        path = unquote(urlparse(asset.uri).path)
+        if not Path(path).is_file():
+            raise FileNotFoundError(path)
+        return path
+
+    suffix = _suffix_from_mime(asset.mime_type)
+    path = f"{tempfile.gettempdir() if temp_dir is None else temp_dir}/{uuid.uuid4().hex}{suffix}"
     async with (
         aiohttp.ClientSession() as session,
         session.get(asset.uri) as resp,  # type: ignore[arg-type]
@@ -63,6 +72,7 @@ def _suffix_from_mime(mime_type: str) -> str:
     return {
         "video/mp4": ".mp4",
         "video/webm": ".webm",
+        "video/quicktime": ".mov",
         "image/png": ".png",
         "image/jpeg": ".jpg",
         "image/gif": ".gif",
