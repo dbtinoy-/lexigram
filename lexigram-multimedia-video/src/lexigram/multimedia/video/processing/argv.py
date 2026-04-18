@@ -10,6 +10,7 @@ from lexigram.contracts.multimedia.types import (
     BurnSubtitles,
     ChangeSpeed,
     ColorFilter,
+    ComposeVideo,
     Concat,
     Crop,
     ExtractThumbnail,
@@ -359,6 +360,126 @@ def _build_concat_argv(
     return argv
 
 
+def build_compose_argv(
+    operation: ComposeVideo,
+    *,
+    input_paths: list[str],
+    output_path: str,
+    ffmpeg_binary: str = "ffmpeg",
+    base_duration: float | None = None,
+    layer_durations: list[float] | None = None,
+) -> list[str]:
+    """Assemble the ffmpeg argv for a ComposeVideo operation.
+
+    Input order: [0] base, [1..L] layer assets, [L+1..L+M] audio assets.
+    Semantics per the ComposeVideo docstring: output duration == base
+    duration; base audio dropped unless audio_layers present; layer fades
+    are on the layer's own PTS (post setpts), the overlay enable window
+    clips anything past `end`.
+
+    Raises:
+        ValueError: If fade_out/base_fade_out is set without base_duration,
+            or a layer fade_out needs an end but no layer_durations entry.
+    """
+    # Fast path: nothing to do — plain copy.
+    if (
+        not operation.layers
+        and not operation.audio_layers
+        and operation.fade_in == 0.0
+        and operation.fade_out == 0.0
+        and operation.base_fade_out == 0.0
+        and operation.encode is None
+    ):
+        return [ffmpeg_binary, "-y", "-i", input_paths[0], "-c", "copy", output_path]
+
+    if operation.fade_out > 0 or operation.base_fade_out > 0:
+        if base_duration is None:
+            raise ValueError(
+                "ComposeVideo fade_out/base_fade_out requires base_duration"
+            )
+
+    graph: list[str] = []
+    prev = "[0:v]"
+    if operation.base_fade_out > 0:
+        assert base_duration is not None
+        graph.append(
+            f"[0:v]fade=t=out:st={base_duration - operation.base_fade_out}"
+            f":d={operation.base_fade_out}[b0]"
+        )
+        prev = "[b0]"
+
+    for j, layer in enumerate(operation.layers):
+        i = j + 1
+        chain = f"[{i}:v]setpts=PTS-STARTPTS,format=auto"
+        if layer.end is not None:
+            dur = layer.end - layer.start
+        elif layer_durations is not None:
+            dur = layer_durations[j]
+        else:
+            dur = None
+        if layer.fade_in > 0:
+            chain += f",fade=t=in:st=0:d={layer.fade_in}"
+        if layer.fade_out > 0:
+            if dur is None:
+                raise ValueError(
+                    "ComposeVideo layer fade_out requires end or layer_durations"
+                )
+            chain += f",fade=t=out:st={dur - layer.fade_out}:d={layer.fade_out}"
+        graph.append(f"{chain}[l{j}]")
+        window = (
+            f"gte(t,{layer.start})"
+            if layer.end is None
+            else f"between(t,{layer.start},{layer.end})"
+        )
+        graph.append(f"{prev}[l{j}]overlay=0:0:enable='{window}'[v{j}]")
+        prev = f"[v{j}]"
+
+    final = prev
+    if operation.fade_in > 0 or operation.fade_out > 0:
+        fades = []
+        if operation.fade_in > 0:
+            fades.append(f"fade=t=in:st=0:d={operation.fade_in}")
+        if operation.fade_out > 0:
+            assert base_duration is not None
+            fades.append(
+                f"fade=t=out:st={base_duration - operation.fade_out}"
+                f":d={operation.fade_out}"
+            )
+        graph.append(f"{final}{','.join(fades)}[v]")
+        final = "[v]"
+
+    argv = [ffmpeg_binary, "-y"]
+    argv += [arg for path in input_paths for arg in ("-i", path)]
+
+    audio_labels: list[str] = []
+    for m, audio in enumerate(operation.audio_layers):
+        i = len(operation.layers) + 1 + m
+        graph.append(
+            f"[{i}:a]adelay={round(audio.start * 1000)}:all=1,volume={audio.volume}[a{m}]"
+        )
+        audio_labels.append(f"[a{m}]")
+    if audio_labels:
+        graph.append(
+            f"{''.join(audio_labels)}amix=inputs={len(audio_labels)}"
+            f":normalize=0:dropout_transition=0[a]"
+        )
+
+    argv += ["-filter_complex", ";".join(graph)]
+    argv += ["-map", final]
+    if audio_labels:
+        argv += ["-map", "[a]"]
+    if operation.encode is not None:
+        argv += ["-c:v", operation.encode.codec]
+        if operation.encode.bitrate:
+            argv += ["-b:v", operation.encode.bitrate]
+        if operation.encode.resolution:
+            argv += ["-s", operation.encode.resolution]
+        if operation.encode.fps:
+            argv += ["-r", str(operation.encode.fps)]
+    argv += ["-pix_fmt", "yuv420p", "-movflags", "+faststart", output_path]
+    return argv
+
+
 def _escape_drawtext(text: str) -> str:
     return text.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
 
@@ -379,4 +500,4 @@ def cues_to_srt(cues: list) -> str:
     return "\n".join(lines)
 
 
-__all__ = ["build_argv", "cues_to_srt"]
+__all__ = ["build_argv", "build_compose_argv", "cues_to_srt"]
