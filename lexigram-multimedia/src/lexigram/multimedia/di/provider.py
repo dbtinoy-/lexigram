@@ -50,15 +50,15 @@ class MultimediaProvider(Provider):
         self._timeline_task_handler: TimelineRenderTask | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        from lexigram.multimedia.audio_music.di.provider import AudioMusicProvider
-        from lexigram.multimedia.audio_tts.di.provider import AudioTTSProvider
         from lexigram.multimedia.image.di.provider import ImageGenerationProvider
+        from lexigram.multimedia.music.di.provider import AudioMusicProvider
+        from lexigram.multimedia.tts.di.provider import AudioTTSProvider
         from lexigram.multimedia.video.di.provider import VideoGenerationProvider
 
-        self._sub_providers["audio-tts"] = AudioTTSProvider(
+        self._sub_providers["tts"] = AudioTTSProvider(
             config=self._multimedia_config.tts
         )
-        self._sub_providers["audio-music"] = AudioMusicProvider(
+        self._sub_providers["music"] = AudioMusicProvider(
             config=self._multimedia_config.music
         )
         self._sub_providers["video"] = VideoGenerationProvider(
@@ -201,8 +201,8 @@ class MultimediaProvider(Provider):
             return _adapter
 
         _TASK_HANDLER_SPECS = [
-            ("audio-tts", "tts_generation", "tts/", "_task_handler"),
-            ("audio-music", "music_generation", "music/", "_task_handler"),
+            ("tts", "tts_generation", "tts/", "_task_handler"),
+            ("music", "music_generation", "music/", "_task_handler"),
             ("video", "video_generation", "video/", "_task_handler"),
             ("image", "image_generation", "image/", "_task_handler"),
             (
@@ -262,7 +262,7 @@ class MultimediaProvider(Provider):
     def tts(self) -> Any:
         from lexigram.multimedia.accessors import SubsystemAccessor
 
-        sub = self._sub_providers["audio-tts"]
+        sub = self._sub_providers["tts"]
         return SubsystemAccessor(
             backend=sub._backend,
             task_manager=self._task_manager,
@@ -281,7 +281,7 @@ class MultimediaProvider(Provider):
     def music(self) -> Any:
         from lexigram.multimedia.accessors import SubsystemAccessor
 
-        sub = self._sub_providers["audio-music"]
+        sub = self._sub_providers["music"]
         return SubsystemAccessor(
             backend=sub._backend,
             task_manager=self._task_manager,

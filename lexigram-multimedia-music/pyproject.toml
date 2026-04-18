@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lexigram-multimedia"
+name = "lexigram-multimedia-music"
 version = "0.1.0"
-description = "Audio/video/image generation orchestrator for the Lexigram Framework"
+description = "Music generation for the Lexigram Framework — local and API-based backends"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-keywords = ["lexigram", "multimedia", "audio", "video", "image", "generation", "ai", "framework"]
+keywords = ["lexigram", "multimedia", "music", "audio", "ai", "framework"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -26,14 +26,10 @@ classifiers = [
 authors = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }]
 maintainers = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }]
 dependencies = [
-    "lexigram>=0.1.1",
     "lexigram-contracts>=0.1.0",
-    "lexigram-multimedia-tts>=0.1.0",
-    "lexigram-multimedia-music>=0.1.0",
-    "lexigram-multimedia-video>=0.1.0",
-    "lexigram-multimedia-image>=0.1.0",
-    "lexigram-tasks>=0.1.0",
-    "lexigram-storage>=0.1.0",
+    "lexigram>=0.1.1",
+    "aiohttp>=3.9.0",
+    "typing-extensions>=4.0.0",
 ]
 
 [project.urls]
@@ -42,6 +38,8 @@ Repository = "https://github.com/dbtinoy-/lexigram-multimedia-experimental"
 Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 
 [project.optional-dependencies]
+stability-audio = []
+local-inproc = []
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -61,11 +59,11 @@ test = [
     "pytest-mock>=3.10.0",
 ]
 
-[project.entry-points."lexigram.modules"]
-multimedia = "lexigram.multimedia.module:MultimediaModule"
+[project.entry-points."lexigram.multimedia.subsystems"]
+music = "lexigram.multimedia.music.di.provider:AudioMusicProvider"
 
-[project.entry-points."lexigram.config"]
-multimedia = "lexigram.multimedia.config:MultimediaConfig"
+[project.entry-points."lexigram.multimedia.modules"]
+music = "lexigram.multimedia.music.module:AudioMusicModule"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lexigram"]
@@ -113,25 +111,8 @@ force-sort-within-sections = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = [
-    "--cov=lexigram.multimedia",
-    "--cov-config=pyproject.toml",
+    "--cov=lexigram.multimedia.music",
     "--cov-report=term",
     "--cov-report=html",
     "--cov-fail-under=40",
-]
-
-# The lexigram.multimedia import name is a namespace shared with the sibling
-# wheel packages (lexigram-multimedia-tts/-music/-image/-video,
-# installed into the same site-packages tree). Without scoping, coverage
-# measures the siblings' sources too — which this package's test suite does
-# not own. The siblings enforce their own coverage gates (see their
-# pyprojects, e.g. --cov=lexigram.multimedia.video); this one measures only
-# the umbrella's own code. (include is ignored by coverage when --source is
-# set, so this uses omit.)
-[tool.coverage.run]
-omit = [
-    "*/lexigram-multimedia-music/src/*",
-    "*/lexigram-multimedia-tts/src/*",
-    "*/lexigram-multimedia-image/src/*",
-    "*/lexigram-multimedia-video/src/*",
 ]

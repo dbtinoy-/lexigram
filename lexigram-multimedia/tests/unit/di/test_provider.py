@@ -49,7 +49,7 @@ async def test_tts_accessor_generate_delegates_to_backend() -> None:
     fake_backend.generate.return_value = Ok(
         MediaAsset(mime_type="audio/mpeg", provider="local-http", bytes_data=b"x")
     )
-    provider._sub_providers["audio-tts"]._backend = fake_backend
+    provider._sub_providers["tts"]._backend = fake_backend
 
     accessor = provider.tts
     result = await accessor.generate(TTSRequest(text="hi"))
@@ -87,8 +87,8 @@ async def test_register_tolerates_metadata_import_failure() -> None:
         await provider.register(container)
 
     assert set(provider._sub_providers) == {
-        "audio-tts",
-        "audio-music",
+        "tts",
+        "music",
         "video",
         "image",
     }

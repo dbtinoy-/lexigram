@@ -63,8 +63,8 @@ async def test_boot_registers_wrapped_handlers_with_task_provider() -> None:
     fake_backend.generate.return_value = Ok(
         MediaAsset(mime_type="audio/mpeg", provider="elevenlabs", bytes_data=b"x")
     )
-    provider._sub_providers["audio-tts"]._backend = fake_backend
-    provider._sub_providers["audio-tts"]._task_handler._backend = fake_backend
+    provider._sub_providers["tts"]._backend = fake_backend
+    provider._sub_providers["tts"]._task_handler._backend = fake_backend
 
     assert "tts_generation" in fake_task_provider.handlers
     adapter = fake_task_provider.handlers["tts_generation"]
@@ -98,8 +98,8 @@ async def test_wrapped_handler_passthrough_without_storage() -> None:
     fake_backend.generate.return_value = Ok(
         MediaAsset(mime_type="audio/mpeg", provider="elevenlabs", bytes_data=b"x")
     )
-    provider._sub_providers["audio-tts"]._backend = fake_backend
-    provider._sub_providers["audio-tts"]._task_handler._backend = fake_backend
+    provider._sub_providers["tts"]._backend = fake_backend
+    provider._sub_providers["tts"]._task_handler._backend = fake_backend
 
     adapter = fake_task_provider.handlers["tts_generation"]
     result = await adapter(text="hi", voice=None, format="mp3")

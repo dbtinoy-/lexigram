@@ -87,7 +87,7 @@ async def test_entry_point_subsystem_is_discovered_and_registered() -> None:
 @pytest.mark.asyncio
 async def test_entry_point_core_names_are_skipped() -> None:
     fake_ep = MagicMock()
-    fake_ep.name = "audio-tts"
+    fake_ep.name = "tts"
     fake_ep.load.return_value = _FakeSubsystem
 
     provider = MultimediaProvider(config=MultimediaConfig())
@@ -99,7 +99,7 @@ async def test_entry_point_core_names_are_skipped() -> None:
     ):
         await provider.register(container)
 
-    assert type(provider._sub_providers["audio-tts"]).__name__ != "FakeSubsystem"
+    assert type(provider._sub_providers["tts"]).__name__ != "FakeSubsystem"
 
 
 @pytest.mark.asyncio
@@ -118,8 +118,8 @@ async def test_health_check_aggregates_all_subsystems() -> None:
     # UNHEALTHY while all backends are configured.
     assert result.status in (HealthStatus.HEALTHY, HealthStatus.DEGRADED)
     assert set(result.details["components"]) == {
-        "audio-tts",
-        "audio-music",
+        "tts",
+        "music",
         "video",
         "image",
     }

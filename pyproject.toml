@@ -58,8 +58,8 @@ dependencies = [
     "pyyaml>=6.0.3",
     "openai>=2.33.0",
     "lexigram-multimedia",
-    "lexigram-multimedia-audio-tts",
-    "lexigram-multimedia-audio-music",
+    "lexigram-multimedia-tts",
+    "lexigram-multimedia-music",
     "lexigram-multimedia-video",
     "lexigram-multimedia-image",
 ]
@@ -121,8 +121,8 @@ members = [
     "lexigram-audit",
     "lexigram-webhook",
     "lexigram-multimedia",
-    "lexigram-multimedia-audio-tts",
-    "lexigram-multimedia-audio-music",
+    "lexigram-multimedia-tts",
+    "lexigram-multimedia-music",
     "lexigram-multimedia-video",
     "lexigram-multimedia-image",
 ]
@@ -173,8 +173,8 @@ lexigram-audit = { workspace = true }
 lexigram-webhook = { workspace = true }
 lexigram-ai-evaluation = { workspace = true }
 lexigram-multimedia = { workspace = true }
-lexigram-multimedia-audio-tts = { workspace = true }
-lexigram-multimedia-audio-music = { workspace = true }
+lexigram-multimedia-tts = { workspace = true }
+lexigram-multimedia-music = { workspace = true }
 lexigram-multimedia-video = { workspace = true }
 lexigram-multimedia-image = { workspace = true }
 

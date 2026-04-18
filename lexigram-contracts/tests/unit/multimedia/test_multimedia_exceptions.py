@@ -20,6 +20,6 @@ def test_media_type_errors_extend_multimedia_error() -> None:
 
 def test_provider_not_installed_error_has_actionable_message() -> None:
     err = ProviderNotInstalledError(
-        "pip install lexigram-multimedia-audio-tts[elevenlabs]"
+        "pip install lexigram-multimedia-tts[elevenlabs]"
     )
     assert "pip install" in err.message
