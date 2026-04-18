@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.multimedia.protocols import VideoProcessor
@@ -9,6 +10,7 @@ from lexigram.contracts.multimedia.types import (
     BurnSubtitles,
     ComposeAudioLayer,
     ComposeLayer,
+    ComposeVideo,
     Concat,
     EncodeSpec,
     MediaAsset,
@@ -111,16 +113,66 @@ class Timeline:
         return self
 
     async def render(
-        self, processor: VideoProcessor
+        self,
+        processor: VideoProcessor,
+        *,
+        progress_callback: Callable[[float], None] | None = None,
     ) -> Result[MediaAsset, VideoGenerationError]:
+        """
+        Execute the composition pipeline via a VideoProcessor.
+
+        Assembles clips (single clip passes through directly, multiple clips
+        concat with transitions), then applies the compose stage when any
+        overlay, audio layer, fade, or encode option is set, then narration,
+        music, and captions stages.
+
+        Args:
+            processor: Processor that executes each pipeline operation.
+            progress_callback: Optional sync callback invoked with 0.0..1.0
+                progress during the compose stage.
+
+        Returns:
+            Ok(final asset) on success, Err(error) on the first failing stage.
+
+        Note:
+            Audio layers mix into the composed audio; a narration asset
+            replaces it. Callers should use one or the other.
+        """
         from lexigram.contracts.core.result import Ok
 
-        result = await processor.process(
-            Concat(assets=self._clips, transitions=self._transitions or None)
-        )
-        if result.is_err():
-            return result
-        current = result.unwrap()
+        if len(self._clips) == 1:
+            current = self._clips[0]
+        else:
+            result = await processor.process(
+                Concat(assets=self._clips, transitions=self._transitions or None)
+            )
+            if result.is_err():
+                return result
+            current = result.unwrap()
+
+        if (
+            self._overlays
+            or self._audio_layers
+            or self._fade_in
+            or self._fade_out
+            or self._base_fade_out
+            or self._encode is not None
+        ):
+            compose = ComposeVideo(
+                asset=current,
+                layers=self._overlays,
+                audio_layers=self._audio_layers,
+                fade_in=self._fade_in,
+                fade_out=self._fade_out,
+                base_fade_out=self._base_fade_out,
+                encode=self._encode,
+            )
+            result = await processor.process(
+                compose, progress_callback=progress_callback
+            )
+            if result.is_err():
+                return result
+            current = result.unwrap()
 
         if self._narration is not None:
             result = await processor.process(
