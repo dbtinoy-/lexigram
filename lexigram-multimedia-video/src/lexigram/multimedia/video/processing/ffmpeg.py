@@ -10,6 +10,7 @@ import tempfile
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.multimedia.types import (
     BurnSubtitles,
+    ComposeVideo,
     Concat,
     MediaAsset,
     MuxAudio,
@@ -18,7 +19,11 @@ from lexigram.contracts.multimedia.types import (
 )
 from lexigram.multimedia.video.config import VideoProcessingConfig
 from lexigram.multimedia.video.exceptions import VideoProcessingError
-from lexigram.multimedia.video.processing.argv import build_argv, cues_to_srt
+from lexigram.multimedia.video.processing.argv import (
+    build_argv,
+    build_compose_argv,
+    cues_to_srt,
+)
 from lexigram.multimedia.video.processing.media_io import (
     materialize_asset,
     probe_duration,
@@ -68,14 +73,35 @@ class FFmpegVideoProcessor:
             with open(subtitle_path, "w") as f:
                 f.write(cues_to_srt(operation.cues))
             extra_kwargs["subtitle_path"] = subtitle_path
+        if isinstance(operation, ComposeVideo):
+            if operation.fade_out > 0 or operation.base_fade_out > 0:
+                extra_kwargs["base_duration"] = await probe_duration(
+                    input_paths[0], ffprobe_binary=self._ffprobe_binary()
+                )
+            if any(
+                layer.fade_out > 0 and layer.end is None for layer in operation.layers
+            ):
+                extra_kwargs["layer_durations"] = [
+                    await probe_duration(p, ffprobe_binary=self._ffprobe_binary())
+                    for p in input_paths[1 : 1 + len(operation.layers)]
+                ]
 
-        argv = build_argv(
-            operation,
-            input_paths=input_paths,
-            output_path=output_path,
-            ffmpeg_binary=self._config.ffmpeg_binary,
-            **extra_kwargs,
-        )
+        if isinstance(operation, ComposeVideo):
+            argv = build_compose_argv(
+                operation,
+                input_paths=input_paths,
+                output_path=output_path,
+                ffmpeg_binary=self._config.ffmpeg_binary,
+                **extra_kwargs,
+            )
+        else:
+            argv = build_argv(
+                operation,
+                input_paths=input_paths,
+                output_path=output_path,
+                ffmpeg_binary=self._config.ffmpeg_binary,
+                **extra_kwargs,
+            )
 
         result = await self._run(argv)
         if result.is_err():
@@ -105,6 +131,15 @@ class FFmpegVideoProcessor:
                 return [
                     await materialize_asset(asset, temp_dir=workdir),
                     await materialize_asset(audio_asset, temp_dir=workdir),
+                ]
+            case ComposeVideo(asset=asset, layers=layers, audio_layers=audio_layers):
+                return [
+                    await materialize_asset(a, temp_dir=workdir)
+                    for a in (
+                        [asset]
+                        + [layer.asset for layer in layers]
+                        + [audio.asset for audio in audio_layers]
+                    )
                 ]
             case _:
                 primary = getattr(operation, "asset", None)

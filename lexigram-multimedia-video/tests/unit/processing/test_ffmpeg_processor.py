@@ -1,13 +1,40 @@
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from lexigram.contracts.multimedia.types import MediaAsset, Trim
+from lexigram.contracts.multimedia.types import (
+    ComposeAudioLayer,
+    ComposeLayer,
+    ComposeVideo,
+    MediaAsset,
+    Trim,
+)
 from lexigram.multimedia.video.config import VideoProcessingConfig
 from lexigram.multimedia.video.exceptions import VideoProcessingError
 from lexigram.multimedia.video.processing.ffmpeg import FFmpegVideoProcessor
 
 ASSET = MediaAsset(mime_type="video/mp4", provider="local-http", bytes_data=b"fake")
+
+
+def _fake_proc() -> AsyncMock:
+    proc = AsyncMock()
+    proc.communicate.return_value = (b"", b"")
+    proc.returncode = 0
+    return proc
+
+
+def _exec_writing_output(captured: list[list[str]]) -> AsyncMock:
+    proc = _fake_proc()
+
+    async def fake_exec(*args, **kwargs):
+        argv = list(args[0])
+        captured.append(argv)
+        with open(argv[-1], "wb") as f:
+            f.write(b"rendered")
+        return proc
+
+    return fake_exec
 
 
 @pytest.mark.asyncio
@@ -79,3 +106,78 @@ async def test_concurrent_jobs_bounded_by_semaphore(tmp_path):
     config = VideoProcessingConfig(temp_dir=str(tmp_path), max_concurrent_jobs=1)
     processor = FFmpegVideoProcessor(config=config)
     assert processor._semaphore._value == 1
+
+
+@pytest.mark.asyncio
+async def test_compose_materializes_base_layers_audio_in_order(tmp_path):
+    config = VideoProcessingConfig(temp_dir=str(tmp_path))
+    processor = FFmpegVideoProcessor(config=config)
+    base = MediaAsset(mime_type="video/mp4", provider="test", bytes_data=b"base")
+    layer = MediaAsset(mime_type="video/quicktime", provider="test", bytes_data=b"layer")
+    audio = MediaAsset(mime_type="audio/wav", provider="test", bytes_data=b"audio")
+    op = ComposeVideo(
+        asset=base,
+        layers=[ComposeLayer(asset=layer, start=1.0)],
+        audio_layers=[ComposeAudioLayer(asset=audio, start=2.0)],
+    )
+
+    captured: list[list[str]] = []
+    input_bytes: list[bytes] = []
+
+    async def fake_exec(*args, **kwargs):
+        argv = list(args)
+        captured.append(argv)
+        assert argv[0] == "ffmpeg"
+        input_bytes[:] = [
+            Path(argv[i + 1]).read_bytes() for i, arg in enumerate(argv) if arg == "-i"
+        ]
+        with open(argv[-1], "wb") as f:
+            f.write(b"rendered")
+        return _fake_proc()
+
+    with patch("asyncio.create_subprocess_exec", side_effect=fake_exec):
+        result = await processor.process(op)
+
+    assert result.is_ok()
+    assert result.unwrap().provider == "ffmpeg"
+    assert result.unwrap().bytes_data == b"rendered"
+    assert input_bytes == [b"base", b"layer", b"audio"]
+
+
+@pytest.mark.asyncio
+async def test_compose_probes_durations_and_builds_fades(tmp_path):
+    config = VideoProcessingConfig(temp_dir=str(tmp_path))
+    processor = FFmpegVideoProcessor(config=config)
+    base = MediaAsset(mime_type="video/mp4", provider="test", bytes_data=b"base")
+    layer = MediaAsset(mime_type="video/quicktime", provider="test", bytes_data=b"layer")
+    op = ComposeVideo(
+        asset=base,
+        layers=[ComposeLayer(asset=layer, start=1.0, fade_out=0.3)],
+        fade_out=0.5,
+        base_fade_out=0.75,
+    )
+
+    captured: list[list[str]] = []
+
+    async def fake_exec(*args, **kwargs):
+        argv = list(args)
+        captured.append(argv)
+        with open(argv[-1], "wb") as f:
+            f.write(b"rendered")
+        return _fake_proc()
+
+    with (
+        patch(
+            "lexigram.multimedia.video.processing.ffmpeg.probe_duration",
+            AsyncMock(side_effect=[30.0, 3.0]),
+        ),
+        patch("asyncio.create_subprocess_exec", side_effect=fake_exec),
+    ):
+        result = await processor.process(op)
+
+    assert result.is_ok()
+    argv = captured[0]
+    fc = argv[argv.index("-filter_complex") + 1]
+    assert "[0:v]fade=t=out:st=29.25:d=0.75[b0]" in fc
+    assert "fade=t=out:st=2.7:d=0.3[l0]" in fc
+    assert "[v0]fade=t=out:st=29.5:d=0.5[v]" in fc
