@@ -4,8 +4,19 @@ from unittest.mock import AsyncMock
 import pytest
 
 from lexigram.contracts.infra.storage.models import FileInfo
-from lexigram.contracts.multimedia.types import MediaAsset, Trim
-from lexigram.multimedia.storage import normalize_asset_dict, normalize_operation_assets
+from lexigram.contracts.multimedia.types import (
+    ComposeAudioLayer,
+    ComposeLayer,
+    ComposeVideo,
+    MediaAsset,
+    Trim,
+)
+from lexigram.multimedia.storage import (
+    normalize_asset_dict,
+    normalize_operation_assets,
+    normalize_timeline_assets,
+)
+from lexigram.multimedia.timeline import Timeline
 
 
 @pytest.mark.asyncio
@@ -114,3 +125,84 @@ async def test_uri_result_passes_through_unchanged() -> None:
 
     store.upload.assert_not_awaited()
     assert normalized["uri"] == "https://runway.example/out.mp4"
+
+
+@pytest.mark.asyncio
+async def test_normalize_operation_assets_uploads_compose_layers() -> None:
+    fake_store = AsyncMock()
+    fake_store.upload.return_value = FileInfo(
+        path="video/processed/in/x.mp4",
+        size=1,
+        content_type="video/mp4",
+        last_modified=datetime.now(UTC),
+    )
+    fake_store.get_url.return_value = "https://cdn.example/x.mp4"
+
+    op = ComposeVideo(
+        asset=MediaAsset(
+            mime_type="video/mp4", provider="test", bytes_data=b"base"
+        ),
+        layers=[
+            ComposeLayer(
+                asset=MediaAsset(
+                    mime_type="video/quicktime", provider="test", bytes_data=b"l1"
+                ),
+                start=1.0,
+            )
+        ],
+        audio_layers=[
+            ComposeAudioLayer(
+                asset=MediaAsset(mime_type="audio/wav", provider="test", bytes_data=b"a1"),
+                start=2.0,
+            )
+        ],
+    )
+    normalized = await normalize_operation_assets(
+        op, storage=fake_store, path_prefix="video/processed/in/"
+    )
+
+    assert isinstance(normalized, ComposeVideo)
+    assert normalized.asset.bytes_data is None
+    assert normalized.asset.uri == "https://cdn.example/x.mp4"
+    assert normalized.layers[0].asset.uri.startswith("https://cdn.example/")
+    assert normalized.layers[0].start == 1.0
+    assert normalized.audio_layers[0].asset.uri.startswith("https://cdn.example/")
+    assert normalized.audio_layers[0].volume == 1.0
+    assert fake_store.upload.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_normalize_timeline_assets_uploads_overlay_and_audio_layers() -> None:
+    fake_store = AsyncMock()
+    fake_store.upload.return_value = FileInfo(
+        path="video/processed/in/x.mp4",
+        size=1,
+        content_type="video/mp4",
+        last_modified=datetime.now(UTC),
+    )
+    fake_store.get_url.return_value = "https://cdn.example/x.mp4"
+
+    timeline = Timeline()
+    timeline.add_clip(
+        MediaAsset(mime_type="video/mp4", provider="test", uri="b.mp4")
+    )
+    timeline.add_overlay(
+        MediaAsset(mime_type="video/quicktime", provider="test", bytes_data=b"l1"),
+        start=1.0,
+        fade_in=0.2,
+    )
+    timeline.add_audio(
+        MediaAsset(mime_type="audio/wav", provider="test", bytes_data=b"a1"),
+        start=2.0,
+        volume=0.8,
+    )
+    normalized = await normalize_timeline_assets(
+        timeline, storage=fake_store, path_prefix="video/processed/in/"
+    )
+
+    assert normalized.overlays[0].asset.bytes_data is None
+    assert normalized.overlays[0].asset.uri.startswith("https://cdn.example/")
+    assert normalized.overlays[0].fade_in == 0.2
+    assert normalized.audio_layers[0].asset.uri.startswith("https://cdn.example/")
+    assert normalized.audio_layers[0].volume == 0.8
+    assert fake_store.upload.await_count == 2
