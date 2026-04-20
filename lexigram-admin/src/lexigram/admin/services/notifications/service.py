@@ -58,11 +58,14 @@ class AdminNotificationService:
         self.config = config or AdminNotificationConfig()
 
         # Initialize components
-        self.template_renderer = TemplateRenderer(self.config.app_name)  # type: ignore[attr-defined]
+        app_name = getattr(self.config, "app_name", None) or getattr(
+            self.config, "email_from_name", "Admin"
+        )
+        self.template_renderer = TemplateRenderer(app_name)
         self.email_sender = EmailSender(
             mailer=mailer,
-            from_email=self.config.from_email,  # type: ignore[attr-defined]
-            from_name=self.config.from_name,  # type: ignore[attr-defined]
+            from_email=self.config.email_from,
+            from_name=self.config.email_from_name,
         )
 
         self._sent_count = 0
@@ -80,10 +83,8 @@ class AdminNotificationService:
             ``Ok(NotificationResult)`` on success or partial success.
             ``Err(NotificationError)`` when all recipients failed.
         """
-        if (
-            notification.type not in self.config.enabled_types  # type: ignore[attr-defined]
-            and self.config.enabled_types  # type: ignore[attr-defined]
-        ):
+        enabled_types = getattr(self.config, "enabled_types", None)
+        if enabled_types and notification.type not in enabled_types:
             result = NotificationResult(
                 notification_id=notification.id,
                 recipients_sent=0,
@@ -148,7 +149,7 @@ class AdminNotificationService:
             "user_role": getattr(user, "role", "User"),
             "created_by": getattr(created_by, "name", str(created_by)),
             "created_at": datetime.now(UTC).isoformat(),
-            "user_url": f"{self.config.base_url}/users/{getattr(user, 'id', '')}",  # type: ignore[attr-defined]
+            "user_url": f"{getattr(self.config, 'base_url', '')}/users/{getattr(user, 'id', '')}",
         }
 
         subject, body, html_body = self.template_renderer.render_template(
@@ -232,6 +233,70 @@ class AdminNotificationService:
 
         return await self.send(notification)
 
+    async def notify_email_verification(
+        self,
+        user_email: str,
+        user_name: str,
+        verify_url: str,
+        expires_in: str = "24 hours",
+    ) -> Result[NotificationResult, NotificationError]:
+        """Send email verification notification."""
+        data = {
+            "user_name": user_name,
+            "verify_url": verify_url,
+            "expires_in": expires_in,
+        }
+
+        subject, body, html_body = self.template_renderer.render_template(
+            NotificationType.EMAIL_VERIFICATION,
+            data,
+        )
+
+        recipient = NotificationRecipient(email=user_email, name=user_name)
+
+        notification = Notification(
+            type=NotificationType.EMAIL_VERIFICATION,
+            subject=subject,
+            body=body,
+            html_body=html_body,
+            recipients=[recipient],
+            data=data,
+        )
+
+        return await self.send(notification)
+
+    async def notify_email_otp(
+        self,
+        user_email: str,
+        user_name: str,
+        code: str,
+        expires_in: str = "10 minutes",
+    ) -> Result[NotificationResult, NotificationError]:
+        """Send email one-time-password notification."""
+        data = {
+            "user_name": user_name,
+            "code": code,
+            "expires_in": expires_in,
+        }
+
+        subject, body, html_body = self.template_renderer.render_template(
+            NotificationType.EMAIL_OTP,
+            data,
+        )
+
+        recipient = NotificationRecipient(email=user_email, name=user_name)
+
+        notification = Notification(
+            type=NotificationType.EMAIL_OTP,
+            subject=subject,
+            body=body,
+            html_body=html_body,
+            recipients=[recipient],
+            data=data,
+        )
+
+        return await self.send(notification)
+
     async def notify_bulk_started(
         self,
         operation_name: str,
@@ -284,7 +349,7 @@ class AdminNotificationService:
             "successful": successful,
             "failed": failed,
             "duration": duration,
-            "results_url": results_url or f"{self.config.base_url}/{resource}",  # type: ignore[attr-defined]
+            "results_url": results_url or f"{getattr(self.config, 'base_url', '')}/{resource}",
         }
 
         subject, body, html_body = self.template_renderer.render_template(

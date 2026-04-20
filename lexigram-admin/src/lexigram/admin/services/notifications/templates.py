@@ -89,6 +89,26 @@ EMAIL_TEMPLATES: dict[NotificationType, tuple[str, str]] = {
         <p><small>This link expires in {expires_in}. If you didn't request this, you can safely ignore this email.</small></p>
         """,
     ),
+    NotificationType.EMAIL_VERIFICATION: (
+        "Verify your email address",
+        """
+        <h2>Verify Your Email</h2>
+        <p>Hello {user_name},</p>
+        <p>Please verify your email address to finish securing your admin account.</p>
+        <a href="{verify_url}" class="btn">Verify Email</a>
+        <p><small>This link expires in {expires_in}. If you didn't request this, you can safely ignore this email.</small></p>
+        """,
+    ),
+    NotificationType.EMAIL_OTP: (
+        "Your verification code",
+        """
+        <h2>Verification Code</h2>
+        <p>Hello {user_name},</p>
+        <p>Your one-time verification code is:</p>
+        <p class="code">{code}</p>
+        <p><small>This code expires in {expires_in}. If you didn't request this, you can safely ignore this email.</small></p>
+        """,
+    ),
     NotificationType.BULK_STARTED: (
         "Bulk operation started: {operation_name}",
         """
