@@ -410,7 +410,11 @@ def build_compose_argv(
 
     for j, layer in enumerate(operation.layers):
         i = j + 1
-        chain = f"[{i}:v]setpts=PTS-STARTPTS,format=yuva420p"
+        # The overlay syncs its second input to the main clock by PTS, so the
+        # layer's timeline must start AT its window start - otherwise the
+        # frames before `start` are skipped when the enable window opens and
+        # the last frame freezes on screen until the window closes.
+        chain = f"[{i}:v]setpts=PTS-STARTPTS+{layer.start}/TB,format=yuva420p"
         if layer.end is not None:
             dur = layer.end - layer.start
         elif layer_durations is not None:
@@ -418,20 +422,25 @@ def build_compose_argv(
         else:
             dur = None
         if layer.fade_in > 0:
-            chain += f",fade=t=in:st=0:d={layer.fade_in}"
+            chain += f",fade=t=in:st={layer.start}:d={layer.fade_in}"
         if layer.fade_out > 0:
             if dur is None:
                 raise ValueError(
                     "ComposeVideo layer fade_out requires end or layer_durations"
                 )
-            chain += f",fade=t=out:st={dur - layer.fade_out}:d={layer.fade_out}"
+            chain += (
+                f",fade=t=out:st={layer.start + dur - layer.fade_out}"
+                f":d={layer.fade_out}"
+            )
         graph.append(f"{chain}[l{j}]")
         window = (
             f"gte(t,{layer.start})"
             if layer.end is None
             else f"between(t,{layer.start},{layer.end})"
         )
-        graph.append(f"{prev}[l{j}]overlay=0:0:enable='{window}'[v{j}]")
+        graph.append(
+            f"{prev}[l{j}]overlay=0:0:eof_action=pass:enable='{window}'[v{j}]"
+        )
         prev = f"[v{j}]"
 
     final = prev
@@ -476,6 +485,8 @@ def build_compose_argv(
             argv += ["-s", operation.encode.resolution]
         if operation.encode.fps:
             argv += ["-r", str(operation.encode.fps)]
+    if base_duration is not None:
+        argv += ["-t", str(base_duration)]
     argv += ["-pix_fmt", "yuv420p", "-movflags", "+faststart", output_path]
     return argv
 

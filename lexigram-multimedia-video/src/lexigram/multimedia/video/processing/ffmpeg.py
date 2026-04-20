@@ -130,10 +130,9 @@ class FFmpegVideoProcessor:
                 f.write(cues_to_srt(operation.cues))
             extra_kwargs["subtitle_path"] = subtitle_path
         if isinstance(operation, ComposeVideo):
-            if operation.fade_out > 0 or operation.base_fade_out > 0:
-                extra_kwargs["base_duration"] = await probe_duration(
-                    input_paths[0], ffprobe_binary=self._ffprobe_binary()
-                )
+            extra_kwargs["base_duration"] = await probe_duration(
+                input_paths[0], ffprobe_binary=self._ffprobe_binary()
+            )
             if any(
                 layer.fade_out > 0 and layer.end is None for layer in operation.layers
             ):
