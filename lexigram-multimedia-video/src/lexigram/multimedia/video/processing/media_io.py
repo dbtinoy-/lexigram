@@ -68,6 +68,42 @@ async def probe_duration(path: str, *, ffprobe_binary: str = "ffprobe") -> float
     return float(stdout.decode().strip())
 
 
+async def probe_fps(path: str, *, ffprobe_binary: str = "ffprobe") -> float:
+    """Return a video file's frame rate via ffprobe."""
+    proc = await asyncio.create_subprocess_exec(
+        ffprobe_binary,
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=r_frame_rate",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, _ = await proc.communicate()
+    raw = stdout.decode().strip()
+    num, _, den = raw.partition("/")
+    return float(num) / float(den or 1)
+
+
+def materialize_frames_sequential(frames: list[MediaAsset], *, temp_dir: str) -> str:
+    """Write frame assets to sequentially-numbered files.
+
+    Returns ffmpeg's `%06d`-style input pattern, satisfying `-i` for
+    reassembly. `materialize_asset`'s randomly-named output doesn't fit
+    ffmpeg's sequential-input requirement, hence this separate helper.
+    """
+    for i, frame in enumerate(frames):
+        path = f"{temp_dir}/frame{i:06d}.png"
+        with open(path, "wb") as f:
+            f.write(frame.bytes_data or b"")
+    return f"{temp_dir}/frame%06d.png"
+
+
 def _suffix_from_mime(mime_type: str) -> str:
     return {
         "video/mp4": ".mp4",
@@ -81,4 +117,10 @@ def _suffix_from_mime(mime_type: str) -> str:
     }.get(mime_type, "")
 
 
-__all__ = ["materialize_asset", "probe_duration", "read_output_asset"]
+__all__ = [
+    "materialize_asset",
+    "materialize_frames_sequential",
+    "probe_duration",
+    "probe_fps",
+    "read_output_asset",
+]
