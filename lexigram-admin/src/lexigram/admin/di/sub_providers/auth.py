@@ -193,6 +193,8 @@ class AdminAuthSubProvider:
         _pp_cfg = getattr(_auth_cfg, "password_policy", None)
         _sec_cfg = getattr(_auth_cfg, "security", None)
         _mfa_cfg = getattr(_auth_cfg, "mfa", None)
+        _email_verif_cfg = getattr(_auth_cfg, "email_verification", None)
+        _email_otp_cfg = getattr(_auth_cfg, "email_otp", None)
 
         # ── AdminAuditLogService — DI-wired via @inject ───────────────────
         container.singleton(AdminAuditLogServiceProtocol, AdminAuditLogService)
@@ -263,7 +265,37 @@ class AdminAuthSubProvider:
         container.singleton(AdminLoginAttemptServiceProtocol, AdminLoginAttemptService)
 
         # ── AdminAuthService — DI-wired orchestrator ──────────────────────
-        container.singleton(AdminAuthServiceProtocol, AdminAuthService)
+        # The @inject decorator resolves all store/service deps from the
+        # container; mfa_factor comes from config via the closure.
+        from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
+
+        @inject
+        class _AdminAuthServiceConfigured(AdminAuthService):
+            """Admin-scoped auth service with config-driven factor selection."""
+
+            def __init__(
+                self,
+                user_store: AdminUserStoreProtocol,
+                attempt_service: AdminLoginAttemptServiceProtocol,
+                audit_service: AdminAuditLogServiceProtocol,
+                session_service: AdminSessionServiceProtocol,
+                mfa_service: AdminMfaServiceProtocol | None = None,
+                email_verification_service: AdminEmailVerificationServiceProtocol
+                | None = None,
+                email_otp_service: AdminEmailOtpServiceProtocol | None = None,
+            ) -> None:
+                super().__init__(
+                    user_store=user_store,
+                    attempt_service=attempt_service,
+                    audit_service=audit_service,
+                    session_service=session_service,
+                    mfa_service=mfa_service,
+                    email_verification_service=email_verification_service,
+                    email_otp_service=email_otp_service,
+                    mfa_factor=getattr(_mfa_cfg, "factor", "totp"),
+                )
+
+        container.singleton(AdminAuthServiceProtocol, _AdminAuthServiceConfigured)
 
         # ── AdminPasswordResetService — DI-wired orchestrator ─────────────
         # Resolves user_store, token_store, audit, auth, and policy services
@@ -305,6 +337,80 @@ class AdminAuthSubProvider:
 
         container.singleton(AdminMfaServiceProtocol, _AdminMfaServiceConfigured)
 
+        # ── Email verification + email OTP — configured subclasses ────────
+        # Notification service is registered as a concrete singleton so the
+        # email services can inject it; it no-ops when no mailer is bound
+        # (fail-open for verification, Err for OTP delivery).
+        from lexigram.admin.auth.protocols import (
+            AdminEmailOtpServiceProtocol,
+            AdminEmailOtpStoreProtocol,
+            AdminEmailVerificationServiceProtocol,
+            AdminEmailVerificationStoreProtocol,
+        )
+        from lexigram.admin.auth.services.email_otp_service import AdminEmailOtpService
+        from lexigram.admin.auth.services.email_verification_service import (
+            AdminEmailVerificationService,
+        )
+        from lexigram.admin.auth.store.email_otp_sql import AdminEmailOtpSqlStore
+        from lexigram.admin.auth.store.email_verification_sql import (
+            AdminEmailVerificationSqlStore,
+        )
+        from lexigram.admin.config import (
+            AdminEmailOtpConfig,
+            AdminEmailVerificationConfig,
+        )
+        from lexigram.admin.services.notifications import AdminNotificationService
+
+        container.singleton(AdminNotificationService, AdminNotificationService)
+
+        container.singleton(
+            AdminEmailVerificationStoreProtocol, AdminEmailVerificationSqlStore
+        )
+        container.singleton(AdminEmailOtpStoreProtocol, AdminEmailOtpSqlStore)
+
+        @inject
+        class _AdminEmailVerificationServiceConfigured(AdminEmailVerificationService):
+            """Admin-scoped email verification service with config-driven settings."""
+
+            def __init__(
+                self,
+                store: AdminEmailVerificationStoreProtocol,
+                notification_service: AdminNotificationService | None = None,
+                audit_service: AdminAuditLogServiceProtocol | None = None,
+            ) -> None:
+                super().__init__(
+                    config=_email_verif_cfg or AdminEmailVerificationConfig(),
+                    store=store,
+                    notification_service=notification_service,
+                    audit_service=audit_service,
+                )
+
+        container.singleton(
+            AdminEmailVerificationServiceProtocol,
+            _AdminEmailVerificationServiceConfigured,
+        )
+
+        @inject
+        class _AdminEmailOtpServiceConfigured(AdminEmailOtpService):
+            """Admin-scoped email OTP service with config-driven settings."""
+
+            def __init__(
+                self,
+                store: AdminEmailOtpStoreProtocol,
+                notification_service: AdminNotificationService | None = None,
+                audit_service: AdminAuditLogServiceProtocol | None = None,
+            ) -> None:
+                super().__init__(
+                    config=_email_otp_cfg or AdminEmailOtpConfig(),
+                    store=store,
+                    notification_service=notification_service,
+                    audit_service=audit_service,
+                )
+
+        container.singleton(
+            AdminEmailOtpServiceProtocol, _AdminEmailOtpServiceConfigured
+        )
+
         # ── AdminRoleService — DI-wired RBAC orchestrator ────────────────
         # The @inject decorator resolves role_store from the container.
         # authorization_service and audit_service are optional (None when
@@ -340,6 +446,8 @@ class AdminAuthSubProvider:
         from lexigram.admin.auth.protocols import (
             AdminAccountLockoutStoreProtocol,
             AdminAuditLogStoreProtocol,
+            AdminEmailOtpStoreProtocol,
+            AdminEmailVerificationStoreProtocol,
             AdminLoginAttemptServiceProtocol,
             AdminLoginAttemptStoreProtocol,
             AdminMfaStoreProtocol,
@@ -355,6 +463,8 @@ class AdminAuthSubProvider:
             AdminPasswordResetTokenStoreProtocol,
             AdminMfaStoreProtocol,
             AdminRoleStoreProtocol,
+            AdminEmailVerificationStoreProtocol,
+            AdminEmailOtpStoreProtocol,
         ):
             try:
                 _store = await container.resolve(
