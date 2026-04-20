@@ -29,6 +29,8 @@ _BYPASS_SUFFIXES: frozenset[str] = frozenset(
         "/health/",
         "/login/2fa",
         "/login/2fa/",
+        "/verify-email",
+        "/verify-email/",
     }
 )
 
@@ -36,6 +38,10 @@ _BYPASS_PREFIXES: tuple[str, ...] = (
     "/static/",
     "/admin/static/",
 )
+
+# Token-bearing sub-paths that must remain reachable without a session
+# (e.g. the email verification links emailed to admins).
+_BYPASS_TOKEN_PREFIXES: tuple[str, ...] = ("/admin/verify-email/",)
 
 
 class AdminAuthGuardMiddleware:
@@ -130,5 +136,8 @@ class AdminAuthGuardMiddleware:
         for suffix in _BYPASS_SUFFIXES:
             if path == suffix or path.endswith(suffix):
                 return True
+
+        if any(path.startswith(prefix) for prefix in _BYPASS_TOKEN_PREFIXES):
+            return True
 
         return any(path.startswith(prefix) for prefix in _BYPASS_PREFIXES)
