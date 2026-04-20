@@ -28,6 +28,7 @@ from lexigram.multimedia.video.processing.argv import (
 )
 from lexigram.multimedia.video.processing.media_io import (
     materialize_asset,
+    materialize_frames_sequential,
     probe_duration,
     probe_fps,
     read_output_asset,
@@ -85,9 +86,7 @@ class FFmpegVideoProcessor:
                 if result.is_err():
                     return Err(result.unwrap_err())
 
-                frame_paths = sorted(
-                    str(p) for p in Path(framedir).glob("frame*.png")
-                )
+                frame_paths = sorted(str(p) for p in Path(framedir).glob("frame*.png"))
                 frames = [
                     read_output_asset(p, mime_type="image/png", provider="ffmpeg")
                     for p in frame_paths
@@ -104,7 +103,46 @@ class FFmpegVideoProcessor:
                 return Ok(frames)
             except (OSError, ValueError) as exc:
                 return Err(
-                    VideoProcessingError(f"ffmpeg frame extraction failed: {exc}", cause=exc)
+                    VideoProcessingError(
+                        f"ffmpeg frame extraction failed: {exc}", cause=exc
+                    )
+                )
+            finally:
+                shutil.rmtree(workdir, ignore_errors=True)
+
+    async def assemble_frames(
+        self, frames: list[MediaAsset], *, fps: float
+    ) -> Result[MediaAsset, VideoProcessingError]:
+        async with self._semaphore:
+            workdir = tempfile.mkdtemp(dir=self._config.temp_dir)
+            try:
+                pattern = materialize_frames_sequential(frames, temp_dir=workdir)
+                output_path = f"{workdir}/{os.urandom(8).hex()}.mp4"
+                argv = [
+                    self._config.ffmpeg_binary,
+                    "-y",
+                    "-framerate",
+                    str(fps),
+                    "-i",
+                    pattern,
+                    "-pix_fmt",
+                    "yuv420p",
+                    output_path,
+                ]
+
+                result = await self._run(argv)
+                if result.is_err():
+                    return Err(result.unwrap_err())
+
+                asset = read_output_asset(
+                    output_path, mime_type="video/mp4", provider="ffmpeg"
+                )
+                return Ok(asset)
+            except (OSError, ValueError) as exc:
+                return Err(
+                    VideoProcessingError(
+                        f"ffmpeg frame assembly failed: {exc}", cause=exc
+                    )
                 )
             finally:
                 shutil.rmtree(workdir, ignore_errors=True)
