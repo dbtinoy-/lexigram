@@ -93,8 +93,12 @@ def _operation_from_params(params: dict[str, Any]) -> VideoOperation:
         BurnSubtitles,
         ChangeSpeed,
         ColorFilter,
+        ComposeAudioLayer,
+        ComposeLayer,
+        ComposeVideo,
         Concat,
         Crop,
+        EncodeSpec,
         ExtractThumbnail,
         MuxAudio,
         OverlayImage,
@@ -200,5 +204,32 @@ def _operation_from_params(params: dict[str, Any]) -> VideoOperation:
             filter_complex=params["filter_complex"],
             maps=params["maps"],
             extra_args=params.get("extra_args", []),
+        )
+    if kind == "ComposeVideo":
+        encode_data = params.get("encode")
+        return ComposeVideo(
+            asset=_asset_from_params(params["asset"]),
+            layers=[
+                ComposeLayer(
+                    asset=_asset_from_params(layer["asset"]),
+                    start=layer.get("start", 0.0),
+                    end=layer.get("end"),
+                    fade_in=layer.get("fade_in", 0.0),
+                    fade_out=layer.get("fade_out", 0.0),
+                )
+                for layer in params.get("layers", [])
+            ],
+            audio_layers=[
+                ComposeAudioLayer(
+                    asset=_asset_from_params(audio["asset"]),
+                    start=audio.get("start", 0.0),
+                    volume=audio.get("volume", 1.0),
+                )
+                for audio in params.get("audio_layers", [])
+            ],
+            fade_in=params.get("fade_in", 0.0),
+            fade_out=params.get("fade_out", 0.0),
+            base_fade_out=params.get("base_fade_out", 0.0),
+            encode=EncodeSpec(**encode_data) if encode_data else None,
         )
     raise ValueError(f"unknown operation_type: {kind!r}")
