@@ -5,6 +5,7 @@ from lexigram.contracts.multimedia.types import (
     MediaAsset,
     MusicRequest,
     TTSRequest,
+    UpscaleRequest,
     VideoRequest,
 )
 
@@ -48,3 +49,10 @@ def test_image_request_defaults() -> None:
     req = ImageRequest(prompt="a cat")
     assert req.width == 1024
     assert req.height == 1024
+
+
+def test_upscale_request_defaults() -> None:
+    asset = MediaAsset(mime_type="image/png", provider="test", bytes_data=b"x")
+    req = UpscaleRequest(asset=asset)
+    assert req.scale_factor == 4
+    assert req.extra == {}

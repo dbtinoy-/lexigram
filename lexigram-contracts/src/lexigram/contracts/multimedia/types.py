@@ -65,6 +65,13 @@ class ImageRequest:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class UpscaleRequest:
+    asset: MediaAsset
+    scale_factor: Literal[2, 4] = 4
+    extra: dict[str, Any] = field(default_factory=dict)
+
+
 OverlayPosition = Literal[
     "top",
     "bottom",
@@ -295,6 +302,7 @@ __all__ = [
     "Transcode",
     "TransitionSpec",
     "Trim",
+    "UpscaleRequest",
     "VideoOperation",
     "VideoRequest",
 ]
