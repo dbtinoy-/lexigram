@@ -22,6 +22,7 @@ if TYPE_CHECKING:
         MediaAsset,
         MusicRequest,
         TTSRequest,
+        UpscaleRequest,
         VideoOperation,
         VideoRequest,
     )
@@ -79,10 +80,20 @@ class ImageProvider(Protocol):
     ) -> Result[MediaAsset, MultimediaError]: ...
 
 
+@runtime_checkable
+class UpscaleProvider(Protocol):
+    """Protocol for single-image super-resolution backends."""
+
+    async def upscale(
+        self, request: UpscaleRequest
+    ) -> Result[MediaAsset, MultimediaError]: ...
+
+
 __all__ = [
     "ImageProvider",
     "MusicProvider",
     "TTSProvider",
+    "UpscaleProvider",
     "VideoProcessor",
     "VideoProvider",
 ]
