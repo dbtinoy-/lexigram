@@ -62,3 +62,33 @@ async def test_extract_thumbnail_real_ffmpeg(tmp_path) -> None:
     out = result.unwrap()
     assert out.mime_type == "image/png"
     assert len(out.bytes_data) > 0
+
+
+@pytest.mark.asyncio
+async def test_extract_frames_real_ffmpeg(tmp_path) -> None:
+    clip_bytes = await _make_synthetic_clip(tmp_path)
+    config = VideoProcessingConfig(temp_dir=str(tmp_path))
+    processor = FFmpegVideoProcessor(config=config)
+    asset = MediaAsset(mime_type="video/mp4", provider="test", bytes_data=clip_bytes)
+
+    result = await processor.extract_frames(asset, fps=2.0)
+
+    assert result.is_ok()
+    frames = result.unwrap()
+    assert len(frames) > 0
+    assert all(f.mime_type == "image/png" for f in frames)
+    assert frames[0].metadata["source_fps"] == 2.0
+
+
+@pytest.mark.asyncio
+async def test_extract_frames_at_native_rate_stamps_probed_fps(tmp_path) -> None:
+    clip_bytes = await _make_synthetic_clip(tmp_path)
+    config = VideoProcessingConfig(temp_dir=str(tmp_path))
+    processor = FFmpegVideoProcessor(config=config)
+    asset = MediaAsset(mime_type="video/mp4", provider="test", bytes_data=clip_bytes)
+
+    result = await processor.extract_frames(asset)
+
+    assert result.is_ok()
+    frames = result.unwrap()
+    assert frames[0].metadata["source_fps"] > 0
