@@ -701,6 +701,55 @@ class AdminEmailOtpStoreProtocol(Protocol):
 
 
 @runtime_checkable
+class AdminEmailVerificationServiceProtocol(Protocol):
+    """Email verification orchestration contract.
+
+    Implementations:
+        - :class:`~lexigram.admin.auth.services.email_verification_service.AdminEmailVerificationService`
+    """
+
+    async def is_verified(self, user_id: str) -> bool:
+        """Return True when the user's email is verified."""
+        ...
+
+    async def is_required(self, user_id: str) -> bool:
+        """Return True when login must be gated on email verification."""
+        ...
+
+    async def send_verification(
+        self,
+        user_id: str,
+        email: str,
+        user_name: str,
+        base_url: str = "",
+    ) -> Result[None, AdminAuthError]:
+        """Issue a verification link and email it to the user.
+
+        No-op (Ok) when disabled or already verified; fail-open on delivery.
+        """
+        ...
+
+    async def verify_token(self, token: str) -> Result[bool, AdminAuthError]:
+        """Validate and consume a verification token.
+
+        Returns:
+            ``Ok(True)`` on success; ``Err(EmailVerificationTokenInvalidError)``
+            for unknown/used/expired tokens.
+        """
+        ...
+
+    async def resend_verification(
+        self,
+        user_id: str,
+        email: str,
+        user_name: str,
+        base_url: str = "",
+    ) -> Result[None, AdminAuthError]:
+        """Re-issue and re-send the verification email."""
+        ...
+
+
+@runtime_checkable
 class AdminPasswordResetServiceProtocol(Protocol):
     """Password reset orchestration contract."""
 
@@ -738,6 +787,7 @@ __all__ = [
     "AdminAuthServiceProtocol",
     "AdminCsrfServiceProtocol",
     "AdminEmailOtpStoreProtocol",
+    "AdminEmailVerificationServiceProtocol",
     "AdminEmailVerificationStoreProtocol",
     "AdminLoginAttemptServiceProtocol",
     "AdminLoginAttemptStoreProtocol",
