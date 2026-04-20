@@ -701,6 +701,37 @@ class AdminEmailOtpStoreProtocol(Protocol):
 
 
 @runtime_checkable
+class AdminEmailOtpServiceProtocol(Protocol):
+    """Email one-time-password factor contract.
+
+    Implementations:
+        - :class:`~lexigram.admin.auth.services.email_otp_service.AdminEmailOtpService`
+    """
+
+    async def send_otp(
+        self, user_id: str, email: str, user_name: str
+    ) -> Result[None, AdminAuthError]:
+        """Generate, persist, and email a fresh one-time code.
+
+        Returns:
+            ``Ok(None)`` on success; ``Err`` when disabled, in cooldown, or
+            undeliverable.
+        """
+        ...
+
+    async def verify_otp(
+        self, user_id: str, code: str
+    ) -> Result[bool, AdminAuthError]:
+        """Verify a code and consume it when valid.
+
+        Returns:
+            ``Ok(True)`` on match; ``Ok(False)`` otherwise;
+            ``Err`` when the factor is disabled.
+        """
+        ...
+
+
+@runtime_checkable
 class AdminEmailVerificationServiceProtocol(Protocol):
     """Email verification orchestration contract.
 
@@ -786,6 +817,7 @@ __all__ = [
     "AdminAuditLogStoreProtocol",
     "AdminAuthServiceProtocol",
     "AdminCsrfServiceProtocol",
+    "AdminEmailOtpServiceProtocol",
     "AdminEmailOtpStoreProtocol",
     "AdminEmailVerificationServiceProtocol",
     "AdminEmailVerificationStoreProtocol",
