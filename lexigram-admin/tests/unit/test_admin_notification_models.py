@@ -1,6 +1,5 @@
 """Tests for admin notification models."""
 
-from datetime import datetime, timezone
 
 from lexigram.admin.services.notifications.models import (
     Notification,
@@ -45,7 +44,12 @@ class TestNotificationType:
     def test_notification_type_members(self) -> None:
         """Test NotificationType has expected members."""
         members = list(NotificationType)
-        assert len(members) == 16
+        assert len(members) == 18
+
+    def test_notification_type_email_security(self) -> None:
+        """Test NotificationType email security values."""
+        assert NotificationType.EMAIL_VERIFICATION.value == "email_verification"
+        assert NotificationType.EMAIL_OTP.value == "email_otp"
 
     def test_notification_type_from_string(self) -> None:
         """Test creating NotificationType from string."""

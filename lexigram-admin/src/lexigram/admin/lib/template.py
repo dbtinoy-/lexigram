@@ -213,18 +213,24 @@ def render_mfa_challenge_page(
     error: str = "",
     csrf_token: str = "",
     next_url: str = "/admin/",
+    factor: str = "totp",
+    resend_notice: str = "",
 ) -> str:
-    """Render a standalone TOTP 2FA challenge page.
+    """Render a standalone second-factor challenge page.
 
-    Shown after password authentication when the user has 2FA enabled;
+    Shown after password authentication when a challenge is required;
     completes the login by posting a verification code to
-    ``/admin/login/2fa``.
+    ``/admin/login/2fa``.  The ``factor`` argument switches the guidance
+    copy between the TOTP authenticator and email OTP, and adds a resend
+    form (``/admin/login/2fa/resend``) for the email factor.
 
     Args:
         email: Account email (displayed in the guidance copy).
         error: Error message to display.
         csrf_token: CSRF token to embed as a hidden form field.
         next_url: Destination to redirect to after successful verification.
+        factor: Second factor in use — ``"totp"`` (default) or ``"email"``.
+        resend_notice: Success notice to display (e.g. after a resend).
 
     Returns:
         HTML string for the challenge page.
@@ -232,6 +238,8 @@ def render_mfa_challenge_page(
     flash_messages: list[tuple[str, str]] = []
     if error:
         flash_messages.append(("error", error))
+    if resend_notice:
+        flash_messages.append(("success", resend_notice))
 
     config = StandaloneLayoutConfig(
         app_name="Lexigram Admin",
@@ -243,11 +251,27 @@ def render_mfa_challenge_page(
         flash_messages=flash_messages,
     )
 
+    if factor == "email":
+        guidance = f"Enter the 6-digit code we emailed{escape(' to ' + email) if email else ''}"
+        resend_form = f"""
+        <form method="post" action="/admin/login/2fa/resend" class="mt-4 pt-4 border-t border-border text-center">
+            <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+            <input type="hidden" name="email" value="{escape(email)}">
+            <input type="hidden" name="next" value="{escape(next_url)}">
+            <p class="text-sm text-muted-foreground mb-2">Didn't receive a code?</p>
+            <button type="submit"
+                    class="text-sm font-medium text-primary hover:underline cursor-pointer">Resend code</button>
+        </form>
+        """
+    else:
+        guidance = f"Enter the 6-digit code from your authenticator app{escape(' for ' + email) if email else ''}"
+        resend_form = ""
+
     content = f"""
     <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
         <div class="text-center mb-6">
             <h1 class="text-2xl font-bold text-foreground mb-2">Verification Code</h1>
-            <p class="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app{escape(' for ' + email) if email else ''}</p>
+            <p class="text-sm text-muted-foreground">{guidance}</p>
         </div>
         <form method="post" action="/admin/login/2fa">
             <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
@@ -261,6 +285,132 @@ def render_mfa_challenge_page(
             <button type="submit"
                     class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Verify &amp; Sign In</button>
         </form>
+        {resend_form}
+    </div>
+    """
+
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
+
+
+def render_verify_email_page(
+    site_name: str = "Lexigram Admin",
+    email: str = "",
+    error: str = "",
+    notice: str = "",
+    csrf_token: str = "",
+    next_url: str = "/admin/",
+) -> str:
+    """Render a standalone email verification landing page.
+
+    Shown after a login attempt when the account email is unverified and
+    enforcement is on.  Lets the user request a fresh verification link by
+    posting to ``/admin/verify-email/resend``.
+
+    Args:
+        site_name: Site name for branding.
+        email: Account email (displayed in the guidance copy).
+        error: Error message to display.
+        notice: Success notice to display (e.g. after a resend).
+        csrf_token: CSRF token to embed as a hidden form field.
+        next_url: Destination to redirect to after login.
+
+    Returns:
+        HTML string for the verification landing page.
+    """
+    flash_messages: list[tuple[str, str]] = []
+    if error:
+        flash_messages.append(("error", error))
+    if notice:
+        flash_messages.append(("success", notice))
+
+    config = StandaloneLayoutConfig(
+        app_name=site_name,
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title="Verify Your Email",
+        flash_messages=flash_messages,
+    )
+
+    content = f"""
+    <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-foreground mb-2">Verify Your Email</h1>
+            <p class="text-sm text-muted-foreground">A verification link was sent{escape(' to ' + email) if email else ''}. Click it to activate your account.</p>
+        </div>
+        <p class="text-sm text-muted-foreground mb-4">If you don't see the email, check your spam folder or request a new link.</p>
+        <form method="post" action="/admin/verify-email/resend">
+            <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+            <input type="hidden" name="email" value="{escape(email)}">
+            <input type="hidden" name="next" value="{escape(next_url)}">
+            <button type="submit"
+                    class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Resend Verification Link</button>
+        </form>
+        <p class="text-center mt-4 text-sm">
+            <a href="/admin/login" class="text-primary hover:underline">Back to login</a>
+        </p>
+    </div>
+    """
+
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
+
+
+def render_email_verified_page(
+    site_name: str = "Lexigram Admin",
+    error: str = "",
+    next_url: str = "/admin/",
+) -> str:
+    """Render a standalone "email verified" confirmation page.
+
+    Shown after an admin clicks a valid verification link.  Serves as the
+    post-verification entry point back into the login flow.
+
+    Args:
+        site_name: Site name for branding.
+        error: Error message to display (e.g. expired or invalid token).
+        next_url: Destination to redirect to after login.
+
+    Returns:
+        HTML string for the confirmation page.
+    """
+    flash_messages: list[tuple[str, str]] = []
+    if error:
+        flash_messages.append(("error", error))
+
+    config = StandaloneLayoutConfig(
+        app_name=site_name,
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title="Email Verified",
+        flash_messages=flash_messages,
+    )
+
+    if error:
+        heading = "Verification Failed"
+        copy = escape(error)
+        action_url = "/admin/login"
+        action_label = "Back to login"
+    else:
+        heading = "Email Verified"
+        copy = "Your email address has been verified — you can now sign in."
+        action_url = f"/admin/login?next={escape(next_url)}"
+        action_label = "Sign in"
+
+    content = f"""
+    <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-foreground mb-2">{heading}</h1>
+            <p class="text-sm text-muted-foreground">{copy}</p>
+        </div>
+        <div class="text-center">
+            <a href="{action_url}"
+               class="inline-block w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring text-center">{action_label}</a>
+        </div>
     </div>
     """
 
@@ -275,6 +425,7 @@ def render_mfa_setup_page(
     error: str = "",
     notice: str = "",
     csrf_token: str = "",
+    email_verified: bool | None = None,
 ) -> str:
     """Render the profile 2FA setup page.
 
@@ -289,6 +440,8 @@ def render_mfa_setup_page(
         error: Error message to display.
         notice: Success notice to display.
         csrf_token: CSRF token to embed as a hidden form field.
+        email_verified: Optional email verification status badge; when
+            omitted no status is rendered.
 
     Returns:
         HTML string for the setup page.
@@ -309,6 +462,20 @@ def render_mfa_setup_page(
         flash_messages=flash_messages,
     )
 
+    email_badge = ""
+    if email_verified is not None:
+        badge_text = "verified" if email_verified else "not verified"
+        badge_class = (
+            "text-green-600"
+            if email_verified
+            else "text-foreground"
+        )
+        email_badge = f"""
+        <div class="mb-6 p-3 rounded-md bg-muted">
+            <p class="text-sm text-foreground">Email address: <span class="{badge_class} font-medium">{badge_text}</span></p>
+        </div>
+        """
+
     if enabled:
         content = f"""
         <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
@@ -316,6 +483,7 @@ def render_mfa_setup_page(
                 <h1 class="text-2xl font-bold text-foreground mb-2">Two-Factor Authentication</h1>
                 <p class="text-sm text-muted-foreground">Enabled — your account is protected by an authenticator app</p>
             </div>
+            {email_badge}
             <p class="text-sm text-foreground mb-4">To disable 2FA, enter your current code.</p>
             <form method="post" action="/admin/profile/mfa/disable">
                 <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
@@ -337,6 +505,7 @@ def render_mfa_setup_page(
                 <h1 class="text-2xl font-bold text-foreground mb-2">Enable 2FA</h1>
                 <p class="text-sm text-muted-foreground">Scan the QR code with your authenticator app</p>
             </div>
+            {email_badge}
             <div class="flex justify-center mb-4">{qr_svg}</div>
             <p class="text-sm text-muted-foreground mb-1 break-all">If you cannot scan, enter this secret manually:</p>
             <p class="text-center font-mono text-sm bg-muted rounded-md p-2 mb-4 break-all">{escape(secret)}</p>
