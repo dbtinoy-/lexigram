@@ -8,7 +8,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from lexigram.admin.auth.errors import EmailVerificationTokenInvalidError
+from lexigram.admin.auth.errors import (
+    EmailVerificationTokenInvalidError,
+    RateLimitExceededError,
+)
 from lexigram.admin.auth.services.email_verification_service import (
     AdminEmailVerificationService,
 )
@@ -237,3 +240,85 @@ async def test_verify_token_valid_consumes_and_audits() -> None:
     assert kwargs["event_type"] == AdminSecurityEventType.EMAIL_VERIFIED
     assert kwargs["success"] is True
     assert kwargs["admin_user_id"] == "user-001"
+
+
+def _make_cache(count: str) -> MagicMock:
+    cache = MagicMock()
+    value = MagicMock()
+    value.is_ok.return_value = True
+    value.is_err.return_value = False
+    value.unwrap.return_value = count
+    cache.get = AsyncMock(return_value=value)
+    cache.set = AsyncMock()
+    return cache
+
+
+@pytest.mark.asyncio
+async def test_send_verification_rate_limited_returns_err() -> None:
+    store = _make_store()
+    cache = _make_cache("5")
+    svc = AdminEmailVerificationService(
+        config=AdminEmailVerificationConfig(), store=store, cache=cache
+    )
+
+    result = await svc.send_verification(
+        "user-001", "a@b.c", "A", ip_address="1.2.3.4"
+    )
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), RateLimitExceededError)
+    store.save_token.assert_not_awaited()
+    cache.set.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_send_verification_rate_limit_increments() -> None:
+    store = _make_store()
+    cache = _make_cache("0")
+    svc = AdminEmailVerificationService(
+        config=AdminEmailVerificationConfig(), store=store, cache=cache
+    )
+
+    result = await svc.send_verification(
+        "user-001", "a@b.c", "A", ip_address="1.2.3.4"
+    )
+
+    assert result.is_ok()
+    cache.set.assert_awaited_once()
+    assert str(cache.set.await_args.args[1]) == "1"
+    assert "admin:email-verification:ip:" in str(cache.set.await_args.args[0])
+
+
+@pytest.mark.asyncio
+async def test_send_verification_cache_failure_fails_open() -> None:
+    store = _make_store()
+    cache = MagicMock()
+    cache.get = AsyncMock(side_effect=RuntimeError("cache down"))
+    svc = AdminEmailVerificationService(
+        config=AdminEmailVerificationConfig(), store=store, cache=cache
+    )
+
+    result = await svc.send_verification(
+        "user-001", "a@b.c", "A", ip_address="1.2.3.4"
+    )
+
+    assert result.is_ok()
+    store.save_token.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_resend_verification_passes_ip_to_send() -> None:
+    store = _make_store()
+    notifier = _make_notifier()
+    svc = AdminEmailVerificationService(
+        config=AdminEmailVerificationConfig(),
+        store=store,
+        notification_service=notifier,
+    )
+
+    result = await svc.resend_verification(
+        "user-001", "a@b.c", "A", base_url="https://x", ip_address="9.9.9.9"
+    )
+
+    assert result.is_ok()
+    notifier.notify_email_verification.assert_awaited_once()

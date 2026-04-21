@@ -753,10 +753,12 @@ class AdminEmailVerificationServiceProtocol(Protocol):
         email: str,
         user_name: str,
         base_url: str = "",
+        ip_address: str = "",
     ) -> Result[None, AdminAuthError]:
         """Issue a verification link and email it to the user.
 
         No-op (Ok) when disabled or already verified; fail-open on delivery.
+        Rate limited per IP when a cache backend is wired (fail open).
         """
         ...
 
@@ -775,6 +777,7 @@ class AdminEmailVerificationServiceProtocol(Protocol):
         email: str,
         user_name: str,
         base_url: str = "",
+        ip_address: str = "",
     ) -> Result[None, AdminAuthError]:
         """Re-issue and re-send the verification email."""
         ...
