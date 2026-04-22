@@ -4,6 +4,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+# Runtime imports (not TYPE_CHECKING): the @inject local subclasses below
+# annotate their constructors with these protocol names. Under
+# ``from __future__ import annotations`` those annotations are strings that
+# get_type_hints resolves against the module globals — function-local imports
+# are invisible to it, which would silently drop the injectable parameters.
+from lexigram.admin.auth.protocols import (
+    AdminAuditLogServiceProtocol,
+    AdminEmailOtpServiceProtocol,
+    AdminEmailOtpStoreProtocol,
+    AdminEmailVerificationServiceProtocol,
+    AdminEmailVerificationStoreProtocol,
+    AdminLoginAttemptServiceProtocol,
+    AdminMfaServiceProtocol,
+    AdminMfaStoreProtocol,
+    AdminSessionServiceProtocol,
+)
+from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
+from lexigram.admin.services.notifications import AdminNotificationService
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
@@ -48,7 +66,6 @@ class AdminAuthSubProvider:
         from lexigram.admin.auth.guards import GuardConfig
         from lexigram.admin.auth.session_manager import AdminSessionManager
         from lexigram.admin.auth.store.direct_sql import DirectSQLAdminUserStore
-        from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
         from lexigram.admin.auth.store.session_sql import AdminSessionSqlRepository
         from lexigram.admin.middleware.input_sanitizer import AdminInputSanitizer
         from lexigram.admin.middleware.security_headers import AdminSecurityHeaders
@@ -267,7 +284,6 @@ class AdminAuthSubProvider:
         # ── AdminAuthService — DI-wired orchestrator ──────────────────────
         # The @inject decorator resolves all store/service deps from the
         # container; mfa_factor comes from config via the closure.
-        from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
 
         @inject
         class _AdminAuthServiceConfigured(AdminAuthService):
@@ -310,10 +326,6 @@ class AdminAuthSubProvider:
         # Follows the _AdminSessionServiceConfigured pattern: the inner class
         # passes MFA config from the closure while the container injects the
         # store and audit service.
-        from lexigram.admin.auth.protocols import (
-            AdminMfaServiceProtocol,
-            AdminMfaStoreProtocol,
-        )
         from lexigram.admin.auth.services.mfa_service import AdminMfaService
         from lexigram.admin.auth.store.mfa_sql import AdminMfaSqlStore
         from lexigram.admin.config import AdminMfaConfig
@@ -341,12 +353,6 @@ class AdminAuthSubProvider:
         # Notification service is registered as a concrete singleton so the
         # email services can inject it; it no-ops when no mailer is bound
         # (fail-open for verification, Err for OTP delivery).
-        from lexigram.admin.auth.protocols import (
-            AdminEmailOtpServiceProtocol,
-            AdminEmailOtpStoreProtocol,
-            AdminEmailVerificationServiceProtocol,
-            AdminEmailVerificationStoreProtocol,
-        )
         from lexigram.admin.auth.services.email_otp_service import AdminEmailOtpService
         from lexigram.admin.auth.services.email_verification_service import (
             AdminEmailVerificationService,
@@ -359,7 +365,6 @@ class AdminAuthSubProvider:
             AdminEmailOtpConfig,
             AdminEmailVerificationConfig,
         )
-        from lexigram.admin.services.notifications import AdminNotificationService
 
         container.singleton(AdminNotificationService, AdminNotificationService)
 
