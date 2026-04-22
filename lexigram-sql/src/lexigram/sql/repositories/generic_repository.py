@@ -121,6 +121,41 @@ class GenericRepository(SQLRepository[TEntity, TKey], Generic[TEntity, TKey]):
             **keyword_filters,
         )
 
+    async def count(
+        self,
+        filters: dict[str, Any]
+        | Filter
+        | list[Filter]
+        | tuple[Filter, ...]
+        | None = None,
+        *filter_expressions: Any,
+        include_deleted: bool = False,
+        **kwargs: Any,
+    ) -> int:
+        """Count entities with optional dict-style filters.
+
+        Convenience wrapper around the mixin ``count()`` that accepts
+        ``filters`` as a plain dict (or ``Filter`` objects) instead of
+        ``**kwargs``, mirroring :meth:`find`.
+        """
+        typed_filters: tuple[Filter, ...] = ()
+        keyword_filters: dict[str, Any] = {}
+
+        if isinstance(filters, Filter):
+            typed_filters = (filters,)
+        elif isinstance(filters, (list, tuple)):
+            typed_filters = tuple(filters)
+        elif filters is not None:
+            keyword_filters = filters
+
+        keyword_filters.update(kwargs)
+        return await super().count(
+            *typed_filters,
+            *filter_expressions,
+            include_deleted=include_deleted,
+            **keyword_filters,
+        )
+
     async def get(self, key: TKey) -> TEntity | None:  # type: ignore[override]
         """Get a single entity by primary key.
 
