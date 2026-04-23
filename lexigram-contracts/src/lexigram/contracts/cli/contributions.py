@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -88,10 +89,45 @@ class HookContribution:
     priority: int = 50
 
 
+class SchemaSetupResult(str, Enum):
+    """Outcome status of a schema setup contribution's ensure() call."""
+
+    CREATED = "created"
+    ALREADY_PRESENT = "already_present"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SchemaSetupOutcome:
+    """Result of running a single SchemaSetupContribution's ensure() callable."""
+
+    status: SchemaSetupResult
+    message: str | None = None
+
+
+@dataclass(frozen=True)
+class SchemaSetupContribution:
+    """A database schema setup step contributed by an extension package.
+
+    The ``setup_fn_path`` points to an async function with signature:
+    ``async def ensure(db: DatabaseProviderProtocol) -> SchemaSetupOutcome``
+    The format is ``"module.path:function_name"``.
+    """
+
+    name: str
+    description: str
+    setup_fn_path: str
+    contributor: str
+    category: str = "general"
+
+
 __all__ = [
     "CommandContribution",
     "DoctorCheckContribution",
     "HealthCheckContribution",
     "HookContribution",
+    "SchemaSetupContribution",
+    "SchemaSetupOutcome",
+    "SchemaSetupResult",
     "ShellContextContribution",
 ]
