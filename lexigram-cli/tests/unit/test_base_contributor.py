@@ -63,6 +63,10 @@ class TestBaseCliContributor:
         assert len(result) == 1
         assert result[0].name == "test-gen"
 
+    def test_base_contributor_get_schema_setup_defaults_empty(self) -> None:
+        """Test default get_schema_setup returns empty list."""
+        assert MinimalContributor().get_schema_setup() == []
+
     def test_satisfies_cli_contributor_protocol(self) -> None:
         """Test that BaseCliContributor satisfies CliContributorProtocol."""
         contributor = MinimalContributor()
