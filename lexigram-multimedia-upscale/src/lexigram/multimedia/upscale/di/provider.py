@@ -91,6 +91,20 @@ class UpscaleGenerationProvider(Provider):
 
         assert self._backend is not None
         container.singleton(UpscaleProvider, self._backend)
+
+        from lexigram.contracts.multimedia.protocols import VideoProcessor
+
+        video_processor = await self._resolve_optional(container, VideoProcessor)
+        if video_processor is not None:
+            from lexigram.multimedia.upscale.video_upscale_service import (
+                VideoUpscaleService,
+            )
+
+            video_upscale_service = VideoUpscaleService(
+                upscale_provider=self._backend, video_processor=video_processor
+            )
+            container.singleton(VideoUpscaleService, video_upscale_service)
+
         logger.info("upscale_registered", backend=self._upscale_config.backend)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
