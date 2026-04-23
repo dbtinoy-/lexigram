@@ -29,7 +29,7 @@ _model: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _model
-    from hat import HatSuperResolutionModel  # type: ignore[import-not-found]
+    from hat import HatSuperResolutionModel
     import torch
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
