@@ -77,9 +77,7 @@ class HatUpscaleProvider:
         if status != 200:
             return Err(UpscaleError(f"HAT server returned {status}: {body!r}"))
 
-        return Ok(
-            MediaAsset(mime_type=content_type, provider="hat", bytes_data=body)
-        )
+        return Ok(MediaAsset(mime_type=content_type, provider="hat", bytes_data=body))
 
 
 __all__ = ["HatUpscaleProvider"]
