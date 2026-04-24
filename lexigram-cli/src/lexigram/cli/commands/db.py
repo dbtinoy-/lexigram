@@ -54,6 +54,35 @@ async def _bootstrap_migration_runner():
             raise typer.Exit(1) from None
 
 
+async def _bootstrap_db_provider():
+    """Used by `db setup` to resolve a DatabaseProviderProtocol outside a full app boot.
+
+    Registers and boots the DatabaseProvider directly against a fresh
+    Container, then resolves DatabaseProviderProtocol.
+    """
+    import os
+
+    db_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
+
+    try:
+        from lexigram import Container
+        from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
+        from lexigram.sql.di.provider import DatabaseProvider
+
+        container = Container()
+        provider = DatabaseProvider(config=db_url)
+        await provider.register(container)
+        await provider.boot(container)
+        return await container.resolve(DatabaseProviderProtocol)
+
+    except ImportError as e:
+        out = OutputManager()
+        out.error(
+            f"lexigram-sql is required for database commands — install it with: uv add lexigram-sql ({e})"
+        )
+        raise typer.Exit(1) from None
+
+
 async def get_migration_manager():
     """Used for introspection/listing: resolves a legacy SimpleMigrationManager exposing the full manager API.
 
