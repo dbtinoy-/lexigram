@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.cli.contributions import (
     CommandContribution,
     HealthCheckContribution,
+    SchemaSetupContribution,
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
@@ -69,6 +70,23 @@ class TasksCliContributor:
     def get_hooks(self) -> list:
         """Return no hook contributions."""
         return []
+
+    def get_schema_setup(self) -> list[SchemaSetupContribution]:
+        """Return schema setup contributions for tasks."""
+        return [
+            SchemaSetupContribution(
+                name="tasks.scheduled_jobs",
+                description="Scheduled job storage",
+                setup_fn_path="lexigram.tasks.cli.schema_setup:ensure_scheduled_jobs",
+                contributor=self.contributor_id,
+            ),
+            SchemaSetupContribution(
+                name="tasks.workflow_states",
+                description="Workflow execution state storage",
+                setup_fn_path="lexigram.tasks.cli.schema_setup:ensure_workflow_states",
+                contributor=self.contributor_id,
+            ),
+        ]
 
 
 __all__ = ["TasksCliContributor"]
