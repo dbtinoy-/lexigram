@@ -13,6 +13,7 @@ import typer
 from lexigram.cli.output import OutputManager
 from lexigram.cli.registry import DatabaseConnection
 from lexigram.cli.runtime import handle_errors
+from lexigram.contracts.cli.contributions import SchemaSetupOutcome, SchemaSetupResult
 
 app = typer.Typer(name="db")
 
@@ -63,11 +64,12 @@ async def _bootstrap_db_provider():
     import os
 
     db_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
-
     try:
         from lexigram import Container
         from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
-        from lexigram.sql.di.provider import DatabaseProvider
+
+        sql_provider_mod = importlib.import_module("lexigram.sql.di.provider")
+        DatabaseProvider = sql_provider_mod.DatabaseProvider
 
         container = Container()
         provider = DatabaseProvider(config=db_url)
@@ -641,6 +643,53 @@ def restore(
     except (RuntimeError, OSError, AttributeError, LookupError) as e:
         out.error(f"Failed to restore database: {e}")
         raise typer.Exit(1) from None
+
+
+@app.command()
+@handle_errors
+def setup(
+    package: Annotated[
+        str | None,
+        typer.Option("--package", help="Only run setup for this package's contributions."),
+    ] = None,
+) -> None:
+    """Run schema setup for all installed packages that need database tables."""
+    asyncio.run(_run_setup(package))
+
+
+async def _run_setup(package: str | None) -> None:
+    from lexigram.cli.contributors.runtime import ContributorRuntime
+
+    out = OutputManager()
+    runtime = ContributorRuntime.from_entry_points()
+    contributions = runtime.schema_setups
+    if package:
+        contributions = [c for c in contributions if c.name.split(".")[0] == package]
+
+    if not contributions:
+        out.info("Nothing to do — no schema setup contributions discovered.")
+        return
+
+    db = await _bootstrap_db_provider()
+
+    for contribution in contributions:
+        outcome = await _run_one_schema_setup(contribution, db)
+        if outcome.status == SchemaSetupResult.CREATED:
+            out.success(f"{contribution.name}: created")
+        elif outcome.status == SchemaSetupResult.ALREADY_PRESENT:
+            out.info(f"{contribution.name}: already present")
+        else:
+            out.error(f"{contribution.name}: failed — {outcome.message}")
+
+
+async def _run_one_schema_setup(contribution, db) -> SchemaSetupOutcome:
+    try:
+        module_path, _, fn_name = contribution.setup_fn_path.partition(":")
+        mod = importlib.import_module(module_path)
+        ensure_fn = getattr(mod, fn_name)
+        return await ensure_fn(db)
+    except Exception as exc:
+        return SchemaSetupOutcome(status=SchemaSetupResult.FAILED, message=str(exc))
 
 
 __all__ = ["app"]
