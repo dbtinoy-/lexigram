@@ -2,6 +2,7 @@ import pytest
 
 from lexigram.contracts.multimedia.types import (
     ImageRequest,
+    InterpolationRequest,
     MediaAsset,
     MusicRequest,
     TTSRequest,
@@ -56,3 +57,13 @@ def test_upscale_request_defaults() -> None:
     req = UpscaleRequest(asset=asset)
     assert req.scale_factor == 4
     assert req.extra == {}
+
+
+def test_interpolation_request_has_no_factor_field() -> None:
+    frame_a = MediaAsset(mime_type="image/png", provider="test", bytes_data=b"a")
+    frame_b = MediaAsset(mime_type="image/png", provider="test", bytes_data=b"b")
+    req = InterpolationRequest(frame_a=frame_a, frame_b=frame_b)
+    assert req.frame_a is frame_a
+    assert req.frame_b is frame_b
+    assert req.extra == {}
+    assert not hasattr(req, "factor")
