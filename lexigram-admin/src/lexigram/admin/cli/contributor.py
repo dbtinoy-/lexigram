@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.cli.contributions import CommandContribution
+from lexigram.contracts.cli.contributions import (
+    CommandContribution,
+    SchemaSetupContribution,
+)
 from lexigram.contracts.cli.types import GeneratorDefinition
 
 
@@ -44,6 +47,17 @@ class AdminCliContributor:
                 app_factory_path="lexigram.admin.cli.commands.search:create_app",
                 contributor="admin",
                 category="admin",
+            ),
+        ]
+
+    def get_schema_setup(self) -> list[SchemaSetupContribution]:
+        """Return schema setup contributions for admin."""
+        return [
+            SchemaSetupContribution(
+                name="admin.tenant_configs",
+                description="Tenant-scoped settings storage",
+                setup_fn_path="lexigram.admin.cli.schema_setup:ensure_tenant_configs",
+                contributor=self.contributor_id,
             ),
         ]
 
