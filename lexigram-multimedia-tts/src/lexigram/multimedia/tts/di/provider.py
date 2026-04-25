@@ -37,6 +37,8 @@ class AudioTTSProvider(Provider):
         super().__init__(name="tts")
         self._tts_config = config or TTSConfig()
         self._backend: TTSProvider | None = None
+        self._elevenlabs_api_key: str | None = None
+        self._openai_api_key: str | None = None
         self._task_handler: TTSGenerationTask | None = None
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
@@ -94,6 +96,7 @@ class AudioTTSProvider(Provider):
             api_key = await self._resolve_credential(
                 self._tts_config.elevenlabs_api_key_secret_name
             )
+            self._elevenlabs_api_key = api_key
             if not self._tts_config.elevenlabs_voice_id:
                 raise ProviderNotInstalledError(
                     "TTSConfig.elevenlabs_voice_id is required when backend='elevenlabs'"
@@ -143,34 +146,46 @@ class AudioTTSProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._tts_config.backend == "local-http":
-            import aiohttp
-
-            try:
-                async with (
-                    aiohttp.ClientSession(
-                        timeout=aiohttp.ClientTimeout(total=timeout)
-                    ) as session,
-                    session.get(
-                        f"{self._tts_config.local_http_base_url}/health"
-                    ) as resp,
-                ):
-                    status = (
-                        HealthStatus.HEALTHY
-                        if resp.status == 200
-                        else HealthStatus.DEGRADED
-                    )
-            except (TimeoutError, OSError, aiohttp.ClientError):
-                status = HealthStatus.DEGRADED
+        http_backends = {
+            "local-http": self._tts_config.local_http_base_url,
+            "chatterbox": self._tts_config.chatterbox_base_url,
+            "kokoro": self._tts_config.kokoro_base_url,
+            "f5-tts": self._tts_config.f5_tts_base_url,
+            "piper": self._tts_config.piper_base_url,
+        }
+        if self._tts_config.backend in http_backends:
+            status = await self._check_http_health(
+                http_backends[self._tts_config.backend], timeout
+            )
             return HealthCheckResult(component=self.name, status=status)
 
         # API backends: verify credentials are present, never make a billed call.
         has_key = bool(
-            self._tts_config.elevenlabs_voice_id
+            self._elevenlabs_api_key
             if self._tts_config.backend == "elevenlabs"
+            else self._openai_api_key
+            if self._tts_config.backend == "openai"
             else True
         )
         return HealthCheckResult(
             component=self.name,
             status=HealthStatus.HEALTHY if has_key else HealthStatus.DEGRADED,
         )
+
+    async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
+        import aiohttp
+
+        try:
+            async with (
+                aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as session,
+                session.get(f"{base_url}/health") as resp,
+            ):
+                return (
+                    HealthStatus.HEALTHY
+                    if resp.status == 200
+                    else HealthStatus.DEGRADED
+                )
+        except (TimeoutError, OSError, aiohttp.ClientError):
+            return HealthStatus.DEGRADED
