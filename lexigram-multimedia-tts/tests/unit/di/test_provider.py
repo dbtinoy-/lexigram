@@ -1,6 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import aiohttp
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.contracts.multimedia.protocols import TTSProvider
