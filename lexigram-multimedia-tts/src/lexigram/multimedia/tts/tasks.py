@@ -28,6 +28,7 @@ class TTSGenerationTask:
             text=params["text"],
             voice=params.get("voice"),
             format=params.get("format", "mp3"),
+            extra=params.get("extra", {}),
         )
         result = await self._backend.generate(request)
         if result.is_err():
