@@ -80,6 +80,20 @@ class InterpolationGenerationProvider(Provider):
 
         assert self._backend is not None
         container.singleton(InterpolationProvider, self._backend)
+
+        from lexigram.contracts.multimedia.protocols import VideoProcessor
+
+        video_processor = await self._resolve_optional(container, VideoProcessor)
+        if video_processor is not None:
+            from lexigram.multimedia.interpolate.video_interpolation_service import (
+                VideoInterpolationService,
+            )
+
+            video_interpolation_service = VideoInterpolationService(
+                interpolation_provider=self._backend, video_processor=video_processor
+            )
+            container.singleton(VideoInterpolationService, video_interpolation_service)
+
         logger.info(
             "interpolation_registered", backend=self._interpolation_config.backend
         )

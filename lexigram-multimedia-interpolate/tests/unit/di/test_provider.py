@@ -51,3 +51,42 @@ async def test_unknown_backend_raises_not_installed() -> None:
 
     with pytest.raises(ProviderNotInstalledError):
         await provider.register(container)
+
+
+@pytest.mark.asyncio
+async def test_register_binds_video_interpolation_service_when_video_processor_present() -> (
+    None
+):
+    from unittest.mock import AsyncMock
+
+    from lexigram.contracts.multimedia.protocols import VideoProcessor
+    from lexigram.multimedia.interpolate.video_interpolation_service import (
+        VideoInterpolationService,
+    )
+
+    provider = InterpolationGenerationProvider(config=InterpolationConfig())
+    container = _FakeContainer()
+    container.singleton(VideoProcessor, AsyncMock())
+
+    await provider.register(container)
+
+    bound = container.bindings[VideoInterpolationService]
+    assert isinstance(bound, VideoInterpolationService)
+
+
+@pytest.mark.asyncio
+async def test_video_interpolation_service_not_registered_without_video_processor() -> (
+    None
+):
+    from lexigram.multimedia.interpolate.video_interpolation_service import (
+        VideoInterpolationService,
+    )
+
+    provider = InterpolationGenerationProvider(config=InterpolationConfig())
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    assert VideoInterpolationService not in container.bindings
+    with pytest.raises(LookupError):
+        await container.resolve(VideoInterpolationService)
