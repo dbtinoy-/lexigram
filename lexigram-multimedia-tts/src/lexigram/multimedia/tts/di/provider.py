@@ -111,6 +111,25 @@ class AudioTTSProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._tts_config.backend == "openai":
+            from lexigram.multimedia.tts.providers.openai import OpenAITTSProvider
+
+            api_key = await self._resolve_credential(
+                self._tts_config.openai_api_key_secret_name
+            )
+            self._openai_api_key = api_key
+            self._backend = cast(
+                "TTSProvider",
+                OpenAITTSProvider(
+                    api_key=api_key or "",
+                    voice=self._tts_config.openai_voice,
+                    model=self._tts_config.openai_model,
+                    base_url=self._tts_config.openai_base_url,
+                    timeout=self._tts_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented TTS backend: {self._tts_config.backend!r}"

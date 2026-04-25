@@ -80,3 +80,28 @@ async def test_check_http_health_returns_degraded_on_connection_error(mocker) ->
     status = await provider._check_http_health("http://localhost:5100", 5.0)
 
     assert status == HealthStatus.DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_register_binds_openai_backend(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    provider = AudioTTSProvider(config=TTSConfig(backend="openai"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.tts.providers.openai import OpenAITTSProvider
+
+    bound = container.bindings[TTSProvider]
+    assert isinstance(bound, OpenAITTSProvider)
+
+
+@pytest.mark.asyncio
+async def test_openai_health_check_degraded_without_key() -> None:
+    provider = AudioTTSProvider(config=TTSConfig(backend="openai"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.DEGRADED
