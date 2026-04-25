@@ -6,6 +6,7 @@ from lexigram.contracts.cli.contributions import (
     CommandContribution,
     DoctorCheckContribution,
     HealthCheckContribution,
+    SchemaSetupContribution,
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
@@ -86,6 +87,17 @@ class NotificationCliContributor:
     def get_hooks(self) -> list:
         """Return no hook contributions."""
         return []
+
+    def get_schema_setup(self) -> list[SchemaSetupContribution]:
+        """Return schema setup contributions for notification."""
+        return [
+            SchemaSetupContribution(
+                name="notification.inbox_messages",
+                description="In-app notification inbox storage",
+                setup_fn_path="lexigram.notification.cli.schema_setup:ensure_inbox_messages",
+                contributor=self.contributor_id,
+            ),
+        ]
 
 
 __all__ = ["NotificationCliContributor"]
