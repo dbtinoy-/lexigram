@@ -19,7 +19,7 @@ from lexigram.serialization.backends.json import dumps_str, loads
 
 logger = get_logger(__name__)
 
-# SQL DDL (informational — run once via migration tool)
+# SQL DDL
 _CREATE_SESSIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS ai_sessions (
     session_id          TEXT PRIMARY KEY,
@@ -118,6 +118,11 @@ class DatabaseSessionStore:
 
     def __init__(self, db: DatabaseProviderProtocol) -> None:
         self._db = db
+
+    async def _ensure_tables(self) -> None:
+        """Create the ai_sessions and ai_checkpoints tables if they do not exist."""
+        await self._db.execute(_CREATE_SESSIONS_TABLE)
+        await self._db.execute(_CREATE_CHECKPOINTS_TABLE)
 
     # ------------------------------------------------------------------
     # Session CRUD

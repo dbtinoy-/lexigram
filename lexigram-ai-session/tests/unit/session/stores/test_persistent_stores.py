@@ -107,6 +107,12 @@ class TestDatabaseSessionStore:
     def store(self, mock_db: MagicMock) -> DatabaseSessionStore:
         return DatabaseSessionStore(db=mock_db)
 
+    async def test_ensure_tables_executes_both_ddl_statements(self, store, mock_db) -> None:
+        mock_db.execute = AsyncMock(return_value=None)
+        await store._ensure_tables()
+
+        assert mock_db.execute.call_count == 2
+
     async def test_save_executes_upsert(self, store, mock_conn, make_state) -> None:
         state = make_state()
         await store.save(state)
