@@ -135,3 +135,16 @@ async def test_chatterbox_health_check_uses_shared_http_helper(mocker) -> None:
     result = await provider.health_check()
 
     assert result.status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_register_binds_kokoro_backend() -> None:
+    provider = AudioTTSProvider(config=TTSConfig(backend="kokoro"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.tts.providers.kokoro import KokoroTTSProvider
+
+    bound = container.bindings[TTSProvider]
+    assert isinstance(bound, KokoroTTSProvider)
