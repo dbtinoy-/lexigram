@@ -27,6 +27,7 @@ dependencies = [
     "lexigram-http",
     "lexigram-workflow",
     "lexigram-features",
+    "lexigram-plugins",
     "lexigram-resilience",
     "lexigram-search",
     "lexigram-storage",
@@ -97,6 +98,7 @@ members = [
     "lexigram-http",
     "lexigram-workflow",
     "lexigram-features",
+    "lexigram-plugins",
     "lexigram-resilience",
     "lexigram-search",
     "lexigram-storage",
@@ -161,6 +163,7 @@ lexigram-queue = { workspace = true }
 lexigram-monitor = { workspace = true }
 lexigram-http = { workspace = true }
 lexigram-features = { workspace = true }
+lexigram-plugins = { workspace = true }
 lexigram-resilience = { workspace = true }
 lexigram-search = { workspace = true }
 lexigram-storage = { workspace = true }
@@ -295,6 +298,7 @@ testpaths = [
     "lexigram-contracts/tests",
     "lexigram-events/tests",
     "lexigram-features/tests",
+    "lexigram-plugins/tests",
     "lexigram-graphql/tests",
     "lexigram-http/tests",
     "lexigram-monitor/tests",
@@ -339,6 +343,7 @@ pythonpath = [
     "lexigram-http/src",
     "lexigram-workflow/src",
     "lexigram-features/src",
+    "lexigram-plugins/src",
     "lexigram-resilience/src",
     "lexigram-search/src",
     "lexigram-storage/src",
@@ -403,6 +408,7 @@ source = [
     "lexigram-cli",
     "lexigram-events",
     "lexigram-features",
+    "lexigram-plugins",
     "lexigram-graphql",
     "lexigram-http",
     "lexigram-monitor",
@@ -783,6 +789,7 @@ mypy_path = [
     "lexigram-cli/src",
     "lexigram-events/src",
     "lexigram-features/src",
+    "lexigram-plugins/src",
     "lexigram-graphql/src",
     "lexigram-http/src",
     "lexigram-monitor/src",
