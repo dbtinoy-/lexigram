@@ -44,6 +44,7 @@ local-inproc = []
 chatterbox-server = ["torch", "chatterbox-tts", "torchaudio"]
 kokoro-server = ["kokoro", "soundfile"]
 f5-tts-server = ["f5-tts", "torch", "torchaudio"]
+piper-server = ["piper-tts"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -67,6 +68,7 @@ test = [
 lexigram-tts-chatterbox-serve = "lexigram.multimedia.tts.servers.chatterbox_server:main"
 lexigram-tts-kokoro-serve = "lexigram.multimedia.tts.servers.kokoro_server:main"
 lexigram-tts-f5-tts-serve = "lexigram.multimedia.tts.servers.f5_tts_server:main"
+lexigram-tts-piper-serve = "lexigram.multimedia.tts.servers.piper_server:main"
 
 [project.entry-points."lexigram.multimedia.subsystems"]
 tts = "lexigram.multimedia.tts.di.provider:AudioTTSProvider"
