@@ -66,6 +66,13 @@ EP_AI_BACKENDS_EMBEDDING = "lexigram.ai.backends.embedding"
 """Pluggable embedding and chunking backends."""
 
 # ---------------------------------------------------------------------------
+# Plugin discovery
+# ---------------------------------------------------------------------------
+
+EP_PLUGINS = "lexigram.plugins"
+"""Metadata-only plugin descriptors for admin-manageable enable/disable."""
+
+# ---------------------------------------------------------------------------
 # Infrastructure backend discovery
 # ---------------------------------------------------------------------------
 
@@ -114,6 +121,7 @@ ALL_ENTRY_POINT_GROUPS: dict[str, str] = {
     EP_PROVIDERS: "General-purpose auto-registering providers",
     EP_MODULES: "Core module auto-discovery",
     EP_MIDDLEWARE: "HTTP/event middleware auto-registration",
+    EP_PLUGINS: "Metadata-only plugin descriptors",
     EP_AI_SUBSYSTEMS: "AI sub-package providers",
     EP_AI_TOOLS: "AI tools and skills",
     EP_AI_STRATEGIES: "Agent reasoning strategies",
@@ -151,6 +159,7 @@ __all__ = [
     "EP_MIDDLEWARE",
     "EP_MODULES",
     "EP_MONITORING_BACKENDS",
+    "EP_PLUGINS",
     "EP_PROVIDERS",
     "EP_RETRIEVAL_STRATEGIES",
     "EP_SEARCH_BACKENDS",
