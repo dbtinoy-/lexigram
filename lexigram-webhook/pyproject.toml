@@ -64,6 +64,9 @@ webhook = "lexigram.webhook.di.bundle_provider:WebhookBundleProvider"
 [project.entry-points."lexigram.admin.contributors"]
 webhook = "lexigram.webhook.admin.contributor:WebhookAdminContributor"
 
+[project.entry-points."lexigram.cli.contributors"]
+webhook = "lexigram.webhook.cli.contributor:WebhookCliContributor"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/lexigram"]
 
