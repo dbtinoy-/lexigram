@@ -130,6 +130,23 @@ class AudioTTSProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._tts_config.backend == "chatterbox":
+            from lexigram.multimedia.tts.providers.chatterbox import (
+                ChatterboxTTSProvider,
+            )
+
+            self._backend = cast(
+                "TTSProvider",
+                ChatterboxTTSProvider(
+                    base_url=self._tts_config.chatterbox_base_url,
+                    exaggeration=self._tts_config.chatterbox_exaggeration,
+                    cfg_weight=self._tts_config.chatterbox_cfg_weight,
+                    temperature=self._tts_config.chatterbox_temperature,
+                    timeout=self._tts_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented TTS backend: {self._tts_config.backend!r}"
