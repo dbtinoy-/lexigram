@@ -101,9 +101,10 @@ async def test_bootstrap_db_provider_resolves_usable_provider(tmp_path: Path, mo
 
     from lexigram.cli.commands.db import _bootstrap_db_provider
 
-    provider = await _bootstrap_db_provider()
+    provider, db_provider = await _bootstrap_db_provider()
 
     assert await provider.table_exists("does_not_exist") is False
+    await db_provider.shutdown()
 
 
 def _empty_contributor_runtime(*_args, **_kwargs) -> "ContributorRuntime":

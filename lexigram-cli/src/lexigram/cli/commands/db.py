@@ -60,6 +60,10 @@ async def _bootstrap_db_provider():
 
     Registers and boots the DatabaseProvider directly against a fresh
     Container, then resolves DatabaseProviderProtocol.
+
+    Returns:
+        A ``(db, provider)`` tuple: the resolved database facade and the
+        booted DatabaseProvider (so the caller can shut it down afterwards).
     """
     import os
 
@@ -75,7 +79,7 @@ async def _bootstrap_db_provider():
         provider = DatabaseProvider(config=db_url)
         await provider.register(container)
         await provider.boot(container)
-        return await container.resolve(DatabaseProviderProtocol)
+        return await container.resolve(DatabaseProviderProtocol), provider
 
     except ImportError as e:
         out = OutputManager()
@@ -670,16 +674,19 @@ async def _run_setup(package: str | None) -> None:
         out.info("Nothing to do — no schema setup contributions discovered.")
         return
 
-    db = await _bootstrap_db_provider()
+    db, provider = await _bootstrap_db_provider()
 
-    for contribution in contributions:
-        outcome = await _run_one_schema_setup(contribution, db)
-        if outcome.status == SchemaSetupResult.CREATED:
-            out.success(f"{contribution.name}: created")
-        elif outcome.status == SchemaSetupResult.ALREADY_PRESENT:
-            out.info(f"{contribution.name}: already present")
-        else:
-            out.error(f"{contribution.name}: failed — {outcome.message}")
+    try:
+        for contribution in contributions:
+            outcome = await _run_one_schema_setup(contribution, db)
+            if outcome.status == SchemaSetupResult.CREATED:
+                out.success(f"{contribution.name}: created")
+            elif outcome.status == SchemaSetupResult.ALREADY_PRESENT:
+                out.info(f"{contribution.name}: already present")
+            else:
+                out.error(f"{contribution.name}: failed — {outcome.message}")
+    finally:
+        await provider.shutdown()
 
 
 async def _run_one_schema_setup(contribution, db) -> SchemaSetupOutcome:
