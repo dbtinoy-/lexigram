@@ -19,12 +19,26 @@ logger = get_logger(__name__)
 
 _DEFAULT_TABLE = "notification_inbox_messages"
 
+_CREATE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS {table} (
+    id          TEXT        PRIMARY KEY,
+    user_id     TEXT        NOT NULL,
+    title       TEXT        NOT NULL,
+    body        TEXT        NOT NULL,
+    read        BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ NOT NULL,
+    metadata    JSONB       NOT NULL DEFAULT '{{}}'
+);
+CREATE INDEX IF NOT EXISTS {table}_user_created_idx
+    ON {table} (user_id, created_at DESC);
+"""
+
 
 class DatabaseInboxStore:
     """SQL-backed :class:`InboxStoreProtocol` implementation.
 
-    Reads and writes to a single flat table.  The table must exist before
-    the store is used; the expected DDL is::
+    Reads and writes to a single flat table.  The table is created
+    automatically on first use if it does not exist::
 
         CREATE TABLE notification_inbox_messages (
             id          TEXT        PRIMARY KEY,
@@ -55,12 +69,21 @@ class DatabaseInboxStore:
     # InboxStoreProtocol implementation
     # ------------------------------------------------------------------
 
+    async def _ensure_table(self) -> None:
+        """Create the inbox table (and index) if it does not exist."""
+        sql = _CREATE_TABLE_SQL.format(table=self._table)
+        for statement in sql.split(";"):
+            stmt = statement.strip()
+            if stmt:
+                await self._db.execute_query(stmt)
+
     async def save(self, message: InboxMessage) -> None:
         """Persist *message* in the database.
 
         Args:
             message: The inbox message to store.
         """
+        await self._ensure_table()
         await self._db.execute_insert(
             self._table,
             {
@@ -81,6 +104,7 @@ class DatabaseInboxStore:
         Args:
             message_id: ID to look up.
         """
+        await self._ensure_table()
         result = await self._db.execute_query(
             f"SELECT * FROM {self._table} WHERE id = $1",  # noqa: S608
             [message_id],
@@ -101,6 +125,7 @@ class DatabaseInboxStore:
             user_id: Filter to this user.
             unread_only: When ``True`` only unread messages are returned.
         """
+        await self._ensure_table()
         if unread_only:
             result = await self._db.execute_query(
                 f"SELECT * FROM {self._table}"  # noqa: S608
@@ -124,6 +149,7 @@ class DatabaseInboxStore:
             message_id: ID of the message to mark.
             user_id: Expected owner.
         """
+        await self._ensure_table()
         await self._db.execute_update(
             self._table,
             {"read": True},
@@ -138,6 +164,7 @@ class DatabaseInboxStore:
         Args:
             user_id: Target user.
         """
+        await self._ensure_table()
         await self._db.execute_update(
             self._table,
             {"read": True},
@@ -153,6 +180,7 @@ class DatabaseInboxStore:
             message_id: ID to remove.
             user_id: Expected owner.
         """
+        await self._ensure_table()
         await self._db.execute_delete(
             self._table,
             "id = $1 AND user_id = $2",
@@ -166,6 +194,7 @@ class DatabaseInboxStore:
         Args:
             user_id: Target user.
         """
+        await self._ensure_table()
         result = await self._db.execute_query(
             f"SELECT COUNT(*) AS cnt FROM {self._table}"  # noqa: S608
             " WHERE user_id = $1 AND read = FALSE",
@@ -184,6 +213,7 @@ class DatabaseInboxStore:
         Returns:
             Number of messages deleted.
         """
+        await self._ensure_table()
         count_result = await self._db.execute_query(
             f"SELECT COUNT(*) AS cnt FROM {self._table}"  # noqa: S608
             " WHERE user_id = $1",

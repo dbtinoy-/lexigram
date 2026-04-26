@@ -25,6 +25,7 @@ def _make_db(
 ) -> MagicMock:
     """Build a minimal mock that satisfies DatabaseProviderProtocol."""
     db = MagicMock()
+    db.execute = AsyncMock(return_value=None)
     db.execute_query = AsyncMock(
         return_value=QueryResult(
             rows=query_rows or [],
@@ -65,6 +66,57 @@ class TestDatabaseInboxStore:
     @pytest.fixture
     def message(self) -> InboxMessage:
         return InboxMessage.create(user_id="u1", title="Hello", body="World")
+
+    # ------------------------------------------------------------------
+    # schema bootstrap
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_save_ensures_table_first(self, message: InboxMessage) -> None:
+        """save() creates the schema via execute_query() before the insert."""
+        db = _make_db()
+        store = DatabaseInboxStore(db)
+
+        await store.save(message)
+
+        ddl_calls = [c[0][0] for c in db.execute_query.call_args_list]
+        assert "CREATE TABLE IF NOT EXISTS notification_inbox_messages" in ddl_calls[0]
+        assert "CREATE INDEX IF NOT EXISTS" in ddl_calls[1]
+        db.execute_insert.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_read_ops_ensure_table(self, message: InboxMessage) -> None:
+        """get()/list_for_user()/count_unread() bootstrap the schema too."""
+        db = _make_db(query_rows=[_row(message)])
+        store = DatabaseInboxStore(db)
+
+        await store.get(message.id)
+        await store.list_for_user(message.user_id)
+        await store.count_unread(message.user_id)
+
+        ddl_calls = [c[0][0] for c in db.execute_query.call_args_list]
+        assert any(
+            "CREATE TABLE IF NOT EXISTS notification_inbox_messages" in s
+            for s in ddl_calls
+        )
+        assert any(
+            "CREATE INDEX IF NOT EXISTS notification_inbox_messages_user_created_idx"
+            in s
+            for s in ddl_calls
+        )
+
+    @pytest.mark.asyncio
+    async def test_schema_ensure_uses_custom_table(self, message: InboxMessage) -> None:
+        """The ensure step targets the configured table name."""
+        db = _make_db()
+        store = DatabaseInboxStore(db, table="custom_inbox")
+
+        await store.save(message)
+
+        assert "CREATE TABLE IF NOT EXISTS custom_inbox" in str(
+            db.execute_query.call_args_list[0][0][0]
+        )
+        assert db.execute_insert.call_args[0][0] == "custom_inbox"
 
     # ------------------------------------------------------------------
     # save
