@@ -12,6 +12,7 @@ from lexigram.multimedia.image.exceptions import (
 from lexigram.multimedia.image.module import ImageModule
 from lexigram.multimedia.image.providers import (
     LocalHttpImageProvider,
+    OpenAIImageProvider,
     StabilityImageProvider,
 )
 from lexigram.multimedia.image.tasks import ImageGenerationTask
@@ -25,5 +26,6 @@ __all__ = [
     "ImageModule",
     "ImageTimeoutError",
     "LocalHttpImageProvider",
+    "OpenAIImageProvider",
     "StabilityImageProvider",
 ]
