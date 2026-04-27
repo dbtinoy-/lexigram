@@ -29,6 +29,28 @@ async def test_task_calls_backend_generate_and_returns_asset_dict() -> None:
 
 
 @pytest.mark.asyncio
+async def test_task_forwards_extra_to_request() -> None:
+    backend = AsyncMock()
+    backend.generate.return_value = Ok(
+        MediaAsset(mime_type="video/mp4", provider="comfyui", bytes_data=b"x")
+    )
+    task = VideoGenerationTask(backend=backend)
+
+    await task.run(
+        {
+            "prompt": "a drone over the valley",
+            "duration_seconds": 4.0,
+            "resolution": "1280x720",
+            "format": "mp4",
+            "extra": {"motion_bucket_id": 200},
+        }
+    )
+
+    sent_request = backend.generate.await_args.args[0]
+    assert sent_request.extra == {"motion_bucket_id": 200}
+
+
+@pytest.mark.asyncio
 async def test_video_processing_task_trim() -> None:
     fake_backend = AsyncMock()
     fake_backend.process.return_value = Ok(
