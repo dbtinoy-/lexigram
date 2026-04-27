@@ -10,7 +10,8 @@ from __future__ import annotations
 from importlib.metadata import entry_points as _entry_points
 from typing import TYPE_CHECKING
 
-from lexigram.contracts.core.constants import EP_PROVIDERS
+from lexigram.contracts.core.constants import EP_PLUGINS, EP_PROVIDERS
+from lexigram.contracts.plugins import PluginDescriptor
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-__all__ = ["discover_providers"]
+__all__ = ["discover_plugins", "discover_providers"]
 
 
 def discover_providers(disabled: set[str] | None = None) -> list[Provider]:
@@ -49,7 +50,9 @@ def discover_providers(disabled: set[str] | None = None) -> list[Provider]:
             continue
         if not (isinstance(provider_cls, type) and issubclass(provider_cls, Provider)):
             logger.debug(
-                "plugins.discovery.not_a_provider", name=ep.name, loaded=repr(provider_cls)
+                "plugins.discovery.not_a_provider",
+                name=ep.name,
+                loaded=repr(provider_cls),
             )
             continue
         try:
@@ -61,4 +64,30 @@ def discover_providers(disabled: set[str] | None = None) -> list[Provider]:
                 reason="requires_constructor_args",
             )
 
+    return found
+
+
+def discover_plugins() -> list[PluginDescriptor]:
+    """Discover all ``PluginDescriptor``s registered under ``EP_PLUGINS``.
+
+    Metadata-only — never imports the plugin's actual ``Provider`` class,
+    so this is cheap to call even for listing purposes (e.g. an admin UI).
+    """
+    found: list[PluginDescriptor] = []
+    for ep in _entry_points(group=EP_PLUGINS):
+        try:
+            descriptor = ep.load()
+        except Exception:  # noqa: BLE001 — skip bad entry points, continue discovery
+            logger.warning(
+                "plugins.discovery.plugin_entry_point_load_failed", name=ep.name
+            )
+            continue
+        if not isinstance(descriptor, PluginDescriptor):
+            logger.debug(
+                "plugins.discovery.not_a_plugin_descriptor",
+                name=ep.name,
+                loaded=repr(descriptor),
+            )
+            continue
+        found.append(descriptor)
     return found
