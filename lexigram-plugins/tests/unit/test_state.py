@@ -37,7 +37,7 @@ def test_save_disabled_writes_sorted_list(tmp_path: Path) -> None:
     path = tmp_path / "plugins.json"
     save_disabled({"zeta", "alpha"}, path)
     data = json.loads(path.read_text())
-    assert data == {"disabled": ["alpha", "zeta"]}
+    assert data == {"version": 1, "disabled": ["alpha", "zeta"]}
 
 
 def test_load_disabled_uses_env_var_when_no_path_given(
