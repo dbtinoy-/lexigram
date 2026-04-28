@@ -41,6 +41,7 @@ Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 runway = []
 openai = []
 local-inproc = []
+wan22-server = ["torch", "wan"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -59,6 +60,9 @@ test = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
 ]
+
+[project.scripts]
+lexigram-video-wan22-serve = "lexigram.multimedia.video.servers.wan22_server:main"
 
 [project.entry-points."lexigram.multimedia.subsystems"]
 video = "lexigram.multimedia.video.di.provider:VideoGenerationProvider"
