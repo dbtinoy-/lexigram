@@ -198,3 +198,33 @@ async def test_openai_health_check_healthy_with_key(monkeypatch) -> None:
     result = await provider.health_check()
 
     assert result.status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_register_binds_wan22_backend() -> None:
+    provider = VideoGenerationProvider(config=VideoConfig(backend="wan22"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.video.providers.wan22 import Wan22VideoProvider
+
+    bound = container.bindings[VideoProvider]
+    assert isinstance(bound, Wan22VideoProvider)
+
+
+@pytest.mark.asyncio
+async def test_wan22_health_check_uses_shared_http_helper(mocker) -> None:
+    provider = VideoGenerationProvider(config=VideoConfig(backend="wan22"))
+    container = _FakeContainer()
+    await provider.register(container)
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    mocker.patch("aiohttp.ClientSession.get", return_value=mock_cm)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.HEALTHY
