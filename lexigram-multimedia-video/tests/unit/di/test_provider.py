@@ -228,3 +228,16 @@ async def test_wan22_health_check_uses_shared_http_helper(mocker) -> None:
     result = await provider.health_check()
 
     assert result.status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_register_binds_cogvideox_backend() -> None:
+    provider = VideoGenerationProvider(config=VideoConfig(backend="cogvideox"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.video.providers.cogvideox import CogVideoXVideoProvider
+
+    bound = container.bindings[VideoProvider]
+    assert isinstance(bound, CogVideoXVideoProvider)
