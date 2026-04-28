@@ -11,8 +11,8 @@ bulk actions, role-based access, and audit logging for any domain model — with
 frontend code required.
 
 Built on `lexigram-ui` for responsive UI components and integrates with `lexigram-auth`
-for RBAC permission enforcement. Configure via `AdminModule.configure()` and register
-resources with the admin site.
+for RBAC permission enforcement. Configure via `AdminModule.configure()` and pass
+`Resource` classes via the `resources=` argument.
 
 ## Install
 
@@ -26,23 +26,38 @@ uv add "lexigram-admin[auth,saml,ldap,oauth2,export]"
 
 ```python
 from lexigram import Application
-from lexigram.di.module import Module, module
-from lexigram.admin import AdminModule, ModelAdmin, admin_site
+from lexigram.admin import AdminModule
+from lexigram.admin.config import AdminConfig
+from lexigram.admin.resources.users import UserResource
+from lexigram.sql import DatabaseModule
+from lexigram.features import FeatureFlagsModule
 
-@admin_site.register(Product)
-class ProductAdmin(ModelAdmin):
-    list_display = ["id", "name", "price", "is_active"]
-    list_filter = ["is_active", "category"]
-    search_fields = ["name", "sku"]
 
-@module(imports=[AdminModule.configure()])
-class AppModule(Module):
-    pass
+async def main() -> None:
+    async with Application.boot(
+        modules=[
+            DatabaseModule.configure(config="sqlite:///admin.db"),
+            FeatureFlagsModule.configure(),
+            AdminModule.configure(
+                config=AdminConfig(title="My App Admin"),
+                resources=[UserResource],
+            ),
+        ]
+    ) as app:
+        # ... admin panel served under /admin ...
+        ...
 
-app = Application(modules=[AppModule])
+
 if __name__ == "__main__":
-    app.run()
+    import asyncio
+    asyncio.run(main())
 ```
+
+> Resources are `Resource` subclasses (e.g. `UserResource`) passed to
+> `AdminModule.configure(resources=[...])` — there is no global admin-site
+> registry in `lexigram-admin`. The admin panel also requires a registered
+> `DatabaseProviderProtocol` (here via `DatabaseModule` from `lexigram-sql`)
+> and `FlagManagerProtocol` (via `FeatureFlagsModule`).
 
 ## Configuration
 
@@ -109,7 +124,36 @@ AdminModule.configure(config)
 - **Audit log** — Every write action logged with user, timestamp, diff
 - **Change history** — Per-object change history with diff viewer
 - **Password policy** — Configurable complexity rules for admin users
-- **Custom pages** — `@admin_site.page(path="/reports")` for bespoke views
+- **Custom pages** — `BaseAdminContributor.get_management_pages()` and `get_routes()` for bespoke views
+
+## Testing
+
+```python
+from lexigram.admin import AdminModule
+from lexigram.sql import DatabaseModule
+from lexigram.features import FeatureFlagsModule
+
+async with Application.boot(
+    modules=[
+        DatabaseModule.configure(config="sqlite:///test.db"),
+        FeatureFlagsModule.configure(),
+        AdminModule.stub(),
+    ]
+) as app:
+    # your test code
+    ...
+```
+
+> `AdminModule.stub()` still requires a `DatabaseProviderProtocol` and a `FlagManagerProtocol` binding (as in the Quick Start); it simply registers no resources or contributors.
+
+## Key Source Files
+
+| File | What it contains |
+|------|-----------------|
+| `src/lexigram/admin/module.py` | AdminModule definition with factory methods |
+| `src/lexigram/admin/di/bundle_provider.py` | `AdminProvider` wiring |
+| `src/lexigram/admin/config.py` | AdminConfig and all config sub-models |
+| `src/lexigram/admin/contributors/` | Contributor registry, resource collection |
 
 ## Contributor System
 
@@ -137,28 +181,6 @@ For a complete walkthrough, see the [Extension Developer Guide](docs/EXTENSION_D
 my_plugin = "my_plugin.contributor:MyContributor"
 ```
 
-## Testing
-
-```python
-async with Application.boot(modules=[AdminModule.stub()]) as app:
-    # your test code
-    ...
-```
-
-## Examples
-
-- [`examples/lexigram-admin-plugin-demo`](../examples/lexigram-admin-plugin-demo/) — A full-featured plugin demo with resources, pages, widgets, settings, actions, and dashboard widgets. See the [Extension Developer Guide](docs/EXTENSION_DEVELOPER_GUIDE.md) for a walkthrough.
-- [`examples/platform/`](../examples/platform/) — A simpler one-capability admin example.
-
-## Key Source Files
-
-| File | What it contains |
-|------|-----------------|
 ## Operations
 
 Production deployment guidance, rollback steps, audit-log backup/restore, session revocation, contributor triage, and metrics names live in [OPERATOR_RUNBOOK.md](./OPERATOR_RUNBOOK.md).
-
-| `src/lexigram/admin/module.py` | AdminModule definition with factory methods |
-| `src/lexigram/admin/di/bundle_provider.py` | AdminBundleProvider wiring |
-| `src/lexigram/admin/config.py` | AdminConfig and all config sub-models |
-| `src/lexigram/admin/contributors/` | Contributor registry, resource collection |

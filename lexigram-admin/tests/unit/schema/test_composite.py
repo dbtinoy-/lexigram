@@ -13,7 +13,7 @@ from lexigram.admin.schema.composite import (
     JsonField,
 )
 from lexigram.result import Err, Ok
-from lexigram.ui import Element
+from lexigram.ui import Element, InfolistEntryType
 
 
 class TestJsonField:
@@ -290,6 +290,12 @@ class TestImageField:
         field = ImageField(name="photo")
         assert isinstance(field, SchemaField)
 
+    def test_render_infolist_entry_image_type(self) -> None:
+        field = ImageField(name="photo")
+        entry = field.render_infolist_entry("/img/photo.png")
+        assert entry.type == InfolistEntryType.IMAGE
+        assert entry.value == "/img/photo.png"
+
 
 class TestAvatarField:
     def test_construct_with_minimum_args(self) -> None:
@@ -327,6 +333,12 @@ class TestAvatarField:
         result = field.from_form("avatar.png")
         assert isinstance(result, Ok)
         assert result.unwrap() == "avatar.png"
+
+    def test_render_infolist_entry_inherits_image_type(self) -> None:
+        field = AvatarField(name="avatar")
+        entry = field.render_infolist_entry("/img/avatar.png")
+        assert entry.type == InfolistEntryType.IMAGE
+        assert entry.value == "/img/avatar.png"
 
     def test_is_schema_field(self) -> None:
         field = AvatarField(name="avatar")

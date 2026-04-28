@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.admin.sql_dialect import is_postgres, now_expr
 from lexigram.contracts.tenancy.protocols import TenantConfigProviderProtocol
 from lexigram.logging import get_logger
 from lexigram.serialization import dumps_str, loads_str
@@ -24,13 +25,24 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 
 _TABLE = "tenant_configs"
 
-_CREATE_SQL = f"""
+_CREATE_SQL_POSTGRES = f"""
 CREATE TABLE IF NOT EXISTS {_TABLE} (
     tenant_id   VARCHAR(255) NOT NULL,
     key         VARCHAR(255) NOT NULL,
     value       TEXT NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (tenant_id, key)
+)
+"""
+
+_CREATE_SQL_SQLITE = f"""
+CREATE TABLE IF NOT EXISTS {_TABLE} (
+    tenant_id   VARCHAR(255) NOT NULL,
+    key         VARCHAR(255) NOT NULL,
+    value       TEXT NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (tenant_id, key)
 )
 """
@@ -52,7 +64,8 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
         if self._initialized:
             return
         try:
-            await self._db.execute(_CREATE_SQL, [])
+            create_sql = _CREATE_SQL_POSTGRES if is_postgres(self._db) else _CREATE_SQL_SQLITE
+            await self._db.execute(create_sql, [])
             self._initialized = True
             logger.info("Ensured %s table exists", _TABLE)
         except Exception:
@@ -90,7 +103,7 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
             f"""INSERT INTO {_TABLE} (tenant_id, key, value)
                VALUES (?, ?, ?)
                ON CONFLICT (tenant_id, key)
-               DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()""",
+               DO UPDATE SET value = excluded.value, updated_at = {now_expr(self._db)}""",
             [tenant_id, key, dumps_str(value)],
         )
 

@@ -204,3 +204,152 @@ class TestSearchService:
         assert MockResource1 in resources
         assert MockResource2 in resources
         assert MockResourceNoSearch not in resources
+
+
+class _IndexedResource:
+    name = "products"
+    label = "Products"
+    search_fields = ["title"]
+    search_title_field = "title"
+
+    @classmethod
+    async def search(cls, query: str, *, limit: int = 5) -> list[dict]:
+        return [{"id": 1, "title": "fallback"}]
+
+
+class _IndexOnlyResource:
+    name = "docs"
+    label = "Docs"
+    search_fields = []
+    search_title_field = "name"
+
+    @classmethod
+    async def search(cls, query: str, *, limit: int = 5) -> list[dict]:
+        return []
+
+    @classmethod
+    def search_spec(cls):
+        from lexigram.contracts.search import SearchableSpec
+
+        return SearchableSpec(index_name="docs_idx", fields=("name", "description"))
+
+
+class _FakeIntegration:
+    def __init__(self, available: bool = True, results: list | None = None) -> None:
+        self._available = available
+        self._results = results or []
+        self.calls: list[tuple] = []
+
+    @property
+    def is_available(self) -> bool:
+        return self._available
+
+    async def query(
+        self,
+        index: str,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        filters: dict | None = None,
+        rule: str | None = None,
+    ) -> dict:
+        self.calls.append((index, query, limit, offset))
+        return {"results": self._results, "total": len(self._results)}
+
+
+class TestSearchServiceIndexedPath:
+    """SearchService routes SearchableSpec resources through the index."""
+
+    @pytest.fixture
+    def manager(self) -> MagicMock:
+        manager = MagicMock()
+        manager.get_all_resources = MagicMock(
+            return_value=[_IndexedResource, _IndexOnlyResource, MockResourceNoSearch]
+        )
+        return manager
+
+    def test_spec_only_resource_is_searchable(self, manager: MagicMock) -> None:
+        service = SearchService(resource_manager=manager)
+        names = [r.name for r in service.get_searchable_resources()]
+        assert "docs" in names
+        assert "logs" not in names
+
+    async def test_indexed_resource_queried_through_integration(
+        self, manager: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        integration = _FakeIntegration(
+            results=[{"id": "p1", "title": "Indexed Widget", "description": "Great"}]
+        )
+        from lexigram.admin import integrations as _integrations
+
+        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+
+        service = SearchService(resource_manager=manager)
+        result = await service.search("widget")
+
+        assert integration.calls == [("docs_idx", "widget", 5, 0)]
+        by_resource = {r.resource_name: r for r in result.results}
+        assert by_resource["products"].title == "fallback"  # loop path for no-spec
+        assert by_resource["docs"].title == "Indexed Widget"
+        assert by_resource["docs"].subtitle == "Great"
+        assert by_resource["docs"].url == "/admin/docs/p1"
+
+    async def test_object_results_unwrapped_from_data(
+        self, manager: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class ObjDoc:
+            id = "p2"
+            data = {"title": "Obj Title", "email": "x@example.com"}
+
+        integration = _FakeIntegration(results=[ObjDoc()])
+        from lexigram.admin import integrations as _integrations
+
+        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+
+        service = SearchService(resource_manager=manager)
+        result = await service.search("obj")
+
+        by_resource = {r.resource_name: r for r in result.results}
+        assert by_resource["docs"].title == "Obj Title"
+        assert by_resource["docs"].subtitle == "x@example.com"
+
+    async def test_unavailable_integration_falls_back_to_loop(
+        self, manager: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        integration = _FakeIntegration(available=False)
+        from lexigram.admin import integrations as _integrations
+
+        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+
+        service = SearchService(resource_manager=manager)
+        result = await service.search("fallback")
+
+        # products (search_fields) used the per-resource loop
+        assert result.resource_counts.get("products") == 1
+        # docs has no search_fields -> loop returns [] -> absent
+        assert "docs" not in result.resource_counts
+
+    async def test_no_integration_keeps_default_loop(
+        self, manager: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from lexigram.admin import integrations as _integrations
+
+        monkeypatch.setitem(_integrations._registry, "SearchIntegration", None)
+
+        service = SearchService(resource_manager=manager)
+        result = await service.search("fallback")
+        assert result.resource_counts.get("products") == 1
+
+    async def test_doc_without_id_skipped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        only = MagicMock()
+        only.get_all_resources = MagicMock(return_value=[_IndexOnlyResource])
+        integration = _FakeIntegration(results=[{"title": "No Id"}])
+        from lexigram.admin import integrations as _integrations
+
+        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+
+        service = SearchService(resource_manager=only)
+        result = await service.search("x")
+        assert result.total_count == 0

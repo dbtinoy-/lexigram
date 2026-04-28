@@ -39,6 +39,8 @@ class NumberField(SchemaField[int | float]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return NumberInput(**kwargs).render()
 
     def render_column(self, record: Any, value: float | None) -> Element:
@@ -115,6 +117,17 @@ class CurrencyField(NumberField):
     """A currency input field with configurable currency symbol."""
 
     currency: str = "USD"
+
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace("_", " ").title(),
+            value=value,
+            type=InfolistEntryType.MONEY,
+            currency=self.currency,
+        )
 
     def render_column(self, record: Any, value: float | None) -> Element:
         if value is None:

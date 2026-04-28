@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 import uuid
 
+from lexigram.admin.sql_dialect import is_postgres, now_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -64,22 +65,35 @@ class AdminAccountLockoutSqlStore:
             return
 
         try:
-            await self._db.execute(
+            if is_postgres(self._db):
+                create_sql = """
+                    CREATE TABLE IF NOT EXISTS admin_account_lockouts (
+                        id                   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                        email                VARCHAR(255) NOT NULL,
+                        locked_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                        unlock_at            TIMESTAMPTZ,
+                        consecutive_failures INTEGER      NOT NULL DEFAULT 0,
+                        is_permanent         BOOLEAN      NOT NULL DEFAULT FALSE,
+                        is_active            BOOLEAN      NOT NULL DEFAULT TRUE,
+                        unlocked_at          TIMESTAMPTZ,
+                        deactivated_at       TIMESTAMPTZ
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS admin_account_lockouts (
-                    id                   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-                    email                VARCHAR(255) NOT NULL,
-                    locked_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-                    unlock_at            TIMESTAMPTZ,
-                    consecutive_failures INTEGER      NOT NULL DEFAULT 0,
-                    is_permanent         BOOLEAN      NOT NULL DEFAULT FALSE,
-                    is_active            BOOLEAN      NOT NULL DEFAULT TRUE,
-                    unlocked_at          TIMESTAMPTZ,
-                    deactivated_at       TIMESTAMPTZ
-                )
-                """,
-                [],
-            )
+            else:
+                create_sql = """
+                    CREATE TABLE IF NOT EXISTS admin_account_lockouts (
+                        id                   TEXT         PRIMARY KEY,
+                        email                VARCHAR(255) NOT NULL,
+                        locked_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        unlock_at            TIMESTAMP,
+                        consecutive_failures INTEGER      NOT NULL DEFAULT 0,
+                        is_permanent         BOOLEAN      NOT NULL DEFAULT FALSE,
+                        is_active            BOOLEAN      NOT NULL DEFAULT TRUE,
+                        unlocked_at          TIMESTAMP,
+                        deactivated_at       TIMESTAMP
+                    )
+                """
+            await self._db.execute(create_sql, [])
             await self._db.execute(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_account_lockouts_email_active
@@ -138,9 +152,9 @@ class AdminAccountLockoutSqlStore:
             # Ask the DB whether the lockout has expired — avoids timezone issues.
             expired_sql = (
                 "UPDATE admin_account_lockouts "
-                "SET is_active = FALSE, deactivated_at = NOW() "
+                f"SET is_active = FALSE, deactivated_at = {now_expr(self._db)} "
                 "WHERE email = ? AND is_active = TRUE AND is_permanent = FALSE "
-                "AND unlock_at <= NOW()"
+                f"AND unlock_at <= {now_expr(self._db)}"
             )
             await self._db.execute(expired_sql, [email])
 
@@ -202,7 +216,7 @@ class AdminAccountLockoutSqlStore:
         # 1. Deactivate any existing active lockout.
         deactivate_sql = (
             "UPDATE admin_account_lockouts "
-            "SET is_active = FALSE, deactivated_at = NOW() "
+            f"SET is_active = FALSE, deactivated_at = {now_expr(self._db)} "
             "WHERE email = ? AND is_active = TRUE"
         )
         await self._db.execute(deactivate_sql, (email,))
@@ -244,7 +258,7 @@ class AdminAccountLockoutSqlStore:
         await self.ensure_schema()
         sql = (
             "UPDATE admin_account_lockouts "
-            "SET is_active = FALSE, unlocked_at = NOW() "
+            f"SET is_active = FALSE, unlocked_at = {now_expr(self._db)} "
             "WHERE email = ? AND is_active = TRUE"
         )
         await self._db.execute(sql, (email,))

@@ -38,6 +38,7 @@ dependencies = [
     "lexigram>=0.1.1",
     "lexigram-contracts>=0.1.0",
     "lexigram-ui>=0.1.0",
+    "lexigram-plugins>=0.1.0",
     "aiofiles>=23.0.0",
     "htpy>=0.9",
     "orjson>=3.9.0",

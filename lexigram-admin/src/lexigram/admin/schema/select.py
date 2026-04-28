@@ -54,6 +54,8 @@ class SelectField(SchemaField[str]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return Select(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -165,6 +167,8 @@ class MultiSelectField(SelectField):
             kwargs["error"] = errors[0]
         if self.placeholder is not None:
             kwargs["placeholder"] = self.placeholder
+        if self.readonly:
+            kwargs["disabled"] = True
         return MultiSelect(**kwargs).render()
 
     def render_column(self, record: Any, value: list[str] | None) -> Element:  # type: ignore[override]
@@ -220,4 +224,6 @@ class RadioField(SelectField):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return Radio(**kwargs).render()

@@ -1,7 +1,8 @@
 """Global search controller for lexigram-admin.
 
 Provides the /admin/search endpoint consumed by the header search input
-hx-get request and the CommandPalette component.
+hx-get request and the CommandPalette component, and serves a full admin
+page when the endpoint is navigated to directly (the Search nav item).
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ class SearchController:
 
     Accepts a query via ``?q=...`` or ``?search=...``, delegates to
     SearchService, and renders the aggregated results as HTML fragments
-    suitable for HTMX swap.
+    (HTMX swaps) or as a full admin page on direct navigation.
     """
 
     def __init__(self, search_service: SearchService) -> None:
@@ -34,7 +35,9 @@ class SearchController:
             request: Incoming HTTP request.
 
         Returns:
-            HTMLResponse with rendered search results.
+            HTMLResponse: an HTML fragment for HTMX requests (header search
+                input and command palette), or a full admin page for direct
+                navigation.
         """
         query = (
             request.query_params.get("q", "")
@@ -42,8 +45,64 @@ class SearchController:
             or ""
         )
         results = await self._search_service.search(query)
-        html = self._render_results(results)
-        return HTMLResponse(html)
+        fragment = self._render_results(results)
+
+        if request.headers.get("hx-request") == "true":
+            return HTMLResponse(fragment)
+        return self._render_page(query, fragment, request)
+
+    def _render_page(self, query: str, fragment: str, request: Request) -> HTMLResponse:
+        """Render the search page inside the admin shell.
+
+        The page embeds a search input (same HTMX wiring as the header) and a
+        results container pre-filled with the current query's results, so a
+        directly-navigated URL renders server-side and subsequent keystrokes
+        keep swapping into ``#search-results``.
+        """
+        from lexigram.admin.engine.renderer import AdminRenderer
+        from lexigram.ui.core.base import el
+
+        content = el(
+            "div",
+            el(
+                "h1",
+                "Global Search",
+                class_="text-2xl font-bold mb-4 text-foreground",
+            ),
+            el(
+                "div",
+                el(
+                    "div",
+                    el(
+                        "input",
+                        type="search",
+                        name="q",
+                        value=query or None,
+                        placeholder="Search across resources…",
+                        autocomplete="off",
+                        hx_get="/admin/search",
+                        hx_trigger="keyup changed delay:300ms",
+                        hx_target="#search-results",
+                        class_="search-input w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary",
+                    ),
+                    class_="relative",
+                ),
+                class_="mb-4",
+            ),
+            el(
+                "div",
+                fragment,
+                id="search-results",
+                class_="search-results-container",
+            ),
+            class_="p-6",
+        )
+        return AdminRenderer().render_page(
+            content,
+            request=request,
+            title="Global Search",
+            breadcrumbs=[{"label": "Search", "url": "/admin/search"}],
+        )
 
     def _render_results(self, results: SearchResults) -> str:
         """Render search results as an HTML fragment.

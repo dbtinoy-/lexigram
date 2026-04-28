@@ -581,6 +581,50 @@ class AdminProvider(Provider):
                 error=str(exc),
             )
 
+        # Mount PluginsController (plugin listing & toggles) — best-effort.
+        try:
+            from lexigram.admin.auth.protocols import (
+                AdminAuditLogServiceProtocol,
+                AdminCsrfServiceProtocol,
+            )
+            from lexigram.admin.controllers.plugins import PluginsController
+            from lexigram.admin.engine.renderer import AdminRenderer
+
+            plugins_csrf_service: AdminCsrfServiceProtocol | None = None
+            try:
+                plugins_csrf_service = await admin_resolver.resolve(
+                    AdminCsrfServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                pass
+
+            plugins_audit_service: AdminAuditLogServiceProtocol | None = None
+            try:
+                plugins_audit_service = await admin_resolver.resolve(
+                    AdminAuditLogServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                pass
+
+            plugins_renderer = await admin_resolver.resolve(
+                AdminRenderer,
+                bypass_visibility=True,
+            )
+            controller_instances.append(
+                PluginsController(
+                    renderer=plugins_renderer,
+                    csrf_service=plugins_csrf_service,
+                    audit_service=plugins_audit_service,
+                )
+            )
+        except Exception as exc:
+            _log.warning(
+                "admin.plugins_controller_skipped",
+                error=str(exc),
+            )
+
         # Populate NavItemBuilder with resolved resource instances
         self._resolved_resources = resources_dict
         nav_builder = self._nav_item_builder
@@ -825,10 +869,10 @@ class AdminProvider(Provider):
                 search_spec = resource.search_spec()
                 if search_spec and search_spec.index_name:
                     try:
-                        from lexigram.search.engine import SearchEngine
+                        from lexigram.contracts.search import SearchEngineProtocol
 
                         search_engine = await admin_resolver.resolve(
-                            SearchEngine,
+                            SearchEngineProtocol,
                             bypass_visibility=True,
                         )
 

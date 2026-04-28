@@ -110,6 +110,9 @@ class Resource:
     form_class: type[FormBase] | None = None
     # Form display mode: "page" (full page), "modal" (centered modal), "slider" (side panel)
     form_display_mode: str = "modal"  # Options: "page", "modal", "slider"
+    # Model fields excluded from generated forms (e.g. secrets, framework-managed
+    # columns).  Resources may extend the default to exclude their own fields.
+    form_exclude_fields: tuple[str, ...] = ("id", "created_at", "updated_at")
 
     # Resource Config (Optional fluent config)
     config: Any = None
@@ -183,7 +186,7 @@ class Resource:
         if self.searchable is False:
             return None
         if self.searchable is True:
-            from lexigram.admin.integrations.search import SearchableSpec
+            from lexigram.contracts.search import SearchableSpec
 
             return SearchableSpec(
                 index_name=self.name,
@@ -571,6 +574,23 @@ class Resource:
         Args:
             item_id: Record identifier
         """
+
+    @classmethod
+    def get_action_hooks(cls, action_name: str) -> list[Any]:
+        """Get action lifecycle hooks for the named action.
+
+        Override in a resource subclass to attach ``ActionHookProtocol``
+        hooks to registry-based actions. Hooks are collected by
+        ``ActionExecutor`` and run before/after the action body and on
+        failure.
+
+        Args:
+            action_name: Name of the action (e.g. ``"export"``)
+
+        Returns:
+            List of action hooks for the action.
+        """
+        return []
 
     @classmethod
     def get_table_config(cls) -> TableConfiguration:

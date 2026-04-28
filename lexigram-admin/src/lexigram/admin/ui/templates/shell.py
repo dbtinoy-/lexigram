@@ -425,7 +425,7 @@ class AdminShell(Component):
             el(
                 "main",
                 el("div", content_inner, id="main-content", class_="px-4 py-4"),
-                class_="flex-1 overflow-y-auto bg-muted dark:bg-background focus:outline-none transition-colors duration-300",
+                class_="flex-1 overflow-y-auto bg-muted dark:bg-muted focus:outline-none transition-colors duration-300",
             ),
             class_="flex flex-col flex-1 min-w-0 overflow-hidden",
         )

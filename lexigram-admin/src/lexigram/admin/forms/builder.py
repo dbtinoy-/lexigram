@@ -20,11 +20,15 @@ from typing import (
     get_type_hints,
 )
 
-from lexigram.admin.forms.fields import (
-    AbstractField,
+from lexigram.admin.schema import (
     BooleanField,
     DateField,
+    DateTimeField,
+    EmailField,
+    EnumField,
     IntegerField,
+    PasswordField,
+    SchemaField,
     SelectField,
     TextAreaField,
     TextField,
@@ -247,7 +251,7 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
 
     def build(self) -> Form[T]:
         """Build the form."""
-        fields: list[AbstractField] = []
+        fields: list[SchemaField] = []
         hints = get_type_hints(self.model) if self.model is not None else {}
 
         # Sort by order
@@ -276,8 +280,8 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
         name: str,
         field_type: type,
         config: FieldConfig,
-    ) -> AbstractField:
-        """Create a Field instance from type and config."""
+    ) -> SchemaField:
+        """Create a SchemaField instance from type and config."""
         # Handle widget override
         if config.widget:
             return self._create_field_by_widget(name, config)
@@ -293,128 +297,55 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
                     config.required = False
                     break
 
-        # Map Python types to Field classes
+        common = {
+            "name": name,
+            "label": config.label,
+            "help_text": config.help_text,
+            "required": config.required,
+            "readonly": config.disabled,
+        }
+
+        # Map Python types to schema field classes
         if field_type is str:
-            return TextField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                placeholder=config.placeholder,
-                required=config.required,
-                disabled=config.disabled,
-                validators=config.validators,
-                **config.props,
-            )
+            return TextField(**common)
         if field_type is int:
-            return IntegerField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                placeholder=config.placeholder,
-                required=config.required,
-                disabled=config.disabled,
-                validators=config.validators,
-                **config.props,
-            )
+            return IntegerField(**common)
         if field_type is bool:
-            return BooleanField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                required=config.required,
-                disabled=config.disabled,
-                validators=config.validators,
-                **config.props,
-            )
-        if field_type in (date, datetime):
-            return DateField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                required=config.required,
-                disabled=config.disabled,
-                validators=config.validators,
-                **config.props,
-            )
-        if issubclass(field_type, Enum) if isinstance(field_type, type) else False:
-            options = [(e.value, e.name.replace("_", " ").title()) for e in field_type]  # type: ignore[attr-defined]
-            return SelectField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                options=options,
-                required=config.required,
-                disabled=config.disabled,
-                validators=config.validators,
-                **config.props,
+            return BooleanField(**common)
+        if field_type is date:
+            return DateField(**common)
+        if field_type is datetime:
+            return DateTimeField(**common)
+        if isinstance(field_type, type) and issubclass(field_type, Enum):
+            return EnumField(
+                **common,
+                enum_cls=field_type,
             )
         # Default to text
-        return TextField(
-            name=name,
-            label=config.label,
-            help_text=config.help_text,
-            placeholder=config.placeholder,
-            required=config.required,
-            disabled=config.disabled,
-            validators=config.validators,
-            **config.props,
-        )
+        return TextField(**common)
 
-    def _create_field_by_widget(self, name: str, config: FieldConfig) -> AbstractField:
+    def _create_field_by_widget(self, name: str, config: FieldConfig) -> SchemaField:
         """Create field by widget name."""
         widget = config.widget
-
+        common = {
+            "name": name,
+            "label": config.label,
+            "help_text": config.help_text,
+            "required": config.required,
+            "readonly": config.disabled,
+        }
         if widget == "textarea":
-            return TextAreaField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                placeholder=config.placeholder,
-                required=config.required,
-                disabled=config.disabled,
-                **config.props,
-            )
+            return TextAreaField(**common)
         if widget == "email":
-            return TextField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                placeholder=config.placeholder,
-                required=config.required,
-                disabled=config.disabled,
-                type="email",
-                **config.props,
-            )
+            return EmailField(**common)
         if widget == "password":
-            return TextField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                placeholder=config.placeholder,
-                required=config.required,
-                disabled=config.disabled,
-                type="password",
-                **config.props,
-            )
+            return PasswordField(**common)
         if widget == "switch":
-            return BooleanField(
-                name=name,
-                label=config.label,
-                help_text=config.help_text,
-                required=config.required,
-                disabled=config.disabled,
-                widget="switch",
-                **config.props,
-            )
-        return TextField(
-            name=name,
-            label=config.label,
-            help_text=config.help_text,
-            placeholder=config.placeholder,
-            required=config.required,
-            disabled=config.disabled,
-            **config.props,
-        )
+            return BooleanField(**common)
+        if widget == "select":
+            options = config.props.get("options", [])
+            return SelectField(**common, options=options)
+        return TextField(**common)
 
 
 @dataclass
@@ -436,7 +367,7 @@ class Form(Generic[T]):
     def __init__(
         self,
         model: type[T],
-        fields: list[AbstractField],
+        fields: list[SchemaField],
         groups: dict[str, list[str]],
         layout: str,
         columns: int,
@@ -451,35 +382,47 @@ class Form(Generic[T]):
         self.columns = columns
         self.submit_label = submit_label
         self.cancel_url = cancel_url
+        self.values: dict[str, Any] = {}
+        self.errors: dict[str, list[str]] = {}
 
     def bind(self, data: dict[str, Any]) -> Form[T]:
-        """Bind data to form fields."""
-        for name, field in self.fields.items():
+        """Bind data to form values."""
+        for name in self.fields:
             if name in data:
-                field.value = data[name]
-                field.is_bound = True
+                self.values[name] = data[name]
         return self
 
     async def validate(self, data: dict[str, Any]) -> FormResult[T]:
         """Validate form data against model."""
         errors: dict[str, list[str]] = {}
+        cleaned: dict[str, Any] = {}
 
         # Run field-level validation first
         for name, field in self.fields.items():
-            value = data.get(name)
-            try:
-                field.validate(value)
-                # Run async validation if present
-                if field.async_validator:
-                    await field.run_async_validation(value)
-            except ValueError as e:
-                errors.setdefault(name, []).append(str(e))
-                field.errors = [str(e)]
+            if name not in data:
+                continue
+            raw = data.get(name)
+            raw = raw if raw is None or isinstance(raw, str) else str(raw)
+            result = field.from_form(raw)
+            if result.is_err():
+                message = str(result.unwrap_err())
+                errors.setdefault(name, []).append(message)
+                self.errors[name] = [message]
+            else:
+                value = result.unwrap()
+                if field.required and (
+                    value is None or (isinstance(value, str) and not value)
+                ):
+                    message = "This field is required."
+                    errors.setdefault(name, []).append(message)
+                    self.errors[name] = [message]
+                else:
+                    cleaned[name] = value
 
         # If field validation passed, try Pydantic model validation
-        if not errors:
+        if not errors and self.model is not None:
             try:
-                instance = self.model.model_validate(data)
+                instance = self.model.model_validate(cleaned)
                 return FormResult(success=True, data=instance)
             except (ValueError, TypeError, AttributeError) as e:
                 if hasattr(e, "errors"):
@@ -489,18 +432,28 @@ class Form(Generic[T]):
                         )
                         message = error["msg"]
                         errors.setdefault(field_name, []).append(message)
-                        if field_name in self.fields:
-                            self.fields[field_name].errors = [message]
+                        self.errors[field_name] = [message]
                 else:
-                    errors.setdefault("__root__", []).append(str(e))
+                    message = str(e)
+                    errors.setdefault("__root__", []).append(message)
+                    self.errors["__root__"] = [message]
 
         return FormResult(success=False, errors=errors)
 
+    def _render_field_els(self) -> list[Any]:
+        """Render all field elements with current bound values."""
+        return [
+            el(
+                "div",
+                field.render_form(self.values.get(name)),
+                class_="form-field",
+            )
+            for name, field in self.fields.items()
+        ]
+
     def render_html(self, action: str, method: str = "POST") -> str:
         """Render form as HTML."""
-        field_els = [
-            el("div", field.render(), class_="form-field") for field in self.field_list
-        ]
+        field_els = self._render_field_els()
         btns: list[Any] = [
             el("button", self.submit_label, type="submit", class_="btn btn-primary")
         ]
@@ -531,9 +484,7 @@ class Form(Generic[T]):
         swap: str = "innerHTML",
     ) -> str:
         """Render form with HTMX attributes."""
-        field_els = [
-            el("div", field.render(), class_="form-field") for field in self.field_list
-        ]
+        field_els = self._render_field_els()
         btns: list[Any] = [
             el("button", self.submit_label, type="submit", class_="btn btn-primary")
         ]

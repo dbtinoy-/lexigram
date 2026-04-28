@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 import uuid
 
+from lexigram.admin.sql_dialect import is_postgres, now_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -59,19 +60,29 @@ class AdminEmailOtpSqlStore:
         """Create the OTP table if it does not exist (idempotent)."""
         if self._initialized:
             return
-        await self._db.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {_TABLE} (
-                id          TEXT         PRIMARY KEY,
-                user_id     TEXT         NOT NULL,
-                code_hash   VARCHAR(64)  NOT NULL,
-                expires_at  TIMESTAMPTZ  NOT NULL,
-                used_at     TIMESTAMPTZ,
-                created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-            )
-            """,
-            [],
-        )
+        if is_postgres(self._db):
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    id          TEXT         PRIMARY KEY,
+                    user_id     TEXT         NOT NULL,
+                    code_hash   VARCHAR(64)  NOT NULL,
+                    expires_at  TIMESTAMPTZ  NOT NULL,
+                    used_at     TIMESTAMPTZ,
+                    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                )
+            """
+        else:
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    id          TEXT         PRIMARY KEY,
+                    user_id     TEXT         NOT NULL,
+                    code_hash   VARCHAR(64)  NOT NULL,
+                    expires_at  TIMESTAMP    NOT NULL,
+                    used_at     TIMESTAMP,
+                    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+        await self._db.execute(create_sql, [])
         self._initialized = True
 
     # ------------------------------------------------------------------
@@ -92,11 +103,11 @@ class AdminEmailOtpSqlStore:
         """Atomically consume a matching unexpired code (see protocol docs)."""
         result = await self._db.execute(
             f"""
-            UPDATE {_TABLE} SET used_at = NOW()
+            UPDATE {_TABLE} SET used_at = {now_expr(self._db)}
             WHERE user_id = ?
               AND code_hash = ?
               AND used_at IS NULL
-              AND expires_at > NOW()
+              AND expires_at > {now_expr(self._db)}
             """,
             [user_id, code_hash],
         )

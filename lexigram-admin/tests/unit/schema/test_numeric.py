@@ -7,7 +7,7 @@ import pytest
 from lexigram.admin.schema import FieldError, SchemaField
 from lexigram.admin.schema.numeric import CurrencyField, FloatField, IntegerField, NumberField
 from lexigram.result import Err, Ok
-from lexigram.ui import Element
+from lexigram.ui import Element, InfolistEntryType
 
 
 class TestNumberField:
@@ -340,6 +340,19 @@ class TestCurrencyField:
         element = field.render_column(None, None)
         output = str(element)
         assert "\u2014" in output
+
+    def test_render_infolist_entry_money_type(self) -> None:
+        field = CurrencyField(name="price")
+        entry = field.render_infolist_entry(42.0)
+        assert entry.type == InfolistEntryType.MONEY
+        assert entry.value == 42.0
+        assert entry.currency == "USD"
+
+    def test_render_infolist_entry_custom_currency(self) -> None:
+        field = CurrencyField(name="price", currency="EUR")
+        entry = field.render_infolist_entry(42.0)
+        assert entry.type == InfolistEntryType.MONEY
+        assert entry.currency == "EUR"
 
     def test_render_filter_returns_none(self) -> None:
         field = CurrencyField(name="price")

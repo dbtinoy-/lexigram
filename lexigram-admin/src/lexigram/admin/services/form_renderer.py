@@ -6,9 +6,11 @@ built-in RBAC enforcement.
 
 from __future__ import annotations
 
+from dataclasses import replace as dc_replace
 from typing import Any
 
 from lexigram.admin.forms.components import FormSchema, FormSchemaGenerator
+from lexigram.admin.rbac.service import PermissionService
 from lexigram.admin.ui.organisms.dynamic_form import DynamicForm
 from lexigram.di.decorators import inject
 
@@ -21,8 +23,13 @@ class FormRenderer:
     component instantiation.
     """
 
-    def __init__(self, generator: FormSchemaGenerator) -> None:
+    def __init__(
+        self,
+        generator: FormSchemaGenerator,
+        permission_service: PermissionService | None = None,
+    ) -> None:
         self.generator = generator
+        self.permission_service = permission_service
 
     def render_form(
         self,
@@ -69,13 +76,22 @@ class FormRenderer:
             base_schema.resource_name = resource_name
 
         # 2. Apply RBAC filtering if user is provided
-        form_schema = base_schema.filter_for_user(user) if user else base_schema  # type: ignore[attr-defined]
+        if user:
+            form_schema = base_schema.filter_for_user(
+                user,
+                resource_name,
+                self.permission_service,
+            )
+        else:
+            form_schema = base_schema
 
         # 3. Apply initial data as defaults if provided
         if initial_data:
-            for field in form_schema.fields:
+            for idx, field in enumerate(form_schema.fields):
                 if field.name in initial_data:
-                    field.default = initial_data[field.name]
+                    form_schema.fields[idx] = dc_replace(
+                        field, default=initial_data[field.name]
+                    )
 
         # 4. Create and return the DynamicForm
         return DynamicForm(

@@ -40,7 +40,9 @@ class SearchService:
     """Searches across all registered admin resources.
 
     Discovers resources, runs Resource.search() on each, aggregates
-    and returns combined results.
+    and returns combined results. Resources that opted into indexed
+    search (via ``SearchableSpec``) are queried through the search
+    integration instead when one is available.
     """
 
     def __init__(self, resource_manager: Any) -> None:
@@ -52,6 +54,7 @@ class SearchService:
         *,
         limit: int = 5,
         per_resource: int = 5,
+        rule: str | None = None,
     ) -> SearchResults:
         """Search across all resources.
 
@@ -59,6 +62,8 @@ class SearchService:
             query: The search query string.
             limit: Maximum total results.
             per_resource: Maximum results per resource.
+            rule: Query-builder block JSON string applied to indexed
+                resources (ignored for LIKE-based resource search).
 
         Returns:
             Aggregated SearchResults.
@@ -69,10 +74,26 @@ class SearchService:
         query = query.strip()
         results = SearchResults(query=query)
         resources = self.get_searchable_resources()
+        integration = self._get_search_integration()
 
         for resource_cls in resources:
             try:
-                items = await resource_cls.search(query, limit=per_resource)
+                spec = self._index_spec(resource_cls)
+                if (
+                    spec is not None
+                    and integration is not None
+                    and integration.is_available
+                ):
+                    items = await self._search_index(
+                        integration,
+                        resource_cls,
+                        spec,
+                        query,
+                        per_resource,
+                        rule,
+                    )
+                else:
+                    items = await resource_cls.search(query, limit=per_resource)
             except Exception:  # noqa: S112
                 continue
 
@@ -111,7 +132,7 @@ class SearchService:
         return results
 
     def get_searchable_resources(self) -> list[Any]:
-        """Get list of resources with search_fields configured."""
+        """Get list of resources with search_fields or an index spec."""
         resources: list[Any] = []
         try:
             registered = self._resource_manager.get_all_resources()
@@ -119,6 +140,71 @@ class SearchService:
                 search_fields = getattr(r, "search_fields", None) or []
                 if search_fields:
                     resources.append(r)
+                    continue
+                spec = self._index_spec(r)
+                if spec is not None and spec.index_name:
+                    resources.append(r)
         except Exception:  # noqa: S112
             pass
         return resources
+
+    @staticmethod
+    def _index_spec(resource: Any) -> Any | None:
+        """Return the resource's SearchableSpec, or None when not opted in."""
+        spec_fn = getattr(resource, "search_spec", None)
+        if not spec_fn:
+            return None
+        try:
+            return spec_fn()
+        except Exception:  # noqa: S112
+            return None
+
+    @staticmethod
+    def _get_search_integration() -> Any:
+        """Return the registered SearchIntegration instance, or None."""
+        from lexigram.admin.integrations import get as get_integration
+
+        return get_integration("SearchIntegration")
+
+    async def _search_index(
+        self,
+        integration: Any,
+        resource: Any,
+        spec: Any,
+        query: str,
+        limit: int,
+        rule: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query the search index for *resource* and shape docs into hits.
+
+        Index results carry the original document in ``SearchResult.data``
+        (the ``SearchableSpec.fields`` plus ``id``); ``search_title_field``/
+        ``name``/``title`` resolve the display title, mirroring
+        ``Resource.search()``'s hit shape. Backends that return plain dicts
+        are handled as well.
+        """
+        result = await integration.query(
+            spec.index_name, query, limit=limit, rule=rule
+        )
+        raw = result.get("results", []) if isinstance(result, dict) else []
+        title_field = getattr(resource, "search_title_field", "name")
+        hits: list[dict[str, Any]] = []
+        for item in raw:
+            doc: Any
+            if isinstance(item, dict):
+                item_id = item.get("id", "")
+                doc = item
+            else:
+                item_id = getattr(item, "id", None)
+                doc = getattr(item, "data", None)
+            if not item_id or not isinstance(doc, dict):
+                continue
+            title = (
+                doc.get(title_field)
+                or doc.get("name")
+                or doc.get("title")
+                or str(item_id)
+            )
+            subtitle = doc.get("email") or doc.get("description") or ""
+            hits.append({"id": str(item_id), "title": title, "subtitle": subtitle})
+        return hits

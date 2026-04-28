@@ -158,7 +158,7 @@ class AuthController(AdminController):
             RedirectResponse to *next_url* on success, or back to the login
             page with an error query parameter on failure.
         """
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         email = str(form_data.get("email", ""))
         password = str(form_data.get("password", ""))
         next_url = str(form_data.get("next", "/admin/"))
@@ -232,6 +232,7 @@ class AuthController(AdminController):
                 request.session["verify_pending_user_id"] = auth_result.user_id
                 request.session["verify_pending_email"] = auth_result.email
                 request.session["verify_pending_next"] = next_url
+                error_msg = ""
                 if self._email_verification_service is not None:
                     verify_result = await self._email_verification_service.send_verification(
                         user_id=auth_result.user_id,
@@ -241,17 +242,21 @@ class AuthController(AdminController):
                         ip_address=ip,
                     )
                     if verify_result.is_err():
-                        logger.warning(
+                        error_msg = str(verify_result.unwrap_err())
+                        logger.error(
                             "auth.login_verification_send_failed",
                             user_id=auth_result.user_id,
-                            reason=str(verify_result.unwrap_err()),
+                            reason=error_msg,
                         )
                 logger.info(
                     "auth.login_verification_required",
                     user_id=auth_result.user_id,
                     email=auth_result.email,
                 )
-                return RedirectResponse(url="/admin/verify-email", status_code=302)
+                target = "/admin/verify-email"
+                if error_msg:
+                    target += f"?error={quote_plus(error_msg)}"
+                return RedirectResponse(url=target, status_code=302)
 
             request.session["admin_user_id"] = auth_result.user_id
             request.session["admin_user_email"] = auth_result.email
@@ -364,7 +369,7 @@ class AuthController(AdminController):
             RedirectResponse to the pending destination on success, or back
             to the challenge page with an error query parameter.
         """
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         code = str(form_data.get("code", ""))
         csrf_token = str(form_data.get("csrf_token", ""))
 
@@ -458,7 +463,7 @@ class AuthController(AdminController):
         if not pending_user_id:
             return RedirectResponse(url="/admin/login", status_code=302)
 
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
         csrf_session_id = request.session.get("csrf_session_id", "")
         if not csrf_session_id or not self._csrf_service.validate_token(
@@ -556,7 +561,7 @@ class AuthController(AdminController):
             RedirectResponse to /admin/verify-email with a notice on success
             or an error query parameter on failure.
         """
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
         csrf_session_id = request.session.get("csrf_session_id", "")
         if not csrf_session_id or not self._csrf_service.validate_token(
@@ -743,7 +748,7 @@ class AuthController(AdminController):
         if self._mfa_service is None:
             return RedirectResponse(url="/admin/", status_code=302)
 
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
         csrf_session_id = request.session.get("csrf_session_id", "")
         if not csrf_session_id or not self._csrf_service.validate_token(
@@ -803,7 +808,7 @@ class AuthController(AdminController):
         if self._mfa_service is None:
             return RedirectResponse(url="/admin/", status_code=302)
 
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
         csrf_session_id = request.session.get("csrf_session_id", "")
         if not csrf_session_id or not self._csrf_service.validate_token(
@@ -890,7 +895,7 @@ class AuthController(AdminController):
         Returns:
             RedirectResponse to the request page with ``sent=1``.
         """
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         email = str(form_data.get("email", ""))
         csrf_token = str(form_data.get("csrf_token", ""))
 
@@ -976,7 +981,7 @@ class AuthController(AdminController):
             RedirectResponse to the login page or back to the confirm form.
         """
         token = request.path_params.get("token", "")
-        form_data = await request.form()
+        form_data = request.scope.get("admin_form_data") or await request.form()
         password = str(form_data.get("password", ""))
         password_confirmation = str(form_data.get("password_confirmation", ""))
         csrf_token = str(form_data.get("csrf_token", ""))

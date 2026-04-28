@@ -42,6 +42,7 @@ class PageAssembler:
                     handler=page.handler,
                     category=page.category,
                     permission=page.permission,
+                    filters=page.filters,
                 )
                 collected.append(p)
         return self._perms.filter(

@@ -14,6 +14,7 @@ import secrets
 from typing import TYPE_CHECKING
 
 from lexigram.admin.auth.errors import (
+    AdminAuthError,
     EmailVerificationTokenInvalidError,
     RateLimitExceededError,
 )
@@ -25,7 +26,6 @@ from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
-    from lexigram.admin.auth.errors import AdminAuthError
     from lexigram.admin.auth.protocols import (
         AdminAuditLogServiceProtocol,
         AdminEmailVerificationStoreProtocol,
@@ -40,9 +40,10 @@ class AdminEmailVerificationService:
     """Email verification flow: links, delivery, and consumption.
 
     A verification link embeds a random token; the store keeps only its
-    sha256 digest.  Delivery is fail-open: when no notification service is
-    bound, sending is skipped (logged) and the flow still returns Ok so the
-    panel remains usable — mirroring the password-reset behaviour.
+    sha256 digest.  Delivery failures are surfaced: when no notification
+    service (or mailer backend) is bound, sending fails with a descriptive
+    error telling the operator which dependency to configure, so missing
+    infrastructure is never silently swallowed.
     """
 
     def __init__(
@@ -105,10 +106,11 @@ class AdminEmailVerificationService:
         """Issue a verification link and email it to the user.
 
         No-op (Ok) when the flow is disabled or the email is already
-        verified.  Delivery is fail-open: missing notification service or a
-        delivery failure only logs — the flow still returns Ok.  Resend
-        requests are rate limited per IP when a cache backend is wired
-        (fail open).
+        verified.  Delivery failures are NOT swallowed: a missing
+        notification service or a failed delivery returns
+        ``Err(AdminAuthError)`` with guidance on the missing mailer
+        dependency.  Resend requests are rate limited per IP when a cache
+        backend is wired (fail open).
 
         Args:
             user_id: Admin user UUID.
@@ -119,10 +121,11 @@ class AdminEmailVerificationService:
             ip_address: Client IP for resend rate limiting.
 
         Returns:
-            ``Ok(None)`` always in the failure cases above; token is
-            persisted before delivery so a later resend re-issues.
+            ``Ok(None)`` when the link was issued and delivered.
             ``Err(RateLimitExceededError)`` when this IP exceeds the
             resend limit.
+            ``Err(AdminAuthError)`` when no notification service is bound
+            or email delivery failed (e.g. no mailer backend configured).
         """
         if not self._config.enabled or await self._store.is_verified(user_id):
             return Ok(None)
@@ -144,25 +147,63 @@ class AdminEmailVerificationService:
         verify_url = f"{base_url.rstrip('/')}/admin/verify-email/{token}"
 
         if self._notification_service is None:
-            logger.info(
+            logger.error(
                 "email_verification_skipped",
                 user_id=user_id,
                 email=email,
-            )
-        else:
-            result = await self._notification_service.notify_email_verification(
-                user_email=email,
-                user_name=user_name,
                 verify_url=verify_url,
-                expires_in=f"{self._config.token_ttl_hours} hours",
             )
-            if result.is_err():
-                logger.warning(
-                    "email_verification_send_failed",
-                    user_id=user_id,
-                    email=email,
-                    error=str(result.unwrap_err()),
+            if self._audit_service is not None:
+                await self._audit_service.log_event(
+                    event_type=AdminSecurityEventType.EMAIL_VERIFICATION_SENT,
+                    ip_address="",
+                    user_agent="",
+                    success=False,
+                    admin_user_id=user_id,
+                    metadata={"email": email, "reason": "no_notification_service"},
                 )
+            return Err(
+                AdminAuthError(
+                    "Verification email could not be delivered because no "
+                    "notification/mailer dependency is configured. Configure a "
+                    "mailer backend (lexigram-notification MailerModule with "
+                    "driver 'smtp'/'sendgrid', or 'console' in development) "
+                    "and retry.",
+                )
+            )
+
+        result = await self._notification_service.notify_email_verification(
+            user_email=email,
+            user_name=user_name,
+            verify_url=verify_url,
+            expires_in=f"{self._config.token_ttl_hours} hours",
+        )
+        if result.is_err():
+            logger.error(
+                "email_verification_send_failed",
+                user_id=user_id,
+                email=email,
+                error=str(result.unwrap_err()),
+                verify_url=verify_url,
+            )
+            if self._audit_service is not None:
+                await self._audit_service.log_event(
+                    event_type=AdminSecurityEventType.EMAIL_VERIFICATION_SENT,
+                    ip_address="",
+                    user_agent="",
+                    success=False,
+                    admin_user_id=user_id,
+                    metadata={"email": email, "reason": str(result.unwrap_err())},
+                )
+            return Err(
+                AdminAuthError(
+                    "Verification email could not be delivered: "
+                    f"{result.unwrap_err()} Configure a mailer backend "
+                    "(lexigram-notification MailerModule with driver "
+                    "'smtp'/'sendgrid', or 'console' in development) and "
+                    "retry.",
+                )
+            )
 
         if self._audit_service is not None:
             await self._audit_service.log_event(
@@ -174,7 +215,6 @@ class AdminEmailVerificationService:
                 metadata={"email": email},
             )
         return Ok(None)
-
     async def verify_token(self, token: str) -> Result[bool, AdminAuthError]:
         """Validate and consume a verification token.
 

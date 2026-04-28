@@ -1,18 +1,25 @@
 """Unit tests for the new Form System."""
 
 from dataclasses import dataclass, field
-from typing import Union
 
 import pytest
 
 from lexigram.admin.forms import (
-    FieldType,
     FormLayoutBuilder,
     FormSchemaGenerator,
     FormStore,
     FormValidationEngine,
     email,
     required,
+)
+from lexigram.admin.schema import (
+    BelongsToField,
+    BooleanField,
+    HasManyField,
+    JsonField,
+    MorphField,
+    MultiSelectField,
+    TextField,
 )
 from lexigram.domain import DomainModel
 from lexigram.validation import Field
@@ -54,7 +61,7 @@ class User(DomainModel):
 @dataclass
 class PolymorphicModel(DomainModel):
     name: str
-    target: Union[Role, Permission] | None = None
+    target: Role | Permission | None = None
 
 
 class TestFormSchemaGenerator:
@@ -66,16 +73,16 @@ class TestFormSchemaGenerator:
         assert len(schema.fields) == 7
 
         username_field = schema.get_field("username")
+        assert isinstance(username_field, TextField)
         assert username_field.label == "Username"
-        assert username_field.type == FieldType.TEXT
         assert username_field.required is True
         assert username_field.help_text == "Unique name"
 
         email_field = schema.get_field("email")
-        assert email_field.type == FieldType.TEXT
+        assert isinstance(email_field, TextField)
 
         active_field = schema.get_field("is_active")
-        assert active_field.type == FieldType.CHECKBOX
+        assert isinstance(active_field, BooleanField)
         assert active_field.default is True
 
     def test_from_pydantic_nested(self):
@@ -83,12 +90,10 @@ class TestFormSchemaGenerator:
         schema = gen.from_pydantic(User)
 
         profile_field = schema.get_field("profile")
-        assert profile_field.type == FieldType.NESTED
-        assert profile_field.nested_schema is not None
-        assert profile_field.nested_schema.get_field("bio") is not None
+        assert isinstance(profile_field, JsonField)
 
         tags_field = schema.get_field("tags")
-        assert tags_field.type == FieldType.LIST
+        assert isinstance(tags_field, MultiSelectField)
 
     def test_detects_belongs_to_fk(self):
         gen = FormSchemaGenerator()
@@ -96,8 +101,8 @@ class TestFormSchemaGenerator:
 
         owner_field = schema.get_field("owner_id")
         assert owner_field is not None
-        assert owner_field.type == FieldType.BELONGS_TO
-        assert owner_field.related_resource == "owners"
+        assert isinstance(owner_field, BelongsToField)
+        assert owner_field.resource == "owners"
 
     def test_detects_has_many(self):
         gen = FormSchemaGenerator()
@@ -105,8 +110,8 @@ class TestFormSchemaGenerator:
 
         pets_field = schema.get_field("pets")
         assert pets_field is not None
-        assert pets_field.type == FieldType.HAS_MANY
-        assert pets_field.related_resource is None  # Not populated yet
+        assert isinstance(pets_field, HasManyField)
+        assert pets_field.resource == "pets"
 
     def test_detects_morph(self):
         gen = FormSchemaGenerator()
@@ -114,7 +119,7 @@ class TestFormSchemaGenerator:
 
         target_field = schema.get_field("target")
         assert target_field is not None
-        assert target_field.type == FieldType.MORPH
+        assert isinstance(target_field, MorphField)
 
     def test_plain_str_id_not_detected_as_fk(self):
         @dataclass
@@ -124,7 +129,7 @@ class TestFormSchemaGenerator:
         gen = FormSchemaGenerator()
         schema = gen.from_pydantic(Plain)
         field = schema.get_field("identifier")
-        assert field.type == FieldType.TEXT
+        assert isinstance(field, TextField)
 
     def test_resource_registry_accepted(self):
         gen = FormSchemaGenerator(resource_registry={"users": User})
@@ -134,7 +139,7 @@ class TestFormSchemaGenerator:
         gen = FormSchemaGenerator()
         schema = gen.from_pydantic(User)
         field = schema.get_field("owner_id")
-        assert field.related_resource == "owners"
+        assert field.resource == "owners"
 
 
 class TestFormValidationEngine:
@@ -219,10 +224,10 @@ class TestBaseFormValidate:
     @pytest.mark.asyncio
     async def test_valid_data_returns_ok_with_cleaned_data(self):
         from lexigram.admin.forms import FormBase
-        from lexigram.admin.forms.fields import TextField
+        from lexigram.admin.schema import TextField
 
         class _SimpleForm(FormBase):
-            name = TextField(label="Name", required=True)
+            name = TextField(name="name", label="Name", required=True)
 
         form = _SimpleForm(data={"name": "Alice"})
         result = await form.validate()
@@ -235,11 +240,11 @@ class TestBaseFormValidate:
     async def test_invalid_data_returns_err_with_admin_validation_error(self):
         from lexigram.admin.exceptions import AdminValidationError
         from lexigram.admin.forms import FormBase
-        from lexigram.admin.forms.fields import TextField
+        from lexigram.admin.schema import TextField
         from lexigram.contracts.exceptions import FieldError
 
         class _SimpleForm(FormBase):
-            name = TextField(label="Name", required=True)
+            name = TextField(name="name", label="Name", required=True)
 
         form = _SimpleForm(data={"name": ""})  # required field empty
         result = await form.validate()
@@ -256,10 +261,10 @@ class TestBaseFormValidate:
     @pytest.mark.asyncio
     async def test_result_match_on_valid_form(self):
         from lexigram.admin.forms import FormBase
-        from lexigram.admin.forms.fields import TextField
+        from lexigram.admin.schema import TextField
 
         class _SimpleForm(FormBase):
-            title = TextField(label="Title", required=False)
+            title = TextField(name="title", label="Title", required=False)
 
         form = _SimpleForm(data={"title": "Draft"})
         result = await form.validate()
@@ -269,3 +274,24 @@ class TestBaseFormValidate:
             err=lambda e: f"error: {e}",
         )
         assert message == "saved: Draft"
+
+    def test_form_renders_schema_fields(self):
+        from lexigram.admin.forms import FormBase
+        from lexigram.admin.schema import TextField
+
+        class _SimpleForm(FormBase):
+            name = TextField(name="name", label="Name", required=True)
+
+        html = str(_SimpleForm(data={"name": "Ada"}).render())
+        assert 'name="name"' in html
+        assert 'value="Ada"' in html
+
+    def test_initial_values_are_used(self):
+        from lexigram.admin.forms import FormBase
+        from lexigram.admin.schema import TextField
+
+        class _SimpleForm(FormBase):
+            name = TextField(name="name", label="Name", required=True)
+
+        form = _SimpleForm(initial={"name": "Grace"})
+        assert form.values["name"] == "Grace"

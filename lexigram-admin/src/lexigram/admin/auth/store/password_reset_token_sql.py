@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from lexigram.admin.auth.types import AdminPasswordResetToken
+from lexigram.admin.sql_dialect import is_postgres, now_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -59,18 +60,27 @@ class AdminPasswordResetTokenSqlStore:
         """Create the token table if it does not exist (idempotent)."""
         if self._initialized:
             return
-        await self._db.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {_TABLE} (
-                token_hash  VARCHAR(64)  PRIMARY KEY,
-                email       VARCHAR(255) NOT NULL,
-                expires_at  TIMESTAMPTZ  NOT NULL,
-                consumed_at TIMESTAMPTZ,
-                created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-            )
-            """,
-            [],
-        )
+        if is_postgres(self._db):
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    token_hash  VARCHAR(64)  PRIMARY KEY,
+                    email       VARCHAR(255) NOT NULL,
+                    expires_at  TIMESTAMPTZ  NOT NULL,
+                    consumed_at TIMESTAMPTZ,
+                    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                )
+            """
+        else:
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    token_hash  VARCHAR(64)  PRIMARY KEY,
+                    email       VARCHAR(255) NOT NULL,
+                    expires_at  TIMESTAMP    NOT NULL,
+                    consumed_at TIMESTAMP,
+                    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+        await self._db.execute(create_sql, [])
         self._initialized = True
 
     # ------------------------------------------------------------------
@@ -109,7 +119,8 @@ class AdminPasswordResetTokenSqlStore:
     async def mark_consumed(self, token_hash: str) -> bool:
         """Atomically mark a token consumed (see protocol docs)."""
         result = await self._db.execute(
-            f"UPDATE {_TABLE} SET consumed_at = NOW() WHERE token_hash = ? AND consumed_at IS NULL",
+            f"UPDATE {_TABLE} SET consumed_at = {now_expr(self._db)} "
+            "WHERE token_hash = ? AND consumed_at IS NULL",
             [token_hash],
         )
         row_count = getattr(result, "row_count", None)

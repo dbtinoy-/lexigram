@@ -31,6 +31,8 @@ _BYPASS_SUFFIXES: frozenset[str] = frozenset(
         "/login/2fa/",
         "/verify-email",
         "/verify-email/",
+        "/password-reset",
+        "/password-reset/",
     }
 )
 
@@ -40,8 +42,11 @@ _BYPASS_PREFIXES: tuple[str, ...] = (
 )
 
 # Token-bearing sub-paths that must remain reachable without a session
-# (e.g. the email verification links emailed to admins).
-_BYPASS_TOKEN_PREFIXES: tuple[str, ...] = ("/admin/verify-email/",)
+# (e.g. the email verification and password-reset links emailed to admins).
+_BYPASS_TOKEN_PREFIXES: tuple[str, ...] = (
+    "/admin/verify-email/",
+    "/admin/password-reset/",
+)
 
 
 class AdminAuthGuardMiddleware:

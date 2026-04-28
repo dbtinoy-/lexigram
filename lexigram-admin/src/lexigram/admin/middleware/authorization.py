@@ -27,6 +27,10 @@ _PUBLIC_PATHS: tuple[str, ...] = (
     "/admin/static",
     "/admin/health",
     "/admin/events",
+    # Standalone pre-session flows (own CSRF + guest handling):
+    "/admin/login/2fa",
+    "/admin/verify-email",
+    "/admin/password-reset",
 )
 
 

@@ -424,3 +424,40 @@ class TestWidgetRegistry:
         assert "every" not in html
         # Should still have the load trigger with a stagger delay
         assert 'hx-trigger="load delay:0ms"' in html
+
+    def test_render_contributor_widgets_appends_page_filters(self) -> None:
+        """Test widget fetch URLs carry the page-level filter state."""
+        registry = WidgetRegistry()
+        widgets = [
+            DashboardWidgetDefinition(
+                name="alpha_widget",
+                title="Alpha",
+                contributor="test",
+                render_endpoint="/admin/test/alpha",
+                size=WidgetSize.MEDIUM,
+                category=WidgetCategory.CUSTOM,
+                order=1,
+            ),
+        ]
+        html = registry.render_contributor_widgets(
+            widgets,
+            page_filters={"period": "90d", "active": True},
+        )
+        assert 'hx-get="/admin/test/alpha?period=90d&amp;active=True"' in html
+
+    def test_render_contributor_widgets_plain_url_without_filters(self) -> None:
+        """Test fetch URLs stay unchanged when no page filters are given."""
+        registry = WidgetRegistry()
+        widgets = [
+            DashboardWidgetDefinition(
+                name="alpha_widget",
+                title="Alpha",
+                contributor="test",
+                render_endpoint="/admin/test/alpha",
+                size=WidgetSize.MEDIUM,
+                category=WidgetCategory.CUSTOM,
+                order=1,
+            ),
+        ]
+        html = registry.render_contributor_widgets(widgets)
+        assert 'hx-get="/admin/test/alpha"' in html

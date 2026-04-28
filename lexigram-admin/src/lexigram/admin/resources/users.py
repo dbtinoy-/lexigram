@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.admin.auth.entity import AdminUserEntity
 from lexigram.admin.resources.base import Resource
 from lexigram.admin.schema import BooleanField, DateField, SelectField, TextField
 from lexigram.admin.ui.filters import SelectFilter, ToggleFilter
@@ -31,8 +32,15 @@ class UserResource(Resource):
     """
 
     # Model configuration
-    model = None  # Will be set by DI or registry
+    model = AdminUserEntity
     service = None  # Will be set by DI or registry
+    # Secret/framework-managed columns must never render in generated forms
+    form_exclude_fields = (
+        "id",
+        "created_at",
+        "updated_at",
+        "hashed_password",
+    )
 
     # UI Configuration
     layout_type = "sidebar"

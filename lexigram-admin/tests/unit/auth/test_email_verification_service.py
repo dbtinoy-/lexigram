@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lexigram.admin.auth.errors import (
+    AdminAuthError,
     EmailVerificationTokenInvalidError,
     RateLimitExceededError,
 )
@@ -160,7 +161,7 @@ async def test_send_verification_saves_token_and_notifies() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_verification_fails_open_without_notifier() -> None:
+async def test_send_verification_fails_without_notifier() -> None:
     store = _make_store(verified=False)
     svc = AdminEmailVerificationService(
         config=AdminEmailVerificationConfig(), store=store
@@ -170,7 +171,10 @@ async def test_send_verification_fails_open_without_notifier() -> None:
         "user-001", "admin@example.com", "Admin User"
     )
 
-    assert result.is_ok()
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), AdminAuthError)
+    assert "notification/mailer dependency" in str(result.unwrap_err())
+    store.save_token.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -276,7 +280,10 @@ async def test_send_verification_rate_limit_increments() -> None:
     store = _make_store()
     cache = _make_cache("0")
     svc = AdminEmailVerificationService(
-        config=AdminEmailVerificationConfig(), store=store, cache=cache
+        config=AdminEmailVerificationConfig(),
+        store=store,
+        cache=cache,
+        notification_service=_make_notifier(),
     )
 
     result = await svc.send_verification(
@@ -295,7 +302,10 @@ async def test_send_verification_cache_failure_fails_open() -> None:
     cache = MagicMock()
     cache.get = AsyncMock(side_effect=RuntimeError("cache down"))
     svc = AdminEmailVerificationService(
-        config=AdminEmailVerificationConfig(), store=store, cache=cache
+        config=AdminEmailVerificationConfig(),
+        store=store,
+        cache=cache,
+        notification_service=_make_notifier(),
     )
 
     result = await svc.send_verification(

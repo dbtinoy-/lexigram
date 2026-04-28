@@ -141,7 +141,12 @@ class AdminCsrfMiddleware:
         """
         try:
             session = getattr(request, "session", {})
-            session_id: str = session.get("admin_user_id", "anonymous")
+            # Pre-session forms (password reset, verify-email) bind their
+            # token to ``csrf_session_id``; authenticated flows re-use the
+            # ``admin_user_id`` scope. Validate against whichever exists.
+            session_id: str = session.get(
+                "csrf_session_id"
+            ) or session.get("admin_user_id", "anonymous")
 
             content_type = (request.headers.get("content-type") or "").lower()
             is_form = content_type.startswith(

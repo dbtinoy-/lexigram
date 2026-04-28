@@ -8,12 +8,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from lexigram.admin.schema import SchemaField
 from lexigram.ui import Component, el
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from lexigram.admin.forms.fields import AbstractField
 
 
 @dataclass
@@ -59,7 +58,7 @@ class WizardStep:
         self,
         name: str,
         title: str,
-        fields: list[AbstractField],
+        fields: list[SchemaField],
         description: str | None = None,
         is_conditional: bool = False,
         condition_func: Callable[[dict[str, Any]], bool] | None = None,
@@ -82,10 +81,16 @@ class WizardStep:
         errors = {}
         for form_field in self.fields:
             value = data.get(form_field.name)
-            try:
-                form_field.validate(value)
-            except ValueError as e:
-                errors[form_field.name] = str(e)
+            raw = value if value is None or isinstance(value, str) else str(value)
+            result = form_field.from_form(raw)
+            if result.is_err():
+                errors[form_field.name] = str(result.unwrap_err())
+                continue
+            cleaned = result.unwrap()
+            if form_field.required and (
+                cleaned is None or (isinstance(cleaned, str) and not cleaned)
+            ):
+                errors[form_field.name] = "This field is required."
         return len(errors) == 0, errors
 
 
@@ -312,7 +317,8 @@ class WizardRenderer(Component):
 
     def render_current_step(self) -> Any:
         step = self.wizard.get_current_step()
-        fields_html = [f.render() for f in step.fields]
+        values = self.wizard.form_data
+        fields_html = [f.render_form(values.get(f.name)) for f in step.fields]
         return el(
             "div",
             el("h2", step.title, class_="text-xl font-bold mb-2"),

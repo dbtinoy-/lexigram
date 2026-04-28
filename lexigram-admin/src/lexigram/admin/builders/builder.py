@@ -8,13 +8,13 @@ from lexigram.admin.config import (
     AdminFeaturesConfig,
     AdminNavigationGroup,
 )
-from lexigram.primitives.builder import BaseBuilder  # type: ignore[attr-defined]
+from lexigram.primitives.builder import AbstractBuilder
 
 if TYPE_CHECKING:
     from lexigram.admin.di.bundle_provider import AdminProvider
 
 
-class AdminBuilder(BaseBuilder["AdminProvider"]):
+class AdminBuilder(AbstractBuilder["AdminProvider"]):
     """Fluent builder for AdminProvider."""
 
     def __init__(self) -> None:

@@ -23,6 +23,30 @@ class TestSearchIntegrationBoot:
     def integration(self, config: MagicMock) -> SearchIntegration:
         return SearchIntegration(config=config)
 
+    def test_is_available_false_by_default(self, integration: SearchIntegration) -> None:
+        """A fresh integration has no engine and reports unavailable."""
+        assert integration.is_available is False
+
+    def test_is_available_true_with_real_engine(
+        self, integration: SearchIntegration
+    ) -> None:
+        """is_available is True once a non-noop engine is resolved."""
+        backend = MagicMock()
+        backend.search = AsyncMock(return_value={"results": [], "total": 0})
+        integration._search = backend
+        assert integration.is_available is True
+
+    @pytest.mark.asyncio
+    async def test_is_available_false_when_noop(
+        self, integration: SearchIntegration
+    ) -> None:
+        """is_available stays False for the _NoOpSearch fallback."""
+        container = MagicMock()
+        container.resolve = AsyncMock(side_effect=RuntimeError("not found"))
+        integration._enabled = True
+        await integration.boot(container)
+        assert integration.is_available is False
+
     @pytest.mark.asyncio
     async def test_boot_stores_container(
         self, integration: SearchIntegration
@@ -51,18 +75,13 @@ class TestSearchIntegrationBoot:
         assert integration._search.__class__.__name__ == "_NoOpSearch"
 
     @pytest.mark.asyncio
-    async def test_get_engine_resolves_search_engine(
+    async def test_get_engine_resolves_search_engine_protocol(
         self, integration: SearchIntegration
     ) -> None:
-        """_get_engine() resolves SearchEngine from lexigram.search.engine."""
-        import sys
+        """_get_engine() resolves SearchEngineProtocol from contracts."""
+        from lexigram.contracts.search import SearchEngineProtocol
 
-        if "lexigram.search" not in sys.modules:
-            pytest.skip("lexigram.search is not installed")
-
-        from lexigram.search.engine import SearchEngine
-
-        mock_engine = MagicMock(spec=SearchEngine)
+        mock_engine = MagicMock(spec=SearchEngineProtocol)
         mock_engine.search = AsyncMock()
         container = MagicMock()
         container.resolve = AsyncMock(return_value=mock_engine)
@@ -73,34 +92,19 @@ class TestSearchIntegrationBoot:
 
         assert engine is mock_engine
         resolved_key = container.resolve.call_args[0][0]
-        assert resolved_key is SearchEngine, (
-            f"Expected SearchEngine, got {resolved_key}"
+        assert resolved_key is SearchEngineProtocol, (
+            f"Expected SearchEngineProtocol, got {resolved_key}"
         )
 
-    @pytest.mark.asyncio
-    async def test_get_engine_does_not_resolve_search_engine_protocol(
-        self, integration: SearchIntegration
-    ) -> None:
-        """_get_engine() does NOT resolve SearchEngineProtocol."""
-        import sys
+    def test_module_has_no_direct_lexigram_search_import(self) -> None:
+        """SearchIntegration must not import lexigram.search directly (§5)."""
+        import inspect
 
-        if "lexigram.search" not in sys.modules:
-            pytest.skip("lexigram.search is not installed")
+        from lexigram.admin.integrations import search as search_module
 
-        from lexigram.contracts.search import SearchEngineProtocol
-
-        mock_protocol = MagicMock(spec=SearchEngineProtocol)
-        container = MagicMock()
-        container.resolve = AsyncMock(return_value=mock_protocol)
-        integration._enabled = True
-        await integration.boot(container)
-
-        await integration._get_engine()
-
-        resolved_key = container.resolve.call_args[0][0]
-        assert resolved_key is not SearchEngineProtocol, (
-            "_get_engine() should not resolve SearchEngineProtocol"
-        )
+        source = inspect.getsource(search_module)
+        assert "from lexigram.search" not in source
+        assert "import lexigram.search" not in source
 
 
 class TestSearchIntegrationQuery:

@@ -154,7 +154,9 @@ class TopBar(Component):
             from lexigram.ui import NotificationBell
 
             right_elements = []
-            right_elements.append(NotificationBell().render())
+            right_elements.append(
+                NotificationBell(inbox_url="/admin/notifications").render()
+            )
             right_elements.append(ThemeToggle())
             right_node = el(
                 "div",

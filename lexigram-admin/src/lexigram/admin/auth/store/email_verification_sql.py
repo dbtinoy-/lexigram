@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from lexigram.admin.sql_dialect import is_postgres, now_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -58,18 +59,27 @@ class AdminEmailVerificationSqlStore:
         """Create the verification table if it does not exist (idempotent)."""
         if self._initialized:
             return
-        await self._db.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {_TABLE} (
-                user_id          TEXT         PRIMARY KEY,
-                email_verified_at TIMESTAMPTZ,
-                token_hash       VARCHAR(64),
-                token_expires_at TIMESTAMPTZ,
-                updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-            )
-            """,
-            [],
-        )
+        if is_postgres(self._db):
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    user_id          TEXT         PRIMARY KEY,
+                    email_verified_at TIMESTAMPTZ,
+                    token_hash       VARCHAR(64),
+                    token_expires_at TIMESTAMPTZ,
+                    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                )
+            """
+        else:
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    user_id          TEXT         PRIMARY KEY,
+                    email_verified_at TIMESTAMP,
+                    token_hash       VARCHAR(64),
+                    token_expires_at TIMESTAMP,
+                    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+        await self._db.execute(create_sql, [])
         await self._db.execute(
             f"""
             CREATE INDEX IF NOT EXISTS idx_{_TABLE}_token
@@ -129,7 +139,7 @@ class AdminEmailVerificationSqlStore:
             ON CONFLICT (user_id) DO UPDATE SET
                 token_hash = excluded.token_hash,
                 token_expires_at = excluded.token_expires_at,
-                updated_at = NOW()
+                updated_at = {now_expr(self._db)}
             """,
             [user_id, token_hash, expires_at],
         )
@@ -139,14 +149,14 @@ class AdminEmailVerificationSqlStore:
         result = await self._db.execute(
             f"""
             UPDATE {_TABLE} SET
-                email_verified_at = NOW(),
+                email_verified_at = {now_expr(self._db)},
                 token_hash = NULL,
                 token_expires_at = NULL,
-                updated_at = NOW()
+                updated_at = {now_expr(self._db)}
             WHERE user_id = ?
               AND token_hash = ?
               AND email_verified_at IS NULL
-              AND token_expires_at > NOW()
+              AND token_expires_at > {now_expr(self._db)}
             """,
             [user_id, token_hash],
         )
@@ -162,7 +172,7 @@ class AdminEmailVerificationSqlStore:
             UPDATE {_TABLE} SET
                 token_hash = NULL,
                 token_expires_at = NULL,
-                updated_at = NOW()
+                updated_at = {now_expr(self._db)}
             WHERE user_id = ?
             """,
             [user_id],

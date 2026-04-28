@@ -76,6 +76,65 @@ class TestSearchController:
         content = response.body.decode()
         assert "No results found" in content
 
+    @pytest.mark.asyncio
+    async def test_search_htmx_request_returns_fragment_only(
+        self, mock_service: MagicMock
+    ) -> None:
+        """HTMX requests keep the fragment-only contract (header drop-down)."""
+        mock_service.search.return_value = SearchResults(query="test")
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "test"}
+        request.headers.get.return_value = "true"
+        response = await controller.search(request)
+        content = response.body.decode()
+        assert "No results found" in content
+        assert "Global Search" not in content
+
+    @pytest.mark.asyncio
+    async def test_search_direct_navigation_returns_full_page(
+        self, mock_service: MagicMock
+    ) -> None:
+        """Direct navigation renders the search page inside the admin shell."""
+        mock_service.search.return_value = SearchResults(query="alice")
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "alice"}
+        request.headers.get.return_value = None
+        response = await controller.search(request)
+        content = response.body.decode()
+        assert "Global Search" in content
+        assert 'id="search-results"' in content
+        assert 'name="q"' in content
+
+    @pytest.mark.asyncio
+    async def test_search_full_page_embeds_initial_results(
+        self, mock_service: MagicMock
+    ) -> None:
+        """The full page pre-renders the current query's results server-side."""
+        mock_service.search.return_value = SearchResults(
+            query="alice",
+            total_count=1,
+            resource_counts={"users": 1},
+            results=[
+                SearchResult(
+                    resource_name="users",
+                    resource_label="Users",
+                    id=1,
+                    title="Alice",
+                    url="/admin/users/1",
+                ),
+            ],
+        )
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "alice"}
+        request.headers.get.return_value = None
+        response = await controller.search(request)
+        content = response.body.decode()
+        assert "Alice" in content
+        assert "/admin/users/1" in content
+
 
 class TestSearchControllerRender:
     """Tests for _render_results output."""

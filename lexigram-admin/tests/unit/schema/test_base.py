@@ -9,7 +9,7 @@ import pytest
 
 from lexigram.admin.schema import FieldError, FieldValidator, SchemaField
 from lexigram.result import Err, Ok, Result
-from lexigram.ui import Element
+from lexigram.ui import Element, InfolistEntryType
 
 
 class TestSchemaFieldABC:
@@ -137,6 +137,23 @@ class TestConcreteSchemaField:
     ) -> None:
         field = field_cls(name="email")
         assert field.render_filter() is None
+
+    def test_render_infolist_entry_defaults_to_text_type(
+        self, field_cls: type[SchemaField[str]]
+    ) -> None:
+        field = field_cls(name="email", label="Email")
+        entry = field.render_infolist_entry("hello@example.com")
+        assert entry.type == InfolistEntryType.TEXT
+        assert entry.name == "email"
+        assert entry.label == "Email"
+        assert entry.value == "hello@example.com"
+
+    def test_render_infolist_entry_default_label_from_name(
+        self, field_cls: type[SchemaField[str]]
+    ) -> None:
+        field = field_cls(name="email")
+        entry = field.render_infolist_entry("hello@example.com")
+        assert entry.label == "Email"
 
     def test_render_filter_with_current_value(
         self, field_cls: type[SchemaField[str]]

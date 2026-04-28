@@ -26,6 +26,8 @@ class TextField(SchemaField[str]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TextInput(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -52,6 +54,16 @@ class EmailField(TextField):
     the value as a ``mailto:`` link in columns.
     """
 
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace("_", " ").title(),
+            value=value,
+            type=InfolistEntryType.EMAIL,
+        )
+
     def render_form(
         self, value: str | None, *, errors: list[str] | None = None
     ) -> Element:
@@ -66,6 +78,8 @@ class EmailField(TextField):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TextInput(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -82,6 +96,16 @@ class PasswordField(TextField):
     the value in columns.
     """
 
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace("_", " ").title(),
+            value="\u2022\u2022\u2022\u2022\u2022\u2022" if value is not None else None,
+            type=InfolistEntryType.TEXT,
+        )
+
     def render_form(
         self, value: str | None, *, errors: list[str] | None = None
     ) -> Element:
@@ -96,6 +120,8 @@ class PasswordField(TextField):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TextInput(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -112,6 +138,16 @@ class URLField(TextField):
     the value as a clickable link in columns.
     """
 
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace("_", " ").title(),
+            value=value,
+            type=InfolistEntryType.URL,
+        )
+
     def render_form(
         self, value: str | None, *, errors: list[str] | None = None
     ) -> Element:
@@ -126,6 +162,8 @@ class URLField(TextField):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TextInput(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:

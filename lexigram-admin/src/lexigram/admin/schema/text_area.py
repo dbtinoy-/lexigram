@@ -31,6 +31,8 @@ class TextAreaField(TextField):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TextArea(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -69,6 +71,8 @@ class MarkdownField(TextAreaField):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return MarkdownEditor(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -140,6 +144,8 @@ class RichTextField(TextAreaField):
             kwargs["toolbar"] = self.toolbar
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return RichEditor(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:

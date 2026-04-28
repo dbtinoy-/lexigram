@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from lexigram.admin.exceptions import (
         AdminValidationError,
     )
+    from lexigram.contracts.admin.action_hooks import ActionHookProtocol
 
 T = TypeVar("T")
 
@@ -174,6 +175,33 @@ class ActionValidator(Protocol):
 class AbstractActionHandler(ABC):
     """Base class for action handlers."""
 
+    def __init__(self) -> None:
+        """Initialize lifecycle hook collections."""
+        self.before_hooks: list[ActionHookProtocol] = []
+        self.after_hooks: list[ActionHookProtocol] = []
+        self.failure_hooks: list[ActionHookProtocol] = []
+
+    def register_hooks(
+        self,
+        *,
+        before: list[ActionHookProtocol] | None = None,
+        after: list[ActionHookProtocol] | None = None,
+        failure: list[ActionHookProtocol] | None = None,
+    ) -> None:
+        """Register lifecycle hooks on this handler.
+
+        Args:
+            before: Hooks run before the action body.
+            after: Hooks run after successful execution.
+            failure: Hooks run when the action fails.
+        """
+        if before:
+            self.before_hooks.extend(before)
+        if after:
+            self.after_hooks.extend(after)
+        if failure:
+            self.failure_hooks.extend(failure)
+
     @abstractmethod
     async def execute(self, context: ActionContext) -> ActionResult:
         """Execute the action."""
@@ -202,6 +230,7 @@ class FunctionActionHandler(AbstractActionHandler):
         func: Callable[[ActionContext], Any],
         is_async: bool = True,
     ):
+        super().__init__()
         self.func = func
         self.is_async = is_async
 

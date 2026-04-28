@@ -5,13 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lexigram.contracts.mailer import EmailMessage
-from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
     from lexigram.admin.services.notifications.models import NotificationRecipient
     from lexigram.contracts.mailer.protocols import MailerProtocol
-
-logger = get_logger(__name__)
 
 
 class EmailSender:
@@ -26,7 +23,8 @@ class EmailSender:
         """Initialize email sender.
 
         Args:
-            mailer: MailerProtocol backend for email delivery; no-ops when None.
+            mailer: MailerProtocol backend for email delivery; raises
+                RuntimeError in send_email() when None.
             from_email: Default from email address.
             from_name: Default from name.
         """
@@ -65,10 +63,11 @@ class EmailSender:
             if result.is_err():
                 raise RuntimeError(str(result.unwrap_err()))
         else:
-            logger.info(
-                "notification_email_skipped",
-                to=recipient.email,
-                subject=subject,
+            raise RuntimeError(
+                "No mailer backend is configured. Register a MailerProtocol "
+                "(e.g. lexigram-notification MailerModule with driver "
+                "'smtp'/'sendgrid', or 'console' for development logging) so "
+                f"emails like '{subject}' can be delivered to {recipient.email}."
             )
 
 

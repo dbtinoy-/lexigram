@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-import pytest
-
 try:
     from lexigram.admin.builders.builder import AdminBuilder
 
@@ -130,7 +128,7 @@ class TestAdminBuilderFluent:
         b = AdminBuilder()
         result = b.resource("CommentResource")
         assert result is b
-        assert "CommentResource" in b._resources
+        assert ("CommentResource", None, None) in b._resources
 
     def test_controller_appends(self) -> None:
         b = AdminBuilder()

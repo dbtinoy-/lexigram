@@ -38,6 +38,8 @@ class ToggleField(BooleanField):
             kwargs["label"] = ""
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return Switch(**kwargs).render()
 
 
@@ -56,6 +58,8 @@ class ColorField(SchemaField[str]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return ColorPicker(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -106,6 +110,8 @@ class RatingField(SchemaField[int]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return Rating(**kwargs).render()
 
     def render_column(self, record: Any, value: int | None) -> Element:
@@ -150,6 +156,8 @@ class TagsField(SchemaField[list[str]]):
             kwargs["placeholder"] = self.placeholder
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TagsInput(**kwargs).render()
 
     def render_column(self, record: Any, value: list[str] | None) -> Element:
@@ -200,6 +208,8 @@ class KeyValueField(SchemaField[dict[str, str]]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return KeyValueWidget(**kwargs).render()
 
     def render_column(self, record: Any, value: dict[str, str] | None) -> Element:

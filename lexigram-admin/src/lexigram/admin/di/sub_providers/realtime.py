@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
+from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
     from lexigram.admin.config import AdminConfig
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
+
+logger = get_logger(__name__)
 
 
 class AdminRealtimeSubProvider:
@@ -24,6 +27,8 @@ class AdminRealtimeSubProvider:
         self._config = config
         self._kwargs = kwargs
         self._initialized = False
+        self._hub: Any = None
+        self._inbox_bridge_wired = False
 
     @property
     def config(self) -> AdminConfig:
@@ -59,7 +64,38 @@ class AdminRealtimeSubProvider:
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot realtime services: initialize WebSocket and SSE connections."""
+        from lexigram.admin.realtime.sse import AdminEventHub
+        from lexigram.contracts.notification.inbox import INBOX_SENT_HOOK
+        from lexigram.hooks.ambient import register_action
+
+        try:
+            self._hub = await container.resolve(AdminEventHub)
+        except Exception:  # noqa: BLE001 — hub is optional
+            self._hub = None
+            logger.debug("admin_realtime.no_event_hub")
+
+        if self._hub is not None and not self._inbox_bridge_wired:
+            register_action(INBOX_SENT_HOOK, self._publish_inbox_sent)
+            self._inbox_bridge_wired = True
+            logger.info("admin_realtime.inbox_bridge_wired", hook=INBOX_SENT_HOOK)
+
         self._initialized = True
+
+    async def _publish_inbox_sent(self, **kwargs: Any) -> None:
+        """Push an inbox message to the SSE hub for its recipient."""
+        if self._hub is None:
+            return
+
+        message = kwargs.get("message")
+        metadata = getattr(message, "metadata", None)
+        level = metadata.get("level", "info") if isinstance(metadata, dict) else "info"
+
+        await self._hub.publish_notification(
+            title=kwargs.get("title", "Notification"),
+            message=kwargs.get("body", ""),
+            level=str(level),
+            target_users=[kwargs["user_id"]] if kwargs.get("user_id") else None,
+        )
 
     async def shutdown(self) -> None:
         """Shut down realtime services."""

@@ -22,6 +22,7 @@ from lexigram.admin.services.action_registry import (
     ActionResult,
     ActionType,
 )
+from lexigram.contracts.admin.action_hooks import ActionHookProtocol
 from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
 from lexigram.di.decorators import inject
 from lexigram.result import Err, Ok, Result
@@ -67,6 +68,7 @@ class ActionExecutor:
         authorizer: AdminAuthorizerProtocol | None = None,
         task_scheduler: TaskScheduler | None = None,
         event_hub: Any | None = None,
+        resource_resolver: Any | None = None,
     ):
         """Initialize the action executor.
 
@@ -75,11 +77,15 @@ class ActionExecutor:
             authorizer: Optional authorizer for permission checks
             task_scheduler: Optional task scheduler for async actions
             event_hub: Optional AdminEventHub for publishing real-time notifications
+            resource_resolver: Optional callable ``(resource_name) -> Resource``
+                used to resolve resource-level action hooks via
+                ``Resource.get_action_hooks(action_name)``.
         """
         self.registry = registry
         self.authorizer = authorizer
         self.task_scheduler = task_scheduler
         self.event_hub = event_hub
+        self.resource_resolver = resource_resolver
 
     async def execute(
         self,
@@ -156,6 +162,20 @@ class ActionExecutor:
             if validation_result.is_err():
                 return validation_result
 
+        # Run before hooks (may amend data or abort the action)
+        hooks_result = await self._run_before_hooks(context, handler)
+        if hooks_result.is_err():
+            error = hooks_result.unwrap_err()
+            await self._run_failure_hooks(context, handler, error)
+            await self._publish_action_failure(
+                context, config.label or context.action_name, str(error)
+            )
+            return Err(
+                AdminError(
+                    message=getattr(error, "message", None) or str(error),
+                ),
+            )
+
         # Execute based on mode
         try:
             if config.execution_mode == ActionExecutionMode.ASYNC:
@@ -168,6 +188,7 @@ class ActionExecutor:
         except (RuntimeError, ValueError, TypeError, OSError) as e:
             if hasattr(handler, "on_failure"):
                 await handler.on_failure(context, e)
+            await self._run_failure_hooks(context, handler, e)
             await self._publish_action_failure(
                 context, config.label or context.action_name, str(e)
             )
@@ -188,7 +209,99 @@ class ActionExecutor:
         if hasattr(handler, "on_success"):
             await handler.on_success(context, result)
 
+        await self._run_after_hooks(context, handler, result)
+
         return Ok(result)
+
+    async def _run_before_hooks(
+        self,
+        context: ActionContext,
+        handler: ActionHandler,
+    ) -> Result[None, Exception]:
+        """Run before hooks for an action.
+
+        Collects hooks from the handler (``HasActionHooks``) and from the
+        resource via ``Resource.get_action_hooks``. Each hook may amend
+        ``context.parameters``; returning ``Err`` aborts the action.
+
+        Args:
+            context: Action execution context
+            handler: Action handler
+
+        Returns:
+            ``Ok(None)`` if all hooks passed, ``Err`` to abort the action.
+        """
+        for hook in self._collect_hooks(context, handler, "before"):
+            result = await hook.before(context, context.parameters)
+            if result.is_err():
+                return Err(result.unwrap_err())
+            amended = result.unwrap()
+            if amended:
+                context.parameters.update(amended)
+        return Ok(None)
+
+    async def _run_after_hooks(
+        self,
+        context: ActionContext,
+        handler: ActionHandler,
+        action_result: ActionResult,
+    ) -> None:
+        """Run after hooks for a successful action execution.
+
+        Args:
+            context: Action execution context
+            handler: Action handler
+            action_result: Result of the action body
+        """
+        for hook in self._collect_hooks(context, handler, "after"):
+            await hook.after(context, action_result)
+
+    async def _run_failure_hooks(
+        self,
+        context: ActionContext,
+        handler: ActionHandler,
+        error: Exception,
+    ) -> None:
+        """Run failure hooks when an action fails.
+
+        Args:
+            context: Action execution context
+            handler: Action handler
+            error: The error that caused the failure
+        """
+        for hook in self._collect_hooks(context, handler, "failure"):
+            await hook.on_failure(context, error)
+
+    def _collect_hooks(
+        self, context: ActionContext, handler: ActionHandler, stage: str
+    ) -> list[ActionHookProtocol]:
+        """Collect lifecycle hooks for an action.
+
+        Hooks come from two sources:
+        - Handler-level: ``before_hooks`` / ``after_hooks`` / ``failure_hooks``
+          attributes on the handler (``HasActionHooks``).
+        - Resource-level: ``Resource.get_action_hooks(action_name)`` resolved
+          via ``resource_resolver``.
+
+        Args:
+            context: Action execution context
+            handler: Action handler
+            stage: One of ``"before"``, ``"after"``, ``"failure"``
+
+        Returns:
+            List of hooks to run for the stage.
+        """
+        hooks: list[ActionHookProtocol] = []
+        handler_hooks = getattr(handler, f"{stage}_hooks", None)
+        if handler_hooks:
+            hooks.extend(handler_hooks)
+        if self.resource_resolver:
+            resource = self.resource_resolver(context.resource_name)
+            if resource is not None:
+                resource_hooks = getattr(resource, "get_action_hooks", None)
+                if resource_hooks:
+                    hooks.extend(resource_hooks(context.action_name))
+        return hooks
 
     async def _execute(
         self,

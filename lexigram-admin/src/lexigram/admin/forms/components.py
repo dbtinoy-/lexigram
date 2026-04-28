@@ -4,7 +4,10 @@ Includes FormBase, FormBuilder, and FormSchemaGenerator.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
+from datetime import date, datetime
+from enum import Enum
 import types as _builtin_types
 from typing import (
     TYPE_CHECKING,
@@ -21,49 +24,85 @@ if TYPE_CHECKING:
     from lexigram.admin.forms.builder import Form
 
 from lexigram.admin.exceptions import AdminValidationError
-from lexigram.admin.forms.fields import AbstractField, FieldSchema, FieldType
+from lexigram.admin.schema import (
+    BelongsToField,
+    BooleanField,
+    DateField,
+    DateTimeField,
+    EnumField,
+    FloatField,
+    HasManyField,
+    IntegerField,
+    JsonField,
+    MorphField,
+    MultiSelectField,
+    SchemaField,
+    TextField,
+)
 from lexigram.contracts.exceptions import FieldError
 from lexigram.result import Err, Ok, Result
 from lexigram.ui import Component, el
-
-try:
-    from lexigram.domain import DomainModel
-
-    HAS_PYDANTIC = True
-except ImportError:
-    HAS_PYDANTIC = False
 
 
 @dataclass
 class FormSchema:
     """Definition of a complete form structure."""
 
-    fields: list[FieldSchema] = field(default_factory=list)
+    fields: list[SchemaField] = field(default_factory=list)
     title: str | None = None
     description: str | None = None
     resource_name: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     layout: Any | None = None
 
-    def get_field(self, name: str) -> FieldSchema | None:
+    def get_field(self, name: str) -> SchemaField | None:
         for f in self.fields:
             if f.name == name:
                 return f
         return None
 
+    def filter_for_user(
+        self,
+        user: Any,
+        resource_name: str,
+        permission_service: Any | None = None,
+    ) -> FormSchema:
+        """Return a copy of this schema with RBAC rules applied.
+
+        Args:
+            user: Current user for permission checks.
+            resource_name: Resource the form is rendered for.
+            permission_service: PermissionService used for field-level
+                checks. When None, the schema is returned unchanged.
+
+        Returns:
+            New FormSchema with non-viewable fields removed and
+            non-editable fields marked readonly.
+        """
+        if permission_service is None:
+            return self
+        fields: list[SchemaField] = []
+        for f in self.fields:
+            if not permission_service.can_view_field(user, resource_name, f.name):
+                continue
+            schema_field = f
+            if not permission_service.can_edit_field(user, resource_name, f.name):
+                schema_field = dataclasses.replace(f, readonly=True)
+            fields.append(schema_field)
+        return dataclasses.replace(self, fields=fields)
+
 
 class FormMeta(type):
-    """Metaclass to collect Field instances from class attributes."""
+    """Metaclass to collect SchemaField instances from class attributes."""
 
     def __new__(mcs, name, bases, namespace) -> Any:
-        fields = {}
+        fields: dict[str, SchemaField] = {}
         for base in bases:
             if hasattr(base, "_declared_fields"):
                 fields.update(base._declared_fields)
         for key, value in list(namespace.items()):
-            if isinstance(value, AbstractField):
-                fields[key] = value
-                value.name = key
+            if isinstance(value, SchemaField):
+                fields[key] = dataclasses.replace(value, name=key)
         namespace["_declared_fields"] = fields
         return super().__new__(mcs, name, bases, namespace)
 
@@ -71,7 +110,7 @@ class FormMeta(type):
 class FormBase(Component, metaclass=FormMeta):
     """Base form class with lifecycle and rendering support."""
 
-    _declared_fields: ClassVar[dict[str, AbstractField]]
+    _declared_fields: ClassVar[dict[str, SchemaField]]
 
     def __init__(
         self,
@@ -90,31 +129,42 @@ class FormBase(Component, metaclass=FormMeta):
         self.method = method
         self.hx_post = hx_post
         self.hx_target = hx_target
-        self.fields: dict[str, AbstractField] = {}
+        self.fields: dict[str, SchemaField] = dict(self._declared_fields)
+        self.values: dict[str, Any] = {}
         self.errors: dict[str, list[str]] = {}
         self._initialize_fields()
         if self.data:
             self.is_valid()
 
-    def _initialize_fields(self) -> Any:
-        for name, field_proto in self._declared_fields.items():
-            value = self.data.get(name)
-            if value is None and not self.data:
-                value = self.initial.get(name, field_proto.default)
-            elif value is None and self.data:
-                value = field_proto.default
-            self.fields[name] = field_proto.bind(value)
+    def _initialize_fields(self) -> None:
+        for name, field_schema in self._declared_fields.items():
+            if name in self.data:
+                self.values[name] = self.data[name]
+            elif name in self.initial:
+                self.values[name] = self.initial[name]
+            else:
+                self.values[name] = field_schema.default
 
     def is_valid(self) -> bool:
         self.errors = {}
         is_valid = True
-        for name, form_field in self.fields.items():
-            try:
-                form_field.validate(form_field.value)
-            except ValueError as e:
-                form_field.errors.append(str(e))
-                self.errors[name] = [str(e)]
+        for name, field_schema in self._declared_fields.items():
+            value = self.values.get(name)
+            raw = value if value is None or isinstance(value, str) else str(value)
+            result = field_schema.from_form(raw)
+            if result.is_err():
+                error = result.unwrap_err()
+                self.errors[name] = [str(error)]
                 is_valid = False
+                continue
+            cleaned = result.unwrap()
+            if field_schema.required and (
+                cleaned is None or (isinstance(cleaned, str) and not cleaned)
+            ):
+                self.errors[name] = ["This field is required."]
+                is_valid = False
+            else:
+                self.values[name] = cleaned
         return is_valid
 
     async def validate(self) -> Result[dict[str, Any], AdminValidationError]:
@@ -140,7 +190,7 @@ class FormBase(Component, metaclass=FormMeta):
 
     @property
     def cleaned_data(self) -> dict:
-        return {name: form_field.value for name, form_field in self.fields.items()}
+        return dict(self.values)
 
     def render(self) -> Any:
         from lexigram.ui import Button
@@ -161,7 +211,10 @@ class FormBase(Component, metaclass=FormMeta):
             else:
                 form_body = str(layout)
         else:
-            form_content = [field.render() for field in self.fields.values()]
+            form_content = [
+                field_schema.render_form(self.values.get(name))
+                for name, field_schema in self.fields.items()
+            ]
             form_body = el("div", *form_content, class_="space-y-4")
 
         actions = el(
@@ -225,9 +278,7 @@ class FormSchemaGenerator:
 
         return FormSchema(fields=fields, title=title)
 
-    def _parse_pydantic_field(self, name: str, field_info: FieldInfo) -> FieldSchema:
-        annotation = field_info.annotation
-        field_type = self._map_type(name, annotation)
+    def _parse_pydantic_field(self, name: str, field_info: FieldInfo) -> SchemaField:
         from pydantic_core import PydanticUndefined
 
         label = (
@@ -243,45 +294,16 @@ class FormSchemaGenerator:
             or field_info.default_factory is not None
         ):
             is_required = False
-        nested_schema = None
-        if field_type == FieldType.NESTED:
-            # Handle Optional[Model], Union[Model, None], or X | None (3.10+)
-            origin = get_origin(annotation)
-            args = get_args(annotation)
-            model_class = annotation
-            _union_types = (Union, _builtin_types.UnionType)
-            if origin in _union_types:
-                for arg in args:
-                    if (
-                        arg is not type(None)
-                        and isinstance(arg, type)
-                        and issubclass(arg, DomainModel)
-                    ):
-                        model_class = arg
-                        break
-
-            if isinstance(model_class, type) and issubclass(model_class, DomainModel):
-                nested_schema = self.from_pydantic(model_class)
-
-        related_resource = None
-        related_field = None
-        if field_type == FieldType.BELONGS_TO and name.endswith("_id"):
-            related_resource = name[:-3] + "s"
-        elif field_type == FieldType.HAS_MANY:
-            related_field = None
-
-        return FieldSchema(
-            name=name,
+        default = (
+            field_info.default if field_info.default is not PydanticUndefined else None
+        )
+        return self._build_field(
+            name,
+            field_info.annotation,
             label=label,
-            type=field_type,
             required=is_required,
-            default=field_info.default
-            if field_info.default is not PydanticUndefined
-            else None,
             help_text=field_info.description,
-            nested_schema=nested_schema,
-            related_resource=related_resource,
-            related_field=related_field,
+            default=default,
         )
 
     def _parse_dataclass_field(
@@ -290,13 +312,10 @@ class FormSchemaGenerator:
         annotation: Any,
         dc_field: Any,
         meta: dict,
-    ) -> FieldSchema:
-        """Parse a stdlib dataclass field into a ``FieldSchema``."""
+    ) -> SchemaField:
+        """Parse a stdlib dataclass field into a ``SchemaField``."""
         import dataclasses
 
-        field_type = self._map_type(name, annotation)
-        label = meta.get("title") or name.replace("_", " ").title()
-        description = meta.get("description")
         is_required = (
             dc_field.default is dataclasses.MISSING
             and dc_field.default_factory is dataclasses.MISSING
@@ -310,100 +329,177 @@ class FormSchemaGenerator:
                 else None
             )
         )
-
-        nested_schema = None
-        if field_type == FieldType.NESTED:
-            origin = get_origin(annotation)
-            args = get_args(annotation)
-            model_class = annotation
-            _union_types = (Union, _builtin_types.UnionType)
-            if origin in _union_types:
-                for arg in args:
-                    if (
-                        arg is not type(None)
-                        and isinstance(arg, type)
-                        and hasattr(arg, "__dataclass_fields__")
-                    ):
-                        model_class = arg
-                        break
-            if isinstance(model_class, type) and hasattr(
-                model_class, "__dataclass_fields__"
-            ):
-                nested_schema = self.from_pydantic(model_class)
-
-        related_resource = None
-        related_field = None
-        if field_type == FieldType.BELONGS_TO and name.endswith("_id"):
-            related_resource = name[:-3] + "s"
-        elif field_type == FieldType.HAS_MANY:
-            related_field = None
-
-        return FieldSchema(
-            name=name,
-            label=label,
-            type=field_type,
+        return self._build_field(
+            name,
+            annotation,
+            label=meta.get("title") or name.replace("_", " ").title(),
             required=is_required,
+            help_text=meta.get("description"),
             default=default,
-            help_text=description,
-            nested_schema=nested_schema,
-            related_resource=related_resource,
-            related_field=related_field,
         )
 
-    def _map_type(self, field_name: str, annotation: Any) -> FieldType:
+    def _build_field(
+        self,
+        name: str,
+        annotation: Any,
+        *,
+        label: str | None = None,
+        required: bool = False,
+        help_text: str | None = None,
+        default: Any = None,
+    ) -> SchemaField:
+        """Map a model annotation to a ``SchemaField`` instance."""
+
+        def is_model(t: Any) -> bool:
+            return isinstance(t, type) and (
+                hasattr(t, "model_fields") or hasattr(t, "__dataclass_fields__")
+            )
+
         # Detect belongs-to FK: field ends with _id
-        if field_name.endswith("_id"):
-            return FieldType.BELONGS_TO
+        if name.endswith("_id"):
+            return BelongsToField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+                resource=f"{name[:-3]}s",
+            )
 
         origin = get_origin(annotation)
         args = get_args(annotation)
-
-        # Detect has-many: list of domain models
-        if origin is list and args:
-            inner = args[0]
-            if isinstance(inner, type) and (
-                hasattr(inner, "model_fields") or hasattr(inner, "__dataclass_fields__")
-            ):
-                return FieldType.HAS_MANY
 
         # Detect polymorphic: Optional[Union[TypeA, TypeB]]
         _union_types = (Union, _builtin_types.UnionType)
         if origin in _union_types:
             inner_types = [t for t in args if t is not type(None)]
-            non_primitive = [
-                t
-                for t in inner_types
-                if isinstance(t, type) and hasattr(t, "__dataclass_fields__")
-            ]
+            non_primitive = [t for t in inner_types if is_model(t)]
             if len(non_primitive) >= 2:
-                return FieldType.MORPH
+                return MorphField(
+                    name=name,
+                    label=label,
+                    help_text=help_text,
+                    required=required,
+                    default=default,
+                    resource=name,
+                )
+            if len(inner_types) == 1:
+                return self._build_field(
+                    name,
+                    inner_types[0],
+                    label=label,
+                    required=required,
+                    help_text=help_text,
+                    default=default,
+                )
+            return TextField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
 
-        # Original mapping logic follows (unchanged)
-        if origin in _union_types:
-            for arg in args:
-                if arg is not type(None):
-                    return self._map_type(field_name, arg)
-            return FieldType.TEXT
+        # Detect has-many: list of domain models
+        if origin is list and args:
+            if is_model(args[0]):
+                return HasManyField(
+                    name=name,
+                    label=label,
+                    help_text=help_text,
+                    required=required,
+                    default=default,
+                    resource=f"{args[0].__name__.lower()}s",
+                )
+            if args[0] is str:
+                return MultiSelectField(
+                    name=name,
+                    label=label,
+                    help_text=help_text,
+                    required=required,
+                    default=default,
+                )
+            return JsonField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
+
+        if isinstance(annotation, type) and issubclass(annotation, Enum):
+            return EnumField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+                enum_cls=annotation,
+            )
         if annotation is str:
-            return FieldType.TEXT
-        if annotation is int or annotation is float:
-            return FieldType.NUMBER
+            return TextField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
+        if annotation is int:
+            return IntegerField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
+        if annotation is float:
+            return FloatField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
         if annotation is bool:
-            return FieldType.CHECKBOX
-        from datetime import date, datetime
-
+            return BooleanField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
         if annotation is date:
-            return FieldType.DATE
+            return DateField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
         if annotation is datetime:
-            return FieldType.DATETIME
-        if isinstance(annotation, type) and (
-            issubclass(annotation, DomainModel)
-            or hasattr(annotation, "__dataclass_fields__")
-        ):
-            return FieldType.NESTED
-        if origin is list:
-            return FieldType.LIST
-        return FieldType.TEXT
+            return DateTimeField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
+        # Nested model → structured JSON input
+        if is_model(annotation):
+            return JsonField(
+                name=name,
+                label=label,
+                help_text=help_text,
+                required=required,
+                default=default,
+            )
+        return TextField(
+            name=name,
+            label=label,
+            help_text=help_text,
+            required=required,
+            default=default,
+        )
 
 
 def build_form(**fields) -> Form[Any]:
