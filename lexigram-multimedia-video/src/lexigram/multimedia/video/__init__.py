@@ -16,6 +16,7 @@ from lexigram.multimedia.video.providers import (
     LocalHttpVideoProvider,
     OpenAIVideoProvider,
     RunwayVideoProvider,
+    SVDVideoProvider,
     Wan22VideoProvider,
 )
 from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessingTask
@@ -26,6 +27,7 @@ __all__ = [
     "LocalHttpVideoProvider",
     "OpenAIVideoProvider",
     "RunwayVideoProvider",
+    "SVDVideoProvider",
     "VideoConfig",
     "VideoGenerationAuthenticationError",
     "VideoGenerationError",
