@@ -65,6 +65,7 @@ class AIProvider(Provider, AIProviderProtocol):
         llm_config: ClientConfig | None = None,
         vector_config: VectorConfig | None = None,
         name: str = "ai",
+        disabled: set[str] | None = None,
     ) -> None:
         """Initialize the Intelligence Provider.
 
@@ -73,9 +74,15 @@ class AIProvider(Provider, AIProviderProtocol):
             llm_config: LLM-specific configuration (overrides config.llm)
             vector_config: Vector-specific configuration (overrides config.vector)
             name: Provider name
+            disabled: AI-subsystem entry-point names to skip during
+                ``lexigram.ai.subsystems`` discovery (e.g. from
+                ``lexigram.plugins.state.load_disabled()`` — this provider
+                takes the resolved set as plain data, it does not import
+                ``lexigram-plugins`` itself).
         """
         super().__init__(name=name)
         self._config_override = config
+        self._disabled_subsystems: set[str] = disabled or set()
 
         # Configuration overrides
         self._llm_config_override = llm_config
@@ -248,6 +255,12 @@ class AIProvider(Provider, AIProviderProtocol):
             from importlib.metadata import entry_points as _entry_points
 
             for _ep in _entry_points(group="lexigram.ai.subsystems"):
+                if _ep.name in self._disabled_subsystems:
+                    logger.info(
+                        "Skipped disabled AI subsystem",
+                        subsystem=_ep.name,
+                    )
+                    continue
                 config_arg = _SUBSYSTEM_CONFIGS.get(_ep.name)
                 _provider_cls = _ep.load()
                 _sub_provider = (
