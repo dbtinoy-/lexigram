@@ -109,6 +109,27 @@ class VideoGenerationProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._video_config.backend == "openai":
+            from lexigram.multimedia.video.providers.openai import OpenAIVideoProvider
+
+            api_key = (
+                await self._resolve_credential(
+                    self._video_config.openai_api_key_secret_name
+                )
+                or ""
+            )
+            self._credential_resolved = bool(api_key)
+            self._backend = cast(
+                "VideoProvider",
+                OpenAIVideoProvider(
+                    api_key=api_key or "",
+                    model=self._video_config.openai_model,
+                    base_url=self._video_config.openai_base_url,
+                    timeout=self._video_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented video backend: {self._video_config.backend!r}"
