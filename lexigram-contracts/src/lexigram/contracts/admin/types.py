@@ -82,6 +82,24 @@ class NavigationContribution:
 
 
 @dataclass(frozen=True)
+class PageFilterField:
+    """Schema field for a page-level dashboard filter (Filament
+    ``HasFiltersForm``/``InteractsWithPageFilters`` parity).
+
+    Mirrors the admin-side ``ConfigField`` shape, but lives here because it
+    crosses the contributor boundary: ``ManagementPageDefinition`` carries a
+    filter schema that contributor packages declare.
+    """
+
+    name: str
+    type: str  # "select" | "number" | "text" | "boolean"
+    label: str
+    options: tuple[tuple[str, str], ...] = ()  # (value, display_label) for select
+    default: str | int | bool | None = None
+    description: str = ""
+
+
+@dataclass(frozen=True)
 class ManagementPageDefinition:
     """Full management page contributed by a package.
 
@@ -99,6 +117,7 @@ class ManagementPageDefinition:
     permission: str | None = None
     description: str = ""
     order: int = 100
+    filters: tuple[PageFilterField, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
