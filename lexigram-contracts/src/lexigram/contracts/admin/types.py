@@ -145,6 +145,7 @@ class AdminHealthDefinition:
     check_endpoint: str | None = None
     icon: str = "heart-pulse"
     description: str = ""
+    permission: str | None = None
 
 
 @dataclass(frozen=True)
