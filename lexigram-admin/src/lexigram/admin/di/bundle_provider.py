@@ -381,6 +381,32 @@ class AdminProvider(Provider):
             controller_instances.append(auth_controller)
             if admin_settings_service is not None:
                 auth_controller._settings_service = admin_settings_service
+
+            # Wire self-service registration (opt-in via config). Best-effort:
+            # without a resolvable user store, registration stays disabled.
+            try:
+                from lexigram.admin.auth.store.protocols import (
+                    AdminUserStoreProtocol,
+                )
+
+                auth_controller._user_store = await admin_resolver.resolve(
+                    AdminUserStoreProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                auth_controller._user_store = None
+            registration = getattr(self._config.auth, "registration", None)
+            auth_controller._registration_enabled = bool(
+                registration and registration.enabled
+            )
+            auth_controller._registration_default_role = (
+                str(registration.default_role) if registration else "admin"
+            )
+            auth_controller._registration_domains = (
+                list(registration.allowed_email_domains)
+                if registration
+                else []
+            )
         except Exception as exc:
             _log.error(
                 "admin.auth_controller_resolution_failed",
@@ -563,6 +589,8 @@ class AdminProvider(Provider):
 
         # Mount InfrastructureController (cluster landing page)
         try:
+            from lexigram.admin.clusters import Cluster, ClusterRegistry
+            from lexigram.admin.controllers.clusters import ClusterCenterController
             from lexigram.admin.controllers.infrastructure import (
                 InfrastructureController,
             )
@@ -575,6 +603,30 @@ class AdminProvider(Provider):
             controller_instances.append(
                 InfrastructureController(renderer=infra_renderer)
             )
+
+            # Build the cluster registry (built-in + config-declared extras)
+            # and mount a generic center controller per extra cluster.
+            cluster_registry = ClusterRegistry.with_defaults()
+            extra_specs = getattr(self._config, "clusters", None)
+            for spec in (extra_specs.extra if extra_specs else []) or []:
+                cluster = Cluster(
+                    name=spec.name,
+                    label=spec.label,
+                    icon=spec.icon,
+                    order=spec.order,
+                    collapsible=spec.collapsible,
+                    collapsed_by_default=spec.collapsed_by_default,
+                    slug=spec.slug,
+                    group=spec.group,
+                    description=spec.description,
+                )
+                cluster_registry.register(cluster)
+                controller_instances.append(
+                    ClusterCenterController(
+                        renderer=infra_renderer,
+                        cluster=cluster,
+                    )
+                )
         except Exception as exc:
             _log.warning(
                 "admin.infrastructure_controller_skipped",
@@ -1007,6 +1059,15 @@ class AdminProvider(Provider):
         if admin_app is not None and hasattr(admin_app, "state"):
             admin_app.state.assembler_nav_items = assembler_nav_items
             admin_app.state.assembler_groups = assembler_groups or {}
+
+        # Expose the cluster registry on app state so nav resolution and
+        # cluster centers resolve the active cluster per request.
+        _clusters = locals().get("cluster_registry")
+        if _clusters is not None:
+            if hasattr(app, "state"):
+                app.state.cluster_registry = _clusters
+            if admin_app is not None and hasattr(admin_app, "state"):
+                admin_app.state.cluster_registry = _clusters
 
         _log.info("admin.mounted", prefix=self._config.prefix)
 

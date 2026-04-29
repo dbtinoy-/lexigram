@@ -240,6 +240,23 @@ class AdminEmailVerificationConfig(DomainModel):
 
 
 @dataclass(init=False)
+class AdminRegistrationConfig(DomainModel):
+    """Self-service registration configuration.
+
+    Off by default — admin panels are typically invite-only. When enabled,
+    ``GET/POST /admin/register`` becomes available and new accounts receive
+    the configured default role.
+    """
+
+    enabled: bool = Field(default=False, description="Allow self-service registration")
+    default_role: str = Field(default="admin", description="Role granted to new accounts")
+    allowed_email_domains: list[str] = Field(
+        default_factory=list,
+        description="Restrict registration to these email domains (empty = any)",
+    )
+
+
+@dataclass(init=False)
 class AdminAuthConfig(DomainModel):
     """Authentication configuration."""
 
@@ -274,6 +291,9 @@ class AdminAuthConfig(DomainModel):
     email_otp: AdminEmailOtpConfig = Field(default_factory=AdminEmailOtpConfig)
     email_verification: AdminEmailVerificationConfig = Field(
         default_factory=AdminEmailVerificationConfig
+    )
+    registration: AdminRegistrationConfig = Field(
+        default_factory=AdminRegistrationConfig
     )
 
     # Users and Roles (Sync)
@@ -534,6 +554,36 @@ class FrameworkPagesConfig(DomainModel):
 
 
 @dataclass(init=False)
+@dataclass(init=False)
+class ClusterSpec(DomainModel):
+    """Declarative description of an extra cluster.
+
+    Registered clusters get a routable center at ``/admin/{slug}`` with
+    its own landing page, namespaced child URLs, secondary sidebar, and
+    primary-sidebar collapse — no per-cluster code required.
+    """
+
+    name: str = Field(description="Cluster key (used to derive slug/group when unset)")
+    label: str = Field(description="Display label")
+    icon: str | None = Field(default=None, description="Icon name")
+    order: int = Field(default=0, description="Sort order in the registry")
+    collapsible: bool = Field(default=True)
+    collapsed_by_default: bool = Field(default=False)
+    slug: str = Field(default="", description="URL segment (defaults to name)")
+    group: str = Field(default="", description="Navigation group (defaults to name)")
+    description: str | None = Field(default=None)
+
+
+@dataclass(init=False)
+class AdminClustersConfig(DomainModel):
+    """Aggregate configuration for cluster centers."""
+
+    extra: list[ClusterSpec] = Field(
+        default_factory=list,
+        description="Extra clusters beyond the built-in infrastructure cluster",
+    )
+
+
 class AdminConfig(BaseConfig):
     """Complete admin configuration - SINGLE SOURCE OF TRUTH.
 
@@ -595,6 +645,7 @@ class AdminConfig(BaseConfig):
     features: AdminFeaturesConfig = Field(default_factory=AdminFeaturesConfig)
     rbac: AdminRbacConfig = Field(default_factory=AdminRbacConfig)
     data: AdminDataConfig = Field(default_factory=AdminDataConfig)
+    clusters: AdminClustersConfig = Field(default_factory=AdminClustersConfig)
     observability: AdminObservabilityConfig = Field(
         default_factory=AdminObservabilityConfig
     )

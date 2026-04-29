@@ -210,7 +210,7 @@ class TestSearchControllerIntegration:
         request = MagicMock()
         request.query_params = {"q": "alice"}
         response = await controller.search(request)
-        mock_service.search.assert_awaited_once_with("alice")
+        mock_service.search.assert_awaited_once_with("alice", rule=None)
         content = response.body.decode()
         assert 'class="search-results' in content
         assert "Alice" in content

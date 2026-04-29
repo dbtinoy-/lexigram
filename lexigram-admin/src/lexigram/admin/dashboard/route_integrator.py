@@ -11,7 +11,6 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.navigation.clusters import (
     CLUSTER_GROUP,
-    CLUSTER_ICON,
     CLUSTER_LABEL,
     CLUSTER_URL,
     cluster_child_href,
@@ -258,23 +257,13 @@ class AdminPageHandler:
         except Exception:  # noqa: BLE001 — non-fatal
             pass
 
-        user_menu_items: list[dict[str, str]] = [
-            {
-                "label": CLUSTER_LABEL,
-                "href": CLUSTER_URL,
-                "icon": CLUSTER_ICON,
-            },
-            {
-                "label": "Plugins",
-                "href": "/admin/plugins",
-                "icon": "plugins",
-            },
-            {
-                "label": "Settings",
-                "href": "/admin/settings",
-                "icon": "settings",
-            },
-        ]
+        from lexigram.admin.navigation.manager import NavigationManager
+
+        user_menu_items: list[dict[str, str | None]] = (
+            NavigationManager(request).user_menu_items()
+            if request is not None
+            else []
+        )
 
         branding: dict[str, str] = {}
         try:
@@ -436,18 +425,13 @@ async def _placeholder_page(
             getattr(request.state, "user", None) if hasattr(request, "state") else None
         )
 
-        user_menu_items = [
-            {
-                "label": CLUSTER_LABEL,
-                "href": CLUSTER_URL,
-                "icon": CLUSTER_ICON,
-            },
-            {
-                "label": "Settings",
-                "href": "/admin/settings",
-                "icon": "settings",
-            },
-        ]
+        from lexigram.admin.navigation.manager import NavigationManager
+
+        user_menu_items = (
+            NavigationManager(request).user_menu_items(include_plugins=False)
+            if request is not None
+            else []
+        )
 
         theme_css = ""
         try:

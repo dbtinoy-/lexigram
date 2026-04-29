@@ -76,6 +76,29 @@ class SidebarNavItem:
         return d
 
 
+@dataclass(frozen=True)
+class MenuItem:
+    """User-menu entry rendered in the shell's user dropdown.
+
+    ``action`` is an optional semantic marker (e.g. ``"logout"``); plain
+    entries are plain links to ``href``.
+    """
+
+    label: str
+    href: str
+    icon: str | None = None
+    action: str | None = None
+
+    def to_dict(self) -> dict[str, str | None]:
+        """Convert to a shell-compatible dict."""
+        return {
+            "label": self.label,
+            "href": self.href,
+            "icon": self.icon,
+            "action": self.action,
+        }
+
+
 @dataclass
 class NavigationConfig:
     """Configuration for navigation assembly."""

@@ -1101,3 +1101,82 @@ def render_user_permissions_page(
         {_flash(error, notice)}
         """,
     )
+
+
+def render_register_page(
+    site_name: str = "Lexigram Admin",
+    csrf_token: str = "",
+    error: str = "",
+    notice: str = "",
+    name: str = "",
+    email: str = "",
+) -> str:
+    """Render a standalone self-service registration page.
+
+    Args:
+        site_name: Site name for branding.
+        csrf_token: CSRF token to embed as a hidden form field.
+        error: Error message to display.
+        notice: Optional success notice to display.
+        name: Previously submitted display name (re-shown on error).
+        email: Previously submitted email (re-shown on error).
+
+    Returns:
+        HTML string for the registration page.
+    """
+    flash_messages: list[tuple[str, str]] = []
+    if error:
+        flash_messages.append(("error", error))
+    if notice:
+        flash_messages.append(("success", notice))
+
+    config = StandaloneLayoutConfig(
+        app_name=site_name,
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title="Register",
+        flash_messages=flash_messages,
+    )
+
+    content = f"""
+    <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-foreground mb-2">Create Account</h1>
+            <p class="text-sm text-muted-foreground">Register to access the admin panel</p>
+        </div>
+        <form method="post" action="/admin/register">
+            <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+            <div class="mb-4">
+                <label for="name" class="block text-sm font-medium text-foreground mb-2">Name</label>
+                <input type="text" id="name" name="name" value="{escape(name)}" placeholder="Your name" required
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium text-foreground mb-2">Email</label>
+                <input type="email" id="email" name="email" value="{escape(email)}" placeholder="your@email.com" required
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <div class="mb-4">
+                <label for="password" class="block text-sm font-medium text-foreground mb-2">Password</label>
+                <input type="password" id="password" name="password" placeholder="Password" required
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <div class="mb-4">
+                <label for="password_confirmation" class="block text-sm font-medium text-foreground mb-2">Confirm Password</label>
+                <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Confirm password" required
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <button type="submit"
+                    class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Create Account</button>
+        </form>
+        <p class="text-center mt-4 text-sm text-muted-foreground">
+            Already have an account?
+            <a href="/admin/login" class="text-primary hover:underline">Sign in</a>
+        </p>
+    </div>
+    """
+
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
