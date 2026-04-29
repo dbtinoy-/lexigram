@@ -7,6 +7,7 @@ the responsibility of ``lexigram-plugins``."
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from importlib.metadata import entry_points as _entry_points
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,31 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-__all__ = ["discover_plugins", "discover_providers"]
+__all__ = [
+    "PluginPlan",
+    "discover_plugins",
+    "discover_providers",
+    "unique_descriptors",
+    "validate_plan",
+]
+
+
+@dataclass(frozen=True)
+class PluginPlan:
+    """Validated view of plugin enable/disable state.
+
+    Attributes:
+        enabled: Entry-point names that are installed and will boot.
+        disabled: Entry-point names that are installed but disabled.
+        unknown: Disabled names with no matching installed descriptor.
+        issues: Human-readable non-fatal validation findings
+            (missing dependencies, conflicts) — one string per finding.
+    """
+
+    enabled: frozenset[str]
+    disabled: frozenset[str]
+    unknown: frozenset[str] = frozenset()
+    issues: tuple[str, ...] = field(default_factory=tuple)
 
 
 def discover_providers(disabled: set[str] | None = None) -> list[Provider]:
@@ -57,11 +82,11 @@ def discover_providers(disabled: set[str] | None = None) -> list[Provider]:
             continue
         try:
             found.append(provider_cls())
-        except TypeError:
+        except Exception:  # noqa: BLE001 — skip unconstructible entry points, continue discovery
             logger.debug(
                 "plugins.discovery.skipped_ctor_args",
                 name=ep.name,
-                reason="requires_constructor_args",
+                reason="unconstructible",
             )
 
     return found
@@ -91,3 +116,76 @@ def discover_plugins() -> list[PluginDescriptor]:
             continue
         found.append(descriptor)
     return found
+
+
+def unique_descriptors(descriptors: list[PluginDescriptor]) -> list[PluginDescriptor]:
+    """Return descriptors deduplicated by ``provider_entry_point``.
+
+    First occurrence wins (matches entry-point precedence when several
+    distributions register the same name).
+
+    Args:
+        descriptors: Raw discovered descriptors.
+
+    Returns:
+        List with at most one descriptor per ``provider_entry_point``.
+    """
+    seen: set[str] = set()
+    result: list[PluginDescriptor] = []
+    for descriptor in descriptors:
+        if descriptor.provider_entry_point in seen:
+            continue
+        seen.add(descriptor.provider_entry_point)
+        result.append(descriptor)
+    return result
+
+
+def validate_plan(
+    descriptors: list[PluginDescriptor],
+    disabled: set[str],
+) -> PluginPlan:
+    """Compute the validated enable/disable plan for discovered plugins.
+
+    Validation is advisory: missing dependencies and conflicts produce
+    issue strings (and exclude the affected plugin from ``enabled``) but
+    never raise — a broken plugin must not break the boot.
+
+    Args:
+        descriptors: Installed plugin descriptors (discovery output).
+        disabled: Disabled entry-point names from the state file.
+
+    Returns:
+        A PluginPlan with enabled/disabled/unknown sets and issues.
+    """
+    unique = unique_descriptors(descriptors)
+    by_entry: dict[str, PluginDescriptor] = {
+        d.provider_entry_point: d for d in unique
+    }
+
+    installed = set(by_entry)
+    disabled_set = set(disabled)
+    unknown = frozenset(disabled_set - installed)
+    enabled = installed - disabled_set
+
+    issues: list[str] = []
+    enabled_names = set(enabled)
+    for entry, descriptor in by_entry.items():
+        for required in descriptor.requires:
+            if required not in enabled_names:
+                issues.append(
+                    f"{descriptor.name}: missing dependency {required!r}"
+                )
+                enabled.discard(entry)
+        for conflict in descriptor.conflicts:
+            if conflict in enabled_names:
+                issues.append(
+                    f"{descriptor.name}: conflicts with {conflict!r}"
+                )
+                enabled.discard(entry)
+
+    return PluginPlan(
+        enabled=frozenset(enabled),
+        disabled=frozenset(disabled_set & installed),
+        unknown=unknown,
+        issues=tuple(issues),
+    )
