@@ -88,8 +88,11 @@ Returns widget definitions for the admin dashboard. Each widget has a
 **Collision policy:** Namespaced; the widget name is prefixed with
 `package_source`.
 
-**Permissions:** None — widgets are visible to all users who have access
-to the dashboard. Fine-grained control requires handler-level auth.
+**Permissions:** The host (`WidgetController`) enforces each definition's
+`permission` field before rendering — a user lacking the declared
+permission gets an inline error card and the widget handler is never
+called. Superadmin bypasses the gate. With no `permission` declared the
+widget is visible to all dashboard users.
 
 **Example:**
 
@@ -219,8 +222,9 @@ handler that performs the health check.
 **Collision policy:** Namespaced; the health check name is prefixed with
 `package_source`.
 
-**Permissions:** Health checks are typically accessible by monitoring
-systems. No built-in permission gate.
+**Permissions:** The host (`WidgetController`) enforces each definition's
+`permission` field before executing the check; users lacking the declared
+permission receive an HTTP 403. Superadmin bypasses the gate.
 
 **Example:**
 
@@ -360,29 +364,56 @@ async def render_widget(self, widget_name, params):
 
 ### `render_health_check(check_name)`
 
-**Signature:** `(check_name: str) -> Awaitable[Result[str, AdminError]]`
+**Signature:** `(check_name: str) -> Awaitable[Result[HealthCheckPayload, AdminError]]`
 
 **Default:** Returns `Err(HealthCheckNotFoundError)`.
 
-Renders a health check response. Override to implement health checks
-without separate route handlers.
+Override to implement health checks without separate route handlers.
+Return a structured
+[`HealthCheckPayload`](#healthcheckpayload) (`status`, `component`,
+`detail`, `latency_ms`) — the host (`WidgetController`) owns presentation
+and renders it as the same status badge for every contributor, so
+contributors must not return pre-rendered HTML.
+
+**Permissions:** The host enforces the matching
+`AdminHealthDefinition.permission` before dispatch — a user without the
+declared permission gets an HTTP 403 and the check is never executed.
 
 **Returns:**
-- `Ok(html_or_json)` — health check passed.
+- `Ok(HealthCheckPayload)` — check succeeded, host renders the badge.
 - `Err(HealthCheckNotFoundError)` — check not handled.
-- `Err(HealthCheckFailedError)` — check failed.
+- `Err(AdminError)` — check failed.
 
 **Example:**
 
 ```python
 async def render_health_check(self, check_name):
     if check_name == "database":
-        status = await db.ping()
-        if status:
-            return Ok('{"status": "healthy"}')
-        return Err(HealthCheckFailedError("Database unreachable"))
+        result = await db.ping()
+        return Ok(
+            HealthCheckPayload(
+                status=HealthStatus.DEGRADED if result.degraded else HealthStatus.HEALTHY,
+                component="Database",
+                detail=result.message,
+                latency_ms=result.duration_ms,
+            )
+        )
     return await super().render_health_check(check_name)
 ```
+
+---
+
+### `HealthCheckPayload`
+
+Frozen value type (`lexigram.contracts.admin.health_payload`) returned by
+`render_health_check`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | `HealthStatus` | `HEALTHY`, `DEGRADED`, `UNHEALTHY`, `STARTING`, or `UNKNOWN` |
+| `component` | `str` | Component being checked |
+| `detail` | `str` | Human-readable detail (default `""`) |
+| `latency_ms` | `float \| None` | Optional probe latency in ms |
 
 ---
 
@@ -402,6 +433,7 @@ async def render_health_check(self, check_name):
 | `order` | `int` | Display order |
 | `icon` | `str \| None` | Lucide icon |
 | `description` | `str` | Widget description |
+| `permission` | `str \| None` | Required permission to view the widget |
 
 ### `NavigationContribution`
 
@@ -455,6 +487,7 @@ async def render_health_check(self, check_name):
 | `check_endpoint` | `str \| None` | Optional endpoint for the check |
 | `icon` | `str` | Lucide icon (default: `"heart-pulse"`) |
 | `description` | `str` | Health check description |
+| `permission` | `str \| None` | Required permission to view the check |
 
 ### `AdminActionDefinition`
 

@@ -15,6 +15,7 @@ from lexigram.admin.auth.protocols import (
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.dashboard.widget_types import ConfigField
 from lexigram.admin.params import parse_widget_params
+from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.protocols import AdminContributorRegistryProtocol
 from lexigram.contracts.web import get, post
 from lexigram.di.decorators import inject
@@ -75,6 +76,26 @@ class WidgetController:
             return True
         permissions = frozenset(getattr(user, "permissions", None) or ())
         return permissions.issuperset(_REQUIRED_PERMISSIONS)
+
+    def _user_permissions(self, request: Request) -> frozenset[str]:
+        """Return the requesting user's permission set (empty when absent)."""
+        user = getattr(getattr(request, "state", None), "user", None)
+        return frozenset(getattr(user, "permissions", None) or ())
+
+    def _user_is_superadmin(self, request: Request) -> bool:
+        """Return True when the requesting user holds the superadmin role."""
+        user = getattr(getattr(request, "state", None), "user", None)
+        return bool(user and "superadmin" in (getattr(user, "roles", None) or ()))
+
+    def _has_required_permission(
+        self, request: Request, required: str | None
+    ) -> bool:
+        """Check *required* against the requesting user; superadmin bypasses."""
+        if not required:
+            return True
+        if self._user_is_superadmin(request):
+            return True
+        return required in self._user_permissions(request)
 
     async def _audit(
         self,
@@ -165,6 +186,26 @@ class WidgetController:
             return HTMLResponse(
                 self._render_error_card(
                     f"Contributor '{contributor_id}' not found",
+                    contributor_id=contributor_id,
+                    widget_name=widget_name,
+                ),
+                status_code=200,
+            )
+
+        widget_def = next(
+            (
+                w
+                for w in contributor.get_dashboard_widgets()
+                if w.name == widget_name
+            ),
+            None,
+        )
+        if widget_def is not None and not self._has_required_permission(
+            request, widget_def.permission
+        ):
+            return HTMLResponse(
+                self._render_error_card(
+                    "You do not have permission to view this widget.",
                     contributor_id=contributor_id,
                     widget_name=widget_name,
                 ),
@@ -289,13 +330,50 @@ class WidgetController:
                 status_code=404,
             )
 
+        health_def = next(
+            (
+                h
+                for h in contributor.get_health_definitions()
+                if h.name == check_name
+            ),
+            None,
+        )
+        if health_def is not None and not self._has_required_permission(
+            request, health_def.permission
+        ):
+            return Response(content="Permission denied", status_code=403)
+
         result = await contributor.render_health_check(check_name)
 
         if result.is_ok():
-            return HTMLResponse(result.unwrap())
+            return HTMLResponse(self._render_health_badge(result.unwrap()))
 
         error = result.unwrap_err()
         return Response(content=str(error), status_code=422)
+
+    @staticmethod
+    def _render_health_badge(payload: HealthCheckPayload) -> str:
+        """Render a HealthCheckPayload as a status badge (host-owned presentation)."""
+        from lexigram.contracts.core.health import HealthStatus
+        from lexigram.ui.core.base import el, render_to_string
+
+        status_classes = {
+            HealthStatus.HEALTHY: "text-green-600",
+            HealthStatus.DEGRADED: "text-yellow-600",
+            HealthStatus.UNHEALTHY: "text-red-600",
+            HealthStatus.STARTING: "text-blue-600",
+            HealthStatus.UNKNOWN: "text-gray-500",
+        }
+        children: list[object] = [
+            el(
+                "span",
+                payload.status.value,
+                class_=f"font-medium {status_classes.get(payload.status, 'text-gray-500')}",
+            ),
+        ]
+        if payload.detail:
+            children.append(el("span", f" — {payload.detail}", class_="text-sm text-muted-foreground"))
+        return render_to_string(el("div", *children, class_="health-check-badge"))
 
     @get("/core/widgets/{name}/config")
     async def widget_config_popup(

@@ -18,7 +18,9 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 
 from lexigram.admin.controllers.widgets import WidgetController
+from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.types import WidgetViewModel
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Ok
 
 
@@ -38,7 +40,15 @@ def create_widget_app(
         mock_contributor.render_widget = AsyncMock(
             return_value=Ok(WidgetViewModel(body=widget_result))
         )
-        mock_contributor.render_health_check = AsyncMock(return_value=Ok("<div>Health OK</div>"))
+        mock_contributor.render_health_check = AsyncMock(
+            return_value=Ok(
+                HealthCheckPayload(
+                    status=HealthStatus.HEALTHY,
+                    component="db",
+                    detail="Health OK",
+                )
+            )
+        )
         registry.get.return_value = mock_contributor
     else:
         registry.get.return_value = None
