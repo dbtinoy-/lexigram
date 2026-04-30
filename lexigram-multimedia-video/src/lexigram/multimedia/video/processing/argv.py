@@ -438,9 +438,7 @@ def build_compose_argv(
             if layer.end is None
             else f"between(t,{layer.start},{layer.end})"
         )
-        graph.append(
-            f"{prev}[l{j}]overlay=0:0:eof_action=pass:enable='{window}'[v{j}]"
-        )
+        graph.append(f"{prev}[l{j}]overlay=0:0:eof_action=pass:enable='{window}'[v{j}]")
         prev = f"[v{j}]"
 
     final = prev
