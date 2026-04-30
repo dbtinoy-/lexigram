@@ -87,9 +87,7 @@ class WidgetController:
         user = getattr(getattr(request, "state", None), "user", None)
         return bool(user and "superadmin" in (getattr(user, "roles", None) or ()))
 
-    def _has_required_permission(
-        self, request: Request, required: str | None
-    ) -> bool:
+    def _has_required_permission(self, request: Request, required: str | None) -> bool:
         """Check *required* against the requesting user; superadmin bypasses."""
         if not required:
             return True
@@ -193,11 +191,7 @@ class WidgetController:
             )
 
         widget_def = next(
-            (
-                w
-                for w in contributor.get_dashboard_widgets()
-                if w.name == widget_name
-            ),
+            (w for w in contributor.get_dashboard_widgets() if w.name == widget_name),
             None,
         )
         if widget_def is not None and not self._has_required_permission(
@@ -331,11 +325,7 @@ class WidgetController:
             )
 
         health_def = next(
-            (
-                h
-                for h in contributor.get_health_definitions()
-                if h.name == check_name
-            ),
+            (h for h in contributor.get_health_definitions() if h.name == check_name),
             None,
         )
         if health_def is not None and not self._has_required_permission(
@@ -372,7 +362,13 @@ class WidgetController:
             ),
         ]
         if payload.detail:
-            children.append(el("span", f" — {payload.detail}", class_="text-sm text-muted-foreground"))
+            children.append(
+                el(
+                    "span",
+                    f" — {payload.detail}",
+                    class_="text-sm text-muted-foreground",
+                )
+            )
         return render_to_string(el("div", *children, class_="health-check-badge"))
 
     @get("/core/widgets/{name}/config")
