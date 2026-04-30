@@ -173,14 +173,10 @@ class TestContributorDiscovery:
             "/ai-governance/relay-ledger",
         }
 
-    def test_widget_endpoints_have_matching_routes(self) -> None:
-        """Every widget endpoint has a matching route registration."""
+    def test_get_routes_returns_empty_default(self) -> None:
+        """Routing is handled by lexigram-admin's WidgetController, not per-contributor."""
         contributor = GovernanceAdminContributor()
-        route_paths = {router.path for router in contributor.get_routes()}
-        for widget in contributor.get_dashboard_widgets():
-            assert widget.render_endpoint in route_paths
-        for health in contributor.get_health_definitions():
-            assert health.check_endpoint in route_paths
+        assert list(contributor.get_routes()) == []
 
     def test_read_only_pages_do_not_require_control_permissions(self) -> None:
         """Pages carry only read-only permission gates."""
