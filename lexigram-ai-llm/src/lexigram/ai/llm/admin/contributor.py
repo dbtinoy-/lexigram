@@ -8,7 +8,12 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
-from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
+from lexigram.contracts.admin.errors import (
+    AdminError,
+    HealthCheckNotFoundError,
+    WidgetNotFoundError,
+)
+from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
     AdminHealthDefinition,
@@ -470,6 +475,49 @@ class LlmAdminContributor(BaseAdminContributor):
         )
 
         return WidgetViewModel(body=str(el("div", table, class_="p-1")))
+
+    async def render_health_check(
+        self,
+        check_name: str,
+    ) -> Result[HealthCheckPayload, AdminError]:
+        """Aggregate health across all enabled LLM providers.
+
+        Delegates to ``LLMRouterProtocol.health_probe()`` — the same
+        ``client.health_check()`` calls the provider-status widget makes,
+        aggregated at the protocol boundary (no private router attrs).
+
+        Args:
+            check_name: Name of the health check requested.
+
+        Returns:
+            Ok(HealthCheckPayload) — HEALTHY when at least one enabled
+            provider passes its health probe, UNHEALTHY when none does.
+            Err(HealthCheckNotFoundError) for unknown check names or when
+            the contributor was never booted.
+        """
+        if check_name != "provider" or self._container is None:
+            not_found: Result[HealthCheckPayload, AdminError] = cast(
+                "Result[HealthCheckPayload, AdminError]",
+                Err(HealthCheckNotFoundError(self.name, check_name)),
+            )
+            return not_found
+
+        router = await self._container.resolve(LLMRouterProtocol)
+        result = await router.health_probe()
+        if result.is_ok():
+            return Ok(
+                HealthCheckPayload(
+                    status=HealthStatus.HEALTHY,
+                    component="LLM Provider",
+                )
+            )
+        return Ok(
+            HealthCheckPayload(
+                status=HealthStatus.UNHEALTHY,
+                component="LLM Provider",
+                detail="no healthy provider",
+            )
+        )
 
     async def render_widget(
         self,
