@@ -10,6 +10,7 @@ renders an explicit unavailable state when a dependency is missing.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.relay.gateway.operations.controls import (
@@ -28,7 +29,6 @@ from lexigram.contracts.admin.errors import (
     WidgetNotFoundError,
 )
 from lexigram.contracts.admin.health_payload import HealthCheckPayload
-from lexigram.contracts.admin.route_spec import AdminRouteSpec
 from lexigram.contracts.admin.types import (
     ActionParameterField,
     ActionParameterSchema,
@@ -49,6 +49,8 @@ from lexigram.contracts.ai.relay import (
     TimeWindow,
 )
 from lexigram.contracts.core.health import HealthStatus
+from lexigram.contracts.exceptions.container import ContainerError
+from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
 from lexigram.ui import Card, el, render_to_string
@@ -57,6 +59,8 @@ if TYPE_CHECKING:
     from lexigram.contracts.admin.errors import AdminError
 
 __all__ = ["RelayGatewayAdminContributor"]
+
+logger = get_logger(__name__)
 
 _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
     DashboardWidgetDefinition(
@@ -432,9 +436,15 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
         self._health: RelayHealthService | None = None
         self._metrics: RelayMetricsService | None = None
         self._controls: RelayControlsService | None = None
+        self._action_handlers: dict[str, Any] = {}
 
     async def on_admin_boot(self, container: Any) -> None:
         """Resolve relay services from the DI container.
+
+        Widgets that depend on a missing service render an explicit
+        "Unavailable" state (see ``_unavailable``) rather than failing
+        the whole admin boot — but the resolution failure itself is
+        always logged so it isn't silently invisible in production.
 
         Args:
             container: The DI container resolver.
@@ -442,16 +452,33 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
         self._container = container
         try:
             self._health = await container.resolve(RelayHealthService)
-        except Exception:
+        except ContainerError:
+            logger.warning(
+                "relay_gateway.dependency_unavailable",
+                dependency="RelayHealthService",
+            )
             self._health = None
         try:
             self._metrics = await container.resolve(RelayMetricsService)
-        except Exception:
+        except ContainerError:
+            logger.warning(
+                "relay_gateway.dependency_unavailable",
+                dependency="RelayMetricsService",
+            )
             self._metrics = None
         try:
             self._controls = await container.resolve(RelayControlsService)
-        except Exception:
+        except ContainerError:
+            logger.warning(
+                "relay_gateway.dependency_unavailable",
+                dependency="RelayControlsService",
+            )
             self._controls = None
+        self._action_handlers = {}
+        for action in _ACTIONS:
+            module_path, _, handler_name = action.handler.partition(":")
+            module = import_module(module_path)
+            self._action_handlers[action.name] = getattr(module, handler_name)
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         return list(_WIDGETS)
@@ -470,7 +497,7 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
         action_name: str,
         params: dict[str, object],
     ) -> object:
-        """Dispatch an action to its lazy-loaded handler.
+        """Dispatch an action to its boot-resolved handler.
 
         Handlers run with the container captured at boot; a container is
         required.  Every handler performs server-side parameter
@@ -487,46 +514,12 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
             LookupError: Unknown action name.
             RuntimeError: Contributor booted without a container.
         """
-        from importlib import import_module as _import_module
-
-        registry = {action.name: action for action in _ACTIONS}
-        definition = registry.get(action_name)
-        if definition is None:
+        handler = self._action_handlers.get(action_name)
+        if handler is None:
             raise LookupError(f"unknown relay-gateway action {action_name!r}")
-        module_path, _, handler_name = definition.handler.partition(":")
-        module = _import_module(module_path)
-        handler = getattr(module, handler_name)
         if self._container is None:
             raise RuntimeError("contributor has no container; on_admin_boot required")
         return await handler(self._container, **params)
-
-    def get_routes(self) -> Sequence[AdminRouteSpec]:
-        """Return the widget and health render endpoints.
-
-        Returns:
-            One route spec per dashboard widget and health check.
-        """
-        routes: list[AdminRouteSpec] = [
-            AdminRouteSpec(
-                path=cast("str", w.render_endpoint),
-                method="GET",
-                handler=_render_for_widget,
-                name=f"widgets.{w.name}",
-                permissions=frozenset({PERMISSION_READ}),
-            )
-            for w in _WIDGETS
-        ]
-        routes += [
-            AdminRouteSpec(
-                path=cast("str", h.check_endpoint),
-                method="GET",
-                handler=_render_for_health,
-                name=f"health.{h.name}",
-                permissions=frozenset({PERMISSION_READ}),
-            )
-            for h in _HEALTH_DEFS
-        ]
-        return routes
 
     def get_management_pages(self) -> Sequence[ManagementPageDefinition]:
         return [
@@ -782,24 +775,6 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
         return render_to_string(
             Card(title="Active Streams", content=render_to_string(table))
         )
-
-
-async def _render_for_widget(request: object) -> str:  # noqa: ARG001
-    """Placeholder route handler for widget endpoints.
-
-    Widget content is rendered by the admin dashboard through
-    ``render_widget``; the route spec only proves registration.
-    """
-    return ""
-
-
-async def _render_for_health(request: object) -> str:  # noqa: ARG001
-    """Placeholder route handler for health check endpoints.
-
-    Health content is rendered by the admin dashboard through
-    ``render_health_check``; the route spec only proves registration.
-    """
-    return ""
 
 
 def _unavailable(message: str) -> Any:
