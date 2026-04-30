@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import timedelta
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.governance.relay_billing import (
@@ -41,6 +42,8 @@ from lexigram.contracts.admin.types import (
 )
 from lexigram.contracts.ai.governance import RelayUsageStoreProtocol
 from lexigram.contracts.core.health import HealthStatus
+from lexigram.contracts.exceptions.container import ContainerError
+from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
 from lexigram.ui import Card, el, render_to_string
@@ -53,6 +56,8 @@ __all__ = ["GovernanceAdminContributor"]
 PERMISSION_READ = "governance.read"
 PERMISSION_LOG_READ = "relay.logs"
 PERMISSION_LEDGER = "relay.billing"
+
+logger = get_logger(__name__)
 
 _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
     DashboardWidgetDefinition(
@@ -329,15 +334,23 @@ class GovernanceAdminContributor(BaseAdminContributor):
     icon = "shield"
     priority = 58
 
-    required_permissions = frozenset({PERMISSION_READ, PERMISSION_LEDGER})
+    required_permissions = frozenset(
+        {PERMISSION_READ, PERMISSION_LOG_READ, PERMISSION_LEDGER}
+    )
 
     def __init__(self) -> None:
         self._container: Any = None
         self._store: RelayUsageStoreProtocol | None = None
         self._manager: RelayReservationManager | None = None
+        self._action_handlers: dict[str, Any] = {}
 
     async def on_admin_boot(self, container: Any) -> None:
         """Resolve the billing store and reservation manager from DI.
+
+        Widgets that depend on a missing service render an explicit
+        "Unavailable" state (see ``_unavailable``) rather than failing
+        the whole admin boot — but the resolution failure itself is
+        always logged so it isn't silently invisible in production.
 
         Args:
             container: The DI container resolver.
@@ -345,12 +358,25 @@ class GovernanceAdminContributor(BaseAdminContributor):
         self._container = container
         try:
             self._store = await container.resolve(RelayUsageStoreProtocol)
-        except Exception:
+        except ContainerError:
+            logger.warning(
+                "governance.dependency_unavailable",
+                dependency="RelayUsageStoreProtocol",
+            )
             self._store = None
         try:
             self._manager = await container.resolve(RelayReservationManager)
-        except Exception:
+        except ContainerError:
+            logger.warning(
+                "governance.dependency_unavailable",
+                dependency="RelayReservationManager",
+            )
             self._manager = None
+        self._action_handlers = {}
+        for action in _ACTIONS:
+            module_path, _, handler_name = action.handler.partition(":")
+            module = import_module(module_path)
+            self._action_handlers[action.name] = getattr(module, handler_name)
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         return list(_WIDGETS)
@@ -372,7 +398,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
         action_name: str,
         params: dict[str, object],
     ) -> object:
-        """Dispatch an action to its lazy-loaded handler.
+        """Dispatch an action to its boot-resolved handler.
 
         Handlers run with the container captured at boot; a container is
         required.  Every handler performs server-side parameter
@@ -389,15 +415,9 @@ class GovernanceAdminContributor(BaseAdminContributor):
             LookupError: Unknown action name.
             RuntimeError: Contributor booted without a container.
         """
-        from importlib import import_module as _import_module
-
-        registry = {action.name: action for action in _ACTIONS}
-        definition = registry.get(action_name)
-        if definition is None:
+        handler = self._action_handlers.get(action_name)
+        if handler is None:
             raise LookupError(f"unknown ai-governance action {action_name!r}")
-        module_path, _, handler_name = definition.handler.partition(":")
-        module = _import_module(module_path)
-        handler = getattr(module, handler_name)
         if self._container is None:
             raise RuntimeError("contributor has no container; on_admin_boot required")
         return await handler(self._container, **params)
@@ -460,7 +480,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
             return Ok(
                 HealthCheckPayload(
                     status=HealthStatus.DEGRADED,
-                    component="Relay Billing",
+                    component="AI Governance Billing",
                     detail=(
                         "degraded (billing store or reservation manager "
                         "unavailable)"
@@ -470,7 +490,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
         return Ok(
             HealthCheckPayload(
                 status=HealthStatus.HEALTHY,
-                component="Relay Billing",
+                component="AI Governance Billing",
                 detail="available",
             )
         )

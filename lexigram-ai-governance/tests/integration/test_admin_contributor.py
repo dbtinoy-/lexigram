@@ -8,6 +8,7 @@ is unavailable.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from importlib.metadata import entry_points
@@ -26,7 +27,7 @@ from lexigram.ai.governance.relay_billing import (
     RelayReservationManager,
     RelayScopeLimit,
 )
-from lexigram.contracts.admin.types import WidgetParams
+from lexigram.contracts.admin.types import NavigationContribution, WidgetParams
 from lexigram.contracts.ai.governance import (
     RelayUsageRecord,
     RelayUsageScope,
@@ -34,6 +35,7 @@ from lexigram.contracts.ai.governance import (
 )
 from lexigram.contracts.ai.relay import RelayUsage
 from lexigram.contracts.core.health import HealthStatus
+from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 
 
 def make_scope() -> RelayUsageScope:
@@ -118,7 +120,7 @@ class FakeContainer:
 
     async def resolve(self, target: type) -> object:
         if target not in self._services:
-            raise LookupError(f"unregistered {target!r}")
+            raise UnresolvableDependencyError(f"unregistered {target!r}")
         return self._services[target]
 
 
@@ -128,6 +130,14 @@ def _request() -> SimpleNamespace:
 
 
 WIDGET_PARAMS = WidgetParams(time_window_minutes=60)
+
+
+def _collect_nav_permissions(nav: NavigationContribution) -> set[str]:
+    """Collect every permission used on a nav item and its children."""
+    perms = {nav.permission} if nav.permission else set()
+    for child in nav.children:
+        perms |= _collect_nav_permissions(child)
+    return perms
 
 
 class TestContributorDiscovery:
@@ -149,8 +159,20 @@ class TestContributorDiscovery:
         assert contributor.display_name == "AI Governance"
         assert contributor.group == "ai"
         assert contributor.required_permissions == frozenset(
-            {"governance.read", "relay.billing"}
+            {"governance.read", "relay.logs", "relay.billing"}
         )
+
+    def test_required_permissions_includes_every_declared_permission(self) -> None:
+        """Every permission declared on this contributor's own surfaces must be
+        in required_permissions — the coarse gate must not be narrower than what
+        the contributor actually exposes."""
+        contributor = GovernanceAdminContributor()
+        declared = {
+            p
+            for nav in contributor.get_navigation_items()
+            for p in _collect_nav_permissions(nav)
+        } | {p.permission for p in contributor.get_management_pages() if p.permission}
+        assert declared.issubset(contributor.required_permissions)
 
     def test_widgets_and_pages_registered(self) -> None:
         """All dashboard widgets and management pages are declared."""
@@ -183,6 +205,44 @@ class TestContributorDiscovery:
         contributor = GovernanceAdminContributor()
         for page in contributor.get_management_pages():
             assert page.permission in (None, "governance.read", "relay.logs", "relay.billing")
+
+
+class TestAdminBoot:
+    async def test_on_admin_boot_logs_when_store_resolution_fails(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A failed DI resolution degrades gracefully but is still logged."""
+
+        class FailingContainer:
+            async def resolve(self, protocol: object) -> object:
+                raise UnresolvableDependencyError("store unavailable")
+
+        contributor = GovernanceAdminContributor()
+        await contributor.on_admin_boot(FailingContainer())
+
+        assert contributor._store is None  # graceful degradation, unchanged
+        captured = capsys.readouterr()
+        assert "governance.dependency_unavailable" in captured.out
+
+    async def test_on_admin_boot_raises_if_an_action_handler_cannot_be_resolved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A typo'd handler string should fail loud at boot, not at click-time."""
+        from lexigram.ai.governance.admin import contributor as contributor_module
+
+        bad_actions = (
+            replace(
+                contributor_module._ACTIONS[0],
+                handler="lexigram.ai.governance.admin.ledger_actions:does_not_exist",
+            ),
+        )
+        monkeypatch.setattr(contributor_module, "_ACTIONS", bad_actions)
+
+        contributor = GovernanceAdminContributor()
+        with pytest.raises(AttributeError):
+            await contributor.on_admin_boot(
+                FakeContainer(store=FakeUsageStore(), manager=RelayReservationManager())
+            )
 
 
 class TestReadOnlyPages:
@@ -341,6 +401,33 @@ class TestHealth:
         payload = result.unwrap()
         assert payload.status == HealthStatus.HEALTHY
         assert "available" in payload.detail
+
+    async def test_render_health_check_returns_health_check_payload(self) -> None:
+        """A healthy boot renders a structured HEALTHY payload."""
+        contributor = GovernanceAdminContributor()
+        await contributor.on_admin_boot(
+            FakeContainer(store=FakeUsageStore(), manager=RelayReservationManager())
+        )
+
+        result = await contributor.render_health_check("governance.billing")
+
+        assert result.is_ok()
+        payload = result.unwrap()
+        assert payload.status == HealthStatus.HEALTHY
+        assert payload.component == "AI Governance Billing"
+
+    async def test_render_health_check_returns_degraded_payload_when_deps_unavailable(
+        self,
+    ) -> None:
+        """Unresolved dependencies render a structured DEGRADED payload."""
+        contributor = GovernanceAdminContributor()
+        await contributor.on_admin_boot(FakeContainer())
+
+        result = await contributor.render_health_check("governance.billing")
+
+        assert result.is_ok()
+        payload = result.unwrap()
+        assert payload.status == HealthStatus.DEGRADED
 
     async def test_unknown_health_check_returns_error(self) -> None:
         """Unknown health checks return an error result."""
