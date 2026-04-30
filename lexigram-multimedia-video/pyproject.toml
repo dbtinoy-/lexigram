@@ -43,6 +43,7 @@ openai = []
 local-inproc = []
 wan22-server = ["torch", "wan"]
 cogvideox-server = ["torch", "diffusers", "transformers"]
+svd-server = ["torch", "diffusers"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -65,6 +66,7 @@ test = [
 [project.scripts]
 lexigram-video-wan22-serve = "lexigram.multimedia.video.servers.wan22_server:main"
 lexigram-video-cogvideox-serve = "lexigram.multimedia.video.servers.cogvideox_server:main"
+lexigram-video-svd-serve = "lexigram.multimedia.video.servers.svd_server:main"
 
 [project.entry-points."lexigram.multimedia.subsystems"]
 video = "lexigram.multimedia.video.di.provider:VideoGenerationProvider"
