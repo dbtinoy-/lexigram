@@ -544,8 +544,9 @@ class LlmAdminContributor(BaseAdminContributor):
             vm = await self._render_error_rate()
             return Ok(vm)
 
-        return Ok(
-            WidgetViewModel(body=f"<p>Widget '{widget_name}' not yet implemented.</p>")
+        return cast(
+            "Result[WidgetViewModel, AdminError]",
+            Err(WidgetNotFoundError(self.name, widget_name)),
         )
 
 
