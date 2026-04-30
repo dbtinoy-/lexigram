@@ -254,3 +254,35 @@ async def test_register_binds_svd_backend() -> None:
 
     bound = container.bindings[VideoProvider]
     assert isinstance(bound, SVDVideoProvider)
+
+
+@pytest.mark.asyncio
+async def test_register_binds_comfyui_backend() -> None:
+    provider = VideoGenerationProvider(config=VideoConfig(backend="comfyui"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.video.providers.comfyui import ComfyUiVideoProvider
+
+    bound = container.bindings[VideoProvider]
+    assert isinstance(bound, ComfyUiVideoProvider)
+
+
+@pytest.mark.asyncio
+async def test_comfyui_health_check_hits_system_stats(mocker) -> None:
+    provider = VideoGenerationProvider(config=VideoConfig(backend="comfyui"))
+    container = _FakeContainer()
+    await provider.register(container)
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    mock_get = mocker.patch("aiohttp.ClientSession.get", return_value=mock_cm)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.HEALTHY
+    called_url = mock_get.call_args.args[0]
+    assert called_url.endswith("/system_stats")
