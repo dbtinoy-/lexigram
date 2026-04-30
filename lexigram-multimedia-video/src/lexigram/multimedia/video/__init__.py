@@ -13,6 +13,7 @@ from lexigram.multimedia.video.module import VideoModule
 from lexigram.multimedia.video.processing import FFmpegVideoProcessor
 from lexigram.multimedia.video.providers import (
     CogVideoXVideoProvider,
+    ComfyUiVideoProvider,
     LocalHttpVideoProvider,
     OpenAIVideoProvider,
     RunwayVideoProvider,
@@ -23,6 +24,7 @@ from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessing
 
 __all__ = [
     "CogVideoXVideoProvider",
+    "ComfyUiVideoProvider",
     "FFmpegVideoProcessor",
     "LocalHttpVideoProvider",
     "OpenAIVideoProvider",
