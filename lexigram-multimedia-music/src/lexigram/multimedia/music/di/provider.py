@@ -100,6 +100,20 @@ class AudioMusicProvider(Provider):
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
+        elif self._music_config.backend == "stable-audio-open":
+            from lexigram.multimedia.music.providers.stable_audio_open import (
+                StableAudioOpenMusicProvider,
+            )
+
+            self._backend = cast(
+                "MusicProvider",
+                StableAudioOpenMusicProvider(
+                    base_url=self._music_config.stable_audio_open_base_url,
+                    timeout=self._music_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented music backend: {self._music_config.backend!r}"
