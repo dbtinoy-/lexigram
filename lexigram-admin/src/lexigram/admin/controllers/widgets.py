@@ -13,10 +13,11 @@ from lexigram.admin.auth.protocols import (
     AdminCsrfServiceProtocol,
 )
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.dashboard.content_renderer import render_content
 from lexigram.admin.dashboard.widget_types import ConfigField
 from lexigram.admin.params import parse_widget_params
-from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.protocols import AdminContributorRegistryProtocol
+from lexigram.contracts.admin.types import WidgetContent
 from lexigram.contracts.web import get, post
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -228,7 +229,7 @@ class WidgetController:
 
         if result.is_ok():
             vm = result.unwrap()
-            return HTMLResponse(self._wrap_widget_body(vm.body, vm.title, vm.error))
+            return HTMLResponse(self._wrap_widget_body(vm.content, vm.title, vm.error))
 
         error = result.unwrap_err()
         logger.error(
@@ -248,13 +249,14 @@ class WidgetController:
 
     @staticmethod
     def _wrap_widget_body(
-        body: str,
+        content: WidgetContent,
         title: str | None = None,
         error: str | None = None,
     ) -> str:
         """Wrap widget body in a container with optional error banner."""
         from lexigram.ui.core.base import el, render_to_string
 
+        inner = render_content(content)
         children: list[object] = []
         if title:
             children.append(
@@ -272,7 +274,7 @@ class WidgetController:
                     class_="text-xs text-destructive bg-destructive/10 rounded px-2 py-1 mb-2",
                 )
             )
-        children.append(el("div", body, class_="widget-content"))
+        children.append(el("div", inner, class_="widget-content"))
         return render_to_string(el("div", *children, class_="widget-body-container"))
 
     @staticmethod
@@ -336,40 +338,10 @@ class WidgetController:
         result = await contributor.render_health_check(check_name)
 
         if result.is_ok():
-            return HTMLResponse(self._render_health_badge(result.unwrap()))
+            return HTMLResponse(render_content(result.unwrap()))
 
         error = result.unwrap_err()
         return Response(content=str(error), status_code=422)
-
-    @staticmethod
-    def _render_health_badge(payload: HealthCheckPayload) -> str:
-        """Render a HealthCheckPayload as a status badge (host-owned presentation)."""
-        from lexigram.contracts.core.health import HealthStatus
-        from lexigram.ui.core.base import el, render_to_string
-
-        status_classes = {
-            HealthStatus.HEALTHY: "text-green-600",
-            HealthStatus.DEGRADED: "text-yellow-600",
-            HealthStatus.UNHEALTHY: "text-red-600",
-            HealthStatus.STARTING: "text-blue-600",
-            HealthStatus.UNKNOWN: "text-gray-500",
-        }
-        children: list[object] = [
-            el(
-                "span",
-                payload.status.value,
-                class_=f"font-medium {status_classes.get(payload.status, 'text-gray-500')}",
-            ),
-        ]
-        if payload.detail:
-            children.append(
-                el(
-                    "span",
-                    f" — {payload.detail}",
-                    class_="text-sm text-muted-foreground",
-                )
-            )
-        return render_to_string(el("div", *children, class_="health-check-badge"))
 
     @get("/core/widgets/{name}/config")
     async def widget_config_popup(
