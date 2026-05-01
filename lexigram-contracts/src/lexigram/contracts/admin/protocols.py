@@ -137,7 +137,7 @@ class AdminContributorProtocol(Protocol):
             resolver: Optional DI resolver for lazy dependency injection.
 
         Returns:
-            Ok(WidgetViewModel) with rendered HTML in ``body`` on success.
+            Ok(WidgetViewModel) with structured content in ``content`` on success.
             Err(WidgetNotFoundError) when the widget name is unknown.
             Err(AdminError) for other expected domain failures.
             Infrastructure exceptions propagate (not caught here).

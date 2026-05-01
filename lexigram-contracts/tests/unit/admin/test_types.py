@@ -14,7 +14,9 @@ from lexigram.contracts.admin.types import (
     WidgetCategory,
     WidgetParams,
     WidgetSize,
+    WidgetViewModel,
 )
+from lexigram.contracts.admin.widget_content import MessageContent, WidgetKind
 from lexigram.contracts.admin.widget_protocols import (
     WidgetHandlerProtocol,
     WidgetRendererProtocol,
@@ -55,6 +57,7 @@ class TestDashboardWidgetDefinition:
             title="Test Widget",
             contributor="test",
             render_endpoint="/admin/contrib/test/widgets/test",
+            view_kind=WidgetKind.STAT,
         )
         assert widget.name == "test_widget"
         assert widget.title == "Test Widget"
@@ -64,10 +67,23 @@ class TestDashboardWidgetDefinition:
         assert widget.order == 100
         assert widget.permission is None
 
+    def test_dashboard_widget_definition_requires_view_kind(self) -> None:
+        wdef = DashboardWidgetDefinition(
+            name="x",
+            title="X",
+            contributor="web",
+            render_endpoint="/admin/web/widgets/x",
+            view_kind=WidgetKind.STAT,
+        )
+        assert wdef.view_kind is WidgetKind.STAT
+
     def test_frozen(self) -> None:
         widget = DashboardWidgetDefinition(
-            name="w", title="W", contributor="c",
+            name="w",
+            title="W",
+            contributor="c",
             render_endpoint="/e",
+            view_kind=WidgetKind.STAT,
         )
         try:
             widget.name = "other"  # type: ignore[misc]
@@ -188,6 +204,13 @@ class TestWidgetParams:
             params.raw = ()  # type: ignore[misc]
         # Tuple is already immutable
         assert params.raw == (("a", "b"), ("c", "d"))
+
+
+class TestWidgetViewModel:
+    def test_widget_view_model_carries_structured_content_not_body(self) -> None:
+        vm = WidgetViewModel(content=MessageContent(text="ok"))
+        assert isinstance(vm.content, MessageContent)
+        assert not hasattr(vm, "body")
 
 
 class TestWidgetProtocols:
