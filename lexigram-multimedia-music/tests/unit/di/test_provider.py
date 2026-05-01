@@ -110,3 +110,33 @@ async def test_local_http_health_check_still_works_after_refactor(mocker) -> Non
     result = await provider.health_check()
 
     assert result.status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_register_binds_ace_step_backend() -> None:
+    provider = AudioMusicProvider(config=MusicConfig(backend="ace-step"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    from lexigram.multimedia.music.providers.ace_step import AceStepMusicProvider
+
+    bound = container.bindings[MusicProvider]
+    assert isinstance(bound, AceStepMusicProvider)
+
+
+@pytest.mark.asyncio
+async def test_ace_step_health_check_uses_shared_http_helper(mocker) -> None:
+    provider = AudioMusicProvider(config=MusicConfig(backend="ace-step"))
+    container = _FakeContainer()
+    await provider.register(container)
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    mocker.patch("aiohttp.ClientSession.get", return_value=mock_cm)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.HEALTHY

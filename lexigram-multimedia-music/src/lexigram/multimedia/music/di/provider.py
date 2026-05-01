@@ -86,6 +86,20 @@ class AudioMusicProvider(Provider):
             )
 
             StabilityAudioMusicProvider()
+        elif self._music_config.backend == "ace-step":
+            from lexigram.multimedia.music.providers.ace_step import (
+                AceStepMusicProvider,
+            )
+
+            self._backend = cast(
+                "MusicProvider",
+                AceStepMusicProvider(
+                    base_url=self._music_config.ace_step_base_url,
+                    timeout=self._music_config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
+            )
         else:
             raise ProviderNotInstalledError(
                 f"Unknown or unimplemented music backend: {self._music_config.backend!r}"
