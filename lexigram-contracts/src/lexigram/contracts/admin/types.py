@@ -237,6 +237,7 @@ __all__ = [
     "PageCategory",
     "SettingsPanelDefinition",
     "WidgetCategory",
+    "WidgetContent",
     "WidgetKind",
     "WidgetParams",
     "WidgetSize",
