@@ -40,6 +40,7 @@ Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 [project.optional-dependencies]
 stability-audio = []
 local-inproc = []
+ace-step-server = ["torch", "acestep"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -58,6 +59,9 @@ test = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
 ]
+
+[project.scripts]
+lexigram-music-ace-step-serve = "lexigram.multimedia.music.servers.ace_step_server:main"
 
 [project.entry-points."lexigram.multimedia.subsystems"]
 music = "lexigram.multimedia.music.di.provider:AudioMusicProvider"
