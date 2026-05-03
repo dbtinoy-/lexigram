@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
-from lexigram.admin.dashboard.chart_widget import ChartWidget
+from lexigram.contracts.admin import ChartContent, ChartPoint, EmptyContent, Tone
 from lexigram.contracts.admin.contributor import BaseAdminContributor
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.health_payload import HealthCheckPayload
@@ -14,6 +14,7 @@ from lexigram.contracts.admin.types import (
     DashboardWidgetDefinition,
     NavigationContribution,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
@@ -21,7 +22,6 @@ from lexigram.contracts.admin.types import (
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.contracts.core.result import Result
 from lexigram.result import Err, Ok
-from lexigram.ui import ChartConfig, ChartDataPoint, ChartType
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import ContainerResolverProtocol
@@ -56,6 +56,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 render_endpoint="/admin/core/widgets/health",
                 size=WidgetSize.FULL,
                 category=WidgetCategory.HEALTH,
+                view_kind=WidgetKind.EMPTY,
                 refresh_interval_seconds=10,
                 order=0,
                 icon="heart-pulse",
@@ -68,6 +69,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 render_endpoint="/admin/core/widgets/activity",
                 size=WidgetSize.LARGE,
                 category=WidgetCategory.ACTIVITY,
+                view_kind=WidgetKind.EMPTY,
                 refresh_interval_seconds=15,
                 order=90,
                 icon="activity",
@@ -80,6 +82,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 render_endpoint="/admin/core/widgets/chart_metrics",
                 size=WidgetSize.FULL,
                 category=WidgetCategory.METRICS,
+                view_kind=WidgetKind.CHART,
                 refresh_interval_seconds=30,
                 order=50,
                 icon="bar-chart-3",
@@ -125,24 +128,42 @@ class CoreAdminContributor(BaseAdminContributor):
             params: Widget parameters.
 
         Returns:
-            Result containing a WidgetViewModel with rendered HTML in ``body``,
+            Result containing a WidgetViewModel with structured ``content``,
             or WidgetNotFoundError if the widget is not found.
         """
 
         if widget_name == "health":
+            # TODO(admin): wire the health widget to a real aggregated
+            # health data source instead of the empty placeholder.
             return cast(
                 "Result[WidgetViewModel, AdminError]",
-                Ok(WidgetViewModel(body=self._render_health_widget())),
+                Ok(
+                    WidgetViewModel(
+                        content=EmptyContent(
+                            title="Health overview",
+                            message="Not yet wired to a data source.",
+                        )
+                    )
+                ),
             )
         if widget_name == "activity":
+            # TODO(admin): wire the activity widget to a real activity
+            # event source instead of the empty placeholder.
             return cast(
                 "Result[WidgetViewModel, AdminError]",
-                Ok(WidgetViewModel(body=self._render_activity_widget())),
+                Ok(
+                    WidgetViewModel(
+                        content=EmptyContent(
+                            title="Recent activity",
+                            message="Not yet wired to a data source.",
+                        )
+                    )
+                ),
             )
         if widget_name == "chart_metrics":
             return cast(
                 "Result[WidgetViewModel, AdminError]",
-                Ok(WidgetViewModel(body=self._render_chart_metrics_widget())),
+                Ok(WidgetViewModel(content=self._chart_metrics_content())),
             )
         result: Result[WidgetViewModel, AdminError] = cast(
             "Result[WidgetViewModel, AdminError]",
@@ -150,37 +171,17 @@ class CoreAdminContributor(BaseAdminContributor):
         )
         return result
 
-    def _render_health_widget(self) -> str:
-        """Render the framework health widget."""
-        return '<div class="widget framework-health"><div class="status healthy"><span class="indicator"></span>Healthy</div></div>'
-
-    def _render_activity_widget(self) -> str:
-        """Render the recent activity widget."""
-        return '<div class="widget recent-activity"><ul class="activity-list"><li class="activity-item">No recent activity</li></ul></div>'
-
-    def _render_chart_metrics_widget(self) -> str:
-        """Render the framework metrics bar chart widget."""
-        data = [
-            ChartDataPoint(label="Active Users", value=847, color="blue"),
-            ChartDataPoint(label="Requests/min", value=2341, color="green"),
-            ChartDataPoint(label="Error Rate", value=1.2, color="red"),
-            ChartDataPoint(label="Avg Latency", value=45, color="amber"),
-            ChartDataPoint(label="Memory %", value=68, color="purple"),
-        ]
-        chart = ChartWidget(
-            title="Framework Metrics",
-            chart_type=ChartType.BAR,
-            data=data,
-            chart_config=ChartConfig(
-                show_grid=True,
-                show_labels=True,
-                animate=True,
-                height="200px",
-            ),
-            refresh_interval=30,
-            col_span=1,
+    def _chart_metrics_content(self) -> ChartContent:
+        """Return the framework metrics as structured chart content."""
+        return ChartContent(
+            points=(
+                ChartPoint(label="Active Users", value=847, tone=Tone.DEFAULT),
+                ChartPoint(label="Requests/min", value=2341, tone=Tone.SUCCESS),
+                ChartPoint(label="Error Rate", value=1.2, tone=Tone.DANGER),
+                ChartPoint(label="Avg Latency", value=45, tone=Tone.WARNING),
+                ChartPoint(label="Memory %", value=68, tone=Tone.INFO),
+            )
         )
-        return str(chart)
 
     async def render_health_check(
         self,
