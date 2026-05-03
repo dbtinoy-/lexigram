@@ -5,9 +5,10 @@ from __future__ import annotations
 import pytest
 
 from lexigram.admin.dashboard.widgets import WidgetRegistry
-from lexigram.contracts.admin.types import (
+from lexigram.contracts.admin import (
     DashboardWidgetDefinition,
     WidgetCategory,
+    WidgetKind,
     WidgetSize,
 )
 
@@ -31,6 +32,7 @@ class TestWidgetRegistry:
             category=WidgetCategory.METRICS,
             size=WidgetSize.SMALL,
             render_endpoint="/admin/test/widget",
+            view_kind=WidgetKind.STAT,
         )
         result = registry.render_contributor_widgets([widget])
         assert "Test Widget" in result
@@ -47,6 +49,7 @@ class TestWidgetRegistry:
             size=WidgetSize.SMALL,
             contributor="test-contributor",
             render_endpoint="/admin/test/widget",
+            view_kind=WidgetKind.STAT,
         )
         result = registry.render_contributor_widgets([widget])
         assert "test-contributor" in result
@@ -63,6 +66,7 @@ class TestWidgetRegistry:
             size=WidgetSize.SMALL,
             render_endpoint="/admin/test/poll",
             refresh_interval_seconds=30,
+            view_kind=WidgetKind.STAT,
         )
         result = registry.render_contributor_widgets([widget])
         assert "every 30000ms" in result
@@ -79,6 +83,7 @@ class TestWidgetRegistry:
                 category=WidgetCategory.METRICS,
                 size=WidgetSize.SMALL,
                 render_endpoint="/admin/widget/a",
+                view_kind=WidgetKind.STAT,
             ),
             DashboardWidgetDefinition(
                 name="widget-b",
@@ -87,6 +92,7 @@ class TestWidgetRegistry:
                 category=WidgetCategory.METRICS,
                 size=WidgetSize.MEDIUM,
                 render_endpoint="/admin/widget/b",
+                view_kind=WidgetKind.STAT,
             ),
         ]
         result = registry.render_contributor_widgets(widgets)

@@ -18,8 +18,11 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 
 from lexigram.admin.controllers.widgets import WidgetController
-from lexigram.contracts.admin.health_payload import HealthCheckPayload
-from lexigram.contracts.admin.types import WidgetViewModel
+from lexigram.contracts.admin import (
+    HealthCheckPayload,
+    MessageContent,
+    WidgetViewModel,
+)
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Ok
 
@@ -38,7 +41,7 @@ def create_widget_app(
     if contributor_exists:
         mock_contributor = MagicMock()
         mock_contributor.render_widget = AsyncMock(
-            return_value=Ok(WidgetViewModel(body=widget_result))
+            return_value=Ok(WidgetViewModel(content=MessageContent(text=widget_result)))
         )
         mock_contributor.render_health_check = AsyncMock(
             return_value=Ok(
@@ -179,7 +182,9 @@ class TestWidgetControllerGetRoutesIntegration:
         registry = MagicMock()
         mock_contributor = MagicMock()
         mock_contributor.render_widget = AsyncMock(
-            return_value=Ok(WidgetViewModel(body="<div>Test</div>"))
+            return_value=Ok(
+                WidgetViewModel(content=MessageContent(text="<div>Test</div>"))
+            )
         )
         registry.get.return_value = mock_contributor
 
@@ -197,7 +202,9 @@ class TestWidgetControllerGetRoutesIntegration:
         registry = MagicMock()
         mock_contributor = MagicMock()
         mock_contributor.render_widget = AsyncMock(
-            return_value=Ok(WidgetViewModel(body="<div>Widget OK</div>"))
+            return_value=Ok(
+                WidgetViewModel(content=MessageContent(text="<div>Widget OK</div>"))
+            )
         )
         registry.get.return_value = mock_contributor
 

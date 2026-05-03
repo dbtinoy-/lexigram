@@ -136,7 +136,7 @@ class TestRBACEnforcement:
 
 import structlog.testing
 
-from lexigram.contracts.admin.types import DashboardWidgetDefinition
+from lexigram.contracts.admin import DashboardWidgetDefinition, WidgetKind
 
 
 class TestContributionConflictDetection:
@@ -157,6 +157,7 @@ class TestContributionConflictDetection:
                 title=name.replace("_", " ").title(),
                 contributor=contributor_id,
                 render_endpoint=f"/admin/widgets/{name}",
+                view_kind=WidgetKind.STAT,
             )
             for name in widget_names
         ]

@@ -7,15 +7,16 @@ import pytest
 from lexigram.admin.contributors.base import BaseAdminContributor
 from lexigram.admin.dashboard.assembler import DashboardAssembler
 from lexigram.admin.types import AdminUser
-from lexigram.contracts.admin.protocols import AdminDashboardProtocol
-from lexigram.contracts.admin.types import (
+from lexigram.contracts.admin import (
     AdminActionDefinition,
     AdminHealthDefinition,
     DashboardWidgetDefinition,
     NavigationContribution,
     WidgetCategory,
+    WidgetKind,
     WidgetSize,
 )
+from lexigram.contracts.admin.protocols import AdminDashboardProtocol
 
 
 class CacheContributor(BaseAdminContributor):
@@ -35,6 +36,7 @@ class CacheContributor(BaseAdminContributor):
                 size=WidgetSize.SMALL,
                 category=WidgetCategory.METRICS,
                 order=10,
+                view_kind=WidgetKind.STAT,
             ),
         ]
 
@@ -87,6 +89,7 @@ class EventsContributor(BaseAdminContributor):
                 size=WidgetSize.SMALL,
                 category=WidgetCategory.METRICS,
                 order=20,
+                view_kind=WidgetKind.STAT,
             ),
         ]
 
@@ -109,6 +112,7 @@ class GovernanceContributor(BaseAdminContributor):
                 category=WidgetCategory.METRICS,
                 order=10,
                 permission="governance.read",
+                view_kind=WidgetKind.STAT,
             ),
         ]
 

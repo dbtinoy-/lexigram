@@ -5,8 +5,12 @@ from __future__ import annotations
 import pytest
 
 from lexigram.admin.di.sub_providers.contributor import AdminContributorSubProvider
-from lexigram.contracts.admin import AdminRouteSpec, BaseAdminContributor
-from lexigram.contracts.admin.types import DashboardWidgetDefinition
+from lexigram.contracts.admin import (
+    AdminRouteSpec,
+    BaseAdminContributor,
+    DashboardWidgetDefinition,
+    WidgetKind,
+)
 
 
 class _ValidWidgetContributor(BaseAdminContributor):
@@ -36,6 +40,7 @@ class _ValidWidgetContributor(BaseAdminContributor):
                 title="My Widget",
                 contributor="valid_widget",
                 render_endpoint="/admin/valid_widget/render",
+                view_kind=WidgetKind.MESSAGE,
             )
         ]
 
@@ -57,6 +62,7 @@ class _MissingEndpointContributor(BaseAdminContributor):
                 title="Broken Widget",
                 contributor="missing_ep",
                 render_endpoint="/admin/missing_ep/nonexistent",
+                view_kind=WidgetKind.MESSAGE,
             )
         ]
 
