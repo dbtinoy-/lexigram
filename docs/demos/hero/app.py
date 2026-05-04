@@ -169,9 +169,10 @@ async def stage4_streaming():
         modules=[
             LLMModule.configure(
                 ClientConfig(
-                    provider="ollama",
-                    model="gemma4:12b",
-                    max_tokens=256,
+                    provider="openai",
+                    model="gemma-3-1b-it-glm-4.7-flash-heretic-uncensored-thinking_gguf",
+                    api_base="http://localhost:1234/v1",
+                    max_tokens=512,
                     timeout=120,
                 )
             )
@@ -264,19 +265,33 @@ async def stage5_tool_calling():
     ) as app:
         llm = await app._container.resolve(LLMClientProtocol)
         strategy = ReActStrategy(max_iterations=2)
-        result = await strategy.execute(
-            message="What AI providers does Lexigram support? List them.",
-            tools=[search_knowledge],
-            history=[],
-            llm=llm,
-        )
-        if result.is_ok():
-            response = result.unwrap()
-            for step in response.steps:
-                if step.tool_call:
-                    tc = step.tool_call
-                    print(f"  Tool: {tc.tool_name}({tc.arguments})")
-            print(f"  Answer: {response.message}")
+        for attempt in range(1, 3):
+            try:
+                result = await asyncio.wait_for(
+                    strategy.execute(
+                        message="What AI providers does Lexigram support? List them.",
+                        tools=[search_knowledge],
+                        history=[],
+                        llm=llm,
+                    ),
+                    timeout=45,
+                )
+            except TimeoutError:
+                print(f"  attempt {attempt} timed out — retrying")
+                continue
+            if result.is_ok():
+                response = result.unwrap()
+                if "[Max iterations reached]" not in response.message:
+                    for step in response.steps:
+                        if step.tool_call:
+                            tc = step.tool_call
+                            print(f"  Tool: {tc.tool_name}({tc.arguments})")
+                    print(f"  Answer: {response.message}")
+                    return
+                print(f"  attempt {attempt} inconclusive — retrying")
+                continue
+            print(f"  attempt {attempt} failed: {result.unwrap_err()} — retrying")
+        print("  Tool calling could not complete")
 
 
 ##6
