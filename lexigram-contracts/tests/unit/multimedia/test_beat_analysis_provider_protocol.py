@@ -1,7 +1,11 @@
 from lexigram.contracts.core.result import Ok, Result
 from lexigram.contracts.multimedia.exceptions import MultimediaError
 from lexigram.contracts.multimedia.protocols import BeatAnalysisProvider
-from lexigram.contracts.multimedia.types import BeatAnalysisRequest, BeatAnalysisResult, MediaAsset
+from lexigram.contracts.multimedia.types import (
+    BeatAnalysisRequest,
+    BeatAnalysisResult,
+    MediaAsset,
+)
 
 
 class _FakeBeatAnalysisProvider:
