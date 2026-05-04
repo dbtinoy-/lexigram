@@ -24,18 +24,10 @@ class ActiveConnectionsWidgetHandler:
             Result containing StatContent with connection metrics.
         """
         active, peak, max_allowed = 42, 128, 512
-        ratio = active / max_allowed
-        tone = (
-            Tone.DANGER
-            if ratio > 0.9
-            else Tone.WARNING
-            if ratio > 0.7
-            else Tone.SUCCESS
-        )
         return Ok(
             StatContent(
                 stats=(
-                    Stat(label="Active", value=str(active), tone=tone),
+                    Stat(label="Active", value=str(active), tone=Tone.PRIMARY),
                     Stat(label="Peak", value=str(peak)),
                     Stat(label="Max", value=str(max_allowed)),
                 )
