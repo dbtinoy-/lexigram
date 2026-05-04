@@ -22,6 +22,12 @@ class MultimediaError(DomainError):
         super().__init__(message, **kwargs)
 
 
+class BeatAnalysisError(MultimediaError):
+    """Base for tempo/beat-detection errors."""
+
+    _code = "LEX_ERR_MM_008"
+
+
 class TTSError(MultimediaError):
     """Base for text-to-speech generation errors."""
 
@@ -62,6 +68,7 @@ class UpscaleError(MultimediaError):
 
 
 __all__ = [
+    "BeatAnalysisError",
     "ImageGenerationError",
     "MultimediaError",
     "MusicGenerationError",

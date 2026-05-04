@@ -1,5 +1,6 @@
 from lexigram.contracts.exceptions.domain import DomainError
 from lexigram.contracts.multimedia.exceptions import (
+    BeatAnalysisError,
     ImageGenerationError,
     MultimediaError,
     MusicGenerationError,
@@ -15,7 +16,7 @@ def test_multimedia_error_extends_domain_error() -> None:
 
 
 def test_media_type_errors_extend_multimedia_error() -> None:
-    for exc_cls in (TTSError, MusicGenerationError, VideoGenerationError, ImageGenerationError, UpscaleError):
+    for exc_cls in (TTSError, MusicGenerationError, VideoGenerationError, ImageGenerationError, UpscaleError, BeatAnalysisError):
         assert issubclass(exc_cls, MultimediaError)
 
 
