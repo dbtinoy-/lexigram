@@ -9,12 +9,14 @@ from lexigram.ai.prompt.assembly.assembler import CacheAwarePromptAssembler
 from lexigram.ai.prompt.assembly.cache_strategies import ProviderCacheStrategyRegistry
 from lexigram.ai.prompt.config import PromptConfig
 from lexigram.ai.prompt.registry.registry import PromptRegistry
+from lexigram.ai.prompt.rendering.sanitizer import InputSanitizer
 from lexigram.ai.prompt.service.loader import DictPromptLoader, DirectoryPromptLoader
 from lexigram.ai.prompt.service.models import PromptTemplate
 from lexigram.ai.prompt.service.observer import PromptObserverProtocol
 from lexigram.ai.prompt.service.service import PromptService, PromptServiceProtocol
 from lexigram.contracts.ai.llm import PromptAssemblerProtocol
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
+from lexigram.contracts.core.hooks import HookRegistryProtocol
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 from lexigram.contracts.exceptions.provider import ModuleVisibilityError
@@ -83,10 +85,18 @@ class PromptProvider(Provider):
         templates: list[PromptTemplate] = []
 
         if self._template_dir is not None:
-            templates.extend(DirectoryPromptLoader(self._template_dir).load())
+            templates.extend(
+                DirectoryPromptLoader(
+                    self._template_dir, default_format=self._config.default_format
+                ).load()
+            )
 
         if self._inline_templates:
-            templates.extend(DictPromptLoader(self._inline_templates).load())
+            templates.extend(
+                DictPromptLoader(
+                    self._inline_templates, default_format=self._config.default_format
+                ).load()
+            )
 
         return templates
 
@@ -103,7 +113,14 @@ class PromptProvider(Provider):
 
         # Register PromptService with loaded templates
         templates = self._load_templates()
-        service = PromptService(templates=templates, observer=self._observer)
+        sanitizer: InputSanitizer | None = None
+        if self._config.sanitize_inputs:
+            sanitizer = InputSanitizer(strict=self._config.strict_sanitizer)
+        service = PromptService(
+            templates=templates,
+            observer=self._observer,
+            sanitizer=sanitizer,
+        )
         container.singleton(PromptService, service)
         container.singleton(PromptServiceProtocol, service)
 
@@ -126,7 +143,11 @@ class PromptProvider(Provider):
         )
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Boot phase — inject optional TokenCounterProtocol into assembler."""
+        """Boot phase — inject optional TokenCounterProtocol and hook registry."""
+        hook_registry = await container.resolve_optional(HookRegistryProtocol)
+        service = await container.resolve(PromptService)
+        service.attach_hook_registry(hook_registry)
+
         try:
             from lexigram.contracts.ai.llm import TokenCounterProtocol
 

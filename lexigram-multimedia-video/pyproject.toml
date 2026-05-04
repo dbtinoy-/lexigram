@@ -36,6 +36,7 @@ dependencies = [
 Homepage = "https://lexigram.dev"
 Repository = "https://github.com/dbtinoy-/lexigram-multimedia-experimental"
 Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 runway = []
@@ -119,6 +120,11 @@ force-sort-within-sections = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: mark a test as an integration test",
+    "scenario: marks cross-package scenario integration tests",
+    "requires_postgres: marks tests that require a live PostgreSQL connection",
+]
 addopts = [
     "--cov=lexigram.multimedia.video",
     "--cov-report=term",

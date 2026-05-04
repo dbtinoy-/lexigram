@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from lexigram.ai.prompt.rendering.engine import RenderFormat
+
 __all__ = [
     "PromptInputSanitizedHook",
     "PromptRenderedHook",
@@ -22,7 +24,7 @@ class PromptTemplateResolvedHook:
 class PromptRenderedHook:
     """Payload fired after prompt rendering produces a formatted payload."""
 
-    render_format: str
+    render_format: RenderFormat
 
 
 @dataclass(frozen=True, kw_only=True)

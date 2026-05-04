@@ -1,0 +1,55 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: multimedia: → video:
+# Environment variable prefix: LEX_MULTIMEDIA__VIDEO__
+#
+# NOTE: lexigram-multimedia-video is a subsystem of the lexigram-multimedia
+# umbrella. In application.yaml its config is nested under the `multimedia:`
+# key. For standalone use, pass a VideoConfig directly to
+# VideoModule.configure(VideoConfig(...)).
+#
+# IMPORTANT: Never commit API keys. Store them in the secrets backend and
+# reference them by name.
+
+multimedia:
+  video:
+    # Video generation backend to use.
+    backend: "local-http"  # local-http, runway, openai, wan22, cogvideox, svd, comfyui
+
+    # Local reference server (backend: local-http)
+    local_http_base_url: "http://localhost:5004"
+
+    # Runway (backend: runway)
+    runway_api_key_secret_name: "runway_api_key"
+
+    # OpenAI (backend: openai)
+    openai_api_key_secret_name: "openai_api_key"
+    openai_model: "sora-2"
+    openai_base_url: "https://api.openai.com"
+
+    # Wan2.2 reference server (backend: wan22)
+    wan22_base_url: "http://localhost:5200"
+
+    # CogVideoX reference server (backend: cogvideox)
+    cogvideox_base_url: "http://localhost:5201"
+
+    # SVD reference server (backend: svd)
+    svd_base_url: "http://localhost:5202"
+
+    # ComfyUI (backend: comfyui)
+    comfyui_base_url: "http://localhost:8188"
+    comfyui_checkpoint: "svd_xt_1_1.safetensors"
+    comfyui_workflow_path: null  # Path to a custom workflow JSON
+    comfyui_fps: 6
+    comfyui_motion_bucket_id: 127
+    comfyui_poll_interval: 1.0  # Seconds
+
+    # Request timeout in seconds.
+    timeout: 60.0
+
+    # ffmpeg-backed video processing (VideoProcessor)
+    processing:
+      ffmpeg_binary: "ffmpeg"
+      max_concurrent_jobs: 2
+      temp_dir: null
+      timeout: 300.0  # Seconds

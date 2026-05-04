@@ -1,0 +1,39 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: multimedia: → image:
+# Environment variable prefix: LEX_MULTIMEDIA__IMAGE__
+#
+# NOTE: lexigram-multimedia-image is a subsystem of the lexigram-multimedia
+# umbrella. In application.yaml its config is nested under the `multimedia:`
+# key. For standalone use, pass an ImageConfig directly to
+# ImageModule.configure(ImageConfig(...)).
+#
+# IMPORTANT: Never commit API keys. Store them in the secrets backend and
+# reference them by name.
+
+multimedia:
+  image:
+    # Image generation backend to use.
+    backend: "local-http"  # local-http, stability, openai, comfyui
+
+    # Local reference server (backend: local-http)
+    local_http_base_url: "http://localhost:5005"
+
+    # OpenAI (backend: openai)
+    openai_api_key_secret_name: "openai_api_key"
+    openai_model: "dall-e-3"
+    openai_base_url: "https://api.openai.com"
+
+    # Stability AI (backend: stability)
+    stability_api_key_secret_name: "stability_api_key"
+
+    # ComfyUI (backend: comfyui)
+    comfyui_base_url: "http://localhost:8188"
+    comfyui_checkpoint: "sd_xl_base_1.0.safetensors"
+    comfyui_workflow_path: null  # Path to a custom workflow JSON
+    comfyui_steps: 20
+    comfyui_cfg_scale: 7.0
+    comfyui_poll_interval: 1.0  # Seconds
+
+    # Request timeout in seconds.
+    timeout: 60.0

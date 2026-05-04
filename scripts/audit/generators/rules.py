@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.audit.generators.base import MarkdownAuditGenerator, PROPRIETARY_PKGS
+from scripts.audit.generators.base import MarkdownAuditGenerator
 from scripts.core.rule_engine import RuleSeverity, run_rules
 from scripts.core.rules_catalog import build_rules_catalog
 

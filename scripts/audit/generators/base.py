@@ -4,12 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-PROPRIETARY_PKGS: frozenset[str] = frozenset({
-    "lexigram-admin",
-    "lexigram-ai-guard", "lexigram-ai-governance",
-    "lexigram-ai-evaluation", "lexigram-ai-prompt",
-})
-
 
 @dataclass(frozen=True, slots=True)
 class AuditRunResult:
@@ -106,13 +100,11 @@ class MarkdownAuditGenerator:
     def iter_package_roots(self, *, root: Path) -> tuple[Path, ...]:
         """Return Lexigram package directories under the workspace root."""
 
-        all_mode = getattr(self, "_all_mode", False)
         return tuple(
             sorted(
                 path
                 for path in root.iterdir()
                 if path.is_dir()
                 and (path.name == "lexigram" or path.name.startswith("lexigram-"))
-                and (all_mode or path.name not in PROPRIETARY_PKGS)
             )
         )

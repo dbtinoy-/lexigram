@@ -2,10 +2,9 @@
 
 Thank you for your interest in contributing to the Lexigram Framework!
 
-> **Note**: Lexigram is **alpha (0.1.x)** and dual-licensed. The open-source packages
-> listed in [`LICENSING.md`](./LICENSING.md) are **MIT-licensed** and welcome external
-> contributions; the proprietary packages do not accept external contributions.
-> All open-source contributions are accepted under the MIT License — sign off your commits
+> **Note**: Lexigram is **alpha (0.1.x)** and licensed under the [MIT License](./LICENSE).
+> External contributions are welcome.
+> All contributions are accepted under the MIT License — sign off your commits
 > (`git commit -s`) to certify the [DCO](https://developercertificate.org/).
 > This is maintained by a small team: reviews are best-effort, with no support SLA.
 

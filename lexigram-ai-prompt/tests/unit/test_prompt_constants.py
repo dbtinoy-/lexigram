@@ -17,7 +17,7 @@ class TestConstants:
         assert constants.ENV_NESTED_DELIMITER == "__"
 
     def test_default_render_format(self) -> None:
-        assert constants.DEFAULT_RENDER_FORMAT == RenderFormat.JINJA2
+        assert constants.DEFAULT_RENDER_FORMAT == RenderFormat.F_STRING
 
     def test_max_prompt_versions(self) -> None:
         assert constants.MAX_PROMPT_VERSIONS == 100

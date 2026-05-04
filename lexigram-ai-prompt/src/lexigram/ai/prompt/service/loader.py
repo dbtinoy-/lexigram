@@ -49,6 +49,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from lexigram.ai.prompt.constants import DEFAULT_RENDER_FORMAT
+from lexigram.ai.prompt.rendering.engine import RenderFormat
 from lexigram.ai.prompt.service.models import LLMProvider, PromptTemplate
 from lexigram.logging import get_logger
 from lexigram.serialization import JSONDecodeError, loads
@@ -72,11 +74,16 @@ class PromptLoaderProtocol(Protocol):
         ...
 
 
-def _dict_to_template(data: dict[str, Any]) -> PromptTemplate:
+def _dict_to_template(
+    data: dict[str, Any], default_format: RenderFormat = DEFAULT_RENDER_FORMAT
+) -> PromptTemplate:
     """Convert a raw dict (from YAML or inline config) to a :class:`PromptTemplate`.
 
     Raises:
-        ValueError: If ``name``, ``version``, or ``content`` are missing.
+        ValueError: If ``name``, ``version``, or ``content`` are missing,
+                    or if ``format`` is not a valid
+                    :class:`~lexigram.ai.prompt.rendering.engine.RenderFormat`
+                    value.
     """
     missing = [k for k in ("name", "version", "content") if not data.get(k)]
     if missing:
@@ -93,10 +100,13 @@ def _dict_to_template(data: dict[str, Any]) -> PromptTemplate:
             f"Valid values: {[p.value for p in LLMProvider]!r}"
         )
 
-    raw_engine = data.get("engine", "format")
-    if raw_engine not in ("format", "jinja2"):
+    raw_format = data.get("format", default_format)
+    try:
+        render_format = RenderFormat(raw_format)
+    except ValueError:
         raise ValueError(
-            f"Unknown template engine {raw_engine!r}. Valid values: ['format', 'jinja2']"
+            f"Unknown render format {raw_format!r}. "
+            f"Valid values: {[f.value for f in RenderFormat]!r}"
         )
 
     required_variables = tuple(data.get("required_variables") or [])
@@ -106,7 +116,7 @@ def _dict_to_template(data: dict[str, Any]) -> PromptTemplate:
         name=str(data["name"]),
         version=str(data["version"]),
         content=str(data["content"]),
-        engine=raw_engine,
+        format=render_format,
         provider=provider,
         required_variables=required_variables,
         optional_defaults=optional_defaults,
@@ -149,10 +159,16 @@ class DictPromptLoader:
 
     Args:
         templates: List of raw template dicts (see module docstring for schema).
+        default_format: Format applied to dicts that don't declare ``format``.
     """
 
-    def __init__(self, templates: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        templates: list[dict[str, Any]],
+        default_format: RenderFormat = DEFAULT_RENDER_FORMAT,
+    ) -> None:
         self._templates = templates
+        self._default_format = default_format
 
     def load(self) -> list[PromptTemplate]:
         """Parse and return all templates.
@@ -163,7 +179,7 @@ class DictPromptLoader:
         result: list[PromptTemplate] = []
         for i, raw in enumerate(self._templates):
             try:
-                result.append(_dict_to_template(raw))
+                result.append(_dict_to_template(raw, self._default_format))
             except ValueError as exc:
                 raise ValueError(f"Invalid template at index {i}: {exc}") from exc
         return result
@@ -179,10 +195,16 @@ class DirectoryPromptLoader:
 
     Args:
         directory: Path to the directory containing template files.
+        default_format: Format applied to files that don't declare ``format``.
     """
 
-    def __init__(self, directory: str | Path) -> None:
+    def __init__(
+        self,
+        directory: str | Path,
+        default_format: RenderFormat = DEFAULT_RENDER_FORMAT,
+    ) -> None:
         self._directory = Path(directory)
+        self._default_format = default_format
 
     def load(self) -> list[PromptTemplate]:
         """Scan the directory and return all parsed templates.
@@ -209,7 +231,7 @@ class DirectoryPromptLoader:
                 raw_dicts = _parse_file_content(path, text)
                 for raw in raw_dicts:
                     try:
-                        result.append(_dict_to_template(raw))
+                        result.append(_dict_to_template(raw, self._default_format))
                     except ValueError as exc:
                         logger.warning(
                             "prompt_loader_template_parse_error",

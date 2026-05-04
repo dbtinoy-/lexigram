@@ -24,7 +24,8 @@ ENV_NESTED_DELIMITER: str = "__"
 # Rendering formats
 # ---------------------------------------------------------------------------
 
-DEFAULT_RENDER_FORMAT: RenderFormat = RenderFormat.JINJA2
+DEFAULT_RENDER_FORMAT: RenderFormat = RenderFormat.F_STRING
+"""Render format applied when a template or configuration doesn't specify one."""
 
 # ---------------------------------------------------------------------------
 # Limits

@@ -62,12 +62,19 @@ class TestPromptProviderLifecycle:
     @pytest.mark.asyncio
     async def test_boot_method_signature(self) -> None:
         """Verify boot() method has correct async signature."""
+        from lexigram.ai.prompt.service.service import PromptService
+
         prov = PromptProvider()
         container = MagicMock()
-        # Mock resolve to raise UnresolvableDependencyError (token counter is optional)
-        container.resolve = AsyncMock(
-            side_effect=UnresolvableDependencyError("TokenCounterProtocol not available")
-        )
+        # Mock resolve_optional to return no hook registry
+        container.resolve_optional = AsyncMock(return_value=None)
+        # Mock resolve to return a service, but raise for the optional token counter
+        def _resolve(cls: object) -> object:
+            if cls.__name__ == "TokenCounterProtocol":
+                raise UnresolvableDependencyError("TokenCounterProtocol not available")
+            return PromptService([])
+
+        container.resolve = AsyncMock(side_effect=_resolve)
 
         # Should complete without error
         await prov.boot(container)

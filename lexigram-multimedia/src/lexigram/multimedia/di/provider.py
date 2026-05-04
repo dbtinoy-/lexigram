@@ -1,4 +1,4 @@
-"""Umbrella DI provider — orchestrates the 4 core multimedia sub-providers."""
+"""Umbrella DI provider — orchestrates the 7 core multimedia sub-providers."""
 
 from __future__ import annotations
 
@@ -18,7 +18,11 @@ if TYPE_CHECKING:
     )
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
     from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
-    from lexigram.multimedia.accessors import ComposeAccessor, VideoAccessor
+    from lexigram.multimedia.accessors import (
+        BeatAccessor,
+        ComposeAccessor,
+        VideoAccessor,
+    )
     from lexigram.multimedia.timeline import TimelineRenderTask
 
 logger = get_logger(__name__)
@@ -27,9 +31,9 @@ __all__ = ["MultimediaProvider"]
 
 
 class MultimediaProvider(Provider):
-    """Provider that registers all four core multimedia sub-providers.
+    """Provider that registers all seven core multimedia sub-providers.
 
-    Hardcodes wiring of the 4 core siblings (matching AIProvider.register()'s
+    Hardcodes wiring of the 7 core siblings (matching AIProvider.register()'s
     treatment of llm/vector/rag) rather than relying purely on entry-point
     discovery — each needs its own typed config sub-object from
     MultimediaConfig, which a generic entry-point loop can't supply.
@@ -50,9 +54,14 @@ class MultimediaProvider(Provider):
         self._timeline_task_handler: TimelineRenderTask | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
+        from lexigram.multimedia.beat.di.provider import BeatAnalysisGenerationProvider
         from lexigram.multimedia.image.di.provider import ImageGenerationProvider
+        from lexigram.multimedia.interpolate.di.provider import (
+            InterpolationGenerationProvider,
+        )
         from lexigram.multimedia.music.di.provider import AudioMusicProvider
         from lexigram.multimedia.tts.di.provider import AudioTTSProvider
+        from lexigram.multimedia.upscale.di.provider import UpscaleGenerationProvider
         from lexigram.multimedia.video.di.provider import VideoGenerationProvider
 
         self._sub_providers["tts"] = AudioTTSProvider(
@@ -67,12 +76,21 @@ class MultimediaProvider(Provider):
         self._sub_providers["image"] = ImageGenerationProvider(
             config=self._multimedia_config.image
         )
+        self._sub_providers["upscale"] = UpscaleGenerationProvider(
+            config=self._multimedia_config.upscale
+        )
+        self._sub_providers["interpolate"] = InterpolationGenerationProvider(
+            config=self._multimedia_config.interpolate
+        )
+        self._sub_providers["beat"] = BeatAnalysisGenerationProvider(
+            config=self._multimedia_config.beat
+        )
         for sub in self._sub_providers.values():
             await sub.register(container)
 
         # ------------------------------------------------------------------
         # Entry-point discovery for additional multimedia subsystems beyond
-        # the 4 core ones. Mirrors AIProvider.register()'s
+        # the 7 core ones. Mirrors AIProvider.register()'s
         # "lexigram.ai.subsystems" loop, including skipping the core names.
         # ------------------------------------------------------------------
         try:
@@ -210,6 +228,13 @@ class MultimediaProvider(Provider):
                 "video_processing",
                 "video/processed/",
                 "_processing_task_handler",
+            ),
+            ("upscale", "upscale_generation", "upscale/", "_task_handler"),
+            (
+                "interpolate",
+                "interpolate_generation",
+                "interpolate/",
+                "_task_handler",
             ),
         ]
         for sub_key, task_name, segment, handler_attr in _TASK_HANDLER_SPECS:
@@ -366,3 +391,50 @@ class MultimediaProvider(Provider):
             event_bus=self._event_bus,
             media_type="image",
         )
+
+    @property
+    def upscale(self) -> Any:
+        from lexigram.multimedia.accessors import SubsystemAccessor
+
+        sub = self._sub_providers["upscale"]
+        return SubsystemAccessor(
+            backend=sub._backend,
+            task_manager=self._task_manager,
+            task_name="upscale_generation",
+            storage=self._storage,
+            path_prefix=f"{self._multimedia_config.storage_path_prefix}upscale/",
+            idempotency_manager=self._idempotency_manager,
+            cache_backend=self._cache_backend
+            if self._multimedia_config.cache_results
+            else None,
+            event_bus=self._event_bus,
+            media_type="upscale",
+            backend_method="upscale",
+        )
+
+    @property
+    def interpolate(self) -> Any:
+        from lexigram.multimedia.accessors import SubsystemAccessor
+
+        sub = self._sub_providers["interpolate"]
+        return SubsystemAccessor(
+            backend=sub._backend,
+            task_manager=self._task_manager,
+            task_name="interpolate_generation",
+            storage=self._storage,
+            path_prefix=f"{self._multimedia_config.storage_path_prefix}interpolate/",
+            idempotency_manager=self._idempotency_manager,
+            cache_backend=self._cache_backend
+            if self._multimedia_config.cache_results
+            else None,
+            event_bus=self._event_bus,
+            media_type="interpolate",
+            backend_method="interpolate",
+        )
+
+    @property
+    def beat(self) -> BeatAccessor:
+        from lexigram.multimedia.accessors import BeatAccessor
+
+        sub = self._sub_providers["beat"]
+        return BeatAccessor(backend=sub._backend)

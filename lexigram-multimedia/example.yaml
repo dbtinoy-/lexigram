@@ -1,0 +1,107 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: multimedia:
+# Environment variable prefix: LEX_MULTIMEDIA__
+#
+# NOTE: Subsystem configs (tts, music, video, ...) are nested under the
+# umbrella `multimedia:` key. Each subsystem is also usable standalone via
+# its own module: <Subsystem>Module.configure(<Subsystem>Config(...)).
+
+multimedia:
+  # Storage prefix for generated assets in the blob store.
+  storage_path_prefix: "multimedia/"
+  # Cache generation results in the cache backend.
+  cache_results: false
+
+  # TTS (lexigram-multimedia-tts)
+  tts:
+    backend: "local-http"  # local-http, elevenlabs, openai, chatterbox, kokoro, f5-tts, piper
+    local_http_base_url: "http://localhost:5002"
+    elevenlabs_voice_id: null  # Required for elevenlabs backend
+    elevenlabs_api_key_secret_name: "elevenlabs_api_key"
+    openai_api_key_secret_name: "openai_api_key"
+    openai_voice: "alloy"
+    openai_model: "tts-1"
+    openai_base_url: "https://api.openai.com"
+    chatterbox_base_url: "http://localhost:5100"
+    chatterbox_exaggeration: 0.5
+    chatterbox_cfg_weight: 0.5
+    chatterbox_temperature: 0.85
+    kokoro_base_url: "http://localhost:5101"
+    kokoro_default_voice: "af_heart"
+    f5_tts_base_url: "http://localhost:5102"
+    piper_base_url: "http://localhost:5103"
+    piper_default_voice: "en_US-lessac-medium"
+    timeout: 60.0  # Seconds
+
+  # Music (lexigram-multimedia-music)
+  music:
+    backend: "local-http"  # local-http, stability-audio, ace-step, stable-audio-open
+    local_http_base_url: "http://localhost:5003"
+    duration_seconds: 30.0
+    stability_api_key_secret_name: "stability_api_key"
+    ace_step_base_url: "http://localhost:5300"
+    stable_audio_open_base_url: "http://localhost:5301"
+    timeout: 60.0  # Seconds
+
+  # Video (lexigram-multimedia-video)
+  video:
+    backend: "local-http"  # local-http, runway, openai, wan22, cogvideox, svd, comfyui
+    local_http_base_url: "http://localhost:5004"
+    runway_api_key_secret_name: "runway_api_key"
+    openai_api_key_secret_name: "openai_api_key"
+    openai_model: "sora-2"
+    openai_base_url: "https://api.openai.com"
+    wan22_base_url: "http://localhost:5200"
+    cogvideox_base_url: "http://localhost:5201"
+    svd_base_url: "http://localhost:5202"
+    comfyui_base_url: "http://localhost:8188"
+    comfyui_checkpoint: "svd_xt_1_1.safetensors"
+    comfyui_workflow_path: null
+    comfyui_fps: 6
+    comfyui_motion_bucket_id: 127
+    comfyui_poll_interval: 1.0
+    timeout: 60.0  # Seconds
+    processing:
+      ffmpeg_binary: "ffmpeg"
+      max_concurrent_jobs: 2
+      temp_dir: null
+      timeout: 300.0  # Seconds
+
+  # Image (lexigram-multimedia-image)
+  image:
+    backend: "local-http"  # local-http, stability, openai, comfyui
+    local_http_base_url: "http://localhost:5005"
+    openai_api_key_secret_name: "openai_api_key"
+    openai_model: "dall-e-3"
+    openai_base_url: "https://api.openai.com"
+    stability_api_key_secret_name: "stability_api_key"
+    comfyui_base_url: "http://localhost:8188"
+    comfyui_checkpoint: "sd_xl_base_1.0.safetensors"
+    comfyui_workflow_path: null
+    comfyui_steps: 20
+    comfyui_cfg_scale: 7.0
+    comfyui_poll_interval: 1.0
+    timeout: 60.0  # Seconds
+
+  # Upscale (lexigram-multimedia-upscale)
+  upscale:
+    backend: "real-esrgan"  # real-esrgan, hat
+    real_esrgan_base_url: "http://localhost:5400"
+    hat_base_url: "http://localhost:5401"
+    default_scale_factor: 4  # 2 or 4
+    timeout: 30.0  # Seconds
+
+  # Frame interpolation (lexigram-multimedia-interpolate)
+  interpolate:
+    backend: "rife"
+    rife_base_url: "http://localhost:5500"
+    default_factor: 2  # 2 or 4
+    timeout: 15.0  # Seconds
+
+  # Beat analysis (lexigram-multimedia-beat)
+  beat:
+    backend: "librosa"  # librosa, madmom
+    librosa_sample_rate: 22050
+    madmom_base_url: "http://localhost:5600"
+    timeout: 30.0  # Seconds

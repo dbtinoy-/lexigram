@@ -5,6 +5,7 @@ from lexigram.contracts.multimedia.protocols import UpscaleProvider
 from lexigram.multimedia.upscale.config import UpscaleConfig
 from lexigram.multimedia.upscale.di.provider import UpscaleGenerationProvider
 from lexigram.multimedia.upscale.providers.real_esrgan import RealEsrganUpscaleProvider
+from lexigram.multimedia.upscale.tasks import UpscaleTask
 
 
 class _FakeContainer:
@@ -29,6 +30,17 @@ async def test_register_binds_real_esrgan_backend_by_default() -> None:
 
     bound = container.bindings[UpscaleProvider]
     assert isinstance(bound, RealEsrganUpscaleProvider)
+
+
+@pytest.mark.asyncio
+async def test_register_binds_task_handler() -> None:
+    provider = UpscaleGenerationProvider(config=UpscaleConfig())
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    bound_task = container.bindings[UpscaleTask]
+    assert isinstance(bound_task, UpscaleTask)
 
 
 @pytest.mark.asyncio

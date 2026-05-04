@@ -12,6 +12,8 @@ AI framework.
 import asyncio
 from dataclasses import dataclass
 import os
+import sys
+import time
 
 # Suppress framework logging BEFORE any Lexigram imports
 import structlog
@@ -26,6 +28,20 @@ os.environ.setdefault("LEX_QUIET", "1")
 os.environ.setdefault("OPENAI_API_KEY", "dummy-key")
 
 
+def p(text):
+    print(text)
+    sys.stdout.flush()
+
+
+def section_pause():
+    time.sleep(3.0)
+
+
+def final_pause():
+    time.sleep(3.0)
+
+
+##1
 # ═══════════════════════════════════════════════════════════
 # EXAMPLE 1: Raw Ollama — the manual way
 # ═══════════════════════════════════════════════════════════
@@ -44,21 +60,18 @@ async def stage1_raw_ollama():
     print(f"  {resp['message']['content']}")
 
 
+##2
 # ═══════════════════════════════════════════════════════════
 # EXAMPLE 2: Enter Lexigram
 # ═══════════════════════════════════════════════════════════
 # Application.boot() + LLMModule — DI, protocols, Result[T,E].
 # Same LLM call, now clean, testable, provider-agnostic.
 
-from lexigram import Application
-from lexigram.ai.llm import ClientConfig, LLMModule
-from lexigram.ai.llm.structured import build_json_schema, extract_json_block
-from lexigram.ai.llm.thinking import normalize_thinking_text
-from lexigram.contracts.ai import ChatMessage, LLMClientProtocol, Role
-from lexigram.serialization import dumps_str
-
-
 async def stage2_lexigram_llm():
+    from lexigram import Application
+    from lexigram.ai.llm import ClientConfig, LLMModule
+    from lexigram.contracts.ai import ChatMessage, LLMClientProtocol, Role
+
     async with Application.boot(
         modules=[
             LLMModule.configure(
@@ -81,6 +94,7 @@ async def stage2_lexigram_llm():
         print(f"  {result.unwrap().content}")
 
 
+##3
 # ═══════════════════════════════════════════════════════════
 # EXAMPLE 3: Structured Output
 # ═══════════════════════════════════════════════════════════
@@ -96,6 +110,12 @@ class Explanation:
 
 
 async def stage3_structured():
+    from lexigram import Application
+    from lexigram.ai.llm import ClientConfig, LLMModule
+    from lexigram.ai.llm.structured import build_json_schema, extract_json_block
+    from lexigram.contracts.ai import ChatMessage, LLMClientProtocol, Role
+    from lexigram.serialization import dumps_str
+
     async with Application.boot(
         modules=[
             LLMModule.configure(
@@ -131,6 +151,7 @@ async def stage3_structured():
             print(f"  Extraction failed: {result.unwrap_err()}")
 
 
+##4
 # ═══════════════════════════════════════════════════════════
 # EXAMPLE 4: Streaming — real-time token output
 # ═══════════════════════════════════════════════════════════
@@ -139,14 +160,19 @@ async def stage3_structured():
 
 
 async def stage4_streaming():
+    from lexigram import Application
+    from lexigram.ai.llm import ClientConfig, LLMModule
+    from lexigram.ai.llm.thinking import normalize_thinking_text
+    from lexigram.contracts.ai import ChatMessage, LLMClientProtocol, Role
+
     async with Application.boot(
         modules=[
             LLMModule.configure(
                 ClientConfig(
-                    provider="openai",
-                    model="qwen3-30b-a3b-thinking-2507",
-                    api_base="http://localhost:1234/v1",
+                    provider="ollama",
+                    model="gemma4:12b",
                     max_tokens=256,
+                    timeout=120,
                 )
             )
         ]
@@ -179,6 +205,7 @@ async def stage4_streaming():
         print(f"  {clean_response}")
 
 
+##5
 # ═══════════════════════════════════════════════════════════
 # EXAMPLE 5: Tool Calling — LLM autonomously uses tools
 # ═══════════════════════════════════════════════════════════
@@ -186,8 +213,13 @@ async def stage4_streaming():
 # The LLM decides when to call a tool, processes the
 # result, and produces a final answer.
 
-from lexigram.ai.agents import tool
-from lexigram.ai.agents.strategies import ReActStrategy
+try:
+    from lexigram.ai.agents import tool
+    from lexigram.ai.agents.strategies import ReActStrategy
+except ImportError:
+    def tool(fn):
+        return fn
+    ReActStrategy = None
 
 KNOWLEDGE_BASE = {
     "providers": """Lexigram supports 15+ AI providers out of the box:
@@ -216,6 +248,10 @@ async def search_knowledge(topic: str) -> str:
 
 
 async def stage5_tool_calling():
+    from lexigram import Application
+    from lexigram.ai.llm import ClientConfig, LLMModule
+    from lexigram.contracts.ai import ChatMessage, LLMClientProtocol, Role
+
     async with Application.boot(
         modules=[
             LLMModule.configure(
@@ -243,6 +279,7 @@ async def stage5_tool_calling():
             print(f"  Answer: {response.message}")
 
 
+##6
 # ═══════════════════════════════════════════════════════════
 # EXAMPLE 6: Observe — automatic observability
 # ═══════════════════════════════════════════════════════════
@@ -251,6 +288,10 @@ async def stage5_tool_calling():
 
 
 async def stage6_observability():
+    from lexigram import Application
+    from lexigram.ai.llm import ClientConfig, LLMModule
+    from lexigram.contracts.ai import ChatMessage, LLMClientProtocol, Role
+
     async with Application.boot(
         modules=[
             LLMModule.configure(
@@ -280,7 +321,8 @@ async def stage6_observability():
 
 
 # ═══════════════════════════════════════════════════════════
-# RUNNABLE DEMO
+# RUNNABLE DEMO — all stages call the real local Ollama server
+# via the Lexigram framework. No mocks, no simulated output.
 # ═══════════════════════════════════════════════════════════
 
 

@@ -5,9 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.contracts.multimedia.protocols import (
+    BeatAnalysisProvider,
     ImageProvider,
+    InterpolationProvider,
     MusicProvider,
     TTSProvider,
+    UpscaleProvider,
     VideoProvider,
 )
 from lexigram.di.module import DynamicModule, Module, module
@@ -16,7 +19,9 @@ from lexigram.multimedia.config import MultimediaConfig
 
 @module()
 class MultimediaModule(Module):
-    """Audio/video/image generation: TTS, music, video, image subsystems."""
+    """Audio/video/image generation: TTS, music, video, image, upscale,
+    interpolate, and beat-analysis subsystems.
+    """
 
     @classmethod
     def configure(cls, config: MultimediaConfig | None = None) -> DynamicModule:
@@ -25,7 +30,15 @@ class MultimediaModule(Module):
         return DynamicModule(
             module=cls,
             providers=[MultimediaProvider(config=config)],
-            exports=[TTSProvider, MusicProvider, VideoProvider, ImageProvider],
+            exports=[
+                TTSProvider,
+                MusicProvider,
+                VideoProvider,
+                ImageProvider,
+                UpscaleProvider,
+                InterpolationProvider,
+                BeatAnalysisProvider,
+            ],
         )
 
     @classmethod
@@ -43,7 +56,15 @@ class MultimediaModule(Module):
         return DynamicModule(
             module=cls,
             imports=stub_imports,
-            exports=[TTSProvider, MusicProvider, VideoProvider, ImageProvider],
+            exports=[
+                TTSProvider,
+                MusicProvider,
+                VideoProvider,
+                ImageProvider,
+                UpscaleProvider,
+                InterpolationProvider,
+                BeatAnalysisProvider,
+            ],
         )
 
 

@@ -1,0 +1,50 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: multimedia: → tts:
+# Environment variable prefix: LEX_MULTIMEDIA__TTS__
+#
+# NOTE: lexigram-multimedia-tts is a subsystem of the lexigram-multimedia
+# umbrella. In application.yaml its config is nested under the `multimedia:`
+# key. For standalone use, pass a TTSConfig directly to
+# AudioTTSModule.configure(TTSConfig(...)).
+#
+# IMPORTANT: Never commit API keys. Store them in the secrets backend and
+# reference them by name.
+
+multimedia:
+  tts:
+    # Text-to-speech backend to use.
+    backend: "local-http"  # local-http, elevenlabs, openai, chatterbox, kokoro, f5-tts, piper
+
+    # Local reference server (backend: local-http)
+    local_http_base_url: "http://localhost:5002"
+
+    # ElevenLabs (backend: elevenlabs)
+    elevenlabs_voice_id: null  # e.g. "21m00Tcm4TlvDq8ikWAM"
+    elevenlabs_api_key_secret_name: "elevenlabs_api_key"
+
+    # OpenAI (backend: openai)
+    openai_api_key_secret_name: "openai_api_key"
+    openai_voice: "alloy"  # alloy, echo, fable, onyx, nova, shimmer
+    openai_model: "tts-1"
+    openai_base_url: "https://api.openai.com"
+
+    # Chatterbox reference server (backend: chatterbox)
+    chatterbox_base_url: "http://localhost:5100"
+    chatterbox_exaggeration: 0.5
+    chatterbox_cfg_weight: 0.5
+    chatterbox_temperature: 0.85
+
+    # Kokoro reference server (backend: kokoro)
+    kokoro_base_url: "http://localhost:5101"
+    kokoro_default_voice: "af_heart"
+
+    # F5-TTS reference server (backend: f5-tts)
+    f5_tts_base_url: "http://localhost:5102"
+
+    # Piper reference server (backend: piper)
+    piper_base_url: "http://localhost:5103"
+    piper_default_voice: "en_US-lessac-medium"
+
+    # Request timeout in seconds.
+    timeout: 60.0
