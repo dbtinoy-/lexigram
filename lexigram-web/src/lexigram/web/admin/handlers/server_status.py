@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from lexigram.contracts.admin import HealthCheckPayload, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.admin.types import WidgetParams
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Ok, Result
-from lexigram.web.admin.viewmodels import ServerStatusViewModel
 
 
 class ServerStatusWidgetHandler:
@@ -17,21 +17,25 @@ class ServerStatusWidgetHandler:
 
     async def get_data(
         self, params: WidgetParams
-    ) -> Result[ServerStatusViewModel, AdminError]:
+    ) -> Result[HealthCheckPayload, AdminError]:
         """Fetch server status data.
 
         Args:
             params: Widget request parameters (unused for this widget).
 
         Returns:
-            Result containing ServerStatusViewModel with server status.
+            Result containing HealthCheckPayload with server status.
         """
-        viewmodel = ServerStatusViewModel(
-            is_running=True,
-            uptime_seconds=3600,  # 1 hour
-            server_version="1.0.0",
+        is_running = True
+        uptime_seconds = 3600  # 1 hour
+        server_version = "1.0.0"
+        return Ok(
+            HealthCheckPayload(
+                status=HealthStatus.HEALTHY if is_running else HealthStatus.UNHEALTHY,
+                component="HTTP Server",
+                detail=f"v{server_version}, up {uptime_seconds}s",
+            )
         )
-        return Ok(viewmodel)
 
 
 __all__ = ["ServerStatusWidgetHandler"]

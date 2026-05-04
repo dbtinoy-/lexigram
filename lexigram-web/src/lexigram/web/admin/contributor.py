@@ -18,6 +18,7 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
@@ -28,7 +29,6 @@ from lexigram.result import Err, Ok, Result
 if TYPE_CHECKING:
     from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
     from lexigram.contracts.core.di import ContainerResolverProtocol
-    from lexigram.web.admin.renderer import PackageWidgetRenderer
 
 
 async def _empty_handler(request: object) -> str:  # noqa: ARG001
@@ -38,12 +38,6 @@ async def _empty_handler(request: object) -> str:  # noqa: ARG001
 
 logger = get_logger(__name__)
 
-_WIDGET_TEMPLATES: dict[str, str] = {
-    "server_status": "server_status.html",
-    "active_connections": "active_connections.html",
-    "request_rate": "request_rate.html",
-}
-
 _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
     DashboardWidgetDefinition(
         name="server_status",
@@ -52,6 +46,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/web/widgets/server_status",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.HEALTH,
         description="Current HTTP server status and uptime.",
     ),
     DashboardWidgetDefinition(
@@ -61,6 +56,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/web/widgets/active_connections",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Number of currently open HTTP connections.",
     ),
     DashboardWidgetDefinition(
@@ -70,7 +66,8 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/web/widgets/request_rate",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
-        description="Incoming requests per second over the last minute.",
+        view_kind=WidgetKind.STAT,
+        description="HTTP request rate over the last minute.",
     ),
 )
 
@@ -126,8 +123,8 @@ class WebAdminContributor(BaseAdminContributor):
     """Admin contributor for the lexigram-web package.
 
     Provides widget rendering with registry-based dispatch to handlers.
-    Each widget is handled by a dedicated handler class that implements
-    WidgetHandlerProtocol and returns a frozen ViewModel.
+    Each widget is handled by a dedicated handler class that returns
+    structured WidgetContent directly.
     Dependencies are resolved from the container in ``on_admin_boot``.
     """
 
@@ -138,7 +135,6 @@ class WebAdminContributor(BaseAdminContributor):
     priority = 10
 
     def __init__(self) -> None:
-        self._renderer: PackageWidgetRenderer | None = None
         self._handlers: dict[str, WidgetHandlerProtocol] = {}
 
     async def on_admin_boot(self, container: ContainerResolverProtocol) -> None:
@@ -158,12 +154,6 @@ class WebAdminContributor(BaseAdminContributor):
         from lexigram.web.admin.handlers.server_status import (
             ServerStatusWidgetHandler,
         )
-        from lexigram.web.admin.renderer import PackageWidgetRenderer
-
-        try:
-            self._renderer = await container.resolve(PackageWidgetRenderer)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("web_contributor.renderer_unavailable", error=str(exc))
 
         try:
             self._handlers = {
@@ -251,8 +241,8 @@ class WebAdminContributor(BaseAdminContributor):
             params: Widget request parameters.
 
         Returns:
-            Result containing rendered HTML string, or WidgetNotFoundError
-            if the widget is not registered.
+            Result containing a WidgetViewModel with structured content,
+            or WidgetNotFoundError if the widget is not registered.
         """
         handler = self._handlers.get(widget_name)
         if handler is None:
@@ -260,19 +250,12 @@ class WebAdminContributor(BaseAdminContributor):
                 "Result[WidgetViewModel, AdminError]",
                 Err(WidgetNotFoundError(self.name, widget_name)),
             )
-        if self._renderer is None:
-            return cast(
-                "Result[WidgetViewModel, AdminError]",
-                Err(WidgetNotFoundError(self.name, widget_name)),
-            )
         result = await handler.get_data(params)
         if result.is_err():
             return cast("Result[WidgetViewModel, AdminError]", result)
-        template = _WIDGET_TEMPLATES[widget_name]
-        html = self._renderer.render(template, vars(result.unwrap()))
         return cast(
             "Result[WidgetViewModel, AdminError]",
-            Ok(WidgetViewModel(body=html)),
+            Ok(WidgetViewModel(content=result.unwrap())),
         )
 
 

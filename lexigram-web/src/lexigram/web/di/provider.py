@@ -280,7 +280,7 @@ class WebProvider(Provider):
         # lexigram-mapping is a separate extension package. Register it
         # explicitly via MappingModule.configure() in your application setup.
 
-        # Register admin widget renderer and handlers (transient for scope safety)
+        # Register admin widget handlers (transient for scope safety)
         from lexigram.web.admin.contributor import WebAdminContributor
         from lexigram.web.admin.handlers.active_connections import (
             ActiveConnectionsWidgetHandler,
@@ -291,9 +291,7 @@ class WebProvider(Provider):
         from lexigram.web.admin.handlers.server_status import (
             ServerStatusWidgetHandler,
         )
-        from lexigram.web.admin.renderer import PackageWidgetRenderer
 
-        container.singleton(PackageWidgetRenderer, PackageWidgetRenderer)
         container.transient(ServerStatusWidgetHandler, ServerStatusWidgetHandler)
         container.transient(
             ActiveConnectionsWidgetHandler,

@@ -1,23 +1,20 @@
 """Tests for web admin widget rendering.
 
 Tests the WebAdminContributor widget handler dispatch, renderer,
-and template integration.
+and WidgetContent integration.
 """
 
 from __future__ import annotations
 
 import pytest
 
+from lexigram.contracts.admin import HealthCheckPayload, StatContent
 from lexigram.contracts.admin.errors import WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetParams, WidgetViewModel
 from lexigram.web.admin.contributor import WebAdminContributor
 from lexigram.web.admin.widgets import (
-    ActiveConnectionsViewModel,
     ActiveConnectionsWidgetHandler,
-    PackageWidgetRenderer,
-    RequestRateViewModel,
     RequestRateWidgetHandler,
-    ServerStatusViewModel,
     ServerStatusWidgetHandler,
 )
 
@@ -30,30 +27,43 @@ class TestWebAdminContributor:
         """Create a contributor instance with mock dependencies."""
         from unittest.mock import AsyncMock, MagicMock
 
+        from lexigram.contracts.core.health import HealthStatus
         from lexigram.result import Ok
 
         mock_server_status = MagicMock(spec=ServerStatusWidgetHandler)
-        mock_server_status.get_data = AsyncMock(return_value=Ok(MagicMock()))
+        mock_server_status.get_data = AsyncMock(
+            return_value=Ok(
+                HealthCheckPayload(
+                    status=HealthStatus.HEALTHY,
+                    component="HTTP Server",
+                    detail="v1.0.0, up 3600s",
+                )
+            )
+        )
 
         mock_connections = MagicMock(spec=ActiveConnectionsWidgetHandler)
-        mock_connections.get_data = AsyncMock(return_value=Ok(MagicMock()))
+        mock_connections.get_data = AsyncMock(
+            return_value=Ok(
+                StatContent(
+                    stats=(
+                        # Most stats would be tuples of Stat objects, but a
+                        # MagicMock content is enough to prove pass-through.
+                    )
+                )
+            )
+        )
 
         mock_request_rate = MagicMock(spec=RequestRateWidgetHandler)
-        mock_request_rate.get_data = AsyncMock(return_value=Ok(MagicMock()))
+        mock_request_rate.get_data = AsyncMock(return_value=Ok(StatContent(stats=())))
 
-        mock_renderer = MagicMock(spec=PackageWidgetRenderer)
-        mock_renderer.render = MagicMock(return_value="<div>Rendered Widget</div>")
-
+        handler_map = {
+            ServerStatusWidgetHandler: mock_server_status,
+            ActiveConnectionsWidgetHandler: mock_connections,
+            RequestRateWidgetHandler: mock_request_rate,
+        }
         contributor = WebAdminContributor()
         mock_container = MagicMock()
-        mock_container.resolve = AsyncMock(
-            side_effect=lambda cls: {
-                ServerStatusWidgetHandler: mock_server_status,
-                ActiveConnectionsWidgetHandler: mock_connections,
-                RequestRateWidgetHandler: mock_request_rate,
-                PackageWidgetRenderer: mock_renderer,
-            }.get(cls)
-        )
+        mock_container.resolve = AsyncMock(side_effect=handler_map.get)
         await contributor.on_admin_boot(mock_container)
         return contributor
 
@@ -74,7 +84,7 @@ class TestWebAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert "Rendered Widget" in vm.body
+        assert isinstance(vm.content, HealthCheckPayload)
 
     @pytest.mark.asyncio
     async def test_render_active_connections_widget(
@@ -88,7 +98,7 @@ class TestWebAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert "Rendered Widget" in vm.body
+        assert isinstance(vm.content, StatContent)
 
     @pytest.mark.asyncio
     async def test_render_request_rate_widget(
@@ -102,7 +112,7 @@ class TestWebAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert "Rendered Widget" in vm.body
+        assert isinstance(vm.content, StatContent)
 
     @pytest.mark.asyncio
     async def test_render_unknown_widget_returns_error(
@@ -161,116 +171,47 @@ class TestWebAdminContributor:
 
 
 class TestWidgetHandlers:
-    """Test individual widget handlers."""
+    """Test individual widget handlers return WidgetContent."""
 
     @pytest.mark.asyncio
     async def test_server_status_handler(self) -> None:
-        """Test server_status handler returns viewmodel."""
+        """Test server_status handler returns HealthCheckPayload."""
+        from lexigram.contracts.core.health import HealthStatus
+
         handler = ServerStatusWidgetHandler()
         result = await handler.get_data(WidgetParams())
 
         assert result.is_ok()
-        viewmodel = result.unwrap()
-        assert isinstance(viewmodel, ServerStatusViewModel)
-        assert viewmodel.is_running is True
-        assert viewmodel.uptime_seconds > 0
-        assert viewmodel.server_version
+        content = result.unwrap()
+        assert isinstance(content, HealthCheckPayload)
+        assert content.status is HealthStatus.HEALTHY
+        assert content.component == "HTTP Server"
+        assert content.detail
 
     @pytest.mark.asyncio
     async def test_active_connections_handler(self) -> None:
-        """Test active_connections handler returns viewmodel."""
+        """Test active_connections handler returns StatContent."""
         handler = ActiveConnectionsWidgetHandler()
         result = await handler.get_data(WidgetParams())
 
         assert result.is_ok()
-        viewmodel = result.unwrap()
-        assert isinstance(viewmodel, ActiveConnectionsViewModel)
-        assert viewmodel.active >= 0
-        assert viewmodel.peak >= viewmodel.active
-        assert viewmodel.max_allowed > viewmodel.peak
+        content = result.unwrap()
+        assert isinstance(content, StatContent)
+        assert len(content.stats) == 3
 
     @pytest.mark.asyncio
     async def test_request_rate_handler(self) -> None:
-        """Test request_rate handler returns viewmodel."""
+        """Test request_rate handler returns StatContent."""
         handler = RequestRateWidgetHandler()
         result = await handler.get_data(WidgetParams())
 
         assert result.is_ok()
-        viewmodel = result.unwrap()
-        assert isinstance(viewmodel, RequestRateViewModel)
-        assert viewmodel.requests_per_second >= 0
-        assert viewmodel.total_requests >= 0
-        assert 0 <= viewmodel.error_rate_pct <= 100
-
-
-class TestPackageWidgetRenderer:
-    """Test Jinja2 widget renderer."""
-
-    @pytest.fixture
-    def renderer(self) -> PackageWidgetRenderer:
-        """Create a renderer instance."""
-        return PackageWidgetRenderer()
-
-    def test_render_server_status_template(
-        self, renderer: PackageWidgetRenderer
-    ) -> None:
-        """Test rendering server_status template."""
-        context = {
-            "title": "Server Status",
-            "is_running": True,
-            "uptime_seconds": 3600,
-            "server_version": "1.0.0",
-        }
-        html = renderer.render("server_status.html", context)
-
-        assert "Server Status" in html
-        assert "Running" in html
-        assert "1.0" in html  # From 3600/3600 = 1 hour
-
-    def test_render_active_connections_template(
-        self,
-        renderer: PackageWidgetRenderer,
-    ) -> None:
-        """Test rendering active_connections template."""
-        context = {
-            "title": "Active Connections",
-            "active": 42,
-            "peak": 128,
-            "max_allowed": 512,
-        }
-        html = renderer.render("active_connections.html", context)
-
-        assert "Active Connections" in html
-        assert "42" in html
-        assert "128" in html
-        assert "512" in html
-
-    def test_render_request_rate_template(
-        self,
-        renderer: PackageWidgetRenderer,
-    ) -> None:
-        """Test rendering request_rate template."""
-        context = {
-            "title": "Request Rate",
-            "requests_per_second": 12.5,
-            "total_requests": 45000,
-            "error_rate_pct": 0.5,
-        }
-        html = renderer.render("request_rate.html", context)
-
-        assert "12.5" in html
-        assert "45000" in html
-        assert "0.5" in html
-        assert "text-success" in html
-
-    def test_render_template_not_found(self, renderer: PackageWidgetRenderer) -> None:
-        """Test that rendering non-existent template raises error."""
-        with pytest.raises(Exception):  # jinja2.TemplateNotFound
-            renderer.render("nonexistent.html", {})
+        content = result.unwrap()
+        assert isinstance(content, StatContent)
+        assert len(content.stats) == 3
 
 
 __all__ = [
     "TestWebAdminContributor",
     "TestWidgetHandlers",
-    "TestPackageWidgetRenderer",
 ]
