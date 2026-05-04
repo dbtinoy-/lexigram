@@ -83,7 +83,11 @@ class APIDocsConfig(BaseConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
     enabled: bool = Field(
-        default=False, description="Enable API documentation endpoints (/docs, /redoc)"
+        default=True,
+        description=(
+            "Enable API documentation endpoints (/docs, /redoc) and auto-configure "
+            "CSP for their CDN assets"
+        ),
     )
     provider: str = Field(
         default="both",

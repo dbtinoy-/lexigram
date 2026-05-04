@@ -146,11 +146,32 @@ class CORSConfig(BaseConfig):
 
 _DEFAULT_DIRECTIVES: dict[str, str] = {
     "default-src": "'self'",
-    "script-src": "'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src": "'self' 'unsafe-inline'",
+    # Safe CDN hosts used by the framework's own templates (Swagger UI,
+    # ReDoc, lexigram-admin, lexigram-ui): see UI_CSP_REQUIREMENTS and
+    # APIDocsConfig.SWAGGER_DOMAINS / REDOC_DOMAINS.
+    "script-src": (
+        "'self' 'unsafe-inline' 'unsafe-eval' "
+        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://cdn.redoc.ly https://cdn.plot.ly"
+    ),
+    "script-src-elem": (
+        "'self' 'unsafe-inline' 'unsafe-eval' "
+        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://cdn.redoc.ly https://cdn.plot.ly"
+    ),
+    "style-src": (
+        "'self' 'unsafe-inline' "
+        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://fonts.googleapis.com"
+    ),
+    "style-src-elem": (
+        "'self' 'unsafe-inline' "
+        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://fonts.googleapis.com"
+    ),
     "img-src": "'self' data: https: blob:",
-    "font-src": "'self' data:",
-    "connect-src": "'self' https: wss: ws:",
+    "font-src": "'self' data: https://fonts.googleapis.com https://fonts.gstatic.com",
+    "connect-src": "'self' https: wss: ws: https://unpkg.com",
     "frame-ancestors": "'none'",
     "base-uri": "'self'",
     "form-action": "'self'",
