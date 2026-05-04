@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from lexigram.cache.admin.contributor import CacheAdminContributor
-from lexigram.cache.admin.viewmodels import (
-    BackendPingViewModel,
-    EvictionRateViewModel,
-    HitMissRatioViewModel,
+from lexigram.contracts.admin import (
+    HealthCheckPayload,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
 )
 from lexigram.contracts.admin.errors import WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetViewModel
-from lexigram.contracts.admin.types import WidgetParams
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Err, Ok
 
 
@@ -21,65 +22,55 @@ class TestCacheAdminContributor:
     """Test suite for CacheAdminContributor."""
 
     @pytest.fixture
-    def mock_hit_miss_handler(self) -> MagicMock:
-        """Mock hit/miss handler."""
-        handler = MagicMock()
-        handler.get_data = AsyncMock(
+    def contributor(self) -> CacheAdminContributor:
+        """Create contributor with mocked handlers returning WidgetContent."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        hit_miss = MagicMock()
+        hit_miss.get_data = AsyncMock(
             return_value=Ok(
-                HitMissRatioViewModel(
-                    hits=100, misses=20, hit_rate_pct=83.3, window_minutes=60
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="Hit Rate (60m)",
+                            value="83.3%",
+                            tone=Tone.SUCCESS,
+                        ),
+                        Stat(label="Hits", value="100"),
+                        Stat(label="Misses", value="20"),
+                    )
                 )
             )
         )
-        return handler
-
-    @pytest.fixture
-    def mock_eviction_handler(self) -> MagicMock:
-        """Mock eviction rate handler."""
-        handler = MagicMock()
-        handler.get_data = AsyncMock(
+        eviction = MagicMock()
+        eviction.get_data = AsyncMock(
             return_value=Ok(
-                EvictionRateViewModel(evictions_per_second=0.5, total_evictions=30)
-            )
-        )
-        return handler
-
-    @pytest.fixture
-    def mock_ping_handler(self) -> MagicMock:
-        """Mock backend ping handler."""
-        handler = MagicMock()
-        handler.get_data = AsyncMock(
-            return_value=Ok(
-                BackendPingViewModel(
-                    latency_ms=1.23, is_reachable=True, backend_name="memory"
+                StatContent(
+                    stats=(
+                        Stat(label="Evictions/sec", value="0.5/s"),
+                        Stat(label="Total evictions", value="30"),
+                    )
                 )
             )
         )
-        return handler
+        ping = MagicMock()
+        ping.get_data = AsyncMock(
+            return_value=Ok(
+                HealthCheckPayload(
+                    status=HealthStatus.HEALTHY,
+                    component="cache.backend",
+                    detail="memory",
+                    latency_ms=1.23,
+                )
+            )
+        )
 
-    @pytest.fixture
-    def mock_renderer(self) -> MagicMock:
-        """Mock Jinja2 widget renderer."""
-        renderer = MagicMock()
-        renderer.render = MagicMock(return_value="<div>Rendered HTML</div>")
-        return renderer
-
-    @pytest.fixture
-    def contributor(
-        self,
-        mock_hit_miss_handler: MagicMock,
-        mock_eviction_handler: MagicMock,
-        mock_ping_handler: MagicMock,
-        mock_renderer: MagicMock,
-    ) -> CacheAdminContributor:
-        """Create contributor with mocked handlers and renderer."""
         contrib = CacheAdminContributor()
         contrib._handlers = {
-            "hit_miss_ratio": mock_hit_miss_handler,
-            "eviction_rate": mock_eviction_handler,
-            "backend_ping": mock_ping_handler,
+            "hit_miss_ratio": hit_miss,
+            "eviction_rate": eviction,
+            "backend_ping": ping,
         }
-        contrib._renderer = mock_renderer
         return contrib
 
     def test_contributor_metadata(self, contributor: CacheAdminContributor) -> None:
@@ -101,10 +92,7 @@ class TestCacheAdminContributor:
 
     @pytest.mark.asyncio
     async def test_render_hit_miss_ratio_widget(
-        self,
-        contributor: CacheAdminContributor,
-        mock_hit_miss_handler: MagicMock,
-        mock_renderer: MagicMock,
+        self, contributor: CacheAdminContributor
     ) -> None:
         """Test rendering the hit/miss ratio widget."""
         params = WidgetParams(time_window_minutes=60)
@@ -113,45 +101,35 @@ class TestCacheAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert vm.body == "<div>Rendered HTML</div>"
-
-        # Verify handler was called
-        mock_hit_miss_handler.get_data.assert_awaited_once_with(params)
-
-        # Verify renderer was called with viewmodel dict
-        mock_renderer.render.assert_called_once()
-        call_args = mock_renderer.render.call_args
-        assert call_args[0][0] == "hit_miss_ratio.html"
-        # context should be a dict with viewmodel attributes
-        context = call_args[0][1]
-        assert context["hits"] == 100
-        assert context["misses"] == 20
+        assert isinstance(vm.content, StatContent)
+        assert vm.content.stats[0].value == "83.3%"
+        assert vm.content.stats[0].tone is Tone.SUCCESS
 
     @pytest.mark.asyncio
     async def test_render_eviction_rate_widget(
-        self,
-        contributor: CacheAdminContributor,
-        mock_eviction_handler: MagicMock,
+        self, contributor: CacheAdminContributor
     ) -> None:
         """Test rendering the eviction rate widget."""
         params = WidgetParams()
         result = await contributor.render_widget("eviction_rate", params)
 
         assert result.is_ok()
-        mock_eviction_handler.get_data.assert_awaited_once_with(params)
+        vm = result.unwrap()
+        assert isinstance(vm.content, StatContent)
+        assert vm.content.stats[0].value == "0.5/s"
 
     @pytest.mark.asyncio
     async def test_render_backend_ping_widget(
-        self,
-        contributor: CacheAdminContributor,
-        mock_ping_handler: MagicMock,
+        self, contributor: CacheAdminContributor
     ) -> None:
         """Test rendering the backend ping widget."""
         params = WidgetParams()
         result = await contributor.render_widget("backend_ping", params)
 
         assert result.is_ok()
-        mock_ping_handler.get_data.assert_awaited_once_with(params)
+        vm = result.unwrap()
+        assert isinstance(vm.content, HealthCheckPayload)
+        assert vm.content.status is HealthStatus.HEALTHY
 
     @pytest.mark.asyncio
     async def test_render_unknown_widget_returns_not_found(
@@ -167,15 +145,17 @@ class TestCacheAdminContributor:
 
     @pytest.mark.asyncio
     async def test_render_widget_handler_error_propagates(
-        self,
-        contributor: CacheAdminContributor,
-        mock_hit_miss_handler: MagicMock,
+        self, contributor: CacheAdminContributor
     ) -> None:
         """Test that handler errors propagate through render_widget."""
+        from unittest.mock import AsyncMock
+
         from lexigram.contracts.infra.cache.exceptions import CacheError
 
         error = CacheError("Backend unavailable")
-        mock_hit_miss_handler.get_data = AsyncMock(return_value=Err(error))
+        handler = contributor._handlers["hit_miss_ratio"]
+        assert handler is not None
+        handler.get_data = AsyncMock(return_value=Err(error))  # type: ignore[attr-defined]
 
         params = WidgetParams()
         result = await contributor.render_widget("hit_miss_ratio", params)
@@ -185,20 +165,9 @@ class TestCacheAdminContributor:
         assert returned_error is error
 
     @pytest.mark.asyncio
-    async def test_render_widget_no_renderer_returns_not_found(
-        self,
-        mock_hit_miss_handler: MagicMock,
-        mock_eviction_handler: MagicMock,
-        mock_ping_handler: MagicMock,
-    ) -> None:
-        """Test that missing renderer returns not found."""
+    async def test_render_widget_no_handlers_returns_not_found(self) -> None:
+        """Test that missing handler registry returns not found."""
         contributor = CacheAdminContributor()
-        contributor._handlers = {
-            "hit_miss_ratio": mock_hit_miss_handler,
-            "eviction_rate": mock_eviction_handler,
-            "backend_ping": mock_ping_handler,
-        }
-        contributor._renderer = None
 
         params = WidgetParams()
         result = await contributor.render_widget("hit_miss_ratio", params)

@@ -623,15 +623,13 @@ class CacheProvider(Provider):
             return False
 
     def _register_admin_components(self, container: ContainerRegistrarProtocol) -> None:
-        """Register admin widget renderer and contributor.
+        """Register admin contributor.
 
         Args:
             container: The DI container registrar.
         """
         from lexigram.cache.admin.contributor import CacheAdminContributor
-        from lexigram.cache.admin.renderer import PackageWidgetRenderer
 
-        container.singleton(PackageWidgetRenderer, PackageWidgetRenderer)
         container.singleton(CacheAdminContributor, CacheAdminContributor)
 
         logger.debug("Registered cache admin widget components")

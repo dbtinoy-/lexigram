@@ -5,9 +5,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from lexigram.cache.admin.viewmodels import BackendPingViewModel
+from lexigram.contracts.admin import HealthCheckPayload, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.admin.types import WidgetParams
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Ok, Result
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class BackendPingWidgetHandler:
 
     async def get_data(
         self, params: WidgetParams
-    ) -> Result[BackendPingViewModel, AdminError]:
+    ) -> Result[HealthCheckPayload, AdminError]:
         """Perform a health check on the cache backend.
 
         Infrastructure failures (network, timeout) propagate as exceptions.
@@ -35,7 +35,7 @@ class BackendPingWidgetHandler:
             params: Widget parameters.
 
         Returns:
-            Result containing BackendPingViewModel or AdminError.
+            Result containing HealthCheckPayload or AdminError.
         """
         start = time.monotonic()
 
@@ -44,8 +44,10 @@ class BackendPingWidgetHandler:
         health_check_method = getattr(self._cache, "health_check", None)
         if health_check_method is not None and callable(health_check_method):
             result = await health_check_method()
-            # HealthCheckResult has an is_healthy property or status
-            is_reachable = getattr(result, "is_healthy", True)
+            # HealthCheckResult has an is_healthy() method; duck-typed results
+            # may expose an is_healthy boolean attribute instead.
+            is_healthy = getattr(result, "is_healthy", True)
+            is_reachable = is_healthy() if callable(is_healthy) else bool(is_healthy)
 
         latency_ms = round((time.monotonic() - start) * 1000, 2)
         backend_name = getattr(self._cache, "backend_name", "cache")
@@ -53,10 +55,13 @@ class BackendPingWidgetHandler:
             backend_name = type(self._cache).__name__
 
         return Ok(
-            BackendPingViewModel(
+            HealthCheckPayload(
+                status=(
+                    HealthStatus.HEALTHY if is_reachable else HealthStatus.UNHEALTHY
+                ),
+                component="cache.backend",
+                detail=backend_name,
                 latency_ms=latency_ms,
-                is_reachable=bool(is_reachable),
-                backend_name=backend_name,
             )
         )
 

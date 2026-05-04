@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lexigram.cache.admin.viewmodels import HitMissRatioViewModel
+from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.admin.types import WidgetParams
 from lexigram.result import Ok, Result
 
 if TYPE_CHECKING:
@@ -23,9 +22,7 @@ class HitMissRatioWidgetHandler:
     def __init__(self, cache: CacheBackendProtocol) -> None:
         self._cache = cache
 
-    async def get_data(
-        self, params: WidgetParams
-    ) -> Result[HitMissRatioViewModel, AdminError]:
+    async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch cache hit/miss stats.
 
         Infrastructure failures propagate.
@@ -34,7 +31,7 @@ class HitMissRatioWidgetHandler:
             params: Widget parameters.
 
         Returns:
-            Result containing HitMissRatioViewModel or AdminError.
+            Result containing StatContent with hit-rate metrics.
         """
         # Try to get stats via public method if available
         hits = 0
@@ -46,13 +43,19 @@ class HitMissRatioWidgetHandler:
 
         total = hits + misses
         hit_rate = hits / total * 100 if total > 0 else 0.0
-
+        hit_rate_pct = round(hit_rate, 1)
+        # Template statically styles the rate with text-success — mirror as SUCCESS.
         return Ok(
-            HitMissRatioViewModel(
-                hits=hits,
-                misses=misses,
-                hit_rate_pct=round(hit_rate, 1),
-                window_minutes=params.time_window_minutes,
+            StatContent(
+                stats=(
+                    Stat(
+                        label=f"Hit Rate ({params.time_window_minutes}m)",
+                        value=f"{hit_rate_pct}%",
+                        tone=Tone.SUCCESS,
+                    ),
+                    Stat(label="Hits", value=str(hits)),
+                    Stat(label="Misses", value=str(misses)),
+                )
             )
         )
 
