@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.admin.types import WidgetParams
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.result import Ok, Result
-from lexigram.sql.admin.viewmodels import PoolUtilizationViewModel
 
 
 class PoolUtilizationWidgetHandler:
@@ -24,10 +23,11 @@ class PoolUtilizationWidgetHandler:
         """
         self._db = db
 
-    async def get_data(
-        self, params: WidgetParams
-    ) -> Result[PoolUtilizationViewModel, AdminError]:
+    async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch pool stats.
+
+        Mirror of the widget template, which renders the metric value
+        statically — no tone/threshold logic in the template.
 
         Infrastructure failures propagate as exceptions.
 
@@ -35,17 +35,26 @@ class PoolUtilizationWidgetHandler:
             params: Widget parameters.
 
         Returns:
-            Result with PoolUtilizationViewModel or AdminError.
+            Result with StatContent or AdminError.
         """
         # TODO: Implement actual pool stats retrieval
         # For now, return hardcoded mock data
-        utilization = 40.0
+        pool_size = 20
+        active_connections = 8
+        utilization_pct = round(40.0, 1)
         return Ok(
-            PoolUtilizationViewModel(
-                pool_size=20,
-                active_connections=8,
-                idle_connections=12,
-                utilization_pct=round(utilization, 1),
+            StatContent(
+                stats=(
+                    Stat(
+                        label="Active Connections",
+                        value=f"{active_connections}/{pool_size}",
+                        tone=Tone.PRIMARY,
+                    ),
+                    Stat(
+                        label="Utilization",
+                        value=f"{utilization_pct}%",
+                    ),
+                )
             )
         )
 

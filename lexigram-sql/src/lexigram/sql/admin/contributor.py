@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts import Result
 from lexigram.contracts.admin.contributor import BaseAdminContributor
@@ -16,6 +16,7 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
@@ -29,12 +30,6 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-_WIDGET_TEMPLATES: dict[str, str] = {
-    "pool_utilization": "pool_utilization.html",
-    "query_stats": "query_stats.html",
-    "migration_status": "migration_status.html",
-}
-
 _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
     DashboardWidgetDefinition(
         name="pool_utilization",
@@ -43,6 +38,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/sql/widgets/pool_utilization",
         size=WidgetSize.MEDIUM,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.STAT,
         refresh_interval_seconds=15,
         order=10,
         description="Current connection pool utilization as a percentage.",
@@ -54,6 +50,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/sql/widgets/query_stats",
         size=WidgetSize.MEDIUM,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         refresh_interval_seconds=30,
         order=20,
         description="Aggregate query counts, latency, and slow-query count.",
@@ -65,6 +62,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/sql/widgets/migration_status",
         size=WidgetSize.SMALL,
         category=WidgetCategory.RESOURCES,
+        view_kind=WidgetKind.HEALTH,
         refresh_interval_seconds=300,
         order=30,
         description="Number of pending Alembic migrations.",
@@ -124,8 +122,9 @@ class SqlAdminContributor(BaseAdminContributor):
     """Admin contributor for the lexigram-sql package.
 
     Provides 3 widgets: pool utilization, query stats, and migration status.
-    Uses registry dispatch with frozen viewmodels and Jinja2 rendering.
-    Dependencies are resolved from the container in ``on_admin_boot``.
+    Each widget is handled by a dedicated handler class that returns
+    structured WidgetContent directly. Dependencies are resolved from the
+    container in ``on_admin_boot``.
     """
 
     name = "sql"
@@ -135,11 +134,10 @@ class SqlAdminContributor(BaseAdminContributor):
     priority = 15
 
     def __init__(self) -> None:
-        self._renderer: Any = None
         self._handlers: dict[str, WidgetHandlerProtocol] | None = None
 
     async def on_admin_boot(self, container: ContainerResolverProtocol) -> None:
-        """Resolve widget handler and renderer dependencies from the DI container.
+        """Resolve widget handler dependencies from the DI container.
 
         Args:
             container: The DI container resolver.
@@ -151,9 +149,7 @@ class SqlAdminContributor(BaseAdminContributor):
             PoolUtilizationWidgetHandler,
         )
         from lexigram.sql.admin.handlers.query_stats import QueryStatsWidgetHandler
-        from lexigram.sql.admin.renderer import PackageWidgetRenderer
 
-        self._renderer = await container.resolve(PackageWidgetRenderer)
         pool_handler = await container.resolve(PoolUtilizationWidgetHandler)
         query_handler = await container.resolve(QueryStatsWidgetHandler)
         migration_handler = await container.resolve(MigrationStatusWidgetHandler)
@@ -243,7 +239,7 @@ class SqlAdminContributor(BaseAdminContributor):
         params: WidgetParams,
         resolver: ContainerResolverProtocol | None = None,
     ) -> Result[WidgetViewModel, AdminError]:
-        """Render a widget HTML via registry dispatch.
+        """Render a widget by name using registry dispatch.
 
         Registry dispatch — no if/elif. Infrastructure exceptions propagate.
 
@@ -252,19 +248,27 @@ class SqlAdminContributor(BaseAdminContributor):
             params: Widget parameters.
 
         Returns:
-            Result containing WidgetViewModel with rendered HTML or AdminError.
+            Result containing a WidgetViewModel with structured content,
+            or WidgetNotFoundError if the widget is not registered.
         """
-        if self._handlers is None or self._renderer is None:
-            return Err(AdminError("SqlAdminContributor not booted"))
+        if self._handlers is None:
+            return cast(
+                "Result[WidgetViewModel, AdminError]",
+                Err(AdminError("SqlAdminContributor not booted")),
+            )
         handler = self._handlers.get(widget_name)
         if handler is None:
-            return Err(WidgetNotFoundError(self.name, widget_name))  # type: ignore[arg-type]
+            return cast(
+                "Result[WidgetViewModel, AdminError]",
+                Err(WidgetNotFoundError(self.name, widget_name)),
+            )
         result = await handler.get_data(params)
         if result.is_err():
-            return Err(result.unwrap_err())
-        template = _WIDGET_TEMPLATES[widget_name]
-        html = self._renderer.render(template, vars(result.unwrap()))
-        return Ok(WidgetViewModel(body=html))
+            return cast("Result[WidgetViewModel, AdminError]", result)
+        return cast(
+            "Result[WidgetViewModel, AdminError]",
+            Ok(WidgetViewModel(content=result.unwrap())),
+        )
 
 
 __all__ = ["SqlAdminContributor"]

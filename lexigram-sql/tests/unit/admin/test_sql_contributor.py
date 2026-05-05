@@ -6,36 +6,45 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.contracts.admin import HealthCheckPayload, StatContent
 from lexigram.contracts.admin.errors import WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetParams, WidgetViewModel
 from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Ok
 from lexigram.sql.admin.contributor import SqlAdminContributor
-from lexigram.sql.admin.renderer import PackageWidgetRenderer
-from lexigram.sql.admin.viewmodels import PoolUtilizationViewModel
+from lexigram.sql.admin.handlers.migration_status import MigrationStatusWidgetHandler
+from lexigram.sql.admin.handlers.pool_utilization import PoolUtilizationWidgetHandler
+from lexigram.sql.admin.handlers.query_stats import QueryStatsWidgetHandler
 
 
 class TestSqlAdminContributor:
     """Tests for SqlAdminContributor widget rendering."""
 
     @pytest.fixture
-    def mock_renderer(self) -> MagicMock:
-        """Create a mock Jinja2 renderer."""
-        r = MagicMock(spec=PackageWidgetRenderer)
-        r.render = MagicMock(return_value="<div>widget</div>")
-        return r
-
-    @pytest.fixture
     def mock_pool_handler(self) -> MagicMock:
         """Create a mock pool utilization handler."""
         h = MagicMock(spec=WidgetHandlerProtocol)
+        h.get_data = AsyncMock(return_value=Ok(StatContent(stats=())))
+        return h
+
+    @pytest.fixture
+    def mock_query_handler(self) -> MagicMock:
+        """Create a mock query stats handler."""
+        h = MagicMock(spec=WidgetHandlerProtocol)
+        h.get_data = AsyncMock(return_value=Ok(StatContent(stats=())))
+        return h
+
+    @pytest.fixture
+    def mock_migration_handler(self) -> MagicMock:
+        """Create a mock migration status handler."""
+        h = MagicMock(spec=WidgetHandlerProtocol)
         h.get_data = AsyncMock(
             return_value=Ok(
-                PoolUtilizationViewModel(
-                    pool_size=20,
-                    active_connections=8,
-                    idle_connections=12,
-                    utilization_pct=40.0,
+                HealthCheckPayload(
+                    status=HealthStatus.HEALTHY,
+                    component="sql.migrations",
+                    detail="Version 20240101_000001; 5 applied",
                 )
             )
         )
@@ -43,34 +52,59 @@ class TestSqlAdminContributor:
 
     @pytest.fixture
     def contributor(
-        self, mock_pool_handler: MagicMock, mock_renderer: MagicMock
+        self,
+        mock_pool_handler: MagicMock,
+        mock_query_handler: MagicMock,
+        mock_migration_handler: MagicMock,
     ) -> SqlAdminContributor:
-        """Create a contributor with mocked dependencies."""
+        """Create a contributor with mocked handler dependencies."""
         contrib = SqlAdminContributor()
         contrib._handlers = {
             "pool_utilization": mock_pool_handler,
-            "query_stats": MagicMock(spec=WidgetHandlerProtocol),
-            "migration_status": MagicMock(spec=WidgetHandlerProtocol),
+            "query_stats": mock_query_handler,
+            "migration_status": mock_migration_handler,
         }
-        contrib._renderer = mock_renderer
         return contrib
 
     @pytest.mark.asyncio
-    async def test_render_widget_dispatches_to_handler(
+    async def test_render_pool_utilization_widget(
         self,
         contributor: SqlAdminContributor,
         mock_pool_handler: MagicMock,
-        mock_renderer: MagicMock,
     ) -> None:
-        """Test that render_widget dispatches to the correct handler."""
+        """Test render_widget returns StatContent for pool_utilization."""
         result = await contributor.render_widget("pool_utilization", WidgetParams())
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert isinstance(vm.body, str)
-        assert vm.body == "<div>widget</div>"
+        assert isinstance(vm.content, StatContent)
         mock_pool_handler.get_data.assert_awaited_once()
-        mock_renderer.render.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_render_query_stats_widget(
+        self,
+        contributor: SqlAdminContributor,
+        mock_query_handler: MagicMock,
+    ) -> None:
+        """Test render_widget returns StatContent for query_stats."""
+        result = await contributor.render_widget("query_stats", WidgetParams())
+        assert result.is_ok()
+        vm = result.unwrap()
+        assert isinstance(vm.content, StatContent)
+        mock_query_handler.get_data.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_render_migration_status_widget(
+        self,
+        contributor: SqlAdminContributor,
+        mock_migration_handler: MagicMock,
+    ) -> None:
+        """Test render_widget returns HealthCheckPayload for migration_status."""
+        result = await contributor.render_widget("migration_status", WidgetParams())
+        assert result.is_ok()
+        vm = result.unwrap()
+        assert isinstance(vm.content, HealthCheckPayload)
+        mock_migration_handler.get_data.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_unknown_widget_returns_not_found(
@@ -120,3 +154,40 @@ class TestSqlAdminContributor:
         assert contributor.group == "infrastructure"
         assert contributor.icon == "database"
         assert contributor.priority == 15
+
+
+class TestSqlWidgetHandlers:
+    """Test individual widget handlers return WidgetContent."""
+
+    @pytest.mark.asyncio
+    async def test_pool_utilization_handler(self) -> None:
+        """Test pool_utilization handler returns StatContent."""
+        handler = PoolUtilizationWidgetHandler(db=None)  # type: ignore[arg-type]
+        result = await handler.get_data(WidgetParams())
+        assert result.is_ok()
+        content = result.unwrap()
+        assert isinstance(content, StatContent)
+        assert len(content.stats) == 2
+
+    @pytest.mark.asyncio
+    async def test_query_stats_handler(self) -> None:
+        """Test query_stats handler returns StatContent."""
+        handler = QueryStatsWidgetHandler(db=None)  # type: ignore[arg-type]
+        result = await handler.get_data(WidgetParams())
+        assert result.is_ok()
+        content = result.unwrap()
+        assert isinstance(content, StatContent)
+        assert len(content.stats) == 4
+
+    @pytest.mark.asyncio
+    async def test_migration_status_handler(self) -> None:
+        """Test migration_status handler returns HealthCheckPayload."""
+        handler = MigrationStatusWidgetHandler(
+            migration_manager=None  # type: ignore[arg-type]
+        )
+        result = await handler.get_data(WidgetParams())
+        assert result.is_ok()
+        content = result.unwrap()
+        assert isinstance(content, HealthCheckPayload)
+        assert content.status is HealthStatus.HEALTHY
+        assert content.component == "sql.migrations"
