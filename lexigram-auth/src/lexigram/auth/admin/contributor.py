@@ -18,29 +18,19 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
 )
+from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok
 
 if TYPE_CHECKING:
-    from lexigram.auth.admin.handlers.active_sessions import ActiveSessionsWidgetHandler
-    from lexigram.auth.admin.handlers.failed_logins import FailedLoginsWidgetHandler
-    from lexigram.auth.admin.handlers.token_refresh_rate import (
-        TokenRefreshRateWidgetHandler,
-    )
-    from lexigram.auth.admin.renderer import PackageWidgetRenderer
     from lexigram.contracts.core.di import ContainerResolverProtocol
 
 logger = get_logger(__name__)
-
-_WIDGET_TEMPLATES: dict[str, str] = {
-    "active_sessions": "active_sessions.html",
-    "token_refresh_rate": "token_refresh_rate.html",
-    "failed_logins": "failed_logins.html",
-}
 
 _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
     DashboardWidgetDefinition(
@@ -50,6 +40,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/auth/widgets/active_sessions",
         size=WidgetSize.LARGE,
         category=WidgetCategory.ACTIVITY,
+        view_kind=WidgetKind.TABLE,
         description="Number of currently active authenticated sessions.",
     ),
     DashboardWidgetDefinition(
@@ -59,6 +50,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/auth/widgets/token_refresh_rate",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="JWT / OAuth2 token refresh requests per minute.",
     ),
     DashboardWidgetDefinition(
@@ -68,6 +60,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/auth/widgets/failed_logins",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.HEALTH,
         description="Count of failed login attempts over the last hour.",
     ),
 )
@@ -133,8 +126,9 @@ class AuthAdminContributor(BaseAdminContributor):
     """Admin contributor for the lexigram-auth package.
 
     Provides 3 widgets: active sessions, token refresh rate, and failed logins.
-    Uses registry dispatch with frozen viewmodels and Jinja2 rendering.
-    Dependencies are resolved from the container in ``on_admin_boot``.
+    Each widget is handled by a dedicated handler class that returns
+    structured WidgetContent directly. Dependencies are resolved from the
+    container in ``on_admin_boot``.
     """
 
     name = "auth"
@@ -148,10 +142,7 @@ class AuthAdminContributor(BaseAdminContributor):
 
         All DI-dependent attributes are resolved in ``on_admin_boot``.
         """
-        self._renderer: PackageWidgetRenderer | None = None
-        self._active_sessions_handler: ActiveSessionsWidgetHandler | None = None
-        self._token_refresh_handler: TokenRefreshRateWidgetHandler | None = None
-        self._failed_logins_handler: FailedLoginsWidgetHandler | None = None
+        self._handlers: dict[str, WidgetHandlerProtocol] = {}
 
     async def on_admin_boot(self, container: ContainerResolverProtocol) -> None:
         """Resolve auth DI dependencies from the container.
@@ -168,39 +159,17 @@ class AuthAdminContributor(BaseAdminContributor):
         from lexigram.auth.admin.handlers.token_refresh_rate import (
             TokenRefreshRateWidgetHandler,
         )
-        from lexigram.auth.admin.renderer import PackageWidgetRenderer
 
         try:
-            self._renderer = await container.resolve(PackageWidgetRenderer)
+            self._handlers = {
+                "active_sessions": await container.resolve(ActiveSessionsWidgetHandler),
+                "token_refresh_rate": await container.resolve(
+                    TokenRefreshRateWidgetHandler
+                ),
+                "failed_logins": await container.resolve(FailedLoginsWidgetHandler),
+            }
         except Exception as exc:  # noqa: BLE001
-            logger.warning("auth_contributor.renderer_unavailable", error=str(exc))
-
-        try:
-            self._active_sessions_handler = await container.resolve(
-                ActiveSessionsWidgetHandler
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "auth_contributor.active_sessions_handler_unavailable", error=str(exc)
-            )
-
-        try:
-            self._token_refresh_handler = await container.resolve(
-                TokenRefreshRateWidgetHandler
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "auth_contributor.token_refresh_handler_unavailable", error=str(exc)
-            )
-
-        try:
-            self._failed_logins_handler = await container.resolve(
-                FailedLoginsWidgetHandler
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "auth_contributor.failed_logins_handler_unavailable", error=str(exc)
-            )
+            logger.warning("auth_contributor.handlers_unavailable", error=str(exc))
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         """Return the dashboard widget definitions for this contributor."""
@@ -265,7 +234,7 @@ class AuthAdminContributor(BaseAdminContributor):
         params: WidgetParams,
         resolver: ContainerResolverProtocol | None = None,
     ) -> Result[WidgetViewModel, AdminError]:
-        """Render a widget HTML via registry dispatch.
+        """Render a widget by name using registry dispatch.
 
         Registry dispatch — no if/elif. Infrastructure exceptions propagate.
 
@@ -274,27 +243,17 @@ class AuthAdminContributor(BaseAdminContributor):
             params: Widget parameters.
 
         Returns:
-            Result containing rendered HTML string or AdminError.
+            Result containing a WidgetViewModel with structured content,
+            or WidgetNotFoundError if the widget is not registered.
         """
-        handler: Any
-        if widget_name == "active_sessions":
-            handler = self._active_sessions_handler
-        elif widget_name == "token_refresh_rate":
-            handler = self._token_refresh_handler
-        elif widget_name == "failed_logins":
-            handler = self._failed_logins_handler
-        else:
-            return Err(cast("AdminError", WidgetNotFoundError(self.name, widget_name)))
-
-        if handler is None or self._renderer is None:
+        handler: Any = self._handlers.get(widget_name)
+        if handler is None:
             return Err(cast("AdminError", WidgetNotFoundError(self.name, widget_name)))
 
         result = await handler.get_data(params)
         if result.is_err():
             return Err(result.unwrap_err())
-        template = _WIDGET_TEMPLATES[widget_name]
-        html = self._renderer.render(template, vars(result.unwrap()))
-        return Ok(WidgetViewModel(body=html))
+        return Ok(WidgetViewModel(content=result.unwrap()))
 
 
 __all__ = ["AuthAdminContributor"]

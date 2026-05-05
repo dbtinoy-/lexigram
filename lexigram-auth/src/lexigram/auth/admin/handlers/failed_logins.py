@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from lexigram.auth.admin.viewmodels import FailedLoginsViewModel
+from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.admin.types import WidgetParams
 from lexigram.contracts.ai.session import SessionManagerProtocol
 from lexigram.result import Ok, Result
 
@@ -24,10 +23,12 @@ class FailedLoginsWidgetHandler:
         """
         self._session_manager = session_manager
 
-    async def get_data(
-        self, params: WidgetParams
-    ) -> Result[FailedLoginsViewModel, AdminError]:
+    async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch failed login statistics.
+
+        Mirrors the widget template: a single ``is_elevated`` boundary gates
+        the danger tone (the template's ``{% if is_elevated %}`` badge), with
+        neutral styling otherwise. No multi-tier threshold ladder exists.
 
         Infrastructure failures propagate as exceptions.
 
@@ -35,7 +36,7 @@ class FailedLoginsWidgetHandler:
             params: Widget parameters (includes time_window_minutes).
 
         Returns:
-            Result containing FailedLoginsViewModel or AdminError.
+            Result containing StatContent or AdminError.
         """
         # TODO: Implement failed login tracking
         # For now, return safe defaults (0, 0, False)
@@ -44,10 +45,32 @@ class FailedLoginsWidgetHandler:
         is_elevated = False
 
         return Ok(
-            FailedLoginsViewModel(
+            self._build_content(
                 count=count, unique_ips=unique_ips, is_elevated=is_elevated
             )
         )
+
+    def _build_content(
+        self, count: int, unique_ips: int, is_elevated: bool
+    ) -> StatContent:
+        """Build the StatContent mirroring the widget template.
+
+        Args:
+            count: Number of failed login attempts over the window.
+            unique_ips: Number of unique source IPs.
+            is_elevated: Whether the count is above the elevated threshold.
+
+        Returns:
+            StatContent with a danger tone when elevated and neutral styling
+            otherwise, plus a conditional unique-IP stat.
+        """
+        tone = Tone.DANGER if is_elevated else Tone.PRIMARY
+        stats: list[Stat] = [
+            Stat(label="Failed Logins (1 hour)", value=str(count), tone=tone),
+        ]
+        if unique_ips > 0:
+            stats.append(Stat(label="Unique IPs", value=str(unique_ips)))
+        return StatContent(stats=tuple(stats))
 
 
 __all__ = ["FailedLoginsWidgetHandler"]
