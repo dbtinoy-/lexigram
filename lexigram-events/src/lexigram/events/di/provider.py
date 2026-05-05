@@ -191,7 +191,7 @@ class EventsProvider(Provider):
             await self._managers.teardown()
 
     def _register_admin(self, container: BootContainerProtocol) -> None:
-        """Register admin widget handlers and renderer."""
+        """Register admin widget handlers."""
         from lexigram.contracts.admin.protocols import AdminContributorProtocol
         from lexigram.contracts.events import EventBusProtocol
         from lexigram.events.admin.contributor import EventsAdminContributor
@@ -200,12 +200,6 @@ class EventsProvider(Provider):
         )
         from lexigram.events.admin.handlers.events_throughput import (
             EventsThroughputWidgetHandler,
-        )
-        from lexigram.events.admin.renderer import PackageWidgetRenderer
-
-        container.singleton(
-            PackageWidgetRenderer,
-            PackageWidgetRenderer,
         )
 
         async def _create_events_throughput_handler() -> EventsThroughputWidgetHandler:

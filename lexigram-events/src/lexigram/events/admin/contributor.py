@@ -18,6 +18,7 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
@@ -45,6 +46,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/events/widgets/events_throughput",
         size=WidgetSize.LARGE,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Domain events published and consumed per second.",
     ),
     DashboardWidgetDefinition(
@@ -54,6 +56,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/events/widgets/dead_letter_count",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.HEALTH,
         description="Number of events currently sitting in the dead-letter queue.",
     ),
 )
@@ -105,18 +108,13 @@ _ACTIONS: tuple[AdminActionDefinition, ...] = (
     ),
 )
 
-_WIDGET_TEMPLATES: dict[str, str] = {
-    "events_throughput": "events_throughput.html",
-    "dead_letter_count": "dead_letter_count.html",
-}
-
 
 class EventsAdminContributor(BaseAdminContributor):
     """Admin contributor for the lexigram-events package.
 
     Surfaces two widgets: events throughput and dead-letter count.
-    Uses registry-based dispatch for handler selection and
-    single-instance Jinja2 renderer for template rendering.
+    Each widget is handled by a dedicated handler class that returns
+    structured WidgetContent directly.
     Dependencies are resolved from the container in ``on_admin_boot``.
     """
 
@@ -129,7 +127,6 @@ class EventsAdminContributor(BaseAdminContributor):
     def __init__(self) -> None:
         self._throughput_handler: WidgetHandlerProtocol | None = None
         self._dead_letter_handler: WidgetHandlerProtocol | None = None
-        self._renderer: object | None = None
 
     async def on_admin_boot(self, container: ContainerResolverProtocol) -> None:
         """Resolve event admin dependencies from the DI container.
@@ -145,7 +142,6 @@ class EventsAdminContributor(BaseAdminContributor):
         from lexigram.events.admin.handlers.events_throughput import (
             EventsThroughputWidgetHandler,
         )
-        from lexigram.events.admin.renderer import PackageWidgetRenderer
 
         try:
             self._throughput_handler = await container.resolve(
@@ -166,12 +162,6 @@ class EventsAdminContributor(BaseAdminContributor):
                 "events_contributor.dead_letter_handler_unavailable", error=str(exc)
             )
             self._dead_letter_handler = None
-
-        try:
-            self._renderer = await container.resolve(PackageWidgetRenderer)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("events_contributor.renderer_unavailable", error=str(exc))
-            self._renderer = None
 
     def get_routes(self) -> Sequence[AdminRouteSpec]:
         return [
@@ -241,7 +231,8 @@ class EventsAdminContributor(BaseAdminContributor):
     ) -> Result[WidgetViewModel, AdminError]:
         """Render a widget using registry-based dispatch.
 
-        Registry pattern: Look up handler by name, fetch data, render template.
+        Registry pattern: Look up handler by name, fetch data, pass the
+        structured WidgetContent through.
         Infrastructure failures (DB, network) propagate as exceptions.
         Domain failures return Err(AdminError).
 
@@ -250,7 +241,8 @@ class EventsAdminContributor(BaseAdminContributor):
             params: Widget request parameters.
 
         Returns:
-            Result containing rendered HTML string or AdminError.
+            Result containing a WidgetViewModel with structured content
+            or AdminError.
         """
         if widget_name == "events_throughput":
             handler = self._throughput_handler
@@ -266,14 +258,7 @@ class EventsAdminContributor(BaseAdminContributor):
         if data_result.is_err():
             return Err(data_result.unwrap_err())
 
-        renderer = self._renderer
-        if renderer is None:
-            return Err(WidgetNotFoundError(self.name, widget_name))  # type: ignore[arg-type]
-
-        html = renderer.render(  # type: ignore[attr-defined]
-            _WIDGET_TEMPLATES[widget_name], vars(data_result.unwrap())
-        )
-        return Ok(WidgetViewModel(body=html))
+        return Ok(WidgetViewModel(content=data_result.unwrap()))
 
 
 __all__ = ["EventsAdminContributor"]

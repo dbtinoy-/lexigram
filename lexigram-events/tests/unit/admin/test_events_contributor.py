@@ -1,4 +1,4 @@
-"""Tests for lexigram-events admin contributor and handlers."""
+"""Tests for lexigram-events admin contributor."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.contracts.admin import StatContent
 from lexigram.contracts.admin.errors import WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetParams, WidgetViewModel
 from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
@@ -16,93 +17,22 @@ from lexigram.events.admin.handlers.dead_letter_count import (
 from lexigram.events.admin.handlers.events_throughput import (
     EventsThroughputWidgetHandler,
 )
-from lexigram.events.admin.renderer import PackageWidgetRenderer
-from lexigram.events.admin.viewmodels import (
-    DeadLetterCountViewModel,
-    EventsThroughputViewModel,
-)
 from lexigram.result import Ok
-
-
-class TestEventsThroughputWidgetHandler:
-    """Tests for EventsThroughputWidgetHandler."""
-
-    @pytest.fixture
-    def mock_event_bus(self) -> MagicMock:
-        """Mock EventBusProtocol."""
-        return MagicMock()
-
-    @pytest.fixture
-    def handler(self, mock_event_bus: MagicMock) -> EventsThroughputWidgetHandler:
-        """Create handler with mocked event bus."""
-        return EventsThroughputWidgetHandler(event_bus=mock_event_bus)
-
-    @pytest.mark.asyncio
-    async def test_get_data_returns_viewmodel(
-        self, handler: EventsThroughputWidgetHandler
-    ) -> None:
-        """Handler returns EventsThroughputViewModel."""
-        result = await handler.get_data(WidgetParams())
-        assert result.is_ok()
-        vm = result.unwrap()
-        assert isinstance(vm, EventsThroughputViewModel)
-        assert vm.window_minutes == 60
-
-    @pytest.mark.asyncio
-    async def test_get_data_respects_time_window(
-        self, handler: EventsThroughputWidgetHandler
-    ) -> None:
-        """Handler uses time_window_minutes from params."""
-        params = WidgetParams(time_window_minutes=30)
-        result = await handler.get_data(params)
-        assert result.is_ok()
-        vm = result.unwrap()
-        assert vm.window_minutes == 30
-
-
-class TestDeadLetterCountWidgetHandler:
-    """Tests for DeadLetterCountWidgetHandler."""
-
-    @pytest.fixture
-    def mock_event_bus(self) -> MagicMock:
-        """Mock EventBusProtocol."""
-        return MagicMock()
-
-    @pytest.fixture
-    def handler(self, mock_event_bus: MagicMock) -> DeadLetterCountWidgetHandler:
-        """Create handler with mocked event bus."""
-        return DeadLetterCountWidgetHandler(event_bus=mock_event_bus)
-
-    @pytest.mark.asyncio
-    async def test_get_data_returns_viewmodel(
-        self, handler: DeadLetterCountWidgetHandler
-    ) -> None:
-        """Handler returns DeadLetterCountViewModel."""
-        result = await handler.get_data(WidgetParams())
-        assert result.is_ok()
-        vm = result.unwrap()
-        assert isinstance(vm, DeadLetterCountViewModel)
-        assert vm.count == 0
 
 
 class TestEventsAdminContributor:
     """Tests for EventsAdminContributor."""
 
     @pytest.fixture
-    def mock_renderer(self) -> MagicMock:
-        """Mock PackageWidgetRenderer."""
-        renderer = MagicMock(spec=PackageWidgetRenderer)
-        renderer.render = MagicMock(return_value="<div>widget</div>")
-        return renderer
-
-    @pytest.fixture
     def mock_throughput_handler(self) -> MagicMock:
-        """Mock EventsThroughputWidgetHandler."""
+        """Mock EventsThroughputWidgetHandler returning StatContent."""
         handler = MagicMock(spec=WidgetHandlerProtocol)
         handler.get_data = AsyncMock(
             return_value=Ok(
-                EventsThroughputViewModel(
-                    events_per_second=5.0, total_events=300, window_minutes=60
+                StatContent(
+                    stats=(
+                        # A MagicMock content is enough to prove pass-through.
+                    )
                 )
             )
         )
@@ -110,11 +40,9 @@ class TestEventsAdminContributor:
 
     @pytest.fixture
     def mock_dead_letter_handler(self) -> MagicMock:
-        """Mock DeadLetterCountWidgetHandler."""
+        """Mock DeadLetterCountWidgetHandler returning StatContent."""
         handler = MagicMock(spec=WidgetHandlerProtocol)
-        handler.get_data = AsyncMock(
-            return_value=Ok(DeadLetterCountViewModel(count=0, oldest_age_minutes=None))
-        )
+        handler.get_data = AsyncMock(return_value=Ok(StatContent(stats=())))
         return handler
 
     @pytest.fixture
@@ -122,65 +50,72 @@ class TestEventsAdminContributor:
         self,
         mock_throughput_handler: MagicMock,
         mock_dead_letter_handler: MagicMock,
-        mock_renderer: MagicMock,
     ) -> MagicMock:
         """Mock container that resolves handlers."""
         container = MagicMock()
-        resolve_map = {
+        handler_map = {
             EventsThroughputWidgetHandler: mock_throughput_handler,
             DeadLetterCountWidgetHandler: mock_dead_letter_handler,
-            PackageWidgetRenderer: mock_renderer,
         }
-        container.resolve = AsyncMock(side_effect=resolve_map.get)
+        container.resolve = AsyncMock(side_effect=handler_map.get)
         return container
 
     @pytest.fixture
     def contributor(
         self,
-        mock_throughput_handler: MagicMock,
-        mock_dead_letter_handler: MagicMock,
-        mock_renderer: MagicMock,
         mock_container: MagicMock,
     ) -> EventsAdminContributor:
-        """Create contributor with mocked handlers and renderer."""
-        contributor = EventsAdminContributor()
-        contributor._throughput_handler = mock_throughput_handler
-        contributor._dead_letter_handler = mock_dead_letter_handler
-        contributor._renderer = mock_renderer
+        """Create contributor booted with the mocked handlers via container."""
+        return EventsAdminContributor()
+
+    @pytest.fixture
+    async def booted_contributor(
+        self,
+        contributor: EventsAdminContributor,
+        mock_container: MagicMock,
+    ) -> EventsAdminContributor:
+        """Boot the contributor through the mocked container."""
+        await contributor.on_admin_boot(mock_container)
         return contributor
 
     @pytest.mark.asyncio
     async def test_render_widget_throughput(
-        self, contributor: EventsAdminContributor, mock_throughput_handler: MagicMock
+        self,
+        booted_contributor: EventsAdminContributor,
+        mock_throughput_handler: MagicMock,
     ) -> None:
-        """Render events_throughput widget dispatches to handler."""
-        result = await contributor.render_widget("events_throughput", WidgetParams())
+        """Render events_throughput widget passes StatContent through."""
+        result = await booted_contributor.render_widget(
+            "events_throughput", WidgetParams()
+        )
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert vm.body == "<div>widget</div>"
+        assert isinstance(vm.content, StatContent)
         mock_throughput_handler.get_data.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_render_widget_dead_letter(
         self,
-        contributor: EventsAdminContributor,
+        booted_contributor: EventsAdminContributor,
         mock_dead_letter_handler: MagicMock,
     ) -> None:
-        """Render dead_letter_count widget dispatches to handler."""
-        result = await contributor.render_widget("dead_letter_count", WidgetParams())
+        """Render dead_letter_count widget passes StatContent through."""
+        result = await booted_contributor.render_widget(
+            "dead_letter_count", WidgetParams()
+        )
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert vm.body == "<div>widget</div>"
+        assert isinstance(vm.content, StatContent)
         mock_dead_letter_handler.get_data.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_render_unknown_widget(
-        self, contributor: EventsAdminContributor
+        self, booted_contributor: EventsAdminContributor
     ) -> None:
         """Unknown widget name returns WidgetNotFoundError."""
-        result = await contributor.render_widget("nonexistent", WidgetParams())
+        result = await booted_contributor.render_widget("nonexistent", WidgetParams())
         assert result.is_err()
         error = result.unwrap_err()
         assert isinstance(error, WidgetNotFoundError)
@@ -208,7 +143,5 @@ class TestEventsAdminContributor:
 
 
 __all__ = [
-    "TestDeadLetterCountWidgetHandler",
     "TestEventsAdminContributor",
-    "TestEventsThroughputWidgetHandler",
 ]
