@@ -19,7 +19,6 @@ from lexigram.queue.admin.contributor import QueueAdminContributor
 from lexigram.queue.admin.handlers.consumer_lag import ConsumerLagWidgetHandler
 from lexigram.queue.admin.handlers.failed_messages import FailedMessagesWidgetHandler
 from lexigram.queue.admin.handlers.queue_depth import QueueDepthWidgetHandler
-from lexigram.queue.admin.renderer import PackageWidgetRenderer
 from lexigram.queue.backends import (
     InMemoryQueue,
     KafkaQueue,
@@ -159,7 +158,7 @@ class QueueProvider(Provider):
             # Named bindings — resolvable via Annotated[QueueProtocol, Named(entry.name)]
             container.singleton(
                 QueueProtocol,
-                factory=lambda b=backend: b,
+                factory=lambda *_, b=backend: b,
                 name=entry.name,
             )
 
@@ -170,7 +169,7 @@ class QueueProvider(Provider):
                 and self._config.backends[0] is entry
             )
             if is_primary:
-                container.singleton(QueueProtocol, factory=lambda b=backend: b)
+                container.singleton(QueueProtocol, factory=lambda *_, b=backend: b)
 
         logger.info("queue_registered", count=len(self._config.backends))
 
@@ -178,7 +177,7 @@ class QueueProvider(Provider):
         self._register_admin_components(cast("BootContainerProtocol", container))
 
     def _register_admin_components(self, container: BootContainerProtocol) -> None:
-        """Register admin widget renderer, handlers, and contributor.
+        """Register admin handlers and contributor.
 
         Args:
             container: The DI container registrar.
@@ -187,9 +186,6 @@ class QueueProvider(Provider):
         # Check if container supports transient registration (skip for test mocks)
         if not hasattr(container, "transient"):
             return
-
-        # Register the singleton Jinja2 renderer
-        container.singleton(PackageWidgetRenderer, PackageWidgetRenderer)
 
         # Register handlers as transient — they fetch fresh data each time
         # Factories use async functions to resolve dependencies at runtime

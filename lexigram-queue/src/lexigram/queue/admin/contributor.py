@@ -17,6 +17,7 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
@@ -28,7 +29,6 @@ from lexigram.logging import get_logger
 from lexigram.queue.admin.handlers.consumer_lag import ConsumerLagWidgetHandler
 from lexigram.queue.admin.handlers.failed_messages import FailedMessagesWidgetHandler
 from lexigram.queue.admin.handlers.queue_depth import QueueDepthWidgetHandler
-from lexigram.queue.admin.renderer import PackageWidgetRenderer
 from lexigram.result import Err, Ok
 
 logger = get_logger(__name__)
@@ -41,6 +41,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/queue/widgets/queue_depth",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Current number of messages waiting in all queues.",
     ),
     DashboardWidgetDefinition(
@@ -50,6 +51,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/queue/widgets/consumer_lag",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Lag between the latest message and the last consumed offset.",
     ),
     DashboardWidgetDefinition(
@@ -59,6 +61,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/queue/widgets/failed_messages",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.HEALTH,
         description="Number of messages that failed processing and await retry.",
     ),
 )
@@ -125,13 +128,7 @@ class QueueAdminContributor(BaseAdminContributor):
 
     def __init__(self) -> None:
         """Initialize the queue admin contributor with no arguments."""
-        self._renderer: PackageWidgetRenderer | None = None
         self._handlers: dict[str, WidgetHandlerProtocol] = {}
-        self._template_names: dict[str, str] = {
-            "queue_depth": "queue_depth.html",
-            "consumer_lag": "consumer_lag.html",
-            "failed_messages": "failed_messages.html",
-        }
 
     async def on_admin_boot(self, container: object) -> None:
         """Resolve queue admin dependencies from the DI container.
@@ -140,11 +137,6 @@ class QueueAdminContributor(BaseAdminContributor):
             container: The DI container resolver.
         """
         typed_container = cast("ContainerResolverProtocol", container)
-        try:
-            self._renderer = await typed_container.resolve(PackageWidgetRenderer)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("queue_contributor.renderer_unavailable", error=str(exc))
-
         try:
             depth_handler = await typed_container.resolve(QueueDepthWidgetHandler)
             lag_handler = await typed_container.resolve(ConsumerLagWidgetHandler)
@@ -223,7 +215,7 @@ class QueueAdminContributor(BaseAdminContributor):
             Err(WidgetNotFoundError) if widget_name not served by this contributor.
             Infrastructure exceptions propagate.
         """
-        if not self._handlers or not self._renderer:
+        if not self._handlers:
             return cast(
                 "Result[WidgetViewModel, AdminError]",
                 Err(WidgetNotFoundError(self.name, widget_name)),
@@ -240,11 +232,11 @@ class QueueAdminContributor(BaseAdminContributor):
         if data_result.is_err():
             return Err(data_result.unwrap_err())
 
-        viewmodel = data_result.unwrap()
-        template_name = self._template_names.get(widget_name, f"{widget_name}.html")
-
-        html = self._renderer.render(template_name, vars(viewmodel))
-        return Ok(WidgetViewModel(body=html))
+        content = data_result.unwrap()
+        return cast(
+            "Result[WidgetViewModel, AdminError]",
+            Ok(WidgetViewModel(content=content)),
+        )
 
 
 __all__ = ["QueueAdminContributor"]
