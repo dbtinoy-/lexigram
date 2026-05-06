@@ -61,7 +61,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/queue/widgets/failed_messages",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
-        view_kind=WidgetKind.HEALTH,
+        view_kind=WidgetKind.STAT,
         description="Number of messages that failed processing and await retry.",
     ),
 )

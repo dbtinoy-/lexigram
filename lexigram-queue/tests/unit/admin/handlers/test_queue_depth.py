@@ -15,7 +15,7 @@ async def test_queue_depth_handler_returns_stat_content() -> None:
     assert content.stats[0].label == "Queue"
     assert content.stats[0].value == "default"
     assert content.stats[1].value == "0"
-    assert content.stats[1].tone is Tone.PRIMARY
+    assert content.stats[1].tone is Tone.DEFAULT
 
 
 async def test_queue_depth_stub_omits_max_stat_when_max_depth_unset() -> None:
