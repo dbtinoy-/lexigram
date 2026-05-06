@@ -29,7 +29,6 @@ from lexigram.logging import get_logger
 from lexigram.tasks.admin.contributor import TasksAdminContributor
 from lexigram.tasks.admin.handlers.avg_duration import AvgDurationWidgetHandler
 from lexigram.tasks.admin.handlers.tasks_summary import TasksSummaryWidgetHandler
-from lexigram.tasks.admin.renderer import PackageWidgetRenderer
 from lexigram.tasks.backends.registry import TaskBackendRegistry
 from lexigram.tasks.config import TaskConfig
 from lexigram.tasks.exceptions import TaskRegistrationError
@@ -313,14 +312,11 @@ class TaskProvider(Provider):
     async def _register_admin_widgets(
         self, container: ContainerRegistrarProtocol
     ) -> None:
-        """Register admin widget handlers and renderer.
+        """Register admin widget handlers and contributor.
 
         Args:
             container: The DI container registrar.
         """
-        # Register renderer as singleton
-        container.singleton(PackageWidgetRenderer, PackageWidgetRenderer)
-
         # Register handlers as transient
         container.transient(
             TasksSummaryWidgetHandler,

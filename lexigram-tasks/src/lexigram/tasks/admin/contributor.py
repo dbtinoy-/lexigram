@@ -5,10 +5,10 @@ widgets into the Lexigram admin dashboard.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
-from lexigram.contracts.admin.errors import WidgetNotFoundError
+from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
     AdminHealthDefinition,
@@ -17,6 +17,7 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
@@ -25,12 +26,10 @@ from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.tasks.admin.handlers.avg_duration import AvgDurationWidgetHandler
 from lexigram.tasks.admin.handlers.tasks_summary import TasksSummaryWidgetHandler
-from lexigram.tasks.admin.renderer import PackageWidgetRenderer
 
 logger = get_logger(__name__)
 
 if TYPE_CHECKING:
-    from lexigram.contracts.admin.errors import AdminError
     from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
     from lexigram.contracts.core.di import ContainerResolverProtocol
 
@@ -42,6 +41,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/tasks/widgets/tasks_summary",
         size=WidgetSize.LARGE,
         category=WidgetCategory.ACTIVITY,
+        view_kind=WidgetKind.TABLE,
         description="Overview of queued, running, and failed tasks.",
     ),
     DashboardWidgetDefinition(
@@ -51,6 +51,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/tasks/widgets/avg_duration",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Average task execution duration over the last hour.",
     ),
 )
@@ -120,32 +121,18 @@ class TasksAdminContributor(BaseAdminContributor):
     priority = 40
 
     def __init__(self) -> None:
-        self._renderer: PackageWidgetRenderer | None = None
-        self._handlers: dict[str, WidgetHandlerProtocol] = {}
-        self._template_names: dict[str, str] = {
-            "tasks_summary": "tasks_summary.html",
-            "avg_duration": "avg_duration.html",
-        }
+        self._handlers: dict[str, WidgetHandlerProtocol] | None = None
 
     async def on_admin_boot(self, container: ContainerResolverProtocol) -> None:
-        """Resolve DI dependencies from the container.
+        """Resolve widget handler dependencies from the DI container.
 
         Args:
             container: The DI container resolver.
         """
-        try:
-            self._renderer = await container.resolve(PackageWidgetRenderer)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("tasks_contributor.renderer_unavailable", error=str(exc))
-            self._renderer = None
-
-        try:
-            self._handlers = {
-                "tasks_summary": await container.resolve(TasksSummaryWidgetHandler),
-                "avg_duration": await container.resolve(AvgDurationWidgetHandler),
-            }
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("tasks_contributor.handlers_unavailable", error=str(exc))
+        self._handlers = {
+            "tasks_summary": await container.resolve(TasksSummaryWidgetHandler),
+            "avg_duration": await container.resolve(AvgDurationWidgetHandler),
+        }
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         """Return dashboard widget definitions.
@@ -238,36 +225,38 @@ class TasksAdminContributor(BaseAdminContributor):
         params: WidgetParams,
         resolver: ContainerResolverProtocol | None = None,
     ) -> Result[WidgetViewModel, AdminError]:
-        """Render a named widget using registry dispatch.
+        """Render a widget by name using registry dispatch.
+
+        Each widget handler returns structured WidgetContent directly;
+        the contributor wraps it in a WidgetViewModel. Infrastructure
+        exceptions propagate.
 
         Args:
             widget_name: Name of the widget to render.
             params: Typed widget parameters.
 
         Returns:
-            Ok(html_str) on success.
-            Err(WidgetNotFoundError) if widget_name not served by this contributor.
-            Infrastructure exceptions propagate.
+            Result containing a WidgetViewModel with structured content,
+            or WidgetNotFoundError if the widget is not registered.
         """
-        # Registry dispatch
-        if not self._handlers or not self._renderer:
-            return Err(WidgetNotFoundError(self.name, widget_name))  # type: ignore[arg-type]
-
+        if self._handlers is None:
+            return cast(
+                "Result[WidgetViewModel, AdminError]",
+                Err(AdminError("TasksAdminContributor not booted")),
+            )
         handler = self._handlers.get(widget_name)
         if handler is None:
-            return Err(WidgetNotFoundError(self.name, widget_name))  # type: ignore[arg-type]
-
-        # Fetch data via handler
-        data_result = await handler.get_data(params)
-        if data_result.is_err():
-            return Err(data_result.unwrap_err())
-
-        # Render template
-        viewmodel = data_result.unwrap()
-        template_name = self._template_names.get(widget_name, f"{widget_name}.html")
-
-        html = self._renderer.render(template_name, vars(viewmodel))
-        return Ok(WidgetViewModel(body=html))
+            return cast(
+                "Result[WidgetViewModel, AdminError]",
+                Err(WidgetNotFoundError(self.name, widget_name)),
+            )
+        result = await handler.get_data(params)
+        if result.is_err():
+            return cast("Result[WidgetViewModel, AdminError]", result)
+        return cast(
+            "Result[WidgetViewModel, AdminError]",
+            Ok(WidgetViewModel(content=result.unwrap())),
+        )
 
 
 __all__ = ["TasksAdminContributor"]
