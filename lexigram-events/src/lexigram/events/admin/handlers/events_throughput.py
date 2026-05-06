@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import Stat, StatContent, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
@@ -46,7 +46,6 @@ class EventsThroughputWidgetHandler:
                     Stat(
                         label="Events/sec",
                         value=f"{events_per_second}/s",
-                        tone=Tone.PRIMARY,
                     ),
                     Stat(
                         label=f"Total ({window_minutes}m)",

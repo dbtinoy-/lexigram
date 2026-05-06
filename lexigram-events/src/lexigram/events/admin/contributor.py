@@ -56,7 +56,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/events/widgets/dead_letter_count",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
-        view_kind=WidgetKind.HEALTH,
+        view_kind=WidgetKind.STAT,
         description="Number of events currently sitting in the dead-letter queue.",
     ),
 )
