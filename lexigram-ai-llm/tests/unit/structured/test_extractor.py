@@ -123,16 +123,16 @@ class TestBuildMessages:
     def test_string_prompt_produces_two_messages(self):
         msgs = StructuredExtractor._build_messages("hello", "system text")
         assert len(msgs) == 2
-        assert msgs[0]["role"] == "system"
-        assert msgs[0]["content"] == "system text"
-        assert msgs[1]["role"] == "user"
-        assert msgs[1]["content"] == "hello"
+        assert msgs[0].role == "system"
+        assert msgs[0].content == "system text"
+        assert msgs[1].role == "user"
+        assert msgs[1].content == "hello"
 
     def test_list_prompt_no_system_prepends(self):
         prompt_list = [{"role": "user", "content": "q"}]
         msgs = StructuredExtractor._build_messages(prompt_list, "sys")
-        assert msgs[0]["role"] == "system"
-        assert msgs[1]["role"] == "user"
+        assert msgs[0].role == "system"
+        assert msgs[1].role == "user"
 
     def test_list_prompt_with_system_combines(self):
         prompt_list = [
@@ -140,10 +140,10 @@ class TestBuildMessages:
             {"role": "user", "content": "q"},
         ]
         msgs = StructuredExtractor._build_messages(prompt_list, "injection")
-        system_msgs = [m for m in msgs if m["role"] == "system"]
+        system_msgs = [m for m in msgs if m.role == "system"]
         assert len(system_msgs) == 1
-        assert "existing" in system_msgs[0]["content"]
-        assert "injection" in system_msgs[0]["content"]
+        assert "existing" in system_msgs[0].content
+        assert "injection" in system_msgs[0].content
 
     def test_list_prompt_with_object_messages(self):
         """Works with objects that have .role / .content attributes."""
@@ -151,7 +151,7 @@ class TestBuildMessages:
         msg.role = "user"
         msg.content = "object prompt"
         msgs = StructuredExtractor._build_messages([msg], "sys")
-        assert any(m["role"] == "user" for m in msgs)
+        assert any(m.role == "user" for m in msgs)
 
 
 # ---------------------------------------------------------------------------
