@@ -158,6 +158,13 @@ class ComfyUiImageProvider:
     async def generate(
         self, request: ImageRequest
     ) -> Result[MediaAsset, ImageGenerationError]:
+        if request.reference_image is not None:
+            return Err(
+                ImageGenerationError(
+                    "ComfyUI backend does not support reference-image conditioning"
+                )
+            )
+
         template = self._load_template()
         workflow = _fill_workflow(
             template,
