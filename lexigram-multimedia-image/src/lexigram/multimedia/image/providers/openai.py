@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import aiohttp
 
@@ -26,6 +26,8 @@ _SUPPORTED_SIZES: dict[str, set[str]] = {
     "dall-e-3": {"1024x1024", "1024x1792", "1792x1024"},
     "dall-e-2": {"256x256", "512x512", "1024x1024"},
 }
+
+_EDIT_CAPABLE_MODELS: set[str] = {"dall-e-2"}
 
 
 class OpenAIImageProvider:
@@ -53,6 +55,17 @@ class OpenAIImageProvider:
         self._retry = retry
         self._circuit_breaker = circuit_breaker
 
+    async def _dispatch(
+        self, fn: Callable[..., Awaitable[tuple[int, bytes]]], *args: Any
+    ) -> tuple[int, bytes]:
+        if self._retry is not None and self._circuit_breaker is not None:
+            return await self._retry.execute(self._circuit_breaker.call, fn, *args)
+        if self._retry is not None:
+            return await self._retry.execute(fn, *args)
+        if self._circuit_breaker is not None:
+            return await self._circuit_breaker.call(fn, *args)
+        return await fn(*args)
+
     async def _post(self, payload: dict[str, object]) -> tuple[int, bytes]:
         url = f"{self._base_url}/v1/images/generations"
         headers = {
@@ -64,6 +77,29 @@ class OpenAIImageProvider:
                 timeout=aiohttp.ClientTimeout(total=self._timeout)
             ) as session,
             session.post(url, json=payload, headers=headers) as resp,
+        ):
+            return resp.status, await resp.read()
+
+    async def _post_edit(self, request: ImageRequest, size: str) -> tuple[int, bytes]:
+        url = f"{self._base_url}/v1/images/edits"
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+        form = aiohttp.FormData()
+        form.add_field("model", self._model)
+        form.add_field("prompt", request.prompt)
+        form.add_field("size", size)
+        form.add_field("response_format", "b64_json")
+        mime_type = request.reference_mime_type or "image/png"
+        form.add_field(
+            "image",
+            request.reference_image,
+            filename=f"reference.{mime_type.split('/')[-1]}",
+            content_type=mime_type,
+        )
+        async with (
+            aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self._timeout)
+            ) as session,
+            session.post(url, data=form, headers=headers) as resp,
         ):
             return resp.status, await resp.read()
 
@@ -80,23 +116,25 @@ class OpenAIImageProvider:
                 )
             )
 
-        payload: dict[str, object] = {
-            "model": self._model,
-            "prompt": request.prompt,
-            "size": size,
-            "response_format": "b64_json",
-        }
         try:
-            if self._retry is not None and self._circuit_breaker is not None:
-                status, body = await self._retry.execute(
-                    self._circuit_breaker.call, self._post, payload
-                )
-            elif self._retry is not None:
-                status, body = await self._retry.execute(self._post, payload)
-            elif self._circuit_breaker is not None:
-                status, body = await self._circuit_breaker.call(self._post, payload)
+            if request.reference_image is not None:
+                if self._model not in _EDIT_CAPABLE_MODELS:
+                    return Err(
+                        ImageGenerationError(
+                            f"{self._model} does not support reference-image "
+                            f"conditioning; edit-capable models: "
+                            f"{sorted(_EDIT_CAPABLE_MODELS)}"
+                        )
+                    )
+                status, body = await self._dispatch(self._post_edit, request, size)
             else:
-                status, body = await self._post(payload)
+                payload: dict[str, object] = {
+                    "model": self._model,
+                    "prompt": request.prompt,
+                    "size": size,
+                    "response_format": "b64_json",
+                }
+                status, body = await self._dispatch(self._post, payload)
         except (aiohttp.ClientError, TimeoutError) as exc:
             return Err(ImageGenerationError(f"OpenAI request failed: {exc}", cause=exc))
 
