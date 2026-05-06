@@ -62,6 +62,8 @@ class ImageRequest:
     width: int = 1024
     height: int = 1024
     format: str = "png"
+    reference_image: bytes | None = None
+    reference_mime_type: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 

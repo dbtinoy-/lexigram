@@ -52,6 +52,18 @@ def test_image_request_defaults() -> None:
     req = ImageRequest(prompt="a cat")
     assert req.width == 1024
     assert req.height == 1024
+    assert req.reference_image is None
+    assert req.reference_mime_type is None
+
+
+def test_image_request_accepts_reference_image() -> None:
+    req = ImageRequest(
+        prompt="a cat wearing the same red hat",
+        reference_image=b"\x89PNG...",
+        reference_mime_type="image/png",
+    )
+    assert req.reference_image == b"\x89PNG..."
+    assert req.reference_mime_type == "image/png"
 
 
 def test_upscale_request_defaults() -> None:
