@@ -43,13 +43,12 @@ from lexigram.ai.llm.structured.parser import (
     extract_json_block,
     validate_against_model,
 )
+from lexigram.contracts.ai.llm import ChatMessage, Role
 from lexigram.logging import (
     get_logger,
 )
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import JSONDecodeError, dumps_str, loads
-
-from lexigram.contracts.ai.llm import ChatMessage, Role
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.llm import LLMClientProtocol
