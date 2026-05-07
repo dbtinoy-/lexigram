@@ -26,7 +26,7 @@ async def test_token_refresh_rate_stats_mirror_template() -> None:
     rate = content.stats[0]
     assert rate.label == "Refresh Rate (per minute)"
     assert rate.value == "0.0"
-    assert rate.tone is Tone.PRIMARY
+    assert rate.tone is Tone.DEFAULT
 
 
 async def test_token_refresh_rate_no_total_stat_when_zero() -> None:
@@ -42,7 +42,7 @@ async def test_token_refresh_rate_uses_static_tone_no_threshold_ladder() -> None
         WidgetParams()
     )
     content = result.unwrap()
-    assert all(stat.tone is Tone.PRIMARY for stat in content.stats)
+    assert all(stat.tone is Tone.DEFAULT for stat in content.stats)
 
 
 __all__ = [
