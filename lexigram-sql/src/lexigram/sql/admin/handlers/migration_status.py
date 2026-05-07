@@ -30,7 +30,8 @@ class MigrationStatusWidgetHandler:
         """Fetch migration status.
 
         Mirrors the widget template's ``{% if is_current %}`` logic: an
-        up-to-date state renders as a success badge, otherwise a warning.
+        up-to-date state renders as a success badge, otherwise a warning
+        (``DEGRADED`` → ``Tone.WARNING``).
 
         Infrastructure failures propagate.
 
@@ -48,7 +49,7 @@ class MigrationStatusWidgetHandler:
         is_current = True
         return Ok(
             HealthCheckPayload(
-                status=(HealthStatus.HEALTHY if is_current else HealthStatus.UNHEALTHY),
+                status=(HealthStatus.HEALTHY if is_current else HealthStatus.DEGRADED),
                 component="sql.migrations",
                 detail=f"Version {current_version}; {total_applied} applied",
             )
