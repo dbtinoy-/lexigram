@@ -36,6 +36,8 @@ class TTSRequest:
     text: str
     voice: str | None = None
     format: str = "mp3"
+    reference_audio_uri: str | None = None
+    emotion: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
