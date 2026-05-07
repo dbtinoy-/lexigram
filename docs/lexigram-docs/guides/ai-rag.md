@@ -121,14 +121,15 @@ The pipeline supports multiple chunking strategies configured via `chunking_stra
 Use the `create_chunker` factory for programmatic access:
 
 ```python
-from lexigram.ai.rag import create_chunker, ChunkingConfig
+from lexigram.ai.rag import create_chunker
+from lexigram.ai.rag.chunking import ChunkingConfig, ChunkingStrategy
 
 chunker = create_chunker(
+    ChunkingStrategy.RECURSIVE,
     ChunkingConfig(
-        strategy="recursive",
         chunk_size=512,
-        chunk_overlap=50,
-    )
+        overlap=50,
+    ),
 )
 chunks = await chunker.chunk(document_text)
 ```
@@ -202,9 +203,10 @@ The pipeline uses `RetrievalStrategyProtocol` for pluggable retrieval. The strat
 
 | Strategy | Description |
 |----------|-------------|
-| `similarity` | Pure vector similarity search |
-| `hybrid` | Combined vector + keyword (default) |
+| `vector` | Pure vector similarity search |
 | `mmr` | Maximum marginal relevance for diversity |
+
+Hybrid search (vector + keyword) is enabled at the vector-store level via the `use_hybrid_search` config option, not as a retrieval strategy.
 
 Reranking is handled by `RerankingStrategyProtocol` implementations registered in `RerankingStrategyRegistry`:
 
@@ -212,7 +214,7 @@ Reranking is handled by `RerankingStrategyProtocol` implementations registered i
 from lexigram.ai.rag import RetrievalStrategyRegistry
 
 registry = RetrievalStrategyRegistry.with_defaults()
-strategy = registry.get("hybrid")
+strategy = registry.get("mmr")
 ```
 
 ---

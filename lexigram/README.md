@@ -35,9 +35,9 @@ from lexigram.app.standard import StandardModule
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration
@@ -48,8 +48,8 @@ if __name__ == "__main__":
 
 ```yaml
 # application.yaml
-lexigram:
-  # config fields here
+app_name: my-app
+debug: false
 ```
 
 ### Option 2 — Profiles + Environment Variables *(recommended)*
@@ -73,7 +73,7 @@ StandardModule.configure(config_class=LexigramConfig)
 | Method | Description |
 |--------|-------------|
 | `StandardModule.configure(...)` | Configure with explicit config, sources, or overrides |
-| `StandardModule.stub()` | Minimal config for testing |
+| `StandardModule.build_providers()` | Provider list for `Application.boot(providers=[...])` |
 | `CoreModule.configure(...)` | Stripped-down kernel without serialization or concurrency |
 
 ## Key Features
@@ -88,7 +88,7 @@ StandardModule.configure(config_class=LexigramConfig)
 ## Testing
 
 ```python
-async with Application.boot(modules=[StandardModule.stub()]) as app:
+async with Application.boot(modules=[StandardModule.configure()]) as app:
     # your test code
     ...
 ```

@@ -124,6 +124,7 @@ class LLMModule(Module):
                     config=config,
                     enable_model_manager=False,
                     enable_streaming=False,
+                    stub_mode=True,
                 )
             ],
             exports=[LLMClientProtocol],

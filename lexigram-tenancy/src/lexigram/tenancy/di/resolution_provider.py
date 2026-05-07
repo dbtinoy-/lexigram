@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         BootContainerProtocol,
         ContainerRegistrarProtocol,
     )
+    from lexigram.di.resolution.resolver import ServiceResolver
 
 logger = get_logger(__name__)
 
@@ -37,6 +38,7 @@ class TenantResolutionProvider(Provider):
         Args:
             config: Resolution configuration.
         """
+        super().__init__()
         self._config = config
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -55,6 +57,16 @@ class TenantResolutionProvider(Provider):
         container.singleton(ResolverRegistry, registry)
         container.singleton(CompositeResolver, CompositeResolver(registry))
 
+        cache_ttl = self._config.validator_cache_ttl
+
+        async def _validator_factory(
+            resolver: ServiceResolver,
+        ) -> TenantValidator:
+            provider = await resolver.resolve(TenantProviderProtocol)
+            return TenantValidator(provider, cache_ttl=cache_ttl)
+
+        container.singleton(TenantValidator, factory=_validator_factory)
+
     async def boot(self, container: BootContainerProtocol) -> None:
         """Wire the validator and optionally register middleware.
 
@@ -64,11 +76,7 @@ class TenantResolutionProvider(Provider):
         from lexigram.contracts.web.middleware import MiddlewareRegistryProtocol
         from lexigram.primitives.context import Context
 
-        provider = await container.resolve(TenantProviderProtocol)
-        validator = TenantValidator(
-            provider, cache_ttl=self._config.validator_cache_ttl
-        )
-        container.singleton(TenantValidator, validator)
+        validator = await container.resolve(TenantValidator)
 
         resolver = await container.resolve(CompositeResolver)
 

@@ -85,7 +85,7 @@ repo = GenericRepository[Product, str](
 
 ## 3. Configuration
 
-Add the provider and configure the `db` section. The connection URL uses an async driver (`postgresql+asyncpg://`, `mysql+aiomysql://`, `sqlite+aiosqlite://`):
+Add the provider and configure the `sql` section. The connection URL uses an async driver (`postgresql+asyncpg://`, `mysql+aiomysql://`, `sqlite+aiosqlite://`):
 
 ```python
 from lexigram import Application
@@ -96,7 +96,7 @@ app.add_provider(DatabaseProvider())
 ```
 
 ```yaml title="application.yaml"
-db:
+sql:
   backend:
     url: "${DATABASE_URL:postgresql+asyncpg://user:pass@localhost/app}"
   pool:
@@ -139,7 +139,7 @@ async with Application.boot(providers=[DatabaseProvider()]) as app:
 Declare a `backends` list to run several databases. Each is registered under its name and injected with `Named`:
 
 ```yaml title="application.yaml"
-db:
+sql:
   backends:
     - name: primary
       primary: true
@@ -170,9 +170,9 @@ class AnalyticsService:
 `lexigram-cli` drives schema migrations:
 
 ```bash
-lexigram db revision -m "create products"   # generate a migration
-lexigram db upgrade                          # apply pending migrations
-lexigram db inspect                          # view current schema
+lexigram db migrate "create products"    # generate a migration
+lexigram db upgrade                       # apply pending migrations
+lexigram db inspect                       # view current schema
 ```
 
 ---

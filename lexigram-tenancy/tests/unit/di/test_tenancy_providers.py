@@ -214,34 +214,21 @@ class TestTenantLifecycleProvider:
         )
 
     @pytest.mark.asyncio
-    async def test_boot_wires_provisioner(self, provider: TenantLifecycleProvider) -> None:
-        """boot() wires TenantProvisioner."""
+    async def test_register_binds_provisioner(self, provider: TenantLifecycleProvider) -> None:
+        """register() binds TenantProvisioner."""
         container = MagicMock()
-        container.resolve = AsyncMock(
-            side_effect=[
-                MagicMock(),  # IsolationStrategyRegistry
-                MagicMock(),  # TenantProviderProtocol
-                MagicMock(),  # TenantValidator
-            ]
-        )
 
-        await provider.boot(container)
+        await provider.register(container)
 
-        container.singleton.assert_called()
+        calls = container.singleton.call_args_list
+        assert any("TenantProvisioner" in str(call) for call in calls)
 
     @pytest.mark.asyncio
-    async def test_boot_wires_lifecycle_service(self, provider: TenantLifecycleProvider) -> None:
-        """boot() wires TenantLifecycleService."""
+    async def test_register_binds_lifecycle_service(self, provider: TenantLifecycleProvider) -> None:
+        """register() binds TenantLifecycleService."""
         container = MagicMock()
-        container.resolve = AsyncMock(
-            side_effect=[
-                MagicMock(),  # IsolationStrategyRegistry
-                MagicMock(),  # TenantProviderProtocol
-                MagicMock(),  # TenantValidator
-            ]
-        )
 
-        await provider.boot(container)
+        await provider.register(container)
 
         # Should have called singleton for TenantLifecycleService
         calls = container.singleton.call_args_list
@@ -273,32 +260,21 @@ class TestTenantConfigProvider:
         assert provider.name == "tenant_config"
 
     @pytest.mark.asyncio
-    async def test_boot_wires_cached_config_provider(self, provider: TenantConfigProvider) -> None:
-        """boot() wires CachedTenantConfigProvider."""
+    async def test_register_binds_cached_config_provider(self, provider: TenantConfigProvider) -> None:
+        """register() binds CachedTenantConfigProvider."""
         container = MagicMock()
-        mock_store = MagicMock()
-        container.resolve = AsyncMock(
-            side_effect=[
-                mock_store,  # InMemoryTenantProvider
-            ]
-        )
 
-        await provider.boot(container)
+        await provider.register(container)
 
-        container.singleton.assert_called()
+        calls = container.singleton.call_args_list
+        assert any("TenantConfigProviderProtocol" in str(call) for call in calls)
 
     @pytest.mark.asyncio
-    async def test_boot_wires_config_service(self, provider: TenantConfigProvider) -> None:
-        """boot() wires TenantConfigService."""
+    async def test_register_binds_config_service(self, provider: TenantConfigProvider) -> None:
+        """register() binds TenantConfigService."""
         container = MagicMock()
-        mock_store = MagicMock()
-        container.resolve = AsyncMock(
-            side_effect=[
-                mock_store,  # InMemoryTenantProvider
-            ]
-        )
 
-        await provider.boot(container)
+        await provider.register(container)
 
         # Should have called singleton for TenantConfigService
         calls = container.singleton.call_args_list

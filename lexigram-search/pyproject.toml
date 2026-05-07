@@ -126,6 +126,9 @@ search = "lexigram.search.config:SearchConfig"
 [project.entry-points."lexigram.cli.contributors"]
 search = "lexigram.search.cli.contributor:SearchCliContributor"
 
+[project.entry-points."lexigram.admin.contributors"]
+search = "lexigram.search.admin.contributor:SearchAdminContributor"
+
 [dependency-groups]
 dev = [
     "black>=23.0.0",

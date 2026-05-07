@@ -172,20 +172,20 @@ class CatalogModule:
 The fluent query builder constructs typed filter dictionaries without raw dicts:
 
 ```python
-from lexigram.nosql import DocumentQueryBuilder, ComparisonOp, LogicalOp
+from lexigram.nosql import DocumentQueryBuilder
 
 query = (
     DocumentQueryBuilder()
-    .filter(ComparisonOp.GTE, "price", 10.0)
-    .filter(ComparisonOp.LTE, "price", 100.0)
-    .filter(LogicalOp.OR, [{"status": "active"}, {"status": "promo"}])
-    .sort([("price", 1)])
+    .where_gte("price", 10.0)
+    .where_lte("price", 100.0)
+    .or_where({"status": "active"}, {"status": "promo"})
+    .sort_by("price")
     .limit(20)
     .build()
 )
 ```
 
-Aggregation pipelines chain stages fluently:
+The builder offers `where`, `and_where`, `or_where`, `where_in`, `where_ne`, `where_between`, `where_regex`, and more. Aggregation pipelines chain stages fluently:
 
 ```python
 from lexigram.nosql import AggregationPipeline, AggregationOp
@@ -209,13 +209,13 @@ The `MigrationManager` applies ordered schema changes. Operations are declarativ
 ```python
 from lexigram.nosql import MigrationManager, CreateIndex, DropIndex, RenameField, AddField, DropCollection
 
-manager = MigrationManager("user-schema-v2")
-manager.add(CreateIndex("users", [("email", 1)], unique=True))
-manager.add(RenameField("users", "fullname", "display_name"))
-manager.add(AddField("users", "timezone", default="UTC"))
-manager.add(DropCollection("old_sessions"))
+manager = MigrationManager(store)
+manager.add("2", "Add unique email index", CreateIndex("users", [("email", 1)], unique=True))
+manager.add("3", "Rename fullname column", RenameField("users", "fullname", "display_name"))
+manager.add("4", "Add timezone column", AddField("users", "timezone", default_value="UTC"))
+manager.add("5", "Drop old sessions collection", DropCollection("old_sessions"))
 
-result = await manager.apply()
+applied = await manager.migrate()
 ```
 
 Each operation is idempotent. The manager emits `MigrationAppliedEvent` and `MigrationFailedEvent` for observability.

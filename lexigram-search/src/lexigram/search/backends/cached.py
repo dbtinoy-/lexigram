@@ -102,6 +102,7 @@ class CachedSearchBackend:
         limit: int = 20,
         offset: int = 0,
         sort: list[str] | None = None,
+        rule: str | None = None,
     ) -> Result[SearchResponse, SearchError]:
         """Search with cache-aside pattern.
 
@@ -109,7 +110,7 @@ class CachedSearchBackend:
         backend and caches the successful response.
         """
         cache_key = self._search_key(
-            index_name, query, filters, limit, offset, sort=sort
+            index_name, query, filters, limit, offset, sort=sort, rule=rule
         )
 
         try:
@@ -120,9 +121,15 @@ class CachedSearchBackend:
         except (ConnectionError, OSError, TimeoutError) as e:
             logger.debug("search_cache_get_failed", key=cache_key, error=str(e))
 
-        result = await self._inner.search(
-            index_name, query, filters=filters, limit=limit, offset=offset, sort=sort
-        )
+        kwargs: dict[str, Any] = {
+            "filters": filters,
+            "limit": limit,
+            "offset": offset,
+            "sort": sort,
+        }
+        if rule is not None:
+            kwargs["rule"] = rule
+        result = await self._inner.search(index_name, query, **kwargs)
 
         if result.is_ok():
             try:

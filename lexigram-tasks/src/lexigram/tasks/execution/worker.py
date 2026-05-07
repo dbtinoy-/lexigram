@@ -149,6 +149,13 @@ class TaskWorker(WorkerConcurrencyMixin):
         )
         return pipeline
 
+    @staticmethod
+    def _stamp_result(job_result: JobResult, job: JobProtocol) -> None:
+        """Attach job metadata to a result before it is persisted."""
+        job_result.id = job.id
+        job_result.name = job.name
+        job_result.completed_at = time.time()
+
     async def _execute_job(self, job: JobProtocol) -> Result[JobResult, TaskError]:
         """Execute a single job with optional retry via injected policy.
 
@@ -262,6 +269,7 @@ class TaskWorker(WorkerConcurrencyMixin):
             )
 
             if self.result_store is not None:
+                self._stamp_result(job_result, job)
                 await self.result_store.store(job.id, job_result)
 
             if self.dashboard is not None:
@@ -331,6 +339,7 @@ class TaskWorker(WorkerConcurrencyMixin):
         self.stats.record_job(job_result)
 
         if self.result_store is not None:
+            self._stamp_result(job_result, job)
             await self.result_store.store(job.id, job_result)
 
         if self.dashboard is not None:

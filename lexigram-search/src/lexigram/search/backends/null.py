@@ -39,6 +39,7 @@ class NullBackend(SearchEngine):
         limit: int = 20,
         offset: int = 0,
         sort: list[str] | None = None,
+        rule: str | None = None,
     ) -> Result[SearchResponse, SearchError]:
         return Ok(
             SearchResponse(

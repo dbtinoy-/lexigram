@@ -58,18 +58,17 @@ if __name__ == "__main__":
 
 ```yaml
 # application.yaml
-multimedia:
-  beat:
-    backend: "librosa"
-    librosa_sample_rate: 44100
+multimedia_beat:
+  backend: "librosa"
+  librosa_sample_rate: 44100
 ```
 
 ### Option 2 — Profiles + Environment Variables
 
 ```bash
 export LEX_PROFILE=production
-export LEX_MULTIMEDIA__BEAT__BACKEND=madmom
-export LEX_MULTIMEDIA__BEAT__LIBROSA_SAMPLE_RATE=44100
+export LEX_MULTIMEDIA_BEAT__BACKEND=madmom
+export LEX_MULTIMEDIA_BEAT__LIBROSA_SAMPLE_RATE=44100
 ```
 
 ### Option 3 — Python
@@ -87,10 +86,10 @@ BeatAnalysisModule.configure(
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `backend` | `"librosa"` | `LEX_MULTIMEDIA__BEAT__BACKEND` | `librosa` (in-process), `madmom` (reference server) |
-| `librosa_sample_rate` | `22050` | `LEX_MULTIMEDIA__BEAT__LIBROSA_SAMPLE_RATE` | Sample rate for the librosa backend |
-| `madmom_base_url` | `"http://localhost:5600"` | `LEX_MULTIMEDIA__BEAT__MADMOM_BASE_URL` | Madmom server URL |
-| `timeout` | `30.0` | `LEX_MULTIMEDIA__BEAT__TIMEOUT` | Request timeout in seconds |
+| `backend` | `"librosa"` | `LEX_MULTIMEDIA_BEAT__BACKEND` | `librosa` (in-process), `madmom` (reference server) |
+| `librosa_sample_rate` | `22050` | `LEX_MULTIMEDIA_BEAT__LIBROSA_SAMPLE_RATE` | Sample rate for the librosa backend |
+| `madmom_base_url` | `"http://localhost:5600"` | `LEX_MULTIMEDIA_BEAT__MADMOM_BASE_URL` | Madmom server URL |
+| `timeout` | `30.0` | `LEX_MULTIMEDIA_BEAT__TIMEOUT` | Request timeout in seconds |
 
 ## Module Factory Methods
 

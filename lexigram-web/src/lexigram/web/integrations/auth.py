@@ -61,9 +61,7 @@ class AuthIntegration:
 
         authenticators = []
         try:
-            candidates = await container.resolve_all(
-                cast("Any", AuthenticatorProtocol)
-            )
+            candidates = await container.resolve_all(cast("Any", AuthenticatorProtocol))
             for candidate in candidates:
                 if AuthIntegration._is_invocable_authenticator(candidate):
                     authenticators.append(candidate)
@@ -84,3 +82,60 @@ class AuthIntegration:
             identity_resolver=identity_resolver,
         )
         logger.info("Authentication middleware configured")
+
+        await AuthIntegration._add_role_guard(app, container, web_config)
+
+    @staticmethod
+    async def _add_role_guard(
+        app: Starlette, container: Container, web_config: Any
+    ) -> None:
+        """Register the role guard middleware after authentication.
+
+        Roles are resolved per request from the container-bound
+        :class:`~lexigram.web.middleware.role_guard.RoleResolverProtocol`,
+        never from JWT claims. When rules are declared but no resolver is
+        bound, startup fails fast — enforcement must never be silently off.
+
+        Args:
+            app: The Starlette application to configure.
+            container: The DI container.
+            web_config: The WebConfig driving the rules.
+        """
+        from starlette.middleware import Middleware
+
+        from lexigram.contracts.exceptions import ContainerError
+        from lexigram.contracts.exceptions.config import ConfigurationError
+        from lexigram.web.middleware.role_guard import (
+            RoleGuardMiddleware,
+            RoleGuardRule,
+            RoleResolverProtocol,
+        )
+
+        role_guard = getattr(web_config, "role_guard", None)
+        rules = role_guard.rules if role_guard is not None else []
+        if not rules:
+            return
+
+        resolver = None
+        try:
+            resolver = await container.resolve(cast("Any", RoleResolverProtocol))
+        except (LookupError, RuntimeError, ContainerError) as e:
+            logger.warning("failed_to_resolve_role_resolver", error=str(e))
+
+        if resolver is None:
+            raise ConfigurationError(
+                "web.role_guard.rules declared but no RoleResolverProtocol is "
+                "bound in the container. Bind one to enable role enforcement."
+            )
+
+        app.user_middleware.append(
+            Middleware(
+                RoleGuardMiddleware,
+                rules=[
+                    RoleGuardRule(path=rule.path, roles=list(rule.roles))
+                    for rule in rules
+                ],
+                resolver=resolver,
+            )
+        )
+        logger.info("Role guard middleware configured", rules=len(rules))

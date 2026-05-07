@@ -1,18 +1,21 @@
 """RBAC management controller: roles CRUD and user role assignment.
 
-Standalone pages (no admin shell), mirroring the AuthController pattern:
-CSRF-protected forms, flash-message redirects, and grouped permission
-checkboxes built from a built-in resource × action inventory.
+Pages render inside the admin shell via the injected AdminRenderer, with
+per-route permission gating (``roles.*`` / ``users.*``) and a super-admin
+bypass, mirroring the SettingsController pattern: CSRF-protected forms,
+flash-message redirects, and grouped permission checkboxes built from a
+built-in resource × action inventory.
 """
 
 from __future__ import annotations
 
+from html import escape
 import secrets
 from typing import Any
 from urllib.parse import quote_plus
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
@@ -84,8 +87,11 @@ class RbacController(AdminController):
             request: Incoming HTTP request (error/notice flash params).
 
         Returns:
-            HTMLResponse with the roles table.
+            HTMLResponse with the roles table inside the admin shell.
         """
+        denied = await self._require(request, "roles.list")
+        if denied is not None:
+            return denied
         roles = await self._role_service.list_roles() if self._role_service else []
         html = render_roles_list_page(
             roles,
@@ -93,7 +99,15 @@ class RbacController(AdminController):
             notice=str(request.query_params.get("notice", "")),
             super_admin_role=self._super_admin_role,
         )
-        return HTMLResponse(content=html)
+        return await self.render_admin(
+            request,
+            html,
+            title="Roles",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                current="Roles",
+            ),
+        )
 
     # ------------------------------------------------------------------
     # GET/POST /roles/new — create form
@@ -107,8 +121,11 @@ class RbacController(AdminController):
             request: Incoming HTTP request.
 
         Returns:
-            HTMLResponse with the create-role form.
+            HTMLResponse with the create-role form inside the admin shell.
         """
+        denied = await self._require(request, "roles.create")
+        if denied is not None:
+            return denied
         roles = await self._role_service.list_roles() if self._role_service else []
         csrf_token = self._get_csrf_token(request)
         html = render_role_form_page(
@@ -118,10 +135,19 @@ class RbacController(AdminController):
             notice=str(request.query_params.get("notice", "")),
             csrf_token=csrf_token,
         )
-        return HTMLResponse(content=html)
+        return await self.render_admin(
+            request,
+            html,
+            title="New Role",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                ("Roles", "/admin/roles"),
+                current="New Role",
+            ),
+        )
 
     @post("/roles/new")
-    async def role_new_submit(self, request: Request) -> RedirectResponse:
+    async def role_new_submit(self, request: Request) -> Response:
         """Create a role from the form payload.
 
         Args:
@@ -130,6 +156,9 @@ class RbacController(AdminController):
         Returns:
             RedirectResponse with ``notice`` or ``error`` flash.
         """
+        denied = await self._require(request, "roles.create")
+        if denied is not None:
+            return denied
         form = await request.form()
         if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
             return self._error_redirect(
@@ -169,8 +198,11 @@ class RbacController(AdminController):
             request: Incoming HTTP request (role name in path).
 
         Returns:
-            HTMLResponse with the edit-role form.
+            HTMLResponse with the edit-role form inside the admin shell.
         """
+        denied = await self._require(request, "roles.update")
+        if denied is not None:
+            return denied
         name = request.path_params.get("name", "")
         role = None
         roles: list[Any] = []
@@ -190,10 +222,19 @@ class RbacController(AdminController):
             csrf_token=csrf_token,
             super_admin_role=self._super_admin_role,
         )
-        return HTMLResponse(content=html)
+        return await self.render_admin(
+            request,
+            html,
+            title="Edit Role",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                ("Roles", "/admin/roles"),
+                current=name,
+            ),
+        )
 
     @post("/roles/{name}/edit")
-    async def role_edit_submit(self, request: Request) -> RedirectResponse:
+    async def role_edit_submit(self, request: Request) -> Response:
         """Update a role from the form payload.
 
         Args:
@@ -202,6 +243,9 @@ class RbacController(AdminController):
         Returns:
             RedirectResponse with ``notice`` or ``error`` flash.
         """
+        denied = await self._require(request, "roles.update")
+        if denied is not None:
+            return denied
         form = await request.form()
         if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
             return self._error_redirect(
@@ -233,7 +277,7 @@ class RbacController(AdminController):
     # ------------------------------------------------------------------
 
     @post("/roles/{name}/delete")
-    async def role_delete_submit(self, request: Request) -> RedirectResponse:
+    async def role_delete_submit(self, request: Request) -> Response:
         """Delete a role (system roles are rejected by the service).
 
         Args:
@@ -242,6 +286,9 @@ class RbacController(AdminController):
         Returns:
             RedirectResponse with ``notice`` or ``error`` flash.
         """
+        denied = await self._require(request, "roles.delete")
+        if denied is not None:
+            return denied
         form = await request.form()
         if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
             return self._error_redirect(
@@ -272,8 +319,11 @@ class RbacController(AdminController):
             request: Incoming HTTP request.
 
         Returns:
-            HTMLResponse with the users table.
+            HTMLResponse with the users table inside the admin shell.
         """
+        denied = await self._require(request, "users.list")
+        if denied is not None:
+            return denied
         users = await self._user_store.list_users() if self._user_store else []
         html = render_users_list_page(
             users,
@@ -281,7 +331,15 @@ class RbacController(AdminController):
             notice=str(request.query_params.get("notice", "")),
             super_admin_role=self._super_admin_role,
         )
-        return HTMLResponse(content=html)
+        return await self.render_admin(
+            request,
+            html,
+            title="Users",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                current="Users",
+            ),
+        )
 
     # ------------------------------------------------------------------
     # GET/POST /users/{user_id}/roles — user role assignment
@@ -295,8 +353,11 @@ class RbacController(AdminController):
             request: Incoming HTTP request (user id in path).
 
         Returns:
-            HTMLResponse with role checkboxes pre-checked from the user.
+            HTMLResponse with role checkboxes inside the admin shell.
         """
+        denied = await self._require(request, "users.update")
+        if denied is not None:
+            return denied
         user = None
         user_id = str(request.path_params.get("user_id", ""))
         if self._user_store is not None:
@@ -314,10 +375,19 @@ class RbacController(AdminController):
             error=str(request.query_params.get("error", "")),
             csrf_token=csrf_token,
         )
-        return HTMLResponse(content=html)
+        return await self.render_admin(
+            request,
+            html,
+            title="User Roles",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                ("Users", "/admin/users"),
+                current=getattr(user, "name", None) or user_id,
+            ),
+        )
 
     @post("/users/{user_id}/roles")
-    async def user_roles_submit(self, request: Request) -> RedirectResponse:
+    async def user_roles_submit(self, request: Request) -> Response:
         """Assign roles to a user (persisted via ``update_user``).
 
         Args:
@@ -326,6 +396,9 @@ class RbacController(AdminController):
         Returns:
             RedirectResponse with ``notice`` or ``error`` flash.
         """
+        denied = await self._require(request, "users.update")
+        if denied is not None:
+            return denied
         form = await request.form()
         if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
             return self._error_redirect(
@@ -358,8 +431,11 @@ class RbacController(AdminController):
             request: Incoming HTTP request (user id in path).
 
         Returns:
-            HTMLResponse with grouped permission checkboxes.
+            HTMLResponse with grouped permission checkboxes inside the shell.
         """
+        denied = await self._require(request, "users.update")
+        if denied is not None:
+            return denied
         user = None
         user_id = str(request.path_params.get("user_id", ""))
         if self._user_store is not None:
@@ -376,10 +452,19 @@ class RbacController(AdminController):
             error=str(request.query_params.get("error", "")),
             csrf_token=csrf_token,
         )
-        return HTMLResponse(content=html)
+        return await self.render_admin(
+            request,
+            html,
+            title="User Permissions",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                ("Users", "/admin/users"),
+                current=getattr(user, "name", None) or user_id,
+            ),
+        )
 
     @post("/users/{user_id}/permissions")
-    async def user_permissions_submit(self, request: Request) -> RedirectResponse:
+    async def user_permissions_submit(self, request: Request) -> Response:
         """Persist direct user permissions via ``update_user``.
 
         Args:
@@ -388,6 +473,9 @@ class RbacController(AdminController):
         Returns:
             RedirectResponse with ``notice`` or ``error`` flash.
         """
+        denied = await self._require(request, "users.update")
+        if denied is not None:
+            return denied
         form = await request.form()
         if not self._csrf_ok(request, str(form.get("csrf_token", ""))):
             return self._error_redirect(
@@ -412,6 +500,53 @@ class RbacController(AdminController):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    async def _require(self, request: Request, permission: str) -> HTMLResponse | None:
+        """Return a 403 page when the requesting user lacks the permission.
+
+        Super-admin bypasses the check so bootstrap accounts with an empty
+        permission set can still manage roles and users.
+
+        Args:
+            request: Incoming HTTP request (auth middleware populates
+                ``request.state.user``).
+            permission: Required ``resource.action`` permission string.
+
+        Returns:
+            ``None`` when access is granted, otherwise a 403 HTMLResponse
+            rendered inside the admin shell.
+        """
+        user = getattr(request.state, "user", None)
+        if user is None:
+            return await self._forbidden(request, permission)
+        roles = getattr(user, "roles", None) or ()
+        permissions = getattr(user, "permissions", None) or ()
+        if self._super_admin_role in roles or permission in permissions:
+            return None
+        return await self._forbidden(request, permission)
+
+    async def _forbidden(self, request: Request, permission: str) -> HTMLResponse:
+        """Render a 403 page inside the admin shell.
+
+        Args:
+            request: Incoming HTTP request.
+            permission: Permission whose absence caused the denial.
+
+        Returns:
+            HTMLResponse with status 403.
+        """
+        response = await self.render_admin(
+            request,
+            f"<p>You do not have permission to access this page "
+            f"(required: <code>{escape(permission)}</code>).</p>",
+            title="Forbidden",
+            breadcrumbs=self.generate_breadcrumbs(
+                ("Home", "/admin/"),
+                current="Forbidden",
+            ),
+        )
+        response.status_code = 403
+        return response
 
     def _get_csrf_token(self, request: Request) -> str:
         """Return a CSRF token, creating and persisting the session id."""
@@ -456,7 +591,7 @@ class RbacController(AdminController):
         )
 
     @staticmethod
-    def _error_redirect(url: str, message: str) -> RedirectResponse:
+    def _error_redirect(url: str, message: str) -> Response:
         """Return a 302 redirect carrying an error flash message."""
         return RedirectResponse(
             url=f"{url}?error={quote_plus(message)}",

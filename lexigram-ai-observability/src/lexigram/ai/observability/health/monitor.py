@@ -54,6 +54,23 @@ class AIHealthMonitor:
         self._cache_checks: dict[str, Any] = {}
         self._embedding_checks: dict[str, Any] = {}
 
+    def register_check(self, name: str, check: Any) -> None:
+        """Register a named health-check callable.
+
+        Args:
+            name: Unique check name.
+            check: An async callable returning a health status.
+        """
+        self._llm_checks[name] = check
+
+    async def check(self) -> Any:
+        """Run health checks and return a ``HealthCheckResult``-like object.
+
+        Returns:
+            An object with at least a ``status`` attribute.
+        """
+        return await self.check_all()
+
     def add_llm_check(self, provider: str, check_func: Any) -> None:
         """Add LLM health check.
 

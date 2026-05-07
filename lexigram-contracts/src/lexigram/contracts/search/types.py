@@ -38,9 +38,29 @@ class SearchIndexResult:
     """Search term highlights (field -> highlighted text)."""
 
 
+@dataclass(frozen=True, slots=True)
+class SearchableSpec:
+    """Specification for search-index-based resource searching.
+
+    Shared across ``lexigram-admin`` (the admin resource opt-in) and
+    ``lexigram-search`` (the index-backed execution machinery), so it lives
+    in contracts per the shared-type rule.
+
+    Attributes:
+        index_name: Name of the search index (defaults to resource name).
+        fields: Which fields to include in the searchable document body.
+        result_limit: Max results per query.
+    """
+
+    index_name: str | None = None
+    fields: tuple[str, ...] = ()
+    result_limit: int = 50
+
+
 __all__ = [
     "DocumentData",
     "IndexSettings",
     "SearchFilters",
     "SearchIndexResult",
+    "SearchableSpec",
 ]

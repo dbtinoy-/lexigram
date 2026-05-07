@@ -113,10 +113,20 @@ class MailerProvider(Provider):
                 from_email=entry.from_email,
             )
 
+        if entry.driver == "console":
+            from lexigram.notification.mailer.console_mailer import ConsoleMailer
+
+            return ConsoleMailer()
+
         raise ValueError(f"Unsupported mailer driver: {entry.driver!r}")
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind all mailer backends into the container.
+
+        When no backends are configured and ``console_fallback`` is enabled,
+        a :class:`~lexigram.notification.mailer.console_mailer.ConsoleMailer`
+        is bound as the default ``MailerProtocol`` so outgoing emails are
+        logged to the console instead of being silently dropped.
 
         Args:
             container: DI registrar received from the framework.
@@ -128,7 +138,7 @@ class MailerProvider(Provider):
             self._mailers.append((entry.name, mailer))
             container.singleton(
                 MailerProtocol,
-                factory=lambda m=mailer: m,
+                factory=lambda _resolver, m=mailer: m,
                 name=entry.name,
             )
             is_primary = entry.primary or (
@@ -136,7 +146,19 @@ class MailerProvider(Provider):
                 and self._config.backends[0] is entry
             )
             if is_primary:
-                container.singleton(MailerProtocol, factory=lambda m=mailer: m)
+                container.singleton(
+                    MailerProtocol, factory=lambda _resolver, m=mailer: m
+                )
+
+        if not self._config.backends and self._config.console_fallback:
+            from lexigram.notification.mailer.console_mailer import ConsoleMailer
+
+            console = ConsoleMailer()
+            self._mailers.append(("console", console))
+            container.singleton(
+                MailerProtocol,
+                factory=lambda _resolver, m=console: m,
+            )
 
         logger.info(
             "mailer_registered",

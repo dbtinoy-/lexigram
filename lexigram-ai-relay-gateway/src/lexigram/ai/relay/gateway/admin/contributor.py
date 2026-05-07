@@ -39,9 +39,17 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
+)
+from lexigram.contracts.admin.widget_content import (
+    MessageContent,
+    TableCell,
+    TableContent,
+    Tone,
+    WidgetContent,
 )
 from lexigram.contracts.ai.relay import (
     RelayChannelHealth,
@@ -53,7 +61,6 @@ from lexigram.contracts.exceptions.container import ContainerError
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
-from lexigram.ui import Card, el, render_to_string
 
 if TYPE_CHECKING:
     from lexigram.contracts.admin.errors import AdminError
@@ -70,6 +77,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/relay-gateway/widgets/channel_health",
         size=WidgetSize.LARGE,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.TABLE,
         refresh_interval_seconds=15,
         permission=PERMISSION_READ,
         icon="heart-pulse",
@@ -82,6 +90,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/relay-gateway/widgets/route_activity",
         size=WidgetSize.LARGE,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.TABLE,
         refresh_interval_seconds=30,
         permission=PERMISSION_READ,
         icon="activity",
@@ -94,6 +103,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/relay-gateway/widgets/active_streams",
         size=WidgetSize.MEDIUM,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.TABLE,
         refresh_interval_seconds=10,
         permission=PERMISSION_READ,
         icon="radio",
@@ -442,7 +452,7 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
         """Resolve relay services from the DI container.
 
         Widgets that depend on a missing service render an explicit
-        "Unavailable" state (see ``_unavailable``) rather than failing
+        unavailable ``MessageContent`` state rather than failing
         the whole admin boot — but the resolution failure itself is
         always logged so it isn't silently invisible in production.
 
@@ -595,7 +605,7 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
                 resolved at boot.
 
         Returns:
-            Ok(WidgetViewModel) with rendered HTML on success;
+            Ok(WidgetViewModel) with structured content on success;
             Err(WidgetNotFoundError) for unknown widget names.
         """
         renderers = {
@@ -610,8 +620,8 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
                 Err(WidgetNotFoundError("relay-gateway", widget_name)),
             )
             return not_found
-        html = await renderer(params)
-        return Ok(WidgetViewModel(body=html))
+        content = await renderer(params)
+        return Ok(WidgetViewModel(content=content))
 
     async def render_health_check(
         self,
@@ -650,44 +660,45 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
             )
         )
 
-    async def _render_channel_health(self, params: WidgetParams) -> str:
+    async def _render_channel_health(self, params: WidgetParams) -> WidgetContent:
         """Render per-channel health as a status table."""
+        del params
         if self._health is None:
-            return render_to_string(
-                _unavailable("Channel health requires RelayHealthService.")
+            return MessageContent(
+                text="Channel health unavailable; health service not resolved.",
+                tone=Tone.INFO,
             )
         snapshots = await self._health.channel_health()
-        rows = []
-        for snap in snapshots:
-            badge = _status_badge(snap.status)
-            rows.append(
-                el(
-                    "tr",
-                    el("td", snap.channel, class_="py-1.5 pr-3 font-medium"),
-                    el("td", snap.target.value, class_="py-1.5 pr-3"),
-                    el("td", badge, class_="py-1.5 pr-3"),
-                    el("td", str(snap.model_count), class_="py-1.5 pr-3"),
-                    el(
-                        "td",
-                        _ms(snap.latency_ms_p50),
-                        class_="py-1.5 pr-3",
-                    ),
-                    el("td", _details(snap.detail_code), class_="py-1.5"),
-                )
+        rows = tuple(
+            (
+                TableCell(text=snap.channel),
+                TableCell(text=snap.target.value),
+                TableCell(text=snap.status, tone=_status_tone(snap.status)),
+                TableCell(text=str(snap.model_count)),
+                TableCell(text=_ms(snap.latency_ms_p50)),
+                TableCell(text=_details(snap.detail_code)),
             )
-        table = _table(
-            ["Channel", "Target", "Status", "Models", "P50", "Detail"],
-            rows,
+            for snap in snapshots
         )
-        return render_to_string(
-            Card(title="Channel Health", content=render_to_string(table))
+        return TableContent(
+            columns=(
+                "Channel",
+                "Target",
+                "Status",
+                "Models",
+                "P50",
+                "Detail",
+            ),
+            rows=rows,
+            empty_message="No channels configured.",
         )
 
-    async def _render_route_activity(self, params: WidgetParams) -> str:
+    async def _render_route_activity(self, params: WidgetParams) -> WidgetContent:
         """Render routed metrics for the widget window."""
         if self._metrics is None:
-            return render_to_string(
-                _unavailable("Route metrics service is unavailable.")
+            return MessageContent(
+                text="Route metrics service is unavailable.",
+                tone=Tone.INFO,
             )
         from datetime import timedelta
 
@@ -695,143 +706,84 @@ class RelayGatewayAdminContributor(BaseAdminContributor):
             start=clock.now() - timedelta(minutes=params.time_window_minutes),
             end=clock.now(),
         )
-        rows = []
         try:
             routes = await self._metrics.route_metrics(window)
         except RelayGatewayError as exc:
-            return render_to_string(_unavailable(exc.message))
-        for route in routes:
-            badges = (
-                el("span", "conv-loss", class_="mr-1"),
-                el("span", "stream-fail", class_="mr-1"),
+            return MessageContent(text=exc.message, tone=Tone.INFO)
+        rows = tuple(
+            (
+                TableCell(text=route.source.value),
+                TableCell(text=route.target.value),
+                TableCell(text=str(route.request_count)),
+                TableCell(text=str(route.unsupported_count)),
+                TableCell(text=str(route.stream_failure_count)),
+                TableCell(
+                    text=route.quality.value,
+                    tone=_quality_tone(route.quality.value),
+                ),
             )
-            rows.append(
-                el(
-                    "tr",
-                    el("td", route.source.value, class_="py-1.5 pr-3 font-medium"),
-                    el("td", route.target.value, class_="py-1.5 pr-3"),
-                    el("td", str(route.request_count), class_="py-1.5 pr-3"),
-                    el(
-                        "td",
-                        str(route.unsupported_count),
-                        class_="py-1.5 pr-3",
-                    ),
-                    el(
-                        "td",
-                        str(route.stream_failure_count),
-                        class_="py-1.5 pr-3",
-                    ),
-                    el("td", _quality_badge(route.quality.value), class_="py-1.5"),
-                )
-            )
-        empty = el(
-            "p",
-            "No route activity in this window.",
-            class_="text-sm text-[var(--muted-foreground)] py-4",
+            for route in routes
         )
-        table = _table(
-            [
+        return TableContent(
+            columns=(
                 "Route",
                 "Target",
                 "Requests",
                 "Unsupported",
                 "Stream Failures",
                 "Quality",
-            ],
-            rows,
+            ),
+            rows=rows,
+            empty_message="No route activity in this window.",
         )
-        body = render_to_string(table) if rows else render_to_string(empty)
-        return render_to_string(Card(title="Route Activity", content=body))
 
-    async def _render_active_streams(self, params: WidgetParams) -> str:
+    async def _render_active_streams(self, params: WidgetParams) -> WidgetContent:
         """Render the in-flight stream registry."""
+        del params
         if self._controls is None:
-            return render_to_string(_unavailable("Controls service is unavailable."))
+            return MessageContent(
+                text="Controls service is unavailable.",
+                tone=Tone.INFO,
+            )
         streams = self._controls.active_streams()
         if not streams:
-            return render_to_string(
-                Card(
-                    title="Active Streams",
-                    content=render_to_string(
-                        el(
-                            "p",
-                            "No streams in flight.",
-                            class_="text-sm text-[var(--muted-foreground)] py-4",
-                        )
-                    ),
-                )
-            )
-        rows = [
-            el(
-                "tr",
-                el("td", s.stream_id, class_="py-1.5 pr-3 font-mono text-xs"),
-                el("td", s.channel, class_="py-1.5 pr-3"),
-                el("td", s.model, class_="py-1.5 pr-3"),
-                el("td", _iso(s.started_at), class_="py-1.5"),
+            return MessageContent(text="No streams in flight.")
+        rows = tuple(
+            (
+                TableCell(text=s.stream_id),
+                TableCell(text=s.channel),
+                TableCell(text=s.model),
+                TableCell(text=_iso(s.started_at)),
             )
             for s in streams
-        ]
-        table = _table(["Stream", "Channel", "Model", "Started"], rows)
-        return render_to_string(
-            Card(title="Active Streams", content=render_to_string(table))
+        )
+        return TableContent(
+            columns=("Stream", "Channel", "Model", "Started"),
+            rows=rows,
         )
 
 
-def _unavailable(message: str) -> Any:
-    """Render an explicit unavailable dependency message."""
-    return Card(
-        title="Unavailable",
-        content=render_to_string(
-            el(
-                "p",
-                message,
-                class_="text-sm text-[var(--muted-foreground)] py-4",
-            )
-        ),
-    )
-
-
-def _table(headers: list[str], rows: list[Any]) -> Any:
-    """Build a styled table element."""
-    return el(
-        "table",
-        el(
-            "thead",
-            el(
-                "tr",
-                *[
-                    el(
-                        "th",
-                        h,
-                        class_=(
-                            "text-left text-xs font-semibold "
-                            "text-[var(--muted-foreground)] uppercase tracking-wider "
-                            "pb-1 pr-3"
-                        ),
-                        scope_="col",
-                    )
-                    for h in headers
-                ],
-            ),
-        ),
-        el("tbody", *rows, class_="divide-y divide-[var(--border)]"),
-        class_="w-full",
-    )
-
-
-def _status_badge(status: str) -> Any:
-    """Render a status badge for a channel health snapshot."""
-    colors = {
-        "healthy": "bg-green-100 text-green-700",
-        "degraded": "bg-yellow-100 text-yellow-700",
-        "unavailable": "bg-gray-100 text-gray-500",
-        "failed": "bg-red-100 text-red-700",
+def _status_tone(status: str) -> Tone:
+    """Map a channel health status to a content tone."""
+    tones = {
+        "healthy": Tone.SUCCESS,
+        "degraded": Tone.WARNING,
+        "unavailable": Tone.DEFAULT,
+        "failed": Tone.DANGER,
     }
-    return el(
-        "span",
-        status,
-        class_=f"inline-block px-2 py-0.5 rounded text-xs font-medium {colors.get(status, 'bg-gray-100 text-gray-500')}",
-    )
+    return tones.get(status, Tone.DEFAULT)
+
+
+def _quality_tone(quality: str) -> Tone:
+    """Map a conversion quality to a content tone."""
+    tones = {
+        "native": Tone.SUCCESS,
+        "preserved": Tone.INFO,
+        "lossless": Tone.SUCCESS,
+        "lossy": Tone.WARNING,
+        "discouraged": Tone.DANGER,
+    }
+    return tones.get(quality, Tone.DEFAULT)
 
 
 def _aggregate_channel_status(
@@ -856,22 +808,6 @@ def _aggregate_channel_status(
     if any(snap.status == "degraded" for snap in snapshots):
         return HealthStatus.DEGRADED
     return HealthStatus.HEALTHY
-
-
-def _quality_badge(quality: str) -> Any:
-    """Render a conversion quality badge."""
-    colors = {
-        "native": "bg-green-100 text-green-700",
-        "preserved": "bg-blue-100 text-blue-700",
-        "lossless": "bg-emerald-100 text-emerald-700",
-        "lossy": "bg-yellow-100 text-yellow-700",
-        "discouraged": "bg-red-100 text-red-700",
-    }
-    return el(
-        "span",
-        quality,
-        class_=f"inline-flex px-2 py-0.5 rounded text-xs font-medium {colors.get(quality, 'bg-gray-100 text-gray-500')}",
-    )
 
 
 def _ms(value: float | None) -> str:

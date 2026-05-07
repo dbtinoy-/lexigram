@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         BootContainerProtocol,
         ContainerRegistrarProtocol,
     )
+    from lexigram.di.resolution.resolver import ServiceResolver
 
 
 class TenantConfigProvider(Provider):
@@ -30,6 +31,7 @@ class TenantConfigProvider(Provider):
         Args:
             config: Config overrides configuration.
         """
+        super().__init__()
         self._config = config
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -42,7 +44,58 @@ class TenantConfigProvider(Provider):
         Args:
             container: The DI container registrar.
         """
-        # Will be resolved in boot() once InMemoryTenantProvider is available.
+        # Reuses the ``InMemoryTenantProvider`` registered by
+        # :class:`~lexigram.tenancy.di.lifecycle_provider.TenantLifecycleProvider`
+        # since it implements both protocols.
+
+        async def _cached_provider_factory(
+            resolver: ServiceResolver,
+        ) -> CachedTenantConfigProvider:
+            try:
+                base_config_provider = await resolver.resolve(InMemoryTenantProvider)
+            except Exception:
+                # Fallback: create a fresh in-memory instance for config only
+                base_config_provider = InMemoryTenantProvider()
+
+            return CachedTenantConfigProvider(
+                inner=base_config_provider,
+                ttl=self._config.cache_ttl,
+            )
+
+        container.singleton(TenantConfigProviderProtocol, factory=_cached_provider_factory)
+
+        async def _cached_impl_factory(
+            resolver: ServiceResolver,
+        ) -> CachedTenantConfigProvider:
+            return await resolver.resolve(TenantConfigProviderProtocol)
+
+        container.singleton(
+            CachedTenantConfigProvider,
+            factory=_cached_impl_factory,
+        )
+
+        async def _config_service_factory(
+            resolver: ServiceResolver,
+        ) -> TenantConfigService:
+            cached_provider = await resolver.resolve(TenantConfigProviderProtocol)
+
+            # Event bus is optional
+            try:
+                from lexigram.contracts.events import EventBusProtocol
+
+                event_bus = await resolver.resolve(EventBusProtocol)
+            except Exception:
+                from lexigram.tenancy.di.lifecycle_provider import _NoOpEventBus
+
+                event_bus = _NoOpEventBus()
+
+            return TenantConfigService(
+                config_provider=cached_provider,
+                defaults=dict(DEFAULT_CONFIG),
+                event_bus=event_bus,
+            )
+
+        container.singleton(TenantConfigService, factory=_config_service_factory)
 
     async def boot(self, container: BootContainerProtocol) -> None:
         """Wire the cached config provider and config service.
@@ -50,37 +103,6 @@ class TenantConfigProvider(Provider):
         Args:
             container: The DI container for boot phase.
         """
-        # Attempt to reuse the shared store (InMemoryTenantProvider implements
-        # TenantConfigProviderProtocol too).
-        try:
-            base_config_provider = await container.resolve(InMemoryTenantProvider)
-        except Exception:
-            # Fallback: create a fresh in-memory instance for config only
-            base_config_provider = InMemoryTenantProvider()
-
-        cached_provider = CachedTenantConfigProvider(
-            inner=base_config_provider,
-            ttl=self._config.cache_ttl,
-        )
-        container.singleton(TenantConfigProviderProtocol, cached_provider)
-        container.singleton(CachedTenantConfigProvider, cached_provider)
-
-        # Event bus is optional
-        try:
-            from lexigram.contracts.events import EventBusProtocol
-
-            event_bus = await container.resolve(EventBusProtocol)
-        except Exception:
-            from lexigram.tenancy.di.lifecycle_provider import _NoOpEventBus
-
-            event_bus = _NoOpEventBus()
-
-        config_service = TenantConfigService(
-            config_provider=cached_provider,
-            defaults=dict(DEFAULT_CONFIG),
-            event_bus=event_bus,
-        )
-        container.singleton(TenantConfigService, config_service)
 
     async def shutdown(self) -> None:
         """No-op shutdown."""

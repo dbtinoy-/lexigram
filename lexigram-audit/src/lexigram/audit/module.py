@@ -10,9 +10,13 @@ from lexigram.di.module import DynamicModule, module
 __all__ = ["AuditModule"]
 
 
-@module()
+@module(is_global=True)
 class AuditModule:
     """Lexigram audit module.
+
+    Global like ``EventsModule``/``QueueModule`` so any consumer module
+    (e.g. an app's infrastructure provider) can resolve audit protocols
+    without declaring explicit imports.
 
     Registers the full audit stack including store, logger, retention,
     verification, and optional admin panel contributor.

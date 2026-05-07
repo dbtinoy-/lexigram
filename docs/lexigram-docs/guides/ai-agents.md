@@ -192,7 +192,7 @@ async def main() -> None:
         if result.is_ok():
             response = result.unwrap()
             print(f"Answer: {response.message}")
-            print(f"Steps: {response.step_count}")
+            print(f"Steps: {len(response.steps)}")
             print(f"Tokens: {response.total_tokens}")
         else:
             error = result.unwrap_err()
@@ -212,9 +212,11 @@ Agents use a reasoning strategy to drive execution. The framework ships with sev
 | Strategy | Description |
 |----------|-------------|
 | `ReActStrategy` | Reason → Act → Observe (default) |
+| `FunctionCallingStrategy` | Native LLM function-calling |
 | `PlanAndExecuteStrategy` | Plan then execute steps |
 | `ReflexionStrategy` | Self-critique and refine |
-| `SupervisorStrategy` | Delegates to sub-agents |
+
+`SupervisorStrategy` is also available for multi-agent delegation, though it is not registered in the default registry.
 
 Switch strategies or register custom ones with the `@strategy` decorator:
 

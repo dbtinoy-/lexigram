@@ -1,4 +1,4 @@
-"""Unit tests for InboxProvider health-check delegation."""
+"""Unit tests for InboxProvider registration and health-check delegation."""
 
 from __future__ import annotations
 
@@ -8,8 +8,87 @@ import pytest
 
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.contracts.notification.inbox import InboxStoreProtocol
+from lexigram.notification.config import InboxConfig
 from lexigram.notification.di.inbox_provider import InboxProvider
 from lexigram.notification.inbox.service import InboxService
+
+
+class FakeRegistrar:
+    """Records singleton registrations for assertions."""
+
+    def __init__(self) -> None:
+        self.registrations: list[tuple[object, object | None, object | None]] = []
+
+    def singleton(
+        self,
+        service_type: object,
+        instance: object | None = None,
+        *,
+        name: str | None = None,
+        factory: object | None = None,
+        validate: bool = True,
+    ) -> None:
+        self.registrations.append((service_type, instance, factory))
+
+
+class TestInboxProviderRegistration:
+    """Unit tests for backend selection at registration time."""
+
+    @pytest.mark.asyncio
+    async def test_memory_backend_registers_in_memory_store(self) -> None:
+        from lexigram.notification.inbox.memory import InMemoryInboxStore
+
+        provider = InboxProvider(config=InboxConfig(store_backend="memory"))
+        registrar = FakeRegistrar()
+
+        await provider.register(registrar)  # type: ignore[arg-type]
+
+        bindings = {
+            st: (inst, factory) for st, inst, factory in registrar.registrations
+        }
+        store_impl, store_factory = bindings[InboxStoreProtocol]
+        assert store_impl is InMemoryInboxStore
+        assert store_factory is None
+        assert InboxService in bindings
+
+    @pytest.mark.asyncio
+    async def test_database_backend_registers_lazy_factory(self) -> None:
+
+        provider = InboxProvider(config=InboxConfig(store_backend="database"))
+        registrar = FakeRegistrar()
+
+        await provider.register(registrar)  # type: ignore[arg-type]
+
+        bindings = {
+            st: (inst, factory) for st, inst, factory in registrar.registrations
+        }
+        store_impl, store_factory = bindings[InboxStoreProtocol]
+        assert store_impl is None
+        assert callable(store_factory)
+        assert store_factory.__name__ == "_database_store_factory"
+
+    @pytest.mark.asyncio
+    async def test_database_factory_builds_database_store(self) -> None:
+        from lexigram.contracts.data.sql.database import (
+            DatabaseProviderProtocol,
+        )
+
+        provider = InboxProvider(config=InboxConfig(store_backend="database"))
+        registrar = FakeRegistrar()
+        await provider.register(registrar)  # type: ignore[arg-type]
+
+        db = MagicMock(spec=DatabaseProviderProtocol)
+        resolver = MagicMock()
+        resolver.resolve = AsyncMock(return_value=db)
+
+        bindings = {
+            st: (inst, factory) for st, inst, factory in registrar.registrations
+        }
+        store = await bindings[InboxStoreProtocol][1](resolver)  # type: ignore[misc]
+        from lexigram.notification.inbox.database import DatabaseInboxStore
+
+        assert isinstance(store, DatabaseInboxStore)
+        resolver.resolve.assert_awaited_once_with(DatabaseProviderProtocol)
 
 
 class TestInboxProviderHealthCheck:

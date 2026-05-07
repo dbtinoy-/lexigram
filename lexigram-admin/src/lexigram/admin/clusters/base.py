@@ -48,5 +48,13 @@ class Cluster:
     resources: list[type[Any]] = field(default_factory=list)
     pages: list[type[Any]] = field(default_factory=list)
 
+    def __hash__(self) -> int:
+        """Hash by name (the list fields are unhashable).
+
+        Returns:
+            The hash of the cluster name.
+        """
+        return hash(self.name)
+
 
 __all__ = ["Cluster"]

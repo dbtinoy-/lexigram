@@ -34,6 +34,7 @@ from lexigram.ai.relay.gateway.operations.metrics import (
 )
 from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
 from lexigram.contracts.admin.types import NavigationContribution
+from lexigram.contracts.admin.widget_content import MessageContent, TableContent
 from lexigram.contracts.ai.governance import AIAuditEvent, AIAuditStoreProtocol
 from lexigram.contracts.ai.relay import (
     ConversionQuality,
@@ -442,13 +443,20 @@ class TestWidgets:
         contributor = await self._contributor(health=health)
         result = await contributor.render_widget("channel_health", WIDGET_PARAMS)
         assert result.is_ok()
-        assert "claude" in result.unwrap().body
+        content = result.unwrap().content
+        assert isinstance(content, TableContent)
+        assert content.columns[0] == "Channel"
+        assert any(cell.text == "claude" for row in content.rows for cell in row)
 
     async def test_route_activity_widget_renders_empty_state(self) -> None:
         _, _, metrics, _ = make_services()
         contributor = await self._contributor(metrics=metrics)
         result = await contributor.render_widget("route_activity", WIDGET_PARAMS)
         assert result.is_ok()
+        content = result.unwrap().content
+        assert isinstance(content, TableContent)
+        assert content.rows == ()
+        assert content.empty_message == "No route activity in this window."
 
     async def test_active_streams_widget_renders_stream(self) -> None:
         controls, _, _, _ = make_services()
@@ -458,7 +466,9 @@ class TestWidgets:
         contributor = await self._contributor(controls=controls)
         result = await contributor.render_widget("active_streams", WIDGET_PARAMS)
         assert result.is_ok()
-        assert "claude" in result.unwrap().body
+        content = result.unwrap().content
+        assert isinstance(content, TableContent)
+        assert any(cell.text == "claude" for row in content.rows for cell in row)
 
     async def test_unknown_widget_returns_error(self) -> None:
         contributor = await self._contributor()
@@ -470,7 +480,9 @@ class TestWidgets:
         for widget in ("channel_health", "route_activity", "active_streams"):
             result = await contributor.render_widget(widget, WIDGET_PARAMS)
             assert result.is_ok(), widget
-            assert "Unavailable" in result.unwrap().body
+            content = result.unwrap().content
+            assert isinstance(content, MessageContent), widget
+            assert "unavailable" in content.text.lower(), widget
 
 
 class TestActions:

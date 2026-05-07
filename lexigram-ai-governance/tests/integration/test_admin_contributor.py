@@ -28,6 +28,7 @@ from lexigram.ai.governance.relay_billing import (
     RelayScopeLimit,
 )
 from lexigram.contracts.admin.types import NavigationContribution, WidgetParams
+from lexigram.contracts.admin.widget_content import MessageContent, StatContent
 from lexigram.contracts.ai.governance import (
     RelayUsageRecord,
     RelayUsageScope,
@@ -95,7 +96,7 @@ class FakeUsageStore(RelayUsageStoreProtocol):
 
     async def query(self, filters: object) -> list[RelayUsageRecord]:
         """Return rows matching the status filter only."""
-        status = getattr(filters, "get", lambda key: None)("status")
+        status = getattr(filters, "get", lambda _: None)("status")
         return [
             record
             for _, record in self._rows
@@ -126,7 +127,9 @@ class FakeContainer:
 
 def _request() -> SimpleNamespace:
     """Build a stand-in starlette request with empty query params."""
-    return SimpleNamespace(query_params={}, state=SimpleNamespace(user=None), headers={})
+    return SimpleNamespace(
+        query_params={}, state=SimpleNamespace(user=None), headers={}
+    )
 
 
 WIDGET_PARAMS = WidgetParams(time_window_minutes=60)
@@ -204,7 +207,12 @@ class TestContributorDiscovery:
         """Pages carry only read-only permission gates."""
         contributor = GovernanceAdminContributor()
         for page in contributor.get_management_pages():
-            assert page.permission in (None, "governance.read", "relay.logs", "relay.billing")
+            assert page.permission in (
+                None,
+                "governance.read",
+                "relay.logs",
+                "relay.billing",
+            )
 
 
 class TestAdminBoot:
@@ -311,9 +319,7 @@ class TestWidgets:
         manager: RelayReservationManager | None = None,
     ) -> GovernanceAdminContributor:
         contributor = GovernanceAdminContributor()
-        await contributor.on_admin_boot(
-            FakeContainer(store=store, manager=manager)
-        )
+        await contributor.on_admin_boot(FakeContainer(store=store, manager=manager))
         return contributor
 
     async def test_current_spend_widget_renders_charge(self) -> None:
@@ -321,16 +327,22 @@ class TestWidgets:
         contributor = await self._contributor(store=FakeUsageStore())
         result = await contributor.render_widget("current_spend", WIDGET_PARAMS)
         assert result.is_ok()
-        assert "0.50" in result.unwrap().body
+        content = result.unwrap().content
+        assert isinstance(content, StatContent)
+        stats = {stat.label: stat.value for stat in content.stats}
+        assert stats["Current Spend"] == "0.5000"
+        assert stats["Request Volume"] == "2 requests in the window"
 
     async def test_token_dimensions_widget_renders_totals(self) -> None:
         """The token widget renders prompt and completion totals."""
         contributor = await self._contributor(store=FakeUsageStore())
         result = await contributor.render_widget("token_dimensions", WIDGET_PARAMS)
         assert result.is_ok()
-        body = result.unwrap().body
-        assert "Prompt 20" in body
-        assert "Completion 10" in body
+        content = result.unwrap().content
+        assert isinstance(content, StatContent)
+        stats = {stat.label: stat.value for stat in content.stats}
+        assert stats["Prompt Tokens"] == "20"
+        assert stats["Completion Tokens"] == "10"
 
     async def test_quota_pressure_widget_renders_remaining(self) -> None:
         """The quota widget renders remaining capacity per dimension."""
@@ -343,15 +355,23 @@ class TestWidgets:
         contributor = await self._contributor(manager=manager)
         result = await contributor.render_widget("quota_pressure", WIDGET_PARAMS)
         assert result.is_ok()
-        assert "600 tokens" in result.unwrap().body
+        content = result.unwrap().content
+        assert isinstance(content, StatContent)
+        assert any(
+            stat.label == "tenant" and stat.value.startswith("600 tokens")
+            for stat in content.stats
+        )
 
     async def test_settlement_failures_widget_renders_count(self) -> None:
         """The failure widget counts failed settlements only."""
         contributor = await self._contributor(store=FakeUsageStore())
         result = await contributor.render_widget("settlement_failures", WIDGET_PARAMS)
         assert result.is_ok()
-        assert "1" in result.unwrap().body
-        assert "0.30" in result.unwrap().body
+        content = result.unwrap().content
+        assert isinstance(content, StatContent)
+        stats = {stat.label: stat.value for stat in content.stats}
+        assert stats["Failed Settlements"] == "1"
+        assert "0.3000" in stats["Failed Charge"]
 
     async def test_unknown_widget_returns_error(self) -> None:
         """Unknown widget names return an error result."""
@@ -370,14 +390,18 @@ class TestWidgets:
         ):
             result = await contributor.render_widget(widget, WIDGET_PARAMS)
             assert result.is_ok(), widget
-            assert "Unavailable" in result.unwrap().body, widget
+            content = result.unwrap().content
+            assert isinstance(content, MessageContent), widget
+            assert "unavailable" in content.text.lower(), widget
 
     async def test_quota_pressure_widget_without_limits_is_honest(self) -> None:
         """An unlimited manager reports no configured limits, not zero."""
         contributor = await self._contributor(manager=RelayReservationManager())
         result = await contributor.render_widget("quota_pressure", WIDGET_PARAMS)
         assert result.is_ok()
-        assert "No quota limits configured." in result.unwrap().body
+        content = result.unwrap().content
+        assert isinstance(content, MessageContent)
+        assert content.text == "No quota limits configured."
 
 
 class TestHealth:

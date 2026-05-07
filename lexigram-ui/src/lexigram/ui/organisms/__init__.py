@@ -14,6 +14,7 @@ from lexigram.ui.charts import (
 from lexigram.ui.organisms.activity_feed import ActivityFeed
 from lexigram.ui.organisms.admin import AdminCard, PageLayout
 from lexigram.ui.organisms.forms import Form
+from lexigram.ui.organisms.query_builder import QueryBuilder
 from lexigram.ui.organisms.repeater import Repeater
 from lexigram.ui.organisms.slide_over import SlideOver
 
@@ -33,4 +34,5 @@ __all__ = [
     "Sparkline",
     "Repeater",
     "SlideOver",
+    "QueryBuilder",
 ]

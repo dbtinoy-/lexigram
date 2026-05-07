@@ -10,10 +10,14 @@ from typing import Any, Literal, TypeAlias
 __all__ = [
     "AndExpr",
     "CursorPaginationSpec",
+    "FieldContains",
     "FieldEq",
     "FieldGt",
+    "FieldGte",
     "FieldIn",
     "FieldLt",
+    "FieldLte",
+    "FieldNeq",
     "FilterExpression",
     "LogicalOperator",
     "NotExpr",
@@ -56,6 +60,38 @@ class FieldLt:
 
 
 @dataclass(frozen=True)
+class FieldGte:
+    """Greater-than-or-equal predicate: ``field >= value``."""
+
+    field: str
+    value: Any
+
+
+@dataclass(frozen=True)
+class FieldLte:
+    """Less-than-or-equal predicate: ``field <= value``."""
+
+    field: str
+    value: Any
+
+
+@dataclass(frozen=True)
+class FieldNeq:
+    """Not-equal predicate: ``field != value``."""
+
+    field: str
+    value: Any
+
+
+@dataclass(frozen=True)
+class FieldContains:
+    """Substring predicate: ``value in field``."""
+
+    field: str
+    value: Any
+
+
+@dataclass(frozen=True)
 class FieldIn:
     """Membership predicate: ``field in values``."""
 
@@ -87,7 +123,17 @@ class NotExpr:
 
 
 FilterExpression: TypeAlias = (
-    FieldEq | FieldGt | FieldLt | FieldIn | AndExpr | OrExpr | NotExpr
+    FieldEq
+    | FieldGt
+    | FieldGte
+    | FieldLt
+    | FieldLte
+    | FieldNeq
+    | FieldContains
+    | FieldIn
+    | AndExpr
+    | OrExpr
+    | NotExpr
 )
 """Composable predicate tree for repository queries.
 

@@ -1,12 +1,12 @@
 # lexigram-search
 
-Full-text search and indexing for Lexigram Framework — Elasticsearch, Meilisearch, and Algolia
+Full-text search and indexing for Lexigram Framework — Elasticsearch, Meilisearch, Typesense, and OpenSearch
 
 ---
 
 ## Overview
 
-lexigram-search provides a unified `SearchEngineProtocol` interface over Meilisearch, Elasticsearch, Typesense, PostgreSQL full-text, MySQL, MongoDB, and SQLite. It supports typo-tolerant search, faceting, fuzzy matching, result caching, and analytics. All services are wired via `SearchProvider`, which registers the search engine protocol with the DI container.
+lexigram-search provides a unified `SearchEngineProtocol` interface over Meilisearch, Elasticsearch, OpenSearch, Typesense, PostgreSQL full-text, MySQL, MongoDB, and SQLite. It supports typo-tolerant search, faceting, fuzzy matching, result caching, and analytics. All services are wired via `SearchProvider`, which registers the search engine protocol with the DI container.
 
 ---
 
@@ -36,14 +36,14 @@ from lexigram.search import SearchModule
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration
 
-> **Zero-config usage:** Call `SearchModule.configure()` with no arguments to use defaults.
+> **Default config:** Pass `SearchConfig()` explicitly to use all defaults (in-memory backend). `SearchModule.configure()` with **no arguments raises `ValueError`** — a config or engine must be specified. The in-memory `NullBackend` is fine for development and tests.
 
 ### Option 1 — YAML file
 
@@ -80,10 +80,10 @@ SearchModule.configure(config)
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `backend_type` | `memory` | `LEX_SEARCH__BACKEND_TYPE` | Active backend (`meilisearch`, `elasticsearch`, `typesense`, `postgres`, `mysql`, `sqlite`, `memory`) |
+| `backend_type` | `memory` | `LEX_SEARCH__BACKEND_TYPE` | Active backend (`meilisearch`, `elasticsearch`, `opensearch`, `typesense`, `postgres`, `mysql`, `sqlite`, `mongodb`, `memory`) |
 | `timeout` | `30.0` | `LEX_SEARCH__TIMEOUT` | Default request timeout in seconds |
 | `query.strategy` | `fuzzy` | `LEX_SEARCH__QUERY__STRATEGY` | Query strategy (`fuzzy`, `exact`, `semantic`, `hybrid`) |
-| `query.default_limit` | `10` | `LEX_SEARCH__QUERY__DEFAULT_LIMIT` | Default number of results returned |
+| `query.default_limit` | `20` | `LEX_SEARCH__QUERY__DEFAULT_LIMIT` | Default number of results returned |
 | `query.max_limit` | `100` | `LEX_SEARCH__QUERY__MAX_LIMIT` | Maximum allowed result limit |
 | `query.fuzzy_threshold` | `0.8` | `LEX_SEARCH__QUERY__FUZZY_THRESHOLD` | Fuzzy match threshold (0–1; 1 = exact) |
 | `meilisearch.url` | `http://localhost:7700` | `LEX_SEARCH__MEILISEARCH__URL` | MeiliSearch server URL |
@@ -126,5 +126,6 @@ async with Application.boot(modules=[SearchModule.stub()]) as app:
 | `src/lexigram/search/module.py` | `SearchModule` class with factory methods |
 | `src/lexigram/search/di/provider.py` | `SearchProvider` — wires search protocols into DI container |
 | `src/lexigram/search/config.py` | `SearchConfig` and sub-config classes |
-| `src/lexigram/search/engine/` | Search engine implementations for each backend |
-| `src/lexigram/search/indexer/` | Index management and document indexing |
+| `src/lexigram/search/engine/` | Search engine abstraction and federation |
+| `src/lexigram/search/backends/` | Search engine implementations for each backend |
+| `src/lexigram/search/indexing/` | Index management and document indexing |

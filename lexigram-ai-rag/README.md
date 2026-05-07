@@ -40,9 +40,9 @@ from lexigram.ai.rag.config import RAGConfig
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration
@@ -115,12 +115,32 @@ RAGModule.configure(config)
 
 - **Multi-stage pipeline**: Ingestion, query processing, retrieval, context optimization, synthesis, quality assurance, post-processing
 - **Chunking strategies**: recursive, semantic, token, fixed_size, sliding_window
-- **Retrieval**: Vector search, BM25 keyword search, knowledge graph traversal
-- **Reranking**: Cross-encoder and LLM-based rerankers
+- **Retrieval**: Vector search with `top_k` / `similarity_threshold` controls
+- **Reranking**: FlashRank cross-encoder reranker
 - **Synthesis**: Direct, extractive, abstractive, and hybrid synthesizers
 - **HyDE support**: Hypothetical Document Embeddings for query expansion
 - **Citations**: Inline, footnote, or numbered citation styles
 - **Quality assurance**: Faithfulness check and hallucination detection
+
+## Testing
+
+```python
+async with Application.boot(modules=[RAGModule.stub()]) as app:
+    # your test code
+    ...
+```
+
+## Key Source Files
+
+| File | What it contains |
+|------|-----------------|
+| `src/lexigram/ai/rag/module.py` | `RAGModule.configure()` and `RAGModule.stub()` |
+| `src/lexigram/ai/rag/config.py` | `RAGConfig`, `RAGTenancyConfig`, `PipelineConfig`, all stage configs |
+| `src/lexigram/ai/rag/di/provider.py` | `RAGProvider` — registers pipeline and supporting services |
+| `src/lexigram/ai/rag/pipeline/` | Stage executor and pipeline runner |
+| `src/lexigram/ai/rag/tenancy/` | `TenantScopedRAGPipeline` factory + resolver |
+| `src/lexigram/ai/rag/exceptions.py` | Full exception hierarchy |
+| `src/lexigram/ai/rag/types.py` | RAG-specific domain types |
 
 ## Multi-Tenancy
 
@@ -129,10 +149,16 @@ enabled, the provider registers a `TenantScopedRAGPipeline` — a caching
 wrapper that builds a dedicated `RAGPipelineProtocol` per tenant, with a
 tenant-resolved `collection_name`.
 
+> **Note:** Enabling tenancy requires the app-wide `Context` binding, which
+> ships with the core bootstrap module (`CoreModule` / `StandardModule` from
+> `lexigram.app`). A bare `Application.boot(modules=[RAGModule...])` without
+> it fails with `UnresolvableDependencyError: Context`.
+
 ### Configuration
 
 ```python
-from lexigram.ai.rag.config import RAGConfig, RAGTenancyConfig, RAGModule
+from lexigram.ai.rag import RAGModule
+from lexigram.ai.rag.config import RAGConfig, RAGTenancyConfig
 
 config = RAGConfig(
     tenancy=RAGTenancyConfig(enabled=True),
@@ -157,24 +183,3 @@ tenant_config = RAGConfig().with_collection("tenant_a_collection")
 | `RAGTenancyConfig` | Dataclass with `enabled` flag |
 | `TenantScopedRAGPipeline` | Caches per-tenant pipelines (LRU eviction) |
 | `TemplatedTenantCollectionResolver` | Resolves logical → physical collection name per tenant |
-
-## Testing
-
-```python
-async with Application.boot(modules=[RAGModule.stub()]) as app:
-    # your test code
-    ...
-```
-
-## Key Source Files
-
-| File | What it contains |
-|------|-----------------|
-| `src/lexigram/ai/rag/module.py` | `RAGModule.configure()` and `RAGModule.stub()` |
-| `src/lexigram/ai/rag/config.py` | `RAGConfig`, `RAGTenancyConfig`, `PipelineConfig`, all stage configs |
-| `src/lexigram/ai/rag/di/provider.py` | `RAGProvider` — registers pipeline and supporting services |
-| `src/lexigram/ai/rag/pipeline/` | Stage executor and pipeline runner |
-| `src/lexigram/ai/rag/tenancy/` | `TenantScopedRAGPipeline` factory + resolver |
-| `src/lexigram/ai/rag/exceptions.py` | Full exception hierarchy |
-| `src/lexigram/ai/rag/protocols.py` | Package-local protocol extensions |
-| `src/lexigram/ai/rag/types.py` | RAG-specific domain types |

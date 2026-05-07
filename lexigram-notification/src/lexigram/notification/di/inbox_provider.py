@@ -8,6 +8,7 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus, ProviderPri
 from lexigram.contracts.notification.inbox import InboxStoreProtocol
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
+from lexigram.notification.config import InboxConfig
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -21,17 +22,27 @@ logger = get_logger(__name__)
 class InboxProvider(Provider):
     """Register the inbox store and service into the DI container.
 
-    Registers :class:`~lexigram.contracts.notification.inbox.InboxStoreProtocol`
-    (defaulting to :class:`~lexigram.notification.inbox_memory.InMemoryInboxStore`)
-    and :class:`~lexigram.notification.inbox_service.InboxService` for constructor
-    injection.
+    Honors :class:`~lexigram.notification.config.InboxConfig.store_backend`:
+
+    - ``database`` — :class:`~lexigram.notification.inbox.database.DatabaseInboxStore`
+      backed by :class:`~lexigram.contracts.data.sql.database.DatabaseProviderProtocol`
+      (resolved lazily at first use).
+    - ``memory`` — :class:`~lexigram.notification.inbox.memory.InMemoryInboxStore`.
+
+    Also registers :class:`~lexigram.notification.inbox.service.InboxService`
+    for constructor injection.
+
+    Args:
+        config: Inbox configuration. When ``None`` the default
+            :class:`InboxConfig` (``store_backend="database"``) is used.
     """
 
     name = "inbox"
     priority = ProviderPriority.INFRASTRUCTURE
 
-    def __init__(self) -> None:
+    def __init__(self, config: InboxConfig | None = None) -> None:
         super().__init__()
+        self._config = config or InboxConfig()
         self._store: InboxStoreProtocol | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -40,12 +51,32 @@ class InboxProvider(Provider):
         Args:
             container: DI registrar received from the framework.
         """
-        from lexigram.notification.inbox.memory import InMemoryInboxStore
         from lexigram.notification.inbox.service import InboxService
 
-        container.singleton(InboxStoreProtocol, InMemoryInboxStore)
+        backend = self._config.store_backend
+        if backend == "database":
+            from lexigram.contracts.data.sql.database import (
+                DatabaseProviderProtocol,
+            )
+            from lexigram.notification.inbox.database import DatabaseInboxStore
+
+            async def _database_store_factory(
+                resolver: ContainerResolverProtocol,
+            ) -> DatabaseInboxStore:
+                db = await resolver.resolve(DatabaseProviderProtocol)
+                return DatabaseInboxStore(db=db)
+
+            container.singleton(
+                InboxStoreProtocol,
+                factory=_database_store_factory,
+            )
+        else:
+            from lexigram.notification.inbox.memory import InMemoryInboxStore
+
+            container.singleton(InboxStoreProtocol, InMemoryInboxStore)
+
         container.singleton(InboxService, InboxService)
-        logger.info("inbox_registered", backend="memory")
+        logger.info("inbox_registered", backend=backend)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Resolve the inbox store for health checking.
@@ -57,7 +88,7 @@ class InboxProvider(Provider):
 
         self._store = await container.resolve(InboxStoreProtocol)
         await container.resolve(InboxService)
-        logger.info("inbox_booted")
+        logger.info("inbox_booted", backend=self._config.store_backend)
 
     async def shutdown(self) -> None:
         """Release store reference on shutdown."""

@@ -52,6 +52,7 @@ class TenancyProvider(Provider):
         """
         from lexigram.contracts.core.provider import ProviderPriority
 
+        super().__init__()
         self.priority = ProviderPriority.INFRASTRUCTURE
         self._requested_config = config
         self._config = config or TenancyConfig()

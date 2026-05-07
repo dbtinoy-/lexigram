@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from lexigram.contracts.core.constants import EP_PROVIDERS
 from lexigram.di.provider import Provider, ProviderPriority
 from lexigram.logging import get_logger
+from lexigram.plugins.discovery import discover_plugins
 from lexigram.plugins.state import load_disabled
 
 if TYPE_CHECKING:
@@ -30,15 +31,19 @@ __all__ = ["PluginEngineProvider"]
 
 
 class PluginEngineProvider(Provider):
-    """Register every enabled ``lexigram.providers`` entry point.
+    """Register every enabled entry-point provider declared by a plugin.
 
-    During ``register()`` the provider scans ``EP_PROVIDERS``, drops every
-    entry-point name present in the plugin-state ``disabled`` set, and
-    registers each surviving provider with the container registrar,
-    mirroring ``MiddlewareProvider``. It tracks the discovered providers
-    and drives their ``boot()``/``shutdown()`` lifecycle itself so they
-    participate in the application lifecycle without belonging to the
-    orchestrator's static list.
+    During ``register()`` the provider discovers plugin descriptors from
+    the ``EP_PLUGINS`` group, builds the set of ``provider_entry_point``
+    names they reference, then registers only those ``EP_PROVIDERS``
+    entry points — dropping every name present in the plugin-state
+    ``disabled`` set. Framework packages that happen to register under
+    ``EP_PROVIDERS`` (admin, auth, sql, web, ...) are *not* plugins and
+    are never auto-registered by the engine; they are composed explicitly
+    by the application's module graph. The provider tracks the discovered
+    plugin providers and drives their ``boot()``/``shutdown()`` lifecycle
+    itself so they participate in the application lifecycle without
+    belonging to the orchestrator's static list.
 
     Attributes:
         discovered_providers: Providers instantiated during ``register()``,
@@ -54,11 +59,15 @@ class PluginEngineProvider(Provider):
         self.discovered_providers: list[Provider] = []
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Discover and register enabled providers, skipping the disabled set.
+        """Discover and register enabled plugin providers, skipping the disabled set.
 
         Args:
             container: The DI container registrar.
         """
+        plugin_entry_points = {d.provider_entry_point for d in discover_plugins()}
+        if not plugin_entry_points:
+            logger.debug("plugins.engine.no_plugin_descriptors")
+            return
         disabled = load_disabled(self._state_path)
         if disabled:
             logger.info(
@@ -66,6 +75,12 @@ class PluginEngineProvider(Provider):
                 disabled=sorted(disabled),
             )
         for ep in _entry_points(group=EP_PROVIDERS):
+            if ep.name not in plugin_entry_points:
+                logger.debug(
+                    "plugins.engine.not_plugin_managed",
+                    name=ep.name,
+                )
+                continue
             if ep.name in disabled:
                 logger.debug("plugins.engine.skipped_disabled", name=ep.name)
                 continue
@@ -74,7 +89,9 @@ class PluginEngineProvider(Provider):
             except Exception:  # noqa: BLE001 — skip bad entry points, continue discovery
                 logger.warning("plugins.engine.entry_point_load_failed", name=ep.name)
                 continue
-            if not (isinstance(provider_cls, type) and issubclass(provider_cls, Provider)):
+            if not (
+                isinstance(provider_cls, type) and issubclass(provider_cls, Provider)
+            ):
                 logger.debug(
                     "plugins.engine.not_a_provider",
                     name=ep.name,

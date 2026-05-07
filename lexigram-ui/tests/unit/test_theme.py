@@ -31,7 +31,7 @@ def test_shadcn_css_contains_sidebar_tokens() -> None:
 
 def test_shadcn_css_contains_dark_sidebar_tokens() -> None:
     css = shadcn_css()
-    assert "--sidebar: oklch(0.205 0 0)" in css
+    assert "--sidebar: oklch(0.11 0 0)" in css
     assert "--sidebar-foreground: oklch(0.985 0 0)" in css
     assert "--sidebar-primary: oklch(0.488 0.243 264.376)" in css
     assert "--sidebar-border: oklch(1 0 0 / 10%)" in css

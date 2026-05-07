@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.admin.controllers.auth import AuthController
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.controllers.dashboard import DashboardController
+from lexigram.admin.controllers.profile import ProfileController
 from lexigram.admin.controllers.search import SearchController
 from lexigram.admin.controllers.settings import SettingsController
 from lexigram.admin.controllers.setup import SetupController
@@ -14,6 +15,7 @@ __all__ = [
     "AdminController",
     "AuthController",
     "DashboardController",
+    "ProfileController",
     "SearchController",
     "SettingsController",
     "SetupController",

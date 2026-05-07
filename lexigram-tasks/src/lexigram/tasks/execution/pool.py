@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
     from lexigram.contracts.core import HookRegistryProtocol
     from lexigram.contracts.infra.tasks import TaskQueueProtocol
+    from lexigram.tasks.results.core import ResultStore
 
 _logger = get_logger(__name__)
 
@@ -98,6 +99,7 @@ class WorkerPool:
         self._hooks = hooks
         self._container = container
         self._middleware_pipeline = middleware_pipeline
+        self._result_store: ResultStore | None = None
 
         # Initialize logger
         if logger is None:
@@ -112,7 +114,11 @@ class WorkerPool:
                 worker.handlers = self.handlers
         return self.handlers
 
-    def _create_worker(self, worker_id: str) -> TaskWorker:
+    def _create_worker(
+        self,
+        worker_id: str,
+        result_store: ResultStore | None = None,
+    ) -> TaskWorker:
         """Create a worker with the pool's shared infrastructure services."""
         return TaskWorker(
             worker_id,
@@ -121,6 +127,7 @@ class WorkerPool:
             services=TaskWorkerServices(
                 container=self._container,
                 dead_letter_queue=self._dead_letter_queue,
+                result_store=result_store,
                 logger=self.logger,
                 task_manager=self._task_manager,
                 hooks=self._hooks,
@@ -128,17 +135,30 @@ class WorkerPool:
             middleware_pipeline=self._middleware_pipeline,
         )
 
+    async def _resolve_result_store(self) -> ResultStore | None:
+        """Resolve the container-managed result store, when available."""
+        if self._container is None:
+            return None
+        try:
+            from lexigram.tasks.results.core import ResultStore
+
+            return await self._container.resolve(ResultStore)
+        except Exception:  # noqa: BLE001 - resolution failure means no store
+            return None
+
     async def start(self) -> None:
         """Start the worker pool
 
         Creates and starts all workers in the pool.
         """
         self.running = True
+        result_store = await self._resolve_result_store()
+        self._result_store = result_store
 
         # Create workers
         for i in range(self.size):
             worker_id = f"worker-{i + 1}"
-            worker = self._create_worker(worker_id)
+            worker = self._create_worker(worker_id, result_store=self._result_store)
             self.workers.append(worker)
 
         # Start all workers concurrently
@@ -222,7 +242,7 @@ class WorkerPool:
             # Add workers
             for i in range(self.size, new_size):
                 worker_id = f"worker-{i + 1}"
-                worker = self._create_worker(worker_id)
+                worker = self._create_worker(worker_id, result_store=self._result_store)
                 self.workers.append(worker)
                 await worker.start()
                 self.logger.info("Added %s", worker_id)

@@ -10,8 +10,6 @@ that integrate with Kubernetes probes and load-balancer health checks.
 
 lexigram-monitor provides metrics collection, distributed tracing, health checks, and alerting for Lexigram applications. It integrates with Prometheus and OpenTelemetry backends, supports composable health checks with liveness and readiness flavours, and includes decorators for instrumenting services with custom metrics and traces. All services are wired via `MonitorProvider`, which registers monitoring protocols with the DI container.
 
----
-
 > Full documentation: [docs.lexigram.dev](https://docs.lexigram.dev)
 ## Install
 
@@ -26,19 +24,37 @@ uv add "lexigram-monitor[opentelemetry]" # OTLP / Jaeger / Zipkin
 
 ```python
 from lexigram import Application
-from lexigram.di.module import Module, module
-
-# Import the module from the package
 from lexigram.monitor import MonitorModule
 
-@module(imports=[MonitorModule.configure()])
-class AppModule(Module):
-    pass
 
-app = Application(modules=[AppModule])
+async def main() -> None:
+    async with Application.boot(modules=[MonitorModule.configure()]) as app:
+        # ... metrics, health checks and /health endpoints active ...
+        ...
+
+
 if __name__ == "__main__":
-    app.run()
+    import asyncio
+    asyncio.run(main())
 ```
+
+## Configuration
+
+| Field | Default | Env var | Description |
+|-------|---------|---------|-------------|
+| `prometheus.enable_default_metrics` | `true` | `LEX_MONITOR__PROMETHEUS__ENABLE_DEFAULT_METRICS` | Enable default process metrics |
+| `prometheus.port` | `8000` | `LEX_MONITOR__PROMETHEUS__PORT` | Port for the Prometheus metrics endpoint |
+| `prometheus.path` | `/metrics` | `LEX_MONITOR__PROMETHEUS__PATH` | URL path for metrics scraping |
+| `tracing.enabled` | `true` | `LEX_MONITOR__TRACING__ENABLED` | Enable distributed tracing via OTLP |
+| `tracing.sample_rate` | `1.0` | `LEX_MONITOR__TRACING__SAMPLE_RATE` | Trace sampling rate (0.0–1.0; use 0.1 in production) |
+| `health.path` | `/health` | `LEX_MONITOR__HEALTH__PATH` | Base path for health check endpoints |
+| `health.interval` | `30` | `LEX_MONITOR__HEALTH__INTERVAL` | Seconds between background health polls |
+| `health.timeout` | `5` | `LEX_MONITOR__HEALTH__TIMEOUT` | Per-check timeout in seconds |
+| `logging.level` | `INFO` | `LEX_MONITOR__LOGGING__LEVEL` | Minimum log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `logging.format` | `json` | `LEX_MONITOR__LOGGING__FORMAT` | Log output format (`json` or `text`) |
+| `slo.enabled` | `true` | `LEX_MONITOR__SLO__ENABLED` | Enable periodic SLO evaluation worker |
+| `slo.evaluation_interval` | `60` | `LEX_MONITOR__SLO__EVALUATION_INTERVAL` | Seconds between SLO evaluation cycles |
+| `slo.suppression_window_seconds` | `300` | `LEX_MONITOR__SLO__SUPPRESSION_WINDOW_SECONDS` | Min seconds between duplicate alerts |
 
 ## Module Factory Methods
 
@@ -60,8 +76,29 @@ if __name__ == "__main__":
 - **Alerting** — Configurable alert rules with tier-aware webhook delivery
 - **SLO Monitoring** — Burn-rate evaluation with configurable suppression window
 - **Tiered alerts** — P0 (PagerDuty) / P1 (business hours Slack) / P2 (weekly digest) routing
-- **Log export** — Structured log export to OTLP log backend
+- **Structured logging** — `json` / `text` log output via `logging.level` / `logging.format`
 - **Grafana dashboards** — Pre-built dashboard JSON in `lexigram-monitor/dashboards/`
+
+## Testing
+
+```python
+async with Application.boot(modules=[MonitorModule.stub()]) as app:
+    # your test code
+    ...
+```
+
+## Key Source Files
+
+| File | What it contains |
+|------|----------------|
+| `src/lexigram/monitor/module.py` | `MonitorModule` class with factory methods |
+| `src/lexigram/monitor/di/provider.py` | `MonitorProvider` — wires monitoring protocols into DI container |
+| `src/lexigram/monitor/config.py` | `MonitorConfig` and sub-config dataclasses |
+| `src/lexigram/monitor/health/` | Health check registration and registry (`base.py`, `checker.py`, `registry.py`, ...) |
+| `src/lexigram/monitor/instrumentation/decorators.py` | `@metered` and `@traced` decorators |
+| `src/lexigram/monitor/slo/` | SLO evaluation, tiered alert dispatchers, channel implementations |
+| `src/lexigram/monitor/alerts/` | Alert dispatcher protocols and tier routing |
+| `dashboards/projection-health.json` | Grafana dashboard for SLO health and alerting |
 
 ## SLO Monitoring
 
@@ -134,42 +171,3 @@ export LEX_MONITOR__SLO__ENABLED=true
 export LEX_MONITOR__SLO__EVALUATION_INTERVAL=60
 export LEX_MONITOR__SLO__SUPPRESSION_WINDOW_SECONDS=300
 ```
-
-## Testing
-
-```python
-async with Application.boot(modules=[MonitorModule.stub()]) as app:
-    # your test code
-    ...
-```
-
-## Key Source Files
-
-| File | What it contains |
-|------|----------------|
-| `src/lexigram/monitor/module.py` | `MonitorModule` class with factory methods |
-| `src/lexigram/monitor/di/provider.py` | `MonitorProvider` — wires monitoring protocols into DI container |
-| `src/lexigram/monitor/config.py` | `MonitorConfig` and sub-config dataclasses |
-| `src/lexigram/monitor/health.py` | Health check registration and registry |
-| `src/lexigram/monitor/instrumentation/decorators.py` | `@metered` and `@traced` decorators |
-| `src/lexigram/monitor/slo/` | SLO evaluation, tiered alert dispatchers, channel implementations |
-| `src/lexigram/monitor/alerts/` | Alert dispatcher protocols and tier routing |
-| `dashboards/projection-health.json` | Grafana dashboard for SLO health and alerting |
-
-## Config Reference
-
-| Field | Default | Env var | Description |
-|-------|---------|---------|-------------|
-| `prometheus.enabled` | `true` | `LEX_MONITOR__PROMETHEUS__ENABLED` | Expose the `/metrics` scrape endpoint |
-| `prometheus.port` | `9090` | `LEX_MONITOR__PROMETHEUS__PORT` | Port for the Prometheus metrics endpoint |
-| `prometheus.path` | `/metrics` | `LEX_MONITOR__PROMETHEUS__PATH` | URL path for metrics scraping |
-| `tracing.enabled` | `false` | `LEX_MONITOR__TRACING__ENABLED` | Enable distributed tracing via OTLP |
-| `tracing.sample_rate` | `1.0` | `LEX_MONITOR__TRACING__SAMPLE_RATE` | Trace sampling rate (0.0–1.0; use 0.1 in production) |
-| `health.path` | `/health` | `LEX_MONITOR__HEALTH__PATH` | Base path for health check endpoints |
-| `health.interval` | `30` | `LEX_MONITOR__HEALTH__INTERVAL` | Seconds between background health polls |
-| `health.timeout` | `5` | `LEX_MONITOR__HEALTH__TIMEOUT` | Per-check timeout in seconds |
-| `logging.level` | `INFO` | `LEX_MONITOR__LOGGING__LEVEL` | Minimum log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
-| `logging.format` | `json` | `LEX_MONITOR__LOGGING__FORMAT` | Log output format (`json` or `text`) |
-| `slo.enabled` | `true` | `LEX_MONITOR__SLO__ENABLED` | Enable periodic SLO evaluation worker |
-| `slo.evaluation_interval` | `60` | `LEX_MONITOR__SLO__EVALUATION_INTERVAL` | Seconds between SLO evaluation cycles |
-| `slo.suppression_window_seconds` | `300` | `LEX_MONITOR__SLO__SUPPRESSION_WINDOW_SECONDS` | Min seconds between duplicate alerts |

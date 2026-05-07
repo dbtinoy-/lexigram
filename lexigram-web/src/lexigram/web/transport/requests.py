@@ -86,6 +86,11 @@ class Request:
         return getattr(self._starlette.state, "user", None)
 
     @property
+    def user_id(self) -> str | None:
+        """Authenticated user id set by auth middleware."""
+        return getattr(self._starlette.state, "user_id", None)
+
+    @property
     def auth(self) -> Any | None:
         """Authentication credentials."""
         return getattr(self._starlette.state, "auth", None)

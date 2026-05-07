@@ -99,6 +99,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Unable to verify setup status. Database may be unavailable.",
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
@@ -112,6 +113,7 @@ class SetupController(AdminController):
         html = render_setup_page(
             error=error,
             csrf_token=self._fresh_csrf(request),
+            setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
         )
         return HTMLResponse(content=html)
 
@@ -143,6 +145,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Unable to verify setup status. Database may be unavailable.",
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
@@ -172,6 +175,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Invalid or expired security token. Please reload the page and try again.",
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -189,6 +193,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Invalid setup token.",
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=403)
 
@@ -197,6 +202,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="All fields are required.",
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -204,6 +210,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Passwords do not match.",
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -216,6 +223,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error=violation_lines,
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -236,6 +244,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error=f"Failed to create account: {exc}",
                 csrf_token=self._fresh_csrf(request),
+                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
             )
             return HTMLResponse(content=html, status_code=422)
 

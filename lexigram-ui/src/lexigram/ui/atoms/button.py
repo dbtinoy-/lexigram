@@ -129,6 +129,10 @@ class SubmitButton(Component):
         size_cls = _SIZE_CLASSES.get(self.size, _SIZE_CLASSES["default"])
         cls = " ".join(filter(None, [_BASE_CLASSES, variant_cls, size_cls]))
 
+        custom_cls = self.props.get("class_") or self.props.get("class")
+        if custom_cls:
+            cls = f"{cls} {custom_cls}"
+
         return el(
             "button",
             el(
@@ -147,6 +151,7 @@ class SubmitButton(Component):
                 self.loading_label,
                 x_show="loading",
                 x_cloak=True,
+                style="display: none",
                 class_="inline-flex items-center",
             ),
             type="submit",

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
         BootContainerProtocol,
         ContainerRegistrarProtocol,
     )
+    from lexigram.di.resolution.resolver import ServiceResolver
 
 
 class TenantLifecycleProvider(Provider):
@@ -31,6 +32,7 @@ class TenantLifecycleProvider(Provider):
         Args:
             config: Lifecycle configuration.
         """
+        super().__init__()
         self._config = config
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -48,38 +50,48 @@ class TenantLifecycleProvider(Provider):
         isolation_registry = IsolationStrategyRegistry.with_defaults()
         container.singleton(IsolationStrategyRegistry, isolation_registry)
 
+        async def _provisioner_factory(
+            resolver: ServiceResolver,
+        ) -> TenantProvisioner:
+            registered = await resolver.resolve(IsolationStrategyRegistry)
+            strategy = registered.get(self._config.isolation_strategy)
+            return TenantProvisioner(
+                strategy=strategy,
+                auto_provision=self._config.auto_provision_isolation,
+            )
+
+        container.singleton(TenantProvisioner, factory=_provisioner_factory)
+
+        async def _lifecycle_service_factory(
+            resolver: ServiceResolver,
+        ) -> TenantLifecycleService:
+            provider = await resolver.resolve(TenantProviderProtocol)
+            provisioner = await resolver.resolve(TenantProvisioner)
+            validator = await resolver.resolve(TenantValidator)
+
+            # Event bus is optional — provide a no-op if not registered
+            try:
+                from lexigram.contracts.events import EventBusProtocol
+
+                event_bus = await resolver.resolve(EventBusProtocol)
+            except Exception:
+                event_bus = _NoOpEventBus()
+
+            return TenantLifecycleService(
+                provider=provider,
+                provisioner=provisioner,
+                event_bus=event_bus,
+                validator=validator,
+            )
+
+        container.singleton(TenantLifecycleService, factory=_lifecycle_service_factory)
+
     async def boot(self, container: BootContainerProtocol) -> None:
         """Wire provisioner and lifecycle service.
 
         Args:
             container: The DI container for boot phase.
         """
-        isolation_registry = await container.resolve(IsolationStrategyRegistry)
-        strategy = isolation_registry.get(self._config.isolation_strategy)
-        provisioner = TenantProvisioner(
-            strategy=strategy,
-            auto_provision=self._config.auto_provision_isolation,
-        )
-        container.singleton(TenantProvisioner, provisioner)
-
-        provider = await container.resolve(TenantProviderProtocol)
-        validator = await container.resolve(TenantValidator)
-
-        # Event bus is optional — provide a no-op if not registered
-        try:
-            from lexigram.contracts.events import EventBusProtocol
-
-            event_bus = await container.resolve(EventBusProtocol)
-        except Exception:
-            event_bus = _NoOpEventBus()
-
-        lifecycle_service = TenantLifecycleService(
-            provider=provider,
-            provisioner=provisioner,
-            event_bus=event_bus,
-            validator=validator,
-        )
-        container.singleton(TenantLifecycleService, lifecycle_service)
 
     async def shutdown(self) -> None:
         """No-op shutdown."""

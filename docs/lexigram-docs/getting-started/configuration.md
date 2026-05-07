@@ -23,9 +23,9 @@ env: development          # development | staging | production | test
 
 logging:
   level: INFO
-  format: json            # text | json
+  json_format: true         # true | false
 
-# lexigram-web  (config_key: "web")
+# lexigram-web  (name: "web")
 web:
   server:
     host: "0.0.0.0"
@@ -34,8 +34,8 @@ web:
     enabled: true
     allow_origins: ["https://myapp.com"]
 
-# lexigram-sql  (config_key: "db")
-db:
+# lexigram-sql  (config_key: "sql")
+sql:
   backend:
     url: "${DATABASE_URL}"
   pool:
@@ -91,7 +91,7 @@ There are two complementary mechanisms.
 Use `${VAR}` for secrets and deployment values, with optional defaults via `${VAR:default}`:
 
 ```yaml title="application.yaml"
-db:
+sql:
   backend:
     url: "${DATABASE_URL:sqlite+aiosqlite:///./dev.db}"
 auth:
@@ -137,8 +137,8 @@ application.test.yaml            # Merged when LEX_PROFILE=test
 debug: true
 logging:
   level: DEBUG
-  format: text
-db:
+  json_format: false
+sql:
   backend:
     url: "sqlite+aiosqlite:///./dev.db"
 ```
@@ -147,7 +147,7 @@ db:
 debug: false
 logging:
   level: WARNING
-  format: json
+  json_format: true
 cache:
   backends:
     - name: redis
@@ -213,8 +213,7 @@ Before calling `register()`, the framework reads the matching section via `Lexig
 
 | Provider | `config_key` |
 |----------|-------------|
-| `WebProvider` | `"web"` |
-| `DatabaseProvider` | `"db"` |
+| `DatabaseProvider` | `"sql"` |
 | `CacheProvider` | `"cache"` |
 | `AuthProvider` | `"auth"` |
 
@@ -231,7 +230,7 @@ config.debug            # False
 config.environment      # Environment.DEVELOPMENT
 
 # Section access (extension config)
-db_config = config.get_section("db", DatabaseConfig)
+db_config = config.get_section("sql", DatabaseConfig)
 rag_config = config.get_section("ai_rag", RAGConfig)   # dotted paths also supported
 
 # Existence + serialization (secrets redacted by default)

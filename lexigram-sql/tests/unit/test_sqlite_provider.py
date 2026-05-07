@@ -1,6 +1,6 @@
 """Unit tests for SQLiteProvider"""
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
 
@@ -84,6 +84,7 @@ class TestSQLiteProvider:
         """Test creating connection for memory database"""
         mock_connection = Mock()
         mock_connect.return_value = mock_connection
+        mock_connection.execute = AsyncMock()
 
         provider = SQLiteProvider(":memory:")
         connection = await provider._create_connection()
@@ -91,6 +92,8 @@ class TestSQLiteProvider:
         mock_connect.assert_called_once_with(":memory:")
         assert connection.row_factory.__name__ == "Row"
         assert connection == mock_connection
+        # WAL is not applicable to in-memory databases; only busy_timeout set.
+        mock_connection.execute.assert_awaited_once_with("PRAGMA busy_timeout=5000")
 
     @pytest.mark.asyncio
     @patch("aiosqlite.connect", new_callable=AsyncMock)
@@ -99,6 +102,7 @@ class TestSQLiteProvider:
         """Test creating connection for file database"""
         mock_connection = Mock()
         mock_connect.return_value = mock_connection
+        mock_connection.execute = AsyncMock()
 
         provider = SQLiteProvider("/path/to/db.sqlite")
         connection = await provider._create_connection()
@@ -106,6 +110,14 @@ class TestSQLiteProvider:
         mock_mkdir.assert_called_with(parents=True, exist_ok=True)
         mock_connect.assert_called_once_with("/path/to/db.sqlite")
         assert connection == mock_connection
+        # WAL journaling and a busy timeout prevent SQLITE_BUSY failures
+        # when concurrent writers contend on the same file.
+        mock_connection.execute.assert_has_awaits(
+            [
+                call("PRAGMA journal_mode=WAL"),
+                call("PRAGMA busy_timeout=5000"),
+            ]
+        )
 
     @pytest.mark.asyncio
     async def test_close_connection(self, mock_connection):

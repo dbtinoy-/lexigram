@@ -31,6 +31,7 @@ dependencies = [
     "aiofiles>=23.0",
     "aiohttp>=3.9",
     "pywebpush>=2.3.0",
+    "starlette>=0.28.0",
     "typer>=0.9.0",
 ]
 
@@ -42,6 +43,9 @@ Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
+admin = [
+    "lexigram-admin>=0.1.1",
+]
 sendgrid = ["sendgrid>=6.0"]
 twilio = ["twilio>=8.0"]
 apns = ["httpx[http2]>=0.27.0", "PyJWT>=2.8.0", "cryptography>=42.0.0"]
@@ -71,6 +75,9 @@ test = [
 
 [project.entry-points."lexigram.providers"]
 mailer = "lexigram.notification.di.mailer_provider:MailerProvider"
+
+[project.entry-points."lexigram.admin.contributors"]
+notifications = "lexigram.notification.admin.contributor:NotificationAdminContributor"
 
 [project.entry-points."lexigram.cli.contributors"]
 notification = "lexigram.notification.cli.contributor:NotificationCliContributor"

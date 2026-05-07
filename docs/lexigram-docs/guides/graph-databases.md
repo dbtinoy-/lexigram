@@ -100,6 +100,7 @@ Inject `GraphStoreProtocol`, get a graph handle, and perform CRUD:
 ```python
 from lexigram.contracts.data.graph.protocols import GraphStoreProtocol
 from lexigram.contracts.data.graph.types import GraphNode, GraphEdge, NodeResult
+from lexigram.contracts.data.graph.filters import Prop
 
 
 class FriendGraph:
@@ -116,7 +117,7 @@ class FriendGraph:
 
     async def find_person(self, name: str) -> GraphNode | None:
         graph = await self._store.get_graph("social")
-        results = await graph.find_nodes(labels=["Person"], filter={"name": name})
+        results = await graph.find_nodes(labels=["Person"], filter=Prop.eq("name", name))
         return results[0] if results else None
 
     async def friends_of(self, person_id: str) -> list[GraphNode]:

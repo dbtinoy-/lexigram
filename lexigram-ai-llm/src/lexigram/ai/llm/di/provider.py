@@ -91,6 +91,7 @@ class LLMProvider(Provider):
         audit_calls: bool = False,
         name: str = "llm",
         cache_backend: CacheBackendProtocol | None = None,
+        stub_mode: bool = False,
     ) -> None:
         """Initialize the LLM Provider.
 
@@ -110,6 +111,7 @@ class LLMProvider(Provider):
         self.enable_streaming = enable_streaming
         self.audit_calls = audit_calls
         self.cache_backend = cache_backend
+        self.stub_mode = stub_mode
         self._llm_client: LLMClientProtocol | None = None
 
     @staticmethod
@@ -160,7 +162,12 @@ class LLMProvider(Provider):
         logger.info("Registered ParserRegistry with default parsers")
 
         try:
-            llm_client = await create_llm_client(self.config, registry)
+            if self.stub_mode:
+                from lexigram.ai.llm.clients.noop import NoOpLLMClient
+
+                llm_client = NoOpLLMClient(self.config)
+            else:
+                llm_client = await create_llm_client(self.config, registry)
         except ImportError as exc:
             extra = _PROVIDER_EXTRAS.get(
                 self.config.provider.value,

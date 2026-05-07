@@ -82,8 +82,11 @@ class SearchProvider(Provider):
         self, container: ContainerRegistrarProtocol
     ) -> None:
         """Register a single (unnamed) backend — identical to the original register() logic."""
+        from lexigram.contracts.search import SearchEngineProtocol
+
         container.singleton(SearchProvider, lambda: self)
         container.singleton(SearchEngine, lambda: self.backend)
+        container.singleton(SearchEngineProtocol, lambda: self.backend)
 
     async def _register_multi_backend(
         self, container: ContainerRegistrarProtocol

@@ -188,9 +188,17 @@ When the `async with` block exits — or when `app.stop()` is called — shutdow
 
 ```python
 class DatabaseProvider(Provider):
+    def __init__(self) -> None:
+        super().__init__()
+        self._db: DatabaseProtocol | None = None
+
+    async def boot(self, container: BootContainerProtocol) -> None:
+        self._db = await container.resolve(DatabaseProtocol)
+        await self._db.connect()
+
     async def shutdown(self) -> None:
-        db = await self._container.resolve(DatabaseProtocol)
-        await db.disconnect()
+        if self._db is not None:
+            await self._db.disconnect()
 ```
 
 :::note
@@ -213,16 +221,20 @@ class CacheProvider(Provider):
     priority = ProviderPriority.INFRASTRUCTURE
     dependencies = ("config",)
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._backend: CacheBackend | None = None
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         container.singleton(CacheBackend, RedisCache)
 
     async def boot(self, container: BootContainerProtocol) -> None:
-        cache = await container.resolve(CacheBackend)
-        await cache.connect()
+        self._backend = await container.resolve(CacheBackend)
+        await self._backend.connect()
 
     async def shutdown(self) -> None:
-        cache = await self._container.resolve(CacheBackend)
-        await cache.disconnect()
+        if self._backend is not None:
+            await self._backend.disconnect()
 ```
 
 ## Common Mistakes
@@ -233,7 +245,7 @@ The container exists from `Application.__init__()`, but it's empty until provide
 
 ```python
 app = Application()
-await app.container.resolve(DatabaseProtocol)  # ResolutionError — nothing registered yet
+await app.container.resolve(DatabaseProtocol)  # UnresolvableDependencyError (LEX_ERR_DI_004) — nothing registered yet
 ```
 
 Always resolve inside `boot()` or after the application is fully started.

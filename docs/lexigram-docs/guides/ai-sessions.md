@@ -221,15 +221,17 @@ from lexigram.ai.session.multi_agent.turn_manager import RoundRobinTurnManager
 from lexigram.ai.session.multi_agent.group_session import GroupSession
 
 
-async def multi_agent_session() -> None:
-    turn_manager = RoundRobinTurnManager(agent_ids=["agent-alpha", "agent-beta", "agent-gamma"])
+async def multi_agent_session(manager: SessionManagerProtocol, session_id: str) -> None:
+    turn_manager = RoundRobinTurnManager(max_rounds=10)
+    for agent in ["agent-alpha", "agent-beta", "agent-gamma"]:
+        turn_manager.register(agent, role="participant")
+
     group = GroupSession(
-        session_id="group-1",
-        agents=["agent-alpha", "agent-beta", "agent-gamma"],
+        session_manager=manager,
         turn_manager=turn_manager,
     )
 
-    next_agent = await group.determine_next_agent()
+    next_agent = await turn_manager.select_next(session_id)
     print(f"Next agent: {next_agent}")
 ```
 

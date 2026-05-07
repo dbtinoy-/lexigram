@@ -39,7 +39,7 @@ The `query`, `mutation`, and `subscription` decorators are thin wrappers around 
 
 ## 2. Resolvers and Dependency Injection
 
-Resolvers reach into the container through the GraphQL **context**. `get_context(info)` returns a `GraphQLContext` carrying the request, the authenticated principal, and a per-request container scope:
+Resolvers reach into the container through the GraphQL **context**. `get_context(info)` returns a `GraphQLContext` carrying the request, the authenticated principal, and a per-request DI scope (`ctx.scope`, a `Scope` that supports `resolve`):
 
 ```python
 from lexigram.graphql import query, get_context
@@ -51,7 +51,7 @@ class Query:
     @query()
     async def user(self, info: Info, id: strawberry.ID) -> User | None:
         ctx = get_context(info)
-        repo = await ctx.container.resolve(UserRepository)
+        repo = await ctx.scope.resolve(UserRepository)
         result = await repo.find(str(id))
         return User(**result.value.__dict__) if result.is_ok() else None
 ```
@@ -96,7 +96,7 @@ class Mutation:
     async def create_user(
         self, info: Info, input: CreateUserInput
     ) -> CreateUserPayload:
-        svc = await get_context(info).container.resolve(UserService)
+        svc = await get_context(info).scope.resolve(UserService)
         result = await svc.create(input.email, input.display_name)
         if result.is_ok():
             user = result.value
@@ -130,7 +130,7 @@ class Subscription:
     async def order_status(
         self, info: Info, order_id: strawberry.ID
     ) -> AsyncGenerator[OrderStatus, None]:
-        bus = await get_context(info).container.resolve(EventBusProtocol)
+        bus = await get_context(info).scope.resolve(EventBusProtocol)
         async for event in bus.stream(OrderStatusChanged):
             if event.order_id == str(order_id):
                 yield OrderStatus(order_id=order_id, status=event.status)

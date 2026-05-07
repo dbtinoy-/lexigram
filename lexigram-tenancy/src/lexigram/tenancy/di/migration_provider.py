@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         BootContainerProtocol,
         ContainerRegistrarProtocol,
     )
+    from lexigram.di.resolution.resolver import ServiceResolver
 
 
 class TenantMigrationProvider(Provider):
@@ -40,6 +41,7 @@ class TenantMigrationProvider(Provider):
     def __init__(self) -> None:
         from lexigram.contracts.core.provider import ProviderPriority
 
+        super().__init__()
         self.priority = ProviderPriority.APPLICATION
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
@@ -54,51 +56,55 @@ class TenantMigrationProvider(Provider):
         copy_strategy = RowToSchemaCopy()
         container.singleton(RowToSchemaCopy, copy_strategy)
 
+        async def _service_factory(
+            resolver: ServiceResolver,
+        ) -> TenantMigrationService:
+            from lexigram.contracts.tenancy.protocols import (
+                TenantProviderProtocol,
+            )
+            from lexigram.contracts.workflow.content_checkpoint import (
+                ContentCheckpointStoreProtocol,
+            )
+            from lexigram.tenancy.config_overrides.service import (
+                TenantConfigService,
+            )
+            from lexigram.tenancy.isolation.registry import (
+                IsolationStrategyRegistry,
+            )
+
+            tenant_provider = await resolver.resolve(TenantProviderProtocol)
+            isolation_registry = await resolver.resolve(IsolationStrategyRegistry)
+            config_service = await resolver.resolve(TenantConfigService)
+            write_pause = await resolver.resolve(WritePauseRegistry)
+            copy_strategy = await resolver.resolve(RowToSchemaCopy)
+
+            checkpoint_store = await resolver.resolve(ContentCheckpointStoreProtocol)
+
+            try:
+                from lexigram.contracts.events import EventBusProtocol
+
+                event_bus = await resolver.resolve(EventBusProtocol)
+            except Exception:
+                event_bus = None
+
+            return TenantMigrationService(
+                tenant_provider=tenant_provider,
+                isolation_registry=isolation_registry,
+                config_service=config_service,
+                write_pause_registry=write_pause,
+                checkpoint_store=checkpoint_store,
+                copy_strategy=copy_strategy,
+                event_bus=event_bus,
+            )
+
+        container.singleton(TenantMigrationService, factory=_service_factory)
+
     async def boot(self, container: BootContainerProtocol) -> None:
         """Wire the migration service.
 
         Args:
             container: The DI container for boot phase.
         """
-        from lexigram.contracts.tenancy.protocols import (
-            TenantProviderProtocol,
-        )
-        from lexigram.contracts.workflow.content_checkpoint import (
-            ContentCheckpointStoreProtocol,
-        )
-        from lexigram.tenancy.config_overrides.service import (
-            TenantConfigService,
-        )
-        from lexigram.tenancy.isolation.registry import (
-            IsolationStrategyRegistry,
-        )
-        from lexigram.tenancy.migration.copy import RowToSchemaCopy
-
-        tenant_provider = await container.resolve(TenantProviderProtocol)
-        isolation_registry = await container.resolve(IsolationStrategyRegistry)
-        config_service = await container.resolve(TenantConfigService)
-        write_pause = await container.resolve(WritePauseRegistry)
-        copy_strategy = await container.resolve(RowToSchemaCopy)
-
-        checkpoint_store = await container.resolve(ContentCheckpointStoreProtocol)
-
-        try:
-            from lexigram.contracts.events import EventBusProtocol
-
-            event_bus = await container.resolve(EventBusProtocol)
-        except Exception:
-            event_bus = None
-
-        service = TenantMigrationService(
-            tenant_provider=tenant_provider,
-            isolation_registry=isolation_registry,
-            config_service=config_service,
-            write_pause_registry=write_pause,
-            checkpoint_store=checkpoint_store,
-            copy_strategy=copy_strategy,
-            event_bus=event_bus,
-        )
-        container.singleton(TenantMigrationService, service)
 
     async def shutdown(self) -> None:
         """No-op shutdown."""

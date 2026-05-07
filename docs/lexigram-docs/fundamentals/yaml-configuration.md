@@ -14,7 +14,7 @@ app_name: "order-service"
 debug: false
 env: "production"
 
-db:                                    # lexigram-sql (config_key: "db")
+sql:                                   # lexigram-sql (config_key: "sql")
   backend:
     url: "${DATABASE_URL:sqlite+aiosqlite:///./dev.db}"
   pool:
@@ -48,7 +48,7 @@ Lexigram resolves `${VAR}` placeholders inside YAML values at load time:
 - `${PORT:8080}` — resolves to `PORT`, or `8080` if unset.
 
 ```yaml
-db:
+sql:
   backend:
     url: "${DATABASE_URL:sqlite+aiosqlite:///./dev.db}"
 ```
@@ -60,7 +60,7 @@ db:
 Beyond interpolation, **any** key can be overridden by an environment variable using the `LEX_` prefix and double underscores (`__`) for nesting. This is the highest-priority source:
 
 ```
-db.backend.url        →  LEX_SQL__BACKEND__URL
+sql.backend.url        →  LEX_SQL__BACKEND__URL
 web.server.port       →  LEX_WEB__SERVER__PORT
 ai_llm.providers[0].api_key  →  LEX_AI_LLM__PROVIDERS__0__API_KEY
 ```
@@ -108,7 +108,7 @@ config.debug            # False
 config.environment      # Environment.PRODUCTION
 
 # Extension sections — pass the config model to get a typed object back
-db_config = config.get_section("db", DatabaseConfig)
+db_config = config.get_section("sql", DatabaseConfig)
 
 # Dotted paths
 rag_config = config.get_section("ai_rag", RAGConfig)
@@ -128,7 +128,7 @@ debug: true
 logging:
   level: DEBUG
   format: text
-db:
+sql:
   backend:
     url: "sqlite+aiosqlite:///./dev.db"
 ```

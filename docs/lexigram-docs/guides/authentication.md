@@ -42,10 +42,12 @@ class ProfileController(Controller):
         return {"status": "authenticated"}
 
 
-@use_guards(RoleGuard("admin"))      # applies to every route in the controller
+@use_guards(RoleGuard("admin", authorizer=authorizer))      # applies to every route in the controller
 class AdminController(Controller):
     prefix = "/admin"
 ```
+
+`RoleGuard` needs an `AuthorizerProtocol` instance — resolve it from the container (or constructor-inject it into the controller) and pass it at guard instantiation.
 
 `lexigram.web` also re-exports concise shortcuts:
 
@@ -107,7 +109,7 @@ auth:
   token:
     secret_key: "${LEX_AUTH__TOKEN__SECRET_KEY}"
     algorithm: HS256
-    access_token_expire_minutes: 30
+    access_token_expire: 30m
   password:
     min_length: 12
     require_uppercase: true

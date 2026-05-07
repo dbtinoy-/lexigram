@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         BootContainerProtocol,
         ContainerRegistrarProtocol,
     )
+    from lexigram.di.resolution.resolver import ServiceResolver
 
 logger = get_logger(__name__)
 
@@ -34,14 +35,33 @@ class TenantIntegrationProvider(Provider):
         Args:
             config: Integration feature configuration.
         """
+        super().__init__()
         self._config = config
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """No bindings at register time — all wiring happens in boot.
+        """Register integration feature bindings.
 
         Args:
             container: The DI container registrar.
         """
+        if self._config.cache_key_prefix:
+            from lexigram.contracts.infra.cache import CacheBackendProtocol
+            from lexigram.primitives.context import Context
+
+            if container.has(CacheBackendProtocol) and container.has(Context):
+
+                async def _cache_decorator_factory(
+                    resolver: ServiceResolver,
+                ) -> TenantCacheKeyDecorator:
+                    inner = await resolver.resolve(CacheBackendProtocol)
+                    ctx = await resolver.resolve(Context)
+                    return TenantCacheKeyDecorator(inner=inner, ctx=ctx)
+
+                container.singleton(
+                    TenantCacheKeyDecorator,
+                    factory=_cache_decorator_factory,
+                )
+                logger.debug("tenant_cache_key_decorator_registered")
 
     async def boot(self, container: BootContainerProtocol) -> None:
         """Wire integration features.
@@ -49,31 +69,10 @@ class TenantIntegrationProvider(Provider):
         Args:
             container: The DI container for boot phase.
         """
-        if self._config.cache_key_prefix:
-            await self._boot_cache_decorator(container)
+        if not self._config.sql_context_bridge:
+            return
 
-        if self._config.sql_context_bridge:
-            await self._boot_sql_bridge(container)
-
-    async def _boot_cache_decorator(self, container: BootContainerProtocol) -> None:
-        """Register the tenant cache key decorator if lexigram-cache is installed.
-
-        Args:
-            container: The DI container for boot phase.
-        """
-        try:
-            from lexigram.contracts.infra.cache import CacheBackendProtocol
-            from lexigram.primitives.context import Context
-
-            inner = await container.resolve(CacheBackendProtocol)
-            ctx = await container.resolve(Context)
-            decorator = TenantCacheKeyDecorator(inner=inner, ctx=ctx)
-            container.singleton(TenantCacheKeyDecorator, decorator)
-            logger.debug("tenant_cache_key_decorator_registered")
-        except ImportError:
-            logger.debug("lexigram_cache_not_installed_skipping_cache_decorator")
-        except Exception as exc:
-            logger.warning("tenant_cache_decorator_boot_failed", error=str(exc))
+        await self._boot_sql_bridge(container)
 
     async def _boot_sql_bridge(self, container: BootContainerProtocol) -> None:
         """Register the SQL context bridge ASGI middleware if available.

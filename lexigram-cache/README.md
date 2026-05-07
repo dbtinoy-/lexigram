@@ -56,7 +56,7 @@ async def main():
         cache = await app.container.resolve(CacheBackendProtocol)
         await cache.set("greeting", "hello", ttl=60)
         value = await cache.get("greeting")
-        print(value)  # "hello"
+        print(value.unwrap())  # "hello"
 
 if __name__ == "__main__":
     import asyncio
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
 ## Configuration
 
-> **Zero-config usage:** Call `CacheModule.configure()` with no arguments to use defaults (in-memory backend).
+> **Zero-config usage:** Call `CacheModule.configure()` with no arguments; backends are then loaded from the `cache:` section of `application.yaml`. Use `CacheModule.stub()` (in-memory) in tests.
 
 ### Option 1 — YAML file
 
@@ -143,8 +143,10 @@ CacheModule.configure(
 ## Testing
 
 ```python
+from lexigram.cache import CacheService
+
 async with Application.boot(modules=[CacheModule.stub()]) as app:
-    cache = await app.container.resolve(CacheBackendProtocol)
+    cache = await app.container.resolve(CacheService)
     await cache.set("key", "value", ttl=60)
     assert await cache.get("key") == "value"
 ```

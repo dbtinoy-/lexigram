@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from lexigram.contracts.plugins import PluginDescriptor
 from lexigram.di.provider import Provider
 from lexigram.di.provider import ProviderPriority
 from lexigram.plugins.engine import PluginEngineProvider
@@ -31,32 +32,80 @@ class _FakeProvider(Provider):
         self.shutdown_called = True
 
 
+class _FrameworkProvider(Provider):
+    """A provider registered under EP_PROVIDERS with NO plugin descriptor."""
+
+    name = "framework-provider"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.register_called = False
+
+    async def register(self, container: Any) -> None:
+        self.register_called = True
+        container.registered.append(self.name)
+
+
 class _FakeRegistrar:
     def __init__(self) -> None:
         self.registered: list[str] = []
 
 
-def _fake_entry_points(monkeypatch: pytest.MonkeyPatch, mapping: dict[str, type]) -> None:
+def _fake_entry_points(
+    monkeypatch: pytest.MonkeyPatch,
+    providers: dict[str, type],
+    descriptors: dict[str, PluginDescriptor] | None = None,
+) -> None:
     class _FakeEntryPoint:
-        def __init__(self, name: str, cls: type) -> None:
+        def __init__(self, name: str, loaded: Any) -> None:
             self.name = name
-            self._cls = cls
-            self.value = f"{cls.__module__}:{cls.__qualname__}"
+            self._loaded = loaded
 
-        def load(self) -> type:
-            return self._cls
+        def load(self) -> Any:
+            return self._loaded
+
+    descriptor_eps = [
+        _FakeEntryPoint(name, descriptor)
+        for name, descriptor in (descriptors or {}).items()
+    ]
+    provider_eps = [
+        _FakeEntryPoint(name, cls) for name, cls in providers.items()
+    ]
 
     def _entry_points(*, group: str) -> list[Any]:
-        return [_FakeEntryPoint(name, cls) for name, cls in mapping.items()]
+        if group == "lexigram.plugins":
+            return descriptor_eps
+        if group == "lexigram.providers":
+            return provider_eps
+        return []
 
     monkeypatch.setattr("lexigram.plugins.engine._entry_points", _entry_points)
+    monkeypatch.setattr(
+        "lexigram.plugins.discovery._entry_points", _entry_points
+    )
+
+
+def _descriptor(name: str, provider_entry_point: str) -> PluginDescriptor:
+    return PluginDescriptor(
+        name=name,
+        display_name=name,
+        description="test descriptor",
+        icon="puzzle",
+        provider_entry_point=provider_entry_point,
+    )
 
 
 @pytest.mark.asyncio
 async def test_engine_registers_enabled_providers(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    _fake_entry_points(monkeypatch, {"fake": _FakeProvider})
+    _fake_entry_points(
+        monkeypatch,
+        providers={"fake": _FakeProvider},
+        descriptors={
+            "fake-plugin": _descriptor("fake-plugin", provider_entry_point="fake")
+        },
+    )
     engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
     registrar = _FakeRegistrar()
     await engine.register(registrar)
@@ -68,7 +117,13 @@ async def test_engine_registers_enabled_providers(
 async def test_engine_skips_disabled_providers(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    _fake_entry_points(monkeypatch, {"fake": _FakeProvider})
+    _fake_entry_points(
+        monkeypatch,
+        providers={"fake": _FakeProvider},
+        descriptors={
+            "fake-plugin": _descriptor("fake-plugin", provider_entry_point="fake")
+        },
+    )
     from lexigram.plugins.state import save_disabled
 
     save_disabled({"fake"}, tmp_path / "plugins.json")
@@ -80,10 +135,70 @@ async def test_engine_skips_disabled_providers(
 
 
 @pytest.mark.asyncio
+async def test_engine_skips_framework_providers_without_descriptor(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """EP_PROVIDERS entries without a plugin descriptor are not plugins."""
+    _fake_entry_points(
+        monkeypatch,
+        providers={"framework": _FrameworkProvider},
+    )
+    engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
+    registrar = _FakeRegistrar()
+    await engine.register(registrar)
+    assert registrar.registered == []
+    assert engine.discovered_providers == []
+
+
+@pytest.mark.asyncio
+async def test_engine_skips_framework_provider_even_when_mixed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Framework providers coexist with plugins without being registered."""
+    _fake_entry_points(
+        monkeypatch,
+        providers={
+            "fake": _FakeProvider,
+            "framework": _FrameworkProvider,
+        },
+        descriptors={
+            "fake-plugin": _descriptor("fake-plugin", provider_entry_point="fake")
+        },
+    )
+    engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
+    registrar = _FakeRegistrar()
+    await engine.register(registrar)
+    assert registrar.registered == ["fake"]
+    assert len(engine.discovered_providers) == 1
+    assert isinstance(engine.discovered_providers[0], _FakeProvider)
+
+
+@pytest.mark.asyncio
+async def test_engine_noop_when_no_plugin_descriptors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    _fake_entry_points(
+        monkeypatch,
+        providers={},
+    )
+    engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
+    registrar = _FakeRegistrar()
+    await engine.register(registrar)
+    assert registrar.registered == []
+    assert engine.discovered_providers == []
+
+
+@pytest.mark.asyncio
 async def test_engine_boots_and_shuts_down_discovered(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    _fake_entry_points(monkeypatch, {"fake": _FakeProvider})
+    _fake_entry_points(
+        monkeypatch,
+        providers={"fake": _FakeProvider},
+        descriptors={
+            "fake-plugin": _descriptor("fake-plugin", provider_entry_point="fake")
+        },
+    )
     engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
     await engine.register(_FakeRegistrar())
     container: Any = object()

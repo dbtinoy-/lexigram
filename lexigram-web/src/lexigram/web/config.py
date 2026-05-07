@@ -223,6 +223,49 @@ class RateLimitConfig(BaseConfig):
 
 
 @dataclass(init=False)
+class RoleGuardRuleConfig(BaseConfig):
+    """One role guard rule entry from ``web.role_guard.rules``.
+
+    Attributes:
+        path: Exact path to guard. A trailing ``/**`` matches every path
+            under that prefix.
+        roles: Role identifiers allowed to pass.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    path: str = Field(default="", description="Path to guard ('/**' suffix matches the prefix)")
+    roles: list[str] = Field(
+        default_factory=list,
+        description="Role identifiers allowed to pass",
+    )
+
+
+@dataclass(init=False)
+class RoleGuardConfig(BaseConfig):
+    """Role guard settings from ``web.role_guard``.
+
+    Absent by default; a single gating rule is enough for most applications
+    (e.g. ``web.role_guard.rules: [{path: /api/users, roles: [admin]}]``).
+
+    Attributes:
+        rules: Rules applied in declaration order; first match wins.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    rules: list[RoleGuardRuleConfig] = Field(
+        default_factory=list,
+        description="Role guard rules in declaration order",
+    )
+
+    @property
+    def enabled(self) -> bool:
+        """Return True when at least one rule is declared."""
+        return bool(self.rules)
+
+
+@dataclass(init=False)
 class WebConfig(BaseConfig):
     """Hierarchical root configuration for Lexigram Web.
 
@@ -347,6 +390,13 @@ class WebConfig(BaseConfig):
         description="Paths to exclude from authentication",
     )
 
+    # Role guard — declarative path-to-role enforcement (requires a bound
+    # RoleResolverProtocol in the container when rules are declared).
+    role_guard: RoleGuardConfig = Field(
+        default_factory=RoleGuardConfig,
+        description="Role guard rules (path -> allowed roles)",
+    )
+
     @model_validator(mode="after")
     def validate_production_security(self) -> WebConfig:
         """Block insecure configurations in production."""
@@ -452,6 +502,9 @@ __all__ = [
     # Rate limiting
     "RateLimitConfig",
     "RateLimitRuleConfig",
+    # Role guard
+    "RoleGuardConfig",
+    "RoleGuardRuleConfig",
     # Server
     "ServerConfig",
     # Static files

@@ -109,9 +109,9 @@ uv add --dev lexigram-testing
 With `lexigram-cli` installed you get the `lexigram` command:
 
 ```bash
-lexigram new my-app     # scaffold a project
-lexigram run            # auto-detect create_app() and serve
-lexigram db upgrade     # run migrations
+lexigram new project my-app   # scaffold a project (or: lexigram new package <name>)
+lexigram run                  # auto-detect create_app() and serve
+lexigram db upgrade           # run migrations
 ```
 
 ---

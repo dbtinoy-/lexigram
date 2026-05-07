@@ -24,10 +24,22 @@ from lexigram.contracts.data.types import (
     FieldGt as FieldGt,
 )
 from lexigram.contracts.data.types import (
+    FieldGte as FieldGte,
+)
+from lexigram.contracts.data.types import (
     FieldIn as FieldIn,
 )
 from lexigram.contracts.data.types import (
     FieldLt as FieldLt,
+)
+from lexigram.contracts.data.types import (
+    FieldLte as FieldLte,
+)
+from lexigram.contracts.data.types import (
+    FieldContains as FieldContains,
+)
+from lexigram.contracts.data.types import (
+    FieldNeq as FieldNeq,
 )
 from lexigram.contracts.data.types import (
     FilterExpression as FilterExpression,
@@ -152,10 +164,14 @@ __all__ = [
     "AndExpr",
     "CursorCodecProtocol",
     "CursorPaginationSpec",
+    "FieldContains",
     "FieldEq",
     "FieldGt",
+    "FieldGte",
     "FieldIn",
     "FieldLt",
+    "FieldLte",
+    "FieldNeq",
     "FilterCompilerProtocol",
     "FilterExpression",
     "NotExpr",

@@ -31,6 +31,11 @@ from lexigram.web.middleware.request_id import (
     RequestIDMiddleware,
     configure_logging_with_request_id,
 )
+from lexigram.web.middleware.role_guard import (
+    RoleGuardMiddleware,
+    RoleGuardRule,
+    RoleResolverProtocol,
+)
 from lexigram.web.middleware.sanitization import InputSanitizationMiddleware
 from lexigram.web.middleware.security import (
     SecurityHeadersMiddleware,
@@ -68,6 +73,10 @@ __all__ = [
     "RequestBodySizeLimitMiddleware",
     "RequestIDLogFilter",
     "RequestIDMiddleware",
+    # Role guard
+    "RoleGuardMiddleware",
+    "RoleGuardRule",
+    "RoleResolverProtocol",
     # Security headers middleware
     "SecurityHeadersMiddleware",
     "StaticFileProvider",

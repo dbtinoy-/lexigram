@@ -59,7 +59,7 @@ ai_llm:
 ```
 
 :::tip
-Prefer environment variables for secrets. Any config key maps to an env var with the `LEX_` prefix and `__` for nesting, e.g. `LEX_AI_LLM__PROVIDERS__0__API_KEY`.
+Prefer environment variables for secrets. Any config key maps to an env var with the `LEX_` prefix and `__` for nesting, e.g. `LEX_AI_LLM__PROVIDERS__PRIMARY__API_KEY` (providers are keyed by name).
 :::
 
 ---
@@ -108,7 +108,7 @@ ClientConfig(
 Or per provider in the routing config / via env var:
 
 ```bash
-LEX_AI_LLM__PROVIDERS__0__SUPPRESS_THINKING=true
+LEX_AI_LLM__PROVIDERS__PRIMARY__SUPPRESS_THINKING=true
 ```
 
 `ThinkingConfig` also exposes `budget_tokens` (Anthropic, Gemini 2.5), `effort` (OpenAI o-series), and `level` (Gemini 3) for models where you *want* reasoning but with a bound.
@@ -137,7 +137,7 @@ app.add_module(
 Then query through the injected pipeline:
 
 ```python
-from lexigram.contracts.ai.rag import RAGPipelineProtocol
+from lexigram.contracts.ai.rag import RAGPipelineProtocol, RAGContext
 
 
 class DocsService:
@@ -145,9 +145,9 @@ class DocsService:
         self._rag = rag
 
     async def ask(self, question: str) -> str:
-        result = await self._rag.query(question)
+        result = await self._rag.execute(RAGContext(query=question))
         answer = result.unwrap()
-        return answer.text   # plus citations / sources when enabled
+        return answer.answer  # plus citations / sources when enabled
 ```
 
 The vector backend (pgvector, Qdrant, Pinecone, or in-memory for tests) is provided by `lexigram-vector` and selected via the `vector` config section — your RAG code never changes when you switch stores.

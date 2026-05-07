@@ -115,17 +115,17 @@ WebModule.configure(
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `server.host` | `"127.0.0.1"` | `LEX_WEB__SERVER__HOST` | Bind host |
+| `server.host` | `"0.0.0.0"` | `LEX_WEB__SERVER__HOST` | Bind host |
 | `server.port` | `8000` | `LEX_WEB__SERVER__PORT` | Bind port |
 | `server.workers` | `1` | `LEX_WEB__SERVER__WORKERS` | Worker processes |
 | `server.reload` | `False` | `LEX_WEB__SERVER__RELOAD` | Auto-reload on code change |
-| `cors.allowed_origins` | `["localhost:3000", ...]` | `LEX_WEB__CORS__ALLOWED_ORIGINS` | CORS allow-list — wildcards blocked in production |
+| `cors.allowed_origins` | `["http://localhost:3000", "http://localhost:8001"]` | `LEX_WEB__CORS__ALLOWED_ORIGINS` | CORS allow-list — wildcards blocked in production |
 | `rate_limit.enabled` | `True` | `LEX_WEB__RATE_LIMIT__ENABLED` | Enable rate limiting |
 | `rate_limit.default_limit` | `100` | `LEX_WEB__RATE_LIMIT__DEFAULT_LIMIT` | Requests per window |
 | `rate_limit.default_window` | `60` | `LEX_WEB__RATE_LIMIT__DEFAULT_WINDOW` | Window in seconds |
 | `rate_limit.storage_backend` | `"memory"` | `LEX_WEB__RATE_LIMIT__STORAGE_BACKEND` | `"memory"` or `"redis"` |
 | `enable_auth` | `False` | `LEX_WEB__ENABLE_AUTH` | Enable built-in auth middleware |
-| `api_docs.enabled` | `False` | `LEX_WEB__API_DOCS__ENABLED` | Enable `/docs` + `/redoc` |
+| `api_docs.enabled` | `True` | `LEX_WEB__API_DOCS__ENABLED` | Enable `/docs` + `/redoc` |
 | `max_body_size` | `10 MiB` | `LEX_WEB__MAX_BODY_SIZE` | Request body size limit |
 
 ## Module Factory Methods
@@ -141,7 +141,7 @@ WebModule.configure(
 - **Result-to-HTTP bridge** — `Result[T, DomainError]` maps automatically to status codes (404, 422, 403, etc.)
 - **HTTP decorators** — `@get`, `@post`, `@put`, `@delete`, `@patch`, `@websocket`, etc.
 - **Auto-discovery** — `WebModule.configure(discover=["my_app.api.v1"])`
-- **Middleware pipeline** — register ASGI middleware via `AbstractMiddleware`
+- **Middleware pipeline** — register ASGI middleware via `MiddlewareRegistry`
 - **Exception filters** — `DefaultExceptionFilter` handles `DomainError` and `HTTPError` globally
 - **Static files, API docs, debug routes** — configurable via `WebConfig`
 - **Rate limiting** — per-path rules with memory or Redis storage backend
@@ -170,5 +170,5 @@ async def test_controller():
 | `src/lexigram/web/routing/decorators.py` | HTTP decorators (`@get`, `@post`, etc.) |
 | `src/lexigram/web/routing/result_bridge.py` | `ResultResponseMapper` for Result-to-HTTP mapping |
 | `src/lexigram/web/config.py` | `WebConfig`, `ServerConfig`, `RateLimitConfig` |
-| `src/lexigram/web/middleware/__init__.py` | `AbstractMiddleware` base class |
+| `src/lexigram/web/middleware/__init__.py` | ASGI middleware classes + `MiddlewareRegistry` |
 | `src/lexigram/web/filters/__init__.py` | Exception filters |

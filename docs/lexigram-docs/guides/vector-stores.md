@@ -184,7 +184,7 @@ async def search(collection: VectorCollectionProtocol, query_vector: list[float]
         SearchQuery(
             vector=query_vector,
             top_k=5,
-            filters={"category": {"$eq": "science"}},
+            filter={"category": {"$eq": "science"}},
         )
     )
     for result in results:

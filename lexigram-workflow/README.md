@@ -31,9 +31,9 @@ from lexigram.workflow import WorkflowModule
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration
@@ -50,11 +50,7 @@ workflow:
   timeout: 300.0
   retry_attempts: 3
   enable_progress_tracking: true
-  pipeline_timeout: 300.0
-  content_checkpoint:
-    enabled: true
-    inline_threshold_bytes: 1048576
-    default_ttl_seconds: 86400
+  pipeline_timeout: 60.0
 ```
 
 ### Option 2 — Profiles + Environment Variables *(recommended)*
@@ -84,10 +80,15 @@ WorkflowModule.configure(config=config)
 | `retry_attempts` | `3` | `LEX_WORKFLOW__RETRY_ATTEMPTS` | Automatic retry count on step failure |
 | `retry_delay` | `1.0` | `LEX_WORKFLOW__RETRY_DELAY` | Seconds to wait between retry attempts |
 | `enable_progress_tracking` | `true` | `LEX_WORKFLOW__ENABLE_PROGRESS_TRACKING` | Track and report bulk operation progress |
-| `pipeline_timeout` | `300.0` | `LEX_WORKFLOW__PIPELINE_TIMEOUT` | Default pipeline execution timeout in seconds |
-| `cc_enabled` | `true` | `LEX_WORKFLOW__CC_ENABLED` | Enable content-addressed checkpointing |
-| `cc_inline_threshold_bytes` | `1048576` | `LEX_WORKFLOW__CC_INLINE_THRESHOLD_BYTES` | Max bytes to store inline before blob offload |
-| `cc_default_ttl_seconds` | `86400` | `LEX_WORKFLOW__CC_DEFAULT_TTL_SECONDS` | Default TTL for cache-backed checkpoint stores |
+| `pipeline_timeout` | `60.0` | `LEX_WORKFLOW__PIPELINE_TIMEOUT` | Default pipeline execution timeout in seconds |
+
+Content-addressed checkpointing is configured via a standalone `ContentCheckpointConfig` passed to `WorkflowModule.configure(..., content_checkpoint_config=...)` — it is **not** a field of `BulkOperationConfig` and is not read from environment variables.
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `enabled` | `true` | Enable content-addressed checkpointing |
+| `inline_threshold_bytes` | `1048576` | Max bytes to store inline before blob offload |
+| `default_ttl_seconds` | `86400` | Default TTL for cache-backed checkpoint stores |
 
 ## Module Factory Methods
 

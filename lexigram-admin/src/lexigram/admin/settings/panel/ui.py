@@ -296,14 +296,14 @@ class ConfigDashboardUI:
             input_comp = TextInput(
                 name=name,
                 value=value,
-                type="password",
+                input_type="password",
                 disabled=readonly,
             )
         elif node_type == "color":
             input_comp = TextInput(
                 name=name,
                 value=str(value) if value is not None else "",
-                type="color",
+                input_type="color",
                 disabled=readonly,
             )
         else:  # string and others

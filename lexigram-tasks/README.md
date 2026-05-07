@@ -6,10 +6,7 @@ Background task processing for Lexigram Framework — Scheduling, workers, and j
 
 ## Overview
 
-lexigram-tasks provides background task execution, scheduling, and async job queues with support for Redis, RabbitMQ, PostgreSQL, and in-memory backends. It features configurable retry policies, dead-letter queues, priority queues, rate limiting, cron scheduling, and Prometheus metrics. All services are wired via `TasksProvider`, which registers task protocols with the DI container.
-
----
-
+lexigram-tasks provides background task execution, scheduling, and async job queues with support for Redis, RabbitMQ, PostgreSQL, and in-memory backends. It features configurable retry policies, priority queues, rate limiting, cron scheduling, and Prometheus metrics. All services are wired via `TaskProvider`, which registers task protocols with the DI container.
 
 > Full documentation: [docs.lexigram.dev](https://docs.lexigram.dev)
 ## Install
@@ -25,18 +22,20 @@ uv add "lexigram-tasks[rabbitmq]"  # RabbitMQ backend
 
 ```python
 from lexigram import Application
-from lexigram.di.module import Module, module
-
-# Import the module from the package
 from lexigram.tasks import TasksModule
 
-@module(imports=[TasksModule.configure(...)])
-class AppModule(Module):
-    pass
 
-app = Application(modules=[AppModule])
+async def main() -> None:
+    async with Application.boot(
+        modules=[TasksModule.configure(worker_count=2, enable_scheduler=True)]
+    ) as app:
+        # ... schedule and enqueue background tasks ...
+        ...
+
+
 if __name__ == "__main__":
-    app.run()
+    import asyncio
+    asyncio.run(main())
 ```
 
 ## Configuration
@@ -63,20 +62,22 @@ tasks:
 
 ```bash
 export LEX_TASKS__ENABLED=true
-# Environment variables for each field
+export LEX_TASKS__BACKEND__TYPE=memory
 ```
+
+> `LEX_TASKS__*` variables feed `TaskConfig` via the container's `LexigramConfig`;
+> the `configure()` arguments (`queue`, `worker_count`, `enable_scheduler`) take
+> precedence for runtime wiring.
 
 ### Option 3 — Python
 
 ```python
-from lexigram.tasks.config import TaskConfig
 from lexigram.tasks import TasksModule
+from lexigram.tasks.backends.memory import MemoryTaskQueue
 
-config = TaskConfig(
-    backend=TaskBackendConfig(type="redis", redis_url="redis://localhost:6379/0"),
-    worker=TaskWorkerConfig(worker_count=4, max_concurrent_tasks=10),
-)
-TasksModule.configure(queue=queue, worker_count=4, enable_scheduler=True)
+# Defaults: in-memory queue, 1 worker, scheduler enabled
+TasksModule.configure()
+TasksModule.configure(queue=MemoryTaskQueue(), worker_count=4, enable_scheduler=True)
 ```
 
 ### Config reference
@@ -86,10 +87,9 @@ TasksModule.configure(queue=queue, worker_count=4, enable_scheduler=True)
 | `backend.type` | `memory` | `LEX_TASKS__BACKEND__TYPE` | Queue backend (`redis`, `rabbitmq`, `postgres`, `memory`) |
 | `backend.redis_url` | `redis://localhost:6379/0` | `LEX_TASKS__BACKEND__REDIS_URL` | Redis connection URL |
 | `backend.amqp_url` | `amqp://localhost` | `LEX_TASKS__BACKEND__AMQP_URL` | AMQP connection URL |
-| `worker.worker_count` | `4` | `LEX_TASKS__WORKER__WORKER_COUNT` | Number of worker processes |
+| `worker.worker_count` | `1` | `LEX_TASKS__WORKER__WORKER_COUNT` | Number of worker processes |
 | `worker.max_concurrent_tasks` | `10` | `LEX_TASKS__WORKER__MAX_CONCURRENT_TASKS` | Max tasks executed in parallel per worker |
 | `worker.default_timeout` | `300` | `LEX_TASKS__WORKER__DEFAULT_TIMEOUT` | Task execution timeout in seconds |
-| `worker.max_retries` | `3` | `LEX_TASKS__WORKER__MAX_RETRIES` | Maximum retry attempts per task |
 | `scheduler.enabled` | `true` | `LEX_TASKS__SCHEDULER__ENABLED` | Enable cron-based task scheduling |
 | `scheduler.timezone` | `UTC` | `LEX_TASKS__SCHEDULER__TIMEZONE` | Timezone for cron schedule evaluation |
 
@@ -97,7 +97,7 @@ TasksModule.configure(queue=queue, worker_count=4, enable_scheduler=True)
 
 | Method | Description |
 |--------|-------------|
-| `TasksModule.configure(queue, worker_count, enable_scheduler)` | Configure with explicit queue and worker settings |
+| `TasksModule.configure(queue=None, worker_count=1, enable_scheduler=True)` | Configure with explicit queue and worker settings |
 | `TasksModule.stub()` | Minimal config for testing |
 
 ## Key Features
@@ -105,7 +105,7 @@ TasksModule.configure(queue=queue, worker_count=4, enable_scheduler=True)
 - **Multiple backends** — Redis, RabbitMQ, PostgreSQL (transactional), in-memory
 - **Retry policies** — Configurable `retries`, `backoff`, `max_delay` per task
 - **Dead-letter queue** — Failed jobs routed to DLQ for inspection / replay
-- **Priority queues** — `urgent`, `default`, `bulk` built-in; custom queues supported
+- **Priority queues** — `Priority` levels (`LOW`, `NORMAL`, `HIGH`, `CRITICAL`) ordered via heap; custom queue names supported
 - **Rate limiting** — Per-queue and per-task throughput caps
 - **Concurrency** — Bounded worker pool with backpressure
 - **Cron scheduling** — Cron-expression task scheduling via `@scheduled` decorator
@@ -119,6 +119,18 @@ async with Application.boot(modules=[TasksModule.stub()]) as app:
     # your test code
     ...
 ```
+
+## Key Source Files
+
+| File | What it contains |
+|------|----------------|
+| `src/lexigram/tasks/module.py` | `TasksModule` class with factory methods |
+| `src/lexigram/tasks/di/provider.py` | `TasksProvider` — wires task protocols into DI container |
+| `src/lexigram/tasks/config.py` | `TaskConfig` and sub-config classes |
+| `src/lexigram/tasks/backends/` | Backend implementations (memory, redis, rabbitmq, postgres) |
+| `src/lexigram/tasks/scheduling/` | Cron scheduler and scheduled task decorators |
+| `src/lexigram/tasks/background_task_manager.py` | `BackgroundTaskManager` — lifecycle-aware task tracking (LEX-006) |
+| `src/lexigram/tasks/scheduled_worker.py` | `ScheduledWorker` + `OnErrorPolicy` — periodic worker base class (LEX-005) |
 
 ## BackgroundTaskManager
 
@@ -201,15 +213,3 @@ worker = RetentionWorker(
 | `LOG_AND_CONTINUE` | Log the exception and resume on the next interval (default). |
 | `BACKOFF` | Log and double the sleep time (up to 10× interval). |
 | `STOP` | Log and stop the worker permanently. |
-
-## Key Source Files
-
-| File | What it contains |
-|------|----------------|
-| `src/lexigram/tasks/module.py` | `TasksModule` class with factory methods |
-| `src/lexigram/tasks/di/provider.py` | `TasksProvider` — wires task protocols into DI container |
-| `src/lexigram/tasks/config.py` | `TaskConfig` and sub-config classes |
-| `src/lexigram/tasks/backends/` | Backend implementations (memory, redis, rabbitmq, postgres) |
-| `src/lexigram/tasks/scheduling/` | Cron scheduler and scheduled task decorators |
-| `src/lexigram/tasks/background_task_manager.py` | `BackgroundTaskManager` — lifecycle-aware task tracking (LEX-006) |
-| `src/lexigram/tasks/scheduled_worker.py` | `ScheduledWorker` + `OnErrorPolicy` — periodic worker base class (LEX-005) |

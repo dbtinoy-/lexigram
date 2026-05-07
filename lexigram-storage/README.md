@@ -30,14 +30,17 @@ from lexigram.di.module import Module, module
 
 # Import the module from the package
 from lexigram.storage import StorageModule
+from lexigram.storage.config import StorageConfig, StorageLocalConfig
 
-@module(imports=[StorageModule.configure(...)])
+@module(imports=[StorageModule.configure(
+    StorageConfig(drivers={"local": StorageLocalConfig(root_dir="./storage")})
+)])
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration
@@ -109,8 +112,8 @@ StorageModule.configure(config)
 - **Memory driver** — In-process storage for unit tests
 - **Signed URLs** — Time-limited GET / PUT pre-signed URLs for direct browser upload
 - **Content negotiation** — Automatic MIME type detection from extension and magic bytes
-- **Key-value store** — Lightweight `KVStore` for small blobs (config, flags)
-- **Streaming** — `put_stream()` / `get_stream()` for arbitrarily large files
+- **Key-value store** — `InMemoryKVStorage` (memory) / `LocalStorage` (file) for small blobs (config, flags)
+- **Streaming** — `stream()` yields chunks for arbitrarily large files
 
 ## Testing
 
@@ -127,5 +130,5 @@ async with Application.boot(modules=[StorageModule.stub()]) as app:
 | `src/lexigram/storage/module.py` | `StorageModule` class with factory methods |
 | `src/lexigram/storage/di/provider.py` | `StorageProvider` — wires storage protocols into DI container |
 | `src/lexigram/storage/config.py` | `StorageConfig` and sub-config classes |
-| `src/lexigram/storage/drivers/` | Driver implementations (S3, GCS, Azure, R2, local, memory) |
-| `src/lexigram/storage/blob.py` | `BlobStore` interface implementation |
+| `src/lexigram/storage/backends/` | Driver implementations (`AbstractDriver`, S3, GCS, Azure, R2, local, memory) |
+| `src/lexigram/storage/kv/` | KV backends (`InMemoryKVStorage`, `LocalStorage`) |

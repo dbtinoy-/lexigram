@@ -33,5 +33,5 @@ class Divider(Component):
             cls = f"border-l border-border {self.class_name}".strip()
             return el("div", "", class_=cls, **extra_attrs)
 
-        cls = f"border-t border-border {self.class_name}".strip()
+        cls = f"border-t border-border mb-6 {self.class_name}".strip()
         return el("hr", class_=cls, **extra_attrs)

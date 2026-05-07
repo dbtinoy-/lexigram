@@ -28,6 +28,10 @@ class JobResult:
     error: str | None = None
     duration: float = 0.0
     retry_count: int = 0
+    id: str | None = None
+    name: str | None = None
+    completed_at: float | None = None
+    failed_at: float | None = None
 
     @classmethod
     def ok(cls, data: Any = None, duration: float = 0.0) -> JobResult:
@@ -59,6 +63,7 @@ class JobResult:
             error=error,
             retry_count=retry_count,
             duration=duration,
+            failed_at=time.time(),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -69,6 +74,10 @@ class JobResult:
             "error": self.error,
             "duration": self.duration,
             "retry_count": self.retry_count,
+            "id": self.id,
+            "name": self.name,
+            "completed_at": self.completed_at,
+            "failed_at": self.failed_at,
         }
 
     @classmethod

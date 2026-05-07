@@ -103,7 +103,7 @@ ImageModule.configure(
 | Method | Description |
 |--------|-------------|
 | `ImageModule.configure(config)` | Configure with explicit image config |
-| `ImageModule.stub()` | No-op module for unit testing (uses `local-http`) |
+| `ImageModule.stub()` | Real module pinned to the default `local-http` backend for tests |
 
 ## Key Features
 

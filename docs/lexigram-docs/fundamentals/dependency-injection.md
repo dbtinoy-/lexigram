@@ -49,7 +49,7 @@ async with container.scope() as scoped:
 This is the **preferred** way to handle dependencies. By simply type-hinting your constructor parameters with a Protocol or Class, Lexigram will automatically resolve and inject the correct instance.
 
 ```python
-from lexigram.contracts.data.db import DatabaseProviderProtocol
+from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
 
 class ProductService:
     def __init__(self, db: DatabaseProviderProtocol):

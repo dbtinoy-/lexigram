@@ -7,9 +7,9 @@ Event Sourcing and CQRS engine for Lexigram Framework — domain events, aggrega
 ## Overview
 
 CQRS, Event Sourcing, and messaging for Lexigram — command bus, event bus, event
-store, sagas, and projections. Provides a full CQRS stack: a typed command bus,
-a pub/sub event bus, an append-only event store (PostgreSQL, SQLite, MongoDB, Redis),
-saga orchestration, projections, and outbox processing.
+store, sagas, and projections. Provides a full CQRS stack: a typed command bus, an in-process pub/sub event bus, an append-only event store
+(PostgreSQL, SQLite, MongoDB, in-memory), saga orchestration, projections, and
+outbox processing.
 
 Use `EventsModule.configure()` to register the event system and dispatch commands
 or subscribe to events via decorators.
@@ -21,7 +21,7 @@ or subscribe to events via decorators.
 ```bash
 uv add lexigram-events
 # Optional extras
-uv add "lexigram-events[postgres,sqlite,mongo,rabbitmq,kafka]"
+uv add "lexigram-events[postgres,sqlite,mongo]"
 ```
 
 ## Quick Start
@@ -56,34 +56,25 @@ if __name__ == "__main__":
 events:
   event_store_backend: postgres
   postgres:
-    connection_string: "${DATABASE_URL}"
-  event_bus:
-    backend: redis
-    redis:
-      url: "redis://localhost:6379/0"
-  outbox:
-    enabled: true
-    poll_interval: 5
+    dsn: "${DATABASE_URL}"
 ```
 
 ### Option 2 — Profiles + Environment Variables *(recommended)*
 
 ```bash
-export LEX_EVENTS__EVENT_STORE__BACKEND=postgres
-export LEX_EVENTS__EVENT_BUS__BACKEND=redis
-export LEX_EVENTS__OUTBOX__ENABLED=true
+export LEX_EVENTS__EVENT_STORE_BACKEND=postgres
+export LEX_EVENTS__POSTGRES__DSN="postgresql://user:pass@host/db"
 ```
 
 ### Option 3 — Python
 
 ```python
-from lexigram.events import EventsModule, EventsConfig
+from lexigram.events import EventsConfig, EventsModule, PostgresEventStoreConfig
 from lexigram.events.types import EventStoreBackend
 
 config = EventsConfig(
     event_store_backend=EventStoreBackend.POSTGRES,
-    postgres=PostgresEventStoreConfig(connection_string="${DATABASE_URL}"),
-    outbox_enabled=True,
+    postgres=PostgresEventStoreConfig(dsn="${DATABASE_URL}"),
 )
 EventsModule.configure(config)
 ```
@@ -92,11 +83,9 @@ EventsModule.configure(config)
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `event_store_backend` | `memory` | `LEX_EVENTS__EVENT_STORE__BACKEND` | Store backend: `postgres`, `sqlite`, `mongodb`, `redis`, `memory` |
-| `event_bus.backend` | `memory` | `LEX_EVENTS__EVENT_BUS__BACKEND` | Bus backend: `redis`, `memory`, `rabbitmq`, `kafka` |
-| `outbox.enabled` | `True` | `LEX_EVENTS__OUTBOX__ENABLED` | Enable transactional outbox |
-| `outbox.poll_interval` | `5` | `LEX_EVENTS__OUTBOX__POLL_INTERVAL` | Outbox poll interval (seconds) |
-| `sagas.enabled` | `True` | `LEX_EVENTS__SAGAS__ENABLED` | Enable saga orchestration |
+| `event_store_backend` | `memory` | `LEX_EVENTS__EVENT_STORE_BACKEND` | Store backend: `postgres`, `sqlite`, `mongodb`, `memory` |
+| `event_bus.max_concurrent_handlers` | `10` | `LEX_EVENTS__EVENT_BUS__MAX_CONCURRENT_HANDLERS` | Max concurrent handler tasks |
+| `event_bus.enable_dead_letter` | `True` | `LEX_EVENTS__EVENT_BUS__ENABLE_DEAD_LETTER` | Send failed events to dead-letter queue |
 
 ## Module Factory Methods
 
@@ -108,8 +97,8 @@ EventsModule.configure(config)
 ## Key Features
 
 - **CommandBus** — Typed async command dispatch with middleware
-- **EventBus** — Pub/sub with in-process and adapter-backed delivery
-- **EventStore** — Append-only store (PostgreSQL, SQLite, MongoDB, Redis)
+- **EventBus** — In-process pub/sub with dead-letter handling
+- **EventStore** — Append-only store (PostgreSQL, SQLite, MongoDB, in-memory)
 - **Saga** — Long-running process orchestration with compensating transactions
 - **Projection** — Read-model rebuilding from event streams
 - **Outbox** — Reliable event delivery via transactional outbox pattern

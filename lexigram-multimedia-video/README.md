@@ -118,7 +118,7 @@ VideoModule.configure(
 | Method | Description |
 |--------|-------------|
 | `VideoModule.configure(config)` | Configure with explicit video config |
-| `VideoModule.stub()` | No-op module for unit testing (uses `local-http`) |
+| `VideoModule.stub()` | Real module pinned to the default `local-http` backend for tests |
 
 ## Key Features
 

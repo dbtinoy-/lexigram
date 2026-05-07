@@ -6,10 +6,14 @@ from typing import Any, Protocol
 
 from lexigram.contracts.data.protocols import (
     AndExpr,
+    FieldContains,
     FieldEq,
     FieldGt,
+    FieldGte,
     FieldIn,
     FieldLt,
+    FieldLte,
+    FieldNeq,
     FilterExpression,
     NotExpr,
     OrExpr,
@@ -79,6 +83,66 @@ class NotExistsOperatorHandler:
         return {condition.field: {"exists": False}}
 
 
+class NotEqualOperatorHandler:
+    """Handler for NOT_EQUAL operator."""
+
+    def can_handle(self, operator: QueryOperator) -> bool:
+        return operator == QueryOperator.NOT_EQUAL
+
+    def apply(self, condition: FilterCondition) -> dict[str, Any]:
+        return {condition.field: {"ne": condition.value}}
+
+
+class GreaterThanOperatorHandler:
+    """Handler for GREATER_THAN operator."""
+
+    def can_handle(self, operator: QueryOperator) -> bool:
+        return operator == QueryOperator.GREATER_THAN
+
+    def apply(self, condition: FilterCondition) -> dict[str, Any]:
+        return {condition.field: {"gt": condition.value}}
+
+
+class GreaterEqualOperatorHandler:
+    """Handler for GREATER_EQUAL operator."""
+
+    def can_handle(self, operator: QueryOperator) -> bool:
+        return operator == QueryOperator.GREATER_EQUAL
+
+    def apply(self, condition: FilterCondition) -> dict[str, Any]:
+        return {condition.field: {"gte": condition.value}}
+
+
+class LessThanOperatorHandler:
+    """Handler for LESS_THAN operator."""
+
+    def can_handle(self, operator: QueryOperator) -> bool:
+        return operator == QueryOperator.LESS_THAN
+
+    def apply(self, condition: FilterCondition) -> dict[str, Any]:
+        return {condition.field: {"lt": condition.value}}
+
+
+class LessEqualOperatorHandler:
+    """Handler for LESS_EQUAL operator."""
+
+    def can_handle(self, operator: QueryOperator) -> bool:
+        return operator == QueryOperator.LESS_EQUAL
+
+    def apply(self, condition: FilterCondition) -> dict[str, Any]:
+        return {condition.field: {"lte": condition.value}}
+
+
+class ContainsOperatorHandler:
+    """Handler for CONTAINS operator."""
+
+    def can_handle(self, operator: QueryOperator) -> bool:
+        return operator == QueryOperator.CONTAINS
+
+    def apply(self, condition: FilterCondition) -> dict[str, Any]:
+        return {condition.field: {"contains": condition.value}}
+
+
 class DefaultOperatorHandler:
     """Default handler for equality operators."""
 
@@ -103,6 +167,12 @@ class QueryOperatorRegistry:
             RangeOperatorHandler(),
             ExistsOperatorHandler(),
             NotExistsOperatorHandler(),
+            NotEqualOperatorHandler(),
+            GreaterThanOperatorHandler(),
+            GreaterEqualOperatorHandler(),
+            LessThanOperatorHandler(),
+            LessEqualOperatorHandler(),
+            ContainsOperatorHandler(),
             DefaultOperatorHandler(),
         ]
 
@@ -141,8 +211,16 @@ class QueryOperatorRegistry:
                 return {f: v}
             case FieldGt(field=f, value=v):
                 return {f: {"gt": v}}
+            case FieldGte(field=f, value=v):
+                return {f: {"gte": v}}
             case FieldLt(field=f, value=v):
                 return {f: {"lt": v}}
+            case FieldLte(field=f, value=v):
+                return {f: {"lte": v}}
+            case FieldNeq(field=f, value=v):
+                return {f: {"ne": v}}
+            case FieldContains(field=f, value=v):
+                return {f: {"contains": v}}
             case FieldIn(field=f, values=vs):
                 return {f: {"in": list(vs)}}
             case AndExpr(left=l, right=r):

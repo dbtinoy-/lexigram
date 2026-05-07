@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from lexigram.notification.config import MailerConfig
 
 
-@module()
+@module(is_global=True)
 class MailerModule(Module):
     """Email delivery integration with Named DI multi-backend support.
 
@@ -87,9 +87,12 @@ class MailerModule(Module):
         from lexigram.notification.config import MailerConfig as _MailerConfig
         from lexigram.notification.di.mailer_provider import MailerProvider
 
+        stub_config = config or _MailerConfig()
+        if not stub_config.backends:
+            stub_config.console_fallback = False
         return DynamicModule(
             module=cls,
-            providers=[MailerProvider(config=config or _MailerConfig())],
+            providers=[MailerProvider(config=stub_config)],
             exports=[MailerProtocol],
         )
 

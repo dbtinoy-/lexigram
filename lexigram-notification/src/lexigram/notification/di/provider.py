@@ -157,7 +157,7 @@ class NotificationProvider(Provider):
             self._sms_services.append((entry.name, backend))
             container.singleton(
                 SMSChannelProtocol,
-                factory=lambda b=backend: b,
+                factory=lambda *_, b=backend: b,
                 name=entry.name,
             )
             is_primary = entry.primary or (
@@ -165,14 +165,14 @@ class NotificationProvider(Provider):
                 and self._config.sms_backends[0] is entry
             )
             if is_primary:
-                container.singleton(SMSChannelProtocol, factory=lambda b=backend: b)
+                container.singleton(SMSChannelProtocol, factory=lambda *_, b=backend: b)
 
         for entry in self._config.push_backends:
             backend = self._create_push(entry)
             self._push_services.append((entry.name, backend))
             container.singleton(
                 PushChannelProtocol,
-                factory=lambda b=backend: b,
+                factory=lambda *_, b=backend: b,
                 name=entry.name,
             )
             is_primary = entry.primary or (
@@ -180,7 +180,7 @@ class NotificationProvider(Provider):
                 and self._config.push_backends[0] is entry
             )
             if is_primary:
-                container.singleton(PushChannelProtocol, factory=lambda b=backend: b)
+                container.singleton(PushChannelProtocol, factory=lambda *_, b=backend: b)
 
         logger.info(
             "notification_registered",

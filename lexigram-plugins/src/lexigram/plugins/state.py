@@ -19,21 +19,21 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
-import json
 import os
-import time
 from pathlib import Path
+import time
 from typing import TYPE_CHECKING, Any
 
 from lexigram.logging import get_logger
 from lexigram.plugins.exceptions import PluginStateError
+from lexigram.serialization import JSONDecodeError, dumps_str, loads_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 logger = get_logger(__name__)
 
-__all__ = ["load_disabled", "save_disabled", "update_disabled", "_STATE_SCHEMA_VERSION"]
+__all__ = ["_STATE_SCHEMA_VERSION", "load_disabled", "save_disabled", "update_disabled"]
 
 _STATE_SCHEMA_VERSION = 1
 _ENV_STATE_PATH = "LEXIGRAM_PLUGINS_STATE_PATH"
@@ -56,10 +56,10 @@ def _write_atomic(resolved: Path, data: dict[str, Any]) -> None:
     temp = resolved.with_name(f"{resolved.name}.tmp-{os.getpid()}")
     try:
         with temp.open("w") as fh:
-            fh.write(json.dumps(data))
+            fh.write(dumps_str(data))
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(temp, resolved)
+        temp.replace(resolved)
     except OSError as exc:
         try:
             temp.unlink()
@@ -91,13 +91,11 @@ def load_disabled(path: str | Path | None = None) -> set[str]:
         return set()
 
     try:
-        data = json.loads(resolved.read_text())
-    except (json.JSONDecodeError, OSError):
-        backup = resolved.with_name(
-            f"{resolved.name}.corrupt-{int(time.time())}"
-        )
+        data = loads_str(resolved.read_text())
+    except (JSONDecodeError, OSError):
+        backup = resolved.with_name(f"{resolved.name}.corrupt-{int(time.time())}")
         try:
-            os.replace(resolved, backup)
+            resolved.replace(backup)
             logger.warning(
                 "plugins.state.corrupt_file_backed_up",
                 path=str(resolved),

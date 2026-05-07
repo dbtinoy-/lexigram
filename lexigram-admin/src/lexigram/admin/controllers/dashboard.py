@@ -300,12 +300,28 @@ class DashboardController(AdminController):
             class_="dashboard-view space-y-6",
         )
 
-        return await self.render_admin(
-            request,
-            content,
-            title=f"Dashboard: {dashboard_id}",
-            breadcrumbs=breadcrumbs,
+        return await self._render_with_flash(
+            request, content, f"Dashboard: {dashboard_id}", breadcrumbs
         )
+
+    async def _render_with_flash(
+        self,
+        request: Request,
+        content: Any,
+        title: str,
+        breadcrumbs: list[dict[str, Any]] | None,
+    ) -> HTMLResponse:
+        """Render the dashboard inside an admin context so flash messages
+        (e.g. the sign-in toast) are consumed by the shell."""
+        from lexigram.admin.state.context import AdminContextManager
+
+        async with AdminContextManager(request):
+            return await self.render_admin(
+                request,
+                content,
+                title=title,
+                breadcrumbs=breadcrumbs,
+            )
 
     def _get_resource_list(self, request: Request) -> list[str]:
         """Return a list of registered resource names from app state."""

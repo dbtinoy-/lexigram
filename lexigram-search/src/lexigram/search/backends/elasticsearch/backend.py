@@ -8,8 +8,10 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.search.backends.base import SearchBackendBase
+from lexigram.search.backends.filters import render_elasticsearch
 from lexigram.search.config import ElasticsearchConfig
 from lexigram.search.exceptions import SearchError
+from lexigram.search.filterset import merge_filters, rule_to_filters
 from lexigram.search.types import SearchResponse, SearchResult
 
 logger = get_logger(__name__)
@@ -114,6 +116,7 @@ class ElasticsearchBackend(SearchBackendBase):
         filters: dict[str, Any] | None = None,
         limit: int = 20,
         offset: int = 0,
+        rule: str | None = None,
         **kwargs: Any,
     ) -> Result[SearchResponse, SearchError]:
         """Search documents using Elasticsearch."""
@@ -152,16 +155,9 @@ class ElasticsearchBackend(SearchBackendBase):
             }
 
             # Add filters if provided
-            if filters:
-                filter_clauses = []
-                for key, value in filters.items():
-                    if isinstance(value, (list, tuple)):
-                        filter_clauses.append({"terms": {key: list(value)}})
-                    elif isinstance(value, dict):
-                        # Pass through range queries, etc.
-                        filter_clauses.append({key: value})
-                    else:
-                        filter_clauses.append({"term": {key: value}})
+            if filters or rule:
+                filters = merge_filters(filters, rule_to_filters(rule))
+                filter_clauses = render_elasticsearch(filters)
 
                 if filter_clauses:
                     search_body["query"] = {
