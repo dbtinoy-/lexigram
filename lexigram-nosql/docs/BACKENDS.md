@@ -133,7 +133,7 @@ Resolve:
 ```python
 from typing import Annotated
 from lexigram.contracts.data.nosql import DocumentStoreProtocol
-from lexigram.di import Named
+from lexigram.di.markers import Named
 
 class AnalyticsService:
     def __init__(

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from scripts.audit.generators.base import AuditGeneratorProtocol, AuditRunResult
+from scripts.audit.generators.docs_claims import DocsClaimsAuditGenerator
+from scripts.audit.generators.docs_imports import DocsImportsAuditGenerator
 from scripts.audit.generators.docs_links import DocsLinksAuditGenerator
 from scripts.audit.generators.env_vars import EnvVarsAuditGenerator
 from scripts.audit.generators.index import AuditIndexGenerator
@@ -17,11 +19,13 @@ __all__ = [
     "AuditGeneratorProtocol",
     "AuditIndexGenerator",
     "AuditRunResult",
+    "DocsClaimsAuditGenerator",
+    "DocsImportsAuditGenerator",
     "DocsLinksAuditGenerator",
     "EnvVarsAuditGenerator",
     "IntegrationsAuditGenerator",
-    "OverviewAuditGenerator",
     "OptionalImportsAuditGenerator",
+    "OverviewAuditGenerator",
     "ProtocolsAuditGenerator",
     "QualityAuditGenerator",
     "SecurityAuditGenerator",

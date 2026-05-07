@@ -1,10 +1,7 @@
 """Unit tests for transport domain"""
-from unittest.mock import Mock
-
 import pytest
 
 from lexigram import serialization as json
-from lexigram.web import Request
 from lexigram.web import (
     FastJSONResponse,
     FileResponse,
@@ -14,83 +11,6 @@ from lexigram.web import (
     Response,
     StreamingResponse,
 )
-
-
-class TestRequest:
-    """Test request handling"""
-
-    def test_request_creation(self):
-        """Test basic request creation"""
-        # Create a mock Starlette request
-        starlette_request = Mock()
-        starlette_request.method = "GET"
-        starlette_request.url = "/test"
-        starlette_request.headers = {"content-type": "application/json"}
-        starlette_request.path_params = {}
-        starlette_request.query_params = {}
-        starlette_request.state = {}
-
-        request = Request(starlette_request)
-
-        assert request.method == "GET"
-        assert str(request.url) == "/test"
-        assert request.headers["content-type"] == "application/json"
-
-    @pytest.mark.asyncio
-    async def test_request_json_parsing(self):
-        """Test JSON body parsing"""
-        # Create a mock Starlette request
-        starlette_request = Mock()
-        starlette_request.method = "POST"
-        starlette_request.url = "/users"
-        starlette_request.headers = {"content-type": "application/json"}
-        starlette_request.path_params = {}
-        starlette_request.query_params = {}
-        starlette_request.state = {}
-
-        # Mock json method
-        json_data = {"user": "test", "id": 123}
-
-        async def json_method():
-            return json_data
-
-        starlette_request.json = Mock(side_effect=json_method)
-
-        request = Request(starlette_request)
-
-        parsed = await request.json()
-        assert parsed == json_data
-
-    def test_request_query_params(self):
-        """Test query parameter parsing"""
-        # Create a mock Starlette request
-        starlette_request = Mock()
-        starlette_request.method = "GET"
-        starlette_request.url = "/search?q=test&page=1"
-        starlette_request.headers = {}
-        starlette_request.path_params = {}
-        starlette_request.query_params = {"q": "test", "page": "1"}
-        starlette_request.state = {}
-
-        request = Request(starlette_request)
-
-        assert request.query_params["q"] == "test"
-        assert request.query_params["page"] == "1"
-
-    def test_request_path_params(self):
-        """Test path parameter extraction"""
-        # Create a mock Starlette request
-        starlette_request = Mock()
-        starlette_request.method = "GET"
-        starlette_request.url = "/users/123"
-        starlette_request.headers = {}
-        starlette_request.path_params = {"user_id": "123"}
-        starlette_request.query_params = {}
-        starlette_request.state = {}
-
-        request = Request(starlette_request)
-
-        assert request.path_params["user_id"] == "123"
 
 
 class TestJSONResponse:

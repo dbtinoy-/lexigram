@@ -165,11 +165,10 @@ Sources (ordered by priority, later wins):
 | Provider | Name | Priority | Registers |
 |----------|------|----------|-----------|
 | `ConfigProvider` | `"config"` | `CRITICAL` | `LexigramConfig`, `ConfigProtocol` |
-| `CoreProvider` | `"core"` | `CRITICAL` | Core infrastructure services |
-| `CoreInfrastructureProvider` | `"core_infrastructure"` | `CRITICAL` | Ambient primitives (clock, identity, hashing) |
-| `LoggingProvider` | `"logging"` | `CRITICAL` | `LoggerProtocol`, structlog config |
+| `CoreProvider` | `"core"` | `INFRASTRUCTURE` | Core infrastructure services |
+| `CoreInfrastructureProvider` | `"common"` | `INFRASTRUCTURE` | Ambient primitives (clock, identity, hashing) |
+| `LoggingProvider` | `"logging"` | `INFRASTRUCTURE` | `LoggerProtocol`, structlog config |
 | `IdentityProvider` | `"identity"` | `INFRASTRUCTURE` | ID generation |
-| `ConfigProvider` | `"config"` | `CRITICAL` | Configuration loading |
 | `MiddlewareProvider` | `"middleware"` | `INFRASTRUCTURE` | Middleware chain |
 | `DiProvider` | `"di"` | `INFRASTRUCTURE` | DI system extensions |
 

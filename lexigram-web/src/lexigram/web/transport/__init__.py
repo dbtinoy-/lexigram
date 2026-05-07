@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 # Lazy loading to avoid circular imports
 
 if TYPE_CHECKING:
-    from lexigram.web.transport.requests import Request
     from lexigram.web.transport.responses import (  # type: ignore[attr-defined]
         FastJSONResponse,
         FileResponse,
@@ -35,8 +34,7 @@ if TYPE_CHECKING:
     from lexigram.web.transport.websockets import WebSocket
 
 _LAZY_IMPORTS = {
-    # Request/Response
-    "Request": ("lexigram.web.transport.requests", "Request"),
+    # Response
     "Response": ("lexigram.web.transport.responses", "Response"),
     "JSONResponse": ("lexigram.web.transport.responses", "JSONResponse"),
     "HTMLResponse": ("lexigram.web.transport.responses", "HTMLResponse"),
@@ -92,7 +90,6 @@ __all__ = [
     "HTMXResponse",
     "JSONResponse",
     "RedirectResponse",
-    "Request",
     "Response",
     "ServerSentEvent",
     "StreamingResponse",

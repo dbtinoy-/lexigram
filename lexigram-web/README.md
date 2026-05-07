@@ -89,7 +89,7 @@ web:
 ```bash
 export LEX_WEB__SERVER__HOST=0.0.0.0
 export LEX_WEB__SERVER__PORT=8080
-export LEX_WEB__CORS__ALLOWED_ORIGINS='["https://app.example.com"]'
+export LEX_WEB__SECURITY__CORS__ALLOWED_ORIGINS='["https://app.example.com"]'
 ```
 
 ### Option 3 — Python
@@ -119,7 +119,7 @@ WebModule.configure(
 | `server.port` | `8000` | `LEX_WEB__SERVER__PORT` | Bind port |
 | `server.workers` | `1` | `LEX_WEB__SERVER__WORKERS` | Worker processes |
 | `server.reload` | `False` | `LEX_WEB__SERVER__RELOAD` | Auto-reload on code change |
-| `cors.allowed_origins` | `["http://localhost:3000", "http://localhost:8001"]` | `LEX_WEB__CORS__ALLOWED_ORIGINS` | CORS allow-list — wildcards blocked in production |
+| `cors.allowed_origins` | `["http://localhost:3000", "http://localhost:8001"]` | `LEX_WEB__SECURITY__CORS__ALLOWED_ORIGINS` | CORS allow-list — wildcards blocked in production |
 | `rate_limit.enabled` | `True` | `LEX_WEB__RATE_LIMIT__ENABLED` | Enable rate limiting |
 | `rate_limit.default_limit` | `100` | `LEX_WEB__RATE_LIMIT__DEFAULT_LIMIT` | Requests per window |
 | `rate_limit.default_window` | `60` | `LEX_WEB__RATE_LIMIT__DEFAULT_WINDOW` | Window in seconds |

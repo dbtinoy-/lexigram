@@ -60,8 +60,8 @@ class PaginationLinks(Component):
             )
 
         if active:
-            # Active page: bold text with visible color (avoid relying on primary- colors that may not be configured)
-            cls = f"{base_cls} z-10 bg-primary-600 text-white font-bold border border-primary-600 {extra_cls}"
+            # Active page: bold text with visible color using configured primary tokens
+            cls = f"{base_cls} z-10 bg-primary text-primary-foreground font-bold border border-primary {extra_cls}"
         else:
             cls = f"{base_cls} text-foreground bg-card border border-border hover:bg-muted dark:hover:bg-muted {extra_cls}"
 
@@ -135,7 +135,10 @@ class PaginationLinks(Component):
         last_p = 0
         for p in sorted_pages:
             if last_p > 0 and p - last_p > 1:
-                display_pages.append("...")
+                if p - last_p > 2:
+                    display_pages.append("...")
+                else:
+                    display_pages.append(last_p + 1)
             display_pages.append(p)
             last_p = p
 

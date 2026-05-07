@@ -155,7 +155,7 @@ Resolve:
 ```python
 from typing import Annotated
 from lexigram.contracts.queue import QueueProtocol
-from lexigram.di import Named
+from lexigram.di.markers import Named
 
 class WorkflowOrchestrator:
     def __init__(
@@ -171,7 +171,8 @@ class WorkflowOrchestrator:
 Use the memory backend for tests:
 
 ```python
-from lexigram.queue import QueueModule, QueueConfig, NamedQueueConfig
+from lexigram.queue import QueueModule
+from lexigram.queue.config import QueueConfig, NamedQueueConfig
 
 config = QueueConfig(
     backends=[

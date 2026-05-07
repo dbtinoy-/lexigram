@@ -79,7 +79,7 @@ from lexigram.testing.fixtures.containers import ContainerFactory
 from lexigram.testing.harness.container import LexigramContainerHarness
 
 # Re-export from harness decorators
-from lexigram.testing.harness.decorators import override
+from lexigram.testing.harness.decorators import override, testbed
 from lexigram.testing.harness.environment import IntegrationEnvironment
 from lexigram.testing.harness.testbed import AppTestBed
 
@@ -223,4 +223,5 @@ __all__ = [
     "requires_postgres",
     "requires_rabbitmq",
     "requires_redis",
+    "testbed",
 ]

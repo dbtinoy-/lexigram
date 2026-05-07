@@ -149,7 +149,7 @@ sql:
 ## Debug Tips
 
 - Enable SQL echo: `export LEX_SQL__OPERATIONS__ECHO=true` (logs all SQL to the structured logger)
-- Enable debug logging: `export LEX_LOG_LEVEL=DEBUG` for detailed lifecycle and query logs
+- Enable debug logging: `export LEX_LOGGING__LEVEL=DEBUG` for detailed lifecycle and query logs
 - Use `DatabaseModule.stub()` with SQLite in-memory for fast, isolated tests
 - Check that `DatabaseProviderProtocol` is registered (it's bound at `register()` time — verify the provider is added to `Application`)
 - For connection issues, use `DatabaseProvider.health_check()` to get per-backend status

@@ -76,8 +76,8 @@ flowchart TD
     Q{How to customize?}
     Q-->|Override token values| C1[shadcn_css with custom oklch values]
     C1-->C1a["css = shadcn_css(primary=..., background=...)"]
-    Q-->|Inject into layout| C2[Override render_head in BaseLayout]
-    C2-->C2a["class MyLayout(BaseLayout):<br/>def render_head(self): return ..."]
+    Q-->|Inject into layout| C2[Override render_head in LayoutBase]
+    C2-->C2a["class MyLayout(LayoutBase):<br/>def render_head(self): return ..."]
 ```
 
 ### Override specific CSS variables
@@ -100,10 +100,10 @@ css = shadcn_css(
 ### Inject into a layout
 
 ```python
-from lexigram.ui.layouts import BaseLayout
+from lexigram.ui.layouts import LayoutBase
 from lexigram.ui import raw
 
-class MyLayout(BaseLayout):
+class MyLayout(LayoutBase):
     def render_head(self):
         custom_css = shadcn_css(primary="oklch(0.5 0.2 200)")
         return super().render_head() + raw(f"<style>{custom_css}</style>")

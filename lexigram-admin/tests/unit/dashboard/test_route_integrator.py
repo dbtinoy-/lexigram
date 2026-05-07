@@ -63,6 +63,28 @@ class TestRouteIntegrator:
             name="fake_pkg.stats",
         )
 
+    def test_strips_mount_prefix_from_route_specs(self) -> None:
+        router = MagicMock()
+        naming = NamingPolicy(mode="warn")
+        integrator = RouteIntegrator(
+            router=router, naming_policy=naming, route_prefix="/admin"
+        )
+
+        integrator.register([FakeContributor()])
+
+        router.add_route.assert_any_call(
+            path="/fake/hello",
+            method="GET",
+            handler=ANY,
+            name="fake_pkg.hello",
+        )
+        router.add_route.assert_any_call(
+            path="/fake/stats",
+            method="GET",
+            handler=ANY,
+            name="fake_pkg.stats",
+        )
+
     def test_namespaces_route_names(self) -> None:
         router = MagicMock()
         naming = NamingPolicy(mode="warn")

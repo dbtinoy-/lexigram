@@ -73,41 +73,9 @@ class JSONResponse(FastJSONResponse):
     for Pydantic models when available.
     """
 
-    def __init__(
-        self,
-        content: Any = None,
-        status_code: int = 200,
-        headers: dict[str, str] | None = None,
-        media_type: str | None = None,
-        background: Any | None = None,
-    ) -> None:
-        super().__init__(
-            content=content,
-            status_code=status_code,
-            headers=headers,
-            media_type=media_type,
-            background=background,
-        )
-
 
 class HTMLResponse(StarletteHTMLResponse):
     """HTML response"""
-
-    def __init__(
-        self,
-        content: Any = None,
-        status_code: int = 200,
-        headers: dict[str, str] | None = None,
-        media_type: str | None = None,
-        background: Any | None = None,
-    ) -> None:
-        super().__init__(
-            content=content,
-            status_code=status_code,
-            headers=headers,
-            media_type=media_type,
-            background=background,
-        )
 
 
 class HTMLContent(str):

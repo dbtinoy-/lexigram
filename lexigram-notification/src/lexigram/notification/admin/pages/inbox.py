@@ -45,7 +45,7 @@ def _pagination_block(page: int, total: int, per_page: int, base_url: str) -> An
         {
             "class": (
                 "flex items-center justify-between border-t border-border "
-                "bg-background py-3 mt-4"
+                "bg-background px-4 py-3 mt-4"
             ),
         },
         el(

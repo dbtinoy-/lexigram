@@ -94,7 +94,7 @@ You can run multiple queue backends in the same application. Each backend gets r
 ```python
 from typing import Annotated
 from lexigram.contracts.queue import QueueProtocol
-from lexigram.di import Named
+from lexigram.di.markers import Named
 
 
 class OrderService:

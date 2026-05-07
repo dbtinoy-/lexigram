@@ -11,11 +11,11 @@ The config section key is `ai` (configures `AIConfig`). Environment prefix: `LEX
 |-----|------|---------|---------|-------------|
 | `name` | `str` | `"ai"` | `LEX_AI__NAME` | Configuration name |
 | `enabled` | `bool` | `True` | `LEX_AI__ENABLED` | Enable AI features |
-| `llm` | `ClientConfig \| None` | `None` | `LEX_AI__LLM__*` | LLM client configuration |
-| `vector` | `VectorConfig \| None` | `None` | `LEX_AI__VECTOR__*` | Vector store configuration |
-| `rag` | `RAGConfig \| None` | `None` | `LEX_AI__RAG__*` | RAG pipeline configuration |
-| `governance` | `GovernanceConfig` | default-factory (disabled when governance package absent) | `LEX_AI__GOVERNANCE__*` | AI governance configuration |
-| `observability` | `ObservabilityConfig` | default-factory (disabled if `lexigram-ai-observability` not installed) | `LEX_AI__OBSERVABILITY__*` | AI observability configuration |
+| `llm` | `ClientConfig \| None` | `None` | `LEX_AI_LLM__*` | LLM client configuration |
+| `vector` | `VectorConfig \| None` | `None` | `LEX_VECTOR__*` | Vector store configuration |
+| `rag` | `RAGConfig \| None` | `None` | `LEX_AI_RAG__*` | RAG pipeline configuration |
+| `governance` | `GovernanceConfig` | default-factory (disabled when governance package absent) | `LEX_AI_GOVERNANCE__*` | AI governance configuration |
+| `observability` | `ObservabilityConfig` | default-factory (disabled if `lexigram-ai-observability` not installed) | `LEX_AI_OBSERVABILITY__*` | AI observability configuration |
 | `subsystems` | `dict[str, dict[str, Any]]` | `{}` | `LEX_AI__SUBSYSTEMS__*` | Dynamic config for third-party subsystems |
 
 ## Example YAML

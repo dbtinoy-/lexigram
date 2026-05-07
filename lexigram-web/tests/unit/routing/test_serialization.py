@@ -1,7 +1,9 @@
 import pytest
 from lexigram import serialization as json
 from unittest.mock import MagicMock
-from lexigram.web import JSONResponse, Request, Response
+from starlette.requests import Request
+
+from lexigram.web import JSONResponse, Response
 from lexigram.result import Ok, Err
 from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError, FieldError
 from lexigram.web.routing.pipeline import RequestPipeline

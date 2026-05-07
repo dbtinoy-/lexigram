@@ -112,7 +112,7 @@ Resolve by name:
 ```python
 from typing import Annotated
 from lexigram.contracts.infra.cache import CacheBackendProtocol
-from lexigram.di import Named
+from lexigram.di.markers import Named
 
 class MultiTierCache:
     def __init__(

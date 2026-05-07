@@ -146,7 +146,7 @@ flowchart LR
         LE --> CE[ContainerError]
         LE --> SE[SecurityError]
         LE --> RE[ResilienceError]
-        LE --> AE[AIError → LLMError · RAGError · MemoryError · SkillError · GuardError]
+        LE --> AE[AIError → LLMError · RAGError · AIMemoryError · SkillError · GuardError]
     end
     subgraph E[Extension Packages]
         AE -.->|extended by| L1[LLMRateLimitError · LLMModelNotFoundError]

@@ -123,7 +123,7 @@ flowchart LR
         UC[UIConfig<br/>default_theme · theme]
     end
     subgraph Layout[Render]
-        BL[BaseLayout]
+        BL[LayoutBase]
     end
     subgraph Style[Style Pipeline]
         SC[shadcn_css]

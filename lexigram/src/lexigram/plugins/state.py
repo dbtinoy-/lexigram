@@ -13,6 +13,14 @@ Persistence contract (systemd-preset style):
     other's update.
   - A corrupt state file is renamed to ``<name>.corrupt-<ts>`` and reading
     fails open to an empty set — plugin state must never block boot.
+
+Note:
+    File integrity: ``plugins.json`` is treated as operator-owned and is
+    intentionally *not* tamper-evident (no signature/HMAC). Write access to
+    the file already implies full filesystem trust, and its ``disabled``
+    entries are only membership-tested against discovered entry points, so
+    the file cannot be used to inject code. This acceptance is deliberate —
+    see ``docs/superpowers/specs/2026-08-16-security-plugins-design.md``.
 """
 
 from __future__ import annotations
@@ -71,6 +79,38 @@ def _write_atomic(resolved: Path, data: dict[str, Any]) -> None:
         ) from exc
 
 
+def _fail_open_corrupt(resolved: Path, reason: str) -> set[str]:
+    """Back up a corrupt ``resolved`` file and fail open to an empty set.
+
+    Preserves the original bytes as ``<name>.corrupt-<ts>`` for operator
+    inspection and returns an empty set so plugin state never blocks boot.
+
+    Args:
+        resolved: State-file path.
+        reason: Logged cause (e.g. ``"unparseable_json"``).
+
+    Returns:
+        Always the empty set.
+    """
+    backup = resolved.with_name(f"{resolved.name}.corrupt-{int(time.time())}")
+    try:
+        resolved.replace(backup)
+        logger.warning(
+            "plugins.state.corrupt_file_backed_up",
+            path=str(resolved),
+            backup=str(backup),
+            reason=reason,
+        )
+    except OSError:
+        logger.warning(
+            "plugins.state.corrupt_file_unreadable",
+            path=str(resolved),
+            error="backup_failed",
+            reason=reason,
+        )
+    return set()
+
+
 def load_disabled(path: str | Path | None = None) -> set[str]:
     """Return the set of plugin names disabled in the boot-file mirror.
 
@@ -93,21 +133,13 @@ def load_disabled(path: str | Path | None = None) -> set[str]:
     try:
         data = loads_str(resolved.read_text())
     except (JSONDecodeError, OSError):
-        backup = resolved.with_name(f"{resolved.name}.corrupt-{int(time.time())}")
-        try:
-            resolved.replace(backup)
-            logger.warning(
-                "plugins.state.corrupt_file_backed_up",
-                path=str(resolved),
-                backup=str(backup),
-            )
-        except OSError:
-            logger.warning(
-                "plugins.state.corrupt_file_unreadable",
-                path=str(resolved),
-                error="backup_failed",
-            )
-        return set()
+        return _fail_open_corrupt(resolved, "unparseable_json")
+
+    version = data.get("version")
+    if version is not None and (
+        not isinstance(version, int) or version != _STATE_SCHEMA_VERSION
+    ):
+        return _fail_open_corrupt(resolved, f"unsupported_version={version!r}")
 
     disabled = data.get("disabled", [])
     if not isinstance(disabled, list):

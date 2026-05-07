@@ -158,7 +158,7 @@ NotificationConfig(
 
 ## Debug Tips
 
-- Check `LEX_LOG_LEVEL=debug` to see backend registration messages
+- Check `LEX_LOGGING__LEVEL=debug` to see backend registration messages
 - Verify `app.provider.health_check()` for aggregate backend health
 - Use `NotificationModule.stub()` in tests to isolate from real providers
 - For Twilio issues, check `TwilioNotificationError.twilio_code` for the provider error code

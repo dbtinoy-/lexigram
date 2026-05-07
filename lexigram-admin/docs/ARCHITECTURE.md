@@ -116,7 +116,7 @@ flowchart LR
     end
     subgraph Backend
         DS[IDataSource<br/>SqlDataSource · APIDataSource · Custom]
-        QB[QueryBuilder]
+        QS[QuerySpec]
     end
     subgraph Navigation[Navigation]
         NB[NavItemBuilder]

@@ -157,7 +157,7 @@ provider = SearchProvider.configure(config)
 app.add_provider(provider)
 
 # Resolve by name
-from lexigram.di import Named
+from lexigram.di.markers import Named
 from typing import Annotated
 
 primary = await container.resolve(Annotated[SearchEngineProtocol, Named("primary")])

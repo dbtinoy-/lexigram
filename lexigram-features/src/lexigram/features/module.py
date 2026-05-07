@@ -14,7 +14,7 @@ class FeatureFlagsModule(Module):
     """In-memory and extensible feature flag evaluation.
 
     Call :meth:`configure` to seed initial flag state from a
-    :class:`~lexigram.features.config.models.FeatureFlagsConfig`.
+    :class:`~lexigram.features.config.FeatureFlagsConfig`.
 
     Usage::
 
@@ -36,7 +36,7 @@ class FeatureFlagsModule(Module):
         """Create a FeatureFlagsModule with explicit configuration.
 
         Args:
-            config: :class:`~lexigram.features.config.models.FeatureFlagsConfig`
+            config: :class:`~lexigram.features.config.FeatureFlagsConfig`
                 or ``None`` for framework defaults (all flags disabled).
 
         Returns:

@@ -230,7 +230,8 @@ When tenancy is enabled, every collection name is resolved through a
 Add `tenancy` to `VectorConfig`:
 
 ```python
-from lexigram.vector.config import VectorTenancyConfig, VectorConfig, VectorModule
+from lexigram.vector import VectorModule
+from lexigram.vector.config import VectorTenancyConfig, VectorConfig
 
 config = VectorConfig(
     backend="qdrant",

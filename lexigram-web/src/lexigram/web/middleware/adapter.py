@@ -13,7 +13,6 @@ from starlette.responses import (
 )
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from lexigram.web.transport.requests import Request as WebRequest
 from lexigram.web.transport.responses import Response as WebResponse
 
 
@@ -31,16 +30,14 @@ class _LexigramMiddlewareAdapter:
             await self.app(scope, receive, send)
             return
 
-        # 1. Wrap Starlette request info in Lexigram request
-        request_cls: Any = StarletteRequest
-        starlette_request = request_cls(scope, receive)
-        lexigram_request = WebRequest(starlette_request)
+        # 1. Expose the Starlette request to Lexigram middleware
+        request = StarletteRequest(scope, receive)
 
         if callable(self.lexigram_mw):
             # Support for functional middleware: async def mw(request, call_next)
             response_started = [False]
 
-            async def lexigram_call_next(req: WebRequest) -> Any:
+            async def lexigram_call_next(req: StarletteRequest) -> Any:
                 async def send_wrapper(message: Any) -> None:
                     if message["type"] == "http.response.start":
                         response_started[0] = True
@@ -49,9 +46,7 @@ class _LexigramMiddlewareAdapter:
                 await self.app(scope, receive, send_wrapper)
                 return None
 
-            result = await cast("Any", self.lexigram_mw)(
-                lexigram_request, lexigram_call_next
-            )
+            result = await cast("Any", self.lexigram_mw)(request, lexigram_call_next)
             # Only send result if the response hasn't been sent already.
             # If the inner app sent an error response and re-raised, a
             # functional middleware may catch and return a new response.
@@ -65,7 +60,7 @@ class _LexigramMiddlewareAdapter:
             return
         # 3. Lifecycle pattern: Execute Lexigram middleware pre-processing
         if hasattr(self.lexigram_mw, "process_request"):
-            await self.lexigram_mw.process_request(lexigram_request)
+            await self.lexigram_mw.process_request(request)
 
         # 4. Call next in ASGI pipeline
         # We wrap 'send' to intercept for post-processing if needed

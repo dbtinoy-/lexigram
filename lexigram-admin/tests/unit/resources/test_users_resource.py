@@ -23,10 +23,9 @@ from lexigram.admin.resources.base import Resource
 from lexigram.admin.resources.form_renderer import FormRenderer
 from lexigram.admin.resources.users import UserResource
 from lexigram.admin.schema import BooleanField, MultiSelectField, TextField
-from lexigram.web.transport import Request as LexigramRequest
 
 
-def _create_request(path: str = "/admin/users/create") -> LexigramRequest:
+def _create_request(path: str = "/admin/users/create") -> StarletteRequest:
     scope: dict = {
         "type": "http",
         "method": "GET",
@@ -43,7 +42,7 @@ def _create_request(path: str = "/admin/users/create") -> LexigramRequest:
         "app": None,
         "session": {},
     }
-    return LexigramRequest(StarletteRequest(scope))
+    return StarletteRequest(scope)
 
 
 def _form_names(html: str) -> set[str]:

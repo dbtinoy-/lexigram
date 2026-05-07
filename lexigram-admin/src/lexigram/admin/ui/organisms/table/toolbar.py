@@ -163,7 +163,12 @@ class TableToolbar(Component):
                             action_name=action.name,
                         )
                     _label = getattr(action, "label", None) or action.name
-                    _icon = getattr(action, "icon", getattr(action, "_icon", None))
+                    _icon_value = getattr(action, "icon", None)
+                    _icon = (
+                        _icon_value
+                        if isinstance(_icon_value, str)
+                        else getattr(action, "_icon", None)
+                    )
                     if hasattr(action, "_color_to_variant"):
                         _color = action._color_to_variant()
                     else:

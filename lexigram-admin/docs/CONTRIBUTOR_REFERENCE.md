@@ -98,14 +98,14 @@ widget is visible to all dashboard users.
 
 ```python
 def get_dashboard_widgets(self):
-    from lexigram.contracts.admin.types import DashboardWidgetDefinition, WidgetType
+    from lexigram.contracts.admin.types import DashboardWidgetDefinition, WidgetKind
     return [
         DashboardWidgetDefinition(
             name="widget_count",
             title="Widget Count",
-            widget_type=WidgetType.METRIC,
-            route_path="/admin/demo/widgets/count",
-            refresh_interval=60,
+            view_kind=WidgetKind.STAT,
+            render_endpoint="/admin/demo/widgets/count",
+            refresh_interval_seconds=60,
         ),
     ]
 ```

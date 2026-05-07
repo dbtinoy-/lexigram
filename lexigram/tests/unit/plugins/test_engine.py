@@ -79,7 +79,6 @@ def _fake_entry_points(
             return provider_eps
         return []
 
-    monkeypatch.setattr("lexigram.plugins.engine._entry_points", _entry_points)
     monkeypatch.setattr(
         "lexigram.plugins.discovery._entry_points", _entry_points
     )
@@ -220,3 +219,78 @@ def test_plugins_module_configure_returns_provider(tmp_path) -> None:
     dynamic = PluginsModule.configure(state_path=tmp_path / "plugins.json")
     provider_classes = [p.__class__ for p in dynamic.providers]
     assert PluginEngineProvider in provider_classes
+
+
+@pytest.mark.asyncio
+async def test_engine_registers_via_shared_discovery_primitive(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """L1: the engine must reuse discover_providers, not reimplement the loop."""
+    _fake_entry_points(
+        monkeypatch,
+        providers={"fake": _FakeProvider},
+        descriptors={
+            "fake-plugin": _descriptor("fake-plugin", provider_entry_point="fake")
+        },
+    )
+    from lexigram.plugins import engine as engine_mod
+
+    calls: list[set[str] | None] = []
+    real = engine_mod.discover_providers
+
+    def recorder(disabled: set[str] | None = None) -> list[Provider]:
+        calls.append(disabled)
+        return real(disabled=disabled)
+
+    monkeypatch.setattr(engine_mod, "discover_providers", recorder)
+    engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
+    await engine.register(_FakeRegistrar())
+    assert calls == [set()]
+    assert [p.name for p in engine.discovered_providers] == ["fake"]
+
+
+@pytest.mark.asyncio
+async def test_engine_excludes_plugin_with_missing_dependency(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """L2: a plugin whose requires are unmet must not be registered."""
+    rag = PluginDescriptor(
+        name="rag-plugin",
+        display_name="RAG",
+        description="requires relay-gateway",
+        icon="database",
+        provider_entry_point="rag",
+        requires=("relay-gateway",),
+    )
+    _fake_entry_points(
+        monkeypatch,
+        providers={"rag": _FakeProvider},
+        descriptors={"rag-plugin": rag},
+    )
+    engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
+    await engine.register(_FakeRegistrar())
+    assert engine.discovered_providers == []
+
+
+@pytest.mark.asyncio
+async def test_engine_excludes_conflicting_plugin_keeps_other(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """L2: a plugin conflicting with an enabled one is excluded; the other stays."""
+    a = _descriptor("a-plugin", provider_entry_point="a")
+    b = PluginDescriptor(
+        name="b-plugin",
+        display_name="B",
+        description="conflicts with a",
+        icon="x",
+        provider_entry_point="b",
+        conflicts=("a",),
+    )
+    _fake_entry_points(
+        monkeypatch,
+        providers={"a": _FakeProvider, "b": _FakeProvider},
+        descriptors={"a-plugin": a, "b-plugin": b},
+    )
+    engine = PluginEngineProvider(state_path=tmp_path / "plugins.json")
+    await engine.register(_FakeRegistrar())
+    assert len(engine.discovered_providers) == 1

@@ -38,11 +38,9 @@ UI_CSP_REQUIREMENTS: dict[str, set[str]] = {
     "script-src": {
         "https://unpkg.com",
         "https://cdn.jsdelivr.net",
-        "https://cdn.tailwindcss.com",
     },
     "style-src": {
         "https://cdn.jsdelivr.net",
-        "https://cdn.tailwindcss.com",
         "https://unpkg.com",
     },
     "connect-src": {

@@ -6,7 +6,7 @@
 
 **Solution:**
 - Check that `AdminModule.configure()` is imported and returned from your module.
-- Enable detailed logging: `export LEX_LOG_LEVEL=DEBUG`.
+- Enable detailed logging: `export LEX_LOGGING__LEVEL=DEBUG`.
 - Look for provider boot errors in the console output.
 
 ## Problem: Contributor not discovered
@@ -90,7 +90,7 @@ class MyResource(Resource):
 
 ## Debug Tips
 
-- Enable debug logging: `export LEX_LOG_LEVEL=DEBUG`.
+- Enable debug logging: `export LEX_LOGGING__LEVEL=DEBUG`.
 - Check the container state: `container.dump()` shows all registered bindings.
 - Verify routes are mounted: visit `/admin/openapi.json` or the route list page.
 - Run the admin test suite with your contributor registered to catch regressions.

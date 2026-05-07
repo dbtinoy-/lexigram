@@ -222,7 +222,7 @@ Guards implement `GuardProtocol` from `lexigram-contracts` and execute before th
 
 ```python
 from lexigram.web.security.guards import AuthGuard, RoleGuard, PermissionGuard
-from lexigram.web import use_guards
+from lexigram.web.security import use_guards
 
 @use_guards(AuthGuard)
 async def authenticated_only(self): ...
@@ -336,9 +336,9 @@ class ChatHandler(AbstractWebSocketHandler):
 The `lexigram.web.sse` package provides SSE handler support with backpressure management and heartbeat keepalive. Decorated via `@sse_event`:
 
 ```python
-from lexigram.web.sse.handler import SSEHandler
+from lexigram.web.sse import AbstractSSEHandler
 
-class NotificationSSE(SSEHandler):
+class NotificationSSE(AbstractSSEHandler):
     async def event_generator(self, request):
         while True:
             yield {"event": "notification", "data": "..."}
@@ -480,10 +480,9 @@ Protocols that `lexigram-web` implements/consumes from `lexigram-contracts`:
 | `lexigram.web.security.csrf` | CSRF token generation and validation middleware |
 | `lexigram.web.security.cors` | CORS middleware and configuration |
 | `lexigram.web.transport.responses` | `JSONResponse`, `HTMLResponse`, `HTMXResponse`, `StreamingResponse` |
-| `lexigram.web.transport.requests` | `Request` wrapper |
 | `lexigram.web.templates.core` | `Jinja2Templates`, `TemplateResponse`, `render_template` |
 | `lexigram.web.websocket.handler` | `AbstractWebSocketHandler` — WebSocket lifecycle base class |
-| `lexigram.web.sse.handler` | `SSEHandler` — Server-Sent Events base class |
+| `lexigram.web.sse` | `AbstractSSEHandler` — Server-Sent Events base class; `EventSourceResponse`, `ServerSentEvent` |
 | `lexigram.web.errors.html_error_renderer` | `DebugHtmlErrorRenderer` — debug HTML error pages |
 | `lexigram.web.errors.problem_detail` | `ProblemDetail` — RFC 7807 error format |
 | `lexigram.web.exceptions` | `HTTPError`, `NotFoundError`, `BadRequestError`, etc. |

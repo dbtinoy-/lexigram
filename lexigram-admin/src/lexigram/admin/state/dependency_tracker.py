@@ -102,12 +102,10 @@ class DependencyTracker:
 
 async def get_dependency_tracker() -> DependencyTracker:
     """Get the global dependency tracker instance."""
-    from lexigram.admin.lib.di import (  # type: ignore[attr-defined]
-        get_admin_container,
-    )
+    from lexigram.admin.lib.di import get_admin_resolver
 
-    container = get_admin_container()
-    return await container.resolve(DependencyTracker)
+    resolver = get_admin_resolver()
+    return await resolver.resolve(DependencyTracker)
 
 
 def __getattr__(name: str) -> Any:

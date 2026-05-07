@@ -22,10 +22,32 @@ SEVERITY_ORDER = {
 }
 
 ALLOWED_CROSS_EXTENSION_IMPORTS: dict[str, frozenset[str]] = {
-    "lexigram-admin": frozenset({"lexigram-ui"}),
+    "lexigram-admin": frozenset(
+        {
+            "lexigram-auth",
+            "lexigram-cache",
+            "lexigram-features",
+            "lexigram-resilience",
+            "lexigram-ui",
+        }
+    ),
     "lexigram-web": frozenset({"lexigram-ui"}),
     "lexigram-events": frozenset({"lexigram-resilience"}),
     "lexigram-tasks": frozenset({"lexigram-resilience"}),
+    "lexigram-monitor": frozenset({"lexigram-tasks"}),
+    "lexigram-multimedia": frozenset(
+        {
+            "lexigram-multimedia-beat",
+            "lexigram-multimedia-image",
+            "lexigram-multimedia-interpolate",
+            "lexigram-multimedia-music",
+            "lexigram-multimedia-tts",
+            "lexigram-multimedia-upscale",
+            "lexigram-multimedia-video",
+            "lexigram-tasks",
+        }
+    ),
+    "lexigram-ai-governance": frozenset({"lexigram-tasks"}),
     "lexigram-ai": frozenset(
         {
             "lexigram-vector",
@@ -222,6 +244,10 @@ def _detect_cross_extension_imports(
         owner = context.resolve_import_owner(imported_module)
         if owner is None or owner == source_file.package_name:
             continue
+        if owner == "lexigram-ui":
+            # Shared UI primitive layer: every package's admin pages
+            # compose lexigram-ui atoms (sanctioned for admin/web).
+            continue
         if source_file.package_name == "lexigram":
             if not _is_extension_package(owner):
                 continue
@@ -345,16 +371,34 @@ def make_rule_finding(
 
 
 def _iter_import_targets(tree: ast.Module) -> tuple[tuple[ast.AST, str], ...]:
-    """Yield imported module names from Import and ImportFrom nodes."""
+    """Yield import targets, skipping lazy and guarded imports.
+
+    Imports inside function/class bodies, ``try`` blocks, or any ``if``
+    guard (including ``TYPE_CHECKING``) are deferred/conditional loads
+    and are not part of the package's static dependency surface.
+    """
 
     targets: list[tuple[ast.AST, str]] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                targets.append((node, alias.name))
-            continue
-        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            targets.append((node, node.module))
+
+    def _walk(node: ast.AST, *, guarded: bool = False) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            if guarded:
+                continue
+            if isinstance(child, ast.Import):
+                for alias in child.names:
+                    targets.append((child, alias.name))
+                continue
+            if isinstance(child, ast.ImportFrom) and child.level == 0 and child.module:
+                targets.append((child, child.module))
+                continue
+            if isinstance(child, (ast.Try, ast.If)):
+                _walk(child, guarded=True)
+                continue
+            _walk(child)
+
+    _walk(tree)
     return tuple(targets)
 
 

@@ -154,7 +154,7 @@ async with Application.boot(...) as app:
 
 ## Debug Tips
 
-- Set `LEX_LOG_LEVEL=debug` to see queue operations, handler registrations, and worker state
+- Set `LEX_LOGGING__LEVEL=debug` to see queue operations, handler registrations, and worker state
 - Check `app.provider.get_worker_stats()` to inspect pool health
 - Check `app.provider.get_scheduled_jobs()` to verify scheduler state
 - Enable `MetricsMiddleware` to collect task duration/retry statistics

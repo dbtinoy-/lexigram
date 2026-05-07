@@ -1,20 +1,20 @@
 """Unit tests for middleware domain"""
 import asyncio
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
+from starlette.requests import Request
 
+from lexigram.contracts.exceptions import RateLimitError
 from lexigram.web.middleware.compression import CompressionMiddleware
 from lexigram.web.middleware.cors import CORSMiddleware
-from lexigram.contracts.exceptions import RateLimitError
 from lexigram.web.middleware.rate_limit import (
     RateLimiter,
     RateLimitMiddleware,
 )
 from lexigram.web.middleware.timing import TimingMiddleware
-from lexigram.web import Request
-from lexigram.web import JSONResponse
+
 # from lexigram.web import JSONResponse # This import is now shadowed by starlette.responses.JSONResponse, but it's not used in the new tests, so it can stay or be removed. I'll keep it as per instruction to not make unrelated edits.
 
 
@@ -24,8 +24,8 @@ class TestCORSMiddleware:
     @pytest.fixture
     def app(self):
         from starlette.applications import Starlette
-        from starlette.routing import Route
         from starlette.responses import JSONResponse
+        from starlette.routing import Route
 
         async def endpoint(request):
             return JSONResponse({"data": "test"})
@@ -286,8 +286,8 @@ class TestRateLimitMiddleware:
     @pytest.fixture
     def app(self):
         from starlette.applications import Starlette
-        from starlette.routing import Route
         from starlette.responses import JSONResponse
+        from starlette.routing import Route
         
         async def endpoint(request):
             return JSONResponse({"allowed": True})
@@ -305,8 +305,8 @@ class TestRateLimitMiddleware:
     def test_middleware_adds_headers(self):
         """Test middleware adds rate limit headers when state values are set."""
         from starlette.applications import Starlette
-        from starlette.routing import Route
         from starlette.responses import JSONResponse
+        from starlette.routing import Route
         from starlette.testclient import TestClient
 
         async def endpoint(request):
@@ -334,8 +334,8 @@ class TestTimingMiddleware:
     @pytest.fixture
     def app(self):
         from starlette.applications import Starlette
-        from starlette.routing import Route
         from starlette.responses import JSONResponse
+        from starlette.routing import Route
         
         async def endpoint(request):
             return JSONResponse({"timed": True})
@@ -369,8 +369,8 @@ class TestCompressionMiddleware:
     @pytest.fixture
     def app(self):
         from starlette.applications import Starlette
-        from starlette.routing import Route
         from starlette.responses import JSONResponse
+        from starlette.routing import Route
         
         async def small_endpoint(request):
             return JSONResponse({"small": "data"})

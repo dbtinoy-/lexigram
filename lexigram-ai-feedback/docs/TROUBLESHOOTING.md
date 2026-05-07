@@ -148,7 +148,7 @@ def validate_rating(rating: float) -> float:
 
 ```bash
 # Enable debug logging to see store errors
-export LEX_LOG_LEVEL=DEBUG
+export LEX_LOGGING__LEVEL=DEBUG
 ```
 
 If persistence is critical, periodically verify the store health:

@@ -28,7 +28,7 @@ WebProvider(debug_routes_auth=lambda req: req.headers.get("X-Admin") == "yes")
 **Fix:** Set specific origins:
 
 ```bash
-export LEX_WEB__CORS__ALLOWED_ORIGINS='["https://myapp.com"]'
+export LEX_WEB__SECURITY__CORS__ALLOWED_ORIGINS='["https://myapp.com"]'
 ```
 
 ---
@@ -140,5 +140,5 @@ app.add_provider(GraphQLProvider(schema=my_schema))
 
 - Set `server.debug: true` in config for verbose error pages and exception filters.
 - Check the provider registration order — `WebProvider` must be added to the `Application` before `start()`.
-- Enable query logging for integrations: `export LEX_LOG_LEVEL=DEBUG`.
+- Enable query logging for integrations: `export LEX_LOGGING__LEVEL=DEBUG`.
 - Use `WebModule.stub()` in tests to avoid starting a real HTTP server.

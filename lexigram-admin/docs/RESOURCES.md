@@ -730,22 +730,23 @@ def set_data_source(self, data_source: IDataSource) -> None:
     self._data_source = data_source
 ```
 
-### QueryBuilder
+### QuerySpec
 
-The `Resource.fetch_list` method uses `QueryBuilder` to construct query objects from pagination, search, filter, and sort parameters:
+The `Resource.fetch_list` method builds query objects from pagination, search, filter, and sort
+parameters via `QuerySpec`:
 
 ```python
-from lexigram.admin.data.query_builder import QueryBuilder
+from lexigram.admin.data.query import QuerySpec
 
 # Constructed behind the scenes in Resource.fetch_list():
 query = (
-    QueryBuilder.create()
-    .page(page, limit)
-    .search(term, search_fields)
-    .order_by(sort_by, sort_order)
-    .where_eq("status", "published")
-    .where_in("category_id", [1, 2, 3])
-    .build()
+    QuerySpec()
+    .with_page(page)
+    .with_per_page(limit)
+    .with_search(term, search_fields)
+    .with_sort(sort_by, sort_order)
+    .with_filter("status", "published")
+    .with_filter("category_id", [1, 2, 3])
 )
 ```
 

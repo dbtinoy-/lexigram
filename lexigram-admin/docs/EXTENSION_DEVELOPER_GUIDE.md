@@ -197,7 +197,7 @@ HTML fragment).
 
 ```python
 # src/my_plugin/widgets/widget_count.py
-from lexigram.contracts.admin.types import DashboardWidgetDefinition, WidgetType
+from lexigram.contracts.admin.types import DashboardWidgetDefinition
 
 def make_widget_definitions():
     return [

@@ -2,7 +2,9 @@
 
 ``discover_providers`` is the function ``lexigram/src/lexigram/app/factory.py``'s
 own docstring already promises: "Provider auto-discovery via entry points is
-the responsibility of ``lexigram-plugins``."
+the responsibility of ``lexigram-plugins``." It is the *single* implementation
+of the discover→filter→load→instantiate path — ``PluginEngineProvider``
+(``lexigram.plugins.engine``) delegates its discovery to this primitive.
 """
 
 from __future__ import annotations

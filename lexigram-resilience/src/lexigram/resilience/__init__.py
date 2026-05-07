@@ -129,7 +129,7 @@ _LAZY_IMPORTS: dict[str, str] = {
     "DEFAULT_RETRY_DELAY": "lexigram.resilience.constants",
     "DEFAULT_TIMEOUT": "lexigram.resilience.constants",
     # --- added by migration script ---
-    "ResilienceConfig": "lexigram.resilience.config.models",
+    "ResilienceConfig": "lexigram.resilience.config",
     "ResilienceModule": "lexigram.resilience.module",
     "ResilienceProvider": "lexigram.resilience.di.provider",
     "TimeoutManager": "lexigram.resilience.timeout.manager",

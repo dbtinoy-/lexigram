@@ -10,7 +10,8 @@ import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any, ClassVar
 
-from lexigram.web import Request
+from starlette.requests import Request
+
 from lexigram.web.exceptions import TooManyConnectionsError
 from lexigram.web.transport.sse import EventSourceResponse, ServerSentEvent
 

@@ -577,9 +577,17 @@ class RouteIntegrator:
             for spec in c.get_routes():
                 ns_name = self._naming.namespaced(c.package_source, spec.name)
                 self._naming.register("route", ns_name)
-                registered_internal_paths.add(spec.path)
+                path = spec.path
+                # Contributor specs carry the full URL (e.g. "/admin/...")
+                # but routes live inside the mounted admin app, so strip
+                # the mount prefix like _ensure_nav_route does.
+                if self._prefix and path.startswith(self._prefix):
+                    path = path[len(self._prefix) :]
+                    if not path:
+                        path = "/"
+                registered_internal_paths.add(path)
                 self._router.add_route(
-                    path=spec.path,
+                    path=path,
                     method=spec.method,
                     handler=spec.handler,
                     name=ns_name,

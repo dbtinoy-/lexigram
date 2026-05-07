@@ -40,7 +40,6 @@ class ParameterBinder:
             Dictionary of keyword arguments for the handler call.
         """
         from lexigram.web.routing.validation import validate_and_merge_request
-        from lexigram.web.transport.requests import Request as WebRequest
 
         request = context.request
         handler = context.handler
@@ -81,11 +80,8 @@ class ParameterBinder:
                 value = getattr(parsed_all, param_name)
 
             # B. Special Type: Request or ExecutionContextProtocol
-            elif self._is_request_type(annotation, param_name, WebRequest):
-                # Wrap in the Lexigram request transport type when the
-                # handler asks for it explicitly; other request annotations
-                # (Starlette, untyped `request` params) keep the raw request.
-                value = WebRequest(request) if annotation is WebRequest else request
+            elif self._is_request_type(annotation, param_name):
+                value = request
 
             elif annotation in (WebExecutionContext, ExecutionContextProtocol):
                 value = context
@@ -178,7 +174,7 @@ class ParameterBinder:
 
         return result
 
-    def _is_request_type(self, annotation: Any, name: str, web_req_cls: type) -> bool:
+    def _is_request_type(self, annotation: Any, name: str) -> bool:
         """Helper to determine if a parameter represents the Request object."""
         try:
             annotation_name = getattr(annotation, "__name__", None)
@@ -189,7 +185,6 @@ class ParameterBinder:
 
         return (
             annotation is StarletteRequest
-            or annotation is web_req_cls
             or annotation_name == "Request"
             or str(annotation).startswith("Request")
             or name == "request"
