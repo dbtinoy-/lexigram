@@ -10,7 +10,7 @@ Lexigram is a monorepo of small, focused packages. The two foundation packages �
 Every extension depends **only** on `lexigram` and `lexigram-contracts`, never on another extension. That boundary is what keeps the ecosystem composable — see [Architecture](/fundamentals/architecture/).
 
 :::note[Maturity]
-All packages are **alpha (0.1.x)** and MIT-licensed. Public APIs may change before 1.0. Lexigram also includes proprietary packages that are not part of the open-source distribution and are not documented here.
+All packages are **alpha (0.1.x)** and MIT-licensed. Public APIs may change before 1.0.
 :::
 
 ```bash
@@ -67,6 +67,10 @@ pip install lexigram lexigram-web lexigram-sql lexigram-auth
 | [`lexigram-ai-mcp`](/packages/lexigram-ai-mcp/) | Model Context Protocol server and client for AI agents. |
 | [`lexigram-ai-workers`](/packages/lexigram-ai-workers/) | Background AI work — batch embedding, document ingestion, maintenance. |
 | [`lexigram-ai-feedback`](/packages/lexigram-ai-feedback/) | Collect, process, and store feedback on AI responses. |
+| [`lexigram-ai-guard`](/packages/lexigram-ai-guard/) | Input/output guard pipeline — LLM safety and content filtering. |
+| [`lexigram-ai-governance`](/packages/lexigram-ai-governance/) | AI governance — policy enforcement, audit trails, budget tracking. |
+| [`lexigram-ai-evaluation`](/packages/lexigram-ai-evaluation/) | Evaluation framework — benchmarks and quality gates for AI outputs. |
+| [`lexigram-ai-prompt`](/packages/lexigram-ai-prompt/) | Prompt management — templates, composition, optimization. |
 
 ---
 

@@ -5,7 +5,7 @@ from importlib.metadata import entry_points
 from lexigram.cli.contributors.runtime import ENTRY_POINT_GROUP
 
 _NON_SCOPE_WITH_ENTRY_POINT = {
-    "admin",  # lexigram-admin — proprietary, documented as non-scope
+    "admin",  # lexigram-admin — experimental tier, documented as non-scope
 }
 
 
