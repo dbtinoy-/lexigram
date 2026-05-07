@@ -22,10 +22,8 @@ async def test_generate_returns_ok_with_wav_bytes() -> None:
         result = await provider.generate(
             TTSRequest(
                 text="hello world",
-                extra={
-                    "reference_audio_uri": "file:///tmp/ref.wav",
-                    "reference_text": "reference transcript",
-                },
+                reference_audio_uri="file:///tmp/ref.wav",
+                extra={"reference_text": "reference transcript"},
             )
         )
 
@@ -52,7 +50,7 @@ async def test_generate_returns_err_when_reference_text_missing() -> None:
     provider = F5TTSProvider(base_url="http://localhost:5102")
 
     result = await provider.generate(
-        TTSRequest(text="hello", extra={"reference_audio_uri": "file:///tmp/ref.wav"})
+        TTSRequest(text="hello", reference_audio_uri="file:///tmp/ref.wav")
     )
 
     assert result.is_err()
@@ -74,10 +72,8 @@ async def test_generate_returns_err_on_non_200() -> None:
         result = await provider.generate(
             TTSRequest(
                 text="hello",
-                extra={
-                    "reference_audio_uri": "file:///tmp/ref.wav",
-                    "reference_text": "hi",
-                },
+                reference_audio_uri="file:///tmp/ref.wav",
+                extra={"reference_text": "hi"},
             )
         )
 

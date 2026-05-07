@@ -1,10 +1,10 @@
 """F5-TTS local TTS reference-server client — zero-shot voice cloning.
 
-Requires request.extra["reference_audio_uri"] (a URI the SERVER fetches —
-http(s):// or file://, never inlined bytes) and request.extra["reference_text"]
+Requires ``request.reference_audio_uri`` (a URI the SERVER fetches —
+http(s):// or file://, never inlined bytes) and ``request.extra["reference_text"]``
 (the reference clip's transcript, needed for alignment). Missing either is a
 request-shape problem, not an infra failure — returns TTSError, never raises.
-request.format is accepted but ignored: the reference server always returns
+``request.format`` is accepted but ignored: the reference server always returns
 native WAV (see design spec §11.2).
 """
 
@@ -53,12 +53,12 @@ class F5TTSProvider:
             return resp.status, await resp.read()
 
     async def generate(self, request: TTSRequest) -> Result[MediaAsset, TTSError]:
-        reference_audio_uri = request.extra.get("reference_audio_uri")
+        reference_audio_uri = request.reference_audio_uri
         reference_text = request.extra.get("reference_text")
         if not reference_audio_uri:
             return Err(
                 TTSError(
-                    "F5-TTS requires extra['reference_audio_uri'] for voice cloning"
+                    "F5-TTS requires reference_audio_uri for voice cloning"
                 )
             )
         if not reference_text:
