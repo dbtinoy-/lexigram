@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Literal
 
 
@@ -46,6 +47,19 @@ class MusicRequest:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+class VideoMode(str, Enum):
+    """Reference-input mode for a video generation request.
+
+    ``None`` on the request means the provider derives the mode from which
+    fields are set (see ``OpenAIVideoProvider._derive_mode``).
+    """
+
+    TEXT_TO_VIDEO = "text_to_video"
+    FIRST_FRAME = "first_frame"
+    FIRST_LAST_FRAME = "first_last_frame"
+    MULTIMODAL_REFERENCE = "multimodal_reference"
+
+
 @dataclass(frozen=True)
 class VideoRequest:
     prompt: str
@@ -53,6 +67,16 @@ class VideoRequest:
     resolution: str = "1280x720"
     image_uri: str | None = None
     format: str = "mp4"
+    model: str | None = None
+    mode: VideoMode | None = None
+    last_frame_image: str | None = None
+    reference_images: list[str] = field(default_factory=list)
+    reference_videos: list[str] = field(default_factory=list)
+    reference_audios: list[str] = field(default_factory=list)
+    generate_audio: bool = False
+    return_last_frame: bool = False
+    ratio: str | None = None
+    seed: int | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -327,6 +351,7 @@ __all__ = [
     "TransitionSpec",
     "Trim",
     "UpscaleRequest",
+    "VideoMode",
     "VideoOperation",
     "VideoRequest",
 ]
