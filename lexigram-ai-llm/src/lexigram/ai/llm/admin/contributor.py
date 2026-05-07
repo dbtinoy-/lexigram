@@ -22,14 +22,22 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
 )
+from lexigram.contracts.admin.widget_content import (
+    MessageContent,
+    Stat,
+    StatContent,
+    TableCell,
+    TableContent,
+    Tone,
+)
 from lexigram.contracts.ai.routing import InferenceLoggerProtocol, LLMRouterProtocol
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Err, Ok, Result
-from lexigram.ui import el
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import ContainerResolverProtocol
@@ -42,6 +50,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/ai-llm/widgets/token_usage",
         size=WidgetSize.LARGE,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Prompt and completion token consumption across all providers.",
     ),
     DashboardWidgetDefinition(
@@ -51,6 +60,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/ai-llm/widgets/provider_status",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.TABLE,
         description="Reachability and latency for each configured LLM provider.",
     ),
     DashboardWidgetDefinition(
@@ -60,6 +70,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/ai-llm/widgets/error_rate",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="LLM API error rate over the last rolling window.",
     ),
 )
@@ -180,86 +191,58 @@ class LlmAdminContributor(BaseAdminContributor):
 
     async def _render_error_rate(self) -> WidgetViewModel:
         if self._container is None:
-            return WidgetViewModel(body="<p>Contributor not booted.</p>")
+            return WidgetViewModel(
+                content=MessageContent(text="Contributor not booted.")
+            )
 
         logger = await self._container.resolve(InferenceLoggerProtocol)
         logs = await logger.get_recent(limit=500)
 
         if not logs:
-            body = el(
-                "div",
-                el("p", "No inference data yet.", class_="text-gray-500 text-sm"),
-                class_="space-y-2",
+            return WidgetViewModel(
+                content=MessageContent(text="No inference data yet.")
             )
-            return WidgetViewModel(body=str(el("div", body)))
 
         total = len(logs)
         errors = sum(1 for log in logs if not log.succeeded)
         rate = (errors / total * 100) if total > 0 else 0.0
 
-        color = (
-            "text-green-600"
-            if rate < 5
-            else "text-yellow-600"
-            if rate < 15
-            else "text-red-600"
-        )
+        tone = Tone.SUCCESS if rate < 5 else Tone.WARNING if rate < 15 else Tone.DANGER
 
-        body = el(
-            "div",
-            el(
-                "div",
-                el("span", f"{rate:.1f}%", class_=f"text-3xl font-bold {color}"),
-                el("span", " error rate", class_="text-gray-500 text-sm ml-1"),
-                class_="mb-2",
-            ),
-            el(
-                "div",
-                el("span", f"{errors}", class_="font-semibold"),
-                el(
-                    "span",
-                    f" errors / {total} requests",
-                    class_="text-gray-500 text-sm ml-1",
-                ),
-                class_="text-sm",
-            ),
-            class_="space-y-1",
+        return WidgetViewModel(
+            content=StatContent(
+                stats=(
+                    Stat(
+                        label="Error Rate",
+                        value=f"{rate:.1f}%",
+                        tone=tone,
+                    ),
+                    Stat(
+                        label="Errors / Requests",
+                        value=f"{errors} / {total}",
+                    ),
+                )
+            )
         )
-        return WidgetViewModel(body=str(el("div", body, class_="p-2")))
 
     async def _render_provider_status(self) -> WidgetViewModel:
         if self._container is None:
-            return WidgetViewModel(body="<p>Contributor not booted.</p>")
+            return WidgetViewModel(
+                content=MessageContent(text="Contributor not booted.")
+            )
 
         router = await self._container.resolve(LLMRouterProtocol)
 
-        rows = []
+        rows: list[tuple[TableCell, ...]] = []
         for provider_cfg in router._config.providers:
             client = router._clients.get(provider_cfg.name)
             if client is None or not provider_cfg.enabled:
-                dot = el("span", "●", class_="text-gray-400 mr-1.5", aria_hidden="true")
                 rows.append(
-                    el(
-                        "tr",
-                        el(
-                            "td",
-                            el("span", provider_cfg.name, class_="font-medium"),
-                            class_="py-1.5 pr-3",
-                        ),
-                        el(
-                            "td",
-                            provider_cfg.model,
-                            class_="py-1.5 pr-3 text-gray-500 text-sm",
-                        ),
-                        el(
-                            "td",
-                            dot,
-                            el(
-                                "span", "not configured", class_="text-gray-400 text-sm"
-                            ),
-                            class_="py-1.5 pr-3",
-                        ),
-                        el("td", "—", class_="py-1.5 text-gray-400 text-sm"),
+                    (
+                        TableCell(text=provider_cfg.name),
+                        TableCell(text=provider_cfg.model),
+                        TableCell(text="not configured"),
+                        TableCell(text="—"),
                     )
                 )
                 continue
@@ -268,122 +251,53 @@ class LlmAdminContributor(BaseAdminContributor):
                 result = await client.health_check(timeout=5.0)
             except Exception:
                 rows.append(
-                    el(
-                        "tr",
-                        el(
-                            "td",
-                            el("span", provider_cfg.name, class_="font-medium"),
-                            class_="py-1.5 pr-3",
-                        ),
-                        el(
-                            "td",
-                            provider_cfg.model,
-                            class_="py-1.5 pr-3 text-gray-500 text-sm",
-                        ),
-                        el(
-                            "td",
-                            el(
-                                "span",
-                                "●",
-                                class_="text-red-500 mr-1.5",
-                                aria_hidden="true",
-                            ),
-                            el("span", "error", class_="text-red-600 text-sm"),
-                            class_="py-1.5 pr-3",
-                        ),
-                        el("td", "—", class_="py-1.5 text-gray-400 text-sm"),
+                    (
+                        TableCell(text=provider_cfg.name),
+                        TableCell(text=provider_cfg.model),
+                        TableCell(text="error", tone=Tone.DANGER),
+                        TableCell(text="—"),
                     )
                 )
                 continue
 
             if result.status == HealthStatus.HEALTHY:
-                dot_class = "text-green-500"
                 status_label = "healthy"
-                status_class = "text-green-600"
+                status_tone = Tone.SUCCESS
             elif result.status == HealthStatus.DEGRADED:
-                dot_class = "text-yellow-500"
                 status_label = "degraded"
-                status_class = "text-yellow-600"
+                status_tone = Tone.WARNING
             else:
-                dot_class = "text-red-500"
                 status_label = result.status.value
-                status_class = "text-red-600"
+                status_tone = Tone.DANGER
 
             latency = f"{result.duration_ms:.0f}ms" if result.duration_ms > 0 else "—"
 
             rows.append(
-                el(
-                    "tr",
-                    el(
-                        "td",
-                        el("span", provider_cfg.name, class_="font-medium"),
-                        class_="py-1.5 pr-3",
-                    ),
-                    el(
-                        "td",
-                        provider_cfg.model,
-                        class_="py-1.5 pr-3 text-gray-500 text-sm",
-                    ),
-                    el(
-                        "td",
-                        el(
-                            "span",
-                            "●",
-                            class_=f"{dot_class} mr-1.5",
-                            aria_hidden="true",
-                        ),
-                        el("span", status_label, class_=f"{status_class} text-sm"),
-                        class_="py-1.5 pr-3",
-                    ),
-                    el("td", latency, class_="py-1.5 text-gray-500 text-sm"),
+                (
+                    TableCell(text=provider_cfg.name),
+                    TableCell(text=provider_cfg.model),
+                    TableCell(text=status_label, tone=status_tone),
+                    TableCell(text=latency),
                 )
             )
 
         if not rows:
-            body = el("p", "No providers configured.", class_="text-gray-500 text-sm")
-            return WidgetViewModel(body=str(body))
+            return WidgetViewModel(
+                content=MessageContent(text="No providers configured.")
+            )
 
-        table = el(
-            "table",
-            el(
-                "thead",
-                el(
-                    "tr",
-                    el(
-                        "th",
-                        "Provider",
-                        class_="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1 pr-3",
-                        scope_="col",
-                    ),
-                    el(
-                        "th",
-                        "Model",
-                        class_="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1 pr-3",
-                        scope_="col",
-                    ),
-                    el(
-                        "th",
-                        "Status",
-                        class_="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1 pr-3",
-                        scope_="col",
-                    ),
-                    el(
-                        "th",
-                        "Latency",
-                        class_="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1",
-                        scope_="col",
-                    ),
-                ),
-            ),
-            el("tbody", *rows, class_="divide-y divide-gray-100"),
-            class_="w-full",
+        return WidgetViewModel(
+            content=TableContent(
+                columns=("Provider", "Model", "Status", "Latency"),
+                rows=tuple(rows),
+            )
         )
-
-        return WidgetViewModel(body=str(el("div", table, class_="p-1")))
 
     async def _render_token_usage(self) -> WidgetViewModel:
         if self._container is None:
-            return WidgetViewModel(body="<p>Contributor not booted.</p>")
+            return WidgetViewModel(
+                content=MessageContent(text="Contributor not booted.")
+            )
 
         logger = await self._container.resolve(InferenceLoggerProtocol)
         logs = await logger.get_recent(limit=1000)
@@ -400,81 +314,23 @@ class LlmAdminContributor(BaseAdminContributor):
             by_provider[provider]["count"] += 1
 
         if not by_provider:
-            body = el("p", "No inference data yet.", class_="text-gray-500 text-sm")
-            return WidgetViewModel(body=str(body))
-
-        all_total = sum(v["prompt"] + v["completion"] for v in by_provider.values())
-
-        rows = []
-        for provider, counts in sorted(by_provider.items()):
-            total = counts["prompt"] + counts["completion"]
-            pct = f"({total / all_total * 100:.0f}%)" if all_total else ""
-            rows.append(
-                el(
-                    "tr",
-                    el("td", provider, class_="py-1.5 pr-3 font-medium"),
-                    el(
-                        "td",
-                        f"{counts['prompt']:,}",
-                        class_="py-1.5 pr-3 text-right text-sm tabular-nums",
-                    ),
-                    el(
-                        "td",
-                        f"{counts['completion']:,}",
-                        class_="py-1.5 pr-3 text-right text-sm tabular-nums",
-                    ),
-                    el(
-                        "td",
-                        f"{total:,}",
-                        class_="py-1.5 pr-3 text-right text-sm tabular-nums font-semibold",
-                    ),
-                    el("td", pct, class_="py-1.5 text-gray-400 text-sm"),
-                )
+            return WidgetViewModel(
+                content=MessageContent(text="No inference data yet.")
             )
 
-        table = el(
-            "table",
-            el(
-                "thead",
-                el(
-                    "tr",
-                    el(
-                        "th",
-                        "Provider",
-                        class_="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1 pr-3",
-                        scope_="col",
-                    ),
-                    el(
-                        "th",
-                        "Prompt",
-                        class_="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1 pr-3",
-                        scope_="col",
-                    ),
-                    el(
-                        "th",
-                        "Completion",
-                        class_="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1 pr-3",
-                        scope_="col",
-                    ),
-                    el(
-                        "th",
-                        "Total",
-                        class_="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1 pr-3",
-                        scope_="col",
-                    ),
-                    el(
-                        "th",
-                        "%",
-                        class_="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pb-1",
-                        scope_="col",
-                    ),
-                ),
-            ),
-            el("tbody", *rows, class_="divide-y divide-gray-100"),
-            class_="w-full",
-        )
+        prompt_total = sum(v["prompt"] for v in by_provider.values())
+        completion_total = sum(v["completion"] for v in by_provider.values())
+        total = prompt_total + completion_total
 
-        return WidgetViewModel(body=str(el("div", table, class_="p-1")))
+        return WidgetViewModel(
+            content=StatContent(
+                stats=(
+                    Stat(label="Total Tokens", value=f"{total:,}"),
+                    Stat(label="Prompt Tokens", value=f"{prompt_total:,}"),
+                    Stat(label="Completion Tokens", value=f"{completion_total:,}"),
+                )
+            )
+        )
 
     async def render_health_check(
         self,
