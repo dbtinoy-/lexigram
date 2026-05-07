@@ -4,7 +4,11 @@
 provider exists to serve gateway-routed models (e.g. a third-party
 gateway routing Seedance/other vendor models through one OpenAI-style
 endpoint) that speak one shared submit+poll wire shape behind a model
-name, not to hit one specific hardcoded vendor. The exact endpoint path
+name, not to hit one specific hardcoded vendor. The payload keys follow
+the Seedance/HuiMeng gateway contract (``duration``, ``image_url``,
+``first_frame_image``, ``last_frame_image``, ``reference_images``,
+``reference_videos``, ``reference_audios``, ``generate_audio``,
+``return_last_frame``, ``ratio``, ``seed``) — the exact endpoint path
 and response shape below are illustrative — confirm against the actual
 target API before relying on this in production (design spec §11.5).
 
@@ -23,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 import aiohttp
 
 from lexigram.contracts.core.result import Err, Ok, Result
-from lexigram.contracts.multimedia.types import MediaAsset, VideoRequest
+from lexigram.contracts.multimedia.types import MediaAsset, VideoMode, VideoRequest
 from lexigram.multimedia.video.exceptions import (
     VideoGenerationAuthenticationError,
     VideoGenerationError,
@@ -64,12 +68,10 @@ class OpenAIVideoProvider:
     async def generate(
         self, request: VideoRequest
     ) -> Result[MediaAsset, VideoGenerationError]:
-        payload: dict[str, object] = {
-            "model": self._model,
-            "prompt": request.prompt,
-            "seconds": request.duration_seconds,
-            "size": request.resolution,
-        }
+        try:
+            payload = self._build_payload(request)
+        except VideoGenerationError as exc:
+            return Err(exc)
         try:
             video_id = await self._submit(payload)
         except (aiohttp.ClientError, TimeoutError) as exc:
@@ -96,6 +98,83 @@ class OpenAIVideoProvider:
             )
 
         return Ok(MediaAsset(mime_type="video/mp4", provider="openai", uri=output_url))
+
+    def _build_payload(self, request: VideoRequest) -> dict[str, object]:
+        """Build the gateway payload for a request.
+
+        `request.model` overrides the provider's config-level model. Frame and
+        reference keys use the Seedance/HuiMeng gateway names; optional keys
+        are only emitted when explicitly set (non-default), keeping the
+        payload backward-compatible with plain OpenAI-style endpoints.
+        """
+        payload: dict[str, object] = {
+            "model": request.model or self._model,
+            "prompt": request.prompt,
+            "duration": int(request.duration_seconds),
+            "resolution": request.resolution,
+        }
+        if request.ratio:
+            payload["ratio"] = request.ratio
+
+        mode = request.mode or self._derive_mode(request)
+        if mode == VideoMode.TEXT_TO_VIDEO:
+            return payload
+        if mode == VideoMode.FIRST_FRAME:
+            if not request.image_uri:
+                raise VideoGenerationError("first_frame mode requires image_uri")
+            payload["image_url"] = request.image_uri
+        elif mode == VideoMode.FIRST_LAST_FRAME:
+            if not request.image_uri or not request.last_frame_image:
+                raise VideoGenerationError(
+                    "first_last_frame mode requires image_uri and last_frame_image"
+                )
+            payload["first_frame_image"] = request.image_uri
+            payload["last_frame_image"] = request.last_frame_image
+        else:  # MULTIMODAL_REFERENCE
+            images = [uri for uri in request.reference_images if uri]
+            videos = [uri for uri in request.reference_videos if uri]
+            audios = [uri for uri in request.reference_audios if uri]
+            if not images and not videos:
+                raise VideoGenerationError(
+                    "multimodal_reference mode requires reference_images or reference_videos"
+                )
+            if len(images) > 9:
+                raise VideoGenerationError(
+                    "multimodal_reference mode supports at most 9 reference_images"
+                )
+            if len(videos) > 3:
+                raise VideoGenerationError(
+                    "multimodal_reference mode supports at most 3 reference_videos"
+                )
+            if len(audios) > 3:
+                raise VideoGenerationError(
+                    "multimodal_reference mode supports at most 3 reference_audios"
+                )
+            if images:
+                payload["reference_images"] = images
+            if videos:
+                payload["reference_videos"] = videos
+            if audios:
+                payload["reference_audios"] = audios
+
+        if request.generate_audio:
+            payload["generate_audio"] = True
+        if request.return_last_frame:
+            payload["return_last_frame"] = True
+        if request.seed is not None:
+            payload["seed"] = request.seed
+        return payload
+
+    @staticmethod
+    def _derive_mode(request: VideoRequest) -> VideoMode:
+        """Derive the reference-input mode from which fields are set."""
+        if request.reference_images or request.reference_videos:
+            return VideoMode.MULTIMODAL_REFERENCE
+        if request.last_frame_image:
+            return VideoMode.FIRST_LAST_FRAME
+        if request.image_uri:
+            return VideoMode.FIRST_FRAME
+        return VideoMode.TEXT_TO_VIDEO
 
     async def _submit(self, payload: dict[str, object]) -> str:
         headers = {
