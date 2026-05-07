@@ -30,6 +30,12 @@ _SUPPORTED_SIZES: dict[str, set[str]] = {
 
 _EDIT_CAPABLE_MODELS: set[str] = {"dall-e-2"}
 
+_ASPECT_TO_SIZE: dict[str, str] = {
+    "1:1": "1024x1024",
+    "9:16": "1024x1792",
+    "16:9": "1792x1024",
+}
+
 
 class OpenAIImageProvider:
     """Calls the OpenAI (or an OpenAI-compatible-gateway) Images API.
@@ -108,10 +114,54 @@ class OpenAIImageProvider:
         ):
             return resp.status, await resp.read()
 
+    @staticmethod
+    def _resolve_size(
+        request: ImageRequest,
+    ) -> tuple[str, ImageGenerationError | None]:
+        """Resolve the payload size for a request.
+
+        Precedence: ``extra["size"]`` direct override, then
+        ``extra["aspect_ratio"]`` (dash/full-width-colon forms normalized to
+        ``9:16`` style), then the request's own width/height (legacy path).
+        """
+        size_override = str(request.extra.get("size") or "").strip()
+        if size_override:
+            return size_override, None
+        aspect_ratio = str(request.extra.get("aspect_ratio") or "").strip()
+        if aspect_ratio:
+            normalized = (
+                aspect_ratio.replace("：", ":").replace("-", ":").replace(" ", "")
+            )
+            size = _ASPECT_TO_SIZE.get(normalized)
+            if size is None:
+                return "", ImageGenerationError(
+                    f"unsupported aspect_ratio {aspect_ratio!r}; "
+                    f"supported: {sorted(_ASPECT_TO_SIZE)}"
+                )
+            return size, None
+        return f"{request.width}x{request.height}", None
+
+    @staticmethod
+    def _add_generation_extras(
+        payload: dict[str, object], request: ImageRequest
+    ) -> None:
+        """Add gateway generation extras from ``extra`` when explicitly set."""
+        quality = str(request.extra.get("quality") or "").strip()
+        if quality:
+            payload["quality"] = quality
+        output_format = str(request.extra.get("output_format") or "").strip()
+        if output_format:
+            payload["output_format"] = output_format
+        watermark = request.extra.get("watermark")
+        if watermark is not None:
+            payload["watermark"] = bool(watermark)
+
     async def generate(
         self, request: ImageRequest
     ) -> Result[MediaAsset, ImageGenerationError]:
-        size = f"{request.width}x{request.height}"
+        size, size_error = self._resolve_size(request)
+        if size_error is not None:
+            return Err(size_error)
         supported = _SUPPORTED_SIZES.get(self._model)
         if supported is not None and size not in supported:
             return Err(
@@ -139,6 +189,7 @@ class OpenAIImageProvider:
                     "size": size,
                     "response_format": "b64_json",
                 }
+                self._add_generation_extras(payload, request)
                 status, body = await self._dispatch(self._post, payload)
         except (aiohttp.ClientError, TimeoutError) as exc:
             return Err(ImageGenerationError(f"OpenAI request failed: {exc}", cause=exc))
