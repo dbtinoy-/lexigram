@@ -38,6 +38,34 @@ class TableToolbar(Component):
         for action in self.config.header_actions:
             if not action.is_visible(None):
                 continue
+
+            # Old-style (lexigram.ui) header action: inject default create URL
+            # and render via the shared old/new action bridge.
+            from lexigram.ui import Action as OldActionBase
+
+            if isinstance(action, OldActionBase) and not hasattr(action, "_get_url"):
+                if (
+                    not action.get_url()
+                    and not action.get_hx_get()
+                    and not action.get_hx_post()
+                    and not action.get_hx_delete()
+                ):
+                    prefix = self.config.resource_prefix or ""
+                    action.hx(get=f"{prefix.rstrip('/')}/create")
+
+                from lexigram.admin.ui.organisms.data_table.actions import (
+                    render_action_button,
+                )
+
+                node = render_action_button(
+                    action,
+                    resource_name=self.config.resource_name,
+                    resource_prefix=self.config.resource_prefix,
+                )
+                if node:
+                    header_buttons.append(node)
+                continue
+
             from lexigram.admin.actions.types import ActionContext as _ActionContext
 
             ctx = _ActionContext(

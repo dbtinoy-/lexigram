@@ -9,18 +9,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.admin.actions import CreateAction, DeleteAction, EditAction
 from lexigram.admin.auth.entity import AdminUserEntity
 from lexigram.admin.resources.base import Resource
 from lexigram.admin.schema import BooleanField, DateField, SelectField, TextField
 from lexigram.admin.ui.filters import SelectFilter, ToggleFilter
-from lexigram.ui import (
-    BadgeColumn,
-    CreateAction,
-    DateColumn,
-    DeleteAction,
-    EditAction,
-    TextColumn,
-)
+from lexigram.ui import BadgeColumn, DateColumn, TextColumn
 
 
 class UserResource(Resource):
@@ -77,34 +71,30 @@ class UserResource(Resource):
     ]
 
     # Columns configuration (legacy — kept for backward compat)
-    @property
-    def columns(self) -> list[Any]:  # type: ignore[override]
-        """Define the columns for the user table."""
-        return [
-            TextColumn("name").sortable().searchable().weight("semibold"),
-            TextColumn("email").sortable().searchable().copyable().color("blue"),
-            BadgeColumn(
-                "role",
-                colors={
-                    "admin": "purple",
-                    "moderator": "blue",
-                    "user": "gray",
-                    "guest": "slate",
-                },
-            ),
-            BadgeColumn(
-                "status",
-                colors={
-                    "active": "green",
-                    "inactive": "red",
-                    "pending": "yellow",
-                    "suspended": "orange",
-                },
-            ),
-            DateColumn("created_at").label("Registration Date").datetime().sortable(),  # type: ignore[operator]
-            DateColumn("last_active").datetime().sortable(),
-            ToggleFilter("is_active", label="Active"),
-        ]
+    columns: list[Any] = [
+        TextColumn("name").sortable().searchable().weight("semibold"),
+        TextColumn("email").sortable().searchable().copyable().color("blue"),
+        BadgeColumn(
+            "role",
+            colors={
+                "admin": "purple",
+                "moderator": "blue",
+                "user": "gray",
+                "guest": "slate",
+            },
+        ),
+        BadgeColumn(
+            "status",
+            colors={
+                "active": "green",
+                "inactive": "red",
+                "pending": "yellow",
+                "suspended": "orange",
+            },
+        ),
+        DateColumn("created_at", label="Registration Date").datetime().sortable(),  # type: ignore[operator]
+        DateColumn("last_active").datetime().sortable(),
+    ]
 
     # Filter configuration
     @property
@@ -126,21 +116,15 @@ class UserResource(Resource):
         }
 
     # Actions configuration
-    @property
-    def actions(self) -> list[Any]:  # type: ignore[override]
-        """Define row-level actions."""
-        return [
-            EditAction(),
-            DeleteAction(),
-        ]
+    actions: list[Any] = [
+        EditAction(),
+        DeleteAction(),
+    ]
 
     # Header actions
-    @property
-    def header_actions(self) -> list[Any]:
-        """Define header-level actions."""
-        return [
-            CreateAction(label="Add User"),
-        ]
+    header_actions: list[Any] = [
+        CreateAction(label="Add User"),
+    ]
 
     # Search configuration
     search_fields = ["name", "email"]

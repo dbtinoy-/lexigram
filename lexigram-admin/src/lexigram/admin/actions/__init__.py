@@ -37,8 +37,39 @@ if TYPE_CHECKING:
         RowAction,
         RowActionManager,
     )
+    from lexigram.admin.actions.standard import (
+        CloneAction,
+        CreateAction,
+        DeleteAction,
+        DeleteBulkAction,
+        EditAction,
+        ExportAction,
+        ExportBulkAction,
+        ImportAction,
+        ImportBulkAction,
+        PurgeAction,
+        PurgeBulkAction,
+        RestoreAction,
+        RestoreBulkAction,
+        ViewAction,
+    )
 
 _EXPORTS = {
+    # standard
+    "EditAction": "lexigram.admin.actions.standard",
+    "ViewAction": "lexigram.admin.actions.standard",
+    "DeleteAction": "lexigram.admin.actions.standard",
+    "CreateAction": "lexigram.admin.actions.standard",
+    "DeleteBulkAction": "lexigram.admin.actions.standard",
+    "PurgeBulkAction": "lexigram.admin.actions.standard",
+    "RestoreBulkAction": "lexigram.admin.actions.standard",
+    "CloneAction": "lexigram.admin.actions.standard",
+    "RestoreAction": "lexigram.admin.actions.standard",
+    "PurgeAction": "lexigram.admin.actions.standard",
+    "ExportAction": "lexigram.admin.actions.standard",
+    "ExportBulkAction": "lexigram.admin.actions.standard",
+    "ImportAction": "lexigram.admin.actions.standard",
+    "ImportBulkAction": "lexigram.admin.actions.standard",
     # audited
     "AuditedAction": "lexigram.admin.actions.audited",
     # polymorphic

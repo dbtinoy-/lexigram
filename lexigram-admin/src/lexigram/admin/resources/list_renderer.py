@@ -427,6 +427,8 @@ class ListRenderer:
 
     def _build_columns(self, source_columns, items) -> Any:
         """Build column definitions for the data table."""
+        from lexigram.admin.ui.filters.base import Filter
+
         columns = []
         # Auto-generate columns if missing (post-fetch)
         if not source_columns and items:
@@ -447,6 +449,8 @@ class ListRenderer:
         else:
             # Convert or preserve columns
             for col in source_columns:
+                if isinstance(col, Filter):
+                    continue
                 if hasattr(col, "render") or isinstance(col, OrgColumn):
                     # Already a component
                     columns.append(col)
