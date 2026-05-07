@@ -42,8 +42,8 @@ from lexigram.contracts.multimedia.types import (
     TransitionSpec,
     Trim,
     TTSRequest,
-    VideoOperation,
     VideoMode,
+    VideoOperation,
     VideoRequest,
 )
 
