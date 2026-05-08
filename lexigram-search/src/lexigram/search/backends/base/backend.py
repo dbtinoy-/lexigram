@@ -13,6 +13,7 @@ from abc import abstractmethod
 from typing import Any
 
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
+from lexigram.contracts.domain.specification import SpecificationProtocol
 from lexigram.logging import get_logger
 from lexigram.primitives.data import AbstractReadOnlyRepository
 from lexigram.result import Result
@@ -112,7 +113,7 @@ class SearchBackendBase(AbstractReadOnlyRepository[dict, str]):
 
     async def find_by_spec(
         self,
-        spec,
+        spec: SpecificationProtocol[dict],
     ) -> list[dict]:
         """Return documents satisfying *spec* (in-memory filter).
 

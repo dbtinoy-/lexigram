@@ -188,6 +188,8 @@ show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },
+    { module = "motor.motor_asyncio", ignore_missing_imports = true },
+    { module = "pymongo", ignore_missing_imports = true },
 ]
 
 [tool.uv.sources.lexigram]

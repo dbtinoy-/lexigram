@@ -15,7 +15,7 @@ class Radio(AbstractInput):
         name: str,
         choices: list[tuple[str, str]],
         inline: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.choices = choices
@@ -82,7 +82,7 @@ class MultiSelect(AbstractInput):
         name: str,
         choices: list[tuple[str, str]],
         placeholder: str = "Select options...",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.choices = choices
@@ -266,7 +266,7 @@ class CheckboxList(AbstractInput):
         name: str,
         choices: list[tuple[str, str]],
         inline: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.choices = choices

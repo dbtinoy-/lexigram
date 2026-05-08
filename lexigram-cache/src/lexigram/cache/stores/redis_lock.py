@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from types import EllipsisType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -96,7 +97,7 @@ class RedisLockStore:
         self,
         resource: str,
         ttl: int = 30,
-        owner: str = ...,  # type: ignore[assignment]
+        owner: str | EllipsisType = ...,
     ) -> str | None:
         """Acquire a lock.
 
@@ -269,8 +270,6 @@ class RedisLockStore:
 
             raise LockAcquisitionError(resource, "Resource is already locked")
 
-        # mypy: `acquire` can return bool (legacy) or str; ensure we treat lock_id as str here
-        lock_id = cast("str", lock_id)
         logger.info("locked: acquired resource=%s lock_id=%s", resource, lock_id)
         try:
             yield lock_id

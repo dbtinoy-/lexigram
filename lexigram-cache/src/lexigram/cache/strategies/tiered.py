@@ -8,7 +8,7 @@ to optimize for both speed and consistency.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from lexigram.cache.service.core import CacheService
 from lexigram.logging import get_logger
@@ -59,7 +59,7 @@ class TieredCache(Generic[T]):
         value = await self.cache_service.get(key, backend=self.l1_backend)
         if value is not None:
             logger.debug("TieredCache: L1 hit for key '%s'", key)
-            return value
+            return cast("T | None", value)
 
         # 2. Try L2
         value = await self.cache_service.get(key, backend=self.l2_backend)
@@ -71,9 +71,9 @@ class TieredCache(Generic[T]):
             # or the service default if we set it.
             # In a more advanced version, we'd store the expiration time in the value.
             await self.cache_service.set(key, value, backend=self.l1_backend)
-            return value
+            return cast("T | None", value)
 
-        return default
+        return cast("T | None", default)
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """Set value in both L1 and L2."""
@@ -143,4 +143,4 @@ class TieredCache(Generic[T]):
 
         # Cache in both
         await self.set(key, value, ttl=ttl)
-        return value
+        return cast("T", value)

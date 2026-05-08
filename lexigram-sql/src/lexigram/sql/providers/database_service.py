@@ -27,7 +27,7 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from lexigram.sql.config import DatabaseConfig
 from lexigram.sql.logging import ConsoleQueryLogger
@@ -180,7 +180,7 @@ class DatabaseService(_ConnectionMixin, _QueryMixin, _HealthMixin):
     def database_type(self) -> str:
         """Return the type of database (e.g., 'postgres', 'sqlite')."""
         if self.db_provider and hasattr(self.db_provider, "database_type"):
-            return self.db_provider.database_type
+            return cast("str", self.db_provider.database_type)
 
         # Fallback to config inference if provider not yet started
         return self._infer_provider_type(

@@ -11,6 +11,21 @@ PYTEST     := $(UV) run pytest
 RUFF       := $(UV) run ruff
 MYPY       := $(UV) run mypy
 CORE_SRC   := lexigram/src/
+WEB_DIR    := lexigram-web
+
+# Extension packages that pass mypy with their own per-package config.
+# Add packages here one by one as they are cleaned up (see `make type-pkg`).
+TYPED_PKGS := lexigram-ai-agents lexigram-ai-evaluation lexigram-ai-feedback \
+              lexigram-ai-guard lexigram-ai-llm lexigram-ai-mcp \
+              lexigram-ai-memory \
+              lexigram-ai-observability lexigram-ai-prompt \
+              lexigram-ai-relay-gateway lexigram-ai-session \
+              lexigram-ai-skills lexigram-ai-workers \
+              lexigram-audit lexigram-events lexigram-monitor \
+              lexigram-notification lexigram-nosql lexigram-queue \
+              lexigram-ui lexigram-vector lexigram-workflow \
+              lexigram-cache lexigram-auth lexigram-search \
+              lexigram-sql lexigram-testing lexigram-webhook
 
 # ---------------------------------------------------------------------------
 # Targets
@@ -44,8 +59,14 @@ lint-boundaries:  ## Enforce import boundary contracts (namespace-aware import-l
 	$(UV) run python tools/lint_imports.py
 
 .PHONY: type
-type:  ## Run mypy on the core package
+type:  ## Run mypy on core, lexigram-web and all TYPED_PKGS (each with its own pyproject config)
 	$(MYPY) $(CORE_SRC)
+	cd $(WEB_DIR) && $(MYPY) src/lexigram/web
+	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
+
+.PHONY: type-pkg
+type-pkg:  ## Run mypy on one package with its own config: make type-pkg PKG=lexigram-ai-llm
+	cd $(PKG) && $(MYPY) src
 
 .PHONY: test
 test:  ## Run the full test suite
@@ -69,7 +90,9 @@ ci:  ## Full CI pipeline: lint + boundary-check + type-check + tests with covera
 	  && $(RUFF) format --check . \
 	  && $(UV) run python tools/lint_imports.py \
 	  && $(MYPY) $(CORE_SRC) \
-	  && $(PYTEST) --tb=short --cov-fail-under=80
+	  && cd $(WEB_DIR) && $(MYPY) src/lexigram/web
+	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
+	$(PYTEST) --tb=short --cov-fail-under=80
 
 .PHONY: test-integration
 test-integration:  ## Run integration tests (requires Docker Compose services)
@@ -175,8 +198,9 @@ fmt:  ## Format code (no lint check)
 	$(RUFF) format .
 
 .PHONY: check
-check:  ## Quick pre-commit check: lint + format + type (no tests)
-	$(RUFF) check . && $(RUFF) format --check . && $(MYPY) $(CORE_SRC)
+check:  ## Quick pre-commit check: lint + format + type (core + web + TYPED_PKGS, no tests)
+	$(RUFF) check . && $(RUFF) format --check . && $(MYPY) $(CORE_SRC) && cd $(WEB_DIR) && $(MYPY) src/lexigram/web
+	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
 
 PKG ?= lexigram
 .PHONY: test-pkg

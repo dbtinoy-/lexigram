@@ -7,8 +7,10 @@ This implementation requires a Redis client.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 import contextlib
 from datetime import UTC, datetime
+from typing import Any
 import uuid
 
 from lexigram.cache import constants as const
@@ -28,7 +30,7 @@ class DistributedLockProtocol:
 
     def __init__(
         self,
-        redis_client,
+        redis_client: Any,
         key: str,
         ttl: int = const.DEFAULT_LOCK_TTL,
         renewal_interval: int | None = None,
@@ -173,7 +175,7 @@ class DistributedLockProtocol:
             logger.error("lock_renewal_failed", key=self.key, error=str(e))
 
     @contextlib.asynccontextmanager
-    async def lock(self):
+    async def lock(self) -> AsyncIterator[DistributedLockProtocol]:
         """Async context manager for lock acquisition.
 
         Usage:

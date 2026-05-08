@@ -90,9 +90,6 @@ class AutoRenewingLock:
         """Background loop to renew lock TTL."""
         while not self._stop_renew:
             try:
-                if self._stop_renew:
-                    break
-
                 await asyncio.sleep(self._renew_interval)
 
                 success = await self._extend_lock()

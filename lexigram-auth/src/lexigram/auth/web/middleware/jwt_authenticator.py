@@ -17,9 +17,9 @@ class JwtAuthenticator:
     def __init__(
         self,
         auth_provider: AuthProviderProtocol,
-        config=None,
+        config: Any | None = None,
         logger: Logger | None = None,
-    ):
+    ) -> None:
         self.auth_provider = auth_provider
         from lexigram.auth.web.middleware.token_extractor import TokenExtractor
 

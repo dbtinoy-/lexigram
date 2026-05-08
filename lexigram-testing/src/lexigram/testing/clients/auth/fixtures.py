@@ -6,7 +6,7 @@ functionality, integrating with the lexigram.testing infrastructure.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -148,12 +148,15 @@ async def created_test_user_admin(
     Returns:
         AuthTestUser: Created admin user
     """
-    return await auth_test_client.create_test_user(
-        username=test_user_admin.username,
-        email=test_user_admin.email,
-        password=test_user_admin.password,
-        roles=test_user_admin.roles,
-        permissions=test_user_admin.permissions,
+    return cast(
+        "AuthTestUser",
+        await auth_test_client.create_test_user(
+            username=test_user_admin.username,
+            email=test_user_admin.email,
+            password=test_user_admin.password,
+            roles=test_user_admin.roles,
+            permissions=test_user_admin.permissions,
+        ),
     )
 
 
@@ -171,12 +174,15 @@ async def created_test_user_regular(
     Returns:
         AuthTestUser: Created regular user
     """
-    return await auth_test_client.create_test_user(
-        username=test_user_regular.username,
-        email=test_user_regular.email,
-        password=test_user_regular.password,
-        roles=test_user_regular.roles,
-        permissions=test_user_regular.permissions,
+    return cast(
+        "AuthTestUser",
+        await auth_test_client.create_test_user(
+            username=test_user_regular.username,
+            email=test_user_regular.email,
+            password=test_user_regular.password,
+            roles=test_user_regular.roles,
+            permissions=test_user_regular.permissions,
+        ),
     )
 
 
@@ -194,12 +200,15 @@ async def created_test_user_moderator(
     Returns:
         AuthTestUser: Created moderator user
     """
-    return await auth_test_client.create_test_user(
-        username=test_user_moderator.username,
-        email=test_user_moderator.email,
-        password=test_user_moderator.password,
-        roles=test_user_moderator.roles,
-        permissions=test_user_moderator.permissions,
+    return cast(
+        "AuthTestUser",
+        await auth_test_client.create_test_user(
+            username=test_user_moderator.username,
+            email=test_user_moderator.email,
+            password=test_user_moderator.password,
+            roles=test_user_moderator.roles,
+            permissions=test_user_moderator.permissions,
+        ),
     )
 
 
@@ -217,13 +226,16 @@ async def created_test_user_inactive(
     Returns:
         AuthTestUser: Created inactive user
     """
-    return await auth_test_client.create_test_user(
-        username=test_user_inactive.username,
-        email=test_user_inactive.email,
-        password=test_user_inactive.password,
-        roles=test_user_inactive.roles,
-        permissions=test_user_inactive.permissions,
-        is_active=test_user_inactive.is_active,
+    return cast(
+        "AuthTestUser",
+        await auth_test_client.create_test_user(
+            username=test_user_inactive.username,
+            email=test_user_inactive.email,
+            password=test_user_inactive.password,
+            roles=test_user_inactive.roles,
+            permissions=test_user_inactive.permissions,
+            is_active=test_user_inactive.is_active,
+        ),
     )
 
 
@@ -241,13 +253,16 @@ async def created_test_user_unverified(
     Returns:
         AuthTestUser: Created unverified user
     """
-    return await auth_test_client.create_test_user(
-        username=test_user_unverified.username,
-        email=test_user_unverified.email,
-        password=test_user_unverified.password,
-        roles=test_user_unverified.roles,
-        permissions=test_user_unverified.permissions,
-        is_verified=test_user_unverified.is_verified,
+    return cast(
+        "AuthTestUser",
+        await auth_test_client.create_test_user(
+            username=test_user_unverified.username,
+            email=test_user_unverified.email,
+            password=test_user_unverified.password,
+            roles=test_user_unverified.roles,
+            permissions=test_user_unverified.permissions,
+            is_verified=test_user_unverified.is_verified,
+        ),
     )
 
 
@@ -271,7 +286,7 @@ async def admin_token(
         created_test_user_admin.password,
     )
     assert token is not None
-    return token
+    return cast("AuthTestToken", token)
 
 
 @async_fixture
@@ -293,7 +308,7 @@ async def user_token(
         created_test_user_regular.password,
     )
     assert token is not None
-    return token
+    return cast("AuthTestToken", token)
 
 
 @async_fixture
@@ -315,7 +330,7 @@ async def moderator_token(
         created_test_user_moderator.password,
     )
     assert token is not None
-    return token
+    return cast("AuthTestToken", token)
 
 
 # Authorized request fixtures
@@ -333,7 +348,10 @@ async def admin_request_context(
     Returns:
         Dict: Request context with admin authorization
     """
-    return await auth_test_client.create_authorized_request(created_test_user_admin)
+    return cast(
+        "dict[Any, Any]",
+        await auth_test_client.create_authorized_request(created_test_user_admin),
+    )
 
 
 @async_fixture
@@ -350,7 +368,10 @@ async def user_request_context(
     Returns:
         Dict: Request context with user authorization
     """
-    return await auth_test_client.create_authorized_request(created_test_user_regular)
+    return cast(
+        "dict[Any, Any]",
+        await auth_test_client.create_authorized_request(created_test_user_regular),
+    )
 
 
 @async_fixture
@@ -367,7 +388,10 @@ async def moderator_request_context(
     Returns:
         Dict: Request context with moderator authorization
     """
-    return await auth_test_client.create_authorized_request(created_test_user_moderator)
+    return cast(
+        "dict[Any, Any]",
+        await auth_test_client.create_authorized_request(created_test_user_moderator),
+    )
 
 
 # Bulk user fixtures

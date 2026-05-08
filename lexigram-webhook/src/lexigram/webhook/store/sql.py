@@ -11,7 +11,7 @@ from lexigram.contracts.webhook.types import (
     DeliveryStatus,
     WebhookSubscription,
 )
-from lexigram.logging import get_logger
+from lexigram.logging.factory import get_logger
 import lexigram.serialization as json
 
 __all__ = ["SqlWebhookDeliveryStore", "SqlWebhookSubscriptionStore"]

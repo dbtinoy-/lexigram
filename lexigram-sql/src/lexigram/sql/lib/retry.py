@@ -8,21 +8,24 @@ import ``retry_call`` from here.  New code should import directly from
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from lexigram.sql.resilience.core import retry_call as retry_call
 
 
-def retry(config=None):
+def retry(config: Any = None) -> Callable[..., Any]:
     """Retry decorator — delegates to resilience.core.retry_call.
 
     Args:
         config: :class:`~lexigram.contracts.resilience.RetryConfig` or ``None``.
     """
 
-    def decorator(func):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         import functools
 
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             return await retry_call(func, *args, config=config, **kwargs)
 
         return wrapper

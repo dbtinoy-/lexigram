@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 __all__ = ["FakeConfig"]
 
@@ -38,22 +38,22 @@ class FakeConfig:
     @property
     def is_production(self) -> bool:
         """Return False for test environments."""
-        return self.environment.value == "production"
+        return cast("bool", self.environment.value == "production")
 
     @property
     def is_development(self) -> bool:
         """Return whether this is development."""
-        return self.environment.value == "development"
+        return cast("bool", self.environment.value == "development")
 
     @property
     def is_testing(self) -> bool:
         """Return whether this is testing."""
-        return self.environment.value == "test"
+        return cast("bool", self.environment.value == "test")
 
     @property
     def is_staging(self) -> bool:
         """Return whether this is staging."""
-        return self.environment.value == "staging"
+        return cast("bool", self.environment.value == "staging")
 
     def has_section(self, name: str) -> bool:
         """Check whether a configuration section exists."""

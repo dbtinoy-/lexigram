@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 import uuid
 
 from lexigram.domain import DomainModel
@@ -93,54 +93,69 @@ class User(DomainModel):
         """Return a new User with the given role added."""
         if role in self.roles:
             return self
-        return self.model_copy(
-            update={
-                "roles": [*self.roles, role],
-                "updated_at": datetime.now(UTC),
-            }
+        return cast(
+            "User",
+            self.model_copy(
+                update={
+                    "roles": [*self.roles, role],
+                    "updated_at": datetime.now(UTC),
+                }
+            ),
         )
 
     def without_role(self, role: str) -> User:
         """Return a new User with the given role removed."""
         if role not in self.roles:
             return self
-        return self.model_copy(
-            update={
-                "roles": [r for r in self.roles if r != role],
-                "updated_at": datetime.now(UTC),
-            }
+        return cast(
+            "User",
+            self.model_copy(
+                update={
+                    "roles": [r for r in self.roles if r != role],
+                    "updated_at": datetime.now(UTC),
+                }
+            ),
         )
 
     def with_permission(self, permission: str) -> User:
         """Return a new User with the given permission added."""
         if permission in self.permissions:
             return self
-        return self.model_copy(
-            update={
-                "permissions": [*self.permissions, permission],
-                "updated_at": datetime.now(UTC),
-            }
+        return cast(
+            "User",
+            self.model_copy(
+                update={
+                    "permissions": [*self.permissions, permission],
+                    "updated_at": datetime.now(UTC),
+                }
+            ),
         )
 
     def without_permission(self, permission: str) -> User:
         """Return a new User with the given permission removed."""
         if permission not in self.permissions:
             return self
-        return self.model_copy(
-            update={
-                "permissions": [p for p in self.permissions if p != permission],
-                "updated_at": datetime.now(UTC),
-            }
+        return cast(
+            "User",
+            self.model_copy(
+                update={
+                    "permissions": [p for p in self.permissions if p != permission],
+                    "updated_at": datetime.now(UTC),
+                }
+            ),
         )
 
     def record_login(self) -> User:
         """Return a new User with the current login recorded."""
-        return self.model_copy(
-            update={
-                "last_login_at": datetime.now(UTC),
-                "login_count": self.login_count + 1,
-                "updated_at": datetime.now(UTC),
-            }
+        return cast(
+            "User",
+            self.model_copy(
+                update={
+                    "last_login_at": datetime.now(UTC),
+                    "login_count": self.login_count + 1,
+                    "updated_at": datetime.now(UTC),
+                }
+            ),
         )
 
     def to_public_dict(self) -> dict[str, Any]:
@@ -153,7 +168,7 @@ class User(DomainModel):
         # Handle user_id/id alias if needed (DomainModel often handles aliases if configured)
         if "user_id" not in data and "id" in data:
             data["user_id"] = data["id"]
-        return cls.model_validate(data)
+        return cast("User", cls.model_validate(data))
 
 
 __all__ = [

@@ -18,7 +18,7 @@ class BelongsTo(Select):
         name: str,
         resource: str,
         searchable: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.resource = resource
@@ -45,7 +45,7 @@ class MorphTo(AbstractInput):
         types: list[tuple[str, str]],
         options_url: str,
         type_value: Any = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.type_name = type_name

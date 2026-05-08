@@ -25,7 +25,7 @@ class Icon(Component):
         class_name: str = "",
         aria_hidden: bool = True,
         aria_label: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(name=name, size=size, class_name=class_name, **props)
         self.name = name

@@ -6,7 +6,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.primitives.data import ReadOnlyMapper
 from lexigram.search.exceptions import TransformationError
@@ -168,30 +168,30 @@ class ValueTransformer:
 
 
 # Common transformation functions
-def lowercase_text(value: str) -> str:
+def lowercase_text(value: Any) -> str:
     """Convert text to lowercase"""
     if isinstance(value, str):
         return value.lower()
-    return value
+    return cast("str", value)
 
 
-def trim_text(value: str) -> str:
+def trim_text(value: Any) -> str:
     """Trim whitespace from text"""
     if isinstance(value, str):
         return value.strip()
-    return value
+    return cast("str", value)
 
 
-def normalize_whitespace(value: str) -> str:
+def normalize_whitespace(value: Any) -> str:
     """Normalize whitespace in text"""
     if isinstance(value, str):
         import re
 
         return re.sub(r"\s+", " ", value.strip())
-    return value
+    return cast("str", value)
 
 
-def extract_keywords(value: str, min_length: int = 3) -> list[str]:
+def extract_keywords(value: Any, min_length: int = 3) -> list[str]:
     """Extract keywords from text"""
     if isinstance(value, str):
         import re
@@ -201,7 +201,7 @@ def extract_keywords(value: str, min_length: int = 3) -> list[str]:
     return []
 
 
-def format_date(value: str | datetime, format_str: str = "%Y-%m-%d") -> str:
+def format_date(value: Any, format_str: str = "%Y-%m-%d") -> str:
     """Format date value"""
     if isinstance(value, datetime):
         return value.strftime(format_str)
@@ -215,14 +215,14 @@ def format_date(value: str | datetime, format_str: str = "%Y-%m-%d") -> str:
     return str(value)
 
 
-def join_list(value: list[Any], separator: str = " ") -> str:
+def join_list(value: Any, separator: str = " ") -> str:
     """Join list items into string"""
     if isinstance(value, list):
         return separator.join(str(item) for item in value)
     return str(value)
 
 
-def split_text(value: str, separator: str = ",") -> list[str]:
+def split_text(value: Any, separator: str = ",") -> list[str]:
     """Split text into list"""
     if isinstance(value, str):
         return list(filter(None, map(str.strip, value.split(separator))))

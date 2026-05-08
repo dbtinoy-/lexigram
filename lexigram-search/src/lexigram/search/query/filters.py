@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 import re
 from re import Pattern
-from typing import Any
+from typing import Any, cast
 
 from lexigram.search.exceptions import SearchValidationError
 
@@ -94,7 +94,6 @@ class FilterValidator:
                 return self._validate_range(value, rule)
             if rule.type == FilterType.EXISTS:
                 return self._validate_exists(value, rule)
-            return value
         except Exception as e:
             raise SearchValidationError(
                 f"Validation failed for field '{field}': {e}"
@@ -140,7 +139,7 @@ class FilterValidator:
         if rule.max_value is not None and value > rule.max_value:
             raise SearchValidationError(f"Value must not exceed {rule.max_value}")
 
-        return value
+        return cast("int | float", value)
 
     def _validate_date(self, value: Any, rule: FilterRule) -> str:
         """Validate date field"""
@@ -284,39 +283,39 @@ class FilterProcessor:
 
 
 # Common filter transformation functions
-def lowercase_filter(value: str) -> str:
+def lowercase_filter(value: Any) -> str:
     """Convert string filter to lowercase"""
     if isinstance(value, str):
         return value.lower()
-    return value
+    return cast("str", value)
 
 
-def trim_filter(value: str) -> str:
+def trim_filter(value: Any) -> str:
     """Trim whitespace from string filter"""
     if isinstance(value, str):
         return value.strip()
-    return value
+    return cast("str", value)
 
 
 def split_filter(separator: str = ",") -> Callable[[str], list[str]]:
     """Create a filter that splits string by separator"""
 
-    def transform(value: str) -> list[str]:
+    def transform(value: Any) -> list[str]:
         if isinstance(value, str):
             return list(filter(None, map(str.strip, value.split(separator))))
-        return value
+        return cast("list[str]", value)
 
     return transform
 
 
-def date_range_filter(value: str) -> dict[str, str]:
+def date_range_filter(value: Any) -> dict[str, str]:
     """Convert date range string to range object"""
     if isinstance(value, str):
         parts = value.split(" to ")
         if len(parts) == 2:
             return {"gte": parts[0], "lte": parts[1]}
         return {"gte": value, "lte": value}
-    return value
+    return cast("dict[str, str]", value)
 
 
 __all__ = [

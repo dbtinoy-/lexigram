@@ -241,7 +241,7 @@ class InMemoryEventBus(EventBusProtocol):
 
         for _priority, handler in handlers:
             # bind handler to default arg to avoid late-binding closure issue
-            async def _invoke(_handler=handler) -> None:
+            async def _invoke(_handler: Any = handler) -> None:
                 if callable(_handler) and not hasattr(_handler, "handle"):
                     coro = _handler(event)
                 else:

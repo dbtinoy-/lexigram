@@ -18,7 +18,7 @@ class ActionButton(Component):
         icon: str | None = None,
         icon_position: Literal["left", "right"] = "left",
         size: Literal["sm", "md", "lg"] = "md",
-        **props,
+        **props: Any,
     ) -> None:
         """
         Initialize action button.

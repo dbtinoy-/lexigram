@@ -76,7 +76,7 @@ class QueryBuilder(Component):
         fields: list[dict[str, Any]] | None = None,
         operators: tuple[str, ...] | None = None,
         max_depth: int = 4,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             name=name,

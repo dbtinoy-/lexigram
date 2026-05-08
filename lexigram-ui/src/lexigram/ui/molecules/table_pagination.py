@@ -29,7 +29,7 @@ class TablePagination(Component):
         base_url: str = "",
         state: TableState | None = None,
         show_size_selector: bool = True,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__()
         self.state = state

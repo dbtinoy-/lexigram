@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
@@ -40,7 +40,7 @@ class _HealthMixin:
             if status_obj is not None:
                 return getattr(status_obj, "value", str(status_obj))
             if isinstance(h, dict):
-                return h.get("status", "unknown")
+                return cast("str", h.get("status", "unknown"))
             return "unknown"
 
         def get_error(h: Any) -> str | None:
@@ -48,7 +48,7 @@ class _HealthMixin:
                 return None
             err = getattr(h, "error", None)
             if err is not None:
-                return err
+                return cast("str | None", err)
             return h.get("error") if isinstance(h, dict) else None
 
         def get_details(h: Any) -> dict[str, Any]:
@@ -56,7 +56,7 @@ class _HealthMixin:
                 return {}
             det = getattr(h, "details", None)
             if det is not None:
-                return det
+                return cast("dict[str, Any]", det)
             return h.get("details", {}) if isinstance(h, dict) else {}
 
         if self.db_provider and hasattr(self.db_provider, "health_check"):  # type: ignore[attr-defined]
@@ -154,5 +154,8 @@ class _HealthMixin:
         if not self.db_provider:  # type: ignore[attr-defined]
             await self.boot()  # type: ignore[attr-defined]
         if hasattr(self.db_provider, "table_exists"):  # type: ignore[attr-defined]
-            return await self.db_provider.table_exists(table_name)  # type: ignore[attr-defined]
+            return cast(
+                "bool",
+                await self.db_provider.table_exists(table_name),  # type: ignore[attr-defined]
+            )
         return False

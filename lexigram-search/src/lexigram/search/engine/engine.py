@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from lexigram.contracts import SearchEngineProtocol
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
@@ -78,7 +78,7 @@ class SearchEngine(ABC):
         index: str,
         document_id: str,
         document: dict[str, Any],
-        **kwargs,
+        **kwargs: Any,
     ) -> bool:
         """Index a single document"""
 
@@ -87,7 +87,7 @@ class SearchEngine(ABC):
         self,
         index: str,
         documents: list[tuple[str, dict[str, Any]]],
-        **kwargs,
+        **kwargs: Any,
     ) -> int:
         """Index multiple documents in a single bulk operation.
 
@@ -109,12 +109,14 @@ class SearchEngine(ABC):
         self,
         index: str,
         document_id: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any] | None:
         """Retrieve a document by ID"""
 
     @abstractmethod
-    async def delete_document(self, index: str, document_id: str, **kwargs) -> bool:
+    async def delete_document(
+        self, index: str, document_id: str, **kwargs: Any
+    ) -> bool:
         """Delete a document by ID"""
 
     @abstractmethod
@@ -122,7 +124,7 @@ class SearchEngine(ABC):
         self,
         index: str,
         operations: list[dict[str, Any]],
-        **kwargs,
+        **kwargs: Any,
     ) -> BulkResult:
         """Execute bulk operations"""
 
@@ -132,32 +134,32 @@ class SearchEngine(ABC):
         index: str,
         mappings: dict[str, Any] | None = None,
         settings: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> bool:
         """Create an index"""
 
     @abstractmethod
-    async def delete_index(self, index: str, **kwargs) -> bool:
+    async def delete_index(self, index: str, **kwargs: Any) -> bool:
         """Delete an index"""
 
     @abstractmethod
-    async def index_exists(self, index: str, **kwargs) -> bool:
+    async def index_exists(self, index: str, **kwargs: Any) -> bool:
         """Check if index exists"""
 
     @abstractmethod
-    async def get_index_stats(self, index: str, **kwargs) -> IndexStats:
+    async def get_index_stats(self, index: str, **kwargs: Any) -> IndexStats:
         """Get index statistics"""
 
     @abstractmethod
-    async def rename_index(self, source: str, target: str, **kwargs) -> bool:
+    async def rename_index(self, source: str, target: str, **kwargs: Any) -> bool:
         """Rename/move an index from source to target"""
 
     @abstractmethod
-    async def refresh_index(self, index: str, **kwargs) -> bool:
+    async def refresh_index(self, index: str, **kwargs: Any) -> bool:
         """Refresh an index"""
 
     @abstractmethod
-    async def flush_index(self, index: str, **kwargs) -> bool:
+    async def flush_index(self, index: str, **kwargs: Any) -> bool:
         """Flush an index"""
 
     @abstractmethod
@@ -195,7 +197,7 @@ class DefaultSearchEngine(SearchEngine):
         index: str,
         document_id: str,
         document: dict[str, Any],
-        **kwargs,
+        **kwargs: Any,
     ) -> bool:
         """Index a single document"""
         try:
@@ -212,7 +214,7 @@ class DefaultSearchEngine(SearchEngine):
         self,
         index: str,
         documents: list[tuple[str, dict[str, Any]]],
-        **kwargs,
+        **kwargs: Any,
     ) -> int:
         """Index multiple documents using the backend's bulk operation API.
 
@@ -247,15 +249,20 @@ class DefaultSearchEngine(SearchEngine):
         self,
         index: str,
         document_id: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any] | None:
         """Retrieve a document by ID"""
         try:
-            return await self.backend.get_document(index, document_id, **kwargs)  # type: ignore[attr-defined]
+            return cast(
+                "dict[str, Any] | None",
+                await self.backend.get_document(index, document_id, **kwargs),  # type: ignore[attr-defined]
+            )
         except Exception as e:
             raise BackendError(f"Document retrieval failed: {e}") from e
 
-    async def delete_document(self, index: str, document_id: str, **kwargs) -> bool:
+    async def delete_document(
+        self, index: str, document_id: str, **kwargs: Any
+    ) -> bool:
         """Delete a document by ID"""
         try:
             await self.backend.delete_document(index, document_id, **kwargs)
@@ -267,11 +274,14 @@ class DefaultSearchEngine(SearchEngine):
         self,
         index: str,
         operations: list[dict[str, Any]],
-        **kwargs,
+        **kwargs: Any,
     ) -> BulkResult:
         """Execute bulk operations"""
         try:
-            return await self.backend.bulk_operation(index, operations, **kwargs)  # type: ignore[attr-defined]
+            return cast(
+                "BulkResult",
+                await self.backend.bulk_operation(index, operations, **kwargs),  # type: ignore[attr-defined]
+            )
         except Exception as e:
             raise BackendError(f"Bulk operation failed: {e}") from e
 
@@ -280,36 +290,45 @@ class DefaultSearchEngine(SearchEngine):
         index: str,
         mappings: dict[str, Any] | None = None,
         settings: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> bool:
         """Create an index"""
         try:
-            return await self.backend.create_index(index, mappings, settings, **kwargs)  # type: ignore[attr-defined]
+            return cast(
+                "bool",
+                await self.backend.create_index(index, mappings, settings, **kwargs),  # type: ignore[attr-defined]
+            )
         except Exception as e:
             raise BackendError(f"Index creation failed: {e}") from e
 
-    async def delete_index(self, index: str, **kwargs) -> bool:
+    async def delete_index(self, index: str, **kwargs: Any) -> bool:
         """Delete an index"""
         try:
-            return await self.backend.delete_index(index, **kwargs)  # type: ignore[attr-defined]
+            return cast(
+                "bool",
+                await self.backend.delete_index(index, **kwargs),  # type: ignore[attr-defined]
+            )
         except Exception as e:
             raise BackendError(f"Index deletion failed: {e}") from e
 
-    async def index_exists(self, index: str, **kwargs) -> bool:
+    async def index_exists(self, index: str, **kwargs: Any) -> bool:
         """Check if index exists"""
         try:
-            return await self.backend.index_exists(index, **kwargs)  # type: ignore[attr-defined]
+            return cast(
+                "bool",
+                await self.backend.index_exists(index, **kwargs),  # type: ignore[attr-defined]
+            )
         except Exception as e:
             raise BackendError(f"Index existence check failed: {e}") from e
 
-    async def get_index_stats(self, index: str, **kwargs) -> IndexStats:
+    async def get_index_stats(self, index: str, **kwargs: Any) -> IndexStats:
         """Get index statistics"""
         try:
             return await self.backend.get_index_stats(index, **kwargs)  # type: ignore[attr-defined]
         except Exception as e:
             raise BackendError(f"Index stats retrieval failed: {e}") from e
 
-    async def rename_index(self, source: str, target: str, **kwargs) -> bool:
+    async def rename_index(self, source: str, target: str, **kwargs: Any) -> bool:
         """Rename/move an index from source to target.
 
         This is a default implementation that copies data from source to target.
@@ -341,17 +360,23 @@ class DefaultSearchEngine(SearchEngine):
         except Exception as e:
             raise BackendError(f"Index rename failed: {e}") from e
 
-    async def refresh_index(self, index: str, **kwargs) -> bool:
+    async def refresh_index(self, index: str, **kwargs: Any) -> bool:
         """Refresh an index"""
         try:
-            return await self.backend.refresh_index(index, **kwargs)  # type: ignore[attr-defined]
+            return cast(
+                "bool",
+                await self.backend.refresh_index(index, **kwargs),  # type: ignore[attr-defined]
+            )
         except Exception as e:
             raise BackendError(f"Index refresh failed: {e}") from e
 
-    async def flush_index(self, index: str, **kwargs) -> bool:
+    async def flush_index(self, index: str, **kwargs: Any) -> bool:
         """Flush an index"""
         try:
-            return await self.backend.flush_index(index, **kwargs)  # type: ignore[attr-defined]
+            return cast(
+                "bool",
+                await self.backend.flush_index(index, **kwargs),  # type: ignore[attr-defined]
+            )
         except Exception as e:
             raise BackendError(f"Index flush failed: {e}") from e
 

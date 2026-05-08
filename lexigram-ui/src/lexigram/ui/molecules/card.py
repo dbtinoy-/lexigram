@@ -16,7 +16,7 @@ class Card(Component):
         footer: Any = None,
         *,
         as_child: bool = False,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             title=title, content=content, footer=footer, as_child=as_child, **props

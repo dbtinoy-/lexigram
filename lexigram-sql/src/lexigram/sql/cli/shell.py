@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
 
@@ -19,7 +19,10 @@ async def provide_db(container: ContainerResolverProtocol) -> DatabaseProviderPr
     Returns:
         The resolved DatabaseProviderProtocol instance.
     """
-    return await container.resolve(DatabaseProviderProtocol)
+    return cast(
+        "DatabaseProviderProtocol",
+        await container.resolve(DatabaseProviderProtocol),
+    )
 
 
 async def provide_migration(container: ContainerResolverProtocol) -> object:

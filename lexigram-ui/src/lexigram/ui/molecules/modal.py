@@ -43,7 +43,7 @@ class Modal(Component):
         render_trigger: bool = True,
         max_width: str | None = None,
         max_height: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             title=title,

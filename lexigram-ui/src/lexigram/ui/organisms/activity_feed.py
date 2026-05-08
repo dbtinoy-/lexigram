@@ -11,7 +11,7 @@ class ActivityFeed(Component):
         title: str = "Recent Activity",
         items: list[dict[str, Any]] | None = None,
         max_items: int = 5,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(title=title, items=items or [], max_items=max_items, **props)
         self.title = title

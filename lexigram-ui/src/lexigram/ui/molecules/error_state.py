@@ -19,7 +19,7 @@ class ErrorState(Component):
         title: str = "Something went wrong",
         message: str = "We encountered an error loading this data.",
         action: Any = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(title=title, message=message, action=action, **props)
         self.title = title

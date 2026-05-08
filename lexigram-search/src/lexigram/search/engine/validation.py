@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 MAX_QUERY_LENGTH = 1000
 
 
-def validate_search_query(query: str) -> tuple[bool, str | None]:
+def validate_search_query(query: Any) -> tuple[bool, str | None]:
     """Validate a search query string."""
     if not isinstance(query, str):
         return False, "Query must be a string"

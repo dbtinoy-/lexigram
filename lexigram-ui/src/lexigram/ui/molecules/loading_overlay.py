@@ -18,7 +18,7 @@ class LoadingOverlay(Component):
         self,
         message: str = "Loading...",
         fullscreen: bool = True,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(message=message, fullscreen=fullscreen, **props)
         self.message = message

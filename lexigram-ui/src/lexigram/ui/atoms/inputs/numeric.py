@@ -29,8 +29,8 @@ class NumberInput(AbstractInput):
         max_value: float | None = None,
         step: float | None = None,
         placeholder: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(name=name, value=value, **kwargs)
         self.min = min_value
         self.max = max_value
@@ -82,8 +82,8 @@ class Slider(AbstractInput):
         min_value: float = 0,
         max_value: float = 100,
         step: float = 1,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(name=name, value=value, **kwargs)
         self.min = min_value
         self.max = max_value

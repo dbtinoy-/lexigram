@@ -17,7 +17,7 @@ class SearchBar(Component):
         placeholder: str = "Search...",
         show_icon: bool = True,
         show_clear: bool = False,
-        **props,
+        **props: Any,
     ) -> None:
         """
         Initialize search bar.

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import ClassVar, cast
+from typing import ClassVar
 
 from lexigram.config import BaseConfig
 from lexigram.domain import DomainModel
@@ -317,14 +317,11 @@ class SearchConfig(BaseConfig):
 
     config_section: ClassVar[str] = "search"
 
-    model_config: ClassVar[ConfigDict] = cast(
-        "ClassVar[ConfigDict]",
-        ConfigDict(  # type: ignore[typeddict-unknown-key]
-            env_prefix="LEX_SEARCH__",
-            env_nested_delimiter="__",
-            extra="ignore",
-            populate_by_name=True,
-        ),
+    model_config: ClassVar[ConfigDict] = ConfigDict(  # type: ignore[typeddict-unknown-key]
+        env_prefix="LEX_SEARCH__",
+        env_nested_delimiter="__",
+        extra="ignore",
+        populate_by_name=True,
     )
 
     enabled: bool = Field(default=True, description="Enable the search subsystem")

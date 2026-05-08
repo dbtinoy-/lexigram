@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 # Import formatting handled intentionally for the pytest compatibility try/except
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -21,8 +22,13 @@ from lexigram.contracts.infra.storage import BlobStoreProtocol
 from lexigram.storage.backends import MemoryDriver
 from lexigram.testing import TestEnvironment
 
+# Async fixtures must use pytest_asyncio.fixture in strict asyncio mode.
+_async_fixture: Callable[..., Any] = (
+    pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+)
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+
+@_async_fixture
 async def storage_test_bed() -> Any:
     """Test bed with storage services"""
     test_bed = TestEnvironment()
@@ -36,7 +42,7 @@ async def storage_test_bed() -> Any:
         yield test_bed
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def storage_test_client(storage_test_bed: Any) -> Any:
     """Test client for storage operations"""
     assert storage_test_bed.container is not None

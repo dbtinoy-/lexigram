@@ -26,7 +26,7 @@ class TaskProgress(Component):
         auto_close: bool = False,
         on_complete: str | None = None,
         stream_url: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             task_id=task_id,

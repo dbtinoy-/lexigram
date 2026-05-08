@@ -14,7 +14,7 @@ class DateRangeFilter(Component):
         self,
         name_prefix: str = "date",
         label: str = "Date Range",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(name_prefix=name_prefix, label=label, **props)
         self.name_prefix = name_prefix

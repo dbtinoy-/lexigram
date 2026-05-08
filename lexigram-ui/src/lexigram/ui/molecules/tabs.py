@@ -20,8 +20,8 @@ class Tabs(Component):
         tabs: list[tuple[str, str]],
         active_tab: str | None = None,
         client_side: bool = True,
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         super().__init__(**props)
         self.tabs = tabs
         self.active_id = active_tab or (tabs[0][1] if tabs else "")
@@ -132,7 +132,7 @@ class TabPanel(Component):
     Automatically shows/hides based on the parent Tabs' state.
     """
 
-    def __init__(self, tab_id: str, *children, **props) -> None:
+    def __init__(self, tab_id: str, *children: Any, **props: Any) -> None:
         super().__init__(*children, **props)
         self.id = tab_id
 

@@ -16,7 +16,7 @@ class Dropdown(Component):
         items: list[Any],
         position: str = "right",
         direction: str = "down",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             trigger=trigger,

@@ -654,7 +654,7 @@ def resolve_backend_type(config: CacheBackendConfig) -> BackendType:
     """
     backend_type = getattr(config, "backend_type", None)
     if backend_type is not None:
-        return backend_type
+        return cast("BackendType", backend_type)
     return config.type
 
 

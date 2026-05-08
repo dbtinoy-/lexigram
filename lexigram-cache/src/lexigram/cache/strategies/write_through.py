@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from lexigram.cache.service.core import CacheService
 from lexigram.logging import get_logger
@@ -17,6 +17,7 @@ from lexigram.logging import get_logger
 logger = get_logger(__name__)
 
 T = TypeVar("T")
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 class WriteThroughCache(Generic[T]):
@@ -47,13 +48,13 @@ class WriteThroughCache(Generic[T]):
         key = self._make_key(entity_id)
         cached = await self.cache_service.get(key)
         if cached is not None:
-            return cached
+            return cast("T", cached)
 
         # Load from primary store
         data = await loader()
         if data is not None:
             await self.cache_service.set(key, data, self.ttl)
-        return data
+        return cast("T", data)
 
     async def update(self, entity_id: Any, data: T, writer: Callable[[T], Any]) -> T:
         """Update cache after writing to primary store (Write-through)"""
@@ -64,7 +65,7 @@ class WriteThroughCache(Generic[T]):
         key = self._make_key(entity_id)
         await self.cache_service.set(key, data, self.ttl)
 
-        return result
+        return cast("T", result)
 
     async def delete(self, entity_id: Any, deleter: Callable[[], Any]) -> bool:
         """Remove from cache after removing from primary store"""
@@ -75,7 +76,7 @@ class WriteThroughCache(Generic[T]):
         key = self._make_key(entity_id)
         await self.cache_service.delete(key)
 
-        return result
+        return cast("bool", result)
 
     async def shutdown(self) -> None:
         """Flush any pending state and release resources.
@@ -94,7 +95,7 @@ def write_through(
     namespace: str,
     ttl: int | None = None,
     key_field: str = "id",
-):
+) -> Callable[[F], F]:
     """
     Decorator for repository methods to implement write-through caching.
 
@@ -104,9 +105,9 @@ def write_through(
             ...
     """
 
-    def decorator(func) -> Any:
+    def decorator(func: F) -> F:
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # This is a simplified decorator.
             # In a real implementation, we'd need to extract the entity and its ID
             # from the arguments.
@@ -115,6 +116,6 @@ def write_through(
             # Extract ID and data for caching
             # (In practice, this would use introspection)
 
-        return wrapper
+        return cast("F", wrapper)
 
     return decorator

@@ -183,7 +183,7 @@ class AlembicManager:
         # Ensure versions directory exists
         self.script_location.mkdir(parents=True, exist_ok=True)
 
-    async def upgrade(self, revision: str = "head", **kwargs) -> None:
+    async def upgrade(self, revision: str = "head", **kwargs: Any) -> None:
         """Run database migrations up to the specified revision.
 
         Concurrent invocations (e.g. providers booting in parallel) are
@@ -198,7 +198,7 @@ class AlembicManager:
         self._upgraded = True
         await self.engine.upgrade(revision, **kwargs)
 
-    async def downgrade(self, revision: str = "-1", **kwargs) -> None:
+    async def downgrade(self, revision: str = "-1", **kwargs: Any) -> None:
         """Run database migrations down to the specified revision.
 
         Args:
@@ -257,7 +257,7 @@ class AlembicManager:
         """
         return await self.introspector.get_branches()
 
-    async def create_revision(self, message: str, **kwargs) -> str:
+    async def create_revision(self, message: str, **kwargs: Any) -> str:
         """Create a new database migration revision.
 
         Args:
@@ -269,7 +269,7 @@ class AlembicManager:
         """
         return await self.engine.create_revision(message, **kwargs)
 
-    async def create_initial_revision(self, message: str, **kwargs) -> str:
+    async def create_initial_revision(self, message: str, **kwargs: Any) -> str:
         """Create the initial database migration revision.
 
         Args:
@@ -281,7 +281,7 @@ class AlembicManager:
         """
         return await self.create_revision(message, **kwargs)
 
-    async def create_branch(self, branch_name: str, **kwargs) -> str:
+    async def create_branch(self, branch_name: str, **kwargs: Any) -> str:
         """Create a new Alembic branch.
 
         Args:
@@ -293,7 +293,7 @@ class AlembicManager:
         """
         return await self.engine.create_branch(branch_name, **kwargs)
 
-    async def merge_branches(self, source: str, target: str, **kwargs) -> str:
+    async def merge_branches(self, source: str, target: str, **kwargs: Any) -> str:
         """Merge two Alembic branches.
 
         Args:
@@ -342,7 +342,7 @@ class AlembicManager:
         """
         return await self.introspector.validate_migrations()
 
-    async def get_pending_operations(self, **kwargs) -> list[dict[str, Any]]:
+    async def get_pending_operations(self, **kwargs: Any) -> list[dict[str, Any]]:
         """Get list of pending migration operations.
 
         Args:
@@ -537,7 +537,7 @@ class SimpleMigrationManager(MigrationManagerProtocol):
 
     def __init__(
         self,
-        provider: DatabaseProviderProtocol,
+        provider: DatabaseProviderProtocol | None = None,
         migrations_dir: str | None = None,
     ):
         """Initialize the simple migration manager.
@@ -555,6 +555,8 @@ class SimpleMigrationManager(MigrationManagerProtocol):
 
         Creates the __migrations table if it doesn't exist.
         """
+        if self.provider is None:
+            return
         columns = {
             "version": "VARCHAR(255) PRIMARY KEY",
             "name": "VARCHAR(255) NOT NULL",
@@ -597,6 +599,8 @@ class SimpleMigrationManager(MigrationManagerProtocol):
 
     async def apply_migration(self, version: str, name: str, sql: str) -> bool:
         """Apply a migration to the database."""
+        if self.provider is None:
+            return False
         migration_table = Table(self.migration_table)
         applied_at = ambient_clock.now()
 
@@ -626,6 +630,8 @@ class SimpleMigrationManager(MigrationManagerProtocol):
         Args:
             version: Migration version to rollback.
         """
+        if self.provider is None:
+            return False
         migration_table = Table(self.migration_table)
         await self.provider.execute(
             f"DELETE FROM {migration_table} WHERE version = ?",

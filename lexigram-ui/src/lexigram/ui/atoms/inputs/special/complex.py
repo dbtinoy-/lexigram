@@ -15,7 +15,7 @@ class Rating(AbstractInput):
         self,
         name: str,
         max_value: int = 5,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.max = max_value
@@ -77,7 +77,7 @@ class TagsInput(AbstractInput):
         self,
         name: str,
         placeholder: str = "Add tag...",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.placeholder = placeholder
@@ -195,7 +195,7 @@ class KeyValueField(AbstractInput):
         name: str,
         key_label: str = "Key",
         value_label: str = "Value",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.key_label = key_label

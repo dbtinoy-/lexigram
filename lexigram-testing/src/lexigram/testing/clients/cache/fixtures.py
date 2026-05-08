@@ -9,7 +9,7 @@ and error conditions.
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Callable
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar, cast
 
 import pytest
 
@@ -33,6 +33,10 @@ P = ParamSpec("P")
 R = TypeVar("R")
 _async_fixture: Callable[..., Any] = (
     pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+)
+_async_fixture_factory: Callable[..., Callable[[R], R]] = cast(
+    "Callable[..., Callable[[R], R]]",
+    pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture,
 )
 
 # Test Bed Fixtures
@@ -280,63 +284,32 @@ def backend_failure_scenarios() -> list[dict[str, Any]]:
 # Setup/Teardown Fixtures
 
 
-if pytest_asyncio is None:
+@_async_fixture_factory(autouse=True, scope="function")
+async def cache_cleanup(
+    cache_client: CacheTestClient,
+) -> AsyncGenerator[None, None]:
+    """Automatically clean up cache before and after each test."""
+    # Clean up before test
+    await cache_client.clear_cache()
 
-    @pytest.fixture(autouse=True)
-    async def cache_cleanup(
-        cache_client: CacheTestClient,
-    ) -> AsyncGenerator[None, None]:
-        """Automatically clean up cache before and after each test."""
-        # Clean up before test
+    yield
+
+    # Clean up after test
+    try:
         await cache_client.clear_cache()
-
-        yield
-
-        # Clean up after test
-        try:
-            await cache_client.clear_cache()
-        except (
-            RuntimeError,
-            OSError,
-            ConnectionError,
-            ValueError,
-            TypeError,
-            AttributeError,
-            KeyError,
-        ) as e:
-            get_logger(__name__).debug(
-                "Cache fixture cleanup error (ignored): %s",
-                e,
-            )  # Ignore cleanup errors
-
-else:
-
-    @pytest_asyncio.fixture(autouse=True, scope="function")
-    async def cache_cleanup(
-        cache_client: CacheTestClient,
-    ) -> AsyncGenerator[None, None]:
-        """Automatically clean up cache before and after each test."""
-        # Clean up before test
-        await cache_client.clear_cache()
-
-        yield
-
-        # Clean up after test
-        try:
-            await cache_client.clear_cache()
-        except (
-            RuntimeError,
-            OSError,
-            ConnectionError,
-            ValueError,
-            TypeError,
-            AttributeError,
-            KeyError,
-        ) as e:
-            get_logger(__name__).debug(
-                "Cache fixture cleanup error (ignored): %s",
-                e,
-            )  # Ignore cleanup errors
+    except (
+        RuntimeError,
+        OSError,
+        ConnectionError,
+        ValueError,
+        TypeError,
+        AttributeError,
+        KeyError,
+    ) as e:
+        get_logger(__name__).debug(
+            "Cache fixture cleanup error (ignored): %s",
+            e,
+        )  # Ignore cleanup errors
 
 
 if pytest_asyncio is None:
@@ -357,7 +330,7 @@ if pytest_asyncio is None:
 
 else:
 
-    @pytest_asyncio.fixture
+    @_async_fixture
     async def populated_cache(
         cache_client: CacheTestClient,
         simple_cache_data: CacheTestData,
@@ -393,7 +366,7 @@ if pytest_asyncio is None:
 
 else:
 
-    @pytest_asyncio.fixture
+    @_async_fixture
     async def cache_with_ttl(
         cache_client: CacheTestClient,
         short_ttl: int,
@@ -429,7 +402,7 @@ if pytest_asyncio is None:
 
 else:
 
-    @pytest_asyncio.fixture
+    @_async_fixture
     async def cache_metrics_collector(
         cache_client: CacheTestClient,
     ) -> AsyncGenerator[CacheTestClient, None]:

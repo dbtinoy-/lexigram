@@ -17,7 +17,7 @@ class Spinner(Component):
         self,
         size: Literal["sm", "md", "lg", "xl"] = "md",
         aria_label: str = "Loading...",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(size=size, **props)
         self.size = size

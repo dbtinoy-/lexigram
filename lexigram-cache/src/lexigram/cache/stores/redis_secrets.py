@@ -110,14 +110,14 @@ class RedisSecretStore(BaseSecretStore):  # type: ignore[valid-type,misc]
         """Encrypt a plaintext value if encryption is configured."""
         if self._fernet is None:
             return value
-        return self._fernet.encrypt(value.encode()).decode()
+        return cast("str", self._fernet.encrypt(value.encode()).decode())
 
     def _decrypt(self, value: str) -> str:
         """Decrypt a ciphertext value if encryption is configured."""
         if self._fernet is None:
             return value
         try:
-            return self._fernet.decrypt(value.encode()).decode()
+            return cast("str", self._fernet.decrypt(value.encode()).decode())
         except Exception as e:  # noqa: BLE001 — cryptography raises varied exceptions; fallback is intentional
             # Return as-is if decryption fails (e.g. value was stored unencrypted).
             logger.warning(

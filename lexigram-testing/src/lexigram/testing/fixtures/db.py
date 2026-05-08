@@ -254,7 +254,6 @@ async def db_transaction(
             "db_transaction requires a 'database_provider' fixture. "
             "Override it in conftest.py with a real DatabaseProviderProtocol instance."
         )
-        return
 
     async with database_provider.scoped_context():
         conn = await database_provider.get_scoped_connection()

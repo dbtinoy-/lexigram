@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from abc import ABC
 import hashlib
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from lexigram import serialization as json
 from lexigram.logging import get_logger
@@ -75,7 +75,7 @@ class CacheRepository(ABC, Generic[T, K]):
             Cached item or None if not found
         """
         cache_key = self._make_key(key)
-        return await self.cache_service.get(cache_key)
+        return cast("T | None", await self.cache_service.get(cache_key))
 
     async def set(self, key: K, value: T, ttl: int | None = None) -> bool:
         """
@@ -138,10 +138,13 @@ class CacheRepository(ABC, Generic[T, K]):
         """
         cache_key = self._make_key(key)
         effective_ttl = ttl or self.default_ttl
-        return await self.cache_service.get_or_set(
-            cache_key,
-            default_func,
-            effective_ttl,
+        return cast(
+            "T",
+            await self.cache_service.get_or_set(
+                cache_key,
+                default_func,
+                effective_ttl,
+            ),
         )
 
     async def invalidate_pattern(self, pattern: str) -> None:
@@ -392,10 +395,13 @@ class QueryRepository(CacheRepository[T, str]):
         query_key = self._make_query_key(query_params)
         effective_ttl = ttl or self.default_ttl
 
-        return await self.cache_service.get_or_set(
-            query_key,
-            default_func,
-            effective_ttl,
+        return cast(
+            "T",
+            await self.cache_service.get_or_set(
+                query_key,
+                default_func,
+                effective_ttl,
+            ),
         )
 
     async def invalidate_query(self, query_params: dict[str, Any]) -> bool:
@@ -478,12 +484,15 @@ class CollectionRepository(CacheRepository[list[T], str]):
 
         if default_func:
             effective_ttl = ttl or self.default_ttl
-            return await self.cache_service.get_or_set(
-                collection_key,
-                default_func,
-                effective_ttl,
+            return cast(
+                "list[T] | None",
+                await self.cache_service.get_or_set(
+                    collection_key,
+                    default_func,
+                    effective_ttl,
+                ),
             )
-        return await self.cache_service.get(collection_key)
+        return cast("list[T] | None", await self.cache_service.get(collection_key))
 
     async def save_collection(
         self,
@@ -567,12 +576,15 @@ class ConfigurationRepository(CacheRepository[dict[str, Any], str]):
 
         if default_func:
             effective_ttl = ttl or self.default_ttl
-            return await self.cache_service.get_or_set(
-                cache_key,
-                default_func,
-                effective_ttl,
+            return cast(
+                "dict[str, Any] | None",
+                await self.cache_service.get_or_set(
+                    cache_key,
+                    default_func,
+                    effective_ttl,
+                ),
             )
-        return await self.cache_service.get(cache_key)
+        return cast("dict[str, Any] | None", await self.cache_service.get(cache_key))
 
     async def set_config(
         self,

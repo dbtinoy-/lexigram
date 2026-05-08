@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.contracts import HealthStatus
 
@@ -209,7 +209,10 @@ class _ConnectionMixin:
 
     def get_current_context(self) -> dict[str, Any] | None:
         """Get the current database context for this request/scope."""
-        return self.manager.get_current_context()  # type: ignore[attr-defined]
+        return cast(
+            "dict[str, Any] | None",
+            self.manager.get_current_context(),  # type: ignore[attr-defined]
+        )
 
     async def get_scoped_connection(self) -> Any:
         """Get a connection from the current scope.
@@ -374,4 +377,4 @@ class _ConnectionMixin:
         validator = getattr(self.connection_pool, "validate_connections", None)  # type: ignore[attr-defined]
         if validator is None:
             return 0
-        return await validator()
+        return cast("int", await validator())

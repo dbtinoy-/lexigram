@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 from dataclasses import dataclass
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, cast
 
 from htpy import input as htpy_input
 
@@ -43,7 +43,7 @@ class TableState(DomainModel):
             object.__setattr__(self, "_defaults", {})
 
     @classmethod
-    def from_request(cls, request, defaults: dict | None = None) -> TableState:
+    def from_request(cls, request: Any, defaults: dict | None = None) -> TableState:
         """
         Create state from a request object (Starlette/ASGI compatible).
         """
@@ -320,7 +320,7 @@ class TableState(DomainModel):
             "layout_type": "layout",
         }
 
-        def add(key, val, default=None) -> Any:
+        def add(key: Any, val: Any, default: Any = None) -> Any:
             if key in exclude:
                 return
 
@@ -381,11 +381,11 @@ class TableState(DomainModel):
             url = f"{url}?{query}"
         return url
 
-    def model_copy(self, *args, **kwargs) -> TableState:
+    def model_copy(self, *args: Any, **kwargs: Any) -> TableState:
         """Override model_copy to preserve internal defaults."""
         new_state = super().model_copy(*args, **kwargs)
         object.__setattr__(new_state, "_defaults", getattr(self, "_defaults", {}))
-        return new_state
+        return cast("TableState", new_state)
 
     # These methods return NEW TableState instances with modified values.
     # The original state is not modified (immutable pattern).

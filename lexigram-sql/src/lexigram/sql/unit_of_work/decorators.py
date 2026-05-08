@@ -18,6 +18,7 @@ Example:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 import functools
 from typing import TYPE_CHECKING, Any
 
@@ -50,7 +51,7 @@ def transactional(
     backoff_factor: float = 0.5,
     max_backoff: float = 10.0,
     retryable_exceptions: tuple[type[Exception], ...] | None = None,
-):
+) -> Callable[..., Any]:
     """Decorator to wrap an async function in a database transaction.
 
     Can be used as:
@@ -70,7 +71,7 @@ def transactional(
     """
     retry_on = retryable_exceptions or RETRYABLE_EXCEPTIONS
 
-    def decorator(func) -> Any:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Resolve provider
@@ -125,36 +126,5 @@ def transactional(
                 raise last_error
 
         return wrapper
-
-    # Support @transactional(provider) and @transactional(retries=3)
-    if callable(provider):
-        # Called as @transactional without args — provider is actually the func
-        func = provider
-        # Reset provider to None for the wrapper
-        _db_provider_ref = None
-
-        @functools.wraps(func)
-        async def direct_wrapper(*args: Any, **kwargs: Any) -> Any:
-            db = kwargs.get("provider")
-            if db is None:
-                raise ValueError(
-                    "transactional: 'provider' must be passed as function kwarg",
-                )
-            await db.begin_transaction()
-            try:
-                result = await func(*args, **kwargs)
-                await db.commit_transaction()
-                return result
-            except (
-                DatabaseError,
-                QueryError,
-                DatabaseConnectionError,
-                DatabaseTimeoutError,
-                DeadlockError,
-            ):
-                await db.rollback_transaction()
-                raise
-
-        return direct_wrapper
 
     return decorator

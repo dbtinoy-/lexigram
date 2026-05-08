@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, SupportsIndex, TypeVar, overload
 
 from lexigram.logging import get_logger
 
@@ -49,7 +49,22 @@ class FTSResult(list):
     def __len__(self) -> int:
         return len(self.items)
 
-    def __getitem__(self, index) -> Any:
+    @overload
+    def __getitem__(self, index: SupportsIndex, /) -> Any: ...
+
+    @overload
+    def __getitem__(
+        self,
+        index: slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None],
+        /,
+    ) -> list[Any]: ...
+
+    def __getitem__(
+        self,
+        index: SupportsIndex
+        | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None],
+        /,
+    ) -> Any:
         return self.items[index]
 
 

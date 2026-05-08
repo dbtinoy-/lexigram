@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from lexigram.contracts.cli.contributions import (
     CommandContribution,
+    DoctorCheckContribution,
     HealthCheckContribution,
     HookContribution,
     SchemaSetupContribution,
@@ -47,7 +48,7 @@ class WebhookCliContributor:
         """Return no health checks."""
         return []
 
-    def get_doctor_checks(self) -> list:
+    def get_doctor_checks(self) -> list[DoctorCheckContribution]:
         """Return no doctor checks."""
         return []
 

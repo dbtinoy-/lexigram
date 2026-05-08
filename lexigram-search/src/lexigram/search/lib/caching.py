@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 import pickle
-from typing import Any
+from typing import Any, cast
 
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
@@ -90,7 +90,7 @@ class SearchCache:
         query: str,
         filters: dict[str, Any] | None = None,
         sort: list[dict[str, Any]] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Generate cache key from search parameters"""
         # Create a deterministic representation
@@ -107,7 +107,7 @@ class SearchCache:
         key_string = dumps(key_data, sort_keys=True, default=str)
 
         # Hash for fixed length (dumps returns bytes in our json helper)
-        return ambient_hashing.digest(key_string)  # type: ignore[attr-defined]
+        return cast("str", ambient_hashing.digest(key_string))  # type: ignore[attr-defined]
 
     async def get(self, key: str) -> Any | None:
         """Get value from cache"""
@@ -250,7 +250,7 @@ class QueryCache:
     async def get_search_results(
         self,
         query: str,
-        **search_params,
+        **search_params: Any,
     ) -> SearchResponse | None:
         """Get cached search results"""
         key = self.cache.generate_key(query, **search_params)
@@ -260,13 +260,13 @@ class QueryCache:
         self,
         query: str,
         results: SearchResponse,
-        **search_params,
+        **search_params: Any,
     ) -> None:
         """Cache search results"""
         key = self.cache.generate_key(query, **search_params)
         await self.cache.set(key, results)
 
-    async def invalidate_query(self, query: str, **search_params) -> None:
+    async def invalidate_query(self, query: str, **search_params: Any) -> None:
         """Invalidate cached query results"""
         key = self.cache.generate_key(query, **search_params)
         await self.cache.delete(key)
@@ -348,7 +348,7 @@ def cached(cache: SearchCache, ttl_seconds: int | None = None) -> Any:
     """Decorator to cache function results"""
 
     def decorator(func: Callable) -> Callable:
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Generate cache key from function call
             key_data = {"func": func.__name__, "args": args, "kwargs": kwargs}
             key = ambient_hashing.digest(  # type: ignore[attr-defined]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from lexigram.contracts.data.identifiers import Column
@@ -250,7 +250,7 @@ class _WriteMixin:
                 f"{self._key_col} = ?",  # type: ignore[attr-defined]
                 [param_key],
             )
-            return result.success
+            return cast("bool", result.success)
         except (
             DatabaseError,
             QueryError,

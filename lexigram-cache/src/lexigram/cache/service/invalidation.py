@@ -7,7 +7,7 @@ invalidation to :class:`CacheService`.
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Any
+from typing import Any, cast
 
 from lexigram.logging import get_logger
 
@@ -66,7 +66,7 @@ class InvalidationMixin:
                     self._tag_index[tag] = set()
                 self._tag_index[tag].add(key)
                 self._tag_index.move_to_end(tag)  # mark as recently used
-        return success
+        return cast("bool", success)
 
     async def invalidate_by_tag(
         self,

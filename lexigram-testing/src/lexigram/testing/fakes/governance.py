@@ -122,6 +122,7 @@ class FakeResourceUnitTracker:
 
         key = (tenant_id, unit_name)
         kind = unit.window_kind
+        final_current = 0.0
 
         if kind == ResourceWindowKind.INSTANTANEOUS:
             current = self._gauges[key]
@@ -164,8 +165,6 @@ class FakeResourceUnitTracker:
                         actor_id=actor_id,
                     )
                 )
-        else:
-            final_current = 0.0
 
         return Ok(
             ResourceUsageSnapshot(
@@ -201,17 +200,19 @@ class FakeResourceUnitTracker:
         unit = self._units.get(unit_name)
         if unit is None:
             return ResourceUsageSnapshot(
-                tenant_id=tenant_id, unit_name=unit_name, current=0.0, limit=limit,
+                tenant_id=tenant_id,
+                unit_name=unit_name,
+                current=0.0,
+                limit=limit,
             )
         key = (tenant_id, unit_name)
+        current = 0.0
         if unit.window_kind == ResourceWindowKind.INSTANTANEOUS:
             current = self._gauges[key]
         elif unit.window_kind == ResourceWindowKind.SLIDING:
             current = float(self._sliding[key])
         elif unit.window_kind == ResourceWindowKind.CALENDAR:
             current = self._calendar[(tenant_id, unit_name, self._calendar_period)]
-        else:
-            current = 0.0
         return ResourceUsageSnapshot(
             tenant_id=tenant_id,
             unit_name=unit_name,

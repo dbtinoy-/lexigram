@@ -5,7 +5,7 @@ Column visibility control methods.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Self
+from typing import Any, Self, cast
 
 
 class ColumnVisibilityMixin:
@@ -74,7 +74,7 @@ class ColumnVisibilityMixin:
         """Check if column should be visible."""
         # 1. Check callback if set
         if self._visible_callback:  # type: ignore[truthy-function]
-            return self._visible_callback(record)
+            return cast("bool", self._visible_callback(record))
 
         # 2. Check PermissionService if user, resource_name, and service are provided
         if user and resource_name and permission_service is not None:

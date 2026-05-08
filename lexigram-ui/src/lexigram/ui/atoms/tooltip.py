@@ -26,7 +26,7 @@ class Tooltip(Component):
         position: str = "top",
         tooltip_id: str | None = None,
         trigger_id: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(content=content, position=position, **props)
         self.content = content

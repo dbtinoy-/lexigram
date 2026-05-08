@@ -7,7 +7,7 @@ Cursors are base64-encoded JSON objects mapping sort/key field names to values.
 from __future__ import annotations
 
 import base64
-from typing import Any
+from typing import Any, cast
 
 from lexigram.serialization import dumps_str as _json_dumps
 from lexigram.serialization import loads_str
@@ -55,7 +55,7 @@ class CursorCodec:
         """
         try:
             payload = base64.urlsafe_b64decode(cursor.encode()).decode()
-            return loads_str(payload)
+            return cast("dict[str, Any]", loads_str(payload))
         except (ValueError, UnicodeDecodeError) as exc:
             raise CursorError(f"Invalid cursor: {cursor!r}") from exc
 

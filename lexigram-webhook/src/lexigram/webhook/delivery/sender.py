@@ -12,7 +12,7 @@ from lexigram.contracts.webhook.types import (
     WebhookEvent,
     WebhookSubscription,
 )
-from lexigram.logging import get_logger
+from lexigram.logging.factory import get_logger
 from lexigram.primitives import clock as ambient_clock
 import lexigram.serialization as json
 from lexigram.webhook.config import WebhookConfig

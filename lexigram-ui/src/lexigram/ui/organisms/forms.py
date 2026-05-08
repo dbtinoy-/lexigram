@@ -21,7 +21,7 @@ class Form(Component):
         autosave: bool = False,
         form_id: str | None = None,
         suppress_submit: bool = False,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             action_url=action_url,

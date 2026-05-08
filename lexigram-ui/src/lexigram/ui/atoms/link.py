@@ -26,7 +26,7 @@ class Link(Component):
         as_child: bool = False,
         variant: LinkVariant = "default",
         size: LinkSize | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(as_child=as_child, **props)
         self.label = label

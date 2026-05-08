@@ -16,10 +16,10 @@ class Fieldset(Component):
 
     def __init__(
         self,
-        *children,
+        *children: Any,
         legend: str,
         description: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(*children, legend=legend, description=description, **props)
         self.legend = legend

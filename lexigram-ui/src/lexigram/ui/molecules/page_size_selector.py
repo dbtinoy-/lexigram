@@ -21,7 +21,7 @@ class PageSizeSelector(Component):
         hx_push_url: str = "true",
         size_options: list[int] | None = None,
         state: Any | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(**props)
         self.per_page = per_page

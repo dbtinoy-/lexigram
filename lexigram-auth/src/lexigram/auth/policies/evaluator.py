@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import threading
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,12 +22,12 @@ class OperatorHandlerProtocol(Protocol):
 
 class EqualsOperator:
     def compare(self, actual: Any, expected: Any) -> bool:
-        return actual == expected
+        return cast("bool", actual == expected)
 
 
 class NotEqualsOperator:
     def compare(self, actual: Any, expected: Any) -> bool:
-        return actual != expected
+        return cast("bool", actual != expected)
 
 
 class ContainsOperator:
@@ -58,7 +58,7 @@ class MatchesOperator:
 class GreaterThanOperator:
     def compare(self, actual: Any, expected: Any) -> bool:
         try:
-            return actual > expected
+            return cast("bool", actual > expected)
         except TypeError:
             return False
 
@@ -66,7 +66,7 @@ class GreaterThanOperator:
 class LessThanOperator:
     def compare(self, actual: Any, expected: Any) -> bool:
         try:
-            return actual < expected
+            return cast("bool", actual < expected)
         except TypeError:
             return False
 
@@ -74,7 +74,7 @@ class LessThanOperator:
 class GreaterThanOrEqualsOperator:
     def compare(self, actual: Any, expected: Any) -> bool:
         try:
-            return actual >= expected
+            return cast("bool", actual >= expected)
         except TypeError:
             return False
 
@@ -82,7 +82,7 @@ class GreaterThanOrEqualsOperator:
 class LessThanOrEqualsOperator:
     def compare(self, actual: Any, expected: Any) -> bool:
         try:
-            return actual <= expected
+            return cast("bool", actual <= expected)
         except TypeError:
             return False
 

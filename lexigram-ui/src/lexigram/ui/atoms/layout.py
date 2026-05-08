@@ -8,7 +8,9 @@ from lexigram.ui.core.base import Component, el
 class Row(Component):
     """Grid row component (flexible layout)."""
 
-    def __init__(self, *children, cols: int = 1, gap: int = 4, **props) -> None:
+    def __init__(
+        self, *children: Any, cols: int = 1, gap: int = 4, **props: Any
+    ) -> None:
         super().__init__(cols=cols, gap=gap, **props)
         if children:
             self.children = list(children)
@@ -44,10 +46,10 @@ class Col(Component):
 
     def __init__(
         self,
-        *children,
+        *children: Any,
         gap: int = 4,
         span: int | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(gap=gap, span=span, **props)
         if children:
@@ -87,10 +89,10 @@ class Aside(Component):
 
     def __init__(
         self,
-        *children,
+        *children: Any,
         position: str = "left",
         width: str = "w-64",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(position=position, width=width, **props)
         if children:
@@ -128,10 +130,10 @@ class Grid(Component):
 
     def __init__(
         self,
-        *children,
+        *children: Any,
         cols: int | dict[str, int] = 1,
         gap: int = 4,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(cols=cols, gap=gap, **props)
         if children:
@@ -174,7 +176,7 @@ class Grid(Component):
 class Stack(Component):
     """Vertical stack component (flex column)."""
 
-    def __init__(self, *children, gap: int = 4, **props) -> None:
+    def __init__(self, *children: Any, gap: int = 4, **props: Any) -> None:
         super().__init__(gap=gap, **props)
         if children:
             self.children = list(children)
@@ -201,7 +203,7 @@ class Stack(Component):
 
 
 class Container(Component):
-    def __init__(self, *children, **props) -> None:
+    def __init__(self, *children: Any, **props: Any) -> None:
         super().__init__(**props)
         if children:
             self.children = list(children)

@@ -13,7 +13,7 @@ from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import re
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from lexigram.contracts import DatabaseProviderProtocol
 from lexigram.logging import get_logger
@@ -182,10 +182,10 @@ class TableNamingStrategyRegistry:
     def get_table_name(self, strategy: str, class_name: str) -> str:
         """Return the table name for *class_name* using *strategy*."""
         if callable(strategy):
-            return strategy(class_name)
+            return cast("str", strategy(class_name))
         handler = self._handlers.get(strategy)
         if handler:
-            return handler.get_table_name(class_name)
+            return cast("str", handler.get_table_name(class_name))
         return class_name.lower()
 
 
@@ -444,19 +444,19 @@ class SimpleUnitOfWork(AbstractUnitOfWork):
                 try:
                     mapped_name = mapper(entity)
                     if mapped_name:
-                        return mapped_name
+                        return cast("str", mapped_name)
                 except (AttributeError, TypeError, ValueError, RuntimeError):
                     pass
 
         table_name = getattr(entity, "__table_name__", None)
         if table_name:
-            return table_name
+            return cast("str", table_name)
 
         class_name = entity.__class__.__name__
         if hasattr(self.provider, "table_naming_strategy"):
             strategy = self.provider.table_naming_strategy
             return _table_naming_registry.get_table_name(strategy, class_name)
-        return class_name.lower()
+        return cast("str", class_name.lower())
 
     async def _execute_operation(self, operation: EntityOperation) -> None:
         """Dispatch *operation* to the registered handler.

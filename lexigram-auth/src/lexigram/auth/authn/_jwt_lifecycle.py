@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 import hashlib
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import jwt
 
@@ -211,16 +211,13 @@ class _JWTLifecycleMixin:
             # enabled (see TokenProvider / JWTConfig docs).
             if self._allow_unverified_dev:
                 try:
-                    payload = cast(
-                        "dict[str, Any]",
-                        jwt.decode(
-                            token,
-                            options={
-                                "verify_signature": False,
-                                "verify_exp": True,
-                                "verify_aud": False,
-                            },
-                        ),
+                    payload = jwt.decode(
+                        token,
+                        options={
+                            "verify_signature": False,
+                            "verify_exp": True,
+                            "verify_aud": False,
+                        },
                     )
                 except jwt.ExpiredSignatureError:
                     return Err(ContractsExpiredError("Token has expired"))  # type: ignore[arg-type]
@@ -299,15 +296,12 @@ class _JWTLifecycleMixin:
                             token_type=token_type,
                         )
 
-            payload = cast(
-                "dict[str, Any]",
-                jwt.decode(
-                    token,
-                    verification_key,
-                    algorithms=[self.algorithm],
-                    audience=effective_audience,
-                    options=decode_options,  # type: ignore[arg-type]
-                ),
+            payload = jwt.decode(
+                token,
+                verification_key,
+                algorithms=[self.algorithm],
+                audience=effective_audience,
+                options=decode_options,  # type: ignore[arg-type]
             )
 
             # Record which key_id successfully verified this kid and this token.
@@ -407,16 +401,13 @@ class _JWTLifecycleMixin:
         result = await self._blacklist_mgr.revoke(token)
         if result.is_ok():
             try:
-                payload = cast(
-                    "dict[str, Any]",
-                    jwt.decode(
-                        token,
-                        options={
-                            "verify_signature": False,
-                            "verify_exp": False,
-                            "verify_aud": False,
-                        },
-                    ),
+                payload = jwt.decode(
+                    token,
+                    options={
+                        "verify_signature": False,
+                        "verify_exp": False,
+                        "verify_aud": False,
+                    },
                 )
             except (jwt.DecodeError, jwt.InvalidTokenError, ValueError, TypeError):
                 self.logger.warning("jwt_logout_hook_payload_decode_failed")
@@ -486,9 +477,8 @@ class _JWTLifecycleMixin:
                 # If we try to use a blacklisted refresh token, someone might have stolen it.
                 # Invalidate EVERYTHING for this user.
                 try:
-                    unverified_payload = cast(
-                        "dict[str, Any]",
-                        jwt.decode(refresh_token, options={"verify_signature": False}),
+                    unverified_payload = jwt.decode(
+                        refresh_token, options={"verify_signature": False}
                     )
                     user_id = unverified_payload.get("sub")
                     if user_id:

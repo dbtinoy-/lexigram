@@ -38,8 +38,8 @@ class MetricCard(Component):
         trend_direction: TrendDirection | None = None,
         icon: str | None = None,
         variant: MetricCardVariant = "default",
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         """
         Initialize metric card.
 

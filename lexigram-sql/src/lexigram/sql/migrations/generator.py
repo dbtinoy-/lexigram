@@ -1,7 +1,6 @@
 """Migration generation from Domain models for Lexigram Framework"""
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import MISSING
 from dataclasses import Field as DataclassField
 from datetime import datetime
@@ -112,8 +111,6 @@ class ModelAnalyzer:
 
         # Get extra metadata from field metadata (MappingProxyType from dataclasses)
         extra = field_info.metadata
-        if not isinstance(extra, Mapping):
-            extra = {}
 
         # Check for primary key
         primary_key = bool(extra.get("primary_key", False)) or field_name == "id"

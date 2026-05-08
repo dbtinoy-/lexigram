@@ -24,7 +24,7 @@ class Repeater(Component):
         label: str | None = None,
         add_label: str = "Add Item",
         item_label: str = "Item",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             name=name,

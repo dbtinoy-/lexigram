@@ -373,7 +373,7 @@ class MySQLConnectionPool(ConnectionPoolProtocol):
 
     @property
     def connection_timeout(self) -> float:
-        return self.pool_kwargs.get("timeout", 10.0)
+        return cast("float", self.pool_kwargs.get("timeout", 10.0))
 
     async def initialize(self) -> None:
         """Initialize the connection pool with SSL and retry logic"""

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from pydantic import SecretStr
 
@@ -243,9 +243,7 @@ class AuthenticationProvider(Provider):
                     HealthCheckRegistryProtocol,
                 )
 
-                registry = await container.resolve_optional(
-                    HealthCheckRegistryProtocol
-                )
+                registry = await container.resolve_optional(HealthCheckRegistryProtocol)
                 if registry is not None:
                     registry.add("authentication", self.health_check)
 
@@ -276,7 +274,10 @@ class AuthenticationProvider(Provider):
 
         if self.token_manager is None:
             return Err(TokenInvalidError("Authentication not configured"))  # type: ignore[arg-type]
-        return await self.token_manager.verify_token(token)
+        return cast(
+            "Result[VerifiedToken, TokenError]",
+            await self.token_manager.verify_token(token),
+        )
 
     async def validate_session(self, token: str) -> Any:
         """Validate a session token and return user information.

@@ -52,8 +52,8 @@ class AbstractInput(ABC, Component):
         disabled: bool = False,
         required: bool = False,
         readonly: bool = False,
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         super().__init__(**props)
         self.name = name
         self.value = value

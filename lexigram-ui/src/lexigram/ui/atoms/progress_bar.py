@@ -23,7 +23,7 @@ class ProgressBar(Component):
         label: str | None = None,
         show_percentage: bool = True,
         size: Literal["sm", "md", "lg"] = "md",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             value=value,

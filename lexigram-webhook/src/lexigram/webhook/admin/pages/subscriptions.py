@@ -7,16 +7,13 @@ from starlette.responses import HTMLResponse
 from lexigram.contracts.webhook.protocols import (
     WebhookSubscriptionStoreProtocol,
 )
-from lexigram.logging import get_logger
-from lexigram.ui import (
-    Badge,
-    Divider,
-    EmptyState,
-    Grid,
-    StatCard,
-    el,
-    render_to_string,
-)
+from lexigram.logging.factory import get_logger
+from lexigram.ui.atoms.badge import Badge
+from lexigram.ui.atoms.divider import Divider
+from lexigram.ui.atoms.layout import Grid
+from lexigram.ui.core.base import el, render_to_string
+from lexigram.ui.molecules.empty_state import EmptyState
+from lexigram.ui.molecules.stat_card import StatCard
 
 logger = get_logger(__name__)
 

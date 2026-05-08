@@ -5,6 +5,8 @@ Provides factory methods and lock cleanup.
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.cache import constants as const
 from lexigram.cache.locks.distributed import DistributedLockProtocol
 from lexigram.logging import get_logger
@@ -18,7 +20,9 @@ class LockManager:
     Provides factory methods and lock cleanup.
     """
 
-    def __init__(self, redis_client, default_ttl: int = const.DEFAULT_LOCK_TTL) -> None:
+    def __init__(
+        self, redis_client: Any, default_ttl: int = const.DEFAULT_LOCK_TTL
+    ) -> None:
         """Initialize lock manager.
 
         Args:

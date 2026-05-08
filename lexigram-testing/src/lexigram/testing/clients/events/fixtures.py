@@ -9,6 +9,7 @@ and aggregates.
 from __future__ import annotations
 
 # mypy: disable-error-code = annotation-unchecked
+from collections.abc import Callable
 from types import ModuleType
 from typing import Any
 from uuid import UUID, uuid4
@@ -167,31 +168,37 @@ except (ImportError, ModuleNotFoundError, AttributeError) as e:
 
     with contextlib.suppress(OSError, ValueError, TypeError):
         logger.debug("pytest_asyncio import unavailable: %s", e)
+
+# Async fixtures must use pytest_asyncio.fixture in strict asyncio mode.
+_async_fixture: Callable[..., Any] = (
+    pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+)
+
 # Test Bed Fixtures
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def event_test_bed() -> Any:
     """Basic event test bed with event bus."""
     async with EventTestBed() as bed:
         yield bed
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def command_test_bed() -> Any:
     """Command test bed with command bus."""
     async with EventTestBed() as bed:
         yield bed
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def query_test_bed() -> Any:
     """Query test bed with query bus."""
     async with EventTestBed() as bed:
         yield bed
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def full_cqrs_bed() -> Any:
     """Full CQRS test bed with all buses."""
     async with EventTestBed() as bed:
@@ -201,20 +208,20 @@ async def full_cqrs_bed() -> Any:
 # Client Fixtures
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
-async def event_client(event_test_bed) -> Any:
+@_async_fixture
+async def event_client(event_test_bed: Any) -> Any:
     """Event test client."""
     return EventTestClient(event_test_bed)
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
-async def command_client(command_test_bed) -> Any:
+@_async_fixture
+async def command_client(command_test_bed: Any) -> Any:
     """Command test client."""
     return CommandTestClient(command_test_bed)
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
-async def query_client(query_test_bed) -> Any:
+@_async_fixture
+async def query_client(query_test_bed: Any) -> Any:
     """Query test client."""
     return QueryTestClient(query_test_bed)
 
@@ -269,7 +276,7 @@ def sample_events() -> Any:
 
 
 @pytest.fixture
-def domain_events(sample_events) -> Any:
+def domain_events(sample_events: Any) -> Any:
     """Domain events for testing."""
     return sample_events
 
@@ -313,7 +320,7 @@ def sample_commands() -> Any:
 
 
 @pytest.fixture
-def create_commands(sample_commands) -> Any:
+def create_commands(sample_commands: Any) -> Any:
     """Create commands for testing."""
     return list(
         filter(lambda c: c.__class__.__name__.startswith("Create"), sample_commands),
@@ -321,7 +328,7 @@ def create_commands(sample_commands) -> Any:
 
 
 @pytest.fixture
-def update_commands(sample_commands) -> Any:
+def update_commands(sample_commands: Any) -> Any:
     """Update commands for testing."""
     return list(
         filter(lambda c: c.__class__.__name__.startswith("Update"), sample_commands),
@@ -329,7 +336,7 @@ def update_commands(sample_commands) -> Any:
 
 
 @pytest.fixture
-def delete_commands(sample_commands) -> Any:
+def delete_commands(sample_commands: Any) -> Any:
     """Delete commands for testing."""
     return list(
         filter(lambda c: c.__class__.__name__.startswith("Delete"), sample_commands),
@@ -352,7 +359,7 @@ def sample_queries() -> Any:
 
 
 @pytest.fixture
-def list_queries(sample_queries) -> Any:
+def list_queries(sample_queries: Any) -> Any:
     """List queries for testing."""
     return list(
         filter(lambda q: q.__class__.__name__.startswith("List"), sample_queries),
@@ -360,7 +367,7 @@ def list_queries(sample_queries) -> Any:
 
 
 @pytest.fixture
-def detail_queries(sample_queries) -> Any:
+def detail_queries(sample_queries: Any) -> Any:
     """Detail queries for testing."""
     return list(
         filter(lambda q: q.__class__.__name__.startswith("Get"), sample_queries),
@@ -456,7 +463,7 @@ def sample_aggregates() -> Any:
 
 
 @pytest.fixture
-def event_sourced_aggregates(sample_aggregates) -> Any:
+def event_sourced_aggregates(sample_aggregates: Any) -> Any:
     """Event-sourced aggregates for testing."""
     return sample_aggregates
 
@@ -464,20 +471,20 @@ def event_sourced_aggregates(sample_aggregates) -> Any:
 # Bus Fixtures
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
-async def event_bus(event_test_bed) -> Any:
+@_async_fixture
+async def event_bus(event_test_bed: Any) -> Any:
     """Event bus instance."""
     return event_test_bed.event_bus
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
-async def command_bus(command_test_bed) -> Any:
+@_async_fixture
+async def command_bus(command_test_bed: Any) -> Any:
     """Command bus instance."""
     return command_test_bed.command_bus
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
-async def query_bus(query_test_bed) -> Any:
+@_async_fixture
+async def query_bus(query_test_bed: Any) -> Any:
     """Query bus instance."""
     return query_test_bed.query_bus
 
@@ -486,7 +493,9 @@ async def query_bus(query_test_bed) -> Any:
 
 
 @pytest.fixture(autouse=True)
-async def event_cleanup(event_client, command_client, query_client) -> Any:
+async def event_cleanup(
+    event_client: Any, command_client: Any, query_client: Any
+) -> None:
     """Automatically clean up events, commands, and queries
     before and after each test."""
     # Clean up before test
@@ -497,8 +506,10 @@ async def event_cleanup(event_client, command_client, query_client) -> Any:
     # Clean up after test happens automatically via clients
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
-async def populated_event_bus(event_client, event_handlers, sample_events) -> Any:
+@_async_fixture
+async def populated_event_bus(
+    event_client: Any, event_handlers: Any, sample_events: Any
+) -> Any:
     """Event bus pre-populated with handlers and events."""
     # Subscribe handlers
     for event in sample_events:
@@ -520,12 +531,12 @@ async def populated_event_bus(event_client, event_handlers, sample_events) -> An
     # Cleanup happens automatically
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def registered_command_handlers(
-    command_client,
-    command_handlers,
-    sample_commands,
-):
+    command_client: Any,
+    command_handlers: Any,
+    sample_commands: Any,
+) -> Any:
     """Command bus with registered handlers."""
     # Register handlers
     for command in sample_commands:
@@ -542,9 +553,9 @@ async def registered_command_handlers(
     yield command_client
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def registered_query_handlers(
-    query_client, query_handlers, sample_queries
+    query_client: Any, query_handlers: Any, sample_queries: Any
 ) -> Any:
     """Query bus with registered handlers."""
     # Register handlers
@@ -585,7 +596,7 @@ def concurrent_commands() -> Any:
 # Integration Testing Fixtures
 
 
-@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@_async_fixture
 async def cqrs_integration_bed() -> Any:
     """Complete CQRS integration test bed."""
     async with EventTestBed() as bed:

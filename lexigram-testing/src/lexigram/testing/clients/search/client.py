@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.testing import TestEnvironment
@@ -229,7 +229,7 @@ class MockSearchBackend:
     async def get_document(self, index: str, doc_id: str) -> dict[str, Any] | None:
         """Mock document retrieval."""
         if index in self.documents and doc_id in self.documents[index]:
-            return self.documents[index][doc_id]
+            return cast("dict[str, Any] | None", self.documents[index][doc_id])
         return None
 
     async def bulk_index(self, index: str, documents: list[dict[str, Any]]) -> None:
