@@ -185,3 +185,30 @@ class TestAdminInputSanitizerSanitizeDict:
         result = sanitizer.sanitize_dict(data)
         assert result["first"] == "Alice"
         assert result["last"] == "Smith"
+
+
+class TestAdminInputSanitizerUrlSafety:
+    @pytest.fixture
+    def sanitizer(self) -> AdminInputSanitizer:
+        return AdminInputSanitizer()
+
+    def test_blocks_loopback_literal(self, sanitizer: AdminInputSanitizer) -> None:
+        assert sanitizer.is_safe_url_for_request("http://127.0.0.1/admin") is False
+
+    def test_blocks_private_literal(self, sanitizer: AdminInputSanitizer) -> None:
+        assert sanitizer.is_safe_url_for_request("http://192.168.1.5/api") is False
+        assert sanitizer.is_safe_url_for_request("http://10.0.0.1/") is False
+
+    def test_allows_public_hostname(
+        self, sanitizer: AdminInputSanitizer, monkeypatch
+    ) -> None:
+        import ipaddress
+
+        from lexigram.contracts.security import url_safety as contracts_url_safety
+
+        monkeypatch.setattr(
+            contracts_url_safety,
+            "resolve_hostname",
+            lambda _: [ipaddress.ip_address("93.184.216.34")],
+        )
+        assert sanitizer.is_safe_url_for_request("https://example.com/") is True

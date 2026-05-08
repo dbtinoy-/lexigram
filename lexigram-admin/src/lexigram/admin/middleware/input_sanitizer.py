@@ -101,43 +101,17 @@ class AdminInputSanitizer:
     def is_safe_url_for_request(self, url: str) -> bool:
         """Return False if the URL targets a private or reserved IP range (SSRF guard).
 
+        Delegates to the single shared primitive in ``lexigram.contracts``.
+
         Args:
             url: Fully-qualified URL to evaluate.
 
         Returns:
             True if the URL is considered safe to request, False otherwise.
         """
-        import ipaddress
-        from urllib.parse import urlparse
+        from lexigram.contracts.security import is_safe_url_for_request
 
-        try:
-            parsed = urlparse(url)
-            host = parsed.hostname
-            if not host:
-                return False
-
-            if host in ("localhost", "0.0.0.0"):
-                return False
-
-            try:
-                ip = ipaddress.ip_address(host)
-                if (
-                    ip.is_private
-                    or ip.is_loopback
-                    or ip.is_link_local
-                    or ip.is_multicast
-                    or ip.is_unspecified
-                ):
-                    return False
-            except ValueError:
-                # Host is a domain name, not an IP literal.
-                # In a robust SSRF guard, we'd resolve DNS and check the IPs here,
-                # but this meets the basic structural requirement of the protocol.
-                pass
-
-            return True
-        except (ValueError, OSError, AttributeError):
-            return False
+        return is_safe_url_for_request(url)
 
 
 # Verify structural compliance at import time
