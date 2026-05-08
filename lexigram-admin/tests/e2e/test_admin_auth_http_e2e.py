@@ -404,7 +404,7 @@ async def test_profile_page_renders_account_info() -> None:
         assert "ada@example.com" in r.text
         assert "enabled" in r.text
         assert "/admin/profile/mfa" in r.text
-        assert "/admin/password-reset" in r.text
+        assert "/admin/profile/password" in r.text
 
 
 @pytest.mark.asyncio

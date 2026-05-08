@@ -136,7 +136,11 @@ def render_delete_confirm(
                 el(
                     "p",
                     {"class": "mt-1 text-sm text-destructive leading-relaxed"},
-                    raw(message or default_message),
+                    *(
+                        [raw(message)]
+                        if message is not None
+                        else list(default_message)
+                    ),
                 ),
             ),
         ),
@@ -163,7 +167,13 @@ def render_delete_confirm(
                     "for": "delete-confirm-input",
                     "class": "block text-sm font-medium text-foreground mb-1",
                 },
-                'Type <span class="font-bold tracking-wider">DELETE</span> to confirm:',
+                "Type ",
+                el(
+                    "span",
+                    {"class": "font-bold tracking-wider"},
+                    "DELETE",
+                ),
+                " to confirm:",
             ),
             el(
                 "input",
@@ -295,8 +305,11 @@ def render_bulk_delete_confirm(
 
     suffix = "s" if record_count != 1 else ""
     default_message = (
-        f"You are about to permanently delete <strong>{record_count}</strong> "
-        f"record{suffix}. This action <strong>cannot be undone</strong>."
+        "You are about to permanently delete ",
+        el("strong", str(record_count)),
+        f" record{suffix}. This action ",
+        el("strong", "cannot be undone"),
+        ".",
     )
 
     body = el(
@@ -327,7 +340,11 @@ def render_bulk_delete_confirm(
                 el(
                     "p",
                     {"class": "mt-1 text-sm text-destructive leading-relaxed"},
-                    raw(message or default_message),
+                    *(
+                        [raw(message)]
+                        if message is not None
+                        else list(default_message)
+                    ),
                 ),
             ),
         ),
@@ -354,7 +371,13 @@ def render_bulk_delete_confirm(
                     "for": "bulk-delete-confirm-input",
                     "class": "block text-sm font-medium text-foreground mb-1",
                 },
-                f'Type <span class="font-bold tracking-wider">{confirm_phrase}</span> to confirm:',
+                "Type ",
+                el(
+                    "span",
+                    {"class": "font-bold tracking-wider"},
+                    confirm_phrase,
+                ),
+                " to confirm:",
             ),
             el(
                 "input",
