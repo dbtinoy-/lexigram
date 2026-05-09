@@ -189,7 +189,9 @@ class FileUploadService:
 
                     logger = get_logger(__name__)
                     logger.warning(
-                        "storage.presigned_fallback_to_public", method="PUT"
+                        "storage.presigned_fallback_to_public",
+                        path=storage_path,
+                        method="PUT",
                     )
                     url = await self.storage.get_url(storage_path)
 
@@ -263,10 +265,17 @@ class FileUploadService:
         """
         from datetime import timedelta
 
-        return await self.storage.get_presigned_url(
-            path=storage_path,
-            expires_in=timedelta(seconds=expires_in),
-        )
+        try:
+            return await self.storage.get_presigned_url(
+                path=storage_path,
+                expires_in=timedelta(seconds=expires_in),
+            )
+        except StorageUnsupportedOperationError:
+            logger.warning(
+                "storage.presigned_fallback_to_public",
+                path=storage_path,
+            )
+            return await self.storage.get_url(storage_path)
 
     async def exists(self, storage_path: str) -> bool:
         """

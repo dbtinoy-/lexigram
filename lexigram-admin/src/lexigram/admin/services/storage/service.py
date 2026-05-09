@@ -262,6 +262,7 @@ class AdminStorageService:
         except StorageUnsupportedOperationError:
             logger.warning(
                 "storage.presigned_fallback_to_public",
+                path=path,
                 method="GET",
             )
             return await self._store.get_url(path)
@@ -307,6 +308,7 @@ class AdminStorageService:
         except StorageUnsupportedOperationError:
             logger.warning(
                 "storage.presigned_fallback_to_public",
+                path=path,
                 method="PUT",
             )
             url = await self._store.get_url(path)
