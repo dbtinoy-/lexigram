@@ -69,6 +69,28 @@ async def test_generate_request_model_overrides_config_model() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_text_to_video_keeps_flags_and_seed() -> None:
+    provider = OpenAIVideoProvider(api_key="key", poll_interval=0.01, max_polls=5)
+    with _patch_ok_gateway() as mock_post:
+        result = await provider.generate(
+            VideoRequest(
+                prompt="a drone over the valley",
+                mode=VideoMode.TEXT_TO_VIDEO,
+                generate_audio=True,
+                return_last_frame=True,
+                seed=42,
+                ratio="9:16",
+            )
+        )
+    assert result.is_ok()
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["generate_audio"] is True
+    assert payload["return_last_frame"] is True
+    assert payload["seed"] == 42
+    assert payload["ratio"] == "9:16"
+
+
+@pytest.mark.asyncio
 async def test_generate_submits_then_polls_until_completed() -> None:
     provider = OpenAIVideoProvider(api_key="key", poll_interval=0.01, max_polls=10)
 

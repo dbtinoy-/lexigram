@@ -117,45 +117,44 @@ class OpenAIVideoProvider:
             payload["ratio"] = request.ratio
 
         mode = request.mode or self._derive_mode(request)
-        if mode == VideoMode.TEXT_TO_VIDEO:
-            return payload
-        if mode == VideoMode.FIRST_FRAME:
-            if not request.image_uri:
-                raise VideoGenerationError("first_frame mode requires image_uri")
-            payload["image_url"] = request.image_uri
-        elif mode == VideoMode.FIRST_LAST_FRAME:
-            if not request.image_uri or not request.last_frame_image:
-                raise VideoGenerationError(
-                    "first_last_frame mode requires image_uri and last_frame_image"
-                )
-            payload["first_frame_image"] = request.image_uri
-            payload["last_frame_image"] = request.last_frame_image
-        else:  # MULTIMODAL_REFERENCE
-            images = [uri for uri in request.reference_images if uri]
-            videos = [uri for uri in request.reference_videos if uri]
-            audios = [uri for uri in request.reference_audios if uri]
-            if not images and not videos:
-                raise VideoGenerationError(
-                    "multimodal_reference mode requires reference_images or reference_videos"
-                )
-            if len(images) > 9:
-                raise VideoGenerationError(
-                    "multimodal_reference mode supports at most 9 reference_images"
-                )
-            if len(videos) > 3:
-                raise VideoGenerationError(
-                    "multimodal_reference mode supports at most 3 reference_videos"
-                )
-            if len(audios) > 3:
-                raise VideoGenerationError(
-                    "multimodal_reference mode supports at most 3 reference_audios"
-                )
-            if images:
-                payload["reference_images"] = images
-            if videos:
-                payload["reference_videos"] = videos
-            if audios:
-                payload["reference_audios"] = audios
+        if mode != VideoMode.TEXT_TO_VIDEO:
+            if mode == VideoMode.FIRST_FRAME:
+                if not request.image_uri:
+                    raise VideoGenerationError("first_frame mode requires image_uri")
+                payload["image_url"] = request.image_uri
+            elif mode == VideoMode.FIRST_LAST_FRAME:
+                if not request.image_uri or not request.last_frame_image:
+                    raise VideoGenerationError(
+                        "first_last_frame mode requires image_uri and last_frame_image"
+                    )
+                payload["first_frame_image"] = request.image_uri
+                payload["last_frame_image"] = request.last_frame_image
+            else:  # MULTIMODAL_REFERENCE
+                images = [uri for uri in request.reference_images if uri]
+                videos = [uri for uri in request.reference_videos if uri]
+                audios = [uri for uri in request.reference_audios if uri]
+                if not images and not videos:
+                    raise VideoGenerationError(
+                        "multimodal_reference mode requires reference_images or reference_videos"
+                    )
+                if len(images) > 9:
+                    raise VideoGenerationError(
+                        "multimodal_reference mode supports at most 9 reference_images"
+                    )
+                if len(videos) > 3:
+                    raise VideoGenerationError(
+                        "multimodal_reference mode supports at most 3 reference_videos"
+                    )
+                if len(audios) > 3:
+                    raise VideoGenerationError(
+                        "multimodal_reference mode supports at most 3 reference_audios"
+                    )
+                if images:
+                    payload["reference_images"] = images
+                if videos:
+                    payload["reference_videos"] = videos
+                if audios:
+                    payload["reference_audios"] = audios
 
         if request.generate_audio:
             payload["generate_audio"] = True
