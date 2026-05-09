@@ -42,6 +42,13 @@ class WebhookConfig(BaseConfig):
         const.DEFAULT_STORE_BACKEND,
         description="Persistence backend ('sql' requires lexigram-webhook[sql])",
     )
+    allow_private_urls: bool = Field(
+        False,
+        description=(
+            "Allow registering and delivering webhooks to private, loopback, "
+            "or link-local URLs (local development only). Defaults to deny."
+        ),
+    )
     retry_max_attempts: int = Field(
         const.DEFAULT_RETRY_MAX_ATTEMPTS,
         description="Maximum delivery attempts before dead-letter",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 import uuid
@@ -69,6 +70,17 @@ class WebhookSubscriptionService:
         """
         if not url.startswith(("http://", "https://")):
             return Err(InvalidWebhookURLError(f"Invalid webhook URL: {url!r}"))
+
+        if not self._config.allow_private_urls:
+            from lexigram.contracts.security import is_safe_url_for_request
+
+            safe = await asyncio.to_thread(is_safe_url_for_request, url)
+            if not safe:
+                return Err(
+                    InvalidWebhookURLError(
+                        f"Webhook URL must be publicly reachable: {url!r}"
+                    )
+                )
 
         subscription = WebhookSubscription(
             subscription_id=str(uuid.uuid4()),
