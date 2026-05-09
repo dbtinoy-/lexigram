@@ -221,18 +221,22 @@ class TestLocalDriver:
         assert url == "http://localhost:8000/files/test/file.txt"
 
     @pytest.mark.asyncio
-    async def test_presigned_url(self, driver):
-        """Test presigned URL generation (same as regular URL for local)"""
-        url = await driver.get_presigned_url("test/file.txt")
-        assert url == "http://localhost:8000/files/test/file.txt"
+    async def test_presigned_url_raises(self, driver):
+        """Local driver does not support presigned URLs"""
+        from lexigram.storage.exceptions import StorageUnsupportedOperationError
+
+        with pytest.raises(StorageUnsupportedOperationError):
+            await driver.get_presigned_url("test/file.txt")
 
     @pytest.mark.asyncio
-    async def test_presigned_url_with_params(self, driver):
-        """Test presigned URL with expiration and method"""
-        url = await driver.get_presigned_url(
-            "test/file.txt", expires_in=7200, method="PUT",
-        )
-        assert url == "http://localhost:8000/files/test/file.txt"
+    async def test_presigned_url_with_params_raises(self, driver):
+        """Local driver does not support presigned URLs"""
+        from lexigram.storage.exceptions import StorageUnsupportedOperationError
+
+        with pytest.raises(StorageUnsupportedOperationError):
+            await driver.get_presigned_url(
+                "test/file.txt", expires_in=7200, method="PUT",
+            )
 
     @pytest.mark.asyncio
     async def test_health_check_healthy(self, driver):

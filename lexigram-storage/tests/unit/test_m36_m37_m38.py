@@ -91,19 +91,21 @@ class TestS3DriverBuildSseParams:
 
 
 # ---------------------------------------------------------------------------
-# M37 — timedelta for get_presigned_url (MemoryDriver raises; LocalDriver returns URL)
+# M37 — timedelta for get_presigned_url (both drivers raise unsupported)
 # ---------------------------------------------------------------------------
 
 
 class TestPresignedUrlTimedelta:
     @pytest.mark.asyncio
-    async def test_local_driver_accepts_timedelta(self, tmp_path) -> None:
+    async def test_local_driver_accepts_timedelta_and_raises(self, tmp_path) -> None:
         from lexigram.storage.backends.local import LocalDriver
+        from lexigram.storage.exceptions import StorageUnsupportedOperationError
 
         driver = LocalDriver(root_dir=str(tmp_path), base_url="http://localhost")
-        # local driver returns the public URL regardless, but must accept timedelta
-        url = await driver.get_presigned_url("some/file.txt", expires_in=timedelta(minutes=5))
-        assert isinstance(url, str)
+        with pytest.raises(StorageUnsupportedOperationError):
+            await driver.get_presigned_url(
+                "some/file.txt", expires_in=timedelta(minutes=5)
+            )
 
     @pytest.mark.asyncio
     async def test_memory_driver_accepts_timedelta_and_raises(self) -> None:
@@ -115,10 +117,10 @@ class TestPresignedUrlTimedelta:
             await driver.get_presigned_url("some/file.txt", expires_in=timedelta(hours=24))
 
     @pytest.mark.asyncio
-    async def test_default_expiry_is_one_hour(self, tmp_path) -> None:
+    async def test_local_driver_default_expiry_raises(self, tmp_path) -> None:
         from lexigram.storage.backends.local import LocalDriver
+        from lexigram.storage.exceptions import StorageUnsupportedOperationError
 
         driver = LocalDriver(root_dir=str(tmp_path), base_url="http://localhost")
-        # No expires_in → should use default timedelta(hours=1) without raising
-        url = await driver.get_presigned_url("some/file.txt")
-        assert isinstance(url, str)
+        with pytest.raises(StorageUnsupportedOperationError):
+            await driver.get_presigned_url("some/file.txt")
