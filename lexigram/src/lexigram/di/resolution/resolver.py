@@ -152,14 +152,16 @@ class ServiceResolver:
         impl = descriptor.implementation
 
         svc_type = descriptor.service_type
+        # A named binding stores the service type as a (real_type, name) tuple.
+        effective_type = svc_type[0] if isinstance(svc_type, tuple) else svc_type
         if not callable(impl):
             instance = impl
         elif inspect.isclass(impl):
-            if not isinstance(svc_type, type):
+            if not isinstance(effective_type, type):
                 raise TypeError(
-                    f"Expected a type for service_type, got {type(svc_type)}"
+                    f"Expected a type for service_type, got {type(effective_type)}"
                 )
-            instance = await self.create_with_injection(impl, svc_type)
+            instance = await self.create_with_injection(impl, effective_type)
         else:
             try:
                 result = impl(self)
