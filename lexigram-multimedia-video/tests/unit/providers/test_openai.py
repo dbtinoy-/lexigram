@@ -91,6 +91,61 @@ async def test_generate_text_to_video_keeps_flags_and_seed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_passes_extra_flags() -> None:
+    provider = OpenAIVideoProvider(api_key="key", poll_interval=0.01, max_polls=5)
+    with _patch_ok_gateway() as mock_post:
+        result = await provider.generate(
+            VideoRequest(
+                prompt="a drone over the valley",
+                mode=VideoMode.MULTIMODAL_REFERENCE,
+                reference_images=["https://cdn.example.com/r/1.png"],
+                extra={"human_review": True, "scene_optimize": "anime style"},
+            )
+        )
+    assert result.is_ok()
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["human_review"] is True
+    assert payload["scene_optimize"] == "anime style"
+
+
+@pytest.mark.asyncio
+async def test_generate_extra_keeps_explicit_bools_omits_empty_strings() -> None:
+    provider = OpenAIVideoProvider(api_key="key", poll_interval=0.01, max_polls=5)
+    with _patch_ok_gateway() as mock_post:
+        result = await provider.generate(
+            VideoRequest(
+                prompt="a drone over the valley",
+                mode=VideoMode.MULTIMODAL_REFERENCE,
+                reference_images=["https://cdn.example.com/r/1.png"],
+                extra={"human_review": False, "scene_optimize": "  "},
+            )
+        )
+    assert result.is_ok()
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["human_review"] is False
+    assert "scene_optimize" not in payload
+
+
+@pytest.mark.asyncio
+async def test_generate_extra_does_not_override_core_keys() -> None:
+    provider = OpenAIVideoProvider(api_key="key", poll_interval=0.01, max_polls=5)
+    with _patch_ok_gateway() as mock_post:
+        result = await provider.generate(
+            VideoRequest(
+                prompt="a drone over the valley",
+                duration_seconds=4,
+                mode=VideoMode.MULTIMODAL_REFERENCE,
+                reference_images=["https://cdn.example.com/r/1.png"],
+                extra={"duration": 99, "prompt": "override"},
+            )
+        )
+    assert result.is_ok()
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["duration"] == 4
+    assert payload["prompt"] == "a drone over the valley"
+
+
+@pytest.mark.asyncio
 async def test_generate_submits_then_polls_until_completed() -> None:
     provider = OpenAIVideoProvider(api_key="key", poll_interval=0.01, max_polls=10)
 
