@@ -110,7 +110,7 @@ class TestExecutorWorkingMemoryAssembly:
         strategy.execute = AsyncMock(return_value=Ok(_make_response()))
         agent.strategy = strategy
 
-        executor = AgentExecutorImpl(working_memory=wm)
+        executor = AgentExecutorImpl(working_memory=wm, llm=AsyncMock())
         result = await executor.run(agent=agent, message="Hello", session_id="s1")
 
         wm.assemble.assert_awaited_once()
@@ -139,7 +139,7 @@ class TestExecutorSessionIntegration:
         strategy.execute = AsyncMock(return_value=Ok(_make_response()))
         agent.strategy = strategy
 
-        executor = AgentExecutorImpl(session_manager=sm)
+        executor = AgentExecutorImpl(session_manager=sm, llm=AsyncMock())
         result = await executor.run(
             agent=agent, message="Hello", session_id="s1", user_id="u1"
         )
@@ -166,7 +166,7 @@ class TestExecutorSessionIntegration:
         strategy.execute = AsyncMock(return_value=Ok(_make_response("World")))
         agent.strategy = strategy
 
-        executor = AgentExecutorImpl(session_manager=sm)
+        executor = AgentExecutorImpl(session_manager=sm, llm=AsyncMock())
         await executor.run(agent=agent, message="Hello", session_id="s1", user_id="u1")
 
         # User turn + assistant turn
@@ -199,7 +199,7 @@ class TestExecutorSkillMerge:
         strategy.execute = AsyncMock(return_value=Ok(_make_response()))
         agent.strategy = strategy
 
-        executor = AgentExecutorImpl(skill_registry=sr)
+        executor = AgentExecutorImpl(skill_registry=sr, llm=AsyncMock())
         result = await executor.run(agent=agent, message="Hello")
 
         sr.get_schemas.assert_called_once()
