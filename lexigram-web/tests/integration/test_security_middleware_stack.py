@@ -19,12 +19,9 @@ from lexigram.security.guards.chain import GuardChainImpl as GuardChain
 from lexigram.web.security.config import (
     CORSConfig,
     CSRFConfig,
-    SecurityHeadersConfig,
 )
 from lexigram.web.security.cors.middleware import CORSMiddleware
 from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware
-from lexigram.web.security.headers.middleware import SecurityHeadersMiddleware
-
 
 # ---------------------------------------------------------------------------
 # ASGI test helpers

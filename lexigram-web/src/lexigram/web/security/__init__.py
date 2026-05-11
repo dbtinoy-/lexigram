@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.web.middleware.security import SecurityHeadersMiddleware
 from lexigram.web.security.config import (
     CORSConfig,
     CrossOriginConfig,
@@ -23,7 +24,6 @@ from lexigram.web.security.guards import (
     RoleGuard,
     use_guards,
 )
-from lexigram.web.security.headers.middleware import SecurityHeadersMiddleware
 
 __all__ = [
     "AuthGuard",

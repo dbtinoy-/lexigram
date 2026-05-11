@@ -258,7 +258,6 @@ web:
       cookie_name: csrf_token
       header_name: X-CSRF-Token
       excluded_paths:
-        - /api/
         - /health
         - /metrics
   cors:

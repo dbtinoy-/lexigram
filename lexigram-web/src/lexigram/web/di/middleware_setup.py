@@ -164,8 +164,11 @@ class MiddlewareSetup:
         container: ContainerResolverProtocol,
     ) -> None:
         """Add CSRF protection middleware when opt-in config is present."""
-        csrf_cfg = getattr(getattr(self._config, "security", None), "csrf", None)
+        security_cfg = getattr(self._config, "security", None)
+        csrf_cfg = getattr(security_cfg, "csrf", None)
         if csrf_cfg is None or not csrf_cfg.enabled:
+            return
+        if security_cfg is not None and not getattr(security_cfg, "enable_csrf", True):
             return
 
         from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware
