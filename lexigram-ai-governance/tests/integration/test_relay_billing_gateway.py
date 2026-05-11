@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from lexigram.ai.governance.budget import BudgetAlertEvent
 from lexigram.ai.governance.config import GovernanceConfig
 from lexigram.ai.governance.di.provider import GovernanceProvider
 from lexigram.ai.governance.relay_billing.di import NoopRelayBilling
@@ -38,6 +39,8 @@ from lexigram.contracts.ai.relay import (
 )
 from lexigram.contracts.core.result import Ok, Result
 from lexigram.contracts.data import DatabaseProviderProtocol, QueryResult
+from lexigram.contracts.events import EventBusProtocol
+from lexigram.contracts.exceptions.events import EventError
 from lexigram.di.container import Container
 
 pytestmark = pytest.mark.integration
@@ -126,6 +129,24 @@ class RecordingAuditStore:
         self.events.append(event)
 
 
+class RecordingEventBus:
+    """Collects published domain events without dispatching handlers."""
+
+    def __init__(self) -> None:
+        self.events: list[object] = []
+
+    async def publish(self, event: object) -> Result[None, EventError]:
+        """Append *event* to the collected list and report success."""
+        self.events.append(event)
+        return Ok(None)
+
+    def subscribe(self, event_type: type, handler: object) -> None:
+        """No-op; events are only collected, never dispatched."""
+
+    def unsubscribe(self, event_type: type, handler: object) -> None:
+        """No-op; events are only collected, never dispatched."""
+
+
 def make_scope() -> RelayUsageScope:
     """Build a RelayUsageScope with a sane default tenant."""
     return RelayUsageScope(
@@ -167,6 +188,7 @@ async def build_booted_container(
     *,
     with_database: bool = True,
     audit_store: RecordingAuditStore | None = None,
+    event_bus: RecordingEventBus | None = None,
 ) -> tuple[Container, SqliteFakeDatabase | None]:
     """Register and boot the governance provider in a fresh container.
 
@@ -176,6 +198,8 @@ async def build_booted_container(
             estimator so the boot phase builds the live billing service.
         audit_store: Optional audit store registered before boot so the
             boot phase can observe settlements.
+        event_bus: Optional event bus registered before boot so the budget
+            tracker publishes threshold alerts into it.
 
     Returns:
         The booted container and the fake database (or ``None``).
@@ -192,6 +216,8 @@ async def build_booted_container(
         )
     if audit_store is not None:
         container.singleton(AIAuditStoreProtocol, audit_store)
+    if event_bus is not None:
+        container.singleton(EventBusProtocol, event_bus)
     await provider.boot(container)
     return container, db
 
@@ -279,7 +305,7 @@ async def test_duplicate_settle_never_charges_twice() -> None:
 
 
 async def test_settle_emits_one_audit_event() -> None:
-    """A successful settle records exactly one LLM_CALL audit event."""
+    """A successful settle records exactly one fully populated audit event."""
     audit = RecordingAuditStore()
     container, _ = await build_booted_container(
         GovernanceConfig(enabled=True),
@@ -302,3 +328,80 @@ async def test_settle_emits_one_audit_event() -> None:
     event = audit.events[0]
     assert event.event_type == AuditEventType.LLM_CALL
     assert event.tokens == 15
+    assert event.model == "gpt-4o-mini"
+    assert event.provider == "openai"
+    assert event.user_id == "user-1"
+    assert event.status == "success"
+    assert event.cost == 0.2
+    assert event.latency_ms is not None
+    assert event.latency_ms >= 0
+    assert event.metadata["request_id"] == "req-1"
+    assert event.metadata["tenant_id"] == "tenant-a"
+    assert event.metadata["account_id"] == "acct-1"
+    assert event.metadata["channel"] == "default"
+    assert event.metadata["converter_id"] == "openai_chat_to_openai_chat"
+    assert event.metadata["loss_codes"] == ["missing_header"]
+    assert event.metadata["currency"] == "USD"
+
+
+async def test_settle_failed_maps_to_error_audit_status() -> None:
+    """A failed settle surfaces as an ``error`` audit event, once."""
+    audit = RecordingAuditStore()
+    container, _ = await build_booted_container(
+        GovernanceConfig(enabled=True),
+        audit_store=audit,
+    )
+
+    billing = await container.resolve(RelayBillingProtocol)
+    reservation = await billing.pre_consume("req-2", make_scope(), make_payload())
+    assert reservation.is_ok()
+
+    settled = await billing.settle(reservation.unwrap(), make_result(), status="failed")
+    assert settled.is_ok()
+
+    for _ in range(5):
+        await asyncio.sleep(0)
+
+    assert len(audit.events) == 1
+    assert audit.events[0].status == "error"
+    assert audit.events[0].metadata["request_id"] == "req-2"
+
+
+async def test_settle_crossing_budget_threshold_publishes_alert() -> None:
+    """Settling past a budget threshold emits a BudgetAlertEvent over the bus."""
+    bus = RecordingEventBus()
+    container, _ = await build_booted_container(
+        GovernanceConfig(enabled=True, tpm_limit=100),
+        event_bus=bus,
+    )
+
+    billing = await container.resolve(RelayBillingProtocol)
+    reservation = await billing.pre_consume("req-3", make_scope(), make_payload())
+    assert reservation.is_ok()
+
+    heavy = RelayConvertResult[Any](
+        value="hi",
+        source=RelayFormat.OPENAI_CHAT,
+        target=RelayFormat.OPENAI_CHAT,
+        converter_id="openai_chat_to_openai_chat",
+        quality=ConversionQuality.GOOD,
+        usage=RelayUsage(prompt_tokens=80, completion_tokens=5),
+        losses=(),
+    )
+    settled = await billing.settle(reservation.unwrap(), heavy, status="completed")
+    assert settled.is_ok()
+
+    for _ in range(10):
+        await asyncio.sleep(0)
+
+    alerts = [
+        event
+        for event in bus.events
+        if isinstance(event, BudgetAlertEvent)
+        and event.limit_type == "tpm"
+        and event.threshold == 0.8
+    ]
+    assert len(alerts) == 1
+    assert alerts[0].model == "gpt-4o-mini"
+    assert alerts[0].tenant_id == "tenant-a"
+    assert alerts[0].current == 85
