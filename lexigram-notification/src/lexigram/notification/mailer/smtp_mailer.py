@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from email.errors import MessageError
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import smtplib
@@ -122,7 +123,10 @@ class SMTPMailer:
             recipients = message.to + message.cc + message.bcc
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._send_sync, mime, recipients)
-        except smtplib.SMTPException as exc:
+        except (smtplib.SMTPException, MessageError) as exc:
+            # MessageError covers HeaderParseError/HeaderWriteError raised
+            # by as_string() on CRLF-infiltrated headers (defense-in-depth:
+            # EmailMessage validation rejects these at construction).
             logger.warning("smtp_send_failed", error=str(exc), host=self.host)
             return Err(SMTPMailerError(str(exc)))
 
