@@ -5,12 +5,30 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+import re
 from typing import TYPE_CHECKING
 
 from lexigram.contracts.lib.time import utcnow as _utcnow
 
 if TYPE_CHECKING:
     from datetime import datetime
+
+_HEADER_NAME_RE = re.compile(r"[!-9;-~]+")
+"""RFC 5322 field-name token: printable ASCII excluding space and colon."""
+
+
+def _reject_crlf(value: str | None, field: str) -> None:
+    """Reject CR/LF in a field that will be serialized into a MIME header.
+
+    Args:
+        value: Field value to check; ``None`` passes.
+        field: Human-readable field path for the error message.
+
+    Raises:
+        ValueError: If the value contains a CR or LF character.
+    """
+    if value is not None and ("\r" in value or "\n" in value):
+        raise ValueError(f"{field} must not contain CR or LF characters")
 
 
 @dataclass(frozen=True)
@@ -45,6 +63,36 @@ class EmailMessage:
     cc: list[str] = field(default_factory=list)
     bcc: list[str] = field(default_factory=list)
     headers: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Reject CR/LF in header-bound fields to prevent SMTP header injection.
+
+        Only fields that are serialized into MIME headers are constrained;
+        ``body`` and ``html_body`` are message content and may contain
+        newlines. Raise (fail closed) rather than silently stripping, so a
+        caller never believes an altered message was delivered as written.
+
+        Raises:
+            ValueError: If any header-bound field contains CR/LF or a
+                header name is not a valid RFC 5322 field-name token.
+        """
+        _reject_crlf(self.subject, "EmailMessage.subject")
+        _reject_crlf(self.from_email, "EmailMessage.from_email")
+        _reject_crlf(self.from_name, "EmailMessage.from_name")
+        _reject_crlf(self.reply_to, "EmailMessage.reply_to")
+        for recipient_field, recipients in (
+            ("to", self.to),
+            ("cc", self.cc),
+            ("bcc", self.bcc),
+        ):
+            for recipient in recipients:
+                _reject_crlf(recipient, f"EmailMessage.{recipient_field}")
+        for name, value in self.headers.items():
+            if not _HEADER_NAME_RE.fullmatch(name):
+                raise ValueError(
+                    f"EmailMessage.headers contains invalid header name: {name!r}"
+                )
+            _reject_crlf(value, f"EmailMessage.headers[{name!r}]")
 
 
 @dataclass(frozen=True)
