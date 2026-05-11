@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
+import uuid
 
 from lexigram.ai.llm.clients._message_utils import serialize_text_for_ollama
 from lexigram.ai.llm.clients.base import AbstractLLMClient
@@ -21,11 +22,12 @@ from lexigram.ai.llm.types import (
     Completion,
     StreamChunk,
     TokenUsage,
-    ToolCall,
 )
+from lexigram.contracts.ai.llm import FunctionCall, ToolCall
 from lexigram.contracts.ai.multimodal import ImageUrlPart
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.result import Ok, Result
+from lexigram.serialization import loads_str
 
 
 class OllamaClient(AbstractLLMClient):
@@ -120,6 +122,8 @@ class OllamaClient(AbstractLLMClient):
             }
             if images:
                 entry["images"] = images
+            if msg.tool_calls:
+                entry["tool_calls"] = self._serialize_tool_calls(msg.tool_calls)
             result.append(entry)
         return result
 
@@ -142,6 +146,7 @@ class OllamaClient(AbstractLLMClient):
         """
         try:
             model_name = kwargs.pop("model", self.config.model)
+            tools = kwargs.pop("tools", None)
             await self._ensure_model_loaded(model_name)
 
             # Convert messages to Ollama format
@@ -158,6 +163,9 @@ class OllamaClient(AbstractLLMClient):
                 **kwargs,
             }
 
+            if tools:
+                params["tools"] = self._convert_tools(tools)
+
             # Inject thinking suppress for models that support it
             if self.config.thinking is not None and self.config.thinking.suppress:
                 params["think"] = False
@@ -171,6 +179,9 @@ class OllamaClient(AbstractLLMClient):
                     content=response["message"]["content"],
                     model=response["model"],
                     finish_reason="stop",
+                    tool_calls=self._parse_tool_calls(
+                        response["message"].get("tool_calls")
+                    ),
                     usage=TokenUsage(
                         prompt_tokens=response.get("prompt_eval_count", 0),
                         completion_tokens=response.get("eval_count", 0),
@@ -273,19 +284,135 @@ class OllamaClient(AbstractLLMClient):
         tools: list[ToolCall] | None = None,
         **kwargs: Any,
     ) -> Result[Completion, LLMError]:
-        """Generate completion (tools not supported in Ollama yet).
+        """Generate completion (native tool calling handled in ``_do_complete``).
 
         Args:
             messages: Chat messages
-            tools: Optional tools (ignored for now)
+            tools: Optional tools (exercised via ``complete(..., tools=...)``)
             **kwargs: Additional parameters
 
         Returns:
             ``Ok(Completion)`` on success.  ``Err(LLMError)`` on failure.
         """
-        # Ollama doesn't support tool calling yet
-        # Delegate to regular complete
+        # Ollama tool calling is wired through complete(..., tools=...);
+        # delegate directly.
         return await self._do_complete(messages, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Native tool calling helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _convert_tools(tools: Any) -> list[dict[str, Any]]:
+        """Convert ``ToolDefinition`` schemas to Ollama tool dicts.
+
+        Args:
+            tools: Iterable of ToolDefinition (or name/description/parameters
+                duck types) received via ``complete(..., tools=...)``.
+
+        Returns:
+            List of Ollama-compatible ``{"type": "function", "function": {...}}``
+            dicts.
+        """
+        converted: list[dict[str, Any]] = []
+        for tool in tools:
+            name = getattr(tool, "name", None)
+            if not name:
+                continue
+            description = getattr(tool, "description", None) or ""
+            parameters = getattr(tool, "parameters", None) or {
+                "type": "object",
+                "properties": {},
+            }
+            converted.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "description": description,
+                        "parameters": parameters,
+                    },
+                }
+            )
+        return converted
+
+    def _serialize_tool_calls(self, tool_calls: list[ToolCall]) -> list[dict[str, Any]]:
+        """Serialize framework ``ToolCall``s back to Ollama wire format.
+
+        Assistant turns that requested tools must be re-emitted before the
+        matching ``tool`` role responses so the conversation stays consistent.
+
+        Args:
+            tool_calls: Framework tool calls from a prior assistant turn.
+
+        Returns:
+            Ollama ``tool_calls`` dicts (``{"function": {"name", "arguments"}}``).
+        """
+        serialized: list[dict[str, Any]] = []
+        for call in tool_calls:
+            if call.function is None:
+                continue
+            arguments = call.function.arguments
+            if isinstance(arguments, str):
+                try:
+                    arguments = loads_str(arguments)
+                except (TypeError, ValueError):
+                    arguments = {}
+            serialized.append(
+                {
+                    "function": {
+                        "name": call.function.name,
+                        "arguments": dict(arguments)
+                        if isinstance(arguments, dict)
+                        else {},
+                    }
+                }
+            )
+        return serialized
+
+    @staticmethod
+    def _parse_tool_calls(raw: Any) -> list[ToolCall] | None:
+        """Parse Ollama tool calls into framework ``ToolCall`` objects.
+
+        Ollama models reply with tool calls as ``Message.ToolCall`` objects
+        (or dicts) carrying ``function.name`` and ``function.arguments``.
+        Ollama does not assign call IDs, so a synthetic ID is generated for
+        round-trip bookkeeping.
+
+        Args:
+            raw: The raw ``tool_calls`` from the Ollama response message.
+
+        Returns:
+            List of framework ``ToolCall`` objects, or ``None`` when the
+            response contained no tool calls.
+        """
+        if not raw:
+            return None
+        calls: list[ToolCall] = []
+        for raw_call in raw:
+            function = (
+                raw_call.get("function")
+                if isinstance(raw_call, dict)
+                else getattr(raw_call, "function", None)
+            )
+            if function is None:
+                continue
+            if isinstance(function, dict):
+                name = function.get("name")
+                raw_arguments = function.get("arguments", {})
+            else:
+                name = getattr(function, "name", None)
+                raw_arguments = getattr(function, "arguments", {})
+            if not name:
+                continue
+            calls.append(
+                ToolCall(
+                    id=uuid.uuid4().hex,
+                    type="function",
+                    function=FunctionCall(name=name, arguments=raw_arguments),
+                )
+            )
+        return calls or None
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Perform a lightweight health check against the Ollama daemon.

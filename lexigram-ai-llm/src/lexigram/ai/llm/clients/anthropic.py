@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from lexigram.ai.llm.clients._message_utils import serialize_content_for_anthropic
+from lexigram.ai.llm.clients._tools_utils import parse_json_arguments
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.exceptions import (
@@ -124,6 +125,11 @@ class AnthropicClient(AbstractLLMClient):
                     "temperature", self.config.temperature
                 )
 
+            tools = params.pop("tools", None)
+            if tools:
+                converted_tools = [_tool_to_anthropic(t) for t in tools]
+                params["tools"] = [t for t in converted_tools if t.get("name")]
+
             if system_msg:
                 params["system"] = system_msg
 
@@ -135,6 +141,7 @@ class AnthropicClient(AbstractLLMClient):
             thinking: ThinkingResult | None = None
             thinking_parts: list[str] = []
             thinking_signature: str | None = None
+            tool_calls: list[ToolCall] = []
             for block in response.content:
                 block_type = getattr(block, "type", None)
                 if block_type == "thinking":
@@ -144,6 +151,17 @@ class AnthropicClient(AbstractLLMClient):
                     block_type is None and hasattr(block, "text")
                 ):
                     content = getattr(block, "text", "")
+                elif block_type == "tool_use":
+                    tool_calls.append(
+                        ToolCall(
+                            id=getattr(block, "id", ""),
+                            type="function",
+                            function=FunctionCall(
+                                name=getattr(block, "name", ""),
+                                arguments=dumps_str(getattr(block, "input", {})),
+                            ),
+                        )
+                    )
             if thinking_parts:
                 thinking = ThinkingResult(
                     content="".join(thinking_parts),
@@ -156,6 +174,7 @@ class AnthropicClient(AbstractLLMClient):
                     model=response.model,
                     finish_reason=response.stop_reason,
                     thinking=thinking,
+                    tool_calls=tool_calls or None,
                     usage=TokenUsage(
                         prompt_tokens=response.usage.input_tokens,
                         completion_tokens=response.usage.output_tokens,
@@ -289,9 +308,9 @@ class AnthropicClient(AbstractLLMClient):
     ) -> Result[Completion, LLMError]:
         """Generate completion with Anthropic tool/function calling.
 
-        Converts tool descriptors to Anthropic ``tool_use`` format and parses
-        ``tool_use`` content blocks from the response back into
-        :class:`ToolCall` objects.
+        Tool calling is handled by :meth:`_do_complete` via
+        ``complete(..., tools=...)``; this method forwards the tool
+        descriptors to keep the ``chat`` code path consistent.
 
         Args:
             messages: Chat messages.
@@ -301,72 +320,8 @@ class AnthropicClient(AbstractLLMClient):
         Returns:
             ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
             failures.
-
-        Raises:
-            LLMAuthenticationError: If API key is invalid.
-            AIError: For unexpected infrastructure failures.
         """
-        if not tools:
-            return await self._do_complete(messages, **kwargs)
-
-        try:
-            system_msg = None
-            conv_messages = []
-            for msg in messages:
-                if msg.role == Role.SYSTEM:
-                    system_msg = msg.content
-                else:
-                    conv_messages.append(self._convert_message(msg))
-
-            params = {
-                "model": kwargs.pop("model", self.config.model),
-                "messages": conv_messages,
-                "max_tokens": kwargs.pop("max_tokens", self.config.max_tokens or 1024),
-                "temperature": kwargs.pop("temperature", self.config.temperature),
-                "tools": [_tool_to_anthropic(t) for t in tools],
-                **kwargs,
-            }
-            if system_msg:
-                params["system"] = system_msg
-
-            response = await self.client.messages.create(**params)
-
-            text_parts: list[str] = []
-            tool_calls: list[ToolCall] = []
-
-            for block in response.content:
-                block_type = getattr(block, "type", None)
-                if block_type == "text":
-                    text_parts.append(getattr(block, "text", ""))
-                elif block_type == "tool_use":
-                    tool_calls.append(
-                        ToolCall(
-                            id=getattr(block, "id", ""),
-                            type="function",
-                            function=FunctionCall(
-                                name=getattr(block, "name", ""),
-                                arguments=dumps_str(getattr(block, "input", {})),
-                            ),
-                        )
-                    )
-
-            return Ok(
-                Completion(
-                    content="".join(text_parts),
-                    model=response.model,
-                    finish_reason=response.stop_reason,
-                    usage=TokenUsage(
-                        prompt_tokens=response.usage.input_tokens,
-                        completion_tokens=response.usage.output_tokens,
-                        total_tokens=response.usage.input_tokens
-                        + response.usage.output_tokens,
-                    ),
-                    tool_calls=tool_calls or None,
-                )
-            )
-
-        except (ValueError, RuntimeError, OSError, ConnectionError) as e:
-            return self._handle_error_as_result(e)
+        return await self._do_complete(messages, tools=tools, **kwargs)
 
     def _apply_thinking(self, params: dict[str, Any]) -> None:
         """Inject Anthropic extended-thinking parameters into the API payload.
@@ -395,14 +350,41 @@ class AnthropicClient(AbstractLLMClient):
         is populated (multi-turn with extended thinking), prepends thinking blocks
         to the serialized content.
 
+        Tool messages (``Role.TOOL``) become user turns with a ``tool_result``
+        block; assistant turns that requested tools gain ``tool_use`` blocks so
+        tool conversations round-trip correctly.
+
         Args:
             msg: ChatMessage to convert
 
         Returns:
             Anthropic message dict with ``role`` and ``content`` keys
         """
+        if msg.role == Role.TOOL:
+            return {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": msg.tool_call_id or "",
+                        "content": _tool_result_text(msg.content),
+                    }
+                ],
+            }
+
         role = "user" if msg.role == Role.USER else "assistant"
-        serialized_content = serialize_content_for_anthropic(msg.content)
+        tool_use_blocks: list[dict[str, Any]] = []
+        for call in msg.tool_calls or []:
+            if call.function is None:
+                continue
+            tool_use_blocks.append(
+                {
+                    "type": "tool_use",
+                    "id": call.id,
+                    "name": call.function.name,
+                    "input": parse_json_arguments(call.function.arguments),
+                }
+            )
 
         if msg.thinking_blocks:
             # Only include serialized_content if it's non-trivially empty
@@ -410,12 +392,22 @@ class AnthropicClient(AbstractLLMClient):
             if msg.content in ("", []):
                 content: list[dict[str, Any]] = list(msg.thinking_blocks)
             else:
-                content = list(msg.thinking_blocks) + serialized_content
+                content = list(msg.thinking_blocks) + serialize_content_for_anthropic(
+                    msg.content
+                )
+            if tool_use_blocks:
+                content.extend(tool_use_blocks)
             return {"role": role, "content": content}
+
+        if msg.content in ("", []):
+            return {
+                "role": role,
+                "content": tool_use_blocks,
+            }
 
         return {
             "role": role,
-            "content": serialized_content,
+            "content": serialize_content_for_anthropic(msg.content) + tool_use_blocks,
         }
 
     def _handle_error_as_result(self, error: Exception) -> Result[Any, LLMError]:
@@ -506,5 +498,21 @@ def _tool_to_anthropic(tool: Any) -> dict[str, Any]:
     return {
         "name": getattr(tool, "name", str(tool)),
         "description": getattr(tool, "description", ""),
-        "input_schema": {"type": "object", "properties": {}},
+        "input_schema": getattr(tool, "parameters", None)
+        or {"type": "object", "properties": {}},
     }
+
+
+def _tool_result_text(content: Any) -> str:
+    """Extract plain text from tool-result content.
+
+    Args:
+        content: Message content (str or list of content parts).
+
+    Returns:
+        Joined text string.
+    """
+    if isinstance(content, str):
+        return content
+    blocks = serialize_content_for_anthropic(content)
+    return " ".join(str(b.get("text", "")) for b in blocks if b.get("type") == "text")

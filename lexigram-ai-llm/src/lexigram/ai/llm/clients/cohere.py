@@ -244,9 +244,9 @@ class CohereClient(AbstractLLMClient):
     ) -> Result[Completion, LLMError]:
         """Generate completion with optional tool/function calling.
 
-        Converts Lexigram :class:`ToolCall` definitions into Cohere's
-        ``tools`` format (``name``, ``description``,
-        ``parameter_definitions``) and delegates to ``_do_complete``.
+        Tool conversion happens in :func:`~lexigram.ai.llm.clients._cohere_mappers.build_cohere_payload`
+        (via ``complete(..., tools=...)``); this method forwards the tool
+        descriptors to keep the ``chat`` code path consistent.
 
         Args:
             messages: Chat messages.
@@ -256,36 +256,7 @@ class CohereClient(AbstractLLMClient):
         Returns:
             ``Ok(Completion)`` on success or ``Err(LLMError)`` on failure.
         """
-        if tools:
-            cohere_tools: list[dict[str, Any]] = []
-            for tool in tools:
-                # Accept both ToolCall objects and raw dicts
-                if isinstance(tool, dict):
-                    cohere_tools.append(tool)
-                    continue
-                fn = getattr(tool, "function", tool)
-                name: str = getattr(fn, "name", "") or ""
-                description: str = getattr(fn, "description", "") or ""
-                # Build parameter_definitions from JSON schema if present
-                schema: dict[str, Any] = getattr(fn, "parameters", {}) or {}
-                properties: dict[str, Any] = schema.get("properties", {})
-                required_fields: list[str] = schema.get("required", [])
-                param_defs: dict[str, Any] = {}
-                for param_name, param_meta in properties.items():
-                    param_defs[param_name] = {
-                        "description": param_meta.get("description", ""),
-                        "type": param_meta.get("type", "str"),
-                        "required": param_name in required_fields,
-                    }
-                cohere_tools.append(
-                    {
-                        "name": name,
-                        "description": description,
-                        "parameter_definitions": param_defs,
-                    }
-                )
-            kwargs["tools"] = cohere_tools
-        return await self._do_complete(messages, **kwargs)
+        return await self._do_complete(messages, tools=tools, **kwargs)
 
     async def _stream_completion(
         self,

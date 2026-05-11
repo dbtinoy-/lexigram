@@ -40,7 +40,14 @@ async def test_submit_returns_fresh_job_handle_when_no_duplicate() -> None:
     assert handle.is_duplicate is False
     task_manager.submit_task.assert_awaited_once_with(
         "tts_generation",
-        {"text": "hi", "voice": None, "format": "mp3", "extra": {}},
+        {
+            "text": "hi",
+            "voice": None,
+            "format": "mp3",
+            "reference_audio_uri": None,
+            "emotion": None,
+            "extra": {},
+        },
         idempotency_key=None,
     )
 

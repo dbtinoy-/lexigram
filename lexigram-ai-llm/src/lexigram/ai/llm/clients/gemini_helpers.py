@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from lexigram.ai.llm.clients._message_utils import serialize_content_for_gemini
+from lexigram.ai.llm.clients._tools_utils import parse_json_arguments
 from lexigram.ai.llm.types import (
     AIError,
     Completion,
@@ -77,6 +78,10 @@ def messages_to_gemini(
     converted to ``inline_data`` for data URIs, or kept as text references
     for external URLs.
 
+    Assistant turns that requested tools emit ``functionCall`` parts; tool
+    results (``Role.TOOL``) emit ``functionResponse`` parts so multi-turn
+    tool conversations round-trip correctly.
+
     Args:
         messages: OpenAI-compatible message list or ChatMessage objects.
 
@@ -92,6 +97,11 @@ def messages_to_gemini(
             msg.get("content", "")
             if isinstance(msg, dict)
             else getattr(msg, "content", "")
+        )
+        tool_calls: Any = (
+            msg.get("tool_calls")
+            if isinstance(msg, dict)
+            else getattr(msg, "tool_calls", None)
         )
 
         if role == "system":
@@ -109,7 +119,43 @@ def messages_to_gemini(
             system_text = None
 
         # Use the multimodal serializer for MessageContent
-        parts.extend(serialize_content_for_gemini(content))
+        serialized = serialize_content_for_gemini(content)
+        if serialized and role != "tool":
+            parts.extend(serialized)
+
+        if role == "tool":
+            tool_call_id: str = (
+                msg.get("tool_call_id", "")
+                if isinstance(msg, dict)
+                else getattr(msg, "tool_call_id", "")
+            )
+            if tool_call_id:
+                parts.append(
+                    {
+                        "functionResponse": {
+                            "name": tool_call_id,
+                            "response": {"content": _extract_text(content)},
+                        }
+                    }
+                )
+        elif role == "assistant" and tool_calls:
+            for call in tool_calls:
+                fn = getattr(call, "function", None)
+                if fn is None or not getattr(fn, "name", None):
+                    continue
+                parts.append(
+                    {
+                        "functionCall": {
+                            "name": fn.name,
+                            "args": parse_json_arguments(fn.arguments),
+                        }
+                    }
+                )
+
+        # Drop empty text parts when the turn carries tool parts; Gemini
+        # rejects empty text blocks alongside functionCall/functionResponse.
+        if any("functionCall" in p or "functionResponse" in p for p in parts):
+            parts = [p for p in parts if p != {"text": ""}]
 
         contents.append({"role": gemini_role, "parts": parts})
 
@@ -327,7 +373,7 @@ def tool_to_gemini_function(tool: Any) -> dict[str, Any]:
     return {
         "name": getattr(tool, "name", str(tool)),
         "description": getattr(tool, "description", ""),
-        "parameters": {},
+        "parameters": getattr(tool, "parameters", None) or {},
     }
 
 

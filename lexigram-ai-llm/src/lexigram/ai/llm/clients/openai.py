@@ -9,7 +9,11 @@ from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
 
-from lexigram.ai.llm.clients._message_utils import serialize_content_for_openai
+from lexigram.ai.llm.clients._tools_utils import (
+    parse_openai_tool_calls,
+    serialize_message_for_openai,
+    tool_to_openai_format,
+)
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.exceptions import (
@@ -24,15 +28,12 @@ from lexigram.ai.llm.types import (
     AIError,
     ChatMessage,
     Completion,
-    FunctionCall,
     StreamChunk,
     ThinkingResult,
     TokenUsage,
-    ToolCall,
 )
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.result import Err, Ok, Result
-from lexigram.serialization import dumps_str
 
 
 class OpenAIClient(AbstractLLMClient):
@@ -111,6 +112,7 @@ class OpenAIClient(AbstractLLMClient):
             _model = kwargs.pop("model", self.config.model)
             _max_tokens = kwargs.pop("max_tokens", self.config.max_tokens)
             _temperature = kwargs.pop("temperature", self.config.temperature)
+            _tools = kwargs.pop("tools", None)
 
             params: dict[str, Any] = {
                 "model": _model,
@@ -119,6 +121,12 @@ class OpenAIClient(AbstractLLMClient):
             }
             if _max_tokens is not None:
                 params["max_tokens"] = _max_tokens
+            if _tools:
+                params["tools"] = [
+                    converted
+                    for tool in _tools
+                    if (converted := tool_to_openai_format(tool)) is not None
+                ]
 
             self._apply_thinking(params)
             if "reasoning_effort" not in params:
@@ -134,6 +142,9 @@ class OpenAIClient(AbstractLLMClient):
 
             # Convert to our Completion type
             choice = response.choices[0]
+            tool_calls = parse_openai_tool_calls(
+                getattr(choice.message, "tool_calls", None)
+            )
             # DeepSeek-style providers surface reasoning on the message object
             reasoning_content: str | None = getattr(
                 choice.message, "reasoning_content", None
@@ -155,6 +166,7 @@ class OpenAIClient(AbstractLLMClient):
                     content=choice.message.content or "",
                     model=response.model,
                     finish_reason=choice.finish_reason,
+                    tool_calls=tool_calls,
                     thinking=thinking,
                     usage=(
                         TokenUsage(
@@ -260,10 +272,14 @@ class OpenAIClient(AbstractLLMClient):
     async def _do_chat(
         self,
         messages: list[ChatMessage],
-        tools: list[ToolCall] | None = None,
+        tools: list[Any] | None = None,
         **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         """Generate completion with optional tool/function calling.
+
+        Tool calling is handled by :meth:`_do_complete` via
+        ``complete(..., tools=...)``; this method forwards the tool
+        descriptors to keep the ``chat`` code path consistent.
 
         Args:
             messages: Chat messages
@@ -273,95 +289,8 @@ class OpenAIClient(AbstractLLMClient):
         Returns:
             ``Ok(Completion)`` on success.  ``Err(LLMError)`` for recoverable
             failures.
-
-        Raises:
-            LLMAuthenticationError: If API key is invalid.
-            AIError: For unexpected infrastructure failures.
         """
-        try:
-            # Convert messages to OpenAI format
-            openai_messages = [self._convert_message(msg) for msg in messages]
-
-            # Pop positional overrides so **kwargs doesn't contain duplicates
-            _model = kwargs.pop("model", self.config.model)
-            _max_tokens = kwargs.pop("max_tokens", self.config.max_tokens)
-            _temperature = kwargs.pop("temperature", self.config.temperature)
-
-            params: dict[str, Any] = {
-                "model": _model,
-                "messages": openai_messages,
-                **kwargs,
-            }
-            if _max_tokens is not None:
-                params["max_tokens"] = _max_tokens
-
-            self._apply_thinking(params)
-            if "reasoning_effort" not in params:
-                params["temperature"] = _temperature
-
-            # Add tools if provided
-            if tools:
-                params["tools"] = [self._convert_tool(tool) for tool in tools]
-
-            # Make API call
-            response = await self.client.chat.completions.create(**params)
-
-            # Convert to our Completion type
-            choice = response.choices[0]
-            tool_calls = None
-            if choice.message.tool_calls:
-                tool_calls = [
-                    ToolCall(
-                        id=tc.id,
-                        type="function",
-                        function=FunctionCall(
-                            name=tc.function.name,
-                            arguments=tc.function.arguments,
-                        ),
-                    )
-                    for tc in choice.message.tool_calls
-                ]
-
-            reasoning_content: str | None = getattr(
-                choice.message, "reasoning_content", None
-            )
-            reasoning_tokens: int | None = None
-            if response.usage and hasattr(response.usage, "completion_tokens_details"):
-                details = response.usage.completion_tokens_details
-                if details and hasattr(details, "reasoning_tokens"):
-                    reasoning_tokens = details.reasoning_tokens
-            thinking: ThinkingResult | None = (
-                ThinkingResult(content=reasoning_content or "", tokens=reasoning_tokens)
-                if (reasoning_content or reasoning_tokens is not None)
-                else None
-            )
-
-            return Ok(
-                Completion(
-                    content=choice.message.content or "",
-                    model=response.model,
-                    finish_reason=choice.finish_reason,
-                    tool_calls=tool_calls,
-                    thinking=thinking,
-                    usage=(
-                        TokenUsage(
-                            prompt_tokens=response.usage.prompt_tokens,
-                            completion_tokens=response.usage.completion_tokens,
-                            total_tokens=response.usage.total_tokens,
-                        )
-                        if response.usage
-                        else None
-                    ),
-                    metadata={
-                        "id": response.id,
-                        "created": response.created,
-                    },
-                    timestamp=datetime.now(UTC),
-                )
-            )
-
-        except (ValueError, ConnectionError, TimeoutError, OSError) as e:
-            return self._handle_error_as_result(e)
+        return await self._do_complete(messages, tools=tools, **kwargs)
 
     def _apply_thinking(self, params: dict[str, Any]) -> None:
         """Inject thinking/reasoning parameters into the API payload.
@@ -401,66 +330,7 @@ class OpenAIClient(AbstractLLMClient):
         Returns:
             OpenAI message dict
         """
-        result: dict[str, Any] = {
-            "role": msg.role.value,
-            "content": serialize_content_for_openai(msg.content),
-        }
-        if msg.name:
-            result["name"] = msg.name
-        if msg.tool_call_id:
-            result["tool_call_id"] = msg.tool_call_id
-        if msg.tool_calls:
-            if not msg.content:
-                result["content"] = None
-            result["tool_calls"] = [
-                {
-                    "id": tc.id,
-                    "type": tc.type or "function",
-                    "function": {
-                        "name": tc.function.name,
-                        "arguments": (
-                            tc.function.arguments
-                            if isinstance(tc.function.arguments, str)
-                            else dumps_str(tc.function.arguments)
-                        ),
-                    },
-                }
-                for tc in msg.tool_calls
-                if tc.function is not None
-            ]
-        return result
-
-    def _convert_tool(self, tool: ToolCall) -> dict[str, Any]:
-        """Convert ToolCall to OpenAI tool format.
-
-        Args:
-            tool: ToolCall to convert
-
-        Returns:
-            OpenAI tool dict
-        """
-        # Get schema from tool function if available
-        schema = getattr(tool.function, "__tool_schema__", None)
-        if schema and "function" in schema:
-            function_schema = schema["function"]
-            func_name = tool.function.name if tool.function else None
-            return {
-                "type": "function",
-                "function": {
-                    "name": function_schema.get("name", func_name),
-                    "description": function_schema.get("description", "Tool function"),
-                    "parameters": function_schema.get("parameters", {}),
-                },
-            }
-        func_name = tool.function.name if tool.function else None
-        return {
-            "type": "function",
-            "function": {
-                "name": func_name or "unnamed_tool",
-                "description": "Tool function",
-                "parameters": {},
-            },
-        }
+        return serialize_message_for_openai(msg)
 
     def _handle_error_as_result(self, error: Exception) -> Result[Any, LLMError]:
         """Map a caught exception to ``Err`` (recoverable) or re-raise (infra).

@@ -13,7 +13,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 import aiohttp
 
-from lexigram.ai.llm.clients._message_utils import serialize_content_for_openai
+from lexigram.ai.llm.clients._tools_utils import (
+    parse_openai_tool_calls,
+    serialize_message_for_openai,
+    tool_to_openai_format,
+)
 from lexigram.ai.llm.exceptions import (
     LLMAuthenticationError,
     LLMError,
@@ -27,12 +31,10 @@ from lexigram.ai.llm.types import (
     AIError,
     ChatMessage,
     Completion,
-    FunctionCall,
     Role,
     StreamChunk,
     ThinkingResult,
     TokenUsage,
-    ToolCall,
 )
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.web.http_models import HttpStatusError
@@ -121,12 +123,7 @@ class OpenRouterClient(AbstractLLMClient):
         message_dicts: list[dict[str, Any]] = []
         for msg in messages:
             if isinstance(msg, ChatMessage):
-                message_dicts.append(
-                    {
-                        "role": msg.role.value,
-                        "content": serialize_content_for_openai(msg.content),
-                    }
-                )
+                message_dicts.append(serialize_message_for_openai(msg))
             else:
                 message_dicts.append(msg)
 
@@ -141,7 +138,11 @@ class OpenRouterClient(AbstractLLMClient):
         if max_tokens:
             payload["max_tokens"] = max_tokens
         if tools:
-            payload["tools"] = tools
+            payload["tools"] = [
+                converted
+                for tool in tools
+                if (converted := tool_to_openai_format(tool)) is not None
+            ]
         self._apply_thinking(payload)
 
         try:
@@ -256,19 +257,7 @@ class OpenRouterClient(AbstractLLMClient):
             choice = data["choices"][0]
             message = choice["message"]
 
-            tool_calls = None
-            if message.get("tool_calls"):
-                tool_calls = [
-                    ToolCall(
-                        id=tc["id"],
-                        type=tc.get("type", "function"),
-                        function=FunctionCall(
-                            name=tc["function"]["name"],
-                            arguments=tc["function"]["arguments"],
-                        ),
-                    )
-                    for tc in message["tool_calls"]
-                ]
+            tool_calls = parse_openai_tool_calls(message.get("tool_calls"))
 
             token_usage = None
             if "usage" in data:

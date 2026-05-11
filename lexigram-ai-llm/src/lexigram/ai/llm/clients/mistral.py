@@ -40,6 +40,11 @@ from typing import Any, cast
 import aiohttp
 
 from lexigram.ai.llm.clients._message_utils import serialize_content_for_openai
+from lexigram.ai.llm.clients._tools_utils import (
+    parse_openai_tool_calls,
+    serialize_message_for_openai,
+    tool_to_openai_format,
+)
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.exceptions import (
@@ -143,12 +148,7 @@ class MistralClient(AbstractLLMClient):
             message_dicts: list[dict[str, Any]] = []
             for msg in cast("list[ChatMessage | dict[str, Any]]", messages):
                 if isinstance(msg, ChatMessage):
-                    message_dicts.append(
-                        {
-                            "role": msg.role.value,
-                            "content": serialize_content_for_openai(msg.content),
-                        }
-                    )
+                    message_dicts.append(serialize_message_for_openai(msg))
                 else:
                     message_dicts.append(msg)
 
@@ -162,7 +162,11 @@ class MistralClient(AbstractLLMClient):
             if max_tokens:
                 payload["max_tokens"] = max_tokens
             if tools:
-                payload["tools"] = tools
+                payload["tools"] = [
+                    converted
+                    for tool in tools
+                    if (converted := tool_to_openai_format(tool)) is not None
+                ]
             if response_format:
                 payload["response_format"] = response_format
 
@@ -172,6 +176,8 @@ class MistralClient(AbstractLLMClient):
 
             choice = data["choices"][0]
             message = choice["message"]
+
+            tool_calls = parse_openai_tool_calls(message.get("tool_calls"))
 
             return Ok(
                 Completion(
@@ -183,7 +189,7 @@ class MistralClient(AbstractLLMClient):
                         completion_tokens=data["usage"]["completion_tokens"],
                         total_tokens=data["usage"]["total_tokens"],
                     ),
-                    tool_calls=message.get("tool_calls"),
+                    tool_calls=tool_calls,
                 )
             )
         except (
