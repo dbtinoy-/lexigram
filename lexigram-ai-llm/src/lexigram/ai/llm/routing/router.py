@@ -377,7 +377,7 @@ class LLMRouter:
             try:
                 from lexigram.ai.llm.pricing import PricingManager
 
-                return CostOptimizedStrategy(PricingManager(sources=[]))
+                return CostOptimizedStrategy(PricingManager.from_defaults())
             except (ImportError, RuntimeError, AttributeError, ValueError):
                 logger.warning(
                     "cost_optimized strategy requested but PricingManager "

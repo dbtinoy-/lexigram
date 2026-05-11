@@ -28,6 +28,7 @@ from lexigram.ai.agents.strategies.parsing import (
     extract_final_answer,
     extract_tool_call,
 )
+from lexigram.ai.agents.strategies.token_utils import count_tokens, token_split
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import (
     AgentError,
@@ -360,14 +361,7 @@ class FunctionCallingStrategy(AbstractStrategy):
 
     def _count_tokens(self, completion: Completion) -> int:
         """Extract total token usage from a completion, if reported."""
-        prompt, completion_count = self._token_split(completion)
-        if prompt or completion_count:
-            return prompt + completion_count
-        usage = getattr(completion, "usage", None)
-        if isinstance(usage, dict):
-            return int(usage.get("total_tokens", 0) or 0)
-        total = getattr(usage, "total_tokens", 0)
-        return int(total or 0)
+        return count_tokens(completion)
 
     def _token_split(self, completion: Completion) -> tuple[int, int]:
         """Extract the prompt/completion token split, if reported.
@@ -379,18 +373,7 @@ class FunctionCallingStrategy(AbstractStrategy):
             Tuple of ``(prompt_tokens, completion_tokens)``.  Both are
             ``0`` when usage is missing.
         """
-        usage = getattr(completion, "usage", None)
-        if not usage:
-            return 0, 0
-        if isinstance(usage, dict):
-            return (
-                int(usage.get("prompt_tokens", 0) or 0),
-                int(usage.get("completion_tokens", 0) or 0),
-            )
-        return (
-            int(getattr(usage, "prompt_tokens", 0) or 0),
-            int(getattr(usage, "completion_tokens", 0) or 0),
-        )
+        return token_split(completion)
 
     # ------------------------------------------------------------------
     # Native tool loop

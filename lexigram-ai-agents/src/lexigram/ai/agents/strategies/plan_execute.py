@@ -40,6 +40,7 @@ from lexigram.ai.agents.strategies.plan_execute_types import (
     PlanStep,
     PlanStepStatus,
 )
+from lexigram.ai.agents.strategies.token_utils import TokenAccumulator
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import AgentError, AgentResponse
 from lexigram.logging import (
@@ -123,7 +124,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         system_prompt: str = kwargs.get("system_prompt", "")
         steps: list[ReasoningStep] = []
         tool_calls: list[ToolExecutionRecord] = []
-        total_tokens = 0
+        usage = TokenAccumulator()
         start_time = time.monotonic()
 
         tool_map: dict[str, ToolProtocol] = {t.name: t for t in tools}
@@ -139,6 +140,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             message,
             history,
             system_prompt + planning_prompt,
+            usage=usage,
         )
         if plan_text is None:
             return Err(AgentError("LLM returned empty response during planning phase"))
@@ -155,6 +157,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                 steps,
                 tool_calls,
                 start_time,
+                usage=usage,
             )
 
         steps.append(
@@ -189,6 +192,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                     message,
                     history,
                     system_prompt,
+                    usage=usage,
                 )
                 if tool_record:
                     tool_calls.append(tool_record)
@@ -217,6 +221,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                         message,
                         history,
                         system_prompt,
+                        usage=usage,
                     )
                     if new_plan:
                         # Replace remaining steps
@@ -242,6 +247,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                     message,
                     history,
                     system_prompt,
+                    usage=usage,
                 )
 
                 steps.append(
@@ -263,6 +269,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             plan,
             history,
             system_prompt,
+            usage=usage,
         )
 
         elapsed = (time.monotonic() - start_time) * 1000
@@ -279,7 +286,9 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                 message=final_answer,
                 steps=steps,
                 tool_calls=tool_calls,
-                total_tokens=total_tokens,
+                total_tokens=usage.total_tokens,
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
                 duration_ms=elapsed,
                 metadata={
                     "strategy": "plan_and_execute",
@@ -311,6 +320,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         original_message: str,
         history: list[dict[str, Any]],
         system_prompt: str,
+        usage: TokenAccumulator | None = None,
     ) -> tuple[str, ToolExecutionRecord | None]:
         """Execute a tool-based plan step."""
         return await execute_tool_step(
@@ -324,6 +334,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             tool_timeout=self.tool_timeout,
             llm_timeout=self.llm_timeout,
             observation_max_chars=self.observation_max_chars,
+            usage=usage,
         )
 
     async def _execute_reasoning_step(
@@ -334,6 +345,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         original_message: str,
         history: list[dict[str, Any]],
         system_prompt: str,
+        usage: TokenAccumulator | None = None,
     ) -> str:
         """Execute a reasoning-only plan step via LLM."""
         return await execute_reasoning_step(
@@ -345,6 +357,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             system_prompt=system_prompt,
             llm_timeout=self.llm_timeout,
             observation_max_chars=self.observation_max_chars,
+            usage=usage,
         )
 
     # ------------------------------------------------------------------
@@ -360,6 +373,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         original_message: str,
         history: list[dict[str, Any]],
         system_prompt: str,
+        usage: TokenAccumulator | None = None,
     ) -> list[PlanStep]:
         """Ask LLM to replan after a step failure."""
         return await replan(
@@ -371,6 +385,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             history=history,
             system_prompt=system_prompt,
             llm_timeout=self.llm_timeout,
+            usage=usage,
         )
 
     # ------------------------------------------------------------------
@@ -384,6 +399,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         plan: list[PlanStep],
         history: list[dict[str, Any]],
         system_prompt: str,
+        usage: TokenAccumulator | None = None,
     ) -> str:
         """Synthesize final answer from all completed step results."""
         return await synthesize(
@@ -393,6 +409,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             history=history,
             system_prompt=system_prompt,
             llm_timeout=self.llm_timeout,
+            usage=usage,
         )
 
     async def _direct_synthesis(
@@ -405,6 +422,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         steps: list[ReasoningStep],
         tool_calls: list[ToolExecutionRecord],
         start_time: float,
+        usage: TokenAccumulator,
     ) -> Result[AgentResponse, AgentError]:
         """Fallback when no plan could be parsed — treat as direct response."""
         final = self._extract_final_answer(initial_response)
@@ -425,6 +443,9 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                 message=answer,
                 steps=steps,
                 tool_calls=tool_calls,
+                total_tokens=usage.total_tokens,
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
                 duration_ms=elapsed,
                 metadata={"strategy": "plan_and_execute", "direct_response": True},
             )
@@ -458,12 +479,13 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         original_message: str,
         history: list[dict[str, Any]],
         prompt: str,
+        usage: TokenAccumulator | None = None,
     ) -> str | None:
         """Call the LLM and return text content, or ``None`` on failure."""
         from lexigram.ai.agents.strategies.parsing import build_chat_messages_from_dict
 
         messages = build_chat_messages_from_dict(original_message, history, prompt)
-        return await call_llm(llm, messages, timeout=self.llm_timeout)
+        return await call_llm(llm, messages, timeout=self.llm_timeout, usage=usage)
 
     # ------------------------------------------------------------------
     # Parsing Helpers

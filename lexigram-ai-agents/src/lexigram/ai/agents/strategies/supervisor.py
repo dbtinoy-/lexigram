@@ -34,9 +34,10 @@ from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.agents.delegation.agent_tool import AgentAsToolAdapter
 from lexigram.ai.agents.strategies.base import AbstractStrategy
+from lexigram.ai.agents.strategies.token_utils import TokenAccumulator
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import AgentError, AgentResponse
-from lexigram.contracts.ai.llm import ChatMessage, Role
+from lexigram.contracts.ai.llm import ChatMessage, Completion, Role
 from lexigram.logging import (
     get_logger,
 )
@@ -173,7 +174,7 @@ class SupervisorStrategy(AbstractStrategy):
         system_prompt: str = kwargs.get("system_prompt", "")
         steps: list[ReasoningStep] = []
         tool_calls: list[ToolExecutionRecord] = []
-        total_tokens = 0
+        usage = TokenAccumulator()
         start_time = time.monotonic()
 
         # Build combined tool map: agent tools + any extra tools
@@ -197,13 +198,19 @@ class SupervisorStrategy(AbstractStrategy):
 
         for delegation in range(1, self.max_delegations + 1):
             # Ask supervisor LLM what to do
-            llm_text = await self._call_llm(llm, messages)
-            if llm_text is None:
+            completion = await self._call_llm(llm, messages)
+            if completion is None:
                 return Err(
                     AgentError(
                         f"Supervisor LLM returned empty response at delegation {delegation}"
                     )
                 )
+            usage.add(completion)
+            llm_text = (
+                completion.content
+                if hasattr(completion, "content")
+                else str(completion)
+            )
 
             thought = self._extract_thought(llm_text)
             final_answer = self._extract_final_answer(llm_text)
@@ -230,7 +237,9 @@ class SupervisorStrategy(AbstractStrategy):
                         message=final_answer,
                         steps=steps,
                         tool_calls=tool_calls,
-                        total_tokens=total_tokens,
+                        total_tokens=usage.total_tokens,
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
                         duration_ms=elapsed,
                         metadata={
                             "strategy": "supervisor",
@@ -348,7 +357,9 @@ class SupervisorStrategy(AbstractStrategy):
                 message=f"[Max delegations reached] {last_obs}",
                 steps=steps,
                 tool_calls=tool_calls,
-                total_tokens=total_tokens,
+                total_tokens=usage.total_tokens,
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
                 duration_ms=elapsed,
                 metadata={
                     "strategy": "supervisor",
@@ -366,8 +377,8 @@ class SupervisorStrategy(AbstractStrategy):
         self,
         llm: LLMClientProtocol,
         messages: list[ChatMessage],
-    ) -> str | None:
-        """Call the LLM and return text, or None on failure."""
+    ) -> Completion | None:
+        """Call the LLM and return the completion, or ``None`` on failure."""
         try:
             result = await asyncio.wait_for(
                 llm.complete(cast("list[Any]", messages)),
@@ -384,8 +395,7 @@ class SupervisorStrategy(AbstractStrategy):
             logger.warning("supervisor_llm_err", error=str(result.unwrap_err()))
             return None
 
-        completion = result.unwrap()
-        return completion.content if hasattr(completion, "content") else str(completion)
+        return result.unwrap()
 
     # ------------------------------------------------------------------
     # Parsing Helpers
