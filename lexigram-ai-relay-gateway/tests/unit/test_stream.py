@@ -171,6 +171,27 @@ async def test_openai_chat_sse_parses_and_accepts() -> None:
 
 
 @pytest.mark.asyncio
+async def test_force_cancel_handle_terminates_truncated() -> None:
+    session = FakeSession()
+    upstream = FakeUpstream(chunks=[chunk(wire(OPENAI_CHAT_1)), chunk(wire(OPENAI_CHAT_1))])
+    parser = make_parser(session)
+    handle = asyncio.Event()
+    agen = relay_stream(upstream, make_request(), parser, cancel_handle=handle)
+
+    first = await anext(agen)
+    assert first.terminal is False
+    handle.set()
+
+    with pytest.raises(StopAsyncIteration):
+        await anext(agen)
+
+    assert upstream.calls == ["cancel"]
+    assert parser.truncated is True
+    assert parser.finalized is True
+    assert session.finalize_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_openai_chat_done_is_terminal() -> None:
     session = FakeSession()
     upstream = FakeUpstream(chunks=[chunk(wire(OPENAI_CHAT_1)), chunk("[DONE]")])

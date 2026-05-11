@@ -12,6 +12,7 @@ from typing import Any, Protocol, TypeAlias, runtime_checkable
 from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.relay.context import RelayConversionContext
 from lexigram.contracts.ai.relay.types import (
+    ConversionQuality,
     RelayConvertResult,
     RelayFormat,
     RelayRequestPayload,
@@ -197,5 +198,48 @@ class RelayRegistryProtocol(Protocol):
 
         Returns:
             The registered mapper, or ``None`` when the route is unknown.
+        """
+        ...
+
+    def converter_routes(self) -> tuple[tuple[RelayFormat, RelayFormat], ...]:
+        """Return every supported directed route pair.
+
+        Returns:
+            Sorted route pairs; same-format no-op pairs are excluded.
+        """
+        ...
+
+    def mapper_ids(self) -> tuple[str, ...]:
+        """Return the registered mapper wire-format identifiers.
+
+        Returns:
+            Sorted mapper ids, one per registered mapper.
+        """
+        ...
+
+    def converter_version(self) -> str:
+        """Return the converter engine version string.
+
+        Returns:
+            A version string suitable for diagnostics display.
+        """
+        ...
+
+    def route_quality(
+        self,
+        source: RelayFormat,
+        target: RelayFormat,
+    ) -> ConversionQuality:
+        """Return the semantic-closeness quality for a directed pair.
+
+        Same-format pairs are always ``GOOD``; unknown routes fall back
+        to ``DISCOURAGED`` rather than raising.
+
+        Args:
+            source: Source wire format.
+            target: Target wire format.
+
+        Returns:
+            The stable quality value for the pair.
         """
         ...

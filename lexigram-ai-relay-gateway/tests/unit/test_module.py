@@ -164,11 +164,14 @@ def test_package_exports_public_api() -> None:
 
     for name in (
         "HTTPUpstreamAdapter",
+        "RelayChannelCheckerProtocol",
+        "RelayChannelProbeResult",
         "RelayChannelRegistry",
         "RelayGatewayConfig",
         "RelayGatewayModule",
         "RelayGatewayProvider",
         "RelayGatewayService",
+        "RelayHealthService",
         "RelayPayloadCodec",
         "UpstreamEventParser",
         "relay_stream",

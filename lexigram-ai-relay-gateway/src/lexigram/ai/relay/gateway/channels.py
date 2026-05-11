@@ -1,9 +1,15 @@
 """Deterministic channel selection for the relay gateway.
 
-Selection is a pure function of the static channel table and the routing
-intent: source format, model alias, streaming flag, requested capability
-flags, and an optional preferred channel. The registry never inspects
-request payloads to make an undocumented routing decision.
+Selection is a pure function of the static channel table, the runtime
+override table, and the routing intent: source format, model alias,
+streaming flag, requested capability flags, and an optional preferred
+channel. The registry never inspects request payloads to make an
+undocumented routing decision.
+
+The runtime override table is written by the operator controls surface
+(``set_runtime_enabled``); it can only take a configured channel out of
+service (drain) or restore it — it can never enable a channel whose
+config ``enabled`` flag is false.
 """
 
 from __future__ import annotations
@@ -20,11 +26,14 @@ class RelayChannelRegistry:
 
     Note:
         "Healthy channel" in the plan is interpreted as the channel's
-        ``enabled`` flag; there is no separate health field in this
-        milestone.
+        ``enabled`` flag combined with the live runtime override table;
+        drained channels are invisible to ``select`` until they are
+        restored at runtime.
 
     Attributes:
         _channels: The immutable channel table from ``RelayGatewayConfig``.
+        _runtime_enabled: Operator overrides applied by the controls
+            service; empty equals "all channels as configured".
     """
 
     def __init__(self, config: RelayGatewayConfig) -> None:
@@ -35,6 +44,42 @@ class RelayChannelRegistry:
                 mutates it; the channel tuple is kept as configured.
         """
         self._channels = config.channels
+        self._runtime_enabled: dict[str, bool] = {}
+
+    @property
+    def channels(self) -> tuple[RelayChannel, ...]:
+        """The configured channel table.
+
+        Returns:
+            The immutable channel tuple, in configuration order.
+        """
+        return self._channels
+
+    def set_runtime_enabled(self, channel: str, enabled: bool) -> None:
+        """Override the eligibility of *channel* at runtime.
+
+        Draining a channel (``enabled=False``) hides it from selection
+        until restored; restoring removes the override entirely so the
+        config ``enabled`` flag alone decides. A config-disabled channel
+        can never be made eligible this way.
+
+        Args:
+            channel: Channel name to override.
+            enabled: Whether the channel should select new requests.
+        """
+        if enabled:
+            self._runtime_enabled.pop(channel, None)
+        else:
+            self._runtime_enabled[channel] = False
+
+    def runtime_enabled(self) -> dict[str, bool]:
+        """Return the non-default runtime overrides.
+
+        Returns:
+            Mapping of channel name to ``False`` set at runtime; a
+            restored channel is absent.
+        """
+        return dict(self._runtime_enabled)
 
     def select(
         self,
@@ -46,11 +91,12 @@ class RelayChannelRegistry:
     ) -> Result[RelayChannel, RelayGatewayError]:
         """Pick the best channel for the routing query.
 
-        Eligibility is computed first (enabled, target format differs
-        from the source, model serves the requested alias, streaming and
-        capability constraints), then the survivors are sorted: preferred
-        channel first, then exact model match, then ascending priority
-        (lower number wins), then ascending name as a stable tiebreak.
+        Eligibility is computed first (enabled by config and runtime,
+        target format differs from the source, model serves the
+        requested alias, streaming and capability constraints), then the
+        survivors are sorted: preferred channel first, then exact model
+        match, then ascending priority (lower number wins), then
+        ascending name as a stable tiebreak.
         The preferred channel still must pass every eligibility filter;
         otherwise it is skipped and normal ordering applies.
 
@@ -80,10 +126,14 @@ class RelayChannelRegistry:
             not served (``MODEL_NOT_FOUND``, 404).
 
         Note:
-            Channel "health" is the ``enabled`` flag; no separate health
-            signal exists in this milestone.
+            Runtime-drained channels are treated exactly like disabled
+            channels: they are invisible to selection until restored.
         """
-        enabled = [channel for channel in self._channels if channel.enabled]
+        enabled = [
+            channel
+            for channel in self._channels
+            if channel.enabled and self._runtime_enabled.get(channel.name, True)
+        ]
         if not enabled:
             return Err(
                 RelayGatewayError(

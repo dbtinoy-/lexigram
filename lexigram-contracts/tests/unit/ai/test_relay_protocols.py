@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.contracts.ai.relay.types import (
+    ConversionQuality,
     RelayConvertResult,
     RelayFormat,
 )
@@ -144,6 +145,24 @@ def test_registry_protocol_implementable() -> None:
     class FakeRegistry(RelayRegistryProtocol):
         def mapper(self, source: RelayFormat, target: RelayFormat) -> Any | None:
             return None
+
+        def converter_routes(self) -> tuple[tuple[RelayFormat, RelayFormat], ...]:
+            """Return an empty supported-route set."""
+            return ()
+
+        def mapper_ids(self) -> tuple[str, ...]:
+            """Return an empty mapper id set."""
+            return ()
+
+        def converter_version(self) -> str:
+            """Return a fixed diagnostic version."""
+            return "1.0.0"
+
+        def route_quality(
+            self, source: RelayFormat, target: RelayFormat
+        ) -> ConversionQuality:
+            """Return the static quality for the pair."""
+            return ConversionQuality.GOOD if source is target else ConversionQuality.FAIR
 
     registry = FakeRegistry()
     assert isinstance(registry, RelayRegistryProtocol)

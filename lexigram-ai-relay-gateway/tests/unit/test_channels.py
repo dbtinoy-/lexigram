@@ -167,6 +167,40 @@ class TestDisabled:
         assert result.is_ok()
         assert result.unwrap().name == "enabled"
 
+    def test_runtime_drain_gates_new_requests(self) -> None:
+        registry = _registry(make_channel("a", priority=1), make_channel("b", priority=100))
+        registry.set_runtime_enabled("a", False)
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "b"
+
+    def test_runtime_drain_of_last_channel_is_disabled(self) -> None:
+        registry = _registry(make_channel("a", priority=1))
+        registry.set_runtime_enabled("a", False)
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_err()
+        assert result.unwrap_err().code == "CHANNEL_DISABLED"
+
+    def test_runtime_enable_restores_selection(self) -> None:
+        registry = _registry(make_channel("a", priority=1), make_channel("b", priority=100))
+        registry.set_runtime_enabled("a", False)
+        registry.set_runtime_enabled("a", True)
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_ok()
+        assert result.unwrap().name == "a"
+
+    def test_runtime_cannot_enable_config_disabled_channel(self) -> None:
+        registry = _registry(make_channel("off", enabled=False, priority=1))
+        registry.set_runtime_enabled("off", True)
+        result = registry.select(SOURCE, MODEL)
+        assert result.is_err()
+        assert result.unwrap_err().code == "CHANNEL_DISABLED"
+
+    def test_runtime_state_is_readable(self) -> None:
+        registry = _registry(make_channel("a"), make_channel("b"))
+        registry.set_runtime_enabled("b", False)
+        assert registry.runtime_enabled() == {"b": False}
+
 
 class TestCapabilities:
     """Requested capability flags must be a subset of the channel's."""

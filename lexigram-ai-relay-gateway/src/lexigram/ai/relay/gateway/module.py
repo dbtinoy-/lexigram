@@ -36,9 +36,17 @@ class RelayGatewayModule(Module):
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
         """
         from lexigram.ai.relay.gateway.di.provider import RelayGatewayProvider
+        from lexigram.ai.relay.gateway.operations.controls import RelayControlsService
+        from lexigram.ai.relay.gateway.operations.health import RelayHealthService
+        from lexigram.ai.relay.gateway.operations.metrics import RelayMetricsService
 
         return DynamicModule(
             module=cls,
             providers=[RelayGatewayProvider()],
-            exports=[RelayGatewayProtocol],
+            exports=[
+                RelayGatewayProtocol,
+                RelayHealthService,
+                RelayMetricsService,
+                RelayControlsService,
+            ],
         )

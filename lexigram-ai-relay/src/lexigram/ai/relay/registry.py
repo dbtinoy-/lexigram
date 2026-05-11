@@ -35,10 +35,14 @@ from lexigram.contracts.ai.relay.types import ConversionQuality, RelayFormat
 from lexigram.contracts.core.result import Result
 
 __all__ = [
+    "CONVERTER_VERSION",
     "RelayConverterRegistry",
     "Route",
     "RouteSpec",
 ]
+
+CONVERTER_VERSION = "1.0.0"
+"""Converter engine version reported in operational diagnostics."""
 
 
 @dataclass(frozen=True)
@@ -201,6 +205,58 @@ class RelayConverterRegistry(RelayRegistryProtocol):
         if route is None:
             return None
         return cast("RelayMapperProtocol", route)
+
+    def converter_routes(self) -> tuple[tuple[RelayFormat, RelayFormat], ...]:
+        """Return every supported directed route pair.
+
+        Returns:
+            Sorted route pairs, excluding same-format no-op pairs.
+        """
+        return tuple(
+            (spec.source, spec.target)
+            for spec in self.routes()
+            if spec.source is not spec.target
+        )
+
+    def mapper_ids(self) -> tuple[str, ...]:
+        """Return the registered mapper wire-format identifiers.
+
+        Returns:
+            Sorted mapper ids, one per registered mapper.
+        """
+        return tuple(
+            sorted(
+                cast("RelayFormat", mapper.format).value
+                for mapper in self._mappers.values()
+            )
+        )
+
+    def converter_version(self) -> str:
+        """Return the converter engine version string.
+
+        Returns:
+            The module-level ``CONVERTER_VERSION`` constant.
+        """
+        return CONVERTER_VERSION
+
+    def route_quality(
+        self,
+        source: RelayFormat,
+        target: RelayFormat,
+    ) -> ConversionQuality:
+        """Return the semantic-closeness quality for a directed pair.
+
+        Same-format pairs and unconfigured routes fall back to
+        ``GOOD``/``DISCOURAGED`` via the quality matrix.
+
+        Args:
+            source: Source wire format.
+            target: Target wire format.
+
+        Returns:
+            The stable quality value for the pair.
+        """
+        return route_quality(source, target)
 
     def route(self, source: RelayFormat, target: RelayFormat) -> RouteSpec | None:
         """Return the route spec for a directed pair, or ``None``.

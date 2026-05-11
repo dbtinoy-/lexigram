@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from lexigram.ai.relay import (
+    CONVERTER_VERSION,
     RelayConverterEngine,
     RelayConverterRegistry,
     RouteSpec,
@@ -142,7 +143,9 @@ def test_route_quality_matches_matrix() -> None:
     for pair, expected in expectations.items():
         assert route_quality(*pair) is expected
         assert registry.route(*pair).quality is expected
-    assert route_quality(RelayFormat.CLAUDE, RelayFormat.CLAUDE) is ConversionQuality.GOOD
+    assert (
+        route_quality(RelayFormat.CLAUDE, RelayFormat.CLAUDE) is ConversionQuality.GOOD
+    )
 
 
 def test_duplicate_registration_rejected() -> None:
@@ -513,4 +516,24 @@ def test_engine_is_converter_protocol() -> None:
 
     assert isinstance(RelayConverterEngine(registry), RelayConverterProtocol)
     assert isinstance(registry, RelayConverterRegistry)
-    assert isinstance(RelayConverterEngine(registry).convert_request(chat_request(), RelayFormat.OPENAI_CHAT, RelayFormat.CLAUDE), Result)
+    assert isinstance(
+        RelayConverterEngine(registry).convert_request(
+            chat_request(), RelayFormat.OPENAI_CHAT, RelayFormat.CLAUDE
+        ),
+        Result,
+    )
+
+
+def test_registry_exposes_converter_diagnostics() -> None:
+    """The default registry reports routes, mapper ids, and version."""
+    assert registry.converter_version() == CONVERTER_VERSION
+    routes = registry.converter_routes()
+    assert (RelayFormat.OPENAI_CHAT, RelayFormat.CLAUDE) in routes
+    assert len(routes) == 12
+    assert not any(source is target for source, target in routes)
+    assert registry.mapper_ids() == (
+        "claude",
+        "gemini",
+        "openai_chat",
+        "openai_responses",
+    )

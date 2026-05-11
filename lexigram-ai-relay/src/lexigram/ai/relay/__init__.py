@@ -31,9 +31,14 @@ from lexigram.ai.relay.errors import (
 from lexigram.ai.relay.mappers.base import FormatMapper, record_loss, warning_messages
 from lexigram.ai.relay.module import RelayModule
 from lexigram.ai.relay.quality import ROUTE_QUALITY, route_quality
-from lexigram.ai.relay.registry import RelayConverterRegistry, RouteSpec
+from lexigram.ai.relay.registry import (
+    CONVERTER_VERSION,
+    RelayConverterRegistry,
+    RouteSpec,
+)
 
 __all__ = [
+    "CONVERTER_VERSION",
     "ROUTE_QUALITY",
     "ConversionContext",
     "FormatMapper",

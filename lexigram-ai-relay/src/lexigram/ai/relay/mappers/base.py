@@ -36,6 +36,11 @@ class FormatMapper(Protocol):
     holds :class:`FormatMapper` implementations.
     """
 
+    @property
+    def format(self) -> RelayFormat:
+        """The wire format this mapper serves; concrete mappers define it."""
+        ...
+
     def request_to_ir(
         self, payload: Any, *, context: ConversionContext
     ) -> Result[RelayRequest, RelayError]:

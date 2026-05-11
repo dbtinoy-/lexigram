@@ -220,6 +220,7 @@ async def relay_stream(
     upstream: RelayUpstreamProtocol,
     request: UpstreamRequest,
     parser: UpstreamEventParser,
+    cancel_handle: asyncio.Event | None = None,
 ) -> AsyncIterator[RelayWireEvent]:
     """Relay one upstream stream with cancellation and session lifecycle.
 
@@ -240,6 +241,9 @@ async def relay_stream(
         request: The fully-resolved upstream request.
         parser: Stateful session parser whose bookkeeping attributes
             (``finalized``, ``truncated``, ``cancelled``) track the stream.
+        cancel_handle: Optional operator cancel handle from the stream
+            registry. When set, the relay cancels upstream once and
+            finalizes truncated at the next chunk boundary.
 
     Yields:
         Normalized ``RelayWireEvent`` values; terminal flag on the last
@@ -279,6 +283,10 @@ async def relay_stream(
     try:
         stream_iter = cast("AsyncIterator[UpstreamChunk]", upstream.stream(request))
         async for chunk in stream_iter:
+            if cancel_handle is not None and cancel_handle.is_set():
+                await cancel_once()
+                finalize_once(truncated=True)
+                break
             try:
                 peaked = parser.parse(chunk)
             except (
