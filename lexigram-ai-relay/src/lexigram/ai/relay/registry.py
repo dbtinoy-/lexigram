@@ -224,12 +224,7 @@ class RelayConverterRegistry(RelayRegistryProtocol):
         Returns:
             Sorted mapper ids, one per registered mapper.
         """
-        return tuple(
-            sorted(
-                cast("RelayFormat", mapper.format).value
-                for mapper in self._mappers.values()
-            )
-        )
+        return tuple(sorted(mapper.format.value for mapper in self._mappers.values()))
 
     def converter_version(self) -> str:
         """Return the converter engine version string.

@@ -206,7 +206,7 @@ class Pipeline:
 
         try:
             execution_order = self._get_execution_order()
-            step_results: list[StepExecutionResult] = []
+            step_results: list[StepExecutionResult[Any]] = []
 
             for step in execution_order:
                 # Skip steps already completed in a previous run (checkpoint resume).

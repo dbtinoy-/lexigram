@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.logging import get_logger
 from lexigram.web.protocols import WebProviderProtocol
@@ -187,7 +187,7 @@ class WebRouterManager:
         self,
         controller_cls: type[Controller],
         container: ContainerResolverProtocol,
-    ):
+    ) -> None:
         """Registers routes for a specific controller.
 
         Uses collect_routes() if available (recommended), otherwise falls back
@@ -247,4 +247,7 @@ class WebRouterManager:
         """Generates OpenAPI specification."""
         if not self.provider.openapi_generator:
             return {}
-        return self.provider.openapi_generator.generate_spec(self.provider.controllers)
+        return cast(
+            "dict[str, Any]",
+            self.provider.openapi_generator.generate_spec(self.provider.controllers),
+        )

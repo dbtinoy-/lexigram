@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from lexigram.contracts.domain.specification import SpecificationProtocol
 
 
-def to_filter(spec: SpecificationProtocol | FilterExpression) -> dict[str, Any]:
+def to_filter(spec: SpecificationProtocol[Any] | FilterExpression) -> dict[str, Any]:
     """Convert a specification or filter expression to a MongoDB filter dict.
 
     Supports all composable filter types from the contracts layer:

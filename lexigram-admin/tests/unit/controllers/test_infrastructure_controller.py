@@ -103,7 +103,7 @@ class TestInfrastructureController:
             resp = await controller.index(_mock_request(groups=_groups()))
         assert resp.status_code == 200
         html = render_to_string(resp._content)
-        assert 'class="flex flex-col lg:flex-row gap-6"' in html
+        assert 'class="flex flex-col md:flex-row gap-6"' in html
         assert "flex-1 min-w-0" in html
         assert "/admin/infrastructure/web" in html
         assert "/admin/infrastructure/cache" in html

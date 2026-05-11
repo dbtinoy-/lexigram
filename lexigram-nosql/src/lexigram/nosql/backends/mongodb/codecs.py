@@ -15,8 +15,8 @@ def configure_codecs() -> Any:
         A ``CodecOptions`` instance for use with motor client.
     """
     try:
-        from bson.binary import UuidRepresentation  # type: ignore[import-not-found]
-        from bson.codec_options import CodecOptions  # type: ignore[import-not-found]
+        from bson.binary import UuidRepresentation
+        from bson.codec_options import CodecOptions
 
         return CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
     except ImportError:

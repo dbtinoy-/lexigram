@@ -328,7 +328,7 @@ class RetryManager:
         """Execute async function with retries and track metrics."""
         self.total_attempts += 1
         try:
-            result = await retry(func, *args, config=self.config, **kwargs)  # type: ignore[arg-type]
+            result: T = await retry(func, *args, config=self.config, **kwargs)  # type: ignore[arg-type]
             self.total_successes += 1
             return result
         except RetryExhaustedError as e:
@@ -354,7 +354,10 @@ class RetryManager:
 
     def decorate(self) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Return a decorator using this manager's config."""
-        return retry(self.config)
+        decorator: Callable[[Callable[..., Any]], Callable[..., Any]] = retry(
+            self.config
+        )
+        return decorator
 
 
 class RetryPolicy:
@@ -370,7 +373,8 @@ class RetryPolicy:
         **kwargs: Any,
     ) -> T:
         """Execute an async function with retries."""
-        return await retry(func, *args, config=self.config, **kwargs)  # type: ignore[arg-type]
+        result: T = await retry(func, *args, config=self.config, **kwargs)  # type: ignore[arg-type]
+        return result
 
     @classmethod
     def aggressive(cls) -> RetryPolicy:

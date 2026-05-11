@@ -246,17 +246,19 @@ class MemoryVectorCollection(BaseVectorCollection):
         metadata: dict[str, Any],
         filter_obj: MetadataFilter,
     ) -> bool:
-        if isinstance(filter_obj, MetadataCondition):
-            return self._evaluate_condition(metadata, filter_obj)
+        subject: Any = filter_obj
+        if isinstance(subject, MetadataCondition):
+            return self._evaluate_condition(metadata, subject)
 
-        if isinstance(filter_obj, MetadataConditionGroup):
+        if isinstance(subject, MetadataConditionGroup):
             evaluations = [
-                self._matches_filter(metadata, cond) for cond in filter_obj.conditions
+                self._matches_filter(metadata, cond) for cond in subject.conditions
             ]
-            if filter_obj.logical_operator == LogicalOperator.AND:
+            if subject.logical_operator == LogicalOperator.AND:
                 return all(evaluations)
             return any(evaluations)
 
+        # Defensive fallback: future filter types default to "match all".
         return True
 
     def _evaluate_condition(
@@ -276,25 +278,27 @@ class MemoryVectorCollection(BaseVectorCollection):
         if not exists:
             return False
 
-        if operator == FilterOperator.EQ:
+        match_value: Any = operator
+        if match_value == FilterOperator.EQ:
             return bool(actual == expected)
-        if operator == FilterOperator.NE:
+        if match_value == FilterOperator.NE:
             return bool(actual != expected)
-        if operator == FilterOperator.GT:
+        if match_value == FilterOperator.GT:
             return bool(actual > expected)
-        if operator == FilterOperator.GTE:
+        if match_value == FilterOperator.GTE:
             return bool(actual >= expected)
-        if operator == FilterOperator.LT:
+        if match_value == FilterOperator.LT:
             return bool(actual < expected)
-        if operator == FilterOperator.LTE:
+        if match_value == FilterOperator.LTE:
             return bool(actual <= expected)
-        if operator == FilterOperator.IN:
+        if match_value == FilterOperator.IN:
             return actual in expected
-        if operator == FilterOperator.NOT_IN:
+        if match_value == FilterOperator.NOT_IN:
             return actual not in expected
-        if operator == FilterOperator.CONTAINS:
+        if match_value == FilterOperator.CONTAINS:
             return str(expected) in str(actual)
 
+        # Defensive fallback: unknown operators reject the condition.
         return False
 
 

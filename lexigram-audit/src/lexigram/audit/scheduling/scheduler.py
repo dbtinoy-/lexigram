@@ -91,10 +91,11 @@ class AuditScheduler:
             Job ID returned by the scheduler, or ``None``.
         """
         try:
-            return task_provider.schedule_job(
+            job_id: str | None = task_provider.schedule_job(
                 "audit:verify_recent",
                 self._config.verification_schedule,
             )
+            return job_id
         except (AttributeError, TypeError, ValueError, RuntimeError) as exc:
             logger.debug("audit_schedule_failed", error=str(exc))
             return None

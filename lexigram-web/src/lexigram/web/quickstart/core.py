@@ -209,8 +209,6 @@ class _QuickstartApp:
         seen: set[int] = {id(r.handler) for r in routes}
 
         for mod in list(sys.modules.values()):
-            if mod is None:
-                continue
             module_name: str = getattr(mod, "__name__", "") or ""
             # Skip framework internals to avoid double-registration
             if module_name.startswith("lexigram"):

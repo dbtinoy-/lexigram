@@ -20,7 +20,7 @@ from lexigram.logging import (
 logger = get_logger(__name__)
 
 try:
-    import librosa
+    import librosa  # type: ignore[import-not-found]
 
     # import soundfile as sf
 

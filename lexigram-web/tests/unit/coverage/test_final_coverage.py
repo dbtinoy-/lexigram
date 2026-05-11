@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import dataclasses
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # docs/type_registry.py  (lines 37, 47, 76)
@@ -289,18 +288,18 @@ class TestStarletteResponseAdapter:
 
 
 class TestRoutingInit:
-    def test_lazy_load_get_decorator(self) -> None:
+    def test_eager_get_decorator(self) -> None:
         import importlib
 
         routing = importlib.import_module("lexigram.web.routing")
-        get_fn = routing.__getattr__("get")
+        get_fn = routing.get
         assert callable(get_fn)
 
-    def test_lazy_load_post_decorator(self) -> None:
+    def test_eager_post_decorator(self) -> None:
         import importlib
 
         routing = importlib.import_module("lexigram.web.routing")
-        post_fn = routing.__getattr__("post")
+        post_fn = routing.post
         assert callable(post_fn)
 
     def test_lazy_load_raises_attribute_error(self) -> None:
@@ -451,7 +450,11 @@ class TestTransportSSE:
         assert "data:" in encoded
 
     def test_sse_response_helper(self) -> None:
-        from lexigram.web.transport.sse import EventSourceResponse, ServerSentEvent, sse_response
+        from lexigram.web.transport.sse import (
+            EventSourceResponse,
+            ServerSentEvent,
+            sse_response,
+        )
 
         async def _gen():
             yield ServerSentEvent(data="test")

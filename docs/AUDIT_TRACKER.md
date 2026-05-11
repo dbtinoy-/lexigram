@@ -4,10 +4,13 @@
 **Source:** `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md`
 **Process:** verify → spec → plan → execute → two-pass review
 
-Status of all 15 security remediation areas across audit Rounds 1-3.
-Round 3 (§6 below) added 5 more areas; specs + plans for those were
-written 2026-08-16, none executed yet. Round 1-2: nothing executed except
-Plugins (in progress).
+Status of all 15 spec+plan security remediation areas across audit Rounds
+1-3, plus 10 further findings-only areas from Rounds 4-5. Round 3 (§6 below)
+added 5 more areas; specs + plans for those were written 2026-08-16, none
+executed yet. Round 4 (§7 below) added 5 more areas, findings-only, no
+spec/plan written yet. Round 5 (§8 below) added 5 more areas, findings-only,
+no spec/plan written yet. Round 1-2: nothing executed except Plugins (in
+progress).
 
 ---
 
@@ -26,14 +29,14 @@ Plugins (in progress).
 
 | # | Area | Severity mix | Spec | Plan | Status |
 |---|------|--------------|------|------|--------|
-| 1 | **P0 session-secret** | Critical ×3 | `specs/2026-08-16-security-p0-session-secret-design.md` | `plans/2026-08-16-security-p0-session-secret.md` | Not started |
-| 2 | **SQL injection** | Critical ×2, High ×2, Med ×2, Low ×2 | `specs/2026-08-16-security-sql-injection-design.md` | `plans/2026-08-16-security-sql-injection.md` | Not started |
+| 1 | **P0 session-secret** | Critical ×3 | `specs/2026-08-16-security-p0-session-secret-design.md` | `plans/2026-08-16-security-p0-session-secret.md` | In progress (`[~]` §5) |
+| 2 | **SQL injection** | Critical ×2, High ×2, Med ×2, Low ×2 | `specs/2026-08-16-security-sql-injection-design.md` | `plans/2026-08-16-security-sql-injection.md` | In progress (`[~]` §5) |
 | 3 | **Tenancy isolation** | Critical ×2, High ×2, Med ×2 | `specs/2026-08-16-security-tenancy-design.md` | `plans/2026-08-16-security-tenancy.md` | Not started (s) |
-| 4 | **XSS / output rendering** | Critical ×2, High ×5, Med ×1 | `specs/2026-08-16-security-xss-render-design.md` | `plans/2026-08-16-security-xss-render.md` | Not started |
+| 4 | **XSS / output rendering** | Critical ×2, High ×5, Med ×1 | `specs/2026-08-16-security-xss-render-design.md` | `plans/2026-08-16-security-xss-render.md` | In progress (`[~]` §5) |
 | 5 | **Auth / hashers** | Critical ×1, High ×3 | `specs/2026-08-16-security-auth-hashers-design.md` | `plans/2026-08-16-security-auth-hashers.md` | Not started (s) |
 | 6 | **Web CSRF / headers** | High ×5, Med ×3 | `specs/2026-08-16-security-web-csrf-design.md` | `plans/2026-08-16-security-web-csrf.md` | Not started (s) |
 | 7 | **Secrets / credentials** | Critical ×1, High ×3, Med ×2, Low ×2 | `specs/2026-08-16-security-secrets-design.md` | `plans/2026-08-16-security-secrets.md` | Not started (s) |
-| 8 | **SSRF / outbound** | Critical ×2, High ×1, Med ×1 | `specs/2026-08-16-security-ssrf-design.md` | `plans/2026-08-16-security-ssrf.md` | Not started |
+| 8 | **SSRF / outbound** | Critical ×2, High ×1, Med ×1 | `specs/2026-08-16-security-ssrf-design.md` | `plans/2026-08-16-security-ssrf.md` | In progress (`[~]` §5) |
 | 9 | **Deserialization / code-exec** | High ×1, Med ×2, Low ×2 | `specs/2026-08-16-security-deserialization-design.md` | `plans/2026-08-16-security-deserialization.md` | Not started (s) |
 | 10 | **Plugins** | Low ×5 | `specs/2026-08-16-security-plugins-design.md` | `plans/2026-08-16-security-plugins.md` | In progress (`[~]` §3.10) |
 
@@ -68,15 +71,15 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 
 ## 3. Per-Area Tasks
 
-### 3.1 P0 session-secret (Critical) — `plans/2026-08-16-security-p0-session-secret.md`
+### 3.1 P0 session-secret (Critical) — `plans/2026-08-16-security-p0-session-secret.md` `[~]`
 
-- [ ] Task 1 — route session signing through the validated helper (`core/routing.py` → `build_session_cookie_kwargs`; new `test_routing_session_secret.py`)
-- [ ] Task 2 — resolve CSRF service in `boot()`, hard-fail on missing binding (new `test_admin_boot_csrf_fail_closed.py`)
-- [ ] Task 3 — consume boot-resolved CSRF service in `mount_to_app()` via `_get_csrf_service()`; update 3 `test_bundle_provider.py` tests
-- [ ] Task 4 — convert remaining silent `except Exception: pass` to logged structlog warnings
-- [ ] Task 5 — full verification: lint, typecheck, test suite, two-pass review
+- [x] Task 1 — route session signing through the validated helper (`core/routing.py` → `build_session_cookie_kwargs`; new `test_routing_session_secret.py`)
+- [x] Task 2 — resolve CSRF service in `boot()`, hard-fail on missing binding (new `test_admin_boot_csrf_fail_closed.py`)
+- [x] Task 3 — consume boot-resolved CSRF service in `mount_to_app()` via `_get_csrf_service()`; update 3 `test_bundle_provider.py` tests
+- [x] Task 4 — convert remaining silent `except Exception: pass` to logged structlog warnings
+- [x] Task 5 — full verification: lint, typecheck, test suite, two-pass review
 
-### 3.2 SQL injection — `plans/2026-08-16-security-sql-injection.md`
+### 3.2 SQL injection — `plans/2026-08-16-security-sql-injection.md` `[~]`
 
 - [ ] Task 1 (P0) — SQLConnector structured filters: replace free-text `WHERE` + deny-list (`_has_dangerous_sql` removed); `test_mcp_sql_connector_safety.py`
 - [ ] Task 2 (P0) — postgres `faceted_search` facet guard (never build quoted literals)
@@ -96,7 +99,7 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 - [ ] Task 5 (F5) — ContextVar token capture/reset in `TenantContextMiddleware`; update (not delete) resolver mocks in `test_middleware.py` (B4)
 - [ ] Task 6 — full verification
 
-### 3.4 XSS / output rendering — `plans/2026-08-16-security-xss-render.md`
+### 3.4 XSS / output rendering — `plans/2026-08-16-security-xss-render.md` `[~]`
 
 - [ ] Task 1 (F1) — escape-by-default at the `el()` primitive (`lexigram-ui`)
 - [ ] Task 2 (F2) — close delete-confirm path + dashboard widgets (`lexigram-admin`); extend existing `test_content_renderer.py`
@@ -134,15 +137,15 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 - [ ] Task 8 (F8) — `RotationDecorator` grace-buffer eviction
 - [ ] Task 9 — full verification
 
-### 3.8 SSRF / outbound — `plans/2026-08-16-security-ssrf.md`
+### 3.8 SSRF / outbound — `plans/2026-08-16-security-ssrf.md` `[~]`
 
-- [x] Task 1 (D1) — contracts SSRF primitive (stdlib-only, DNS-aware, fail-closed)
-- [x] Task 2 (D2) — core + admin sanitizers delegate to the single primitive (collapse duplication)
-- [x] Task 3 (D3) — webhook: default-deny registration + delivery, `allow_private_urls` opt-out
-- [x] Task 4 (D5) — RAG `WebScraperLoader`: validate seed, redirects, followed links
-- [x] Task 5 (D4) — MCP `web_fetch`: validate + own the redirect trail
-- [x] Task 6 (D6) — storage: local driver stops lying; admin falls back to `get_url`
-- [x] Task 7 — full verification (incl. boundaries)
+ - [x] Task 1 (D1) — contracts SSRF primitive (stdlib-only, DNS-aware, fail-closed)
+ - [x] Task 2 (D2) — core + admin sanitizers delegate to the single primitive (collapse duplication)
+ - [x] Task 3 (D3) — webhook: default-deny registration + delivery, `allow_private_urls` opt-out
+ - [x] Task 4 (D5) — RAG `WebScraperLoader`: validate seed, redirects, followed links
+ - [x] Task 5 (D4) — MCP `web_fetch`: validate + own the redirect trail
+ - [x] Task 6 (D6) — storage: local driver stops lying; admin falls back to `get_url`
+ - [x] Task 7 — full verification (incl. boundaries)
 
 ### 3.9 Deserialization / code-exec — `plans/2026-08-16-security-deserialization.md` (s)
 
@@ -229,6 +232,25 @@ not regress. Full details in each spec §2.
 
 ---
 
+## 5. Execution Split (2026-08-16)
+
+Two parallel waves over the executable (non-`(s)`) areas, per §1 execution order:
+
+**Wave A — coordinator (me):** P0 session-secret (§3.1), SSRF (§3.8) —
+kept in-coordinator because both are design-sensitive: P0 is Critical×3 on
+the boot path; SSRF D1 is the contracts primitive that gates Media Task 0.
+
+**Wave B — parallel agents:** SQL injection (§3.2), XSS / output
+rendering (§3.4) — well-specified plans with independent file sets.
+
+**Parked:** Plugins Task 7 (uv lock conflict on `lexigram-multimedia-music`
+↔ `pillow`), and all `(s)` areas (3, 5, 6, 7, 9, 11–15) pending §2 sign-off.
+
+Agent constraint: agents do not edit this tracker or commit; coordinator
+updates checkboxes centrally from agent reports.
+
+---
+
 ## 6. Round 3 — Spec + Plan (No Execution Authorized)
 
 Round 3 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§13-17). Specs and plans for all five were produced 2026-08-16, following the same verify → spec → plan → two-pass-review process. None of these plans may be executed until separately authorized.
@@ -250,7 +272,39 @@ Round 3 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 
 ---
 
-## 7. Commands (from AGENTS.md)
+## 7. Round 4 — Findings Only (No Spec/Plan Yet)
+
+Round 4 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§18-22), per user request to "cover more areas" while Round 1-3 remediation proceeds in parallel. Findings-only, same file:line evidentiary standard as prior rounds — no spec, plan, or code change written for any of these yet.
+
+| # | Area | Doc section | Severity mix |
+|---|------|--------------|------|
+| 16 | **AI memory / session data isolation** | §18 | Critical ×1, High ×2 |
+| 17 | **Logging & observability data leakage** | §19 | Critical ×1 |
+| 18 | **AI relay / worker / MCP trust boundary** | §20 | High ×1, Med ×1 |
+| 19 | **Outbound HTTP client & resilience hardening** | §21 | High ×1, Med ×1 |
+| 20 | **Non-SQL query injection** (`lexigram-nosql`/`lexigram-graph`/`lexigram-vector`) | §22 | High ×1 |
+
+**Recurring shapes (per master doc §24):** §19 (logging redaction) and §21.1 (HTTP URL validation) are the same "orphaned correct implementation" pattern as Rounds 1-3 — a real hook/utility exists and is genuinely wired at one point, but nothing installs/calls the real implementation at the point that matters. §20.1 (relay-gateway auth) is a new variant: the mechanism is correctly and consistently wired everywhere, but its own default config value (`require_auth: bool = False`) disables it — a one-line default fix rather than a wiring fix. §18 (AI memory) and §22 (non-SQL injection) are a third variant, first seen in Round 2's tenancy findings: a correct isolation/validation primitive exists in one package (`lexigram-ai-session`'s scoped queries; `lexigram-graph`'s Cypher identifier validation; `lexigram-search`'s field-name allowlist) but the analogous sibling package solving an adjacent problem (`lexigram-ai-memory`; `lexigram-nosql`'s MongoDB filter compiler) has no equivalent.
+
+---
+
+## 8. Round 5 — Findings Only (No Spec/Plan Yet)
+
+Round 5 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§23-27), per user request to "continue with round 5 more areas." Findings-only, same file:line evidentiary standard as prior rounds — no spec, plan, or code change written for any of these yet.
+
+| # | Area | Doc section | Severity mix |
+|---|------|--------------|------|
+| 21 | **RBAC super-admin role configurability** | §23 | High ×1, Med ×1 |
+| 22 | **Password reset / email verification token lifecycle consistency** | §24 | Med ×1, Low ×1 |
+| 23 | **CORS & cross-origin configuration** | §25 | Med ×1 |
+| 24 | **MFA / TOTP second-factor handling** | §26 | High ×1, Med ×1 |
+| 25 | **User impersonation feature** | §27 | Med ×1 |
+
+**Recurring shapes (per master doc §29):** §23.1 (RBAC) and §26.1 (MFA) are a narrower, single-path cousin of the "hook wired but nothing installs a real implementation" pattern — a real enforcement primitive exists and is correctly wired for one code path (login password checks call `check_account_lockout`; `AdminConfig`'s env-backed settings resolve correctly) but a closely related second path (MFA code checks; `RolesResource`'s super-admin-role comparison) never calls it, silently. §27 (impersonation) is a fourth pattern variant not seen in prior rounds — a fully-implemented, well-designed service exists with no HTTP route reaching it at all; a current-risk *positive* (unreachable code can't be exploited today) that flags latent design gaps needing attention before the feature is wired up. §24 (password-reset/email-verification) and §25 (CORS) are dual-implementation variants: two code paths solving the same problem exist side by side, one correct (email verification's atomic consume; the wired `CORSConfig`) and one weaker or orphaned (password reset's TOCTOU gap; the dead `WebProviderConfig` CORS fields).
+
+---
+
+## 9. Commands (from AGENTS.md)
 
 ```bash
 uv run ruff check . && uv run ruff format --check .   # lint

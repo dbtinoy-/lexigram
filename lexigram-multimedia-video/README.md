@@ -17,7 +17,6 @@ uv add lexigram-multimedia-video
 # Optional extras
 uv add "lexigram-multimedia-video[runway]"            # Runway API
 uv add "lexigram-multimedia-video[openai]"            # OpenAI Sora API
-uv add "lexigram-multimedia-video[wan22-server]"      # local Wan2.2 server (torch)
 uv add "lexigram-multimedia-video[cogvideox-server]"  # local CogVideoX server (torch)
 uv add "lexigram-multimedia-video[svd-server]"        # local SVD server (torch)
 ```

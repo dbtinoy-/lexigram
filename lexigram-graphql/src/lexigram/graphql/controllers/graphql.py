@@ -200,7 +200,9 @@ class GraphQLController(ControllerProtocol):
         # Try to get from request app
         app = getattr(request, "app", None)
         if app is not None:
-            provider = getattr(app, "graphql_provider", lambda: None)()
+            provider: GraphQLProvider | None = getattr(
+                app, "graphql_provider", lambda: None
+            )()
             if provider is not None and not hasattr(provider, "_mock_return_value"):
                 return provider
 

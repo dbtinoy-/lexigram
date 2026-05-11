@@ -109,3 +109,57 @@ def test_render_content_chart_content_renders_points() -> None:
 def test_render_content_raises_type_error_for_unrecognized_type() -> None:
     with pytest.raises(TypeError):
         render_content(object())
+
+
+PAYLOAD = '<img src=x onerror="alert(1)">'
+
+
+def test_render_content_message_escapes_text() -> None:
+    html = render_content(MessageContent(text=PAYLOAD, tone=Tone.DEFAULT))
+    assert "<img" not in html
+    assert '&lt;img src=x onerror="alert(1)"&gt;' in html
+
+
+def test_render_content_stat_escapes_label_value_and_delta() -> None:
+    html = render_content(
+        StatContent(
+            stats=(
+                Stat(label=PAYLOAD, value=PAYLOAD, delta=PAYLOAD),
+            )
+        )
+    )
+    assert "<img" not in html
+    assert html.count("&lt;img") == 3
+
+
+def test_render_content_table_escapes_headings_and_cells() -> None:
+    html = render_content(
+        TableContent(
+            columns=(PAYLOAD,),
+            rows=((TableCell(text=PAYLOAD, tone=Tone.DEFAULT),),),
+        )
+    )
+    assert "<img" not in html
+    assert html.count("&lt;img") == 2
+
+
+def test_render_content_health_escapes_detail() -> None:
+    html = render_content(
+        HealthCheckPayload(status=HealthStatus.HEALTHY, component="Billing", detail=PAYLOAD)
+    )
+    assert "<img" not in html
+    assert "&lt;img" in html
+
+
+def test_render_content_chart_escapes_point_labels() -> None:
+    html = render_content(
+        ChartContent(points=(ChartPoint(label=PAYLOAD, value=10),))
+    )
+    assert "<img" not in html
+    assert "&lt;img" in html
+
+
+def test_render_content_empty_content_escapes_title_and_message() -> None:
+    html = render_content(EmptyContent(title=PAYLOAD, message=PAYLOAD))
+    assert "<img" not in html
+    assert html.count("&lt;img") == 2

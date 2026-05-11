@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import nullcontext as _nullcontext
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
+from uuid import UUID
 
 from lexigram.concurrency.task_utils import create_tracked_task
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
@@ -119,7 +120,7 @@ class AzureServiceBusQueue:
             ImportError: If ``azure-servicebus`` is not installed.
         """
         try:
-            from azure.servicebus.aio import (  # type: ignore[import-not-found]
+            from azure.servicebus.aio import (
                 ServiceBusClient,
             )
         except ImportError as exc:
@@ -168,7 +169,7 @@ class AzureServiceBusQueue:
         if self._client is None:
             raise RuntimeError("AzureServiceBusQueue not connected")
 
-        from azure.servicebus import (  # type: ignore[import-not-found]
+        from azure.servicebus import (
             ServiceBusMessage as AzMsg,
         )
 
@@ -190,7 +191,7 @@ class AzureServiceBusQueue:
                 if self._tracer and span:
                     self._tracer.inject_context(trace_headers, context=span.context)  # type: ignore[attr-defined]
 
-                merged_headers = {**(message.headers or {}), **trace_headers}
+                merged_headers: dict[str, str] = {**(message.headers or {}), **trace_headers}
 
                 body = json.dumps(
                     {
@@ -201,7 +202,13 @@ class AzureServiceBusQueue:
                     }
                 )
 
-                az_msg = AzMsg(body, application_properties=merged_headers)
+                az_msg = AzMsg(
+                    body,
+                    application_properties=cast(
+                        "dict[str | bytes, int | float | bytes | bool | str | UUID]",
+                        merged_headers,
+                    ),
+                )
 
                 async with self._client.get_queue_sender(
                     queue_name=self._queue_name

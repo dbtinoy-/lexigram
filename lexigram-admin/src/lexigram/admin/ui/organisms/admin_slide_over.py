@@ -104,8 +104,11 @@ def render_delete_confirm(
     swap = hx_swap or Zones.DATA.swap_mode.value
 
     default_message = (
-        f"You are about to permanently delete <strong>{record_label}</strong>. "
-        "This action <strong>cannot be undone</strong>."
+        "You are about to permanently delete ",
+        el("strong", record_label),
+        ". This action ",
+        el("strong", "cannot be undone"),
+        ".",
     )
 
     body = el(

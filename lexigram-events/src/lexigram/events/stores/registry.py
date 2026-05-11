@@ -87,7 +87,8 @@ class EventStoreRegistry:
                 f"Available: {available}"
             )
         logger.debug("creating_event_store", backend=key)
-        return factory(config, container)
+        store: AbstractEventStore = factory(config, container)
+        return store
 
     def keys(self) -> list[str]:
         """Return all registered backend keys.

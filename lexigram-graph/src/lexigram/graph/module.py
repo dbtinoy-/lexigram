@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.data.graph.protocols import GraphProtocol, GraphStoreProtocol
 from lexigram.di.module import DynamicModule, Module, module
@@ -36,7 +36,7 @@ class GraphModule(Module):
     @classmethod
     def configure(
         cls,
-        config: GraphConfig | None = None,
+        config: GraphConfig | dict[str, Any] | None = None,
     ) -> DynamicModule:
         """Create a GraphModule with explicit configuration.
 
@@ -63,11 +63,8 @@ class GraphModule(Module):
         if config is not None:
             if isinstance(config, dict):
                 provider = GraphProvider(config=GraphConfig(**config))
-            elif isinstance(config, GraphConfig):
-                provider = GraphProvider(config=config)
             else:
-                msg = f"config must be GraphConfig or dict, got {type(config).__name__}"
-                raise TypeError(msg)
+                provider = GraphProvider(config=config)
         else:
             provider = GraphProvider()
 

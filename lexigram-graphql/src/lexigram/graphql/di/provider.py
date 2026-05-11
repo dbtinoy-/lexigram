@@ -446,7 +446,7 @@ class GraphQLProvider(Provider):
         )  # type: ignore[assignment]
         if container is not None and hasattr(container, "resolve"):
             try:
-                resolver = cast("BootContainerProtocol", container)
+                resolver: BootContainerProtocol = container
                 cache_backend = await resolver.resolve(CacheBackendProtocol)
             except (UnresolvableDependencyError, RuntimeError, ValueError):
                 logger.debug(

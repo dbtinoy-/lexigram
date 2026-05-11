@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC
+from typing import Any
 
 from lexigram.secrets.types import SecretVersion, VersionedSecret
 
@@ -32,7 +33,7 @@ class HashicorpVaultStore:
         self._mount_point = mount_point
         self._client: object = None  # hvac.Client, lazy-initialized
 
-    def _get_client(self):  # noqa: ANN202
+    def _get_client(self) -> Any:  # noqa: ANN202
         if self._client is None:
             import hvac  # type: ignore[import-untyped]
 

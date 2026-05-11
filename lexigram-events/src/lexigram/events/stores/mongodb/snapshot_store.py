@@ -5,6 +5,7 @@ MongoDB snapshot store implementation.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
 from lexigram.events.stores.base import AbstractSnapshotStore
@@ -13,7 +14,7 @@ from lexigram.logging import get_logger
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from motor.motor_asyncio import (  # type: ignore[import-not-found]
+    from motor.motor_asyncio import (
         AsyncIOMotorClient,
         AsyncIOMotorCollection,
         AsyncIOMotorDatabase,
@@ -79,7 +80,7 @@ class MongoDBSnapshotStore(AbstractSnapshotStore):
             ) from e
 
         self._client = AsyncIOMotorClient(
-            self.config.uri,
+            self.config.uri.get_secret_value(),
             maxPoolSize=self.config.max_pool_size,
         )
         self._db = self._client[self.config.database]
@@ -220,6 +221,11 @@ class MongoDBSnapshotStore(AbstractSnapshotStore):
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.close()

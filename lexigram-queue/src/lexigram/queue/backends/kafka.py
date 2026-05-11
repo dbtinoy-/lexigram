@@ -96,7 +96,10 @@ class KafkaQueue:
     async def connect(self) -> None:
         """Establish connection to Kafka."""
         try:
-            from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+            from aiokafka import (
+                AIOKafkaConsumer,
+                AIOKafkaProducer,
+            )
         except ImportError as exc:
             raise ImportError(
                 "aiokafka required: pip install lexigram-queue[kafka]"

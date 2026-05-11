@@ -128,7 +128,8 @@ def with_timeout(
             @functools.wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> T:
                 async with timeout_context(config):
-                    return await func(*args, **kwargs)  # type: ignore[misc]
+                    result: T = await func(*args, **kwargs)  # type: ignore[misc]
+                    return result
 
             return cast("Callable[..., T]", async_wrapper)
 
@@ -208,7 +209,7 @@ def circuit_breaker_sync(
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
             cb = asyncio.run(registry.get_or_create(name, config))
-            return cast("T", cb.execute_sync(func, *args, **kwargs))
+            return cb.execute_sync(func, *args, **kwargs)
 
         return wrapper
 
@@ -340,7 +341,8 @@ async def _retry(
         ) from last_error
 
     if last_result is not None:
-        return last_result
+        final: T = last_result
+        return final
 
     raise RetryExhaustedError(
         f"Retry exhausted after {config.max_attempts} attempts",
@@ -397,7 +399,8 @@ def _retry_sync(
         ) from last_error
 
     if last_result is not None:
-        return last_result
+        final: T = last_result
+        return final
 
     raise RetryExhaustedError(
         f"Retry exhausted after {config.max_attempts} attempts",
@@ -520,7 +523,7 @@ def idempotent(
                 msg = f"Idempotency key exceeds maximum length of 256 characters: {len(key)}"
                 raise ValueError(msg)
 
-            cached = await store.get(key)
+            cached: Any = await store.get(key)
             if cached is not None:
                 logger.debug(
                     "idempotency.cache_hit",

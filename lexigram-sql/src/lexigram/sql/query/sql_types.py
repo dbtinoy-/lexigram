@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from lexigram.contracts.data.sql.sql_dialect import SQLDialect
 
 if TYPE_CHECKING:
+    from lexigram.contracts.data.identifiers import Column
     from lexigram.sql.query.operators import Operator
 
 
@@ -62,12 +63,12 @@ class Condition:
     """Represents a WHERE condition in a query.
 
     Attributes:
-        column: The column name.
+        column: The validated, quoted column.
         operator: The comparison operator.
         value: The value to compare against.
     """
 
-    column: str
+    column: Column
     operator: Operator
     value: Any
 
@@ -91,7 +92,7 @@ class Join:
 class Order:
     """Represents an ORDER BY clause."""
 
-    column: str
+    column: Column
     desc: bool = False
 
 
@@ -106,7 +107,7 @@ class GroupByClause:
 class HavingClause:
     """Represents a HAVING condition."""
 
-    column: str
+    column: Column
     operator: Operator
     value: Any
 
@@ -123,7 +124,7 @@ class RawExpression:
 class OrCondition:
     """Represents an OR WHERE condition."""
 
-    column: str
+    column: Column
     operator: Operator
     value: Any
 
@@ -143,7 +144,7 @@ class WindowExpression:
     """Represents a window function expression."""
 
     func: str
-    partition_by: list[str] | None = None
+    partition_by: list[Column] | None = None
     order_by: str | None = None
     alias: str = ""
 

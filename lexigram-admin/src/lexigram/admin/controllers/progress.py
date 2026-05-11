@@ -130,6 +130,10 @@ class ProgressController(AdminController):
         tracker: ProgressTrackerProtocol,
         renderer: AdminRenderer | None = None,
     ) -> None:
+        if renderer is None:
+            from lexigram.admin.engine.renderer import AdminRenderer
+
+            renderer = AdminRenderer()
         super().__init__(renderer=renderer)
         self.tracker = tracker
 

@@ -131,7 +131,7 @@ class RabbitMQTaskQueue(TaskQueueProtocol):
         assert self.channel is not None
         assert self.queue is not None
 
-        task_data = dumps(task.to_dict())
+        task_data: Any = dumps(task.to_dict())
         body = task_data.encode() if isinstance(task_data, str) else task_data
 
         # Use Any-typed constructors to avoid mypy call-arg mismatches with aio-pika stubs

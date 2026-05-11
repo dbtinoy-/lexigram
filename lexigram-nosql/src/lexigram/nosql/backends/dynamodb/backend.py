@@ -185,7 +185,7 @@ class DynamoDBBackend(AbstractDocumentStore):
     async def _noop_session(self) -> AsyncIterator[None]:
         yield
 
-    def session(self) -> AbstractAsyncContextManager:
+    def session(self) -> AbstractAsyncContextManager[Any]:
         """Return a no-op async context manager.
 
         DynamoDB transactional writes require ``TransactWriteItems`` at the

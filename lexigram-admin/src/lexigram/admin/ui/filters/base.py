@@ -53,8 +53,8 @@ class Filter:
         # Initialize filter state
         self.name = name
         self.label = label or name.replace("_", " ").title()
-        self.placeholder: str | None = None
-        self.default: Any = None
+        self._placeholder: str | None = None
+        self._default: Any = None
         self.value: Any = None
         self.errors: list[str] = []
 
@@ -83,9 +83,9 @@ class Filter:
         """
         if callable(value):
             self._default_callback = value
-            self.default = None  # type: ignore[method-assign, assignment]
+            self._default = None
         else:
-            self.default = value  # type: ignore[method-assign]
+            self._default = value
             self._default_callback = None
         return self
 
@@ -97,9 +97,9 @@ class Filter:
         """
         if self._default_callback:
             return self._default_callback()
-        return self.default
+        return self._default
 
-    def placeholder(self, text: str) -> Self:  # type: ignore[override]
+    def placeholder(self, text: str) -> Self:
         """Set placeholder text for the filter input.
 
         Args:
@@ -112,7 +112,7 @@ class Filter:
             >>> TextFilter("search").placeholder("Search users...")
             >>> SelectFilter("role").placeholder("All Roles")
         """
-        self.placeholder = text  # type: ignore[method-assign, assignment]
+        self._placeholder = text
         return self
 
     def visible(self, visible: bool | Callable = True) -> Self:
@@ -176,7 +176,7 @@ class Filter:
         return [self.name]
 
     @abstractmethod
-    def render(self, current_value: Any = None, url: str | None = None) -> str:  # type: ignore[override]
+    def render(self, current_value: Any = None, url: str | None = None) -> str:
         """
         Render the filter UI as HTML.
 

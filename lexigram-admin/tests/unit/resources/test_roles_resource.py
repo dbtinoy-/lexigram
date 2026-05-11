@@ -77,3 +77,22 @@ class TestRolesResource:
         }
         assert {"csrf_token", "name", "description", "permissions", "inherits", "is_system"} <= names
         assert "No form configuration available" not in html
+
+    def test_can_delete_blocks_system_role(self) -> None:
+        """System roles cannot be deleted through the resource path."""
+        resource = RolesResource()
+        system = AdminRole(name="admin", is_system=True)
+        assert resource.can_delete(system) is False
+
+    def test_can_delete_blocks_super_admin_role(self) -> None:
+        """The configured super-admin role is protected from deletion."""
+        resource = RolesResource()
+        assert (
+            resource.can_delete(AdminRole(name="superadmin", is_system=False)) is False
+        )
+
+    def test_can_delete_allows_custom_roles(self) -> None:
+        """Ordinary roles remain deletable."""
+        resource = RolesResource()
+        custom = AdminRole(name="editor", is_system=False)
+        assert resource.can_delete(custom) is True

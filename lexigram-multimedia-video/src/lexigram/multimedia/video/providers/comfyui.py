@@ -34,7 +34,8 @@ def _load_default_workflow() -> dict[str, Any]:
     template_path = importlib.resources.files(
         "lexigram.multimedia.video.workflows"
     ).joinpath("default_svd.json")
-    return loads(template_path.read_text())
+    workflow: dict[str, Any] = loads(template_path.read_text())
+    return workflow
 
 
 def _fill_workflow(
@@ -52,7 +53,8 @@ def _fill_workflow(
     raw = raw.replace('"__FPS__"', str(fps))
     raw = raw.replace('"__MOTION_BUCKET_ID__"', str(motion_bucket_id))
     raw = raw.replace('"__SEED__"', str(seed))
-    return loads(raw)
+    filled: dict[str, Any] = loads(raw)
+    return filled
 
 
 class ComfyUiVideoProvider:
@@ -90,7 +92,8 @@ class ComfyUiVideoProvider:
     def _load_template(self) -> dict[str, Any]:
         if self._workflow_path is not None:
             with open(self._workflow_path) as f:
-                return loads(f.read())
+                template: dict[str, Any] = loads(f.read())
+                return template
         return _load_default_workflow()
 
     async def _submit(self, workflow: dict[str, Any]) -> tuple[int, bytes]:
@@ -138,7 +141,8 @@ class ComfyUiVideoProvider:
             for key in ("gifs", "videos", "images"):
                 files = output.get(key)
                 if files:
-                    return files[0]
+                    first_file: dict[str, Any] = files[0]
+                    return first_file
         raise KeyError(f"no output file found in ComfyUI history entry: {entry!r}")
 
     async def _poll_history(

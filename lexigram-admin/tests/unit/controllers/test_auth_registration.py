@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+from urllib.parse import unquote_plus
 
 import pytest
 
 from lexigram.admin.controllers.auth import AuthController
-
 
 _UNSET = object()
 
@@ -159,21 +159,24 @@ class TestRegisterSubmit:
     @pytest.mark.asyncio
     async def test_domain_allowlist_accepts_allowed_domain(self) -> None:
         user_store = AsyncMock()
+        user_store.get_user_by_email = AsyncMock(return_value=None)
         user_store.create_user = AsyncMock(
             return_value=SimpleNamespace(user_id="u9", name="Jane", email="j@example.com")
         )
         controller = _controller(user_store=user_store, domains=["example.com"])
         resp = await controller.register_submit(_request(form=_form()))
         assert resp.status_code == 302
-        assert resp.headers["location"] == "/admin/"
+        assert resp.headers["location"].startswith("/admin/login")
+        assert "notice=" in resp.headers["location"]
         call_kwargs = user_store.create_user.await_args.kwargs
         assert call_kwargs["email"] == "jane@example.com"
         assert call_kwargs["roles"] == ["admin"]
         assert call_kwargs["hashed_password"] != "correct-horse-9"
 
     @pytest.mark.asyncio
-    async def test_success_sets_session_and_redirects(self) -> None:
+    async def test_success_redirects_to_login_with_notice(self) -> None:
         user_store = AsyncMock()
+        user_store.get_user_by_email = AsyncMock(return_value=None)
         user_store.create_user = AsyncMock(
             return_value=SimpleNamespace(user_id="u7", name="Jane", email="j@example.com")
         )
@@ -181,13 +184,14 @@ class TestRegisterSubmit:
         request = _request(form=_form())
         resp = await controller.register_submit(request)
         assert resp.status_code == 302
-        assert resp.headers["location"] == "/admin/"
-        assert request.session["admin_user_id"] == "u7"
-        assert request.session["admin_user_email"] == "jane@example.com"
+        assert resp.headers["location"].startswith("/admin/login")
+        assert "notice=" in resp.headers["location"]
+        assert "Account created successfully" in unquote_plus(resp.headers["location"])
 
     @pytest.mark.asyncio
     async def test_duplicate_email_surfaces_error(self) -> None:
         user_store = AsyncMock()
+        user_store.get_user_by_email = AsyncMock(return_value=None)
         user_store.create_user = AsyncMock(side_effect=Exception("duplicate"))
         controller = _controller(user_store=user_store)
         resp = await controller.register_submit(_request(form=_form()))

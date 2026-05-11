@@ -53,7 +53,7 @@ class LibrosaBeatAnalysisProvider:
             Path(path).unlink()
 
     def _analyze_sync(self, path: str) -> Result[BeatAnalysisResult, MultimediaError]:
-        import librosa
+        import librosa  # type: ignore[import-not-found]
 
         try:
             y, sr = librosa.load(path, sr=self._sample_rate)

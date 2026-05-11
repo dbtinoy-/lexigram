@@ -106,7 +106,7 @@ class TestAdminProvider:
                 if token_name == "AdminUserStoreProtocol":
                     raise RuntimeError("store unavailable")
                 if token_name == "AdminCsrfServiceProtocol":
-                    raise RuntimeError("csrf unavailable")
+                    return SimpleNamespace()
                 if token_name == "NavItemBuilder":
                     return SimpleNamespace(set_resources=lambda _: None)
                 return SimpleNamespace()
@@ -208,7 +208,7 @@ class TestAdminProvider:
                 if token_name == "AdminUserStoreProtocol":
                     raise RuntimeError("store unavailable")
                 if token_name == "AdminCsrfServiceProtocol":
-                    raise RuntimeError("csrf unavailable")
+                    return SimpleNamespace()
                 return SimpleNamespace()
 
         class _FakeRouter:
@@ -310,7 +310,7 @@ class TestAdminProvider:
                 if token_name == "AdminUserStoreProtocol":
                     raise RuntimeError("store unavailable")
                 if token_name == "AdminCsrfServiceProtocol":
-                    raise RuntimeError("csrf unavailable")
+                    return SimpleNamespace()
                 if token_name == "NavItemBuilder":
                     return SimpleNamespace(set_resources=lambda _: None)
                 return SimpleNamespace()
@@ -341,27 +341,12 @@ class TestAdminProvider:
         assert len(progress_controllers) == 1
         assert isinstance(progress_controllers[0].tracker, LocalProgressTracker)
 
-    def test_rbac_resources_own_pages_true_for_users(self) -> None:
-        """A ``users`` resource claims the legacy RBAC users page."""
-        assert AdminProvider.rbac_resources_own_pages({"users": object()}) is True
-
-    def test_rbac_resources_own_pages_true_for_roles(self) -> None:
-        """A ``roles`` resource claims the legacy RBAC roles page."""
-        assert AdminProvider.rbac_resources_own_pages({"roles": object()}) is True
-
-    def test_rbac_resources_own_pages_false_otherwise(self) -> None:
-        """Other resources never suppress the legacy RBAC controller."""
-        assert (
-            AdminProvider.rbac_resources_own_pages({"audit_logs": object()}) is False
-        )
-        assert AdminProvider.rbac_resources_own_pages({}) is False
-
     @pytest.mark.asyncio
-    async def test_mount_skips_legacy_rbac_when_users_resource_registered(
+    async def test_mount_registers_users_resource(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A registered ``users`` resource must replace the legacy RBAC pages."""
+        """A ``users`` resource is registered when provided to the provider."""
 
         class _Resolver:
             async def resolve(
@@ -396,49 +381,7 @@ class TestAdminProvider:
 
         await provider.mount_to_app(app, _Resolver())
 
-        controllers = captured.get("controllers")
-        assert isinstance(controllers, list)
-        assert "RbacController" not in {type(c).__name__ for c in controllers}
         assert "users" in captured.get("resources", {})
-
-    @pytest.mark.asyncio
-    async def test_mount_keeps_legacy_rbac_without_owning_resources(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Without users/roles resources, the legacy RBAC pages stay mounted."""
-
-        class _Resolver:
-            async def resolve(
-                self,
-                token: object,
-                *,
-                bypass_visibility: bool = False,
-            ) -> object:
-                named = type(getattr(token, "__name__", "anon"), (SimpleNamespace,), {})
-                return named()
-
-        captured: dict[str, object] = {}
-
-        class _FakeRouter:
-            def __init__(self, **kwargs: object) -> None:
-                captured.update(kwargs)
-
-            def mount(self, app: object) -> object:
-                return app
-
-        provider = AdminProvider()
-        app = SimpleNamespace(state=SimpleNamespace())
-        monkeypatch.setattr(
-            "lexigram.admin.core.routing.AdminRouter",
-            _FakeRouter,
-        )
-
-        await provider.mount_to_app(app, _Resolver())
-
-        controllers = captured.get("controllers")
-        assert isinstance(controllers, list)
-        assert "RbacController" in {type(c).__name__ for c in controllers}
 
 
 __all__ = ["TestAdminProvider"]

@@ -560,8 +560,8 @@ class MonitorProvider(Provider):
                 if hasattr(backend_health, "details") and isinstance(
                     backend_health.details, dict
                 ):
-                    details.update(backend_health.details)
-                return backend_health
+                    details.update(cast("dict[str, Any]", backend_health.details))
+                return cast("HealthCheckResult", backend_health)
             except (OSError, ConnectionError, RuntimeError, ValueError) as e:
                 return HealthCheckResult(
                     component="monitor",
@@ -630,7 +630,7 @@ class MonitorProvider(Provider):
         name: str,
         description: str = "",
         labels: dict[str, str] | None = None,
-    ):
+    ) -> Any:
         """Create a counter metric"""
         return self.metrics_collector.create_counter(name, description, labels)
 
@@ -639,7 +639,7 @@ class MonitorProvider(Provider):
         name: str,
         description: str = "",
         labels: dict[str, str] | None = None,
-    ):
+    ) -> Any:
         """Create a gauge metric"""
         return self.metrics_collector.create_gauge(name, description, labels)
 
@@ -649,7 +649,7 @@ class MonitorProvider(Provider):
         description: str = "",
         labels: dict[str, str] | None = None,
         buckets: list[float] | None = None,
-    ):
+    ) -> Any:
         """Create a histogram metric"""
         return self.metrics_collector.create_histogram(
             name,

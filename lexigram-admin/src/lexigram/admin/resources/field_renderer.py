@@ -189,6 +189,8 @@ class MultiSelectFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
+        if not isinstance(field_schema, MultiSelectField):
+            return None
         choices = field_schema.options or []
         selected = value if isinstance(value, list) else []
         return MultiSelect(
@@ -208,6 +210,8 @@ class HasManyFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
+        if not isinstance(field_schema, HasManyField):
+            return None
         choices = field_schema.options or []
         selected = value if isinstance(value, list) else []
         return MultiSelect(
@@ -227,6 +231,8 @@ class BelongsToFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
+        if not isinstance(field_schema, BelongsToField):
+            return None
         return BelongsTo(
             **_atom_args(
                 common_args,
@@ -248,6 +254,8 @@ class MorphFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
+        if not isinstance(field_schema, MorphField):
+            return None
         args = _atom_args(
             common_args, value, extra={"choices": field_schema.options or []}
         )
@@ -266,6 +274,8 @@ class SelectFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
+        if not isinstance(field_schema, SelectField):
+            return None
         args = _atom_args(
             common_args, value, extra={"choices": field_schema.options or []}
         )

@@ -73,7 +73,7 @@ async def backfill_checksums(
             )
 
             updates = ["checksum = ?"]
-            params: list = [checksum]
+            params: list[str | int] = [checksum]
             if upgrade_schema:
                 updates.append("entry_schema_version = ?")
                 params.append(2)

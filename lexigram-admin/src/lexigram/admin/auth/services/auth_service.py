@@ -287,11 +287,11 @@ class AdminAuthService:
         await self._attempt_service.clear_lockout(email)
 
         # Step 5 — Create session
-        roles: list[str] = list(getattr(user, "roles", []) or [])
+        session_roles: list[str] = list(getattr(user, "roles", []) or [])
         session_id: str = await self._session_service.create_session(
             user_id=str(user.user_id),
             email=str(user.email),
-            roles=roles,
+            roles=session_roles,
             ip_address=ip_address,
             user_agent=user_agent,
         )
@@ -395,7 +395,7 @@ class AdminAuthService:
                 metadata={"email": email},
             )
             logger.warning("admin_mfa_code_not_available", user_id=user_id)
-            return verification
+            return Err(verification.unwrap_err())
 
         if not verification.unwrap():
             await self._audit_service.log_event(

@@ -147,4 +147,4 @@ class ApprovalChain:
             return approved_count >= 1
         if self._policy == ApprovalPolicy.MAJORITY:
             return approved_count > total / 2
-        return False  # pragma: no cover — exhaustive StrEnum
+        raise AssertionError("unreachable: all ApprovalPolicy members handled")

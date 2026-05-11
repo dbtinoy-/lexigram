@@ -159,7 +159,7 @@ class SynthesisStage:
             Response synthesizer instance
         """
         if self._synthesizer is not None:
-            return cast("ResponseSynthesizerProtocol", self._synthesizer)
+            return self._synthesizer
 
         from lexigram.ai.rag.pipeline.stages.synthesis_registry import (
             SynthesisStrategyRegistry,

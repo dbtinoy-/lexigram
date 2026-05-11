@@ -3,7 +3,7 @@ name = "lexigram-workspace"
 version = "0.1.2"
 description = "Lexigram Framework Workspace"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.15"
 license = "MIT"
 dependencies = [
     "lexigram",
@@ -132,6 +132,12 @@ members = [
     "lexigram-multimedia-beat",
 ]
 
+[tool.uv]
+# ace-step 0.1.0 pins gradio==5.23.3 (pillow<12 cap), which conflicts
+# with the workspace dev-group pillow>=12.1.1 floor. gradio 6.15.1
+# (already locked for f5-tts) drops the cap, so force it workspace-wide.
+override-dependencies = ["gradio>=6.15.1", "diffusers==0.32.2", "transformers==4.50.0", "pytorch-lightning>=2.5.1", "torchaudio==2.9.0", "torch==2.9.0", "stable-audio-tools==0.0.20"]
+
 [tool.uv.sources]
 lexigram = { workspace = true }
 lexigram-admin = { workspace = true }
@@ -240,6 +246,12 @@ dev = [
     "scikit-learn>=1.8.0",
     "scipy>=1.17.0",
     "pillow>=12.1.1",
+    "types-PyYAML>=6.0.0",
+    "motor>=3.3.0",
+    "aiosqlite>=0.19.0",
+    "asyncpg>=0.28.0",
+    "azure-servicebus>=7.8.0",
+    "granian>=1.0.0",
     "xgboost>=3.2.0",
     "uvicorn>=0.41.0",
     "lexigram-nosql",

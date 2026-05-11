@@ -94,7 +94,7 @@ class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
         if self._idle_semaphore.acquire(timeout=0):
             return
 
-        def weakref_cb(_, q=self._work_queue) -> None:
+        def weakref_cb(_: Any, q: Any = self._work_queue) -> None:
             q.put(None)
 
         num_threads = len(self._threads)

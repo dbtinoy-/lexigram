@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from lexigram.admin.schema import (
     MarkdownField,
     RichTextField,
@@ -7,6 +9,7 @@ from lexigram.admin.schema import (
     TextAreaField,
     TextField,
 )
+from lexigram.admin.schema import text_area as text_area_module
 from lexigram.result import Ok
 from lexigram.ui import Element
 
@@ -205,6 +208,39 @@ class TestRichTextField:
         field = RichTextField(name="content")
         output = str(field.render_column(None, "<p>Hello</p>"))
         assert "<p>Hello</p>" in output
+
+    def test_render_column_sanitizes_script_tags(self) -> None:
+        field = RichTextField(name="content")
+        output = str(field.render_column(None, "<p>hi</p><script>alert(1)</script>"))
+        assert "<p>hi</p>" in output
+        assert "<script>" not in output
+        assert "alert(1)" not in output
+
+    def test_render_column_strips_event_handler_attributes(self) -> None:
+        field = RichTextField(name="content")
+        output = str(field.render_column(None, '<img src=x onerror="alert(1)">'))
+        assert "<img" not in output
+        assert "onerror" not in output
+
+    def test_render_column_strips_javascript_urls(self) -> None:
+        field = RichTextField(name="content")
+        output = str(
+            field.render_column(None, '<a href="javascript:alert(1)">click</a>')
+        )
+        assert "javascript:" not in output
+        assert "click" in output
+
+    def test_render_column_fail_closed_when_nh3_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def raise_import_error(_value: str) -> str:
+            raise ImportError("nh3 not installed")
+
+        monkeypatch.setattr(text_area_module, "sanitize_html", raise_import_error)
+        field = RichTextField(name="content")
+        output = str(field.render_column(None, "<p>hi</p>"))
+        assert "&lt;p&gt;hi&lt;/p&gt;" in output
+        assert "<p>hi</p>" not in output
 
     def test_render_column_with_none(self) -> None:
         field = RichTextField(name="content")

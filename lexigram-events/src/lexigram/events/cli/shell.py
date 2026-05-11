@@ -19,4 +19,5 @@ async def provide_event_bus(container: ContainerResolverProtocol) -> EventBusPro
     Returns:
         The resolved EventBus instance.
     """
-    return await container.resolve(EventBusProtocol)
+    bus: EventBusProtocol = await container.resolve(EventBusProtocol)
+    return bus

@@ -111,7 +111,7 @@ class EmbeddingCache:
                         error=str(cached_result.unwrap_err()),
                     )
                     return None
-                cached = cached_result.unwrap()
+                cached: Embedding | None = cached_result.unwrap()
             else:
                 cached = cached_result
 

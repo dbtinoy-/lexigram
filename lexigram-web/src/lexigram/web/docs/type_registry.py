@@ -60,7 +60,7 @@ class StringDocumenter:
 class TypeDocumenterRegistry:
     """Registry for type documenters."""
 
-    def __init__(self) -> Any:
+    def __init__(self) -> None:
         self._documenters: list[TypeDocumenterProtocol] = [
             IntDocumenter(),
             BoolDocumenter(),

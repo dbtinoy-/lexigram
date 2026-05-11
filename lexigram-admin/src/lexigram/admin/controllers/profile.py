@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import quote_plus
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse, Response
+from starlette.responses import RedirectResponse, Response
 
 from lexigram.admin.auth.models import AdminUser
 from lexigram.admin.auth.protocols import (
@@ -254,7 +254,7 @@ class ProfileController(AdminController):
             return self._redirect(
                 "/admin/profile", "Account not found. Please sign in again.", True
             )
-        setattr(record, "hashed_password", hash_password(new_password))
+        record.hashed_password = hash_password(new_password)
         await self._user_store.update_user(record)
 
         await self._audit(

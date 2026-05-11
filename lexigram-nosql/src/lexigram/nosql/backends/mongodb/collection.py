@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 pymongo: Any
 try:
-    import pymongo as _pymongo  # type: ignore[import-not-found]
+    import pymongo as _pymongo
 
     pymongo = _pymongo
 except ImportError:
@@ -79,7 +79,10 @@ class MongoDBCollection:
         projection: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Find a single document matching the filter."""
-        return await self._col.find_one(filter, projection=projection)
+        doc: dict[str, Any] | None = await self._col.find_one(
+            filter, projection=projection
+        )
+        return doc
 
     async def find(
         self,
@@ -180,18 +183,20 @@ class MongoDBCollection:
         from pymongo import ReturnDocument
 
         return_doc = ReturnDocument.AFTER if return_document else ReturnDocument.BEFORE
-        return await self._col.find_one_and_update(
+        updated: dict[str, Any] | None = await self._col.find_one_and_update(
             filter,
             update,
             upsert=upsert,
             return_document=return_doc,
         )
+        return updated
 
     # ── Count / Index ────────────────────────────────────────────
 
     async def count_documents(self, filter: dict[str, Any] | None = None) -> int:
         """Count documents matching the filter."""
-        return await self._col.count_documents(filter or {})
+        count: int = await self._col.count_documents(filter or {})
+        return count
 
     async def create_index(
         self,
@@ -204,7 +209,8 @@ class MongoDBCollection:
         kwargs: dict[str, Any] = {"unique": unique}
         if name:
             kwargs["name"] = name
-        return await self._col.create_index(keys, **kwargs)
+        index_name: str = await self._col.create_index(keys, **kwargs)
+        return index_name
 
     # ── Aggregation ──────────────────────────────────────────────
 
@@ -228,7 +234,8 @@ class MongoDBCollection:
         filter: dict[str, Any] | None = None,
     ) -> list[Any]:
         """Get distinct values for a specified key."""
-        return await self._col.distinct(key, filter=filter or {})
+        values: list[Any] = await self._col.distinct(key, filter=filter or {})
+        return values
 
     async def bulk_write(self, operations: list[Any]) -> BulkWriteResult:
         """Execute multiple write operations in a single batch."""

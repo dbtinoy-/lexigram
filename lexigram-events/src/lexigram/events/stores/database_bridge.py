@@ -108,7 +108,7 @@ class DatabaseBridgeEventStore(AbstractEventStore):
         finally:
             await self._db.release(conn)
 
-    async def read_all(
+    async def read_all(  # type: ignore[override]
         self,
         position: int = 0,
         count: int | None = None,
@@ -172,7 +172,7 @@ class DatabaseBridgeEventStore(AbstractEventStore):
                 f"DELETE FROM {self._events_table} WHERE stream_id = $1",
                 stream_id,
             )
-            return result != "DELETE 0"
+            return str(result) != "DELETE 0"
         finally:
             await self._db.release(conn)
 

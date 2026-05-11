@@ -183,7 +183,7 @@ class StreamingEventStoreFactory(AbstractEventStoreFactory):
     async def create_event_store(self) -> StreamingEventStore:
         """Create a streaming-enabled event store."""
         base_store = await self._base_factory.create_event_store()
-        return StreamingEventStore(base_store, self._event_stream)  # type: ignore[abstract]
+        return StreamingEventStore(base_store, self._event_stream)
 
     def with_stream(self, event_stream: EventStream) -> StreamingEventStoreFactory:
         """Configure the event stream for automatic publishing."""

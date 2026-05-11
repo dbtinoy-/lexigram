@@ -6,6 +6,8 @@ import importlib
 from types import TracebackType
 from typing import Any, Self, cast
 
+from markupsafe import Markup
+
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -104,7 +106,12 @@ class Element:
         parts.append(">")
 
         for c in self.children:
-            parts.append(render_to_string(c))
+            # Escape plain-string children in text context. Markup/raw()
+            # children pass through verbatim (explicit opt-outs).
+            if isinstance(c, str) and not isinstance(c, Markup):
+                parts.append(html.escape(c, quote=False))
+            else:
+                parts.append(render_to_string(c))
 
         parts.append(f"</{self.tag}>")
         return "".join(parts)

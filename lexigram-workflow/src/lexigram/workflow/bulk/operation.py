@@ -343,7 +343,7 @@ class BulkOperation(Generic[T, R]):
             async for item in items:
                 collected_items.append(item)
         else:
-            collected_items = cast("list[T]", items)
+            collected_items = items
 
         batches = self._chunk_items(collected_items)
         self.processor = resolved_processor

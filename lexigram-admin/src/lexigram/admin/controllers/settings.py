@@ -20,6 +20,7 @@ from lexigram.admin.settings.panel.types import ConfigCategory, get_default_cate
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
+from lexigram.ui import el, render_to_string
 
 if TYPE_CHECKING:
     from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
@@ -263,8 +264,6 @@ class SettingsController(AdminController):
         )
 
         if request.headers.get("hx-request") == "true":
-            from lexigram.ui.core.base import render_to_string
-
             self._flash_messages.clear()
             if invalid:
                 toast_message = (
@@ -275,7 +274,7 @@ class SettingsController(AdminController):
             else:
                 toast_message = "Settings saved successfully."
                 toast_kind = "success"
-            toast_html = render_to_string(self._render_toast(toast_message, toast_kind))
+            toast_html = self._render_toast(toast_message, toast_kind)
             flash_oob = (
                 f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
             )
@@ -306,4 +305,4 @@ class SettingsController(AdminController):
 
     def _render_toast(self, message: str, kind: str) -> str:
         """Build a toast component for htmx responses."""
-        return f'<div class="toast toast-{kind}">{message}</div>'
+        return render_to_string(el("div", {"class": f"toast toast-{kind}"}, message))

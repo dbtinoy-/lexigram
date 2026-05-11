@@ -17,7 +17,7 @@ def create_inmemory_store(
     """Create an in-memory event store."""
     from lexigram.events.stores.memory import InMemoryEventStore
 
-    return InMemoryEventStore(  # type: ignore[abstract]
+    return InMemoryEventStore(
         max_events_per_stream=config.memory.max_events_per_stream,
     )
 
@@ -34,7 +34,7 @@ def create_postgres_store(
     pg_config = config.postgres
     if pg_config is None:
         raise ValueError("PostgreSQL backend selected but postgres config is missing")
-    return PostgresEventStore(config=pg_config, provider=provider)  # type: ignore[abstract]
+    return PostgresEventStore(config=pg_config, provider=provider)
 
 
 def create_mongodb_store(

@@ -50,7 +50,7 @@ logger = get_logger(__name__)
 
 
 @lru_cache(maxsize=1024)
-def _cached_get_type_hints(func) -> Any:
+def _cached_get_type_hints(func: Callable[..., Any]) -> Any:
     """Cached wrapper around typing.get_type_hints(func, globalns=func.__globals__).
 
     - Caching avoids repeatedly resolving forward refs at request time.

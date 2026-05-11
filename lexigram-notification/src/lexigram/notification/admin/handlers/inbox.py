@@ -97,7 +97,8 @@ class InboxHandlers:
             container = getattr(app_state, "container", None)
         if container is not None:
             try:
-                return await container.resolve(InboxService)
+                service: InboxService = await container.resolve(InboxService)
+                return service
             except Exception as exc:  # noqa: BLE001 — non-fatal
                 logger.warning("inbox_handlers.resolve_failed", error=str(exc))
         return InboxService()

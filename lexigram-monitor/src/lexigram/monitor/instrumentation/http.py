@@ -36,44 +36,44 @@ except (ImportError, NameError):
 
     # Create dummy classes to avoid import errors
     class _DummyTracer:
-        def start_as_current_span(self, *args, **kwargs) -> Any:
+        def start_as_current_span(self, *args: Any, **kwargs: Any) -> Any:
             return _DummySpan()
 
     class _DummySpan:
         def __enter__(self) -> Any:
             return self
 
-        def __exit__(self, *args) -> Any:
+        def __exit__(self, *args: object) -> Any:
             pass
 
-        def set_attribute(self, *args) -> Any:
+        def set_attribute(self, *args: Any) -> Any:
             pass
 
-        def record_exception(self, *args) -> Any:
+        def record_exception(self, *args: Any) -> Any:
             pass
 
-        def set_status(self, *args) -> Any:
+        def set_status(self, *args: Any) -> Any:
             pass
 
     class _DummyMeter:
-        def create_counter(self, *args, **kwargs) -> Any:
+        def create_counter(self, *args: Any, **kwargs: Any) -> Any:
             return _DummyCounter()
 
-        def create_histogram(self, *args, **kwargs) -> Any:
+        def create_histogram(self, *args: Any, **kwargs: Any) -> Any:
             return _DummyHistogram()
 
     class _DummyCounter:
-        def add(self, *args, **kwargs) -> Any:
+        def add(self, *args: Any, **kwargs: Any) -> Any:
             pass
 
     class _DummyHistogram:
-        def record(self, *args, **kwargs) -> Any:
+        def record(self, *args: Any, **kwargs: Any) -> Any:
             pass
 
     metrics = type("metrics", (), {"get_meter": lambda *_: _DummyMeter()})()
     trace = type("trace", (), {"get_tracer": lambda *_: _DummyTracer()})()
 
-    def extract(*args) -> Any:  # type: ignore[misc]
+    def extract(*args: Any) -> Any:  # type: ignore[misc]
         return None
 
     SpanAttributes = type(  # type: ignore[misc]

@@ -57,17 +57,23 @@ class TenantConfigProvider(Provider):
                 # Fallback: create a fresh in-memory instance for config only
                 base_config_provider = InMemoryTenantProvider()
 
-            return CachedTenantConfigProvider(
+            provider: CachedTenantConfigProvider = CachedTenantConfigProvider(
                 inner=base_config_provider,
                 ttl=self._config.cache_ttl,
             )
+            return provider
 
-        container.singleton(TenantConfigProviderProtocol, factory=_cached_provider_factory)
+        container.singleton(
+            TenantConfigProviderProtocol, factory=_cached_provider_factory
+        )
 
         async def _cached_impl_factory(
             resolver: ServiceResolver,
         ) -> CachedTenantConfigProvider:
-            return await resolver.resolve(TenantConfigProviderProtocol)
+            impl: CachedTenantConfigProvider = await resolver.resolve(
+                TenantConfigProviderProtocol
+            )
+            return impl
 
         container.singleton(
             CachedTenantConfigProvider,

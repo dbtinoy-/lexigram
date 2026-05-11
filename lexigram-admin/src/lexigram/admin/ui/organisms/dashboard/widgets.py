@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from lexigram.ui import Component, el, raw
+from lexigram.ui import Component, el
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -148,7 +148,7 @@ class StatCard(Component):
 
         icon_el = el(
             "div",
-            raw(f'<i data-lucide="{s.icon}" class="w-5 h-5"></i>'),
+            el("i", {"data-lucide": s.icon, "class": "w-5 h-5"}),
             class_=f"flex-shrink-0 rounded-lg p-3 {icon_bg}",
         )
         value_row = el(
@@ -273,13 +273,13 @@ class ActivityFeed(Component):
                 action_text = el(
                     "p",
                     el("span", item.actor, class_="font-medium"),
-                    raw(f" {item.action} "),
+                    f" {item.action} ",
                     el(
                         "span",
                         item.resource,
                         class_="font-medium text-primary-600 dark:text-primary-400",
                     ),
-                    raw(f" {item.resource_id}" if item.resource_id else ""),
+                    f" {item.resource_id}" if item.resource_id else "",
                     class_="text-sm text-foreground leading-snug",
                 )
                 ts_el = (
@@ -292,8 +292,15 @@ class ActivityFeed(Component):
                     else ""
                 )
                 detail_el = el("div", action_text, ts_el, class_="flex-1 min-w-0")
-                icon_span = raw(
-                    f'<span class="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-muted flex items-center justify-center"><i data-lucide="{item.icon}" class="w-3.5 h-3.5 text-muted-foreground"></i></span>'
+                icon_span = el(
+                    "span",
+                    {
+                        "class": "flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-muted flex items-center justify-center"
+                    },
+                    el(
+                        "i",
+                        {"data-lucide": item.icon, "class": "w-3.5 h-3.5 text-muted-foreground"},
+                    ),
                 )
                 rows.append(
                     el(
@@ -341,16 +348,21 @@ class SystemHealthWidget(Component):
         for entry in self.entries:
             status_color = _HEALTH_COLORS.get(entry.status, _HEALTH_COLORS["ok"])
             dot_color = _HEALTH_DOT.get(entry.status, _HEALTH_DOT["ok"])
-            latency_html = (
-                f'<span class="text-xs text-muted-foreground">{entry.latency_ms}ms</span>'
+            latency_el = (
+                el(
+                    "span",
+                    {"class": "text-xs text-muted-foreground"},
+                    f"{entry.latency_ms}ms",
+                )
                 if entry.latency_ms is not None
                 else ""
             )
             status_label = entry.status.upper()
             left = el(
                 "div",
-                raw(
-                    f'<span class="w-2 h-2 rounded-full {dot_color} flex-shrink-0"></span>'
+                el(
+                    "span",
+                    {"class": f"w-2 h-2 rounded-full {dot_color} flex-shrink-0"},
                 ),
                 el(
                     "span",
@@ -361,7 +373,7 @@ class SystemHealthWidget(Component):
             )
             right = el(
                 "div",
-                raw(latency_html),
+                latency_el,
                 el(
                     "span", status_label, class_=f"text-xs font-semibold {status_color}"
                 ),

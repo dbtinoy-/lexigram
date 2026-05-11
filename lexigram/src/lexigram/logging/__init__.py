@@ -92,4 +92,23 @@ def __dir__() -> list[str]:
     return list(_LAZY_IMPORTS.keys()) + list(_ALIASED_IMPORTS.keys())
 
 
-__all__ = list(_LAZY_IMPORTS.keys()) + list(_ALIASED_IMPORTS.keys())
+__all__ = (
+    "CRITICAL",
+    "DEBUG",
+    "ERROR",
+    "INFO",
+    "WARNING",
+    "LogLevel",
+    "Logger",
+    "LoggerFactoryImpl",
+    "LoggerFactoryProtocol",
+    "LoggerProtocol",
+    "LoggingConfig",
+    "LoggingProvider",
+    "QueryLogEntry",
+    "QueryLoggerProtocol",
+    "apply_config",
+    "configure_logging",
+    "get_logger",
+    "reset_logging",
+)

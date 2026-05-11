@@ -135,6 +135,32 @@ class DeleteAction(RowAction):
         return Ok({"message": f"Deleted {record}", "deleted": True})
 
 
+class PermissionsAction(RowAction):
+    """Edit a user's direct permissions (users resource only)."""
+
+    def __init__(
+        self,
+        name: str = "permissions",
+        label: str | None = None,
+    ) -> None:
+        super().__init__(
+            name=name,
+            label=label or "Edit Permissions",
+            icon="shield",
+            color=ActionColor.GRAY,
+        )
+
+    def _get_url(self, record: Any, ctx: ActionContext) -> str | None:
+        record_id = self._get_record_id(record)
+        if not record_id:
+            return None
+        prefix = ctx.resource_prefix or f"/{ctx.resource_name}"
+        return f"{prefix}/{record_id}/permissions"
+
+    async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
+        return Ok({"message": f"Editing permissions for {record}"})
+
+
 class CreateAction(HeaderAction):
     """Create a new record."""
 
@@ -722,6 +748,8 @@ class _ImportReportMixin:
     Depends on ``self._import_service`` (an :class:`AdminImportService`
     with stored reports).
     """
+
+    _import_service: AdminImportService | None = None
 
     def report_csv(self, report_id: str) -> str | None:
         """Return CSV content of a stored failed-import report.

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 pymongo: Any
 try:
-    import pymongo as _pymongo  # type: ignore[import-not-found]
+    import pymongo as _pymongo
 
     pymongo = _pymongo
 except ImportError:
@@ -58,7 +58,7 @@ class MongoDBDocumentStore(AbstractDocumentStore):
     async def connect(self) -> None:
         """Connect to MongoDB using motor async client."""
         try:
-            import motor.motor_asyncio as motor  # type: ignore[import-not-found]
+            import motor.motor_asyncio as motor
         except ImportError as exc:
             raise NoSQLConnectionError(
                 "motor is required for MongoDB support. "
@@ -120,7 +120,7 @@ class MongoDBDocumentStore(AbstractDocumentStore):
             raise RuntimeError("Not connected to MongoDB. Call connect() first.")
         return MongoDBCollection(self._db[name])
 
-    def session(self) -> AbstractAsyncContextManager:
+    def session(self) -> AbstractAsyncContextManager[Any]:
         """Create a MongoDB client session for transactions."""
         if self._client is None:
             raise RuntimeError("Not connected to MongoDB. Call connect() first.")
@@ -130,7 +130,8 @@ class MongoDBDocumentStore(AbstractDocumentStore):
         """List all collection names in the database."""
         if self._db is None:
             raise RuntimeError("Not connected to MongoDB.")
-        return await self._db.list_collection_names()
+        collections: list[str] = await self._db.list_collection_names()
+        return collections
 
     async def drop_collection(self, name: str) -> None:
         """Drop a collection by name."""

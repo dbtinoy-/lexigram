@@ -62,8 +62,8 @@ def _run_granian(
 ) -> None:
     """Run via Granian (multiprocess)."""
     try:
-        from granian import Granian  # type: ignore[import-not-found]
-        from granian.constants import Interfaces  # type: ignore[import-not-found]
+        from granian import Granian
+        from granian.constants import Interfaces
     except ImportError as e:
         raise ImportError(
             "Granian is not installed. Install 'granian' to use run_server() with string apps.",

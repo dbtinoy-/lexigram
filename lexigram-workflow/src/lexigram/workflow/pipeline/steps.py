@@ -66,7 +66,8 @@ class FunctionStep(PipelineStep):
 
         async def _run() -> Result[Any, Exception]:
             if inspect.iscoroutinefunction(self.func):
-                return await self.func(context)
+                value: Result[Any, Exception] = await self.func(context)
+                return value
             return self.func(context)  # type: ignore[return-value]
 
         try:
@@ -74,7 +75,7 @@ class FunctionStep(PipelineStep):
                 result = await asyncio.wait_for(_run(), timeout=self.timeout)
             else:
                 result = await _run()
-            return cast("Result[Any, Exception]", result)
+            return result
         except TimeoutError as e:
             _logger().exception(
                 "Step %s timed out after %s seconds",
@@ -147,7 +148,8 @@ class FunctionStep(PipelineStep):
             ) as e:
                 _logger().exception("Exception in error_handler for step %s", self.name)
                 return Err(e)
-        return await super().on_error(context, error)
+        outcome: Result[Any, Exception] = await super().on_error(context, error)
+        return outcome
 
     async def cleanup(self, context: PipelineContext) -> Result[None, Exception]:
         """Cleanup resources."""

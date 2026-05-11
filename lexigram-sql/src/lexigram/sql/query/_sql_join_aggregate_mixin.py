@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Self
 
+from lexigram.contracts.data.identifiers import Column
 from lexigram.sql.query.operators import Operator
 from lexigram.sql.query.sql_types import (
     CTEClause,
@@ -43,7 +44,7 @@ class _JoinAggregateMixin:
         Example:
             >>> builder.select("department_id").select_count().group_by("department_id")
         """
-        self._group_by.extend(columns)  # type: ignore[attr-defined]
+        self._group_by.extend(Column(c) for c in columns)  # type: ignore[attr-defined]
         return self
 
     def having(self, column: str, op: Operator | str, value: Any) -> Self:
@@ -54,7 +55,7 @@ class _JoinAggregateMixin:
         """
         if isinstance(op, str):
             op = Operator(op)
-        self._havings.append(HavingClause(column, op, value))  # type: ignore[attr-defined]
+        self._havings.append(HavingClause(Column(column), op, value))  # type: ignore[attr-defined]
         return self
 
     def select_count(self, column: str = "*", alias: str = "count") -> Self:
@@ -64,31 +65,36 @@ class _JoinAggregateMixin:
             >>> builder.select_count()
             >>> builder.select_count("id", alias="user_count")
         """
-        self._raw_selects.append(RawExpression(f"COUNT({column}) AS {alias}"))  # type: ignore[attr-defined]
+        target = "*" if column == "*" else Column(column)
+        self._raw_selects.append(RawExpression(f"COUNT({target}) AS {alias}"))  # type: ignore[attr-defined]
         return self
 
     def select_sum(self, column: str, alias: str | None = None) -> Self:
         """Add SUM() to SELECT."""
-        alias = alias or f"{column}_sum"
-        self._raw_selects.append(RawExpression(f"SUM({column}) AS {alias}"))  # type: ignore[attr-defined]
+        col = Column(column)
+        alias = alias or f"{col.name}_sum"
+        self._raw_selects.append(RawExpression(f"SUM({col}) AS {alias}"))  # type: ignore[attr-defined]
         return self
 
     def select_avg(self, column: str, alias: str | None = None) -> Self:
         """Add AVG() to SELECT."""
-        alias = alias or f"{column}_avg"
-        self._raw_selects.append(RawExpression(f"AVG({column}) AS {alias}"))  # type: ignore[attr-defined]
+        col = Column(column)
+        alias = alias or f"{col.name}_avg"
+        self._raw_selects.append(RawExpression(f"AVG({col}) AS {alias}"))  # type: ignore[attr-defined]
         return self
 
     def select_min(self, column: str, alias: str | None = None) -> Self:
         """Add MIN() to SELECT."""
-        alias = alias or f"{column}_min"
-        self._raw_selects.append(RawExpression(f"MIN({column}) AS {alias}"))  # type: ignore[attr-defined]
+        col = Column(column)
+        alias = alias or f"{col.name}_min"
+        self._raw_selects.append(RawExpression(f"MIN({col}) AS {alias}"))  # type: ignore[attr-defined]
         return self
 
     def select_max(self, column: str, alias: str | None = None) -> Self:
         """Add MAX() to SELECT."""
-        alias = alias or f"{column}_max"
-        self._raw_selects.append(RawExpression(f"MAX({column}) AS {alias}"))  # type: ignore[attr-defined]
+        col = Column(column)
+        alias = alias or f"{col.name}_max"
+        self._raw_selects.append(RawExpression(f"MAX({col}) AS {alias}"))  # type: ignore[attr-defined]
         return self
 
     def select_raw(self, expression: str, params: list[Any] | None = None) -> Self:
@@ -172,9 +178,12 @@ class _JoinAggregateMixin:
         """
         if isinstance(partition_by, str):
             partition_by = [partition_by]
+        partition_cols: list[Column] | None = None
+        if partition_by:
+            partition_cols = [Column(p) for p in partition_by]
         alias = alias or func.split("(", maxsplit=1)[0].lower()
         self._windows.append(  # type: ignore[attr-defined]
-            WindowExpression(func, partition_by, order_by, alias),
+            WindowExpression(func, partition_cols, order_by, alias),
         )
         return self
 

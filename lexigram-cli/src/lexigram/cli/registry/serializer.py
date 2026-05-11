@@ -159,7 +159,7 @@ class TOMLSerializer(AsyncStringSerializerProtocol):
     def serialize(self, data: Any) -> str:
         try:
             import tomli  # noqa: F401
-            import tomli_w
+            import tomli_w  # type: ignore[import-not-found]
         except ImportError:
             raise ImportError("tomli not installed") from None
 

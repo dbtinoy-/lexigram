@@ -249,7 +249,8 @@ class PostgresTaskQueue:
 
         def _count(result: Any) -> int:
             if hasattr(result, "row_count"):
-                return result.row_count
+                row_count: int = result.row_count
+                return row_count
             try:
                 return int(str(result).rsplit(maxsplit=1)[-1])
             except (ValueError, IndexError) as e:

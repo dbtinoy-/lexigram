@@ -142,7 +142,8 @@ class WorkerPool:
         try:
             from lexigram.tasks.results.core import ResultStore
 
-            return await self._container.resolve(ResultStore)
+            store: ResultStore | None = await self._container.resolve(ResultStore)
+            return store
         except Exception:  # noqa: BLE001 - resolution failure means no store
             return None
 

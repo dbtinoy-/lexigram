@@ -116,9 +116,11 @@ class EncryptedEventSerializer:
             Dict representation suitable for JSON encoding.
         """
         if self._inner is not None:
-            return self._inner.serialize(event)
+            payload: dict[str, Any] = self._inner.serialize(event)
+            return payload
         if hasattr(event, "model_dump"):
-            return event.model_dump(mode="json")
+            dumped: dict[str, Any] = event.model_dump(mode="json")
+            return dumped
         return dict(getattr(event, "__dict__", {}))
 
     # ------------------------------------------------------------------

@@ -297,7 +297,7 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
                     config.required = False
                     break
 
-        common = {
+        common: dict[str, Any] = {
             "name": name,
             "label": config.label,
             "help_text": config.help_text,
@@ -327,7 +327,7 @@ class FormBuilder(AbstractBuilder["Form[T]"], Generic[T]):
     def _create_field_by_widget(self, name: str, config: FieldConfig) -> SchemaField:
         """Create field by widget name."""
         widget = config.widget
-        common = {
+        common: dict[str, Any] = {
             "name": name,
             "label": config.label,
             "help_text": config.help_text,

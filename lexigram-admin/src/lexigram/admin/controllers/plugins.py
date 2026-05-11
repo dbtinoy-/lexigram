@@ -316,6 +316,8 @@ class PluginsController(AdminController):
 
     def _get_csrf_token(self, request: Request) -> str:
         """Return a CSRF token, creating and persisting the session id."""
+        if self._csrf_service is None:
+            return ""
         csrf_session_id = str(request.session.get("csrf_session_id", ""))
         if not csrf_session_id:
             csrf_session_id = secrets.token_hex(16)

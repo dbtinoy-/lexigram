@@ -256,7 +256,8 @@ class WeaviateStore(BaseVectorStore):
         if self._client is None:
             raise RuntimeError("WeaviateStore is not connected. Call connect() first.")
         try:
-            return await self._client.collections.exists(name)
+            exists: bool = await self._client.collections.exists(name)
+            return exists
         except Exception as exc:  # noqa: BLE001  # SDK may raise if schema fetch fails
             logger.debug("weaviate_exists_error", name=name, error=str(exc))
             return False

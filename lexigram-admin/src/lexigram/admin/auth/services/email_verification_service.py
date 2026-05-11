@@ -288,11 +288,15 @@ class AdminEmailVerificationService:
         try:
             ip_hash = hashlib.sha256(ip_address.encode()).hexdigest()[:16]
             key = f"admin:email-verification:ip:{ip_hash}"
-            result = await self._cache.get(key)
-            count = int(result.unwrap()) if result.is_ok() and result.unwrap() else 0
+            cache = self._cache
+            if cache is None:
+                return False
+            result = await cache.get(key)
+            value = result.unwrap() if result.is_ok() else None
+            count = int(value) if value else 0
             if count >= self._resend_request_limit:
                 return True
-            await self._cache.set(
+            await cache.set(
                 key, str(count + 1), ttl=self._resend_window_seconds
             )
             return False

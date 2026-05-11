@@ -11,7 +11,7 @@ from lexigram.validation import SecretStr
 
 # Optional dependency — azure-storage-blob provides async Blob Storage access.
 try:
-    from azure.storage.blob.aio import (  # type: ignore[import-not-found]
+    from azure.storage.blob.aio import (  # type: ignore[import-untyped]
         BlobServiceClient as _BlobServiceClient,
     )
     from azure.storage.blob.aio import (
@@ -152,7 +152,7 @@ class AzureDriver(AbstractDriver):
         resolved_content_type = content_type if content_type else get_content_type(key)
 
         try:
-            from azure.storage.blob import (  # type: ignore[import-not-found]
+            from azure.storage.blob import (  # type: ignore[import-untyped]
                 ContentSettings,
             )
 
@@ -207,7 +207,8 @@ class AzureDriver(AbstractDriver):
         try:
             blob_client = self._container_client.get_blob_client(key)
             downloader = await blob_client.download_blob()
-            return await downloader.readall()
+            data: bytes = await downloader.readall()
+            return data
         except Exception as exc:
             exc_str = str(exc)
             if "BlobNotFound" in exc_str or "404" in exc_str:
@@ -330,7 +331,7 @@ class AzureDriver(AbstractDriver):
             blob_client = self._container_client.get_blob_client(key)
             props = await blob_client.get_blob_properties()
 
-            last_modified: datetime = props.get("last_modified", datetime.now(UTC))
+            last_modified = props.get("last_modified", datetime.now(UTC))
             if not isinstance(last_modified, datetime):
                 last_modified = datetime.now(UTC)
 
@@ -384,7 +385,7 @@ class AzureDriver(AbstractDriver):
             async for item in self._container_client.list_blobs(
                 name_starts_with=normalized_prefix
             ):
-                last_modified: datetime = item.get("last_modified", datetime.now(UTC))
+                last_modified = item.get("last_modified", datetime.now(UTC))
                 if not isinstance(last_modified, datetime):
                     last_modified = datetime.now(UTC)
 

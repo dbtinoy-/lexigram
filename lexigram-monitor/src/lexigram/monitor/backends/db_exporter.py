@@ -96,8 +96,8 @@ class DBMetricsExporter:
         name: str,
         metric_type: str,
         value: float,
-        labels: dict | None,
-    ):
+        labels: dict[str, Any] | None,
+    ) -> None:
         try:
             # Use JSON-compatible labels insertion if supported; provider handles paramization
             sql = f"INSERT INTO {self._table} (name, metric_type, labels, value) VALUES ($1, $2, $3, $4)"

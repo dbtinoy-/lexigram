@@ -54,7 +54,7 @@ class TenantGuard:
             return False
         if not tenant:
             return False
-        return tenant.status == TenantStatus.ACTIVE
+        return bool(tenant.status == TenantStatus.ACTIVE)
 
 
 __all__ = ["TenantGuard"]

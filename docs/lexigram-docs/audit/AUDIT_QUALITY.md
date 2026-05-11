@@ -10,106 +10,112 @@
 - Passing tools: 0
 - Failing tools: 2
 - Packages counted: 54
-- Total mypy errors: 0
-- Packages with errors: 0
+- Total mypy errors: 197
+- Packages with errors: 23
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **FAIL** | 1 | 946 ms | `uv run ruff check .` |
-| `Mypy` | **FAIL** | 1 | 41481 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **FAIL** | 1 | 247 ms | `uv run ruff check .` |
+| `Mypy` | **FAIL** | 1 | 75068 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `946 ms`
+- Duration: `247 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
 ```text
-warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
-  × No solution found when resolving dependencies for split (markers:
-  │ python_full_version >= '3.15' and sys_platform == 'win32'):
-  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
-      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
-      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
-      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
-  
+F401 [*] `lexigram.ui.raw` imported but unused
+  --> lexigram-admin/src/lexigram/admin/ui/organisms/dashboard/widgets.py:15:40
+   |
+13 | from typing import Any
+14 |
+15 | from lexigram.ui import Component, el, raw
+   |                                        ^^^
+16 |
+...
 ```
 
 ### Mypy
 
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `41481 ms`
+- Duration: `75068 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
-[lexigram] 0 errors
-[lexigram-admin] 0 errors
-[lexigram-ai] 0 errors
-[lexigram-ai-agents] 0 errors
-[lexigram-ai-evaluation] 0 errors
-[lexigram-ai-feedback] 0 errors
-[lexigram-ai-governance] 0 errors
-[lexigram-ai-guard] 0 errors
-[lexigram-ai-llm] 0 errors
-[lexigram-ai-mcp] 0 errors
-[lexigram-ai-memory] 0 errors
-[lexigram-ai-observability] 0 errors
-[lexigram-ai-prompt] 0 errors
-[lexigram-ai-rag] 0 errors
-[lexigram-ai-relay] 0 errors
-[lexigram-ai-relay-gateway] 0 errors
-[lexigram-ai-session] 0 errors
-[lexigram-ai-skills] 0 errors
-[lexigram-ai-workers] 0 errors
-[lexigram-audit] 0 errors
-[lexigram-auth] 0 errors
-[lexigram-cache] 0 errors
-[lexigram-cli] 0 errors
-[lexigram-contracts] 0 errors
-[lexigram-events] 0 errors
-[lexigram-features] 0 errors
-[lexigram-graph] 0 errors
-[lexigram-graphql] 0 errors
-[lexigram-http] 0 errors
-[lexigram-monitor] 0 errors
-[lexigram-multimedia] 0 errors
-[lexigram-multimedia-beat] 0 errors
-[lexigram-multimedia-image] 0 errors
-[lexigram-multimedia-interpolate] 0 errors
-[lexigram-multimedia-music] 0 errors
-[lexigram-multimedia-tts] 0 errors
-[lexigram-multimedia-upscale] 0 errors
-[lexigram-multimedia-video] 0 errors
-[lexigram-nosql] 0 errors
-[lexigram-notification] 0 errors
-[lexigram-queue] 0 errors
-[lexigram-resilience] 0 errors
-[lexigram-search] 0 errors
-[lexigram-secrets] 0 errors
-[lexigram-sql] 0 errors
-[lexigram-storage] 0 errors
-[lexigram-tasks] 0 errors
-[lexigram-tenancy] 0 errors
-[lexigram-testing] 0 errors
-[lexigram-ui] 0 errors
-[lexigram-vector] 0 errors
-[lexigram-web] 0 errors
-[lexigram-webhook] 0 errors
-[lexigram-workflow] 0 errors
+[lexigram-admin] 110 errors
+[lexigram-ai-governance] 1 errors
+[lexigram-ai-llm] 12 errors
+[lexigram-ai-rag] 1 errors
+[lexigram-ai-relay-gateway] 1 errors
+[lexigram-auth] 2 errors
+[lexigram-cli] 2 errors
+[lexigram-events] 3 errors
+[lexigram-multimedia-beat] 2 errors
+[lexigram-multimedia-interpolate] 2 errors
+[lexigram-multimedia-music] 4 errors
+[lexigram-multimedia-tts] 9 errors
+[lexigram-multimedia-upscale] 4 errors
+[lexigram-multimedia-video] 6 errors
+[lexigram-nosql] 2 errors
+[lexigram-queue] 3 errors
+[lexigram-resilience] 1 errors
+[lexigram-search] 1 errors
+[lexigram-secrets] 7 errors
+[lexigram-storage] 4 errors
+[lexigram-tasks] 3 errors
+[lexigram-vector] 15 errors
+[lexigram-workflow] 2 errors
 ```
+
+### Mypy Error Breakdown
+
+#### By Error Code
+
+| Code | Count | Description |
+|------|-------|-------------|
+| `arg-type` | 72 | Argument type mismatch |
+| `import-not-found` | 53 | Type checking error |
+| `unused-ignore` | 39 | Unused type: ignore comment |
+| `attr-defined` | 9 | Attribute not defined on type |
+| `union-attr` | 7 | Type checking error |
+| `assignment` | 4 | Type checking error |
+| `no-redef` | 4 | Name already defined |
+| `import-untyped` | 3 | Type checking error |
+| `method-assign` | 2 | Type checking error |
+| `name-defined` | 2 | Type checking error |
+| `annotation-unchecked` | 2 | Type checking error |
+| `str` | 1 | Type checking error |
+| `return-value` | 1 | Type checking error |
+| `misc` | 1 | Miscellaneous type checking error |
+
+#### By Package (Top 10)
+
+| Package | Errors |
+|---------|--------|
+| `lexigram-admin` | 110 |
+| `lexigram-vector` | 15 |
+| `lexigram-ai-llm` | 12 |
+| `lexigram-multimedia-tts` | 9 |
+| `lexigram-secrets` | 7 |
+| `lexigram-multimedia-video` | 6 |
+| `lexigram-multimedia-music` | 4 |
+| `lexigram-multimedia-upscale` | 4 |
+| `lexigram-storage` | 4 |
+| `lexigram-events` | 3 |
 
 ## Package Metrics
 
 | Package | Source Files | Test Files |
 |---------|--------------|------------|
 | `lexigram` | 294 | 251 |
-| `lexigram-admin` | 452 | 395 |
+| `lexigram-admin` | 452 | 399 |
 | `lexigram-ai` | 25 | 41 |
 | `lexigram-ai-agents` | 56 | 37 |
 | `lexigram-ai-evaluation` | 18 | 20 |
@@ -117,7 +123,7 @@ warning: The `extra-build-dependencies` option is experimental and may change wi
 | `lexigram-ai-governance` | 64 | 43 |
 | `lexigram-ai-guard` | 34 | 20 |
 | `lexigram-ai-llm` | 150 | 120 |
-| `lexigram-ai-mcp` | 63 | 33 |
+| `lexigram-ai-mcp` | 63 | 34 |
 | `lexigram-ai-memory` | 49 | 29 |
 | `lexigram-ai-observability` | 27 | 28 |
 | `lexigram-ai-prompt` | 46 | 32 |
@@ -131,7 +137,7 @@ warning: The `extra-build-dependencies` option is experimental and may change wi
 | `lexigram-auth` | 128 | 77 |
 | `lexigram-cache` | 85 | 59 |
 | `lexigram-cli` | 96 | 74 |
-| `lexigram-contracts` | 310 | 150 |
+| `lexigram-contracts` | 313 | 150 |
 | `lexigram-events` | 153 | 88 |
 | `lexigram-features` | 35 | 23 |
 | `lexigram-graph` | 25 | 31 |
@@ -150,16 +156,16 @@ warning: The `extra-build-dependencies` option is experimental and may change wi
 | `lexigram-notification` | 53 | 33 |
 | `lexigram-queue` | 43 | 35 |
 | `lexigram-resilience` | 54 | 32 |
-| `lexigram-search` | 86 | 56 |
-| `lexigram-secrets` | 24 | 11 |
-| `lexigram-sql` | 176 | 109 |
+| `lexigram-search` | 86 | 57 |
+| `lexigram-secrets` | 25 | 11 |
+| `lexigram-sql` | 176 | 110 |
 | `lexigram-storage` | 37 | 35 |
 | `lexigram-tasks` | 82 | 56 |
 | `lexigram-tenancy` | 64 | 43 |
 | `lexigram-testing` | 151 | 39 |
-| `lexigram-ui` | 152 | 68 |
+| `lexigram-ui` | 152 | 69 |
 | `lexigram-vector` | 62 | 38 |
-| `lexigram-web` | 188 | 160 |
+| `lexigram-web` | 187 | 160 |
 | `lexigram-webhook` | 42 | 34 |
 | `lexigram-workflow` | 68 | 51 |
 

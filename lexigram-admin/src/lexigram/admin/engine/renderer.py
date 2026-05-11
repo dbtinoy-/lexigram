@@ -192,7 +192,7 @@ class AdminRenderer:
         templates_dir = Path(__file__).parent.parent / "views" / "templates"
         templates = Jinja2Templates(directory=str(templates_dir))
 
-        shell_html = render_to_string(shell)
+        shell_html = Markup(render_to_string(shell))
 
         # Pass CSRF token to template for hx-headers on body
         csrf_token = getattr(request.state, "csrf_token", None) if request else None

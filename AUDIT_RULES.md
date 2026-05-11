@@ -8,7 +8,7 @@
 
 | Severity | Count |
 |----------|-------|
-| critical | 0 |
+| critical | 2 |
 | important | 36 |
 | minor | 0 |
 
@@ -16,6 +16,8 @@
 
 | File | Line | Rule ID | Severity | Message |
 |------|------|---------|----------|---------|
+| `lexigram-admin/src/lexigram/admin/services/storage/service.py` | 25 | `no-cross-extension-import` | `critical` | lexigram-admin directly imports lexigram-storage via lexigram.storage.exceptions; route cross-package behavior through contracts, providers, or container bindings instead. |
+| `lexigram-admin/src/lexigram/admin/services/storage/upload.py` | 23 | `no-cross-extension-import` | `critical` | lexigram-admin directly imports lexigram-storage via lexigram.storage.exceptions; route cross-package behavior through contracts, providers, or container bindings instead. |
 | `lexigram-admin/src/lexigram/admin/events/__init__.py` | 65 | `init-no-logic` | `important` | lexigram-admin/src/lexigram/admin/events/__init__.py declares ClassDef 'UserCreated' in __init__.py. |
 | `lexigram-admin/src/lexigram/admin/events/__init__.py` | 73 | `init-no-logic` | `important` | lexigram-admin/src/lexigram/admin/events/__init__.py declares ClassDef 'UserUpdated' in __init__.py. |
 | `lexigram-admin/src/lexigram/admin/events/__init__.py` | 81 | `init-no-logic` | `important` | lexigram-admin/src/lexigram/admin/events/__init__.py declares ClassDef 'UserDeactivated' in __init__.py. |
@@ -59,6 +61,7 @@
 |---------|----------|----------|----------------------|
 | `import-absolute-only` | `important` | 1 | Relative imports obscure package boundaries and are disallowed across the framework. |
 | `init-no-logic` | `important` | 35 | __init__.py files should contain exports only so package entry points stay declarative. |
+| `no-cross-extension-import` | `critical` | 2 | Core and extension packages must respect the declared dependency hierarchy instead of importing across forbidden boundaries. |
 
 ## Package Coverage
 
@@ -132,4 +135,5 @@
 
 - `import-absolute-only`: Replace relative imports (for example `from .module import ...`) with absolute imports rooted at `lexigram...` so module ownership stays explicit.
 - `init-no-logic`: Keep `__init__.py` export-only. Move functions/classes to dedicated modules and re-export symbols through `__all__` from `__init__.py`.
+- `no-cross-extension-import`: Move shared contracts to `lexigram-contracts`, register implementations via providers, and resolve dependencies through the container instead of direct extension imports.
 

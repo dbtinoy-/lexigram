@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from lexigram.secrets.types import SecretVersion, VersionedSecret
 
@@ -36,13 +37,13 @@ class AzureKeyVaultStore:
         self._version_map: dict[str, dict[int, str]] = {}
         self._next_version: dict[str, int] = {}
 
-    async def _get_client(self):
+    async def _get_client(self) -> Any:
         if self._client is None:
-            from azure.identity import (  # type: ignore[import-not-found]
+            from azure.identity import (  # type: ignore[import-untyped]
                 ClientSecretCredential,
                 DefaultAzureCredential,
             )
-            from azure.keyvault.secrets import (  # type: ignore[import-not-found]
+            from azure.keyvault.secrets import (  # type: ignore[import-untyped]
                 SecretClient,
             )
 
@@ -60,7 +61,7 @@ class AzureKeyVaultStore:
         return self._client
 
     async def get(self, name: str) -> str | None:
-        from azure.core.exceptions import (  # type: ignore[import-not-found]
+        from azure.core.exceptions import (
             ResourceNotFoundError,
         )
 
@@ -69,7 +70,8 @@ class AzureKeyVaultStore:
             secret = await client.get_secret(name)
         except ResourceNotFoundError:
             return None
-        return secret.value
+        value: str | None = secret.value
+        return value
 
     async def get_bulk(self, *names: str) -> dict[str, str]:
         result: dict[str, str] = {}
@@ -122,7 +124,8 @@ class AzureKeyVaultStore:
             secret = await client.get_secret(key, version=azure_version_id)
         except ResourceNotFoundError:
             return None
-        return secret.value
+        value: str | None = secret.value
+        return value
 
     async def list_versions(self, key: str) -> list[SecretVersion]:
         from azure.core.exceptions import (

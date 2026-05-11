@@ -72,7 +72,7 @@ class AbstractDocumentStore(ABC):
         ...
 
     @abstractmethod
-    def session(self) -> AbstractAsyncContextManager:
+    def session(self) -> AbstractAsyncContextManager[Any]:
         """Create a session context for multi-document transactions."""
         ...
 

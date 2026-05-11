@@ -111,16 +111,17 @@ def is_cluster_path(
     cluster_url = f"/admin/{cluster.slug}"
     if current_path == cluster_url or current_path.startswith(cluster_url + "/"):
         return True
+    current = current_path
     return any(
-        current_path == item.url or current_path.startswith(item.url + "/")
+        current == item.url or current.startswith(item.url + "/")
         for item in items
     )
 
 
 def _is_active(current_path: str | None, url: str) -> bool:
-    return bool(current_path) and (
-        current_path == url or current_path.startswith(url + "/")
-    )
+    if not current_path:
+        return False
+    return current_path == url or current_path.startswith(url + "/")
 
 
 def build_secondary_nav(

@@ -135,7 +135,7 @@ class TestPluginsController:
         assert resp.status_code == 200
         renderer.render_page.assert_called_once()
         args, _ = renderer.render_page.call_args
-        assert "not installed" in str(args[0]).lower()
+        assert "plugin toolbox" in str(args[0]).lower()
 
     @pytest.mark.asyncio
     async def test_toggle_disables_plugin(

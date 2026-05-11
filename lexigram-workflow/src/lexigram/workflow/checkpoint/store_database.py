@@ -64,6 +64,8 @@ class DatabaseContentCheckpointStore:
         if self._schema_ready:
             return
         async with self._schema_lock:
+            # Re-check under the lock: another coroutine may have completed
+            # the DDL between the first check and the lock acquisition.
             if self._schema_ready:
                 return
             await self._provider.execute(

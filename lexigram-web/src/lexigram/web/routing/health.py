@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from starlette.responses import JSONResponse, Response
 
@@ -36,7 +36,10 @@ async def _resolve_application(request: Request) -> Application:
     container = getattr(container, "container", None)
     if container is None:
         raise RuntimeError("Application container not available")
-    return await container.resolve(LexigramApplication, bypass_visibility=True)
+    return cast(
+        "LexigramApplication",
+        await container.resolve(LexigramApplication, bypass_visibility=True),
+    )
 
 
 def _status_code_for(status: HealthStatus) -> int:

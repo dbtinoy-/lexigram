@@ -89,7 +89,8 @@ class DefaultMessageSerializer:
             JSON-encoded bytes.
         """
         if hasattr(event, "model_dump_json"):
-            return event.model_dump_json().encode()
+            payload: bytes = event.model_dump_json().encode()
+            return payload
 
         # dataclass-backed events don't expose ``model_dump_json``; we
         # simply serialize their instance dictionary directly.  This keeps
@@ -123,7 +124,8 @@ class DefaultMessageSerializer:
         json_data = loads(data)
 
         if hasattr(event_class, "model_validate"):
-            return event_class.model_validate(json_data)
+            parsed: Event = event_class.model_validate(json_data)
+            return parsed
         return event_class(**json_data)
 
 

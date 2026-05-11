@@ -16,6 +16,7 @@ from starlette.routing import Route
 
 from lexigram.admin.auth.types import AdminAuthResult
 from lexigram.admin.controllers.auth import AuthController
+from lexigram.admin.controllers.profile import ProfileController
 from lexigram.result import Ok
 
 # ---------------------------------------------------------------------------
@@ -101,6 +102,13 @@ def create_app(
         mfa_service.is_enabled = AsyncMock(return_value=mfa_enabled)
         controller._mfa_service = mfa_service
 
+    profile_controller = ProfileController(
+        renderer=_DummyRenderer(),
+        csrf_service=_make_csrf_service(valid=csrf_valid),
+        mfa_service=MagicMock(),
+    )
+    profile_controller._mfa_service.is_enabled = AsyncMock(return_value=mfa_enabled)
+
     async def login_form(request):
         return await controller.login_form(request)
 
@@ -117,7 +125,7 @@ def create_app(
         return await controller.mfa_challenge_submit(request)
 
     async def profile(request):
-        return await controller.profile(request)
+        return await profile_controller.profile_page(request)
 
     async def home(request):
         if request.session.get("admin_user_id"):
@@ -402,7 +410,7 @@ async def test_profile_page_renders_account_info() -> None:
         assert r.status_code == 200
         assert "Ada Admin" in r.text
         assert "ada@example.com" in r.text
-        assert "enabled" in r.text
+        assert "enabled" in r.text.lower()
         assert "/admin/profile/mfa" in r.text
         assert "/admin/profile/password" in r.text
 

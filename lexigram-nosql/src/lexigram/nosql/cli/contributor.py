@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.contracts.cli.contributions import HealthCheckContribution
 from lexigram.contracts.cli.types import GeneratorDefinition
 
@@ -30,7 +32,7 @@ class NoSqlCliContributor:
         """Return generator definitions for NoSQL."""
         return list(_GENERATOR_DEFINITIONS)
 
-    def get_commands(self) -> list:
+    def get_commands(self) -> list[Any]:
         """Return no command contributions."""
         return []
 
@@ -47,15 +49,15 @@ class NoSqlCliContributor:
             ),
         ]
 
-    def get_doctor_checks(self) -> list:
+    def get_doctor_checks(self) -> list[Any]:
         """Return no doctor checks."""
         return []
 
-    def get_shell_context(self) -> list:
+    def get_shell_context(self) -> list[Any]:
         """Return no shell context contributions."""
         return []
 
-    def get_hooks(self) -> list:
+    def get_hooks(self) -> list[Any]:
         """Return no hook contributions."""
         return []
 

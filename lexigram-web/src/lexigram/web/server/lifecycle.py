@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.web.config import ServerConfig
 
 
@@ -10,7 +12,7 @@ class ServerLifecycle:
 
     def __init__(self, config: ServerConfig):
         self.config = config
-        self.server = None
+        self.server: Any | None = None
 
     async def start(self) -> None:
         """Start the server (handled by lexigram in pass-through mode)"""

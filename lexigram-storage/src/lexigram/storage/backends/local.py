@@ -11,7 +11,7 @@ import hashlib
 import os
 from pathlib import Path
 import tempfile
-from typing import Any, cast
+from typing import Any
 
 import aiofiles
 
@@ -77,7 +77,7 @@ class LocalDriver(AbstractDriver):
         self,
         path: str,
         data: Uploadable,
-        content_type: str | None = None,
+        content_type: UploadOptionsContract | str | None = None,
         **options: Any,
     ) -> FileInfo:
         """Upload data to local file system with atomic write guarantee.
@@ -238,8 +238,7 @@ class LocalDriver(AbstractDriver):
             )
 
         async with aiofiles.open(full_path, "rb") as f:
-            data = await f.read()
-            return cast("bytes", data)
+            return await f.read()
 
     async def stream(
         self, path: str, chunk_size: int = 8192
@@ -259,7 +258,7 @@ class LocalDriver(AbstractDriver):
                 chunk = await f.read(chunk_size)
                 if not chunk:
                     break
-                yield cast("bytes", chunk)
+                yield chunk
 
     async def delete(self, path: str) -> None:
         """Delete file from local file system"""

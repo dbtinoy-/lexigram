@@ -9,11 +9,12 @@ queued ``submit()`` path through ``SubsystemAccessor``/the task queue.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.result import Result
     from lexigram.contracts.multimedia.exceptions import MultimediaError
+    from lexigram.contracts.multimedia.protocols import BeatAnalysisProvider
     from lexigram.contracts.multimedia.types import (
         BeatAnalysisRequest,
         BeatAnalysisResult,
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 class BeatAccessor:
     """Wraps a beat-analysis sub-provider's backend."""
 
-    def __init__(self, *, backend: Any) -> None:
+    def __init__(self, *, backend: BeatAnalysisProvider) -> None:
         self._backend = backend
 
     async def analyze(

@@ -143,7 +143,7 @@ class RateLimiter:
 
     def __init__(
         self,
-        redis_client=None,
+        redis_client: Any | None = None,
         trusted_proxies: frozenset[str] | None = None,
         cache_backend: CacheBackendProtocol | None = None,
     ) -> None:

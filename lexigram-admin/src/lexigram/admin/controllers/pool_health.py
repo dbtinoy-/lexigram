@@ -46,6 +46,10 @@ class PoolHealthController(AdminController):
             pool_manager: PoolManager instance for querying pool state (optional).
             task_manager: TaskManagerProtocol instance (optional).
         """
+        if renderer is None:
+            from lexigram.admin.engine.renderer import AdminRenderer
+
+            renderer = AdminRenderer()
         super().__init__(renderer=renderer, task_manager=task_manager)
         self._pool_manager = pool_manager
 

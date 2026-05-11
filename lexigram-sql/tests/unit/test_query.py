@@ -23,7 +23,7 @@ class TestAsyncQueryBuilder:
     def test_select_columns(self):
         """Test SELECT with specific columns"""
         qb = AsyncQueryBuilder("users").select("id", "name", "email")
-        assert qb._selects == ["id", "name", "email"]
+        assert [c.name for c in qb._selects] == ["id", "name", "email"]
 
     def test_where_conditions(self):
         """Test WHERE conditions"""
@@ -35,15 +35,15 @@ class TestAsyncQueryBuilder:
         )
 
         assert len(qb._wheres) == 3
-        assert qb._wheres[0].column == "active"
+        assert qb._wheres[0].column.name == "active"
         assert qb._wheres[0].operator == Operator.EQ
         assert qb._wheres[0].value is True
 
-        assert qb._wheres[1].column == "name"
+        assert qb._wheres[1].column.name == "name"
         assert qb._wheres[1].operator == Operator.LIKE
         assert qb._wheres[1].value == "John%"
 
-        assert qb._wheres[2].column == "id"
+        assert qb._wheres[2].column.name == "id"
         assert qb._wheres[2].operator == Operator.IN
         assert qb._wheres[2].value == [1, 2, 3]
 
@@ -56,9 +56,9 @@ class TestAsyncQueryBuilder:
         )
 
         assert len(qb._orders) == 2
-        assert qb._orders[0].column == "name"
+        assert qb._orders[0].column.name == "name"
         assert qb._orders[0].desc is False
-        assert qb._orders[1].column == "created_at"
+        assert qb._orders[1].column.name == "created_at"
         assert qb._orders[1].desc is True
 
     def test_limit_offset(self):
@@ -80,11 +80,11 @@ class TestAsyncQueryBuilder:
         query = qb.build()
 
         # Expected SQL for generic/postgres style in builder.py
-        # SELECT id, name FROM users WHERE active = $1 ORDER BY name ASC LIMIT $2
+        # SELECT "id", "name" FROM "users" WHERE "active" = $1 ORDER BY "name" ASC LIMIT $2
 
-        assert 'SELECT id, name FROM "users"' in query.sql
-        assert "WHERE active = $1" in query.sql
-        assert "ORDER BY name ASC" in query.sql
+        assert 'SELECT "id", "name" FROM "users"' in query.sql
+        assert '"active" = $1' in query.sql
+        assert 'ORDER BY "name" ASC' in query.sql
         assert "LIMIT $2" in query.sql
         assert query.params == (True, 5)
 
@@ -94,12 +94,12 @@ class TestAsyncQueryBuilder:
         qb = AsyncQueryBuilder("users").insert(data)
 
         query = qb.build()
-        # INSERT INTO users (name, email) VALUES ($1, $2)
+        # INSERT INTO "users" ("name", "email") VALUES ($1, $2)
         # Note: dict order preservation is standard in modern Python
 
         assert 'INSERT INTO "users"' in query.sql
-        assert "name" in query.sql
-        assert "email" in query.sql
+        assert '"name"' in query.sql
+        assert '"email"' in query.sql
         assert "VALUES" in query.sql
         assert len(query.params) == 2
         assert "John" in query.params
@@ -113,8 +113,8 @@ class TestAsyncQueryBuilder:
         query = qb.build()
 
         assert 'UPDATE "users" SET' in query.sql
-        assert "name = $" in query.sql  # regex match might be safer or substring
-        assert "WHERE id = $" in query.sql
+        assert '"name" = $' in query.sql  # regex match might be safer or substring
+        assert 'WHERE "id" = $' in query.sql
 
         # Verify params order: set params first, then where params
         # builder.py implementation sorts keys for determinism: active, name
@@ -131,19 +131,19 @@ class TestAsyncQueryBuilder:
 
         query = qb.build()
 
-        assert 'DELETE FROM "users" WHERE id = $1' in query.sql
+        assert 'DELETE FROM "users" WHERE "id" = $1' in query.sql
         assert query.params == (1,)
 
     def test_update_requires_where(self):
         """Test UPDATE safeguards"""
         qb = AsyncQueryBuilder("users").update({"a": 1})
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="must have WHERE"):
             qb.build()
 
     def test_delete_requires_where(self):
         """Test DELETE safeguards"""
         qb = AsyncQueryBuilder("users").delete()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="must have WHERE"):
             qb.build()
 
     @pytest.mark.asyncio

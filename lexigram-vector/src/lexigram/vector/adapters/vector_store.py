@@ -28,7 +28,6 @@ from lexigram.contracts.data.vector.types import (
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.vector.exceptions import VectorError as VectorStoreError
-from lexigram.vector.types import Embedding
 
 SearchResult = RAGSearchResult
 
@@ -129,10 +128,7 @@ class VectorStoreAdapter:
         for i, text in enumerate(texts):
             cached = await cache.get(text, model)
             if cached is not None:
-                if isinstance(cached, Embedding):
-                    results[i] = list(cached.vector)
-                else:
-                    results[i] = list(cached)
+                results[i] = list(cached.vector)
             else:
                 uncached_idx.append(i)
                 uncached_texts.append(text)
