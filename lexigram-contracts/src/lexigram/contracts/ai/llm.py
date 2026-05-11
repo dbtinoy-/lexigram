@@ -491,6 +491,13 @@ class ChatMessage:
     content: MessageContent
     name: str | None = None
     tool_call_id: str | None = None
+    tool_calls: list[ToolCall] | None = None
+    """Native tool calls requested by the LLM (assistant messages only).
+
+    When present, the message carries the function-call requests of an
+    assistant turn so the provider can re-emit them to the model before
+    the matching ``tool`` role responses.
+    """
     thinking_blocks: list[dict[str, Any]] | None = None
     """Raw provider thinking blocks for multi-turn re-injection.
 
@@ -557,12 +564,44 @@ class StreamChunk:
     is_thinking: bool = False
 
 
+@runtime_checkable
+class CostEstimatorProtocol(Protocol):
+    """Estimates the monetary cost of LLM usage.
+
+    Implementations map token usage for a model/provider to a cost in
+    USD.  Consumed by agents (governance cost tracking) and any package
+    that reports spend.  When no estimator is wired, callers must skip
+    cost tracking rather than fabricate estimates.
+    """
+
+    def estimate_cost(
+        self,
+        model: str,
+        total_tokens: int,
+        provider: str | None = None,
+    ) -> float:
+        """Estimate cost in USD for the given token usage.
+
+        Args:
+            model: Model identifier (e.g. ``gpt-4o``).
+            total_tokens: Total tokens consumed (prompt + completion).
+            provider: Provider name (e.g. ``openai``) when pricing
+                differs per provider.
+
+        Returns:
+            Estimated cost in USD.  Return ``0.0`` when pricing is
+            unknown for the model.
+        """
+        ...
+
+
 __all__ = [
     "AsyncStream",
     "ChatMessage",
     "ChatMessageProtocol",
     "Completion",
     "CompletionProtocol",
+    "CostEstimatorProtocol",
     "EmbeddingClientProtocol",
     "ExtractionError",
     "FunctionCall",
