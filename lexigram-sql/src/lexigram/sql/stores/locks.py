@@ -47,11 +47,31 @@ class DatabaseLockStore:
         self._db = db_provider
         self._table_name = table_name
         self._auto_create = auto_create_tables
+        self._table_ensured = False
 
     @property
     def _now(self) -> datetime:
         """Get current time using ambient clock."""
         return ambient_clock.now()
+
+    async def _ensure_table(self) -> None:
+        """Create the store's table on first use when auto-create is enabled."""
+        if not self._auto_create or self._table_ensured:
+            return
+        conn = await self._db.acquire()
+        try:
+            await conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self._table_name} (
+                    lock_name  TEXT PRIMARY KEY,
+                    owner      TEXT NOT NULL,
+                    expires_at TIMESTAMPTZ NOT NULL
+                )
+                """
+            )
+        finally:
+            await self._db.release(conn)
+        self._table_ensured = True
 
     async def acquire(
         self,
@@ -64,6 +84,7 @@ class DatabaseLockStore:
         Returns ``True`` if the lock was acquired (or reclaimed after expiry);
         ``False`` if a non-expired lock already exists under a different owner.
         """
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             expires_at = self._now + timedelta(seconds=ttl)
@@ -114,6 +135,7 @@ class DatabaseLockStore:
         Returns ``True`` if the lock was released; ``False`` if it was not
         held by *owner* or did not exist.
         """
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             result = await conn.execute(
@@ -139,6 +161,7 @@ class DatabaseLockStore:
         Returns ``True`` if the extension was applied; ``False`` if the lock
         is not held by *owner*.
         """
+        await self._ensure_table()
         conn = await self._db.acquire()
         try:
             new_expires_at = self._now + timedelta(seconds=ttl)

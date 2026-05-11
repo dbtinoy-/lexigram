@@ -1,57 +1,177 @@
-"""Shared relay types for the protocol conversion engine.
+"""Shared types for the relay protocol conversion engine.
 
-The relay layer normalises the four supported wire protocols (OpenAI
-Chat Completions, Claude Messages, Gemini generateContent, OpenAI
-Responses) into a single canonical representation.  These types are
-protocol-agnostic and are shared by the converters in
-``lexigram-ai-llm`` and the gateway layer (channels, billing) added in
-later stages.
+This module owns the stable enums, JSON aliases, usage accounting, loss
+records, conversion results, and payload unions that cross every relay
+wire format.  Concrete wire DTOs live in ``relay.dto``; the canonical IR
+lives in ``relay.ir``; engine-side services live in the
+``lexigram-ai-relay`` extension package.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, TypeAlias
+from typing import Any, Generic, TypeAlias, TypeVar
 
-PassthroughData: TypeAlias = dict[str, Any]
-"""Opaque protocol-specific extras carried verbatim through conversion."""
+from lexigram.contracts.ai.llm import TokenUsage
+from lexigram.contracts.ai.relay.dto import (
+    ClaudeRequest,
+    ClaudeResponse,
+    GeminiRequest,
+    GeminiResponse,
+    OpenAIChatRequest,
+    OpenAIChatResponse,
+    ResponsesRequest,
+    ResponsesResponse,
+)
+
+__all__ = [
+    "ConversionQuality",
+    "JsonObject",
+    "JsonValue",
+    "RelayConvertResult",
+    "RelayFormat",
+    "RelayLoss",
+    "RelayRequestPayload",
+    "RelayResponsePayload",
+    "RelayUsage",
+]
 
 
-class RelayProtocol(StrEnum):
-    """The wire protocols supported by the relay conversion engine."""
+class RelayFormat(StrEnum):
+    """The four text wire protocols supported by the relay engine.
+
+    Attributes:
+        OPENAI_CHAT: OpenAI Chat Completions (``/v1/chat/completions``).
+        OPENAI_RESPONSES: OpenAI Responses (``/v1/responses``).
+        CLAUDE: Anthropic Messages (``/v1/messages``).
+        GEMINI: Google Gemini ``generateContent``.
+    """
 
     OPENAI_CHAT = "openai_chat"
+    OPENAI_RESPONSES = "openai_responses"
     CLAUDE = "claude"
     GEMINI = "gemini"
-    RESPONSES = "responses"
 
 
-class StreamMode(StrEnum):
-    """Streaming mode of a relayed request."""
+class ConversionQuality(StrEnum):
+    """Semantic closeness between two wire protocols.
 
-    NON_STREAM = "non_stream"
-    STREAM_SSE = "stream_sse"
+    Attributes:
+        GOOD: Core structures are close; lossless in practice.
+        FAIR: Main capabilities convert, some features adapt or drop.
+        DISCOURAGED: Requires a multi-hop path; higher semantic-loss risk.
+    """
+
+    GOOD = "GOOD"
+    FAIR = "FAIR"
+    DISCOURAGED = "DISCOURAGED"
+
+
+JsonValue: TypeAlias = dict[str, Any] | list[Any] | str | int | float | bool | None
+"""A JSON-compatible value."""
+
+JsonObject: TypeAlias = dict[str, JsonValue]
+"""A JSON object (wire request/response fragment)."""
 
 
 @dataclass(frozen=True)
-class RelayConfig:
-    """Static, protocol-agnostic relay settings.
+class RelayUsage:
+    """Unified token usage, normalized across upstream response formats.
 
     Attributes:
-        stream_mode: How the gateway streams responses to clients.
-        passthrough: When ``True``, protocol-specific request fields are
-            forwarded to the upstream provider even when the engine has
-            no explicit mapping for them.
+        prompt_tokens: Input tokens (total, all subcategories).
+        completion_tokens: Output tokens (total, all subcategories).
+        cache_read_tokens: Cached input tokens (Claude ``cache_read``, OpenAI ``cached_tokens``).
+        cache_creation_tokens: Cache-creation input tokens (Claude only).
+        reasoning_tokens: Output tokens spent on reasoning (Claude/Gemini thinking).
+        audio_input_tokens: Audio input tokens (OpenAI audio models).
+        audio_output_tokens: Audio output tokens (OpenAI audio models).
+        image_tokens: Image input tokens (OpenAI image models).
     """
 
-    stream_mode: StreamMode = StreamMode.NON_STREAM
-    passthrough: bool = False
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    reasoning_tokens: int = 0
+    audio_input_tokens: int = 0
+    audio_output_tokens: int = 0
+    image_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        """Total tokens consumed (prompt + completion)."""
+        return self.prompt_tokens + self.completion_tokens
+
+    def to_token_usage(self) -> TokenUsage:
+        """Map to the shared ``TokenUsage`` without double counting.
+
+        Returns:
+            A ``TokenUsage`` with the derived total; detailed sub-category
+            counts remain available on this object.
+        """
+        return TokenUsage(
+            prompt_tokens=self.prompt_tokens,
+            completion_tokens=self.completion_tokens,
+            total_tokens=self.total_tokens,
+        )
 
 
-__all__ = [
-    "PassthroughData",
-    "RelayConfig",
-    "RelayProtocol",
-    "StreamMode",
-]
+@dataclass(frozen=True)
+class RelayLoss:
+    """A semantic loss recorded during conversion.
+
+    Attributes:
+        field: Source wire field (or feature) that was dropped or adapted.
+        target: Target format the loss applies to.
+        reason: Machine-readable reason (e.g. ``json_mode_not_supported``).
+        severity: ``error``, ``warning``, or ``info``.
+    """
+
+    field: str
+    target: RelayFormat
+    reason: str
+    severity: str = "warning"
+
+
+T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class RelayConvertResult(Generic[T]):
+    """Outcome of a conversion with audit metadata.
+
+    Attributes:
+        value: The converted object.
+        source: Source wire format.
+        target: Target wire format.
+        converter_id: Converter identifier (``"<src>_to_<dst>"``).
+        quality: Semantic closeness of the conversion.
+        steps: Actual conversion path taken (source, canonical_ir, target,
+            plus named adaptations when present).
+        usage: Normalized usage when converting responses; ``None`` otherwise.
+        losses: Semantic losses recorded during conversion.
+        warnings: Human-readable compatibility notes.
+    """
+
+    value: T
+    source: RelayFormat
+    target: RelayFormat
+    converter_id: str
+    quality: ConversionQuality
+    steps: tuple[str, ...] = field(default_factory=tuple)
+    usage: RelayUsage | None = None
+    losses: tuple[RelayLoss, ...] = field(default_factory=tuple)
+    warnings: tuple[str, ...] = field(default_factory=tuple)
+
+
+RelayRequestPayload: TypeAlias = (
+    OpenAIChatRequest | ResponsesRequest | ClaudeRequest | GeminiRequest
+)
+"""Union of every request wire DTO the relay engine accepts."""
+
+RelayResponsePayload: TypeAlias = (
+    OpenAIChatResponse | ResponsesResponse | ClaudeResponse | GeminiResponse
+)
+"""Union of every non-stream response wire DTO the relay engine emits."""
