@@ -107,13 +107,19 @@ async def test_router_falls_through_to_second_provider_on_error():
     failing_client.complete = AsyncMock(return_value=Err(AIError("boom")))
 
     succeeding_client = AsyncMock()
-    succeeding_client.complete = AsyncMock(return_value=Ok(_make_completion("ok from gemini")))
+    succeeding_client.complete = AsyncMock(
+        return_value=Ok(_make_completion("ok from gemini"))
+    )
 
-    config = _make_config([
-        _make_provider_cfg("groq"),
-        _make_provider_cfg("gemini"),
-    ])
-    router = _make_router({"groq:model-a": failing_client, "gemini:model-a": succeeding_client}, config)
+    config = _make_config(
+        [
+            _make_provider_cfg("groq"),
+            _make_provider_cfg("gemini"),
+        ]
+    )
+    router = _make_router(
+        {"groq:model-a": failing_client, "gemini:model-a": succeeding_client}, config
+    )
 
     result = await router.route(messages=[{"role": "user", "content": "hello"}])
 
@@ -131,10 +137,12 @@ async def test_router_skips_exhausted_provider():
     succeeding_client = AsyncMock()
     succeeding_client.complete = AsyncMock(return_value=Ok(_make_completion("ok")))
 
-    config = _make_config([
-        _make_provider_cfg("groq"),
-        _make_provider_cfg("gemini"),
-    ])
+    config = _make_config(
+        [
+            _make_provider_cfg("groq"),
+            _make_provider_cfg("gemini"),
+        ]
+    )
     router = LLMRouter(
         clients={"groq:model-a": AsyncMock(), "gemini:model-a": succeeding_client},
         quota_backend=backend,
@@ -164,9 +172,7 @@ async def test_router_tries_single_model_per_provider():
     mock_client = AsyncMock()
     mock_client.complete = AsyncMock(side_effect=complete_side_effect)
 
-    config = _make_config([
-        _make_provider_cfg("groq", primary="model-a")
-    ])
+    config = _make_config([_make_provider_cfg("groq", primary="model-a")])
     router = _make_router({"groq:model-a": mock_client}, config)
 
     result = await router.route(messages=[])
@@ -221,7 +227,9 @@ async def test_router_skips_disabled_provider():
     succeeding.complete = AsyncMock(return_value=Ok(_make_completion("ok")))
 
     config = _make_config([disabled_cfg, _make_provider_cfg("gemini")])
-    router = _make_router({"groq:model-a": AsyncMock(), "gemini:model-a": succeeding}, config)
+    router = _make_router(
+        {"groq:model-a": AsyncMock(), "gemini:model-a": succeeding}, config
+    )
 
     result = await router.route(messages=[])
 
@@ -245,7 +253,9 @@ async def test_router_health_probe_uses_client_health_check_without_inference_si
             duration_ms=12.5,
         )
     )
-    client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     quota_backend = InMemoryQuotaBackend()
     logger = InMemoryInferenceLogger()
@@ -289,7 +299,9 @@ async def test_router_health_probe_continues_when_health_check_raises_http_statu
             ),
         )
     )
-    groq_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    groq_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     gemini_client = AsyncMock()
     gemini_client.health_check = AsyncMock(
@@ -299,14 +311,18 @@ async def test_router_health_probe_continues_when_health_check_raises_http_statu
             duration_ms=7.5,
         )
     )
-    gemini_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    gemini_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     quota_backend = InMemoryQuotaBackend()
     logger = InMemoryInferenceLogger()
-    config = _make_config([
-        _make_provider_cfg("groq"),
-        _make_provider_cfg("gemini"),
-    ])
+    config = _make_config(
+        [
+            _make_provider_cfg("groq"),
+            _make_provider_cfg("gemini"),
+        ]
+    )
     router = LLMRouter(
         clients={"groq:model-a": groq_client, "gemini:model-a": gemini_client},
         quota_backend=quota_backend,
@@ -334,7 +350,9 @@ async def test_router_health_probe_continues_when_health_check_raises_http_statu
 async def test_router_health_probe_continues_when_health_check_returns_malformed_result():
     groq_client = AsyncMock()
     groq_client.health_check = AsyncMock(return_value={})
-    groq_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    groq_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     gemini_client = AsyncMock()
     gemini_client.health_check = AsyncMock(
@@ -344,14 +362,18 @@ async def test_router_health_probe_continues_when_health_check_returns_malformed
             duration_ms=7.5,
         )
     )
-    gemini_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    gemini_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     quota_backend = InMemoryQuotaBackend()
     logger = InMemoryInferenceLogger()
-    config = _make_config([
-        _make_provider_cfg("groq"),
-        _make_provider_cfg("gemini"),
-    ])
+    config = _make_config(
+        [
+            _make_provider_cfg("groq"),
+            _make_provider_cfg("gemini"),
+        ]
+    )
     router = LLMRouter(
         clients={"groq:model-a": groq_client, "gemini:model-a": gemini_client},
         quota_backend=quota_backend,
@@ -379,7 +401,9 @@ async def test_router_health_probe_continues_when_health_check_returns_malformed
 async def test_router_health_probe_continues_when_health_check_raises_runtime_exception():
     groq_client = AsyncMock()
     groq_client.health_check = AsyncMock(side_effect=TimeoutError("probe timed out"))
-    groq_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    groq_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     gemini_client = AsyncMock()
     gemini_client.health_check = AsyncMock(
@@ -389,14 +413,18 @@ async def test_router_health_probe_continues_when_health_check_raises_runtime_ex
             error="gemini unavailable",
         )
     )
-    gemini_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    gemini_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     quota_backend = InMemoryQuotaBackend()
     logger = InMemoryInferenceLogger()
-    config = _make_config([
-        _make_provider_cfg("groq"),
-        _make_provider_cfg("gemini"),
-    ])
+    config = _make_config(
+        [
+            _make_provider_cfg("groq"),
+            _make_provider_cfg("gemini"),
+        ]
+    )
     router = LLMRouter(
         clients={"groq:model-a": groq_client, "gemini:model-a": gemini_client},
         quota_backend=quota_backend,
@@ -432,7 +460,9 @@ async def test_router_health_probe_returns_err_with_attempted_providers_only():
             error="groq unavailable",
         )
     )
-    groq_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    groq_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     gemini_client = AsyncMock()
     gemini_client.health_check = AsyncMock(
@@ -442,7 +472,9 @@ async def test_router_health_probe_returns_err_with_attempted_providers_only():
             message="warming up",
         )
     )
-    gemini_client.complete = AsyncMock(side_effect=AssertionError("complete should not be called"))
+    gemini_client.complete = AsyncMock(
+        side_effect=AssertionError("complete should not be called")
+    )
 
     config = _make_config(
         [
@@ -496,3 +528,16 @@ async def test_router_close_calls_close_on_all_clients():
 
     client_a.close.assert_called_once()
     client_b.close.assert_called_once()
+
+
+class TestStrategyFromConfig:
+    """Tests for LLMRouter._strategy_from_config fallback behavior."""
+
+    def test_cost_optimized_falls_back_when_pricing_unavailable(self) -> None:
+        """cost_optimized must fail over to sequential, never crash."""
+        from lexigram.ai.llm.routing.strategies import SequentialCascadeStrategy
+
+        cfg = LLMConfig(strategy="cost_optimized")
+        strategy = LLMRouter._strategy_from_config(cfg)
+
+        assert isinstance(strategy, SequentialCascadeStrategy)

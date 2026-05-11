@@ -487,6 +487,8 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                     model=model,
                     total_tokens=response.total_tokens,
                     provider=getattr(self._llm, "provider", None),
+                    prompt_tokens=response.prompt_tokens,
+                    completion_tokens=response.completion_tokens,
                 )
                 await self._governance.track_cost(
                     cost=estimated_cost,

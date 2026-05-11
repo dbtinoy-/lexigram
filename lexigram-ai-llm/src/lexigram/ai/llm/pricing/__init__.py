@@ -7,6 +7,7 @@ sources including APIs, JSON files, and custom sources.
 
 from __future__ import annotations
 
+from lexigram.ai.llm.pricing.estimator import PricingCostEstimator
 from lexigram.ai.llm.pricing.manager import (
     PricingManager,
     PricingManagerBuilder,
@@ -15,6 +16,7 @@ from lexigram.ai.llm.pricing.sources import (
     AbstractPricingSource,
     APIPricingSource,
     JSONFilePricingSource,
+    OpenRouterPricingSource,
     StaticPricingSource,
 )
 from lexigram.ai.llm.pricing.types import ModelPricing
@@ -24,6 +26,8 @@ __all__ = [
     "AbstractPricingSource",
     "JSONFilePricingSource",
     "ModelPricing",
+    "OpenRouterPricingSource",
+    "PricingCostEstimator",
     "PricingManager",
     "PricingManagerBuilder",
     "StaticPricingSource",

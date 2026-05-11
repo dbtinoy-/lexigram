@@ -60,9 +60,12 @@ class CostOptimizedStrategy:
                 continue
             try:
                 pricing = await self._pricing.get_pricing(pcfg.model)
-                cost = (estimated_prompt / 1_000_000) * pricing.prompt_per_1m + (
-                    estimated_completion / 1_000_000
-                ) * pricing.completion_per_1m
+                if pricing is None:
+                    cost = float("inf")
+                else:
+                    cost = (estimated_prompt / 1_000_000) * pricing.prompt_per_1m + (
+                        estimated_completion / 1_000_000
+                    ) * pricing.completion_per_1m
             except (ValueError, TypeError, AttributeError, LookupError):
                 cost = float("inf")
             scored.append((cost, pcfg))

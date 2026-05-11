@@ -7,15 +7,193 @@ and all LLM client implementations.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from lexigram.ai.llm.pinning import ModelPinPolicy
 from lexigram.config.base import BaseConfig
+from lexigram.contracts.ai.thinking import ThinkingConfig
 from lexigram.contracts.ai.types import ModelProvider
+from lexigram.domain import DomainModel
 from lexigram.validation import ConfigDict, Field, SecretStr
 
 if TYPE_CHECKING:
-    from lexigram.contracts.ai.thinking import ThinkingConfig
+    from lexigram.ai.llm.pricing.sources import AbstractPricingSource
+
+
+@dataclass(init=False)
+class PricingSourceConfig(DomainModel):
+    """A single pricing data source, configurable from YAML.
+
+    Attributes:
+        type: Source kind. One of ``"litellm"``, ``"openrouter"``, ``"json"``,
+            or ``"static"``.
+        endpoint: API endpoint URL. Used by ``litellm`` (defaults to the
+            LiteLLM model cost map on GitHub) and ``openrouter`` (defaults to
+            ``https://openrouter.ai/api/v1/models``).
+        file_path: Path to a local pricing JSON file (``json`` type only).
+        timeout: HTTP timeout in seconds for API sources.
+        models: Inline static prices (``static`` type only). Maps a model
+            name to ``{prompt_per_1m, completion_per_1m, provider?}``.
+
+    Example:
+        .. code-block:: yaml
+
+            ai_llm:
+              pricing:
+                enabled: true
+                sources:
+                  - type: openrouter
+                  - type: litellm
+                  - type: json
+                    file_path: pricing/custom.json
+                  - type: static
+                    models:
+                      internal-model:
+                        prompt_per_1m: 0.5
+                        completion_per_1m: 1.5
+                        provider: custom
+    """
+
+    type: str = Field(
+        ...,
+        description='Source kind: "litellm", "openrouter", "json", or "static".',
+    )
+    endpoint: str | None = Field(
+        default=None,
+        description="API endpoint URL (litellm/openrouter sources).",
+    )
+    file_path: str | None = Field(
+        default=None,
+        description="Path to a pricing JSON file (json source).",
+    )
+    timeout: float = Field(
+        default=10.0,
+        ge=1.0,
+        description="HTTP timeout in seconds for API sources.",
+    )
+    models: dict[str, dict[str, float]] = Field(
+        default_factory=dict,
+        description="Inline prices per model (static source).",
+    )
+
+
+@dataclass(init=False)
+class PricingConfig(DomainModel):
+    """Pricing and cost-estimation configuration for the LLM subsystem.
+
+    When attached to :class:`ClientConfig` (``ai_llm.pricing`` section in
+    YAML), the LLM provider registers a ``CostEstimatorProtocol`` backed by
+    a ``PricingManager`` over the configured sources.  Agents wired to the
+    container then get real USD cost estimates per execution.
+
+    Sources are queried in the configured order; the first source that knows
+    a model wins.  When no sources are listed, defaults are used:
+    OpenRouter (freshest prices for OpenAI/Anthropic/Google/Meta/Cohere/
+    DeepSeek/xAI/Qwen) then the LiteLLM model cost map (covers the long
+    tail including Groq and Mistral).
+
+    Example:
+        .. code-block:: yaml
+
+            ai_llm:
+              pricing:
+                enabled: true
+                cache_ttl: 43200
+                enable_fuzzy_match: true
+                sources:
+                  - type: openrouter
+                  - type: litellm
+                  - type: json
+                    file_path: pricing/private.json
+                  - type: static
+                    models:
+                      my-internal-model:
+                        prompt_per_1m: 0.25
+                        completion_per_1m: 0.75
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Register pricing manager and cost estimator.",
+    )
+    cache_ttl: int = Field(
+        default=86400,
+        ge=60,
+        description="Pricing cache TTL in seconds (default: 24 hours).",
+    )
+    enable_fuzzy_match: bool = Field(
+        default=True,
+        description="Allow substring matching of model names to prices.",
+    )
+    sources: list[PricingSourceConfig] = Field(
+        default_factory=list,
+        description="Pricing sources in priority order.",
+    )
+
+    def build_sources(self) -> list[AbstractPricingSource]:
+        """Build pricing source instances from this config.
+
+        Returns:
+            Configured ``AbstractPricingSource`` instances in priority
+            order.  Empty sources list yields the defaults (OpenRouter
+            then LiteLLM).
+
+        Raises:
+            ValueError: On unknown source type or a ``json`` source
+                without ``file_path``.
+        """
+        from lexigram.ai.llm.pricing.sources import (
+            APIPricingSource,
+            JSONFilePricingSource,
+            OpenRouterPricingSource,
+            StaticPricingSource,
+        )
+        from lexigram.ai.llm.pricing.types import ModelPricing
+
+        litellm_url = (
+            "https://raw.githubusercontent.com/BerriAI/litellm/main/"
+            "model_prices_and_context_window.json"
+        )
+
+        if not self.sources:
+            return [
+                OpenRouterPricingSource(),
+                APIPricingSource(litellm_url),
+            ]
+
+        sources: list[AbstractPricingSource] = []
+        for cfg in self.sources:
+            source_type = cfg.type.strip().lower()
+            if source_type == "litellm":
+                sources.append(
+                    APIPricingSource(cfg.endpoint or litellm_url, cfg.timeout)
+                )
+            elif source_type == "openrouter":
+                sources.append(OpenRouterPricingSource(cfg.endpoint, cfg.timeout))
+            elif source_type == "json":
+                if not cfg.file_path:
+                    msg = "pricing source of type 'json' requires 'file_path'"
+                    raise ValueError(msg)
+                sources.append(JSONFilePricingSource(Path(cfg.file_path)))
+            elif source_type == "static":
+                static: dict[str, ModelPricing] = {}
+                for model_name, prices in cfg.models.items():
+                    static[model_name] = ModelPricing(
+                        model=model_name,
+                        prompt_per_1m=float(prices.get("prompt_per_1m", 0.0)),
+                        completion_per_1m=float(prices.get("completion_per_1m", 0.0)),
+                        provider=str(prices.get("provider", "custom")),
+                        source="static:config",
+                    )
+                sources.append(StaticPricingSource(static))
+            else:
+                msg = (
+                    f"Unknown pricing source type {cfg.type!r}. "
+                    "Supported types: litellm, openrouter, json, static"
+                )
+                raise ValueError(msg)
+        return sources
 
 
 @dataclass(init=False)
@@ -99,6 +277,14 @@ class ClientConfig(BaseConfig):
         default_factory=dict,
         description="Provider-specific extra parameters passed verbatim.",
     )
+    pricing: PricingConfig | None = Field(
+        default=None,
+        description=(
+            "Pricing source configuration. When set, registers a pricing "
+            "manager and a CostEstimatorProtocol in the container so agents "
+            "get USD cost estimates. See PricingConfig for the YAML schema."
+        ),
+    )
 
     def __post_init__(self) -> None:
         """Coerce provider string to ModelProvider enum and api_key to SecretStr."""
@@ -109,4 +295,4 @@ class ClientConfig(BaseConfig):
             self.api_key = SecretStr(api_key)
 
 
-__all__ = ["ClientConfig"]
+__all__ = ["ClientConfig", "PricingConfig", "PricingSourceConfig"]
