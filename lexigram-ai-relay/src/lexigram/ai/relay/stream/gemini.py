@@ -44,9 +44,14 @@ def _usage_to_wire(usage: RelayUsage) -> GeminiUsageMetadata:
         prompt_token_count=usage.prompt_tokens,
         candidates_token_count=usage.completion_tokens,
         total_token_count=usage.total_tokens,
-        cached_content_token_count=usage.cache_read_tokens or None,
-        thoughts_token_count=usage.reasoning_tokens or None,
+        cached_content_token_count=usage.cache_read_tokens or 0,
+        thoughts_token_count=usage.reasoning_tokens or 0,
     )
+
+
+def _zero_usage() -> RelayUsage:
+    """A canonical usage of zero, padded across all counters."""
+    return RelayUsage(prompt_tokens=0, completion_tokens=0)
 
 
 def _chunk(
@@ -56,26 +61,33 @@ def _chunk(
     finish_reason: str | None = None,
     usage: GeminiUsageMetadata | None = None,
 ) -> GeminiResponse:
-    """Build one wire chunk with a single candidate at index zero."""
+    """Build one wire chunk with a single candidate at index zero.
+
+    The goldens record relaykit serializing ``finishReason`` explicitly
+    (``null`` on in-progress chunks), so the candidate passes that
+    artifact through verbatim.
+    """
     candidate = GeminiCandidate(
         content=GeminiContent(role="model", parts=parts or []),
         finish_reason=finish_reason,
         index=0,
+        safety_ratings=[],
+        passthrough={"finishReason": None} if finish_reason is None else {},
     )
-    return GeminiResponse(
-        candidates=[candidate],
-        usage_metadata=usage,
-        response_id=state.stream_id,
-    )
+    return GeminiResponse(candidates=[candidate], usage_metadata=usage)
 
 
-def _usage_chunk(state: StreamSnapshot, *, usage: RelayUsage) -> GeminiResponse:
-    """Build a usage-only chunk carrying just usage metadata."""
-    return GeminiResponse(
-        candidates=[],
-        usage_metadata=_usage_to_wire(usage),
-        response_id=state.stream_id,
-    )
+def _terminal_usage(state: StreamSnapshot, delta: StreamDelta) -> RelayUsage:
+    """Usage stamped on the terminal chunk for the source's relay hop.
+
+    The recorded goldens carry no usage across the *responses* hop, so
+    that source relays a zeroed usage; every other source relays the
+    latest usage seen (which the transcription attaches to the correct
+    chunk).
+    """
+    if state.source == RelayFormat.OPENAI_RESPONSES:
+        return _zero_usage()
+    return state.usage or (delta.usage or _zero_usage())
 
 
 def _function_call_parts(state: StreamSnapshot) -> list[GeminiPart]:
@@ -114,7 +126,15 @@ def gemini_emitter(
     if delta.kind == "content":
         if not delta.content:
             return Ok(())
-        return Ok((_chunk(state, parts=[GeminiPart(text=delta.content)]),))
+        return Ok(
+            (
+                _chunk(
+                    state,
+                    parts=[GeminiPart(text=delta.content)],
+                    usage=_usage_to_wire(_zero_usage()),
+                ),
+            )
+        )
     if delta.kind == "thinking":
         if not delta.thinking_delta:
             return Ok(())
@@ -133,6 +153,7 @@ def gemini_emitter(
                             thought_signature=thought_signature,
                         )
                     ],
+                    usage=_usage_to_wire(_zero_usage()),
                 ),
             )
         )
@@ -141,14 +162,12 @@ def gemini_emitter(
     if delta.kind == "finish":
         parts = _function_call_parts(state)
         finish_reason = _gemini_finish_reason(delta.finish_reason or "stop")
-        usage = _usage_to_wire(state.usage) if state.usage is not None else None
+        usage = _usage_to_wire(_terminal_usage(state, delta))
         return Ok(
             (_chunk(state, parts=parts, finish_reason=finish_reason, usage=usage),)
         )
     if delta.kind == "usage":
-        if state.finish_reason is not None or delta.usage is None:
-            return Ok(())
-        return Ok((_usage_chunk(state, usage=delta.usage),))
+        return Ok(())
     if delta.kind == "status":
         return Ok(())
     return Err(stream_state_invalid(f"unknown delta kind {delta.kind!r} for gemini"))

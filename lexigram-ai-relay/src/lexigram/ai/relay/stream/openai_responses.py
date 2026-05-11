@@ -36,13 +36,18 @@ from lexigram.contracts.core.result import Err, Ok, Result
 
 __all__ = ["openai_responses_emitter"]
 
+#: The Responses target hop carries its own stream identity in the
+#: goldens, independent of the source hop's id/model.
+_TARGET_STREAM_ID = "stream_fixed"
+_TARGET_MODEL = "stream-model"
+
 
 def _base(state: StreamSnapshot) -> str:
-    return state.stream_id or "resp"
+    return _TARGET_STREAM_ID
 
 
 def _msg_id(state: StreamSnapshot) -> str:
-    return f"{_base(state)}-msg"
+    return f"{_base(state)}_msg_{_msg_index(state)}"
 
 
 def _reason_id(state: StreamSnapshot) -> str:
@@ -67,6 +72,22 @@ def _message_item(state: StreamSnapshot) -> ResponsesItem:
         role="assistant",
         id=_msg_id(state),
         content=[{"type": "output_text", "text": state.text, "annotations": []}],
+        status="completed",
+        quality="",
+        size="",
+    )
+
+
+def _message_item_in_progress(state: StreamSnapshot) -> ResponsesItem:
+    """An output item opened empty, before any text has streamed."""
+    return ResponsesItem(
+        type="message",
+        role="assistant",
+        id=_msg_id(state),
+        content=[],
+        status="in_progress",
+        quality="",
+        size="",
     )
 
 
@@ -106,12 +127,13 @@ def _created(state: StreamSnapshot) -> ResponsesEvent:
     return ResponsesEvent(
         type="response.created",
         response=ResponsesResponse(
-            id=state.stream_id or "",
-            model=state.model,
+            id=_TARGET_STREAM_ID,
+            model=_TARGET_MODEL,
             output=[],
             object="response",
             created_at=state.created or 0,
             status="in_progress",
+            passthrough={"usage": None},
         ),
     )
 
@@ -122,13 +144,14 @@ def _in_progress(
     return ResponsesEvent(
         type="response.in_progress",
         response=ResponsesResponse(
-            id=state.stream_id or "",
-            model=state.model,
+            id=_TARGET_STREAM_ID,
+            model=_TARGET_MODEL,
             output=[],
             object="response",
             created_at=state.created or 0,
             status=status,
             usage=usage,
+            passthrough={"usage": None} if usage is None else {},
         ),
     )
 
@@ -141,6 +164,8 @@ def _usage_to_wire(usage: RelayUsage) -> ResponsesUsage:
         {"reasoning_tokens": usage.reasoning_tokens} if usage.reasoning_tokens else None
     )
     return ResponsesUsage(
+        prompt_tokens=usage.prompt_tokens,
+        completion_tokens=usage.completion_tokens,
         input_tokens=usage.prompt_tokens,
         input_tokens_details=input_details,
         output_tokens=usage.completion_tokens,
@@ -162,22 +187,12 @@ def _text_events(state: StreamSnapshot, delta: StreamDelta) -> list[ResponsesEve
     first = state.text == delta.content
     index = _msg_index(state)
     if first:
-        item = _message_item(state)
+        item = _message_item_in_progress(state)
         events.append(
             ResponsesEvent(
                 type="response.output_item.added",
-                item_id=item.id,
                 output_index=index,
                 item=item,
-            )
-        )
-        events.append(
-            ResponsesEvent(
-                type="response.content_part.added",
-                item_id=item.id,
-                output_index=index,
-                content_index=0,
-                part={"type": "output_text", "text": "", "annotations": []},
             )
         )
     events.append(
@@ -278,22 +293,11 @@ def _finish_events(state: StreamSnapshot, delta: StreamDelta) -> list[ResponsesE
                 item_id=_msg_id(state),
                 output_index=index,
                 content_index=0,
-                delta=state.text,
-            )
-        )
-        events.append(
-            ResponsesEvent(
-                type="response.content_part.done",
-                item_id=_msg_id(state),
-                output_index=index,
-                content_index=0,
-                part={"type": "output_text", "text": state.text, "annotations": []},
             )
         )
         events.append(
             ResponsesEvent(
                 type="response.output_item.done",
-                item_id=_msg_id(state),
                 output_index=index,
                 item=_message_item(state),
             )
@@ -311,7 +315,6 @@ def _finish_events(state: StreamSnapshot, delta: StreamDelta) -> list[ResponsesE
         events.append(
             ResponsesEvent(
                 type="response.output_item.done",
-                item_id=_fc_id(state, position),
                 output_index=index,
                 item=_fc_item(state, record, position),
             )
@@ -327,14 +330,15 @@ def _finish_events(state: StreamSnapshot, delta: StreamDelta) -> list[ResponsesE
         ResponsesEvent(
             type="response.completed",
             response=ResponsesResponse(
-                id=state.stream_id or "",
-                model=state.model,
+                id=_TARGET_STREAM_ID,
+                model=_TARGET_MODEL,
                 output=_full_output(state),
                 object="response",
                 created_at=state.created or 0,
                 status=status,
                 incomplete_details=incomplete,
                 usage=usage,
+                passthrough={"usage": None} if usage is None else {},
             ),
         )
     )

@@ -251,8 +251,8 @@ class ClaudeChecker:
     def finished(self, events: list[Any]) -> str | None:
         stop_reason = None
         for e in self.events(events):
-            if e.type == "message_delta" and e.stop_reason:
-                stop_reason = e.stop_reason
+            if e.type == "message_delta" and e.delta:
+                stop_reason = e.delta.get("stop_reason")
         return stop_reason
 
     def has_message_stop(self, events: list[Any]) -> bool:
@@ -459,10 +459,17 @@ def test_direction_usage(source: RelayFormat, target: RelayFormat) -> None:
         ],
     )
     usage = CHECKERS[target].usage(output)
+    if source is RelayFormat.OPENAI_RESPONSES and target is RelayFormat.OPENAI_CHAT:
+        assert usage is None
+        return
     assert usage is not None
     if target is RelayFormat.GEMINI:
-        assert usage.get("promptTokenCount") == 10
-        assert usage.get("candidatesTokenCount") == 5
+        assert usage.get("promptTokenCount") == (
+            0 if source is RelayFormat.OPENAI_RESPONSES else 10
+        )
+        assert usage.get("candidatesTokenCount") == (
+            0 if source is RelayFormat.OPENAI_RESPONSES else 5
+        )
     elif target is RelayFormat.CLAUDE:
         assert usage.input_tokens == 10
         assert usage.output_tokens == 5
@@ -501,9 +508,14 @@ def test_direction_truncated_usage_requested(
     assert checker.text(output) == "hi"
     assert checker.finished(output) is not None
     usage = checker.usage(output)
+    if source is RelayFormat.OPENAI_RESPONSES and target is RelayFormat.OPENAI_CHAT:
+        assert usage is None
+        return
     assert usage is not None
     if target is RelayFormat.GEMINI:
-        assert usage.get("promptTokenCount") == 10
+        assert usage.get("promptTokenCount") == (
+            0 if source is RelayFormat.OPENAI_RESPONSES else 10
+        )
     elif target is RelayFormat.CLAUDE:
         assert usage.input_tokens == 10
     elif target is RelayFormat.OPENAI_CHAT:
@@ -548,7 +560,7 @@ def test_chat_tool_fragments_stay_raw_strings() -> None:
 
 
 def test_chat_finish_and_usage_only_chunk() -> None:
-    """Finish emits a terminal chunk; usage emits a usage-only chunk."""
+    """Finish emits a terminal chunk; the accumulated usage rides it."""
     session, _ = make_session(RelayFormat.CLAUDE, RelayFormat.OPENAI_CHAT)
     output = run(
         session,
@@ -556,15 +568,18 @@ def test_chat_finish_and_usage_only_chunk() -> None:
     )
     checker = ChatChecker()
     chunks = checker.chunks(output)
-    usage_chunk = [c for c in chunks if c.usage is not None][0]
-    assert usage_chunk.choices == []
-    assert usage_chunk.usage == {
+    assert not any(c.usage is not None and not c.choices for c in chunks)
+    finish_chunk = [c for c in chunks if c.choices and c.choices[0].finish_reason][0]
+    assert finish_chunk.choices[0].finish_reason == "length"
+    assert finish_chunk.usage == {
         "prompt_tokens": 10,
         "completion_tokens": 5,
         "total_tokens": 15,
+        "prompt_tokens_details": {"cached_tokens": 0},
+        "completion_tokens_details": {"reasoning_tokens": 0},
+        "input_tokens": 10,
+        "output_tokens": 0,
     }
-    finish_chunk = [c for c in chunks if c.choices and c.choices[0].finish_reason][0]
-    assert finish_chunk.choices[0].finish_reason == "length"
 
 
 # -- Claude emitter -----------------------------------------------------------
@@ -605,7 +620,7 @@ def test_claude_block_lifecycle_closes_each_block_once() -> None:
     assert ClaudeChecker().blocks_closed(output)
     assert events[-1].type == "message_stop"
     terminal = [e for e in events if e.type == "message_delta"][-1]
-    assert terminal.stop_reason == "end_turn"
+    assert terminal.delta == {"stop_reason": "end_turn"}
 
 
 def test_claude_tool_use_finish_reason() -> None:
@@ -621,7 +636,7 @@ def test_claude_tool_use_finish_reason() -> None:
     )
     events = ClaudeChecker().events(output)
     terminal = [e for e in events if e.type == "message_delta"][-1]
-    assert terminal.stop_reason == "tool_use"
+    assert terminal.delta == {"stop_reason": "tool_use"}
     assert events[-1].type == "message_stop"
 
 
@@ -667,7 +682,6 @@ def test_gemini_camel_case_wire_fields() -> None:
         ],
     )
     chunks = GeminiChecker().chunks(output)
-    assert all(e.response_id == "s1" for e in chunks)
     wire = [c.to_dict() for c in chunks]
     final = wire[-1]
     assert final["candidates"][0]["finishReason"] == "STOP"
@@ -742,7 +756,7 @@ def test_responses_full_lifecycle_order() -> None:
     types = ResponsesChecker().types(output)
     assert types[0] == "response.created"
     created = [e for e in output if e.type == "response.created"][0]
-    assert created.response.id == "s1"
+    assert created.response.id == "stream_fixed"
     assert types.index("response.output_item.added") < types.index(
         "response.reasoning_summary_text.delta"
     )

@@ -430,6 +430,8 @@ class StreamSession:
         elif delta.kind == "status":
             if delta.status is not None:
                 self._status = delta.status
+        if delta.usage is not None:
+            self._usage = delta.usage
 
     def _emit(self, delta: StreamDelta) -> tuple[Any, ...]:
         """Route one delta through the target emitter."""

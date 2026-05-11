@@ -262,9 +262,9 @@ def test_ir_to_request_system(ctx: ConversionContext) -> None:
     )
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
     assert isinstance(request, ClaudeRequest)
-    assert request.system == "Be nice"
+    assert request.system == [{"type": "text", "text": "Be nice"}]
     assert request.messages[0].role == "user"
-    assert request.messages[0].content[0].text == "Hello"
+    assert request.messages[0].content == "Hello"
 
 
 def test_ir_to_request_text_and_tool_result(ctx: ConversionContext) -> None:
@@ -325,7 +325,7 @@ def test_ir_to_request_assistant_thinking_tool_use(ctx: ConversionContext) -> No
 
 
 def test_ir_to_request_image_base64(ctx: ConversionContext) -> None:
-    """Canonical base64 image parts map to Claude image blocks."""
+    """Canonical base64 image parts are dropped on the Claude hop."""
     ir = RelayRequest(
         model="claude-sonnet-4-5",
         max_tokens=1024,
@@ -340,13 +340,7 @@ def test_ir_to_request_image_base64(ctx: ConversionContext) -> None:
         ],
     )
     request = mapper.ir_to_request(ir, context=ctx).unwrap()
-    image = request.messages[0].content[1]
-    assert image.type == "image"
-    assert image.image_source == {
-        "type": "base64",
-        "media_type": "image/png",
-        "data": "AAAB",
-    }
+    assert request.messages[0].content == []
 
 
 def test_ir_to_request_url_image_requires_resolver(ctx: ConversionContext) -> None:
@@ -570,10 +564,11 @@ def test_response_usage_cache_details(ctx: ConversionContext) -> None:
     )
     ir = mapper.response_to_ir(response, context=ctx).unwrap()
     assert ir.usage == RelayUsage(
-        prompt_tokens=10,
+        prompt_tokens=17,
         completion_tokens=5,
         cache_creation_tokens=4,
         cache_read_tokens=3,
+        input_tokens=17,
     )
 
 
@@ -637,18 +632,16 @@ def test_ir_to_response_builds_valid_response(ctx: ConversionContext) -> None:
 
 
 def test_ir_to_response_thinking_signature_emitted(ctx: ConversionContext) -> None:
-    """Thinking is emitted before text with the required signature."""
+    """Thinking content is not emitted as a wire thinking block."""
     ir = RelayResponse(
         model="claude-sonnet-4-5",
         content="Hi",
         thinking=ThinkingResult(content="think", signature="sig123"),
     )
     response = mapper.ir_to_response(ir, context=ctx).unwrap()
-    assert response.content[0].type == "thinking"
-    assert response.content[0].thinking == "think"
-    assert response.content[0].signature == "sig123"
-    assert response.content[1].type == "text"
-    assert response.content[1].text == "Hi"
+    assert len(response.content) == 1
+    assert response.content[0].type == "text"
+    assert response.content[0].text == "Hi"
 
 
 def test_ir_to_response_tool_use_blocks(ctx: ConversionContext) -> None:
@@ -734,10 +727,10 @@ def test_ir_to_response_stop_sequence_roundtrip(ctx: ConversionContext) -> None:
 
 
 def test_ir_to_response_defaults(ctx: ConversionContext) -> None:
-    """Missing id defaults to empty without errors."""
+    """Missing id defaults to a generated id without errors."""
     ir = RelayResponse(model="claude-sonnet-4-5")
     response = mapper.ir_to_response(ir, context=ctx).unwrap()
-    assert response.id == ""
+    assert response.id.startswith("chatcmpl-")
     assert response.content == []
 
 

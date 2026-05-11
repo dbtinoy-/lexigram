@@ -60,6 +60,8 @@ class ConversionContext:
         preserve_thinking_suffix: Thinking-suffix bypass policy lookup,
             always callable.
         media_resolver: Resolver for URL media, or ``None``.
+        upstream_model: Host model name substituted when the source
+            payload carries no model; empty when unset.
         losses: Semantic losses recorded during conversion.
     """
 
@@ -69,6 +71,7 @@ class ConversionContext:
     supports_image_generation: SupportsImageGenerationCallback = _no_image_generation
     preserve_thinking_suffix: PreserveThinkingSuffixCallback = _no_thinking_suffix
     media_resolver: MediaResolverProtocol | None = None
+    upstream_model: str = ""
     losses: list[RelayLoss] = field(default_factory=list)
 
     @classmethod
@@ -93,6 +96,7 @@ class ConversionContext:
             preserve_thinking_suffix=context.preserve_thinking_suffix
             or _no_thinking_suffix,
             media_resolver=context.media_resolver,
+            upstream_model=(context.upstream_model or "").strip(),
             losses=context.losses,
         )
 
@@ -124,3 +128,21 @@ class ConversionContext:
             The cleaned model name.
         """
         return model.strip()
+
+    def resolve_model(self, model: str) -> str:
+        """Normalize a model name, substituting the host upstream model.
+
+        Empty source model names (e.g. Gemini responses that carry no
+        model) fall back to the host ``upstream_model`` so downstream
+        requests still identify the model.
+
+        Args:
+            model: Raw model name from the source payload.
+
+        Returns:
+            The cleaned model name, or the upstream fallback.
+        """
+        model = self.normalize_model(model)
+        if model:
+            return model
+        return self.upstream_model

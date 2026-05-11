@@ -8,6 +8,7 @@ conversion is handled by the shared stream lifecycle task and reports
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from lexigram.ai.relay.context import ConversionContext
@@ -63,19 +64,33 @@ _SAFETY_CATEGORIES = (
     "HARM_CATEGORY_HATE_SPEECH",
     "HARM_CATEGORY_SEXUALLY_EXPLICIT",
     "HARM_CATEGORY_DANGEROUS_CONTENT",
-    "HARM_CATEGORY_CIVIC_INTEGRITY",
 )
 
 _MIME_KEY = "mimeType"
 
+_THOUGHT_SIGNATURE_BYPASS = "context_engineering_is_the_way_to_go"
+
+_SCHEMA_TYPE_MAP = {
+    "string": "STRING",
+    "object": "OBJECT",
+    "array": "ARRAY",
+    "integer": "INTEGER",
+    "number": "NUMBER",
+    "boolean": "BOOLEAN",
+}
+
 
 def _tool_call_from_part(part: GeminiPart) -> ToolCall:
-    """Convert a Gemini ``functionCall`` part into a canonical ``ToolCall``."""
+    """Convert a Gemini ``functionCall`` part into a canonical ``ToolCall``.
+
+    Gemini function calls carry no stable id; the canonical id stays
+    empty so target writers can generate a dialect-appropriate one.
+    """
     call = part.function_call or {}
     name = str(call.get("name", ""))
     args = call.get("args")
     return ToolCall(
-        id=name,
+        id="",
         type="custom",
         function=FunctionCall(
             name=name,
@@ -184,11 +199,14 @@ class GeminiMapper:
         try:
             system_parts: list[str] = []
             contents: list[GeminiContent] = []
+            tool_names, tool_names_by_id = self._tool_name_resolver(request)
             for message in request.messages:
                 if message.role == "system":
                     system_parts.append(self._text_from_content(message.content))
                     continue
-                content = self._content_from_ir(message, request.model, context)
+                content = self._content_from_ir(
+                    message, request.model, tool_names, tool_names_by_id, context
+                )
                 if content.is_err():
                     return content
                 contents.append(content.unwrap())
@@ -320,14 +338,6 @@ class GeminiMapper:
             token_count = passthrough.pop("token_count", None)
             avg_logprobs = passthrough.pop("avg_logprobs", None)
             parts: list[GeminiPart] = []
-            if response.thinking is not None and response.thinking.content:
-                parts.append(
-                    GeminiPart(
-                        text=response.thinking.content,
-                        thought=True,
-                        thought_signature=response.thinking.signature,
-                    )
-                )
             if response.content:
                 parts.append(GeminiPart(text=response.content))
             for tool_call in response.tool_calls:
@@ -337,7 +347,9 @@ class GeminiMapper:
                 finish_reason=self._finish_reason_from_ir(
                     response.finish_reason, context
                 ),
-                safety_ratings=self._safety_ratings_from_passthrough(safety_ratings),
+                index=0,
+                safety_ratings=self._safety_ratings_from_passthrough(safety_ratings)
+                or [],
                 grounding_metadata=self._grounding_from_passthrough(grounding_metadata),
                 citation_metadata=(
                     citation_metadata if isinstance(citation_metadata, dict) else None
@@ -359,7 +371,6 @@ class GeminiMapper:
                     if isinstance(model_version, str)
                     else None,
                     create_time=create_time if isinstance(create_time, str) else None,
-                    response_id=response.id,
                     passthrough=passthrough,
                 )
             )
@@ -478,8 +489,9 @@ class GeminiMapper:
     def _user_to_ir(
         self, content: GeminiContent, context: ConversionContext, index: int
     ) -> list[ChatMessage]:
-        """Convert a user content turn into canonical content parts."""
+        """Convert a user content turn into canonical parts and tool results."""
         parts: list[ContentPart] = []
+        tool_results: list[ChatMessage] = []
         for part in content.parts:
             if part.text is not None:
                 parts.append(TextPart(text=part.text))
@@ -489,7 +501,12 @@ class GeminiMapper:
                     ImageBase64Part(
                         data=str(inline.get("data", "")),
                         media_type=str(inline.get(_MIME_KEY, "")),
+                        detail="auto",
                     )
+                )
+            elif part.function_response is not None:
+                tool_results.append(
+                    self._function_response_to_ir(part.function_response)
                 )
             else:
                 record_loss(
@@ -498,24 +515,27 @@ class GeminiMapper:
                     target=_TARGET,
                     reason="unrepresentable_part_dropped",
                 )
-        if not parts:
+        turns: list[ChatMessage] = []
+        if parts:
+            turns.append(
+                ChatMessage(
+                    role="user",
+                    content=(
+                        parts[0].text
+                        if len(parts) == 1 and isinstance(parts[0], TextPart)
+                        else list(parts)
+                    ),
+                )
+            )
+        turns.extend(tool_results)
+        if not turns:
             record_loss(
                 context,
                 field=f"contents[{index}]",
                 target=_TARGET,
                 reason="empty_message_dropped",
             )
-            return []
-        return [
-            ChatMessage(
-                role="user",
-                content=(
-                    parts[0].text
-                    if len(parts) == 1 and isinstance(parts[0], TextPart)
-                    else list(parts)
-                ),
-            )
-        ]
+        return turns
 
     def _function_to_ir(
         self, content: GeminiContent, context: ConversionContext, index: int
@@ -537,13 +557,12 @@ class GeminiMapper:
     @staticmethod
     def _function_response_to_ir(response: dict[str, Any]) -> ChatMessage:
         """Convert a ``functionResponse`` dict into a canonical tool message."""
-        name = str(response.get("name", ""))
         payload = response.get("response")
         if isinstance(payload, str):
             text = payload
         else:
             text = dumps_str(payload) if payload is not None else ""
-        return ChatMessage(role="tool", content=text, tool_call_id=name)
+        return ChatMessage(role="tool", content=text, tool_call_id="")
 
     @staticmethod
     def _response_format_to_ir(
@@ -573,9 +592,27 @@ class GeminiMapper:
         return None
 
     def _content_from_ir(
-        self, message: ChatMessage, model: str, context: ConversionContext
+        self,
+        message: ChatMessage,
+        model: str,
+        tool_names: list[str],
+        tool_names_by_id: dict[str, str],
+        context: ConversionContext,
     ) -> Result[GeminiContent, RelayError]:
-        """Convert one canonical message into a Gemini content turn."""
+        """Convert one canonical message into a Gemini content turn.
+
+        Args:
+            message: Canonical message to serialize.
+            model: The selected model, for capability lookups.
+            tool_names: Positional resolver for tool-message function
+                names when the canonical ``tool_call_id`` carries no
+                stable link.
+            tool_names_by_id: Resolver keyed by canonical tool-call id.
+            context: Per-conversion context with loss sink.
+
+        Returns:
+            Ok(content) on success, Err(relay_error) on failure.
+        """
         if message.role == "tool":
             response: Any = message.content
             if isinstance(response, list):
@@ -585,13 +622,18 @@ class GeminiMapper:
                     response = loads_str(response)
                 except ValueError:
                     pass
+            name = tool_names_by_id.get(message.tool_call_id or "", "")
+            if not name and tool_names:
+                name = tool_names.pop(0)
+            if isinstance(response, str):
+                response = {"content": response}
             return Ok(
                 GeminiContent(
-                    role="function",
+                    role="user",
                     parts=[
                         GeminiPart(
                             function_response={
-                                "name": message.tool_call_id or "",
+                                "name": name,
                                 "response": response,
                             }
                         )
@@ -616,41 +658,87 @@ class GeminiMapper:
         )
         return Ok(GeminiContent(role="user", parts=[GeminiPart(text="")]))
 
+    @staticmethod
+    def _tool_name_resolver(
+        request: RelayRequest,
+    ) -> tuple[list[str], dict[str, str]]:
+        """Return tool-message name resolvers for a request.
+
+        Gemini ``functionResponse`` blocks name the function, not the
+        call id.  Tool messages resolve their function name by canonical
+        ``tool_call_id`` first; unresolved messages fall back to
+        positional order against the assistant tool calls that preceded
+        them.
+        """
+        names: list[str] = []
+        names_by_id: dict[str, str] = {}
+        for message in request.messages:
+            if message.role == "assistant":
+                for tool_call in message.tool_calls or []:
+                    if tool_call.function:
+                        names.append(tool_call.function.name)
+                        if tool_call.id:
+                            names_by_id[tool_call.id] = tool_call.function.name
+        return names, names_by_id
+
     def _assistant_parts_from_ir(
         self, message: ChatMessage, model: str, context: ConversionContext
     ) -> Result[list[GeminiPart], RelayError]:
-        """Rebuild Gemini model parts from an assistant message."""
+        """Rebuild Gemini model parts from an assistant message.
+
+        When the thought-signature bypass policy is enabled the thinking
+        blocks are folded away and a bypass ``thoughtSignature`` is
+        attached to the first function-call part (relaykit's
+        ``FunctionCallThoughtSignatureEnabled`` behavior).  Otherwise
+        thinking blocks are re-emitted as native Gemini thought parts.
+        """
+        attach_signature = context.options.gemini.thought_signature_bypass
         parts: list[GeminiPart] = []
-        bypass = (
-            context.options.gemini.thought_signature_bypass
-            and context.preserve_thinking_suffix(model)
-        )
-        for block in message.thinking_blocks or []:
-            if not isinstance(block, dict):
-                continue
-            signature = block.get("thoughtSignature")
-            if bypass:
-                record_loss(
-                    context,
-                    field="thinking_signature",
-                    target=_TARGET,
-                    reason="thought_signature_bypassed",
+        if not attach_signature:
+            for block in message.thinking_blocks or []:
+                if not isinstance(block, dict):
+                    continue
+                signature = block.get("thoughtSignature")
+                parts.append(
+                    GeminiPart(
+                        text=str(block.get("text", "")),
+                        thought=True,
+                        thought_signature=str(signature) if signature else None,
+                    )
                 )
-                signature = None
-            parts.append(
-                GeminiPart(
-                    text=str(block.get("text", "")),
-                    thought=True,
-                    thought_signature=str(signature) if signature else None,
-                )
-            )
         content_parts = self._user_parts_from_ir(message.content, context)
         if content_parts.is_err():
             return Err(content_parts.unwrap_err())
         parts.extend(content_parts.unwrap())
         for tool_call in message.tool_calls or []:
             parts.append(_tool_call_to_part(tool_call))
+        if attach_signature:
+            parts = self._attach_thought_signature(parts)
         return Ok(parts)
+
+    @staticmethod
+    def _attach_thought_signature(parts: list[GeminiPart]) -> list[GeminiPart]:
+        """Attach the relaykit thought-signature bypass value to model parts.
+
+        The signature lands on the first function-call part, or on the
+        first non-empty text part when the message carries no tool calls.
+        """
+        rebuilt: list[GeminiPart] = []
+        attached = False
+        for part in parts:
+            current = part
+            if not attached and part.function_call is not None:
+                current = replace(part, thought_signature=_THOUGHT_SIGNATURE_BYPASS)
+                attached = True
+            rebuilt.append(current)
+        if not attached:
+            for index, part in enumerate(rebuilt):
+                if part.text:
+                    rebuilt[index] = replace(
+                        part, thought_signature=_THOUGHT_SIGNATURE_BYPASS
+                    )
+                    break
+        return rebuilt
 
     def _user_parts_from_ir(
         self, content: str | list[ContentPart], context: ConversionContext
@@ -761,19 +849,13 @@ class GeminiMapper:
         self, request: RelayRequest, context: ConversionContext
     ) -> dict[str, Any] | None:
         """Build a Gemini ``thinkingConfig`` from canonical thinking."""
-        thinking = request.thinking
-        if thinking is not None:
-            if thinking.suppress:
-                record_loss(
-                    context,
-                    field="thinking",
-                    target=_TARGET,
-                    reason="suppress_not_supported",
-                )
-            if thinking.level is not None:
-                return {"thinkingLevel": thinking.level}
-            if thinking.budget_tokens:
-                return {"thinkingBudget": thinking.budget_tokens}
+        if request.thinking is not None:
+            record_loss(
+                context,
+                field="thinking",
+                target=_TARGET,
+                reason="thinking_not_supported",
+            )
         if (
             context.options.gemini.thinking_adapter_enabled
             and context.options.gemini.thinking_budget
@@ -808,7 +890,7 @@ class GeminiMapper:
                     {
                         "name": tool.name,
                         "description": tool.description,
-                        "parameters": tool.parameters,
+                        "parameters": GeminiMapper._upper_schema_types(tool.parameters),
                     }
                     for tool in tools
                 ]
@@ -816,45 +898,98 @@ class GeminiMapper:
         ]
 
     @staticmethod
+    def _request_passthrough(request: RelayRequest) -> dict[str, Any]:
+        """Carry canonical passthrough state into the request wire payload."""
+        return dict(request.passthrough)
+
+    @staticmethod
+    def _upper_schema_types(parameters: dict[str, Any]) -> dict[str, Any]:
+        """Uppercase Gemini schema type markers recursively.
+
+        Gemini function declarations require ``STRING``/``OBJECT`` type
+        values; canonical schemas carry the lowercase JSON-Schema form.
+        """
+        out: dict[str, Any] = {}
+        for key, value in parameters.items():
+            if key == "type" and isinstance(value, str):
+                out[key] = _SCHEMA_TYPE_MAP.get(value, value)
+            elif isinstance(value, dict):
+                out[key] = GeminiMapper._upper_schema_types(value)
+            elif isinstance(value, list):
+                out[key] = [
+                    GeminiMapper._upper_schema_types(item)
+                    if isinstance(item, dict)
+                    else item
+                    for item in value
+                ]
+            else:
+                out[key] = value
+        return out
+
+    @staticmethod
     def _tool_config_from_ir(request: RelayRequest) -> dict[str, Any] | None:
-        """Rebuild a Gemini ``toolConfig`` from protocol metadata."""
+        """Rebuild a Gemini ``toolConfig`` from canonical tool choice."""
         raw = request.metadata.get("tool_config")
         if isinstance(raw, dict):
             return dict(raw)
+        choice = request.tool_choice
+        if isinstance(choice, dict):
+            name = choice.get("function", {})
+            if isinstance(name, dict):
+                name = name.get("name")
+            if isinstance(name, str) and name:
+                return {
+                    "functionCallingConfig": {
+                        "mode": "ANY",
+                        "allowedFunctionNames": [name],
+                    }
+                }
+            return {"functionCallingConfig": {"mode": "ANY"}}
+        if isinstance(choice, str):
+            mode = {"auto": "AUTO", "none": "NONE", "required": "ANY"}.get(
+                choice, "AUTO"
+            )
+            return {"functionCallingConfig": {"mode": mode}}
         return None
 
-    @staticmethod
-    def _request_passthrough(request: RelayRequest) -> dict[str, Any]:
-        """Merge canonical stream state into request passthrough."""
-        passthrough = dict(request.passthrough)
-        if request.model:
-            passthrough["model"] = request.model
-        if request.stream:
-            passthrough["stream"] = True
-        return passthrough
-
     def _usage_from_wire(self, usage: GeminiUsageMetadata | None) -> RelayUsage | None:
-        """Map a wire ``GeminiUsageMetadata`` into canonical ``RelayUsage``."""
+        """Map a wire ``GeminiUsageMetadata`` into canonical ``RelayUsage``.
+
+        Mirrors relaykit's ``UsageFromGeminiMetadata``: completion counts
+        thinking tokens, the prompt adds tool-use tokens, and the explicit
+        total is preserved because Gemini counts thoughts within both.
+        """
         if usage is None:
             return None
         return RelayUsage(
-            prompt_tokens=usage.prompt_token_count,
-            completion_tokens=usage.candidates_token_count,
+            prompt_tokens=(
+                usage.prompt_token_count + usage.tool_use_prompt_token_count
+            ),
+            completion_tokens=(
+                usage.candidates_token_count + (usage.thoughts_token_count or 0)
+            ),
             cache_read_tokens=usage.cached_content_token_count or 0,
             reasoning_tokens=usage.thoughts_token_count or 0,
+            total_tokens_override=usage.total_token_count or None,
         )
 
     @staticmethod
     def _usage_to_wire(usage: RelayUsage | None) -> GeminiUsageMetadata | None:
-        """Serialize canonical ``RelayUsage`` into a ``GeminiUsageMetadata``."""
+        """Serialize canonical ``RelayUsage`` into a ``GeminiUsageMetadata``.
+
+        Gemini reports thinking tokens as a subset of the candidate
+        tokens and does not surface cache or reasoning fields in the
+        generated payload, so those counters are emitted as zeros.
+        """
         if usage is None:
             return None
         return GeminiUsageMetadata(
             prompt_token_count=usage.prompt_tokens,
             candidates_token_count=usage.completion_tokens,
             total_token_count=usage.total_tokens,
-            cached_content_token_count=usage.cache_read_tokens or None,
-            thoughts_token_count=usage.reasoning_tokens or None,
+            cached_content_token_count=0,
+            thoughts_token_count=0,
+            tool_use_prompt_token_count=0,
         )
 
     @staticmethod

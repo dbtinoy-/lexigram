@@ -88,6 +88,13 @@ class RelayUsage:
         audio_input_tokens: Audio input tokens (OpenAI audio models).
         audio_output_tokens: Audio output tokens (OpenAI audio models).
         image_tokens: Image input tokens (OpenAI image models).
+        input_tokens: Responses-style input count carried by the source
+            (Claude stamps prompt+cache; Gemini leaves it zero).
+        output_tokens: Responses-style output count carried by the source
+            (only the OpenAI response format stamps it).
+        total_tokens_override: Explicit total when the source reports one
+            that is not the sum of prompt and completion (Gemini counts
+            thinking tokens inside both).
     """
 
     prompt_tokens: int = 0
@@ -98,10 +105,15 @@ class RelayUsage:
     audio_input_tokens: int = 0
     audio_output_tokens: int = 0
     image_tokens: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens_override: int | None = None
 
     @property
     def total_tokens(self) -> int:
-        """Total tokens consumed (prompt + completion)."""
+        """Total tokens consumed (prompt + completion or explicit override)."""
+        if self.total_tokens_override is not None:
+            return self.total_tokens_override
         return self.prompt_tokens + self.completion_tokens
 
     def to_token_usage(self) -> TokenUsage:

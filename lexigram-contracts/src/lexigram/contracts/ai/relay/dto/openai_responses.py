@@ -32,27 +32,51 @@ class ResponsesItem:
         arguments: Function call arguments string, or ``None``.
         output: Function call output string, or ``None``.
         summary: Reasoning summary for ``reasoning`` items, or ``None``.
+        status: Output item status (``completed`` / ``incomplete``).
+        quality: Output item quality (relaykit always serializes ``""``).
+        size: Output item size (relaykit always serializes ``""``).
         passthrough: Unknown fields preserved verbatim.
     """
 
-    type: str
+    type: str | None = None
     role: str | None = None
-    content: list[dict[str, Any]] | None = None
+    content: str | list[dict[str, Any]] | None = None
     id: str | None = None
     call_id: str | None = None
     name: str | None = None
     arguments: str | None = None
     output: str | None = None
     summary: list[dict[str, Any]] | None = None
+    status: str | None = None
+    quality: str | None = None
+    size: str | None = None
     passthrough: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to wire dict."""
-        data: dict[str, Any] = {**self.passthrough, "type": self.type}
+        """Serialize to wire dict.
+
+        Output items (those carrying a ``status``) always serialize
+        ``content`` (relaykit uses no ``omitempty`` on it, so function
+        calls carry an explicit ``null``) plus the ``status``,
+        ``quality``, and ``size`` fields relaykit Go structs always
+        render. Input request items never render a ``content`` key for
+        function calls.
+        """
+        data: dict[str, Any] = {**self.passthrough}
+        if self.type is not None:
+            data["type"] = self.type
         if self.role is not None:
             data["role"] = self.role
-        if self.content is not None:
+        if (
+            self.type == "function_call" and self.status is not None
+        ) or self.content is not None:
             data["content"] = self.content
+        if self.status is not None:
+            data["status"] = self.status
+        if self.quality is not None:
+            data["quality"] = self.quality
+        if self.size is not None:
+            data["size"] = self.size
         if self.id is not None:
             data["id"] = self.id
         if self.call_id is not None:
@@ -80,6 +104,9 @@ class ResponsesItem:
             "arguments",
             "output",
             "summary",
+            "status",
+            "quality",
+            "size",
         }
         return cls(
             type=data.get("type", "message"),
@@ -91,6 +118,9 @@ class ResponsesItem:
             arguments=data.get("arguments"),
             output=data.get("output"),
             summary=data.get("summary"),
+            status=data.get("status"),
+            quality=data.get("quality"),
+            size=data.get("size"),
             passthrough={k: v for k, v in data.items() if k not in known},
         )
 
@@ -127,6 +157,7 @@ class ResponsesRequest:
     reasoning: dict[str, Any] | None = None
     text: dict[str, Any] | None = None
     service_tier: str | None = None
+    tool_choice: Any | None = None
     passthrough: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -144,8 +175,7 @@ class ResponsesRequest:
             data["temperature"] = self.temperature
         if self.max_output_tokens is not None:
             data["max_output_tokens"] = self.max_output_tokens
-        if self.stream:
-            data["stream"] = True
+        data["stream"] = self.stream
         if self.include is not None:
             data["include"] = self.include
         if self.parallel_tool_calls is not None:
@@ -156,6 +186,8 @@ class ResponsesRequest:
             data["text"] = self.text
         if self.service_tier is not None:
             data["service_tier"] = self.service_tier
+        if self.tool_choice is not None:
+            data["tool_choice"] = self.tool_choice
         return data
 
     @classmethod
@@ -179,6 +211,7 @@ class ResponsesRequest:
             "reasoning",
             "text",
             "service_tier",
+            "tool_choice",
         }
         raw_input = data.get("input", [])
         return cls(
@@ -198,6 +231,7 @@ class ResponsesRequest:
             reasoning=data.get("reasoning"),
             text=data.get("text"),
             service_tier=data.get("service_tier"),
+            tool_choice=data.get("tool_choice"),
             passthrough={k: v for k, v in data.items() if k not in known},
         )
 
@@ -207,37 +241,48 @@ class ResponsesUsage:
     """OpenAI Responses usage accounting.
 
     Attributes:
-        input_tokens: Input tokens.
-        input_tokens_details: Raw input token details (e.g. ``cached_tokens``).
-        output_tokens: Output tokens.
-        output_tokens_details: Raw output token details.
-        total_tokens: Total tokens.
+        prompt_tokens: Chat-style prompt token count.
+        completion_tokens: Chat-style completion token count.
+        total_tokens: Explicit totals (can differ from prompt + completion).
+        prompt_tokens_details: Cache details (relaykit serializes a
+            zero-value prompt_tokens_details dict even when empty).
+        completion_tokens_details: Reasoning/details count (relaykit
+            serializes it even when empty).
+        input_tokens: Source input count carried into chat emission.
+        input_tokens_details: Raw input token details per ``input_tokens``.
+        output_tokens: Source output count carried into chat emails.
+        output_tokens_details: Legacy capture of the raw output details
+            (never serialized; relaykit emits ``completion_tokens_details``).
         passthrough: Unknown fields preserved verbatim.
     """
 
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    prompt_tokens_details: dict[str, Any] | None = None
+    completion_tokens_details: dict[str, Any] | None = None
     input_tokens: int = 0
     input_tokens_details: dict[str, Any] | None = None
     output_tokens: int = 0
     output_tokens_details: dict[str, Any] | None = None
     passthrough: dict[str, Any] = field(default_factory=dict)
 
-    @property
-    def total_tokens(self) -> int:
-        """Total tokens, derived as input plus output."""
-        return self.input_tokens + self.output_tokens
-
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to wire dict, omitting ``None`` optional fields."""
+        """Serialize to wire dict, mirroring relaykit's always-on usage."""
         data: dict[str, Any] = {
             **self.passthrough,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens
+            or (self.input_tokens + self.output_tokens),
+            "prompt_tokens_details": self.prompt_tokens_details or {"cached_tokens": 0},
+            "completion_tokens_details": self.completion_tokens_details
+            or {"reasoning_tokens": 0},
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
-            "total_tokens": self.total_tokens,
         }
         if self.input_tokens_details is not None:
             data["input_tokens_details"] = self.input_tokens_details
-        if self.output_tokens_details is not None:
-            data["output_tokens_details"] = self.output_tokens_details
         return data
 
     @classmethod
@@ -249,8 +294,17 @@ class ResponsesUsage:
             "output_tokens",
             "output_tokens_details",
             "total_tokens",
+            "prompt_tokens_details",
+            "completion_tokens_details",
+            "prompt_tokens",
+            "completion_tokens",
         }
         return cls(
+            prompt_tokens=data.get("prompt_tokens", 0),
+            completion_tokens=data.get("completion_tokens", 0),
+            total_tokens=data.get("total_tokens", 0),
+            prompt_tokens_details=data.get("prompt_tokens_details"),
+            completion_tokens_details=data.get("completion_tokens_details"),
             input_tokens=data.get("input_tokens", 0),
             input_tokens_details=data.get("input_tokens_details"),
             output_tokens=data.get("output_tokens", 0),
@@ -317,23 +371,40 @@ class ResponsesResponse:
     passthrough: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to wire dict."""
+        """Serialize to wire dict.
+
+        Relaykit's Go response structs always serialize the optional
+        request-style fields (``instructions``, ``temperature``, ...) as
+        explicit nulls/zeros, so this mirrors that shape.
+        """
         data: dict[str, Any] = {
             **self.passthrough,
             "id": self.id,
             "object": self.object,
             "created_at": self.created_at,
+            "status": self.status or "completed",
+            "instructions": None,
+            "max_output_tokens": 0,
             "model": self.model,
             "output": [i.to_dict() for i in self.output],
+            "parallel_tool_calls": False,
+            "previous_response_id": None,
+            "reasoning": None,
+            "store": False,
+            "temperature": 0,
+            "tool_choice": None,
+            "tools": None,
+            "top_p": 0,
+            "truncation": None,
         }
-        if self.status is not None:
-            data["status"] = self.status
         if self.incomplete_details is not None:
             data["incomplete_details"] = self.incomplete_details.to_dict()
         if self.error is not None:
             data["error"] = self.error
         if self.usage is not None:
             data["usage"] = self.usage.to_dict()
+        data["user"] = None
+        data["metadata"] = None
         return data
 
     @classmethod
@@ -416,31 +487,42 @@ class ResponsesEvent:
     passthrough: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to wire dict, omitting ``None`` optional fields."""
-        data: dict[str, Any] = {**self.passthrough, "type": self.type}
+        """Serialize to wire dict as the Responses SSE envelope.
+
+        Relaykit frames each stream event as ``{"Type": <type>, "Payload":
+        <fields>}`` — the ``Type`` is the SSE ``event`` name and ``Payload``
+        is the JSON body (which repeats the ``type`` discriminator).
+        """
+        payload: dict[str, Any] = {**self.passthrough, "type": self.type}
         if self.sequence_number:
-            data["sequence_number"] = self.sequence_number
+            payload["sequence_number"] = self.sequence_number
         if self.response is not None:
-            data["response"] = self.response.to_dict()
+            payload["response"] = self.response.to_dict()
         if self.item is not None:
-            data["item"] = self.item.to_dict()
+            payload["item"] = self.item.to_dict()
         if self.item_id is not None:
-            data["item_id"] = self.item_id
+            payload["item_id"] = self.item_id
         if self.output_index is not None:
-            data["output_index"] = self.output_index
+            payload["output_index"] = self.output_index
         if self.content_index is not None:
-            data["content_index"] = self.content_index
+            payload["content_index"] = self.content_index
         if self.part is not None:
-            data["part"] = self.part
+            payload["part"] = self.part
         if self.delta is not None:
-            data["delta"] = self.delta
+            payload["delta"] = self.delta
         if self.error is not None:
-            data["error"] = self.error
-        return data
+            payload["error"] = self.error
+        return {"Type": self.type, "Payload": payload}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ResponsesEvent:
-        """Build an event from a wire dict, capturing unknown keys."""
+        """Build an event from a wire dict, capturing unknown keys.
+
+        Accepts both the SSE envelope (``Payload``) and the bare payload.
+        """
+        source = data.get("Payload")
+        if isinstance(source, dict):
+            data = source
         known = {
             "type",
             "sequence_number",
