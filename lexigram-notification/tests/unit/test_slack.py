@@ -324,7 +324,60 @@ class TestSlackBotHealthCheck:
         assert result.component == "slack_bot"
 
 
+class TestMrkdwnEscaping:
+    def test_escape_mrkdwn_escapes_link_markup(self) -> None:
+        from lexigram.notification.backends.slack.slack_notifier import (
+            _escape_mrkdwn,
+        )
+
+        assert _escape_mrkdwn("<https://evil.example|click me>") == (
+            "&lt;https://evil.example|click me&gt;"
+        )
+
+    def test_escape_mrkdwn_escapes_entities(self) -> None:
+        from lexigram.notification.backends.slack.slack_notifier import (
+            _escape_mrkdwn,
+        )
+
+        assert _escape_mrkdwn("a & b") == "a &amp; b"
+
+    def test_plain_text_unchanged(self) -> None:
+        from lexigram.notification.backends.slack.slack_notifier import (
+            _escape_mrkdwn,
+        )
+
+        assert _escape_mrkdwn("hello world") == "hello world"
+
+    @pytest.mark.asyncio
+    async def test_webhook_payload_escapes_text(self) -> None:
+        backend = SlackNotifier(webhook_url="https://hooks.slack.com/services/T/B/X")
+        msg = SlackMessage("<https://evil.example|click me>")
+        mock_client = _make_httpx_client(200, text="ok")
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            result = await backend.send(msg)
+
+        assert result.is_ok()
+        call_args = mock_client.post.call_args
+        assert call_args.kwargs["json"]["text"] == "&lt;https://evil.example|click me&gt;"
+
+    @pytest.mark.asyncio
+    async def test_bot_payload_escapes_text(self) -> None:
+        backend = SlackNotifier(bot_token="xoxb-test", default_channel="#general")
+        msg = SlackMessage("<https://evil.example|click me>")
+        mock_client = MagicMock()
+        mock_client.chat_postMessage = AsyncMock(
+            return_value={"ok": True, "ts": "999.000"}
+        )
+        with _patch_slack_sdk(mock_client):
+            result = await backend.send(msg)
+
+        assert result.is_ok()
+        call_kwargs = mock_client.chat_postMessage.call_args[1]
+        assert call_kwargs["text"] == "&lt;https://evil.example|click me&gt;"
+
+
 __all__ = [
+    "TestMrkdwnEscaping",
     "TestSlackBotHealthCheck",
     "TestSlackBotSend",
     "TestSlackNotifierInit",
