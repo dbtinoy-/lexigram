@@ -37,6 +37,7 @@ from lexigram.tasks.execution.health import TaskHealth
 from lexigram.tasks.execution.metrics import TaskMetricsCollector
 from lexigram.tasks.execution.pool import WorkerPool
 from lexigram.tasks.execution.registry import HandlerRegistry
+from lexigram.tasks.middleware.core import TaskMiddlewarePipeline
 from lexigram.tasks.results.cache_backend import CacheBackendResultStore
 from lexigram.tasks.results.core import InMemoryResultStore, ResultStore
 from lexigram.tasks.scheduling.scheduler import TaskScheduler
@@ -118,6 +119,7 @@ class TaskProvider(Provider):
         queue: TaskQueueProtocol,
         worker_count: int = 1,
         enable_scheduler: bool = True,
+        middleware_pipeline: TaskMiddlewarePipeline | None = None,
     ):
         """Initialize task provider
 
@@ -125,11 +127,14 @@ class TaskProvider(Provider):
             queue: TaskQueueProtocol implementation to use
             worker_count: Number of workers to create
             enable_scheduler: Whether to enable job scheduling
+            middleware_pipeline: Optional middleware pipeline applied to every
+                worker in the pool.
         """
         super().__init__()
         self.queue = queue
         self.worker_count = worker_count
         self.enable_scheduler = enable_scheduler
+        self._middleware_pipeline = middleware_pipeline
 
         self.worker_pool: WorkerPool | None = None
         self.scheduler: TaskScheduler | None = None
@@ -411,6 +416,7 @@ class TaskProvider(Provider):
             logger=self.logger,
             hooks=hooks,
             container=container,
+            middleware_pipeline=self._middleware_pipeline,
         )
         await self.worker_pool.start()
         # Warn when running an in-memory queue outside of development/testing.

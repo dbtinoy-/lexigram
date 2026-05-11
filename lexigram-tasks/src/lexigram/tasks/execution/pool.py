@@ -30,6 +30,7 @@ from lexigram.tasks.execution.worker import (
     TaskWorkerServices,
     WorkerJobStats,
 )
+from lexigram.tasks.middleware.core import TaskMiddlewarePipeline
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -66,6 +67,7 @@ class WorkerPool:
         dead_letter_queue: DeadLetterQueue | None = None,
         hooks: HookRegistryProtocol | None = None,
         container: Any = None,
+        middleware_pipeline: TaskMiddlewarePipeline | None = None,
     ):
         """Initialize worker pool
 
@@ -78,6 +80,8 @@ class WorkerPool:
                 registration during worker lifecycle.
             dead_letter_queue: Optional shared DLQ for permanently failed jobs.
             container: Optional DI container for resolving task dependencies at runtime.
+            middleware_pipeline: Optional middleware pipeline applied to every
+                worker created by this pool.
         """
         self.queue = queue
         self._handler_registry = handler_registry
@@ -93,6 +97,7 @@ class WorkerPool:
         self._dead_letter_queue = dead_letter_queue or DeadLetterQueue()
         self._hooks = hooks
         self._container = container
+        self._middleware_pipeline = middleware_pipeline
 
         # Initialize logger
         if logger is None:
@@ -120,6 +125,7 @@ class WorkerPool:
                 task_manager=self._task_manager,
                 hooks=self._hooks,
             ),
+            middleware_pipeline=self._middleware_pipeline,
         )
 
     async def start(self) -> None:
