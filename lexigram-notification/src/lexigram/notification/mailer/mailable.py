@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+import html
 
 from lexigram.contracts.mailer import EmailMessage
 
@@ -27,7 +28,7 @@ class Mailable(abc.ABC):
                     to=[self.user_email],
                     subject=f"Welcome, {self.user_name}!",
                     body=f"Hi {self.user_name}, welcome aboard.",
-                    html_body=f"<p>Hi <b>{self.user_name}</b>, welcome aboard.</p>",
+                    html_body=f"<p>Hi <b>{escape_html(self.user_name)}</b>, welcome aboard.</p>",
                 )
     """
 
@@ -40,4 +41,21 @@ class Mailable(abc.ABC):
         """
 
 
-__all__ = ["Mailable"]
+def escape_html(text: str) -> str:
+    """Escape text for inclusion in an HTML email body.
+
+    HTML email bodies are rendered by mail clients; user-controlled text
+    interpolated unescaped (as in the pre-fix docstring example) becomes
+    markup. Escape before building ``html_body``.
+
+    Args:
+        text: Untrusted text, e.g. a user-entered name.
+
+    Returns:
+        Text with ``&``, ``<``, ``>``, and ``"`` escaped so it renders as
+        literal text in an HTML email.
+    """
+    return html.escape(text, quote=True)
+
+
+__all__ = ["Mailable", "escape_html"]
