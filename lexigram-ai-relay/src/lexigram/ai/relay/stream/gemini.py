@@ -12,6 +12,10 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.ai.relay.errors import stream_state_invalid
+from lexigram.ai.relay.finish_reasons import (
+    finish_reason_to_wire,
+    normalize_finish_reason,
+)
 from lexigram.ai.relay.stream.state import StreamSnapshot
 from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.relay.dto import (
@@ -22,7 +26,7 @@ from lexigram.contracts.ai.relay.dto import (
     GeminiUsageMetadata,
 )
 from lexigram.contracts.ai.relay.ir import StreamDelta
-from lexigram.contracts.ai.relay.types import RelayUsage
+from lexigram.contracts.ai.relay.types import RelayFormat, RelayUsage
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.serialization import loads_str
 
@@ -31,14 +35,7 @@ __all__ = ["gemini_emitter"]
 
 def _gemini_finish_reason(reason: str) -> str:
     """Map a canonical finish reason onto Gemini's wire values."""
-    normalized = reason.strip().lower()
-    if normalized in {"length", "max_tokens"}:
-        return "MAX_TOKENS"
-    if normalized in {"content_filter", "safety"}:
-        return "SAFETY"
-    if normalized in {"other", "error"}:
-        return "OTHER"
-    return "STOP"
+    return finish_reason_to_wire(normalize_finish_reason(reason), RelayFormat.GEMINI)
 
 
 def _usage_to_wire(usage: RelayUsage) -> GeminiUsageMetadata:

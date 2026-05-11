@@ -15,6 +15,7 @@ __all__ = [
     "malformed_payload",
     "media_resolution_required",
     "missing_required_option",
+    "serialization_error",
     "stream_already_finalized",
     "stream_state_invalid",
     "translate",
@@ -106,6 +107,18 @@ def media_resolution_required(detail: str) -> RelayError:
         A ``RelayError`` with code ``media_resolution_required``.
     """
     return RelayError(detail, code=RelayErrorCode.MEDIA_RESOLUTION_REQUIRED)
+
+
+def serialization_error(detail: str) -> RelayError:
+    """The payload cannot be serialized or deserialized.
+
+    Args:
+        detail: Human-readable description of the serialization failure.
+
+    Returns:
+        A ``RelayError`` with code ``serialization_error``.
+    """
+    return RelayError(detail, code=RelayErrorCode.SERIALIZATION_ERROR)
 
 
 def stream_state_invalid(detail: str) -> RelayError:

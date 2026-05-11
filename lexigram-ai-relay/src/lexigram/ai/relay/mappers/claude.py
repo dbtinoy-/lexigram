@@ -12,13 +12,17 @@ from typing import Any
 
 from lexigram.ai.relay.context import ConversionContext
 from lexigram.ai.relay.errors import (
-    media_resolution_required,
     missing_required_option,
     translate,
     unsupported_feature,
     unsupported_format,
 )
+from lexigram.ai.relay.finish_reasons import (
+    FINISH_REASON_TO_WIRE,
+    finish_reason_to_wire,
+)
 from lexigram.ai.relay.mappers.base import record_loss
+from lexigram.ai.relay.media import resolve_media
 from lexigram.contracts.ai.agents import ToolDefinition
 from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.llm import ChatMessage, FunctionCall, ToolCall
@@ -158,6 +162,37 @@ class ClaudeMapper:
             max_tokens = context.max_tokens_for(request.model)
         if max_tokens is None:
             return Err(missing_required_option("claude requires max_tokens"))
+        model = request.model
+        temperature = request.temperature
+        top_p = request.top_p
+        thinking = self._thinking_from_ir(request, context)
+        claude_options = context.options.claude
+        if claude_options.thinking_adapter_enabled and model.endswith("-thinking"):
+            if (
+                claude_options.minimum_max_tokens > 0
+                and max_tokens < claude_options.minimum_max_tokens
+            ):
+                max_tokens = claude_options.minimum_max_tokens
+                record_loss(
+                    context,
+                    field="max_tokens",
+                    target=_TARGET,
+                    reason="max_tokens_floored",
+                )
+            if thinking is None and claude_options.thinking_budget_percentage > 0:
+                thinking = {
+                    "type": "enabled",
+                    "budget_tokens": int(
+                        max_tokens * claude_options.thinking_budget_percentage / 100
+                    ),
+                }
+            temperature = 1.0
+            top_p = None
+            if (
+                not context.preserve_thinking_suffix(model)
+                and not context.options.model_suffix_preserved
+            ):
+                model = model[: -len("-thinking")]
         try:
             messages: list[ClaudeMessage] = []
             system_parts: list[str] = []
@@ -173,12 +208,12 @@ class ClaudeMapper:
                 messages.append(claude_message.unwrap())
             return Ok(
                 ClaudeRequest(
-                    model=context.normalize_model(request.model),
+                    model=context.normalize_model(model),
                     max_tokens=max_tokens,
                     messages=messages,
                     system="\n".join(system_parts) if system_parts else None,
-                    temperature=request.temperature,
-                    top_p=request.top_p,
+                    temperature=temperature,
+                    top_p=top_p,
                     stream=request.stream,
                     tools=(
                         [self._tool_from_ir(tool) for tool in request.tools]
@@ -187,7 +222,7 @@ class ClaudeMapper:
                     ),
                     tool_choice=request.tool_choice,
                     stop_sequences=list(request.stop_sequences) or None,
-                    thinking=self._thinking_from_ir(request, context),
+                    thinking=thinking,
                     metadata=(
                         request.metadata.get("metadata")
                         if isinstance(request.metadata.get("metadata"), dict)
@@ -645,11 +680,22 @@ class ClaudeMapper:
     def _resolve_image(
         part: ImageUrlPart, context: ConversionContext
     ) -> Result[tuple[str, str], RelayError]:
-        """Resolve a URL image into ``(media_type, base64)`` for Claude."""
-        resolver = context.media_resolver
-        if resolver is None:
-            return Err(media_resolution_required(part.url))
-        return resolver.resolve(part.url)
+        """Resolve a URL or data-URI image for Claude.
+
+        Data URIs decode locally; URLs go through the context resolver.
+        """
+        resolved = resolve_media(
+            part.url,
+            context,
+            field="message.content",
+            target=_TARGET,
+            lossy=False,
+        )
+        if resolved.is_err():
+            return Err(resolved.unwrap_err())
+        image = resolved.unwrap()
+        assert image is not None  # lossy=False never drops media
+        return Ok(image)
 
     @staticmethod
     def _text_from_content(content: str | list[ContentPart]) -> str:
@@ -712,28 +758,23 @@ class ClaudeMapper:
 
     @staticmethod
     def _stop_reason_from_ir(
-        finish_reason: str, context: ConversionContext
+        finish_reason: str | None, context: ConversionContext
     ) -> str | None:
         """Map a canonical finish reason back to a Claude stop reason."""
-        if finish_reason == "stop":
-            return "end_turn"
-        if finish_reason == "length":
-            return "max_tokens"
-        if finish_reason in {"tool_calls", "function_call"}:
-            if finish_reason == "function_call":
-                record_loss(
-                    context,
-                    field="finish_reason",
-                    target=_TARGET,
-                    reason="function_call_adapted",
-                )
-            return "tool_use"
-        if finish_reason == "content_filter":
+        if finish_reason is None:
+            return None
+        if finish_reason in {"function_call", "content_filter"}:
             record_loss(
                 context,
                 field="finish_reason",
                 target=_TARGET,
-                reason="content_filter_adapted",
+                reason=f"{finish_reason}_adapted",
             )
-            return "end_turn"
-        return None
+        elif finish_reason not in FINISH_REASON_TO_WIRE:
+            record_loss(
+                context,
+                field="finish_reason",
+                target=_TARGET,
+                reason="finish_reason_adapted",
+            )
+        return finish_reason_to_wire(finish_reason, _TARGET)

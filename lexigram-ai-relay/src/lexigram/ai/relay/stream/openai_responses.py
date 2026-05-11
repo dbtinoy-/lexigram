@@ -12,6 +12,10 @@ listeners can correlate events across the stream.
 from __future__ import annotations
 
 from lexigram.ai.relay.errors import stream_state_invalid
+from lexigram.ai.relay.finish_reasons import (
+    normalize_finish_reason,
+    responses_status_from_finish,
+)
 from lexigram.ai.relay.stream.state import (
     StreamSnapshot,
     StreamToolCallRecord,
@@ -312,17 +316,12 @@ def _finish_events(state: StreamSnapshot, delta: StreamDelta) -> list[ResponsesE
                 item=_fc_item(state, record, position),
             )
         )
-    normalized = (delta.finish_reason or "stop").strip().lower()
-    completed = normalized in {"stop", "tool_calls", "tool_use", "function_call"}
-    status = state.status or ("completed" if completed else "incomplete")
-    incomplete: ResponsesIncompleteDetails | None = None
-    if not completed:
-        if normalized in {"length", "max_tokens"}:
-            incomplete = ResponsesIncompleteDetails(reason="max_output_tokens")
-        elif normalized in {"content_filter", "safety"}:
-            incomplete = ResponsesIncompleteDetails(reason="content_filter")
-        else:
-            incomplete = ResponsesIncompleteDetails(reason="other")
+    canonical = normalize_finish_reason(delta.finish_reason or "stop")
+    wire_status, detail = responses_status_from_finish(canonical)
+    status = state.status or wire_status
+    incomplete: ResponsesIncompleteDetails | None = (
+        ResponsesIncompleteDetails(reason=detail) if detail is not None else None
+    )
     usage = _usage_to_wire(state.usage) if state.usage is not None else None
     events.append(
         ResponsesEvent(

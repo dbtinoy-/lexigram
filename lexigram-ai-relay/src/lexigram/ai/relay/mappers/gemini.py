@@ -12,12 +12,16 @@ from typing import Any
 
 from lexigram.ai.relay.context import ConversionContext
 from lexigram.ai.relay.errors import (
-    media_resolution_required,
     translate,
     unsupported_feature,
     unsupported_format,
 )
+from lexigram.ai.relay.finish_reasons import (
+    FINISH_REASON_TO_WIRE,
+    finish_reason_to_wire,
+)
 from lexigram.ai.relay.mappers.base import record_loss
+from lexigram.ai.relay.media import resolve_media
 from lexigram.contracts.ai.agents import ToolDefinition
 from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.llm import ChatMessage, FunctionCall, ToolCall
@@ -688,11 +692,22 @@ class GeminiMapper:
     def _resolve_image(
         part: ImageUrlPart, context: ConversionContext
     ) -> Result[tuple[str, str], RelayError]:
-        """Resolve a URL image into ``(media_type, base64)`` for Gemini."""
-        resolver = context.media_resolver
-        if resolver is None:
-            return Err(media_resolution_required(part.url))
-        return resolver.resolve(part.url)
+        """Resolve a URL or data-URI image for Gemini.
+
+        Data URIs decode locally; URLs go through the context resolver.
+        """
+        resolved = resolve_media(
+            part.url,
+            context,
+            field="message.content",
+            target=_TARGET,
+            lossy=False,
+        )
+        if resolved.is_err():
+            return Err(resolved.unwrap_err())
+        image = resolved.unwrap()
+        assert image is not None  # lossy=False never drops media
+        return Ok(image)
 
     @staticmethod
     def _text_from_content(content: str | list[ContentPart]) -> str:
@@ -736,6 +751,10 @@ class GeminiMapper:
         thinking_config = self._thinking_config_from_ir(request, context)
         if thinking_config is not None:
             config["thinkingConfig"] = thinking_config
+        if "responseModalities" not in config and context.supports_image_generation(
+            request.model
+        ):
+            config["responseModalities"] = ["TEXT", "IMAGE"]
         return config
 
     def _thinking_config_from_ir(
@@ -871,32 +890,23 @@ class GeminiMapper:
         self, finish_reason: str | None, context: ConversionContext
     ) -> str | None:
         """Map a canonical finish reason back to a Gemini value."""
-        if finish_reason == "stop":
-            return "STOP"
-        if finish_reason == "length":
-            return "MAX_TOKENS"
-        if finish_reason in {"tool_calls", "function_call"}:
-            if finish_reason == "function_call":
-                record_loss(
-                    context,
-                    field="finish_reason",
-                    target=_TARGET,
-                    reason="function_call_adapted",
-                )
-            return "STOP"
-        if finish_reason == "content_filter":
-            return "SAFETY"
-        if finish_reason == "other":
-            return "OTHER"
-        if finish_reason is not None:
+        if finish_reason is None:
+            return None
+        if finish_reason == "function_call":
+            record_loss(
+                context,
+                field="finish_reason",
+                target=_TARGET,
+                reason="function_call_adapted",
+            )
+        elif finish_reason not in FINISH_REASON_TO_WIRE:
             record_loss(
                 context,
                 field="finish_reason",
                 target=_TARGET,
                 reason="finish_reason_adapted",
             )
-            return "OTHER"
-        return None
+        return finish_reason_to_wire(finish_reason, _TARGET)
 
     @staticmethod
     def _safety_ratings_from_passthrough(

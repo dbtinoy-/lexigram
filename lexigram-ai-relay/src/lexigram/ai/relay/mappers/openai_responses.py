@@ -12,6 +12,10 @@ from typing import Any, cast
 
 from lexigram.ai.relay.context import ConversionContext
 from lexigram.ai.relay.errors import translate, unsupported_feature, unsupported_format
+from lexigram.ai.relay.finish_reasons import (
+    responses_incomplete_from_finish,
+    responses_status_from_finish,
+)
 from lexigram.ai.relay.mappers.base import record_loss
 from lexigram.contracts.ai.agents import ToolDefinition
 from lexigram.contracts.ai.exceptions import RelayError
@@ -942,13 +946,10 @@ class OpenAIResponsesMapper:
                     incomplete = derived
             return status, incomplete
         finish = response.finish_reason
-        if finish == "length":
-            return "incomplete", ResponsesIncompleteDetails(reason="max_output_tokens")
-        if finish == "content_filter":
-            return "incomplete", ResponsesIncompleteDetails(reason="content_filter")
-        if finish == "other":
-            return "incomplete", ResponsesIncompleteDetails(reason="other")
-        return "completed", None
+        wire_status, detail = responses_status_from_finish(finish)
+        if detail is None:
+            return wire_status, None
+        return wire_status, ResponsesIncompleteDetails(reason=detail)
 
     @staticmethod
     def _result_output(message: ChatMessage) -> str:
@@ -1007,10 +1008,7 @@ def _incomplete_for_finish(
     finish_reason: str | None,
 ) -> ResponsesIncompleteDetails | None:
     """Map a canonical finish reason to an incomplete-details payload."""
-    if finish_reason == "length":
-        return ResponsesIncompleteDetails(reason="max_output_tokens")
-    if finish_reason == "content_filter":
-        return ResponsesIncompleteDetails(reason="content_filter")
-    if finish_reason == "other":
-        return ResponsesIncompleteDetails(reason="other")
-    return None
+    detail = responses_incomplete_from_finish(finish_reason)
+    if detail is None:
+        return None
+    return ResponsesIncompleteDetails(reason=detail)
