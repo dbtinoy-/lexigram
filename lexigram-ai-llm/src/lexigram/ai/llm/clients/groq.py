@@ -34,7 +34,8 @@ API Documentation: https://console.groq.com/docs
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any
+import types
+from typing import Any, cast
 
 import aiohttp
 
@@ -111,7 +112,12 @@ class GroqClient(AbstractLLMClient):
         )
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> Any:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> Any:
         """Async context manager exit."""
         if self._client:
             await self._client.close()
@@ -169,7 +175,7 @@ class GroqClient(AbstractLLMClient):
 
             # Convert ChatMessage to dict
             message_dicts: list[dict[str, Any]] = []
-            for msg in messages:
+            for msg in cast("list[ChatMessage | dict[str, Any]]", messages):
                 if isinstance(msg, ChatMessage):
                     message_dicts.append(
                         {
@@ -248,7 +254,7 @@ class GroqClient(AbstractLLMClient):
 
             # Convert ChatMessage to dict
             message_dicts: list[dict[str, Any]] = []
-            for msg in messages:
+            for msg in cast("list[ChatMessage | dict[str, Any]]", messages):
                 if isinstance(msg, ChatMessage):
                     message_dicts.append(
                         {
@@ -277,7 +283,7 @@ class GroqClient(AbstractLLMClient):
         self,
         messages: list[ChatMessage],
         tools: list[ToolCall] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         return await self._do_complete(messages, tools=tools, **kwargs)
 
@@ -304,7 +310,7 @@ class GroqClient(AbstractLLMClient):
         response = await client.get("/models")
         response.raise_for_status()
         data = response.json()
-        return data.get("data", [])
+        return cast("list[dict[str, Any]]", data.get("data", []))
 
     async def _stream_completion(
         self,

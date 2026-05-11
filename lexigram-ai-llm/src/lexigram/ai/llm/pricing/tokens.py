@@ -100,7 +100,7 @@ class TiktokenCounter:
         Raises:
             ImportError: If tiktoken is not installed.
         """
-        import tiktoken  # type: ignore[import-not-found]
+        import tiktoken
 
         self._model = model
         self._encoding_name = encoding_name
@@ -178,7 +178,7 @@ class HuggingFaceCounter:
         if not self._loaded:
             self._loaded = True
             try:
-                from transformers import AutoTokenizer  # type: ignore[import-not-found]
+                from transformers import AutoTokenizer
 
                 self._tokenizer = AutoTokenizer.from_pretrained(
                     self._model,
@@ -229,7 +229,7 @@ class MistralCounter:
         if not self._loaded:
             self._loaded = True
             try:
-                from mistral_common.tokens.tokenizers.mistral import (  # type: ignore[import-not-found]
+                from mistral_common.tokens.tokenizers.mistral import (
                     MistralTokenizer,
                 )
 

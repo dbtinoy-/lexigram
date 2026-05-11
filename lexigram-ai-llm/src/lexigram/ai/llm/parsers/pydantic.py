@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.ai.llm.structured.exceptions import ParseError, SchemaValidationError
 from lexigram.ai.llm.structured.parser import (
@@ -64,7 +64,7 @@ class PydanticOutputParser:
             raise ParseError(str(exc)) from exc
 
         try:
-            return validate_against_model(parsed, self._model)
+            return cast("BaseModel", validate_against_model(parsed, self._model))
         except (TypeError, ValueError) as exc:
             raise SchemaValidationError(str(exc)) from exc
 

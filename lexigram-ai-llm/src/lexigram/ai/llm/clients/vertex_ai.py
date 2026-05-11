@@ -25,7 +25,7 @@ Notes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.clients.gemini_helpers import (
@@ -94,8 +94,8 @@ class VertexAIClient(AbstractLLMClient):
         super().__init__(config=config)
 
         try:
-            import google.auth  # type: ignore[import-not-found]  # noqa: F401
-            import google.auth.transport.requests  # type: ignore[import-not-found]  # noqa: F401
+            import google.auth  # noqa: F401
+            import google.auth.transport.requests  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "VertexAIClient requires 'google-auth'. "
@@ -138,7 +138,7 @@ class VertexAIClient(AbstractLLMClient):
 
         try:
             if self._credentials_file:
-                from google.oauth2 import (  # type: ignore[import-not-found]
+                from google.oauth2 import (
                     service_account,
                 )
 
@@ -151,7 +151,7 @@ class VertexAIClient(AbstractLLMClient):
             req = google.auth.transport.requests.Request()
             if not creds.valid:
                 creds.refresh(req)
-            return creds.token
+            return cast("str", creds.token)
         except Exception as exc:
             raise AIError(f"vertex: failed to acquire access token: {exc}") from exc
 

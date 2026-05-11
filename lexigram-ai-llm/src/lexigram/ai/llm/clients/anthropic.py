@@ -85,7 +85,7 @@ class AnthropicClient(AbstractLLMClient):
     async def _do_complete(
         self,
         messages: list[ChatMessage],
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         """Generate completion from messages.
 
@@ -176,7 +176,7 @@ class AnthropicClient(AbstractLLMClient):
     async def _do_stream_chat(
         self,
         messages: list[ChatMessage],
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[AsyncIterator[StreamChunk], LLMError]:
         """Start a streaming completion.
 
@@ -285,7 +285,7 @@ class AnthropicClient(AbstractLLMClient):
         self,
         messages: list[ChatMessage],
         tools: list[ToolCall] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         """Generate completion with Anthropic tool/function calling.
 

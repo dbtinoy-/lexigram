@@ -156,7 +156,7 @@ Please fix the output so it can be parsed correctly. Return only the fixed outpu
             Format instructions from the wrapped parser.
         """
         if hasattr(self._base_parser, "get_format_instructions"):
-            return self._base_parser.get_format_instructions()
+            return str(self._base_parser.get_format_instructions())
         return ""
 
 

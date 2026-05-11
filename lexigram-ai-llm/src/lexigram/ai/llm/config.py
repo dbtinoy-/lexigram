@@ -102,12 +102,11 @@ class ClientConfig(BaseConfig):
 
     def __post_init__(self) -> None:
         """Coerce provider string to ModelProvider enum and api_key to SecretStr."""
-        from pydantic import SecretStr as PydanticSecretStr
-
         if isinstance(self.provider, str):
             self.provider = ModelProvider(self.provider)
-        if self.api_key is not None and not isinstance(self.api_key, PydanticSecretStr):
-            self.api_key = SecretStr(self.api_key)
+        api_key: Any = self.api_key
+        if api_key is not None and not isinstance(api_key, SecretStr):
+            self.api_key = SecretStr(api_key)
 
 
 __all__ = ["ClientConfig"]

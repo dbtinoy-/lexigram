@@ -5,7 +5,7 @@ status, and error-rate widgets into the Lexigram admin dashboard.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
@@ -475,11 +475,14 @@ class LlmAdminContributor(BaseAdminContributor):
         self,
         widget_name: str,
         params: WidgetParams,
-        **kwargs: Any,
+        resolver: ContainerResolverProtocol | None = None,
     ) -> Result[WidgetViewModel, AdminError]:
         widget_names = {w.name for w in _WIDGETS}
         if widget_name not in widget_names:
-            return Err(WidgetNotFoundError(self.name, widget_name))
+            return cast(
+                "Result[WidgetViewModel, AdminError]",
+                Err(WidgetNotFoundError(self.name, widget_name)),
+            )
 
         if widget_name == "token_usage":
             vm = await self._render_token_usage()

@@ -32,6 +32,7 @@ from lexigram.ai.llm.types import (
 )
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.result import Err, Ok, Result
+from lexigram.serialization import dumps_str
 
 
 class OpenAIClient(AbstractLLMClient):
@@ -85,7 +86,7 @@ class OpenAIClient(AbstractLLMClient):
     async def _do_complete(
         self,
         messages: list[ChatMessage],
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         """Generate completion from messages.
 
@@ -179,7 +180,7 @@ class OpenAIClient(AbstractLLMClient):
     async def _do_stream_chat(
         self,
         messages: list[ChatMessage],
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[AsyncIterator[StreamChunk], LLMError]:
         """Start a streaming completion.
 
@@ -260,7 +261,7 @@ class OpenAIClient(AbstractLLMClient):
         self,
         messages: list[ChatMessage],
         tools: list[ToolCall] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         """Generate completion with optional tool/function calling.
 
@@ -408,6 +409,25 @@ class OpenAIClient(AbstractLLMClient):
             result["name"] = msg.name
         if msg.tool_call_id:
             result["tool_call_id"] = msg.tool_call_id
+        if msg.tool_calls:
+            if not msg.content:
+                result["content"] = None
+            result["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": tc.type or "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": (
+                            tc.function.arguments
+                            if isinstance(tc.function.arguments, str)
+                            else dumps_str(tc.function.arguments)
+                        ),
+                    },
+                }
+                for tc in msg.tool_calls
+                if tc.function is not None
+            ]
         return result
 
     def _convert_tool(self, tool: ToolCall) -> dict[str, Any]:
