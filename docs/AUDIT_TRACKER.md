@@ -136,13 +136,13 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 
 ### 3.8 SSRF / outbound — `plans/2026-08-16-security-ssrf.md`
 
-- [ ] Task 1 (D1) — contracts SSRF primitive (stdlib-only, DNS-aware, fail-closed)
-- [ ] Task 2 (D2) — core + admin sanitizers delegate to the single primitive (collapse duplication)
-- [ ] Task 3 (D3) — webhook: default-deny registration + delivery, `allow_private_urls` opt-out
-- [ ] Task 4 (D5) — RAG `WebScraperLoader`: validate seed, redirects, followed links
-- [ ] Task 5 (D4) — MCP `web_fetch`: validate + own the redirect trail
-- [ ] Task 6 (D6) — storage: local driver stops lying; admin falls back to `get_url`
-- [ ] Task 7 — full verification (incl. boundaries)
+- [x] Task 1 (D1) — contracts SSRF primitive (stdlib-only, DNS-aware, fail-closed)
+- [x] Task 2 (D2) — core + admin sanitizers delegate to the single primitive (collapse duplication)
+- [x] Task 3 (D3) — webhook: default-deny registration + delivery, `allow_private_urls` opt-out
+- [x] Task 4 (D5) — RAG `WebScraperLoader`: validate seed, redirects, followed links
+- [x] Task 5 (D4) — MCP `web_fetch`: validate + own the redirect trail
+- [x] Task 6 (D6) — storage: local driver stops lying; admin falls back to `get_url`
+- [x] Task 7 — full verification (incl. boundaries)
 
 ### 3.9 Deserialization / code-exec — `plans/2026-08-16-security-deserialization.md` (s)
 
