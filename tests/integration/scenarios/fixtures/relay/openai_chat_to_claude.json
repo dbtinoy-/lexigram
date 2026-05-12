@@ -1,0 +1,43 @@
+{
+  "inbound": {
+    "model": "claude-sonnet-4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "ping"}
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "lookup",
+          "description": "Look a value up",
+          "parameters": {"type": "object", "properties": {"key": {"type": "string"}}}
+        }
+      }
+    ],
+    "temperature": 0,
+    "max_tokens": 128,
+    "stream": false,
+    "x-passthrough": "keep-me"
+  },
+  "upstream": {
+    "id": "msg_01",
+    "model": "claude-sonnet-4",
+    "content": [
+      {"type": "text", "text": "pong"}
+    ],
+    "usage": {
+      "input_tokens": 12,
+      "output_tokens": 1
+    },
+    "stop_reason": "end_turn",
+    "model_id": "claude-sonnet-4"
+  },
+  "outbound_envelope": {
+    "id_prefix": "chatcmpl-",
+    "object": "chat.completion",
+    "role": "assistant",
+    "content": "pong",
+    "model": "claude-sonnet-4"
+  }
+}

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+from lexigram.ai.session.config import SessionConfig
 from lexigram.ai.session.exceptions import (
     CheckpointNotFoundError,
     SessionCapacityError,
@@ -24,7 +25,6 @@ from lexigram.contracts.ai.session import (
     SessionStoreProtocol,
     SessionTurn,
 )
-from lexigram.ai.session.config import SessionConfig
 from lexigram.logging import (
     get_logger,
 )

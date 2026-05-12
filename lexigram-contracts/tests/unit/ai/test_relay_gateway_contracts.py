@@ -56,6 +56,7 @@ class TestRelayChannel:
         assert channel.enabled is True
         assert channel.timeout_seconds == 60.0
         assert channel.capabilities == frozenset()
+        assert channel.weight == 100
 
     def test_rejects_empty_name(self) -> None:
         with pytest.raises(ValueError):
@@ -74,6 +75,22 @@ class TestRelayChannel:
             make_channel(timeout_seconds=0)
         with pytest.raises(ValueError):
             make_channel(timeout_seconds=-1.0)
+
+    def test_weight_defaults_to_100(self) -> None:
+        channel = make_channel()
+        assert channel.weight == 100
+
+    def test_weight_round_trip(self) -> None:
+        channel = make_channel(weight=25)
+        assert channel.weight == 25
+
+    def test_zero_weight_is_valid(self) -> None:
+        channel = make_channel(weight=0)
+        assert channel.weight == 0
+
+    def test_rejects_negative_weight(self) -> None:
+        with pytest.raises(ValueError):
+            make_channel(weight=-1)
 
     def test_endpoint_kinds_defaults_to_empty(self) -> None:
         channel = make_channel()

@@ -3,18 +3,23 @@
 Verifies that the adapter forwards the resolved ``UpstreamRequest`` to the
 injected ``HTTPClientProtocol``, including the optional ``channel_name``
 kwarg, and that clients with a permissive ``**kwargs`` signature keep
-working unchanged.
+working unchanged.  Also covers the streaming surface: SSE body framing
+into ``UpstreamChunk`` values, error chunks for non-2xx and transport
+failures, and cancellation recording.
 """
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import pytest
 
 from lexigram.ai.relay.gateway.upstream import HTTPUpstreamAdapter
 from lexigram.contracts.ai.relay import UpstreamRequest, UpstreamResponse
+from lexigram.contracts.exceptions import InfrastructureError
 from lexigram.contracts.web import HttpResponse
+from lexigram.serialization import loads
 
 
 class RecordingClient:
@@ -104,3 +109,113 @@ class TestHTTPUpstreamAdapterForwarding:
         response = result.unwrap()
         assert response.status_code == 200
         assert response.payload == {"id": "msg-1"}
+
+
+class TestHTTPUpstreamAdapterStreaming:
+    """Streaming surface of the adapter: SSE framing and error chunks."""
+
+    @pytest.mark.asyncio
+    async def test_stream_frames_data_lines_including_done(self) -> None:
+        body = (
+            b'data: {"type": "content_block_delta", "index": 0}\n\n'
+            b'data: [DONE]\n\n'
+        )
+        client = RecordingClient(response=HttpResponse(status=200, headers={}, body=body))
+        adapter = HTTPUpstreamAdapter(client)
+        chunks = [chunk async for chunk in adapter.stream(make_upstream_request())]
+        assert [chunk.data for chunk in chunks] == [
+            '{"type": "content_block_delta", "index": 0}',
+            "[DONE]",
+        ]
+        assert chunks[0].terminal is False
+        assert chunks[1].terminal is True
+        assert chunks[0].event is None
+
+    @pytest.mark.asyncio
+    async def test_stream_ignores_event_lines_and_empty_blocks(self) -> None:
+        body = (
+            b"event: ping\n\n"
+            b": comment line\n\n"
+            b"event: content_block_delta\n"
+            b'data: {"type": "message_stop"}\n\n'
+        )
+        client = RecordingClient(response=HttpResponse(status=200, headers={}, body=body))
+        adapter = HTTPUpstreamAdapter(client)
+        chunks = [chunk async for chunk in adapter.stream(make_upstream_request())]
+        assert len(chunks) == 1
+        assert chunks[0].data == '{"type": "message_stop"}'
+
+    @pytest.mark.asyncio
+    async def test_stream_multiline_data_joined_per_block(self) -> None:
+        body = b"data: line-one\ndata: line-two\n\n"
+        client = RecordingClient(response=HttpResponse(status=200, headers={}, body=body))
+        adapter = HTTPUpstreamAdapter(client)
+        chunks = [chunk async for chunk in adapter.stream(make_upstream_request())]
+        assert [chunk.data for chunk in chunks] == ["line-one\nline-two"]
+
+    @pytest.mark.asyncio
+    async def test_stream_non_2xx_yields_terminal_error_chunk(self) -> None:
+        client = RecordingClient(
+            response=HttpResponse(
+                status=429,
+                headers={},
+                body=b'{"error": {"message": "rate limited"}}',
+            )
+        )
+        adapter = HTTPUpstreamAdapter(client)
+        chunks = [chunk async for chunk in adapter.stream(make_upstream_request())]
+        assert len(chunks) == 1
+        chunk = chunks[0]
+        assert chunk.terminal is True
+        assert chunk.event == "error"
+        data = loads(chunk.data)
+        assert data == {"code": "UPSTREAM_ERROR", "message": "rate limited"}
+
+    @pytest.mark.asyncio
+    async def test_stream_transport_timeout_yields_terminal_error_chunk(self) -> None:
+        client = RecordingClient()
+        client.request = _timeout_request  # type: ignore[method-assign]
+        adapter = HTTPUpstreamAdapter(client)
+        chunks = [chunk async for chunk in adapter.stream(make_upstream_request())]
+        assert len(chunks) == 1
+        assert chunks[0].terminal is True
+        assert loads(chunks[0].data)["code"] == "UPSTREAM_TIMEOUT"
+
+    @pytest.mark.asyncio
+    async def test_stream_infrastructure_failure_yields_error_chunk(self) -> None:
+        async def failing_request(
+            method: str, url: str, **kwargs: Any
+        ) -> HttpResponse:
+            raise InfrastructureError("boom")
+
+        client = RecordingClient()
+        client.request = failing_request  # type: ignore[method-assign]
+        adapter = HTTPUpstreamAdapter(client)
+        chunks = [chunk async for chunk in adapter.stream(make_upstream_request())]
+        assert len(chunks) == 1
+        assert loads(chunks[0].data)["code"] == "UPSTREAM_FAILED"
+
+    @pytest.mark.asyncio
+    async def test_stream_cancellation_records_request_id(self) -> None:
+        adapter = HTTPUpstreamAdapter(RecordingClient())
+        await adapter.cancel("req-cancel-1")
+        assert adapter._cancelled == {"req-cancel-1"}
+
+    @pytest.mark.asyncio
+    async def test_stream_cancellation_error_yields_error_chunk(self) -> None:
+        async def cancelled_request(
+            method: str, url: str, **kwargs: Any
+        ) -> HttpResponse:
+            raise asyncio.CancelledError
+
+        client = RecordingClient()
+        client.request = cancelled_request  # type: ignore[method-assign]
+        adapter = HTTPUpstreamAdapter(client)
+        chunks = [chunk async for chunk in adapter.stream(make_upstream_request())]
+        assert len(chunks) == 1
+        assert loads(chunks[0].data)["code"] == "UPSTREAM_CANCELLED"
+
+
+async def _timeout_request(method: str, url: str, **kwargs: Any) -> HttpResponse:
+    """A client request stub that always times out."""
+    raise TimeoutError("timed out")

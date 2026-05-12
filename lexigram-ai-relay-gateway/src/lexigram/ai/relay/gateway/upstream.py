@@ -12,16 +12,18 @@ contracts-level exceptions only.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator, Iterator
 
 from lexigram.contracts.ai.relay import (
     RelayGatewayError,
+    UpstreamChunk,
     UpstreamRequest,
     UpstreamResponse,
 )
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.exceptions import InfrastructureError
 from lexigram.contracts.web import HTTPClientProtocol, HttpResponse
-from lexigram.serialization import loads
+from lexigram.serialization import dumps_str, loads
 
 __all__ = ["HTTPUpstreamAdapter"]
 
@@ -36,6 +38,9 @@ class HTTPUpstreamAdapter:
 
     Attributes:
         _http: The injected HTTP client resolved from DI.
+        _cancelled: Request identifiers whose streaming cancel was
+            observed (after-the-fact only; outbound frames are not
+            interrupted).
     """
 
     def __init__(self, http: HTTPClientProtocol) -> None:
@@ -46,6 +51,7 @@ class HTTPUpstreamAdapter:
                 outbound request.
         """
         self._http = http
+        self._cancelled: set[str] = set()
 
     async def request(
         self, request: UpstreamRequest
@@ -112,6 +118,120 @@ class HTTPUpstreamAdapter:
         if 200 <= response.status < 300:
             return self._decode_success(request, response)
         return self._decode_error(request, response)
+
+    async def stream(self, request: UpstreamRequest) -> AsyncIterator[UpstreamChunk]:
+        """Consume one upstream SSE response as a stream of chunks.
+
+        The whole stream arrives through a single ``request`` call whose
+        body is parsed into ``data:`` frames; frames are emitted one by
+        one as the consumer iterates.  2xx responses are parsed into
+        chunk frames; non-2xx responses and transport failures surface
+        as one terminal ``UpstreamChunk`` carrying a safe public
+        ``{"code", "message"}`` payload.
+
+        Args:
+            request: Fully-resolved upstream request.
+
+        Yields:
+            One ``UpstreamChunk`` per SSE ``data:`` line, with the
+            OpenAI ``[DONE]`` marker flagged terminal.
+        """
+        try:
+            response = await self._http.request(
+                method=request.method,
+                url=request.url,
+                headers=dict(request.headers),
+                json=request.payload,
+                timeout=request.timeout_seconds,
+                channel_name=request.channel_name,
+            )
+        except asyncio.CancelledError:
+            yield HTTPUpstreamAdapter._error_chunk(
+                "UPSTREAM_CANCELLED", "upstream stream cancelled"
+            )
+            return
+        except TimeoutError:
+            yield HTTPUpstreamAdapter._error_chunk(
+                "UPSTREAM_TIMEOUT", "upstream stream timed out"
+            )
+            return
+        except InfrastructureError:
+            yield HTTPUpstreamAdapter._error_chunk(
+                "UPSTREAM_FAILED", "upstream transport failure"
+            )
+            return
+        if not 200 <= response.status < 300:
+            message = HTTPUpstreamAdapter._safe_error_message(response)
+            yield HTTPUpstreamAdapter._error_chunk(
+                "UPSTREAM_ERROR",
+                message or "upstream request failed",
+            )
+            return
+        for chunk in HTTPUpstreamAdapter._iter_sse_frames(response.body):
+            yield chunk
+
+    async def cancel(self, request_id: str) -> None:
+        """Record a streaming cancellation request (always succeeds).
+
+        The fake-safe transport cannot interrupt an in-flight response
+        body, so cancellation is observed after the fact; the stream
+        loop stops consulting this adapter once its cancel is recorded.
+
+        Args:
+            request_id: Identifier of the stream being cancelled.
+        """
+        self._cancelled.add(request_id)
+
+    @staticmethod
+    def _error_chunk(code: str, message: str) -> UpstreamChunk:
+        """Build one terminal error chunk from a safe public message.
+
+        Args:
+            code: Stable machine-readable error code.
+            message: Public, non-credential error message.
+
+        Returns:
+            A terminal ``UpstreamChunk`` whose JSON payload carries
+            ``code`` and ``message`` keys.
+        """
+        return UpstreamChunk(
+            event="error",
+            data=(
+                '{"code": '
+                + dumps_str(code)
+                + ', "message": '
+                + dumps_str(message)
+                + "}"
+            ),
+            terminal=True,
+        )
+
+    @staticmethod
+    def _iter_sse_frames(body: bytes) -> Iterator[UpstreamChunk]:
+        """Slice an SSE body into ``data:`` chunks, calling out ``[DONE]``.
+
+        Blocks separated by blank lines are scanned for ``data:`` lines;
+        every block yields at most one chunk (multi-line data payloads
+        are joined with ``\\n``).  The OpenAI ``[DONE]`` marker is
+        flagged terminal.
+
+        Args:
+            body: The raw SSE response body.
+
+        Returns:
+            An iterator of ``UpstreamChunk`` values covering every
+            ``data:`` block in order.
+        """
+        for block in body.replace(b"\r\n", b"\n").split(b"\n\n"):
+            data_lines = [
+                line[5:].strip()
+                for line in block.split(b"\n")
+                if line.startswith(b"data:")
+            ]
+            if not data_lines:
+                continue
+            raw = b"\n".join(data_lines).decode("utf-8", errors="replace")
+            yield UpstreamChunk(event=None, data=raw, terminal=raw == "[DONE]")
 
     @staticmethod
     def _decode_success(

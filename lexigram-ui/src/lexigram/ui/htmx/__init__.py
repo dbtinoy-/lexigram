@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys as _sys
 
+from lexigram.ui.htmx.action_response import HtmxActionResponse, ToastData, ToastType
 from lexigram.ui.htmx.attrs import (
     hx_delete,
     hx_get,
@@ -29,7 +30,6 @@ from lexigram.ui.htmx.helpers import (
     hx_swap_oob,
     hx_websocket,
 )
-from lexigram.ui.htmx.action_response import HtmxActionResponse, ToastData, ToastType
 from lexigram.ui.htmx.sse import SSE, SSEEventType, SSEMessage, SSEStream
 
 __all__ = [

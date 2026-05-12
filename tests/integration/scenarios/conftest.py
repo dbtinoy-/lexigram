@@ -161,6 +161,12 @@ async def relay_app_factory(relay_fakes):
                     target_format=RelayFormat.CLAUDE,
                     models=("claude-sonnet-4",),
                 ),
+                RelayChannel(
+                    name="claude-fast",
+                    upstream_base_url="https://relay-upstream.invalid",
+                    target_format=RelayFormat.CLAUDE,
+                    models=("claude-3-5-haiku-20241022",),
+                ),
             ),
             model_suffix={"claude-sonnet-4": "claude-3-5-sonnet-20241022"},
         )
@@ -174,6 +180,7 @@ async def relay_app_factory(relay_fakes):
                     authorizer=relay_fakes.authorizer,
                     billing=relay_fakes.billing,
                     media_resolver=relay_fakes.media_resolver,
+                    audit=relay_fakes.audit_store,
                 )
             ],
             exports=[RelayGatewayProtocol],

@@ -28,6 +28,7 @@ class RelayChannel:
     capabilities: frozenset[str] = frozenset()
     endpoint_kinds: frozenset[str] = frozenset()
     priority: int = 100
+    weight: int = 100
     enabled: bool = True
     timeout_seconds: float = 60.0
 
@@ -41,6 +42,8 @@ class RelayChannel:
             raise ValueError("models must not be empty")
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
+        if self.weight < 0:
+            raise ValueError("weight must not be negative")
 
 
 @dataclass(frozen=True, slots=True)
