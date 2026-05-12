@@ -530,6 +530,7 @@ class RelayGatewayService:
                 headers={"content-type": "application/json"},
                 payload=payload,
                 timeout_seconds=channel.timeout_seconds,
+                channel_name=channel.name,
             )
         )
         if upstream.is_err():

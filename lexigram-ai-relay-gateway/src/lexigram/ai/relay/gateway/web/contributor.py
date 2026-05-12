@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.ai.relay.gateway.passthrough import PassthroughService
 from lexigram.ai.relay.gateway.web.routes import build_routes
 from lexigram.contracts.ai.relay import RelayGatewayProtocol
 
@@ -81,7 +82,13 @@ class RelayGatewayWebContributor:
             )
             return await request_container.resolve(RelayGatewayProtocol)
 
-        routes = build_routes(_resolve)
+        async def _resolve_passthrough(request: Any) -> PassthroughService:
+            request_container: Any = (
+                getattr(request.state, "container", None) or container
+            )
+            return await request_container.resolve(PassthroughService)
+
+        routes = build_routes(_resolve, resolve_passthrough=_resolve_passthrough)
         for route in routes:
             path = route.path
             if any(

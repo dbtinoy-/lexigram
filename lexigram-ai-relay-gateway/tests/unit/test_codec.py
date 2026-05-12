@@ -337,6 +337,7 @@ class TestHTTPUpstreamAdapterSuccess:
                 "headers": {"authorization": "Bearer abc"},
                 "json": {"model": "gpt-4o"},
                 "timeout": 30.0,
+                "channel_name": "",
             }
         ]
 

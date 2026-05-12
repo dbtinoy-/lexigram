@@ -2,7 +2,9 @@
 
 Holds the static channel table plus model-suffix and provider-options
 metadata. The suffix and option maps are consumed at conversion time by
-the service layer; channel selection never reads them.
+the service layer; channel selection never reads them. The auto-test
+flags control the background channel health sweep (see
+:class:`~lexigram.ai.relay.gateway.operations.auto_test.RelayChannelAutoTester`).
 """
 
 from __future__ import annotations
@@ -20,15 +22,22 @@ class RelayGatewayConfig:
     """Static configuration backing ``RelayChannelRegistry`` selection.
 
     Attributes:
-        channels: Ordered channel configurations. Selection filters before
-            sorting, so order is never observable in the result except as
-            the stable ``name`` tiebreak. Duplicate names are rejected.
+        channels: The ordered channel configurations. Selection filters
+            before sorting, so order is never observable in the result
+            except as the stable ``name`` tiebreak. Duplicate names are
+            rejected.
         model_suffix: Channel name to a suffix (e.g. ``":thinking"``)
             appended to the outbound model alias at the service layer.
             Selection does not use this field.
         provider_options: Channel name to provider-specific options merged
             into ``RelayConversionContext`` at conversion time. Selection
             does not use this field.
+        auto_test_channels: When ``True`` the provider starts a background
+            channel auto-tester that periodically probes every channel
+            and disables failed ones, re-enabling them on recovery.
+            Defaults to ``False`` (disabled).
+        auto_test_interval_seconds: Delay between auto-test sweeps in
+            seconds. Must be positive when defined. Defaults to ``600``.
     """
 
     channels: tuple[RelayChannel, ...] = ()
@@ -36,9 +45,13 @@ class RelayGatewayConfig:
     provider_options: Mapping[str, Mapping[str, JsonValue]] = field(
         default_factory=dict
     )
+    auto_test_channels: bool = False
+    auto_test_interval_seconds: int = 600
 
     def __post_init__(self) -> None:
-        """Reject configurations with duplicate channel names."""
+        """Reject duplicate channel names and non-positive auto-test intervals."""
         names = [channel.name for channel in self.channels]
         if len(names) != len(set(names)):
             raise ValueError("duplicate channel names in RelayGatewayConfig")
+        if self.auto_test_interval_seconds <= 0:
+            raise ValueError("auto_test_interval_seconds must be a positive integer")

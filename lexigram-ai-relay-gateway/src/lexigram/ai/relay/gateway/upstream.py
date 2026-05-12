@@ -78,6 +78,7 @@ class HTTPUpstreamAdapter:
                 headers=dict(request.headers),
                 json=request.payload,
                 timeout=request.timeout_seconds,
+                channel_name=request.channel_name,
             )
         except asyncio.CancelledError:
             return Err(

@@ -788,3 +788,75 @@ class FailingSettling(RecordingBilling):
                 request_id=reservation.request_id,
             )
         )
+
+
+class RequestCapturingUpstream:
+    """Upstream double that captures the resolved ``UpstreamRequest``."""
+
+    def __init__(
+        self,
+        *,
+        result: Result[UpstreamResponse, RelayGatewayError] | None = None,
+    ) -> None:
+        self.captured: UpstreamRequest | None = None
+        self.result = result
+
+    async def request(
+        self, request: UpstreamRequest
+    ) -> Result[UpstreamResponse, RelayGatewayError]:
+        """Record the request; return the canned result."""
+        self.captured = request
+        if self.result is not None:
+            return self.result
+        return ok_upstream(claude_response_wire())
+
+
+class TestUpstreamChannelIdentity:
+    """The selected channel's name travels on the upstream request."""
+
+    @pytest.mark.asyncio
+    async def test_normal_channel_name_propagates(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        upstream = RequestCapturingUpstream()
+        service = make_service(
+            calls=calls,
+            upstream=upstream,
+            converter=RecordingConverter(
+                calls,
+                request_result=ok_request_result(claude_request_dto(), RelayFormat.CLAUDE),
+                response_result=ok_response_result(
+                    OpenAIChatResponse.from_dict({"id": "resp-1", "model": "m"}),
+                    RelayFormat.CLAUDE,
+                ),
+            ),
+            authorizer=RecordingAuthorizer(calls),
+            billing=RecordingBilling(calls),
+        )
+        result = await service.handle(make_request())
+        assert result.is_ok()
+        assert upstream.captured is not None
+        assert upstream.captured.channel_name == "a"
+
+    @pytest.mark.asyncio
+    async def test_preferred_channel_name_propagates(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        upstream = RequestCapturingUpstream()
+        service = make_service(
+            calls=calls,
+            channels=(make_channel("a"), make_channel("b")),
+            upstream=upstream,
+            converter=RecordingConverter(
+                calls,
+                request_result=ok_request_result(claude_request_dto(), RelayFormat.CLAUDE),
+                response_result=ok_response_result(
+                    OpenAIChatResponse.from_dict({"id": "resp-1", "model": "m"}),
+                    RelayFormat.CLAUDE,
+                ),
+            ),
+            authorizer=RecordingAuthorizer(calls),
+            billing=RecordingBilling(calls),
+        )
+        result = await service.handle(make_request(channel=make_channel("b")))
+        assert result.is_ok()
+        assert upstream.captured is not None
+        assert upstream.captured.channel_name == "b"

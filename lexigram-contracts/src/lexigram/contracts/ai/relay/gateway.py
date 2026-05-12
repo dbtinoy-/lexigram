@@ -26,6 +26,7 @@ class RelayChannel:
     target_format: RelayFormat
     models: tuple[str, ...]
     capabilities: frozenset[str] = frozenset()
+    endpoint_kinds: frozenset[str] = frozenset()
     priority: int = 100
     enabled: bool = True
     timeout_seconds: float = 60.0

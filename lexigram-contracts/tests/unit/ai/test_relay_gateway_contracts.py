@@ -75,6 +75,14 @@ class TestRelayChannel:
         with pytest.raises(ValueError):
             make_channel(timeout_seconds=-1.0)
 
+    def test_endpoint_kinds_defaults_to_empty(self) -> None:
+        channel = make_channel()
+        assert channel.endpoint_kinds == frozenset()
+
+    def test_endpoint_kinds_round_trip(self) -> None:
+        channel = make_channel(endpoint_kinds=frozenset({"embeddings"}))
+        assert channel.endpoint_kinds == frozenset({"embeddings"})
+
     def test_missing_target_format_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
             RelayChannel(name="x", upstream_base_url="https://x", models=("m",))
@@ -83,6 +91,59 @@ class TestRelayChannel:
         channel = make_channel()
         with pytest.raises(FrozenInstanceError):
             channel.name = "x"
+
+
+class TestUpstreamRequest:
+    def test_channel_name_defaults_to_empty(self) -> None:
+        request = UpstreamRequest(
+            request_id="req-1",
+            method="POST",
+            url="https://upstream/v1/chat/completions",
+            headers={"content-type": "application/json"},
+            payload=PAYLOAD,
+            timeout_seconds=60.0,
+        )
+        assert request.channel_name == ""
+
+    def test_channel_name_round_trip(self) -> None:
+        request = UpstreamRequest(
+            request_id="req-1",
+            method="POST",
+            url="https://upstream/v1/chat/completions",
+            headers={"content-type": "application/json"},
+            payload=PAYLOAD,
+            timeout_seconds=60.0,
+            channel_name="primary",
+        )
+        assert request.channel_name == "primary"
+
+    def test_construction_without_channel_name_keeps_working(self) -> None:
+        request = UpstreamRequest(
+            request_id="req-1",
+            method="POST",
+            url="https://upstream/v1/chat/completions",
+            headers={"content-type": "application/json"},
+            payload=PAYLOAD,
+            timeout_seconds=60.0,
+        )
+        assert request.request_id == "req-1"
+        assert request.method == "POST"
+        assert request.url == "https://upstream/v1/chat/completions"
+        assert request.headers == {"content-type": "application/json"}
+        assert request.payload == PAYLOAD
+        assert request.timeout_seconds == 60.0
+
+    def test_frozen(self) -> None:
+        request = UpstreamRequest(
+            request_id="req-1",
+            method="POST",
+            url="https://upstream/v1/chat/completions",
+            headers={"content-type": "application/json"},
+            payload=PAYLOAD,
+            timeout_seconds=60.0,
+        )
+        with pytest.raises(FrozenInstanceError):
+            request.channel_name = "x"
 
 
 class TestRelayGatewayRequest:
