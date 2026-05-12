@@ -62,6 +62,7 @@ class AgentsProvider(Provider):
             enable_multi_agent: Enable multi-agent orchestration support.
         """
         super().__init__()
+        self._requested_config = config
         self._config = config or AgentConfig()
         self.enable_multi_agent = enable_multi_agent
 
@@ -77,6 +78,7 @@ class AgentsProvider(Provider):
             ToolRegistryProtocol,
         )
 
+        self._config = self._requested_config or self._config or AgentConfig()
         container.singleton(AgentConfig, self._config)
 
         if not self._config.enabled:
