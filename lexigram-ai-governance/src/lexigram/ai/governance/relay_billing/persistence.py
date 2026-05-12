@@ -135,6 +135,11 @@ _USAGE_ALIASES = {
     "attempt_id": "attempt_id",
 }
 
+_USAGE_RANGES = (
+    ("created_at_gte", "created_at", ">="),
+    ("created_at_lte", "created_at", "<="),
+)
+
 
 class DatabaseRelayUsageStore(RelayUsageStoreProtocol):
     """SQL-backed relay billing store.
@@ -277,7 +282,8 @@ class DatabaseRelayUsageStore(RelayUsageStoreProtocol):
         Args:
             filters: Recognised keys are ``tenant_id``, ``account_id``,
                 ``user_id``, ``model``, ``provider``, ``channel``,
-                ``status``, ``request_id``, and ``attempt_id``.
+                ``status``, ``request_id``, ``attempt_id``,
+                ``created_at_gte``, and ``created_at_lte``.
 
         Returns:
             Matching usage records ordered by insertion timestamp descending.
@@ -289,6 +295,11 @@ class DatabaseRelayUsageStore(RelayUsageStoreProtocol):
             value = filters.get(key)
             if value is not None:
                 clauses.append(f"{column} = ?")
+                params.append(value)
+        for key, column, operator in _USAGE_RANGES:
+            value = filters.get(key)
+            if value is not None:
+                clauses.append(f"{column} {operator} ?")
                 params.append(value)
         sql = (
             f"SELECT * FROM ai_relay_usage WHERE {' AND '.join(clauses)} "
