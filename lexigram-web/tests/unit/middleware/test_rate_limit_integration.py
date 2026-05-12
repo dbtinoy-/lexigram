@@ -161,3 +161,19 @@ class TestRateLimitIntegrationConfigure:
         assert response.status_code == 429
         assert response.json()["error"] == "rate_limit_exceeded"
         assert response.headers.get("Retry-After") == "5"
+
+    @pytest.mark.asyncio
+    async def test_storage_backend_redis_resolves_redis_client_on_fallback(self) -> None:
+        """storage_backend='redis' tries the container for a redis client."""
+        app = _make_app()
+        container = MagicMock()
+        container.resolve = AsyncMock(
+            side_effect=lambda token: (
+                Exception("no WebRateLimiterProtocol") if token is not None else None
+            )
+        )
+        config = WebConfig()
+        config.rate_limit = RateLimitConfig(enabled=True, storage_backend="redis")
+        await RateLimitIntegration.configure(app, container, config)
+        # Configure must not raise despite an empty container; the limiter
+        # falls back to in-memory with the honest multi-worker warning.
