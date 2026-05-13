@@ -31,6 +31,10 @@ class MailerProvider(Provider):
     appropriate mailer backends, and registers them as
     :class:`~lexigram.contracts.mailer.protocols.MailerProtocol`.
 
+    Configuration is explicit-only: ``MailerConfig`` is not bound to a
+    ``LexigramConfig`` section, so this provider declares no
+    ``config_key``/``config_model`` attributes.
+
     Supports multi-backend (``MailerConfig.backends``) mode. Each entry is
     registered under its name via ``container.singleton(name=entry.name)``.
     The primary backend (``primary=True`` or the first entry) also receives

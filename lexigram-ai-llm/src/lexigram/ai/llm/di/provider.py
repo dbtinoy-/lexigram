@@ -80,6 +80,8 @@ class LLMProvider(Provider):
 
     name = "llm"
     priority = ProviderPriority.DOMAIN
+    config_key: str | None = "ai_llm"
+    config_model: type | None = ClientConfig
 
     def __init__(
         self,
@@ -102,6 +104,7 @@ class LLMProvider(Provider):
             cache_backend: Injected cache backend for optional response caching.
         """
         super().__init__(name=name)
+        self._requested_config = config
         self.config = config or ClientConfig()
         self.enable_model_manager = enable_model_manager
         self.enable_streaming = enable_streaming
@@ -128,6 +131,7 @@ class LLMProvider(Provider):
         from lexigram.ai.llm.pricing.registry import TokenCounterRegistry
         from lexigram.contracts.ai.llm import TokenCounterProtocol
 
+        self.config = self._requested_config or self.config
         container.singleton(ClientConfig, self.config)
 
         if not self.config.enabled:

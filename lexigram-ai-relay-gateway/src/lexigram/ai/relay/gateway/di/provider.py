@@ -64,6 +64,10 @@ class RelayGatewayProvider(Provider):
     :class:`RelayGatewayService`. Optional governance hooks (authorizer,
     media resolver, billing) are forwarded to the service as-is.
 
+    Configuration is explicit-only (a frozen channel/conversion table);
+    the gateway is not bound to a ``LexigramConfig`` section, so this
+    provider declares no ``config_key``/``config_model`` attributes.
+
     Registers:
     - ``RelayGatewayConfig`` — the injected configuration (always)
     - ``RelayChannelRegistry`` — a registry built from the configuration

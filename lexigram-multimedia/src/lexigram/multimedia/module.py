@@ -45,11 +45,31 @@ class MultimediaModule(Module):
     def stub(cls, config: MultimediaConfig | None = None) -> DynamicModule:
         from importlib.metadata import entry_points
 
-        stub_imports: list[Any] = []
+        from lexigram.multimedia.beat.module import BeatAnalysisModule
+        from lexigram.multimedia.constants import CORE_SUBSYSTEMS
+        from lexigram.multimedia.image.module import ImageModule
+        from lexigram.multimedia.interpolate.module import InterpolationModule
+        from lexigram.multimedia.music.module import AudioMusicModule
+        from lexigram.multimedia.tts.module import AudioTTSModule
+        from lexigram.multimedia.upscale.module import UpscaleModule
+        from lexigram.multimedia.video.module import VideoModule
+
+        effective = config or MultimediaConfig()
+        stub_imports: list[Any] = [
+            AudioTTSModule.stub(effective.tts),
+            AudioMusicModule.stub(effective.music),
+            VideoModule.stub(effective.video),
+            ImageModule.stub(effective.image),
+            UpscaleModule.stub(effective.upscale),
+            InterpolationModule.stub(effective.interpolate),
+            BeatAnalysisModule.stub(effective.beat),
+        ]
+
         for ep in entry_points(group="lexigram.multimedia.modules"):
+            if ep.name in CORE_SUBSYSTEMS:
+                continue
             try:
-                module_cls = ep.load()
-                stub_imports.append(module_cls.stub())
+                stub_imports.append(ep.load().stub())
             except (AttributeError, ImportError, RuntimeError):
                 pass
 

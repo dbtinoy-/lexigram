@@ -38,8 +38,6 @@ multimedia:
   music:
     backend: "local-http"  # local-http, stability-audio, ace-step, stable-audio-open
     local_http_base_url: "http://localhost:5003"
-    duration_seconds: 30.0
-    stability_api_key_secret_name: "stability_api_key"
     ace_step_base_url: "http://localhost:5300"
     stable_audio_open_base_url: "http://localhost:5301"
     timeout: 60.0  # Seconds
@@ -89,14 +87,12 @@ multimedia:
     backend: "real-esrgan"  # real-esrgan, hat
     real_esrgan_base_url: "http://localhost:5400"
     hat_base_url: "http://localhost:5401"
-    default_scale_factor: 4  # 2 or 4
     timeout: 30.0  # Seconds
 
   # Frame interpolation (lexigram-multimedia-interpolate)
   interpolate:
     backend: "rife"
     rife_base_url: "http://localhost:5500"
-    default_factor: 2  # 2 or 4
     timeout: 15.0  # Seconds
 
   # Beat analysis (lexigram-multimedia-beat)

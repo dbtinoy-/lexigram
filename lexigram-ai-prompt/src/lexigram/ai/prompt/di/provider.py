@@ -57,6 +57,8 @@ class PromptProvider(Provider):
 
     name = "prompt"
     priority = ProviderPriority.DOMAIN
+    config_key: str | None = "ai_prompt"
+    config_model: type | None = PromptConfig
 
     def __init__(
         self,
@@ -75,6 +77,7 @@ class PromptProvider(Provider):
             observer: Optional observability hook for ``PromptService``.
         """
         super().__init__()
+        self._requested_config = config
         self._config = config or PromptConfig()
         self._template_dir = Path(template_dir) if template_dir else None
         self._inline_templates: list[dict[str, Any]] = inline_templates or []
@@ -102,6 +105,11 @@ class PromptProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the PromptConfig, PromptRegistry, PromptService, and CacheAwarePromptAssembler."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), PromptConfig)
+            else self._config
+        )
         container.singleton(PromptConfig, self._config)
 
         if not self._config.enabled:

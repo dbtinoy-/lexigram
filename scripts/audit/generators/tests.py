@@ -26,25 +26,34 @@ class TestsAuditGenerator(MarkdownAuditGenerator):
     """Generate a test audit with live pytest execution evidence."""
 
     name = "tests"
-    description = "Generate AUDIT_TESTS.md from pytest execution evidence and test discovery."
+    description = (
+        "Generate AUDIT_TESTS.md from pytest execution evidence and test discovery."
+    )
     output_file = "AUDIT_TESTS.md"
 
     def render_markdown(self, *, root: Path) -> str:
         """Render markdown with execution evidence and supporting inventory."""
 
-        package_rows = [_tests_row(path, root) for path in self.iter_package_roots(root=root)]
+        package_rows = [
+            _tests_row(path, root) for path in self.iter_package_roots(root=root)
+        ]
         package_rows = [row for row in package_rows if row["test_files"]]
         all_mode = getattr(self, "_all_mode", False)
-        command_specs = _build_test_command_specs(root=root, package_rows=package_rows, all_mode=all_mode)
-        execution_results = tuple(
-            _run_test_command(spec=spec, root=root)
-            for spec in command_specs
+        command_specs = _build_test_command_specs(
+            root=root, package_rows=package_rows, all_mode=all_mode
         )
-        
+        execution_results = tuple(
+            _run_test_command(spec=spec, root=root) for spec in command_specs
+        )
+
         # Calculate aggregate coverage
         results_with_cov = [r for r in execution_results if r["coverage"] > 0]
-        avg_coverage = sum(r["coverage"] for r in results_with_cov) / len(results_with_cov) if results_with_cov else 0
-        
+        avg_coverage = (
+            sum(r["coverage"] for r in results_with_cov) / len(results_with_cov)
+            if results_with_cov
+            else 0
+        )
+
         markdown = """# AUDIT_TESTS.md — Lexigram Framework Targeted Test Execution Audit
 
 > **Source**: Live pytest execution evidence for targeted scopes, with `tests/` directory scanning as supporting context.
@@ -61,28 +70,20 @@ class TestsAuditGenerator(MarkdownAuditGenerator):
         markdown += f"- Aggregate code coverage: {avg_coverage:.2f}%\n"
         markdown += "\n"
         markdown += f"- Representative commands run: {len(execution_results)}\n"
-        markdown += (
-            f"- Commands passing: {sum(1 for result in execution_results if result['status'] == 'PASS')}\n"
-        )
-        markdown += (
-            f"- Commands failing: {sum(1 for result in execution_results if result['status'] == 'FAIL')}\n"
-        )
+        markdown += f"- Commands passing: {sum(1 for result in execution_results if result['status'] == 'PASS')}\n"
+        markdown += f"- Commands failing: {sum(1 for result in execution_results if result['status'] == 'FAIL')}\n"
         markdown += f"- Packages with tests: {len(package_rows)}\n"
         markdown += f"- Test files: {sum(row['test_files'] for row in package_rows)}\n"
         markdown += f"- Test functions: {sum(row['test_functions'] for row in package_rows)}\n\n"
-        
+
         markdown += "### Exit Codes Reference\n\n"
         markdown += "- **`0`**: Success — All tests passed and code coverage met the configured threshold.\n"
         markdown += "- **`1`**: Failure — Functional tests failed OR code coverage fell below the package's `--cov-fail-under` threshold.\n"
         markdown += "- **`timeout`**: The test command exceeded the execution time limit (120s) and was automatically terminated.\n\n"
-        
+
         markdown += "## Execution Evidence\n\n"
-        markdown += (
-            "| Label | Code Coverage | Pass/Total | Failed | Skipped | Warnings | Exit Code | Duration |\n"
-        )
-        markdown += (
-            "|-------|---------------|------------|---------|----------|------|-----------|----------|\n"
-        )
+        markdown += "| Label | Code Coverage | Pass/Total | Failed | Skipped | Warnings | Exit Code | Duration |\n"
+        markdown += "|-------|---------------|------------|---------|----------|------|-----------|----------|\n"
         for result in execution_results:
             markdown += (
                 f"| {result['label']} | {result['coverage']}% | "
@@ -96,7 +97,9 @@ class TestsAuditGenerator(MarkdownAuditGenerator):
         markdown += "- `framework-core`: real test execution for `lexigram/tests`.\n"
         markdown += "- `package`: real test execution for `<package>/tests` across every discovered Lexigram package with tests.\n"
         if all_mode:
-            markdown += "- `scripts-audit`: real test execution for `tests/scripts`.\n\n"
+            markdown += (
+                "- `scripts-audit`: real test execution for `tests/scripts`.\n\n"
+            )
         for result in execution_results:
             markdown += f"### {result['label']}\n\n"
             markdown += f"- Scope: `{result['scope']}`\n"
@@ -142,30 +145,52 @@ def _build_test_command_specs(
     """Build the targeted pytest commands shown in the report."""
 
     specs: list[TestCommandSpec] = []
-    
+
     # Extract the core lexigram package if present and build its scope separately
-    core_package = next((row for row in package_rows if str(row["name"]) == "lexigram"), None)
+    core_package = next(
+        (row for row in package_rows if str(row["name"]) == "lexigram"), None
+    )
     if core_package:
         specs.append(
             TestCommandSpec(
                 label="Lexigram framework core tests",
                 scope="lexigram/tests",
                 kind="framework-core",
-                command=("uv", "run", "pytest", "lexigram/tests", "-q", "--cov=lexigram"),
+                command=(
+                    "uv",
+                    "run",
+                    "pytest",
+                    "lexigram/tests",
+                    "-q",
+                    "-m",
+                    "not integration",
+                    "--cov=lexigram",
+                ),
             )
         )
-        
-    contracts_package = next((row for row in package_rows if str(row["name"]) == "lexigram-contracts"), None)
+
+    contracts_package = next(
+        (row for row in package_rows if str(row["name"]) == "lexigram-contracts"), None
+    )
     if contracts_package:
         specs.append(
             TestCommandSpec(
                 label="Package tests: lexigram-contracts",
                 scope="lexigram-contracts/tests",
                 kind="package",
-                command=("uv", "run", "pytest", "lexigram-contracts/tests", "-q", "--cov=lexigram.contracts"),
+                command=(
+                    "uv",
+                    "run",
+                    "pytest",
+                    "lexigram-contracts/tests",
+                    "-q",
+                    "-m",
+                    "not integration",
+                    "--cov=lexigram.contracts",
+                ),
             )
         )
-    
+
     package_scopes = sorted(
         (
             f"{row['name']}/tests",
@@ -177,14 +202,32 @@ def _build_test_command_specs(
     for scope, package_name in package_scopes:
         kind = "package"
         label = f"Package tests: {package_name}"
-        
+
         cov_module = package_name.replace("-", ".")
         if package_name == "lexigram-sql":
             label = f"Package tests: {package_name} (unit only, no external DB)"
-            command = ("uv", "run", "pytest", f"{scope}/unit", "-q", f"--cov={cov_module}")
+            command = (
+                "uv",
+                "run",
+                "pytest",
+                f"{scope}/unit",
+                "-q",
+                "-m",
+                "not integration",
+                f"--cov={cov_module}",
+            )
         else:
-            command = ("uv", "run", "pytest", scope, "-q", f"--cov={cov_module}")
-            
+            command = (
+                "uv",
+                "run",
+                "pytest",
+                scope,
+                "-q",
+                "-m",
+                "not integration",
+                f"--cov={cov_module}",
+            )
+
         specs.append(
             TestCommandSpec(
                 label=label,
@@ -193,14 +236,23 @@ def _build_test_command_specs(
                 command=command,
             )
         )
-    
+
     if all_mode:
         specs.append(
             TestCommandSpec(
                 label="Scripts audit smoke",
                 scope="tests/scripts",
                 kind="scripts-audit",
-                command=("uv", "run", "pytest", "tests/scripts", "-q", "--cov=scripts"),
+                command=(
+                    "uv",
+                    "run",
+                    "pytest",
+                    "tests/scripts",
+                    "-q",
+                    "-m",
+                    "not integration",
+                    "--cov=scripts",
+                ),
             )
         )
     return tuple(specs)
@@ -281,10 +333,14 @@ def _test_result(
         "total": counters["total"],
         "coverage": counters["coverage"],
         "example_failures_inline": (
-            ", ".join(f"`{test_id}`" for test_id in example_failures) if example_failures else "none"
+            ", ".join(f"`{test_id}`" for test_id in example_failures)
+            if example_failures
+            else "none"
         ),
         "example_failures_text": (
-            ", ".join(f"`{test_id}`" for test_id in example_failures) if example_failures else "none"
+            ", ".join(f"`{test_id}`" for test_id in example_failures)
+            if example_failures
+            else "none"
         ),
         "snippet": snippet,
     }
@@ -366,20 +422,31 @@ def _output_snippet(evidence: CommandEvidence) -> str:
 def _combined_output(evidence: CommandEvidence) -> str:
     """Join stdout and stderr for parsing and display."""
 
-    parts = [part.strip() for part in (evidence.stdout, evidence.stderr) if part.strip()]
+    parts = [
+        part.strip() for part in (evidence.stdout, evidence.stderr) if part.strip()
+    ]
     return "\n".join(parts)
 
 
 def _extract_counts(evidence: CommandEvidence) -> dict[str, int | float]:
     """Extract key pytest counters and coverage from command output."""
 
-    counts = {"failed": 0, "skipped": 0, "warnings": 0, "passed": 0, "total": 0, "coverage": 0.0}
+    counts = {
+        "failed": 0,
+        "skipped": 0,
+        "warnings": 0,
+        "passed": 0,
+        "total": 0,
+        "coverage": 0.0,
+    }
     combined = _combined_output(evidence)
-    
+
     # Parse pytest results from summary line
     # Match something like "2 failed, 216 passed, 4 warnings in 1.21s"
     # Pytest output usually ends with "== 1 failed, 215 passed, 4 warnings in 1.21s =="
-    summary_pattern = r"(\d+)\s+(passed|failed|skipped|warning|warnings|error|errors|xfailed|xpassed)"
+    summary_pattern = (
+        r"(\d+)\s+(passed|failed|skipped|warning|warnings|error|errors|xfailed|xpassed)"
+    )
     for value, label in re.findall(summary_pattern, combined, flags=re.IGNORECASE):
         n = int(value)
         normalized = label.lower()
@@ -395,7 +462,7 @@ def _extract_counts(evidence: CommandEvidence) -> dict[str, int | float]:
             # xfailed are expected failures, we'll treat them as skipped for total count purposes or just ignore?
             # Usually they don't cause exit code 1.
             pass
-            
+
     counts["total"] = counts["passed"] + counts["failed"] + counts["skipped"]
 
     # Parse coverage TOTAL line
@@ -403,5 +470,5 @@ def _extract_counts(evidence: CommandEvidence) -> dict[str, int | float]:
     cov_match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+)%", combined)
     if cov_match:
         counts["coverage"] = float(cov_match.group(1))
-        
+
     return counts

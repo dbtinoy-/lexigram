@@ -42,10 +42,13 @@ class VectorProvider(Provider):
 
     name = "vector"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "vector"
+    config_model: type | None = VectorConfig
 
     def __init__(self, config: VectorConfig | None = None) -> None:
         """Initialize with optional config."""
         super().__init__()
+        self._requested_config = config
         self._config = config or VectorConfig()
         self._store: VectorStoreProtocol | None = None
         # Multi-backend: (name, store) pairs; populated by _register_multi_backend
@@ -152,6 +155,11 @@ class VectorProvider(Provider):
         container: ContainerRegistrarProtocol,
     ) -> None:
         """Register the vector store config and (lazy) singleton bindings."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), VectorConfig)
+            else self._config
+        )
         container.singleton(VectorConfig, self._config)
 
         if not self._config.enabled:

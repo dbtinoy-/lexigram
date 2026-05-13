@@ -24,6 +24,21 @@ class _FakeContainer:
 
 
 @pytest.mark.asyncio
+async def test_provider_declares_config_key_and_model() -> None:
+    provider = ImageGenerationProvider()
+    assert provider.config_key == "multimedia_image"
+    assert provider.config_model is ImageConfig
+
+
+@pytest.mark.asyncio
+async def test_register_binds_image_config_into_container() -> None:
+    provider = ImageGenerationProvider(config=ImageConfig(backend="openai"))
+    container = _FakeContainer()
+    await provider.register(container)
+    assert container.bindings[ImageConfig].backend == "openai"
+
+
+@pytest.mark.asyncio
 async def test_register_binds_local_http_backend_by_default() -> None:
     provider = ImageGenerationProvider(config=ImageConfig())
     container = _FakeContainer()

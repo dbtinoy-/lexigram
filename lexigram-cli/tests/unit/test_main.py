@@ -3,6 +3,7 @@
 import pytest
 from typer.testing import CliRunner
 
+from lexigram.cli.constants import __version__ as cli_version
 from lexigram.cli.runtime.main import app
 
 
@@ -28,7 +29,7 @@ class TestMainCLI:
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
         assert "lexigram" in result.output
-        assert "0.1.1" in result.output
+        assert cli_version in result.output
 
     def test_main_no_args(self, runner: CliRunner):
         pytest.skip("CLI needs framework update")

@@ -25,6 +25,59 @@ class _FakeContainer:
 
 
 @pytest.mark.asyncio
+async def test_registered_config_falls_back_to_defaults() -> None:
+    provider = AudioTTSProvider()
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    bound = container.bindings[TTSConfig]
+    assert isinstance(bound, TTSConfig)
+    assert bound.backend == "local-http"
+
+
+@pytest.mark.asyncio
+async def test_provider_declares_config_key_and_model() -> None:
+    provider = AudioTTSProvider()
+    assert provider.config_key == "multimedia_tts"
+    assert provider.config_model is TTSConfig
+
+
+@pytest.mark.asyncio
+async def test_register_binds_tts_config_into_container() -> None:
+    provider = AudioTTSProvider(config=TTSConfig(backend="piper"))
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    bound = container.bindings[TTSConfig]
+    assert bound.backend == "piper"
+
+
+@pytest.mark.asyncio
+async def test_explicit_constructor_config_wins_over_injected() -> None:
+    provider = AudioTTSProvider(config=TTSConfig(backend="local-http"))
+    provider.config = TTSConfig(backend="openai")  # simulate orchestrated inject
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    bound = container.bindings[TTSConfig]
+    assert bound.backend == "local-http"  # explicit > injected > defaults
+
+
+@pytest.mark.asyncio
+async def test_injected_config_used_when_no_explicit() -> None:
+    provider = AudioTTSProvider()
+    provider.config = TTSConfig(backend="piper")
+    container = _FakeContainer()
+
+    await provider.register(container)
+
+    assert container.bindings[TTSConfig].backend == "piper"
+
+
+@pytest.mark.asyncio
 async def test_register_binds_local_http_backend_by_default() -> None:
     provider = AudioTTSProvider(config=TTSConfig())
     container = _FakeContainer()

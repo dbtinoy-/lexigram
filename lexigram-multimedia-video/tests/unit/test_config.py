@@ -1,4 +1,18 @@
+from lexigram.config import BaseConfig
 from lexigram.multimedia.video.config import VideoConfig, VideoProcessingConfig
+
+
+def test_video_config_is_base_config() -> None:
+    assert issubclass(VideoConfig, BaseConfig)
+    assert VideoConfig.config_section == "multimedia_video"
+
+
+def test_video_config_from_dict_with_nested_processing() -> None:
+    cfg = VideoConfig.from_dict(
+        {"backend": "runway", "processing": {"ffmpeg_binary": "ffmpeg42"}}
+    )
+    assert cfg.backend == "runway"
+    assert cfg.processing.ffmpeg_binary == "ffmpeg42"
 
 
 def test_default_config_points_at_local_http() -> None:

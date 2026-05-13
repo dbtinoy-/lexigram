@@ -52,6 +52,8 @@ class DatabaseProvider(Provider):
 
     name = "database"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "sql"
+    config_model: type | None = DatabaseConfig
 
     def __init__(
         self,
@@ -79,6 +81,8 @@ class DatabaseProvider(Provider):
         effective_config: DatabaseConfig
         if self._explicit_config is not None:
             effective_config = self._explicit_config
+        elif isinstance(getattr(self, "config", None), DatabaseConfig):
+            effective_config = self.config
         else:
             effective_config = DatabaseConfig()
 

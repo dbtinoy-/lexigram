@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+from typing import ClassVar, Literal
+
+from lexigram.config import BaseConfig
 
 
-@dataclass
-class ImageConfig:
+class ImageConfig(BaseConfig):
+    """Configuration for the image generation subsystem."""
+
+    config_section: ClassVar[str] = "multimedia_image"
     backend: Literal["local-http", "stability", "openai", "comfyui"] = "local-http"
     local_http_base_url: str = "http://localhost:5005"
     openai_api_key_secret_name: str = "openai_api_key"

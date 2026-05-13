@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.multimedia.protocols import VideoProcessor, VideoProvider
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.multimedia.video.config import VideoConfig
+from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessingTask
 
 
 @module()
@@ -18,7 +19,12 @@ class VideoModule(Module):
         return DynamicModule(
             module=cls,
             providers=[VideoGenerationProvider(config=config)],
-            exports=[VideoProcessor, VideoProvider],
+            exports=[
+                VideoProcessor,
+                VideoProvider,
+                VideoGenerationTask,
+                VideoProcessingTask,
+            ],
         )
 
     @classmethod
@@ -32,7 +38,12 @@ class VideoModule(Module):
                     config=config or VideoConfig(backend="local-http")
                 )
             ],
-            exports=[VideoProcessor, VideoProvider],
+            exports=[
+                VideoProcessor,
+                VideoProvider,
+                VideoGenerationTask,
+                VideoProcessingTask,
+            ],
         )
 
 

@@ -50,6 +50,8 @@ class GuardProvider(Provider):
 
     name = "guard"
     priority = ProviderPriority.SECURITY
+    config_key: str | None = "ai_guard"
+    config_model: type | None = GuardConfig
 
     def __init__(
         self,
@@ -58,12 +60,18 @@ class GuardProvider(Provider):
         **kwargs: Any,
     ) -> None:
         super().__init__()
+        self._requested_config = config
         self._config = config or GuardConfig()
         self._enable_audit_logging = enable_audit_logging
         self._pipeline: GuardPipeline | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the guard pipeline with the DI container."""
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), GuardConfig)
+            else self._config
+        )
         container.singleton(GuardConfig, self._config)
 
         if not self._config.enabled:

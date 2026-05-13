@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import UpscaleProvider
 from lexigram.di.provider import Provider
+from lexigram.di.provider_utils import resolve_optional
 from lexigram.logging import get_logger
 from lexigram.multimedia.upscale.config import UpscaleConfig
 from lexigram.multimedia.upscale.tasks import UpscaleTask
@@ -31,23 +32,17 @@ class UpscaleGenerationProvider(Provider):
     """Provider that registers a configured UpscaleProvider backend."""
 
     name = "upscale"
+    config_key: str | None = "multimedia_upscale"
+    config_model: type | None = UpscaleConfig
 
     def __init__(self, config: UpscaleConfig | None = None) -> None:
         super().__init__(name="upscale")
-        self._upscale_config = config or UpscaleConfig()
+        self._requested_config = config
+        self._config = config or UpscaleConfig()
         self._backend: UpscaleProvider | None = None
         self._task_handler: UpscaleTask | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
-
-    async def _resolve_optional(self, container: Any, protocol: type) -> Any:
-        resolver = getattr(container, "resolve_optional", None)
-        if resolver is not None:
-            return await resolver(protocol)
-        try:
-            return await container.resolve(protocol)
-        except (LookupError, KeyError, ValueError, TypeError):
-            return None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -55,12 +50,15 @@ class UpscaleGenerationProvider(Provider):
             RetryPolicyProtocol,
         )
 
-        self._retry = await self._resolve_optional(container, RetryPolicyProtocol)
-        self._circuit_breaker = await self._resolve_optional(
+        self._config = self._requested_config or self._config or UpscaleConfig()
+        container.singleton(UpscaleConfig, self._config)
+
+        self._retry = await resolve_optional(container, RetryPolicyProtocol)
+        self._circuit_breaker = await resolve_optional(
             container, CircuitBreakerProtocol
         )
 
-        if self._upscale_config.backend == "real-esrgan":
+        if self._config.backend == "real-esrgan":
             from lexigram.multimedia.upscale.providers.real_esrgan import (
                 RealEsrganUpscaleProvider,
             )
@@ -68,27 +66,27 @@ class UpscaleGenerationProvider(Provider):
             self._backend = cast(
                 "UpscaleProvider",
                 RealEsrganUpscaleProvider(
-                    base_url=self._upscale_config.real_esrgan_base_url,
-                    timeout=self._upscale_config.timeout,
+                    base_url=self._config.real_esrgan_base_url,
+                    timeout=self._config.timeout,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
-        elif self._upscale_config.backend == "hat":
+        elif self._config.backend == "hat":
             from lexigram.multimedia.upscale.providers.hat import HatUpscaleProvider
 
             self._backend = cast(
                 "UpscaleProvider",
                 HatUpscaleProvider(
-                    base_url=self._upscale_config.hat_base_url,
-                    timeout=self._upscale_config.timeout,
+                    base_url=self._config.hat_base_url,
+                    timeout=self._config.timeout,
                     retry=self._retry,
                     circuit_breaker=self._circuit_breaker,
                 ),
             )
         else:
             raise ProviderNotInstalledError(
-                f"Unknown or unimplemented upscale backend: {self._upscale_config.backend!r}"
+                f"Unknown or unimplemented upscale backend: {self._config.backend!r}"
             )
 
         assert self._backend is not None
@@ -99,7 +97,7 @@ class UpscaleGenerationProvider(Provider):
 
         from lexigram.contracts.multimedia.protocols import VideoProcessor
 
-        video_processor = await self._resolve_optional(container, VideoProcessor)
+        video_processor = await resolve_optional(container, VideoProcessor)
         if video_processor is not None:
             from lexigram.multimedia.upscale.video_upscale_service import (
                 VideoUpscaleService,
@@ -110,7 +108,7 @@ class UpscaleGenerationProvider(Provider):
             )
             container.singleton(VideoUpscaleService, video_upscale_service)
 
-        logger.info("upscale_registered", backend=self._upscale_config.backend)
+        logger.info("upscale_registered", backend=self._config.backend)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """No async I/O needed at boot beyond what register() already did."""
@@ -119,10 +117,10 @@ class UpscaleGenerationProvider(Provider):
         if self._backend is None:
             return HealthCheckResult(component=self.name, status=HealthStatus.UNHEALTHY)
 
-        if self._upscale_config.backend == "real-esrgan":
-            base_url = self._upscale_config.real_esrgan_base_url
-        elif self._upscale_config.backend == "hat":
-            base_url = self._upscale_config.hat_base_url
+        if self._config.backend == "real-esrgan":
+            base_url = self._config.real_esrgan_base_url
+        elif self._config.backend == "hat":
+            base_url = self._config.hat_base_url
 
         import aiohttp
 

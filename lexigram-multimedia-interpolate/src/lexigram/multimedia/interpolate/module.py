@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.multimedia.protocols import InterpolationProvider
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.multimedia.interpolate.config import InterpolationConfig
+from lexigram.multimedia.interpolate.tasks import InterpolationTask
 
 
 @module()
@@ -20,7 +21,7 @@ class InterpolationModule(Module):
         return DynamicModule(
             module=cls,
             providers=[InterpolationGenerationProvider(config=config)],
-            exports=[InterpolationProvider],
+            exports=[InterpolationProvider, InterpolationTask],
         )
 
     @classmethod
@@ -36,7 +37,7 @@ class InterpolationModule(Module):
                     config=config or InterpolationConfig(backend="rife")
                 )
             ],
-            exports=[InterpolationProvider],
+            exports=[InterpolationProvider, InterpolationTask],
         )
 
 

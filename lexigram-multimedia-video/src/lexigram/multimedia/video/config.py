@@ -2,28 +2,28 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Literal
+from typing import ClassVar, Literal
+
+from lexigram.config import BaseConfig
+from lexigram.validation import Field
 
 
-@dataclass
-class VideoProcessingConfig:
+class VideoProcessingConfig(BaseConfig):
+    """Configuration for the local FFmpeg video-processing pipeline."""
+
+    config_section: ClassVar[str] = "multimedia_video_processing"
     ffmpeg_binary: str = "ffmpeg"
     max_concurrent_jobs: int = 2
     temp_dir: str | None = None
     timeout: float = 300.0
 
 
-@dataclass
-class VideoConfig:
+class VideoConfig(BaseConfig):
+    """Configuration for the video generation subsystem."""
+
+    config_section: ClassVar[str] = "multimedia_video"
     backend: Literal[
-        "local-http",
-        "runway",
-        "openai",
-        "wan22",
-        "cogvideox",
-        "svd",
-        "comfyui",
+        "local-http", "runway", "openai", "wan22", "cogvideox", "svd", "comfyui"
     ] = "local-http"
     local_http_base_url: str = "http://localhost:5004"
     runway_api_key_secret_name: str = "runway_api_key"
@@ -40,7 +40,7 @@ class VideoConfig:
     comfyui_motion_bucket_id: int = 127
     comfyui_poll_interval: float = 1.0
     timeout: float = 60.0
-    processing: VideoProcessingConfig = field(default_factory=VideoProcessingConfig)
+    processing: VideoProcessingConfig = Field(default_factory=VideoProcessingConfig)
 
 
 __all__ = ["VideoConfig", "VideoProcessingConfig"]

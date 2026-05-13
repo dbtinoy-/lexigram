@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.multimedia.protocols import MusicProvider
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.multimedia.music.config import MusicConfig
+from lexigram.multimedia.music.tasks import MusicGenerationTask
 
 
 @module()
@@ -18,7 +19,7 @@ class AudioMusicModule(Module):
         return DynamicModule(
             module=cls,
             providers=[AudioMusicProvider(config=config)],
-            exports=[MusicProvider],
+            exports=[MusicProvider, MusicGenerationTask],
         )
 
     @classmethod
@@ -30,7 +31,7 @@ class AudioMusicModule(Module):
             providers=[
                 AudioMusicProvider(config=config or MusicConfig(backend="local-http"))
             ],
-            exports=[MusicProvider],
+            exports=[MusicProvider, MusicGenerationTask],
         )
 
 

@@ -2,10 +2,18 @@ import io
 
 import numpy as np
 import pytest
-import soundfile as sf
 
-from lexigram.contracts.multimedia.types import BeatAnalysisRequest, MediaAsset
-from lexigram.multimedia.beat.providers.librosa import LibrosaBeatAnalysisProvider
+sf = pytest.importorskip("soundfile")
+
+from lexigram.contracts.multimedia.types import (  # noqa: E402
+    BeatAnalysisRequest,
+    MediaAsset,
+)
+from lexigram.multimedia.beat.providers.librosa import (
+    LibrosaBeatAnalysisProvider,  # noqa: E402
+)
+
+pytestmark = pytest.mark.integration
 
 
 def _click_track_wav_bytes(

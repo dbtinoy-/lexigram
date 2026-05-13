@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-governance"
-version = "0.1.2"
+version = "0.1.3001"
 description = "AI governance for the Lexigram Framework — policy enforcement, audit trails, budget tracking"
 readme = "README.md"
 requires-python = ">=3.11"

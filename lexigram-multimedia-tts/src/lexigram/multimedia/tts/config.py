@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+from typing import ClassVar, Literal
+
+from lexigram.config import BaseConfig
 
 
-@dataclass
-class TTSConfig:
+class TTSConfig(BaseConfig):
+    """Configuration for the TTS subsystem."""
+
+    config_section: ClassVar[str] = "multimedia_tts"
     backend: Literal[
-        "local-http",
-        "elevenlabs",
-        "openai",
-        "chatterbox",
-        "kokoro",
-        "f5-tts",
-        "piper",
+        "local-http", "elevenlabs", "openai", "chatterbox", "kokoro", "f5-tts", "piper"
     ] = "local-http"
     local_http_base_url: str = "http://localhost:5002"
     elevenlabs_voice_id: str | None = None

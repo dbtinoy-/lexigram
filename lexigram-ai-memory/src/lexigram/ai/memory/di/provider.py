@@ -48,6 +48,8 @@ class MemoryProvider(Provider):
 
     name = "ai-memory"
     priority = ProviderPriority.DOMAIN
+    config_key: str | None = "ai_memory"
+    config_model: type | None = MemoryConfig
 
     def __init__(
         self,
@@ -63,6 +65,7 @@ class MemoryProvider(Provider):
                 regardless of ``config.consolidation.enabled``.
         """
         super().__init__()
+        self._requested_config = config
         self._mem_config = config or MemoryConfig()
         self._enable_consolidation = enable_consolidation
         self._scheduler: ConsolidationScheduler | None = None
@@ -73,6 +76,11 @@ class MemoryProvider(Provider):
         Args:
             container: DI container registrar.
         """
+        self._mem_config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), MemoryConfig)
+            else self._mem_config
+        )
         container.singleton(MemoryConfig, self._mem_config)
 
         if not self._mem_config.enabled:

@@ -1,4 +1,25 @@
+from lexigram.config import BaseConfig
 from lexigram.multimedia.tts.config import TTSConfig
+
+
+def test_tts_config_is_a_base_config() -> None:
+    assert issubclass(TTSConfig, BaseConfig)
+    assert TTSConfig.config_section == "multimedia_tts"
+
+
+def test_tts_config_from_dict() -> None:
+    cfg = TTSConfig.from_dict({"backend": "piper", "timeout": 10.0})
+    assert cfg.backend == "piper"
+    assert cfg.timeout == 10.0
+
+
+def test_tts_config_to_safe_dict_redacts_secrets() -> None:
+    cfg = TTSConfig(
+        backend="elevenlabs",
+        elevenlabs_api_key_secret_name="lex_my_elevenlabs_key",
+    )
+    safe = cfg.to_safe_dict()
+    assert safe["elevenlabs_api_key_secret_name"] == "***"
 
 
 def test_default_backend_is_local_http() -> None:

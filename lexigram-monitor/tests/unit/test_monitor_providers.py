@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import importlib
-import sys
-import warnings
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -16,12 +13,6 @@ from lexigram.contracts.observability.metrics import (
     MetricsRecorderProtocol,
 )
 from lexigram.contracts.observability.tracing import TracerProtocol
-from lexigram.observability.core import (
-    NoOpHealthCheckRegistry,
-    NoOpMetricsBackend,
-    NoOpMetricsCollector,
-    NoOpTracer,
-)
 from lexigram.monitor.di.provider import MonitorProvider
 from lexigram.monitor.di.sub_providers.observability import ObservabilityProvider
 
@@ -141,37 +132,6 @@ class TestObservabilityProvider:
 
         provider = ObservabilityProvider()
         assert provider.priority == ProviderPriority.INFRASTRUCTURE
-
-
-class TestDeprecatedMonitorNoops:
-    """Tests for the deprecated monitor no-op re-exports."""
-
-    def test_package_import_warns_and_reexports(self) -> None:
-        sys.modules.pop("lexigram.monitor.noop.core", None)
-        sys.modules.pop("lexigram.monitor.noop", None)
-
-        with warnings.catch_warnings(record=True) as recorded:
-            warnings.simplefilter("always")
-            module = importlib.import_module("lexigram.monitor.noop")
-
-        assert any(issubclass(item.category, DeprecationWarning) for item in recorded)
-        assert module.NoOpMetricsBackend is NoOpMetricsBackend
-        assert module.NoOpMetricsCollector is NoOpMetricsCollector
-        assert module.NoOpTracer is NoOpTracer
-        assert module.NoOpHealthCheckRegistry is NoOpHealthCheckRegistry
-
-    def test_core_import_warns_and_reexports(self) -> None:
-        sys.modules.pop("lexigram.monitor.noop.core", None)
-
-        with warnings.catch_warnings(record=True) as recorded:
-            warnings.simplefilter("always")
-            module = importlib.import_module("lexigram.monitor.noop.core")
-
-        assert any(issubclass(item.category, DeprecationWarning) for item in recorded)
-        assert module.NoOpMetricsBackend is NoOpMetricsBackend
-        assert module.NoOpMetricsCollector is NoOpMetricsCollector
-        assert module.NoOpTracer is NoOpTracer
-        assert module.NoOpHealthCheckRegistry is NoOpHealthCheckRegistry
 
 
 class TestMonitorProvider:
@@ -295,6 +255,7 @@ class TestMonitorProvider:
     ) -> None:
         container = MagicMock()
         container.resolve_optional = AsyncMock(return_value=None)
+        container.resolve = AsyncMock(return_value=None)
 
         await provider.boot(container)
 
@@ -306,6 +267,7 @@ class TestMonitorProvider:
     ) -> None:
         container = MagicMock()
         container.resolve_optional = AsyncMock(return_value=None)
+        container.resolve = AsyncMock(return_value=None)
 
         await provider.boot(container)
 
@@ -376,6 +338,7 @@ class TestMonitorProvider:
     ) -> None:
         container = MagicMock()
         container.resolve_optional = AsyncMock(return_value=None)
+        container.resolve = AsyncMock(return_value=None)
 
         await provider.boot(container)
         provider.record_connection_change(1)

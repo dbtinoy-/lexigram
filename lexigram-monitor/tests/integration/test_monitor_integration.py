@@ -110,6 +110,7 @@ class TestMonitorProvider:
         # Mock container that returns None for optional resolutions
         mock_container = Mock()
         mock_container.resolve_optional = AsyncMock_(return_value=None)
+        mock_container.resolve = AsyncMock_(return_value=None)
 
         await provider.boot(mock_container)
         mock_backend.initialize.assert_called_once()

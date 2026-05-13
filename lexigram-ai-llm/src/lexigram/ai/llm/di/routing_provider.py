@@ -52,6 +52,11 @@ class LLMRoutingProvider(Provider):
     :class:`~lexigram.ai.llm.routing.LLMConfig`, chooses the appropriate
     quota backend and inference logger, and registers everything as singletons.
 
+    Configuration is explicit-only: ``LLMConfig`` is built from ``LEX_AI_LLM__``
+    environment variables via ``LLMConfig.from_env()`` and is not bound to a
+    ``LexigramConfig`` section, so this provider declares no ``config_key``/
+    ``config_model`` attributes.
+
     Example:
         >>> from lexigram.ai.llm.module import LLMModule
         >>> from lexigram.ai.llm.routing import LLMConfig

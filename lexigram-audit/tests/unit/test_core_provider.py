@@ -20,9 +20,13 @@ class MockContainerRegistrar:
 
 
 class MockContainerResolver:
-    """Mock container resolver."""
+    """Mock container resolver (also records singleton() registrations)."""
     def __init__(self, resolution_map: dict = None):
         self.resolution_map = resolution_map or {}
+        self.bindings = {}
+
+    def singleton(self, protocol, impl):
+        self.bindings[(protocol, "singleton")] = impl
 
     async def resolve(self, protocol):
         return self.resolution_map.get(protocol)
@@ -44,12 +48,22 @@ class TestAuditCoreProvider:
 
     @pytest.mark.asyncio
     async def test_register_binds_store_and_logger(self) -> None:
+        from lexigram.audit.config import AuditConfig
+
+        mock_store = MagicMock()
+        mock_store.initialize = AsyncMock()
         provider = AuditCoreProvider()
-        container = MockContainerRegistrar()
-        
+        container = MockContainerResolver({AuditStoreProtocol: mock_store})
+
         await provider.register(container)
-        
+
+        assert (AuditConfig, "singleton") in container.bindings
         assert (AuditStoreProtocol, "singleton") in container.bindings
+        # SQL path wires the logger during boot() — not register()
+        assert (AuditLoggerProtocol, "singleton") not in container.bindings
+
+        await provider.boot(container)
+
         assert (AuditLoggerProtocol, "singleton") in container.bindings
 
     @pytest.mark.asyncio

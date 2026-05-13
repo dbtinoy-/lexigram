@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.cli.config import CLIConfig
 from lexigram.cli.constants import __version__
 from lexigram.cli.di.sub_providers.contributor import CliContributorSubProvider
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
@@ -14,7 +15,6 @@ from lexigram.di.provider import Provider, ProviderPriority
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.cli.config import CLIConfig
     from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
@@ -37,6 +37,8 @@ class CLIProvider(Provider):
 
     name = "cli"
     priority = ProviderPriority.APPLICATION
+    config_key: str | None = "cli"
+    config_model: type | None = CLIConfig
 
     def __init__(self, config: CLIConfig | None = None) -> None:
         """Initialize CLI Provider.
@@ -52,9 +54,11 @@ class CLIProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind CLI configuration and contribution-system singletons into the container."""
+        if self._cli_config is None and isinstance(
+            getattr(self, "config", None), CLIConfig
+        ):
+            self._cli_config = self.config
         if self._cli_config is not None:
-            from lexigram.cli.config import CLIConfig
-
             container.singleton(CLIConfig, self._cli_config)
 
         await self._contributor_sub_provider.register(container)

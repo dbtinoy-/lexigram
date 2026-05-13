@@ -59,6 +59,8 @@ class QueueProvider(Provider):
 
     name = "queue"
     priority = ProviderPriority.INFRASTRUCTURE
+    config_key: str | None = "queue"
+    config_model: type | None = QueueConfig
 
     def __init__(self, config: QueueConfig | None = None) -> None:
         """Initialize QueueProvider.
@@ -67,6 +69,7 @@ class QueueProvider(Provider):
             config: QueueConfig instance or None for defaults.
         """
         super().__init__()
+        self._requested_config = config
         self._config = config or QueueConfig()
         self._queue_services: list[tuple[str, Any]] = []
 
@@ -138,6 +141,11 @@ class QueueProvider(Provider):
         Args:
             container: DI container registrar.
         """
+        self._config = self._requested_config or (
+            self.config
+            if isinstance(getattr(self, "config", None), QueueConfig)
+            else self._config
+        )
         container.singleton(QueueConfig, self._config)
 
         if not self._config.backends:
