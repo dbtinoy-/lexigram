@@ -26,7 +26,7 @@ class FeedbackModule(Module):
         @module(
             imports=[
                 FeedbackModule.configure(
-                    FeedbackConfig(storage="database")
+                    FeedbackConfig(async_processing=False)
                 )
             ]
         )
@@ -57,8 +57,8 @@ class FeedbackModule(Module):
 
         Args:
             config: :class:`~lexigram.ai.feedback.config.FeedbackConfig`, a
-                plain ``dict`` of the same keys, or ``None`` to read from
-                environment variables.
+                plain ``dict`` of the same keys, or ``None`` for framework
+                defaults.
 
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
