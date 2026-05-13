@@ -222,22 +222,10 @@ def create_validation_hook(
     class CustomValidationHook(Hook):
         def __init__(self):
             super().__init__()
-            self._hook_name = name
-            self._hook_phase = phase
-            self._hook_priority = priority
+            self.name = name
+            self.phase = phase
+            self.priority = priority
             self.validator = validator
-
-        @property
-        def name(self) -> str:
-            return self._hook_name
-
-        @property
-        def phase(self) -> HookPhase:
-            return self._hook_phase
-
-        @property
-        def priority(self) -> int:
-            return self._hook_priority
 
         async def execute(self, context: HookContext) -> HookResult:
             if self.validator(context):

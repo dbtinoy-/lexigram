@@ -234,7 +234,10 @@ class EventsAdminContributor(BaseAdminContributor):
         ]
 
     async def render_widget(
-        self, widget_name: str, params: WidgetParams, **kwargs: Any
+        self,
+        widget_name: str,
+        params: WidgetParams,
+        resolver: ContainerResolverProtocol | None = None,
     ) -> Result[WidgetViewModel, AdminError]:
         """Render a widget using registry-based dispatch.
 

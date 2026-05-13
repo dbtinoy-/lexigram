@@ -31,11 +31,11 @@ class QueueJobsPage:
 
         try:
             health = await self._queue.health_check(timeout=5.0)
-            pending = health.metrics.get("pending_jobs", 0) if health.metrics else 0
+            pending = health.details.get("pending_jobs", 0) if health.details else 0
             processing = (
-                health.metrics.get("processing_jobs", 0) if health.metrics else 0
+                health.details.get("processing_jobs", 0) if health.details else 0
             )
-            completed = health.metrics.get("completed_jobs", 0) if health.metrics else 0
+            completed = health.details.get("completed_jobs", 0) if health.details else 0
         except Exception:
             html = render_to_string(
                 EmptyState(

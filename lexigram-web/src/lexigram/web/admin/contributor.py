@@ -240,7 +240,7 @@ class WebAdminContributor(BaseAdminContributor):
         self,
         widget_name: str,
         params: WidgetParams,
-        **kwargs: Any,
+        resolver: ContainerResolverProtocol | None = None,
     ) -> Result[WidgetViewModel, AdminError]:
         """Render a widget by name using registry dispatch.
 

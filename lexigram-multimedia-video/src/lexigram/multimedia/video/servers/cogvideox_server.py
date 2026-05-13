@@ -20,8 +20,8 @@ _pipeline: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _pipeline
-    from diffusers import CogVideoXPipeline
-    import torch
+    from diffusers import CogVideoXPipeline  # type: ignore[import-not-found]
+    import torch  # type: ignore[import-not-found]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _pipeline = CogVideoXPipeline.from_pretrained(

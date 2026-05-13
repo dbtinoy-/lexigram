@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from lexigram.ui.atoms.button import Button, SubmitButton
+from lexigram.ui.atoms.button import Button, ButtonVariant, SubmitButton
 from lexigram.ui.core.base import Component, el, raw, render_to_string
 
 
@@ -28,8 +28,8 @@ class Modal(Component):
     TRANSITION_LEAVE = "ease-in duration-200"
 
     # Default button variants
-    DEFAULT_CANCEL_VARIANT = "outline"
-    DEFAULT_CREATE_VARIANT = "default"
+    DEFAULT_CANCEL_VARIANT: ButtonVariant = "outline"
+    DEFAULT_CREATE_VARIANT: ButtonVariant = "default"
 
     def __init__(
         self,
@@ -68,7 +68,7 @@ class Modal(Component):
             if isinstance(self.trigger, str):
                 trigger_node = Button(
                     self.trigger,
-                    **{"x-on:click": "open = true"},
+                    x_on_click="open = true",
                 )
             else:
                 trigger_node = el(
@@ -124,7 +124,7 @@ class Modal(Component):
                 cancel_btn = Button(
                     "Cancel",
                     variant=self.DEFAULT_CANCEL_VARIANT,
-                    **{"x-on:click": "open = false"},
+                    x_on_click="open = false",
                 )
                 create_btn = SubmitButton(
                     label="Create",

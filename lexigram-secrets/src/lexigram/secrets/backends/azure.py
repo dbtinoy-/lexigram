@@ -38,11 +38,11 @@ class AzureKeyVaultStore:
 
     async def _get_client(self):
         if self._client is None:
-            from azure.identity import (  # type: ignore[import-untyped]
+            from azure.identity import (  # type: ignore[import-not-found]
                 ClientSecretCredential,
                 DefaultAzureCredential,
             )
-            from azure.keyvault.secrets import (  # type: ignore[import-untyped]
+            from azure.keyvault.secrets import (  # type: ignore[import-not-found]
                 SecretClient,
             )
 
@@ -60,7 +60,7 @@ class AzureKeyVaultStore:
         return self._client
 
     async def get(self, name: str) -> str | None:
-        from azure.core.exceptions import (  # type: ignore[import-untyped]
+        from azure.core.exceptions import (  # type: ignore[import-not-found]
             ResourceNotFoundError,
         )
 
@@ -88,7 +88,7 @@ class AzureKeyVaultStore:
         self._version_map.setdefault(name, {})[ver_num] = azure_version_id
 
     async def delete(self, name: str) -> None:
-        from azure.core.exceptions import (  # type: ignore[import-untyped]
+        from azure.core.exceptions import (
             ResourceNotFoundError,
         )
 
@@ -113,7 +113,7 @@ class AzureKeyVaultStore:
         azure_version_id = self._version_map.get(key, {}).get(version)
         if azure_version_id is None:
             return None
-        from azure.core.exceptions import (  # type: ignore[import-untyped]
+        from azure.core.exceptions import (
             ResourceNotFoundError,
         )
 
@@ -125,7 +125,7 @@ class AzureKeyVaultStore:
         return secret.value
 
     async def list_versions(self, key: str) -> list[SecretVersion]:
-        from azure.core.exceptions import (  # type: ignore[import-untyped]
+        from azure.core.exceptions import (
             ResourceNotFoundError,
         )
 
@@ -150,7 +150,7 @@ class AzureKeyVaultStore:
         return result
 
     async def get_current_version(self, key: str) -> VersionedSecret:
-        from azure.core.exceptions import (  # type: ignore[import-untyped]
+        from azure.core.exceptions import (
             ResourceNotFoundError,
         )
 

@@ -8,6 +8,7 @@ import pytest
 
 from lexigram.contracts.observability.metrics import AlertDispatcherProtocol
 from lexigram.contracts.web.http_protocols import HTTPClientProtocol
+from lexigram.result import Ok
 
 
 class TestPagerDutyAlertDispatcher:
@@ -204,7 +205,7 @@ class TestWeeklyDigestDispatcher:
     @pytest.fixture()
     def cache_backend(self) -> AsyncMock:
         backend = AsyncMock()
-        backend.get = AsyncMock(return_value=None)
+        backend.get = AsyncMock(return_value=Ok(None))
         backend.set = AsyncMock()
         backend.delete = AsyncMock()
         return backend
@@ -249,7 +250,7 @@ class TestWeeklyDigestDispatcher:
 
         # Buffer has existing alerts
         cache_backend.get = AsyncMock(
-            return_value='[{"title":"A1","message":"m1","severity":"low"}]'
+            return_value=Ok('[{"title":"A1","message":"m1","severity":"low"}]')
         )
 
         dispatcher = WeeklyDigestDispatcher(

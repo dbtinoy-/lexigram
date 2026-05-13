@@ -24,7 +24,7 @@ _DEFAULT_MODEL_PATH = "en_US-lessac-medium.onnx"
 
 async def on_startup(app: web.Application) -> None:
     global _voice
-    from piper import PiperVoice
+    from piper import PiperVoice  # type: ignore[import-not-found]
 
     _voice = PiperVoice.load(_DEFAULT_MODEL_PATH)
 

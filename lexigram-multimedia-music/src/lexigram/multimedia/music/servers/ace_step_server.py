@@ -25,8 +25,8 @@ _pipeline: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _pipeline
-    from acestep import AceStepPipeline
-    import torch
+    from acestep import AceStepPipeline  # type: ignore[import-not-found]
+    import torch  # type: ignore[import-not-found]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _pipeline = AceStepPipeline.from_pretrained(device=device)

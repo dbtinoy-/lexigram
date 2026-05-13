@@ -40,7 +40,7 @@ class SqlQueryBuilder:
             return self
         conditions: list[Any] = []
         for key, value in filters.items():
-            col = column(key)
+            col: Any = column(key)
             if key.endswith("__gte"):
                 col_name = key[:-5]
                 conditions.append(column(col_name) >= literal(value))
@@ -73,7 +73,7 @@ class SqlQueryBuilder:
             return self
         clauses: list[UnaryExpression] = []
         for col_name, direction in order:
-            c = column(col_name)
+            c: Any = column(col_name)
             if direction.lower() == "desc":
                 clauses.append(desc(c))
             else:

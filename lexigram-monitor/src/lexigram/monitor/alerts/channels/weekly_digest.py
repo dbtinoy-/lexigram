@@ -65,7 +65,8 @@ class WeeklyDigestDispatcher:
         )
 
     async def _append(self, entry: dict[str, Any]) -> None:
-        raw = await self._buffer_store.get(self._digest_key)
+        raw_result = await self._buffer_store.get(self._digest_key)
+        raw = raw_result.unwrap_or(None)
         entries: list[dict[str, Any]] = loads(raw) if raw else []
         entries.append(entry)
         await self._buffer_store.set(
@@ -77,7 +78,8 @@ class WeeklyDigestDispatcher:
 
     async def flush(self) -> None:
         """Send the accumulated digest and clear the buffer."""
-        raw = await self._buffer_store.get(self._digest_key)
+        raw_result = await self._buffer_store.get(self._digest_key)
+        raw = raw_result.unwrap_or(None)
         if not raw:
             return
         entries: list[dict[str, Any]] = loads(raw)

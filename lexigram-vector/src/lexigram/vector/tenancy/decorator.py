@@ -64,11 +64,11 @@ class TenantVectorStoreDecorator:
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Check store health (delegates to inner)."""
-        return await self._inner.health_check(timeout)  # type: ignore[return-value]
+        return await self._inner.health_check(timeout)
 
     async def list_collections(self) -> list[CollectionInfo]:
         """List all collections (pass-through, no name resolution)."""
-        return await self._inner.list_collections()  # type: ignore[return-value]
+        return await self._inner.list_collections()
 
     async def create_collection(self, config: CollectionConfig) -> None:
         """Create a collection with tenant-scoped name."""
@@ -84,22 +84,24 @@ class TenantVectorStoreDecorator:
 
     async def collection_exists(self, name: str) -> bool:
         """Check if a tenant-scoped collection exists."""
-        return await self._inner.collection_exists(self._resolve(name))  # type: ignore[return-value]
+        return await self._inner.collection_exists(self._resolve(name))
 
     async def get_collection(self, name: str) -> VectorCollectionProtocol:
         """Get a tenant-scoped collection handle."""
-        return await self._inner.get_collection(self._resolve(name))  # type: ignore[return-value]
+        return await self._inner.get_collection(self._resolve(name))
 
     async def add_texts(
         self,
         texts: list[str],
-        embeddings: list[list[float]],
-        metadatas: list[dict[str, Any]],
-        collection_name: str,
+        embeddings: list[list[float]] | None = None,
+        metadatas: list[dict[str, Any]] | None = None,
+        collection_name: str | None = None,
     ) -> UpsertResult:
         """Add texts to a tenant-scoped collection."""
-        resolved = self._resolve(collection_name)
-        return await self._inner.add_texts(  # type: ignore[return-value]
+        resolved = (
+            self._resolve(collection_name) if collection_name is not None else None
+        )
+        return await self._inner.add_texts(
             texts=texts,
             embeddings=embeddings,
             metadatas=metadatas,

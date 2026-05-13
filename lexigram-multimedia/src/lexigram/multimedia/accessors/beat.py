@@ -29,7 +29,7 @@ class BeatAccessor:
     async def analyze(
         self, request: BeatAnalysisRequest
     ) -> Result[BeatAnalysisResult, MultimediaError]:
-        return await self._backend.analyze(request)  # type: ignore[no-any-return]
+        return await self._backend.analyze(request)
 
 
 __all__ = ["BeatAccessor"]

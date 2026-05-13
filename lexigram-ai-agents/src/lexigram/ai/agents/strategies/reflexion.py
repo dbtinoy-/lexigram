@@ -9,7 +9,7 @@ from lexigram.ai.agents.strategies.base import AbstractStrategy
 from lexigram.ai.agents.strategies.token_utils import TokenAccumulator
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import AgentError, AgentResponse
-from lexigram.contracts.ai.llm import ChatMessage, Completion, Role
+from lexigram.contracts.ai.llm import ChatMessage, Role
 from lexigram.logging import (
     get_logger,
 )
@@ -17,7 +17,7 @@ from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.agents import ToolProtocol
-    from lexigram.contracts.ai.llm import LLMClientProtocol
+    from lexigram.contracts.ai.llm import CompletionProtocol, LLMClientProtocol
 
 logger = get_logger(__name__)
 
@@ -126,7 +126,7 @@ class ReflexionStrategy(AbstractStrategy):
                 AgentError("LLM returned empty response during initial generation")
             )
         usage.add(current_response)
-        current_response = (
+        current_text = (
             current_response.content
             if hasattr(current_response, "content")
             else str(current_response)
@@ -137,13 +137,13 @@ class ReflexionStrategy(AbstractStrategy):
                 step_number=0,
                 thought="[Reflexion] Initial response generated (iteration 0)",
                 action=None,
-                observation=current_response,
+                observation=current_text,
             )
         )
 
         logger.debug(
             "reflexion_initial_response",
-            length=len(current_response),
+            length=len(current_text),
         )
 
         # Phase 2+: critique → refine loop
@@ -151,7 +151,7 @@ class ReflexionStrategy(AbstractStrategy):
             # Self-critique pass
             critique_messages = [
                 *messages,
-                ChatMessage(role=Role.ASSISTANT, content=current_response),
+                ChatMessage(role=Role.ASSISTANT, content=current_text),
                 ChatMessage(role=Role.USER, content=_CRITIQUE_SUFFIX),
             ]
             critique = await self._call_llm(
@@ -164,7 +164,7 @@ class ReflexionStrategy(AbstractStrategy):
                 logger.warning("reflexion_critique_failed", iteration=iteration)
                 break
             usage.add(critique)
-            critique = (
+            critique_text = (
                 critique.content if hasattr(critique, "content") else str(critique)
             )
 
@@ -173,18 +173,18 @@ class ReflexionStrategy(AbstractStrategy):
                     step_number=(iteration * 2) - 1,
                     thought=f"[Reflexion] Self-critique (iteration {iteration})",
                     action="critique",
-                    observation=critique,
+                    observation=critique_text,
                 )
             )
 
             logger.debug(
                 "reflexion_critique",
                 iteration=iteration,
-                length=len(critique),
+                length=len(critique_text),
             )
 
             # Early stopping: LLM declared the response optimal
-            if "NO_CHANGES_NEEDED" in critique.upper():
+            if "NO_CHANGES_NEEDED" in critique_text.upper():
                 logger.debug(
                     "reflexion_early_stop",
                     iteration=iteration,
@@ -195,7 +195,7 @@ class ReflexionStrategy(AbstractStrategy):
                         step_number=iteration * 2,
                         thought=f"[Reflexion] No changes needed — stopping at iteration {iteration}",
                         action=None,
-                        observation=current_response,
+                        observation=current_text,
                     )
                 )
                 break
@@ -203,7 +203,7 @@ class ReflexionStrategy(AbstractStrategy):
             # Refinement pass
             refine_messages = [
                 *critique_messages,
-                ChatMessage(role=Role.ASSISTANT, content=critique),
+                ChatMessage(role=Role.ASSISTANT, content=critique_text),
                 ChatMessage(role=Role.USER, content=_REFINE_PREFIX),
             ]
             refined = await self._call_llm(
@@ -216,27 +216,28 @@ class ReflexionStrategy(AbstractStrategy):
                 logger.warning("reflexion_refine_failed", iteration=iteration)
                 break
             usage.add(refined)
-            refined = refined.content if hasattr(refined, "content") else str(refined)
+            current_text = (
+                refined.content if hasattr(refined, "content") else str(refined)
+            )
 
-            current_response = refined
             steps.append(
                 ReasoningStep(
                     step_number=iteration * 2,
                     thought=f"[Reflexion] Refined response (iteration {iteration})",
                     action="refine",
-                    observation=current_response,
+                    observation=current_text,
                 )
             )
 
             logger.debug(
                 "reflexion_refined",
                 iteration=iteration,
-                length=len(current_response),
+                length=len(current_text),
             )
 
         return Ok(
             AgentResponse(
-                message=current_response,
+                message=current_text,
                 steps=steps,
                 tool_calls=tool_calls,
                 total_tokens=usage.total_tokens,
@@ -279,7 +280,7 @@ class ReflexionStrategy(AbstractStrategy):
         messages: list[ChatMessage],
         temperature: float | None = None,
         timeout: float = 60.0,
-    ) -> Completion | None:
+    ) -> CompletionProtocol | None:
         """Call the LLM and return the completion, or ``None`` on failure."""
         kwargs: dict[str, Any] = {}
         if temperature is not None:

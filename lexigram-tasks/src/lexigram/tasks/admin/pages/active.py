@@ -32,7 +32,11 @@ class TasksActivePage:
             return HTMLResponse(html)
 
         try:
-            tasks = await self._worker_pool.get_active_tasks()
+            tasks = [
+                w.current_job
+                for w in self._worker_pool.workers
+                if w.current_job is not None
+            ]
         except Exception as exc:
             logger.warning("tasks_active.pool_unavailable", error=str(exc))
             html = render_to_string(

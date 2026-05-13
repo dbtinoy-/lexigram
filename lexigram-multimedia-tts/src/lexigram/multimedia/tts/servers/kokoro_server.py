@@ -20,7 +20,7 @@ _pipeline: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _pipeline
-    from kokoro import KPipeline
+    from kokoro import KPipeline  # type: ignore[import-not-found]
 
     _pipeline = KPipeline(lang_code="a")
 
@@ -34,7 +34,7 @@ async def handle_generate(request: web.Request) -> web.Response:
     import io
 
     import numpy as np
-    import soundfile as sf
+    import soundfile as sf  # type: ignore[import-untyped]
 
     audio = np.concatenate(audio_chunks)
     buf = io.BytesIO()

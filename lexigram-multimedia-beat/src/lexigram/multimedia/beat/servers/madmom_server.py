@@ -23,7 +23,7 @@ _processor: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _processor
-    import madmom
+    import madmom  # type: ignore[import-not-found]
 
     _processor = madmom.features.beats.RNNBeatProcessor()
 

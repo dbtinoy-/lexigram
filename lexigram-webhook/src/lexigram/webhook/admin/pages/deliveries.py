@@ -17,6 +17,7 @@ from lexigram.ui import (
     el,
     render_to_string,
 )
+from lexigram.ui.atoms.badge import BadgeVariant
 
 logger = get_logger(__name__)
 
@@ -66,7 +67,7 @@ class WebhookDeliveriesPage:
         failed = sum(1 for d in all_deliveries if d.status.value == "failed")
         dead = sum(1 for d in all_deliveries if d.status.value == "dead_letter")
 
-        def _badge_variant(status: str) -> str:
+        def _badge_variant(status: str) -> BadgeVariant:
             if status == "delivered":
                 return "success"
             if status in ("failed", "dead_letter"):

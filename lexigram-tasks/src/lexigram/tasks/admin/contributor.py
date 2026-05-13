@@ -236,7 +236,7 @@ class TasksAdminContributor(BaseAdminContributor):
         self,
         widget_name: str,
         params: WidgetParams,
-        **kwargs: Any,
+        resolver: ContainerResolverProtocol | None = None,
     ) -> Result[WidgetViewModel, AdminError]:
         """Render a named widget using registry dispatch.
 

@@ -59,7 +59,7 @@ class FormField(Component):
         # Handle conditional visibility (Alpine.js)
         if self.visible_condition:
             container_attrs["x-show"] = self.visible_condition
-            container_attrs["x-cloak"] = True  # type: ignore[assignment]
+            container_attrs["x-cloak"] = True
 
         elements = []
 
@@ -83,7 +83,8 @@ class FormField(Component):
                                 class_="text-destructive ml-1",
                                 **{"x-show": required_if},
                             ),
-                            for_=getattr(self.input_component, "id", None) or getattr(self.input_component, "name", None),
+                            for_=getattr(self.input_component, "id", None)
+                            or getattr(self.input_component, "name", None),
                             class_="block text-sm font-medium text-foreground",
                         ),
                     )
@@ -91,8 +92,10 @@ class FormField(Component):
                     header_parts.append(
                         el(
                             "label",
-                            label_text + el("span", "*", class_="text-destructive ml-1"),
-                            for_=getattr(self.input_component, "id", None) or getattr(self.input_component, "name", None),
+                            label_text
+                            + el("span", "*", class_="text-destructive ml-1"),
+                            for_=getattr(self.input_component, "id", None)
+                            or getattr(self.input_component, "name", None),
                             class_="block text-sm font-medium text-foreground",
                         ),
                     )
@@ -101,7 +104,8 @@ class FormField(Component):
                         el(
                             "label",
                             label_text,
-                            for_=getattr(self.input_component, "id", None) or getattr(self.input_component, "name", None),
+                            for_=getattr(self.input_component, "id", None)
+                            or getattr(self.input_component, "name", None),
                             class_="block text-sm font-medium text-foreground",
                         ),
                     )

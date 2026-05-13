@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.data.graph.enums import EdgeDirection
 from lexigram.contracts.data.graph.filters import (
     PropertyCondition,
     PropertyConditionGroup,
@@ -30,7 +31,6 @@ from lexigram.primitives.context import TENANT_ID, Context
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.health import HealthCheckResult
-    from lexigram.contracts.data.graph.enums import EdgeDirection
     from lexigram.contracts.data.graph.protocols import (
         GraphProtocol,
         GraphStoreProtocol,
@@ -101,19 +101,19 @@ class TenantGraphStoreDecorator:
         await self._inner.disconnect()
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        return await self._inner.health_check(timeout)  # type: ignore[return-value]
+        return await self._inner.health_check(timeout)
 
     async def get_graph(self, name: str | None = None) -> GraphProtocol:
         if self._strategy == GraphTenancyStrategy.NODE_PROPERTY:
             tenant_id = self._tenant_id()
-            inner_graph = await self._inner.get_graph(name)  # type: ignore[return-value]
+            inner_graph = await self._inner.get_graph(name)
             if tenant_id is None:
                 return inner_graph
             return TenantPropertyFilterGraph(inner=inner_graph, tenant_id=tenant_id)
-        return await self._inner.get_graph(self._resolve(name))  # type: ignore[return-value]
+        return await self._inner.get_graph(self._resolve(name))
 
     async def list_graphs(self) -> list[GraphInfo]:
-        return await self._inner.list_graphs()  # type: ignore[return-value]
+        return await self._inner.list_graphs()
 
     async def create_graph(self, name: str) -> None:
         if self._strategy == GraphTenancyStrategy.NODE_PROPERTY:
@@ -175,14 +175,14 @@ class TenantPropertyFilterGraph:
         properties: dict[str, Any] | None = None,
         node_id: str | None = None,
     ) -> NodeResult:
-        return await self._inner.create_node(  # type: ignore[return-value]
+        return await self._inner.create_node(
             labels=labels,
             properties=self._with_tenant(properties),
             node_id=node_id,
         )
 
     async def get_node(self, node_id: str) -> GraphNode | None:
-        return await self._inner.get_node(node_id)  # type: ignore[return-value]
+        return await self._inner.get_node(node_id)
 
     async def find_nodes(
         self,
@@ -191,7 +191,7 @@ class TenantPropertyFilterGraph:
         limit: int = 100,
         skip: int = 0,
     ) -> list[GraphNode]:
-        return await self._inner.find_nodes(  # type: ignore[return-value]
+        return await self._inner.find_nodes(
             labels=labels,
             filter=self._with_tenant_filter(filter),
             limit=limit,
@@ -216,7 +216,9 @@ class TenantPropertyFilterGraph:
         direction: EdgeDirection | None = None,
         edge_types: list[str] | None = None,
     ) -> list[GraphNode]:
-        return await self._inner.neighbors(  # type: ignore[return-value]
+        if direction is None:
+            direction = EdgeDirection.BOTH
+        return await self._inner.neighbors(
             node_id,
             depth,
             direction,
@@ -242,7 +244,7 @@ class TenantPropertyFilterGraph:
         edge_type: str,
         properties: dict[str, Any] | None = None,
     ) -> EdgeResult:
-        return await self._inner.create_edge(  # type: ignore[return-value]
+        return await self._inner.create_edge(
             source_id=source_id,
             target_id=target_id,
             edge_type=edge_type,
@@ -250,7 +252,7 @@ class TenantPropertyFilterGraph:
         )
 
     async def get_edge(self, edge_id: str) -> GraphEdge | None:
-        return await self._inner.get_edge(edge_id)  # type: ignore[return-value]
+        return await self._inner.get_edge(edge_id)
 
     async def get_edges(
         self,
@@ -259,7 +261,9 @@ class TenantPropertyFilterGraph:
         edge_types: list[str] | None = None,
         limit: int = 100,
     ) -> list[GraphEdge]:
-        return await self._inner.get_edges(  # type: ignore[return-value]
+        if direction is None:
+            direction = EdgeDirection.BOTH
+        return await self._inner.get_edges(
             node_id,
             direction,
             edge_types,
@@ -278,7 +282,7 @@ class TenantPropertyFilterGraph:
         return await self._inner.delete_edge(edge_id)
 
     async def traverse(self, query: TraversalQuery) -> list[GraphPath]:
-        return await self._inner.traverse(query)  # type: ignore[return-value]
+        return await self._inner.traverse(query)
 
     async def shortest_path(
         self,
@@ -288,7 +292,9 @@ class TenantPropertyFilterGraph:
         edge_types: list[str] | None = None,
         direction: EdgeDirection | None = None,
     ) -> GraphPath | None:
-        return await self._inner.shortest_path(  # type: ignore[return-value]
+        if direction is None:
+            direction = EdgeDirection.BOTH
+        return await self._inner.shortest_path(
             from_id,
             to_id,
             max_depth,
@@ -301,7 +307,7 @@ class TenantPropertyFilterGraph:
         query_string: str,
         parameters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
-        return await self._inner.query(query_string, parameters)  # type: ignore[return-value]
+        return await self._inner.query(query_string, parameters)
 
     async def bulk_create_nodes(self, nodes: list[NodeSpec]) -> BulkNodeResult:
         scoped = [
@@ -312,7 +318,7 @@ class TenantPropertyFilterGraph:
             )
             for n in nodes
         ]
-        return await self._inner.bulk_create_nodes(scoped)  # type: ignore[return-value]
+        return await self._inner.bulk_create_nodes(scoped)
 
     async def bulk_create_edges(self, edges: list[EdgeSpec]) -> BulkEdgeResult:
         scoped = [
@@ -324,7 +330,7 @@ class TenantPropertyFilterGraph:
             )
             for e in edges
         ]
-        return await self._inner.bulk_create_edges(scoped)  # type: ignore[return-value]
+        return await self._inner.bulk_create_edges(scoped)
 
     async def create_index(self, spec: IndexSpec) -> None:
         await self._inner.create_index(spec)

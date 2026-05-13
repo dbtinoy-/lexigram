@@ -16,7 +16,6 @@ __path__ = pkgutil.extend_path(__path__, __name__)
 
 if TYPE_CHECKING:
     from lexigram.secrets.config import SecretsConfig
-    from lexigram.secrets.decorators import SecretsDecorators
     from lexigram.secrets.events import (
         SecretAccessedEvent,
         SecretCreatedEvent,

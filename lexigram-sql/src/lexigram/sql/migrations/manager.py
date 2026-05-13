@@ -502,7 +502,7 @@ class SimpleMigrationManager(MigrationManagerProtocol):
             await manager.apply_migration("001", "create_users", CREATE_SQL)
     """
 
-    def create(self, name: str, message: str) -> str:
+    async def create(self, name: str, message: str) -> str:
         """Create a new migration file (alias for create_migration_file).
 
         Args:
@@ -512,7 +512,7 @@ class SimpleMigrationManager(MigrationManagerProtocol):
         Returns:
             The version string of the created migration.
         """
-        return self.create_migration_file(name, f"-- {message}")
+        return await self.create_migration_file(name, f"-- {message}")
 
     async def get_current_version(self) -> str | None:
         """Get the version of the most recently applied migration.

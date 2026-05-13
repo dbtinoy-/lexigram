@@ -23,7 +23,7 @@ def known_events(consumer_id: str):
             )
         registry = KnownEventSetRegistry(consumer_id=consumer_id)
         registry.register(list(raw))
-        cls.__known_event_registry__ = registry
+        cls.__known_event_registry__ = registry  # type: ignore[attr-defined]
         return cls
 
     return decorator

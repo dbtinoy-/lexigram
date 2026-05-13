@@ -90,7 +90,7 @@ class BelongsToFormRenderer:
 
         return BelongsTo(
             name=field.name,
-            resource=field.metadata.get("related_resource", ""),
+            resource=getattr(field, "metadata", {}).get("related_resource", ""),
             value=current_value,
             label=getattr(field, "label", field.name.title()),
         ).render()

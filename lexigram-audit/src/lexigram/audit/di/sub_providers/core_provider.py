@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.audit import AuditLoggerProtocol, AuditStoreProtocol
 from lexigram.contracts.core.di import (
@@ -88,10 +88,9 @@ class AuditCoreProvider(Provider):
             # Fallback: register a value-bound singleton manually.
             logger = AuditLogger(store=store)
             try:
-                container.singleton(AuditLoggerProtocol, logger)
+                container.singleton(cast("type", AuditLoggerProtocol), logger)
             except Exception:
                 # Container is frozen — use bind() if logger was preregistered;
                 # otherwise re-register via the underlying registrar if exposed.
                 if hasattr(container, "bind"):
-                    container.bind(AuditLoggerProtocol, logger)
-
+                    container.bind(cast("type", AuditLoggerProtocol), logger)

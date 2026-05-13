@@ -22,8 +22,8 @@ _model: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _model
-    from chatterbox.tts import ChatterboxTTS
-    import torch
+    from chatterbox.tts import ChatterboxTTS  # type: ignore[import-not-found]
+    import torch  # type: ignore[import-not-found]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _model = ChatterboxTTS.from_pretrained(device=device)
@@ -39,7 +39,7 @@ async def handle_generate(request: web.Request) -> web.Response:
     )
     import io
 
-    import torchaudio
+    import torchaudio  # type: ignore[import-not-found]
 
     buf = io.BytesIO()
     torchaudio.save(buf, wav, _model.sr, format="wav")

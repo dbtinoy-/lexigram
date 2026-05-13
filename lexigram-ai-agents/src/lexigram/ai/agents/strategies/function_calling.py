@@ -45,7 +45,7 @@ from lexigram.serialization import loads_str
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.agents import MemoryProtocol
-    from lexigram.contracts.ai.llm import Completion, LLMClientProtocol
+    from lexigram.contracts.ai.llm import CompletionProtocol, LLMClientProtocol
 
 logger = get_logger(__name__)
 
@@ -325,7 +325,7 @@ class FunctionCallingStrategy(AbstractStrategy):
         llm: LLMClientProtocol,
         messages: list[ChatMessage],
         schemas: list[ToolDefinition],
-    ) -> Completion | None:
+    ) -> CompletionProtocol | None:
         """Call the LLM with tool schemas and return the completion.
 
         Args:
@@ -359,11 +359,11 @@ class FunctionCallingStrategy(AbstractStrategy):
             return None
         return result.unwrap()
 
-    def _count_tokens(self, completion: Completion) -> int:
+    def _count_tokens(self, completion: CompletionProtocol) -> int:
         """Extract total token usage from a completion, if reported."""
         return count_tokens(completion)
 
-    def _token_split(self, completion: Completion) -> tuple[int, int]:
+    def _token_split(self, completion: CompletionProtocol) -> tuple[int, int]:
         """Extract the prompt/completion token split, if reported.
 
         Args:
@@ -381,7 +381,7 @@ class FunctionCallingStrategy(AbstractStrategy):
 
     async def _handle_native_calls(
         self,
-        completion: Completion,
+        completion: CompletionProtocol,
         iteration: int,
         messages: list[ChatMessage],
         steps: list[ReasoningStep],

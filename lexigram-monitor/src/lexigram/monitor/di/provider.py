@@ -384,7 +384,7 @@ class MonitorProvider(Provider):
             self._config
             and getattr(self._config, "slo", None)
             and self._config.slo.enabled
-        ):  # type: ignore[union-attr]
+        ):
             from lexigram.contracts.observability.metrics import (
                 AlertDispatcherProtocol,
             )
@@ -394,7 +394,7 @@ class MonitorProvider(Provider):
                 BackgroundTaskManager,
             )
 
-            slo_cfg = self._config.slo  # type: ignore[union-attr]
+            slo_cfg = self._config.slo
             dispatcher: AlertDispatcherProtocol | None = None
             try:
                 dispatcher = await container.resolve(AlertDispatcherProtocol)

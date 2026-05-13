@@ -39,7 +39,7 @@ class AWSSecretsManagerStore:
 
     async def _get_client(self):
         if self._session is None:
-            import aioboto3  # type: ignore[import-untyped]
+            import aioboto3  # type: ignore[import-not-found]
 
             self._session = aioboto3.Session(
                 aws_access_key_id=self._aws_access_key_id,
@@ -50,7 +50,7 @@ class AWSSecretsManagerStore:
         return await self._session.client("secretsmanager")
 
     async def get(self, name: str) -> str | None:
-        import botocore.exceptions  # type: ignore[import-untyped]
+        import botocore.exceptions
 
         client = await self._get_client()
         try:
@@ -68,7 +68,7 @@ class AWSSecretsManagerStore:
         return result
 
     async def set(self, name: str, value: str) -> None:
-        import botocore.exceptions  # type: ignore[import-untyped]
+        import botocore.exceptions
 
         client = await self._get_client()
         try:
@@ -87,7 +87,7 @@ class AWSSecretsManagerStore:
                 raise
 
     async def delete(self, name: str) -> None:
-        import botocore.exceptions  # type: ignore[import-untyped]
+        import botocore.exceptions
 
         client = await self._get_client()
         try:
@@ -118,7 +118,7 @@ class AWSSecretsManagerStore:
         aws_version_id = self._version_map.get(key, {}).get(version)
         if aws_version_id is None:
             return None
-        import botocore.exceptions  # type: ignore[import-untyped]
+        import botocore.exceptions
 
         client = await self._get_client()
         try:
@@ -131,7 +131,7 @@ class AWSSecretsManagerStore:
         return response.get("SecretString")
 
     async def list_versions(self, key: str) -> list[SecretVersion]:
-        import botocore.exceptions  # type: ignore[import-untyped]
+        import botocore.exceptions
 
         client = await self._get_client()
         try:
@@ -155,7 +155,7 @@ class AWSSecretsManagerStore:
         return versions
 
     async def get_current_version(self, key: str) -> VersionedSecret:
-        import botocore.exceptions  # type: ignore[import-untyped]
+        import botocore.exceptions
 
         from lexigram.security.secrets.store import SecretValue
 

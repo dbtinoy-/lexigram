@@ -9,6 +9,6 @@ except ImportError:
     WebTestBed = None  # type: ignore[assignment,misc]
     WebTestClient = None  # type: ignore[assignment,misc]
     TestResponse = None  # type: ignore[assignment,misc]
-    with_web = None  # type: ignore[assignment,misc]
+    with_web = None  # type: ignore[assignment]
 
 __all__ = ["TestResponse", "WebTestBed", "WebTestClient", "with_web"]

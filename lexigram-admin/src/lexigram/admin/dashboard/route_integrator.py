@@ -131,8 +131,9 @@ class AdminPageHandler:
         annotations`` (PEP 563), so ``container.call(cls)`` cannot
         discover parameter types.
         """
-        sig = inspect.signature(self._page_cls.__init__)
-        hints = get_type_hints(self._page_cls.__init__)
+        init_method = self._page_cls.__init__  # type: ignore[misc]
+        sig = inspect.signature(init_method)
+        hints = get_type_hints(init_method)
         kwargs: dict[str, Any] = {}
         for name, param in sig.parameters.items():
             if name == "self":
