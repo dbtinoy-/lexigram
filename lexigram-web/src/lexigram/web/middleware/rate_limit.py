@@ -525,9 +525,17 @@ class RateLimitMiddleware:
         # gets the standard 429 + Retry-After response (RateLimitError is
         # caught here because middleware raises bypass Starlette's inner
         # ExceptionMiddleware on supported versions and would surface as 500).
-        if self.rate_limiter is not None and self.config is not None and self.config.enabled:
+        if (
+            self.rate_limiter is not None
+            and self.config is not None
+            and self.config.enabled
+        ):
             request = Request(scope, receive)
-            if self.config.whitelist_ips and request.client and request.client.host in self.config.whitelist_ips:
+            if (
+                self.config.whitelist_ips
+                and request.client
+                and request.client.host in self.config.whitelist_ips
+            ):
                 pass  # whitelisted — skip enforcement (D2)
             else:
                 rule = self.config.get_rule(request.url.path)
