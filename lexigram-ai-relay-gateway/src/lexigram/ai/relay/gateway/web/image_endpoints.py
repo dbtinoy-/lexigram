@@ -22,7 +22,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from lexigram.ai.relay.gateway.passthrough import RelayPassthroughBody
-from lexigram.ai.relay.gateway.web.routes import (
+from lexigram.ai.relay.gateway.web.shared import (
     ResolvePassthrough,
     _error_response,
     _parse_body,
