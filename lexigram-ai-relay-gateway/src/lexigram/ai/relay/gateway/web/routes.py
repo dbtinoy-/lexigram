@@ -10,7 +10,9 @@ protocol's error envelope with safe, filtered headers.
 Passthrough routes (currently ``POST /v1/embeddings``) serve non-chat
 endpoint kinds through ``PassthroughService`` with the same request
 resolution, header filtering, and error envelope machinery, without any
-wire-format conversion.
+wire-format conversion.  Job-relay routes (``POST /v1/videos`` and
+``GET /v1/videos/{job_id}``) serve submit-then-poll endpoint kinds
+through ``JobPassthroughService`` with the same envelope machinery.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
+from lexigram.ai.relay.gateway.job_passthrough import JobPassthroughService
 from lexigram.ai.relay.gateway.passthrough import PassthroughService
 from lexigram.ai.relay.gateway.web.sse import SSEEncoder
 from lexigram.contracts.ai.relay import (
@@ -44,6 +47,9 @@ ResolveGateway: TypeAlias = Callable[[Request], Awaitable[RelayGatewayProtocol]]
 ResolvePassthrough: TypeAlias = Callable[[Request], Awaitable[PassthroughService]]
 """Resolver of a passthrough service from a Starlette request."""
 
+ResolveJobPassthrough: TypeAlias = Callable[[Request], Awaitable[JobPassthroughService]]
+"""Resolver of a job passthrough service from a Starlette request."""
+
 _ROUTE_TABLE: tuple[tuple[str, RelayFormat], ...] = (
     ("/v1/chat/completions", RelayFormat.OPENAI_CHAT),
     ("/v1/responses", RelayFormat.OPENAI_RESPONSES),
@@ -54,8 +60,16 @@ _ROUTE_TABLE: tuple[tuple[str, RelayFormat], ...] = (
 
 _PASSTHROUGH_ROUTE_TABLE: tuple[tuple[str, str], ...] = (
     ("/v1/embeddings", "embeddings"),
+    ("/v1/rerank", "rerank"),
+    ("/v1/moderations", "moderation"),
 )
 """Inbound path to endpoint kind for passthrough routes."""
+
+_JOB_ROUTE_TABLE: tuple[tuple[str, str], ...] = (("/v1/videos", "video_generation"),)
+"""Inbound submit path to endpoint kind for job-relay routes."""
+
+_JOB_STATUS_PATH = "/v1/videos/{job_id}"
+"""Inbound poll path for the registered job-relay endpoint kinds."""
 
 RELAY_ROUTE_PATHS: tuple[str, ...] = tuple(
     path for path, _ in (*_ROUTE_TABLE, *_PASSTHROUGH_ROUTE_TABLE)
@@ -243,10 +257,154 @@ async def passthrough_endpoint(
     return Response(status_code=204, headers=headers)
 
 
+async def job_submit_endpoint(
+    kind: str,
+    resolve_job_passthrough: ResolveJobPassthrough,
+    request: Request,
+) -> Response:
+    """Serve one job-relay submit request in its own wire format.
+
+    The body is read exactly once and forwarded verbatim: no format
+    inference happens, so the request carries the conventional
+    ``OPENAI_CHAT`` source marker and no channel hint.  Video is an
+    OpenAI-shaped submit/poll convention, so failures render in the
+    OpenAI error envelope through the same machinery as the passthrough
+    routes.  The job passthrough service is resolved per request, never
+    cached.
+
+    Args:
+        kind: The endpoint kind owned by this route.
+        resolve_job_passthrough: Resolver of the job passthrough
+            service.
+        request: The Starlette request being served.
+
+    Returns:
+        The upstream JSON verbatim (with the id rewritten to the
+        gateway-issued job id), ``204`` when the result carries no
+        payload, or the OpenAI error envelope for gateway failures.
+    """
+    raw = await request.body()
+    request_id = getattr(request.state, "request_id", None) or new_uuid()
+    trace_id = request.headers.get("x-trace-id", "") or ""
+    body = _parse_body(raw, RelayFormat.OPENAI_CHAT, request_id)
+    if isinstance(body, Response):
+        return body
+    model_value = body.get("model")
+    if not isinstance(model_value, str) or not model_value:
+        return _error_response(
+            RelayFormat.OPENAI_CHAT,
+            RelayGatewayError(
+                code=RelayGatewayErrorCode.INVALID_REQUEST,
+                message="model is required",
+                status_code=400,
+                request_id=request_id,
+            ),
+        )
+    user = getattr(request.state, "user", None)
+    tenant_id = ""
+    if isinstance(user, dict):
+        tenant = user.get("tenant_id") or user.get("tenant")
+        if isinstance(tenant, str):
+            tenant_id = tenant
+    gateway_request = RelayGatewayRequest(
+        request_id=request_id,
+        tenant_id=tenant_id,
+        source=RelayFormat.OPENAI_CHAT,
+        model=model_value,
+        stream=False,
+        payload=body,
+        headers=dict(request.headers.items()),
+        channel=None,
+    )
+    service = await resolve_job_passthrough(request)
+    result = await service.submit(kind, gateway_request)
+    if result.is_err():
+        return _error_response(RelayFormat.OPENAI_CHAT, result.unwrap_err())
+    ok_result = result.unwrap()
+    headers = _safe_headers(ok_result.headers, request_id, trace_id)
+    if ok_result.payload is not None:
+        return JSONResponse(
+            content=ok_result.payload,
+            status_code=ok_result.status_code,
+            headers=headers,
+        )
+    return Response(status_code=204, headers=headers)
+
+
+async def job_status_endpoint(
+    kind: str,
+    resolve_job_passthrough: ResolveJobPassthrough,
+    request: Request,
+) -> Response:
+    """Serve one job-relay status poll against a gateway-issued job id.
+
+    The job id comes from the path, not the body: status polls carry no
+    payload, so the gateway request built here carries an empty payload
+    and model, and only identity and request id are meaningful.  The
+    status call authorizes but never re-runs the billing pipeline, and
+    failures render in the OpenAI error envelope like the other
+    sighted routes.
+
+    Args:
+        kind: The endpoint kind owned by this route.
+        resolve_job_passthrough: Resolver of the job passthrough
+            service.
+        request: The Starlette request being served.
+
+    Returns:
+        The upstream status JSON verbatim (with the id rewritten back to
+        the gateway-issued job id), ``204`` when the result carries no
+        payload, or the OpenAI error envelope for gateway failures.
+    """
+    request_id = getattr(request.state, "request_id", None) or new_uuid()
+    trace_id = request.headers.get("x-trace-id", "") or ""
+    job_id = request.path_params.get("job_id")
+    if not isinstance(job_id, str) or not job_id:
+        return _error_response(
+            RelayFormat.OPENAI_CHAT,
+            RelayGatewayError(
+                code=RelayGatewayErrorCode.INVALID_REQUEST,
+                message="job_id is required",
+                status_code=400,
+                request_id=request_id,
+            ),
+        )
+    user = getattr(request.state, "user", None)
+    tenant_id = ""
+    if isinstance(user, dict):
+        tenant = user.get("tenant_id") or user.get("tenant")
+        if isinstance(tenant, str):
+            tenant_id = tenant
+    gateway_request = RelayGatewayRequest(
+        request_id=request_id,
+        tenant_id=tenant_id,
+        source=RelayFormat.OPENAI_CHAT,
+        model="",
+        stream=False,
+        payload={},
+        headers=dict(request.headers.items()),
+        channel=None,
+    )
+    service = await resolve_job_passthrough(request)
+    result = await service.status(kind, job_id, gateway_request)
+    if result.is_err():
+        return _error_response(RelayFormat.OPENAI_CHAT, result.unwrap_err())
+    ok_result = result.unwrap()
+    headers = _safe_headers(ok_result.headers, request_id, trace_id)
+    if ok_result.payload is not None:
+        return JSONResponse(
+            content=ok_result.payload,
+            status_code=ok_result.status_code,
+            headers=headers,
+        )
+    return Response(status_code=204, headers=headers)
+
+
 def build_routes(
     resolve_gateway: ResolveGateway,
     *,
     resolve_passthrough: ResolvePassthrough | None = None,
+    resolve_job_passthrough: ResolveJobPassthrough | None = None,
 ) -> list[Route]:
     """Build the relay POST routes bound to gateway resolvers.
 
@@ -256,10 +414,15 @@ def build_routes(
         resolve_passthrough: Optional async callable resolving a
             ``PassthroughService`` from the request; when provided, the
             passthrough routes (e.g. ``/v1/embeddings``) are appended.
+        resolve_job_passthrough: Optional async callable resolving a
+            ``JobPassthroughService`` from the request; when provided,
+            the job-relay routes (``POST /v1/videos`` and
+            ``GET /v1/videos/{job_id}``) are appended.
 
     Returns:
         One ``Route`` per inbound relay format, in ``RELAY_ROUTE_PATHS``
-        order.
+        order, followed by the passthrough routes when their resolver is
+        provided and the job-relay routes when theirs is.
     """
     routes = [
         Route(
@@ -277,6 +440,23 @@ def build_routes(
                 methods=["POST"],
             )
             for path, kind in _PASSTHROUGH_ROUTE_TABLE
+        )
+    if resolve_job_passthrough is not None:
+        routes.extend(
+            Route(
+                path,
+                partial(job_submit_endpoint, kind, resolve_job_passthrough),
+                methods=["POST"],
+            )
+            for path, kind in _JOB_ROUTE_TABLE
+        )
+        routes.extend(
+            Route(
+                _JOB_STATUS_PATH,
+                partial(job_status_endpoint, kind, resolve_job_passthrough),
+                methods=["GET"],
+            )
+            for _, kind in _JOB_ROUTE_TABLE
         )
     return routes
 
