@@ -218,11 +218,11 @@ Partially executed 2026-08-16 (`75568cd`): production hard-fail when CSRF disabl
 
 ### 3.15 Rate-limiting / DoS — `plans/2026-08-16-security-rate-limit.md` (s)
 
-- [ ] Task 1 (CRIT) — middleware actually enforces rules: resolve rule via `get_rule` with default-limit fallback; keep `enabled=True` but make it mean enforcement
-- [ ] Task 2 (CRIT) — honest config: `RateLimitConfig` docstring; wire dead fields `whitelist_ips`/`storage_backend` (or documented decision)
-- [ ] Task 3 (MED) — chunked-body enforcement: streaming byte counter over `receive` (413 mid-stream) in `body_limit.py`
-- [ ] Task 4 (LOW) — concurrency-bound decision: bulkhead evaluation in `lexigram-queue` backends
-- [ ] Task 5 — full verification
+- [x] Task 1 (CRIT) — middleware actually enforces rules: resolve rule via `get_rule` with default-limit fallback; keep `enabled=True` but make it mean enforcement
+- [x] Task 2 (CRIT) — honest config: `RateLimitConfig` docstring; wire dead fields `whitelist_ips`/`storage_backend` (or documented decision)
+- [x] Task 3 (MED) — chunked-body enforcement: streaming byte counter over `receive` (413 mid-stream) in `body_limit.py`
+- [x] Task 4 (LOW) — concurrency-bound decision: bulkhead evaluation in `lexigram-queue` backends
+- [x] Task 5 — full verification
 
 ---
 
@@ -283,7 +283,7 @@ Round 3 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 | 12 | **GraphQL security** | §14 | Critical ×2, High ×1, Med ×1 | `specs/2026-08-16-security-graphql-design.md` | `plans/2026-08-16-security-graphql.md` | Not started (s) |
 | 13 | **Media upload / processing safety** | §15 | High ×2, Med ×2 | `specs/2026-08-16-security-media-upload-design.md` | `plans/2026-08-16-security-media-upload.md` | Not started (s) |
 | 14 | **Notification / webhook injection** | §16 | High ×1, Med ×2, Low ×1 | `specs/2026-08-16-security-notification-webhook-design.md` | `plans/2026-08-16-security-notification-webhook.md` | Done (s) |
-| 15 | **Rate-limiting / DoS resilience** | §17 | Critical ×1, Med ×1, Low ×1 | `specs/2026-08-16-security-rate-limit-design.md` | `plans/2026-08-16-security-rate-limit.md` | Not started (s) |
+| 15 | **Rate-limiting / DoS resilience** | §17 | Critical ×1, Med ×1, Low ×1 | `specs/2026-08-16-security-rate-limit-design.md` | `plans/2026-08-16-security-rate-limit.md` | Done (s) |
 
 **Recurring shape (per master doc §1):** three of these five (AI guard's `@guarded` decorator, GraphQL's depth/complexity/introspection layer, web's rate-limit `rules` config) are the "orphaned correct implementation" pattern — a well-built implementation exists and nothing calls it, not even a competing weaker path. This is the same root-cause family as Round 1-2's Pattern A, one step more extreme. Round 3 specs follow the same remediation patterns: wire the existing implementation at the correct boundary, fail-closed at boot on missing security config.
 
