@@ -31,10 +31,10 @@ class RequestBodySizeLimitMiddleware:
     Large`` response is returned immediately — the body is never read into
     memory.
 
-    Note: this only catches requests that include a ``Content-Length`` header.
-    Chunked-encoded bodies without a declared length are passed through.
-    Real-world protection against chunked OOM attacks requires a streaming
-    byte-counter wrapper around the ``receive`` callable (see the TODO below).
+    Note: Two enforcement paths: the declared ``Content-Length`` is checked
+    before the body is read (fast 413); a body without a declared length
+    (chunked transfer-encoding) is counted as it streams and is rejected
+    with 413 once the accumulated bytes exceed ``max_body_size``.
 
     Args:
         app: The ASGI application to wrap.
@@ -60,6 +60,13 @@ class RequestBodySizeLimitMiddleware:
             scope: ASGI connection scope.
             receive: ASGI receive callable.
             send: ASGI send callable.
+
+        Note:
+            Two enforcement paths: the declared ``Content-Length`` is checked
+            before the body is read (fast 413); a body without a declared
+            length (chunked transfer-encoding) is counted as it streams and
+            is rejected with 413 once the accumulated bytes exceed
+            ``max_body_size``.
         """
         if scope["type"] != "http":
             await self.app(scope, receive, send)
@@ -87,7 +94,33 @@ class RequestBodySizeLimitMiddleware:
                 await response(scope, receive, send)
                 return
 
-        await self.app(scope, receive, send)
+        # Stream-count bodies without a declared length (chunked encoding).
+        received_bytes = 0
+        aborted = False
+
+        async def counting_receive() -> Any:
+            nonlocal received_bytes, aborted
+            message = await receive()
+            if message["type"] == "http.request" and not aborted:
+                received_bytes += len(message.get("body", b""))
+                if received_bytes > self.max_body_size:
+                    aborted = True
+                    logger.warning(
+                        "request_body_too_large_streamed",
+                        received_bytes=received_bytes,
+                        max_body_size=self.max_body_size,
+                        path=scope.get("path", ""),
+                    )
+                    response = _413_response()
+                    await response(scope, receive, send)
+                    return {
+                        "type": "http.request",
+                        "body": b"",
+                        "more_body": False,
+                    }
+            return message
+
+        await self.app(scope, counting_receive, send)
 
 
 def _413_response() -> Any:
