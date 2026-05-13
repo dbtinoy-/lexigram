@@ -98,6 +98,7 @@ class LLMRoutingProvider(Provider):
         """
         logger.info("llm.routing: registering multi-provider router")
 
+        container.singleton(LLMConfig, self.config)
         clients = create_routing_clients(self.config)
 
         quota_backend: QuotaBackendProtocol
