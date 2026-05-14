@@ -232,3 +232,16 @@ class TestAuthRoleConfigDefaults:
     def test_default_inherits_empty(self) -> None:
         config = AuthRoleConfig(name="test")
         assert config.inherits == []
+
+class TestJWTSecretQuality:
+    def test_hs384_requires_long_secret(self) -> None:
+        os.environ["LEX_ENV"] = "production"
+        try:
+            with pytest.raises(ValueError) as excinfo:
+                AuthConfig(
+                    secret_key="secure-key",
+                    token=JWTConfig(secret_key="short", algorithm="HS384"),
+                )
+            assert "SECURITY ERROR" in str(excinfo.value)
+        finally:
+            os.environ["LEX_ENV"] = "development"

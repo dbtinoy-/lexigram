@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import secrets
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from pydantic import SecretStr
@@ -13,6 +14,8 @@ from lexigram.auth.storage.token_store import InMemoryUserStore, UserStoreProtoc
 from lexigram.contracts import HealthCheckResult, HealthStatus, ProviderPriority
 from lexigram.contracts.auth import PasswordHasherProtocol, PasswordPolicyProtocol
 from lexigram.contracts.core import HookRegistryProtocol
+from lexigram.contracts.core.config import Environment
+from lexigram.contracts.exceptions import ConfigurationError
 from lexigram.di.decorators import inject
 from lexigram.di.markers import Inject
 from lexigram.di.provider import Provider
@@ -104,7 +107,24 @@ def _build_token_manager(
         )
 
     # Symmetric algorithm: use secret_key directly (single-secret mode)
-    effective_secret = secret_key or "default-dev-secret-change-in-production"
+    env = Environment.from_env()
+    _STRICT_ENVS = {Environment.PRODUCTION, Environment.STAGING}
+    if not secret_key:
+        if env in _STRICT_ENVS:
+            raise ConfigurationError(
+                f"CRITICAL SECURITY: JWT secret_key is required in {env.value.upper()} "
+                "but none was provided. "
+                "Set LEX_AUTH__TOKEN__SECRET_KEY (or token.secret_key in config)."
+            )
+        effective_secret = secrets.token_urlsafe(32)
+        logger.warning(
+            "jwt_ephemeral_secret_generated",
+            environment=env.value,
+            reason="No JWT secret_key provided; using a generated ephemeral secret. "
+            "Tokens will be invalidated on restart. Provide a stable secret for production.",
+        )
+    else:
+        effective_secret = secret_key
     return JWTTokenManager(
         current_key_id="default",
         keys={"default": SecretStr(effective_secret)},

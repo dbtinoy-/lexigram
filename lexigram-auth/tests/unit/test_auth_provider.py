@@ -12,6 +12,9 @@ from lexigram.auth.authn.security import PasswordHasher, PasswordPolicy
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.di.bundle_provider import AuthBundleProvider
+from lexigram.auth.di.sub_providers.authentication_provider import (
+    AuthenticationProvider,
+)
 from lexigram.auth.di.sub_providers.google_oauth_provider import GoogleOAuthProvider
 from lexigram.auth.session.manager import SessionManagerImpl
 from lexigram.contracts.auth import (
@@ -209,3 +212,43 @@ class TestAuthBundleProviderLifecycle:
             isinstance(sub_provider, GoogleOAuthProvider)
             for sub_provider in prov._sub_providers
         )
+
+
+class TestAuthenticationProviderSecretGuard:
+    def test_production_missing_secret_raises(self, monkeypatch) -> None:
+        from lexigram.auth.config import AuthConfig, JWTConfig
+        from lexigram.contracts.exceptions import ConfigurationError
+
+        monkeypatch.setenv("LEX_ENV", "development")
+        config = AuthConfig(
+            secret_key="dev-root-key", token=JWTConfig(secret_key="")
+        )
+        monkeypatch.setenv("LEX_ENV", "production")
+        with pytest.raises(ConfigurationError) as excinfo:
+            AuthenticationProvider(config=config)
+        assert "secret_key is required" in str(excinfo.value)
+
+    def test_staging_missing_secret_raises(self, monkeypatch) -> None:
+        from lexigram.auth.config import AuthConfig, JWTConfig
+        from lexigram.contracts.exceptions import ConfigurationError
+
+        monkeypatch.setenv("LEX_ENV", "development")
+        config = AuthConfig(
+            secret_key="dev-root-key", token=JWTConfig(secret_key="")
+        )
+        monkeypatch.setenv("LEX_ENV", "staging")
+        with pytest.raises(ConfigurationError) as excinfo:
+            AuthenticationProvider(config=config)
+        assert "secret_key is required" in str(excinfo.value)
+
+    def test_dev_missing_secret_falls_back_to_ephemeral(self, monkeypatch) -> None:
+        from lexigram.auth.config import AuthConfig, JWTConfig
+
+        monkeypatch.setenv("LEX_ENV", "development")
+        config = AuthConfig(
+            secret_key="dev-root-key", token=JWTConfig(secret_key="")
+        )
+        provider = AuthenticationProvider(config=config)
+        secret = provider.token_manager._key_store.keys["default"].get_secret_value()
+        assert secret
+        assert "default-dev-secret-change-in-production" not in secret
