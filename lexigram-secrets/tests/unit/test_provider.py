@@ -157,3 +157,16 @@ async def test_provider_with_store_override() -> None:
     resolved = await container.resolve(RotatableSecretStoreProtocol)
     result = await resolved.get("pre")
     assert result == "loaded"
+
+
+@pytest.mark.asyncio
+async def test_vault_backend_empty_token_raises_at_register() -> None:
+    from lexigram.secrets.exceptions import SecretConfigError
+
+    config = SecretsConfig(backend_type="vault", backend_options={"url": "http://x"})
+    provider = SecretsProvider(config=config)
+    container = Container()
+
+    with pytest.raises(SecretConfigError) as excinfo:
+        await provider.register(container)
+    assert "token" in str(excinfo.value)

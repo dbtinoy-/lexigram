@@ -4,7 +4,16 @@ import asyncio
 from datetime import UTC
 from typing import Any
 
+from lexigram.secrets.exceptions import SecretBackendUnavailableError
 from lexigram.secrets.types import SecretVersion, VersionedSecret
+
+
+def _is_not_found(exc: Exception) -> bool:
+    try:
+        from hvac.exceptions import InvalidPath  # type: ignore[import-untyped]
+    except ImportError:  # pragma: no cover - hvac is a lazy dependency
+        return False
+    return isinstance(exc, InvalidPath)
 
 
 class HashicorpVaultStore:
@@ -51,8 +60,12 @@ class HashicorpVaultStore:
                 path=name,
                 mount_point=self._mount_point,
             )
-        except Exception:  # noqa: BLE001
-            return None
+        except Exception as exc:  # noqa: BLE001 — must distinguish not-found from backend failure
+            if _is_not_found(exc):
+                return None
+            raise SecretBackendUnavailableError(
+                f"Vault read failed for {name!r}: {exc}"
+            ) from exc
         data = response.get("data", {}).get("data", {})
         if not data:
             return None
@@ -83,8 +96,12 @@ class HashicorpVaultStore:
                 path=name,
                 mount_point=self._mount_point,
             )
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 — idempotent delete for missing secrets only
+            if _is_not_found(exc):
+                return
+            raise SecretBackendUnavailableError(
+                f"Vault delete failed for {name!r}: {exc}"
+            ) from exc
 
     async def rotate(self, key: str) -> VersionedSecret:
         import secrets as stdlib_secrets
@@ -104,8 +121,12 @@ class HashicorpVaultStore:
                 version=version,
                 mount_point=self._mount_point,
             )
-        except Exception:  # noqa: BLE001
-            return None
+        except Exception as exc:  # noqa: BLE001 — must distinguish not-found from backend failure
+            if _is_not_found(exc):
+                return None
+            raise SecretBackendUnavailableError(
+                f"Vault read failed for {key!r} v{version}: {exc}"
+            ) from exc
         data = response.get("data", {}).get("data", {})
         if not data:
             return None
@@ -119,8 +140,12 @@ class HashicorpVaultStore:
                 path=key,
                 mount_point=self._mount_point,
             )
-        except Exception:  # noqa: BLE001
-            return []
+        except Exception as exc:  # noqa: BLE001 — must distinguish not-found from backend failure
+            if _is_not_found(exc):
+                return []
+            raise SecretBackendUnavailableError(
+                f"Vault metadata read failed for {key!r}: {exc}"
+            ) from exc
         raw_versions = metadata.get("data", {}).get("versions", {})
         result: list[SecretVersion] = []
         for ver_str, ver_data in raw_versions.items():
@@ -154,9 +179,13 @@ class HashicorpVaultStore:
                 path=key,
                 mount_point=self._mount_point,
             )
-        except Exception as exc:
-            msg = f"Secret '{key}' not found"
-            raise KeyError(msg) from exc
+        except Exception as exc:  # noqa: BLE001 — must distinguish not-found from backend failure
+            if _is_not_found(exc):
+                msg = f"Secret '{key}' not found"
+                raise KeyError(msg) from exc
+            raise SecretBackendUnavailableError(
+                f"Vault read failed for {key!r}: {exc}"
+            ) from exc
         data = response.get("data", {})
         secret_data = data.get("data", {})
         if not secret_data:

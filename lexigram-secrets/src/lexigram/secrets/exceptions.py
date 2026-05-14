@@ -15,11 +15,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.contracts.exceptions import LexigramError
+from lexigram.contracts.exceptions import InfrastructureError, LexigramError
 
 __all__ = [
     "SecretAccessError",
     "SecretBackendError",
+    "SecretBackendUnavailableError",
     "SecretConfigError",
     "SecretNotFoundError",
     "SecretRotationError",
@@ -64,6 +65,12 @@ class SecretBackendError(SecretsError):
     """Raised when the underlying secret backend (e.g. Vault) fails."""
 
     _code: str = "LEX_ERR_SECRET_005"
+
+
+class SecretBackendUnavailableError(InfrastructureError):
+    """Backend auth/network/permission failure — distinct from secret-not-found."""
+
+    _code: str = "LEX_ERR_SECRET_007"
 
 
 class SecretConfigError(SecretsError):
