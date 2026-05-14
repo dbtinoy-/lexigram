@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-workers"
-version = "0.1.3001"
+version = "0.1.3005"
 description = "AI background workers for the Lexigram Framework — batch embedding, document ingestion, DLQ, maintenance"
 readme = "README.md"
 requires-python = ">=3.11"

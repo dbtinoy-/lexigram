@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-cache"
-version = "0.1.3001"
+version = "0.1.3005"
 description = "Multi-backend caching system for Lexigram Framework - Redis, Memcached, and in-memory caching"
 readme = "README.md"
 requires-python = ">=3.11"
