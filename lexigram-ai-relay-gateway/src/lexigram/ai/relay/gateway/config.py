@@ -50,6 +50,9 @@ class RelayGatewayConfig:
             (``POST /v1/videos`` style job relay) is evicted from the
             in-memory job registry on its next poll. Must be positive.
             Defaults to ``3600`` (one hour).
+        require_auth: When ``True`` the inbound relay routes require a
+            bound ``RelayAuthVerifierProtocol``; when ``False`` (default)
+            all routes stay open, preserving today's behavior.
     """
 
     channels: tuple[RelayChannel, ...] = ()
@@ -62,6 +65,7 @@ class RelayGatewayConfig:
     max_upstream_retries: int = 0
     load_balancing: Literal["deterministic", "weighted"] = "deterministic"
     job_ttl_seconds: int = 3600
+    require_auth: bool = False
 
     def __post_init__(self) -> None:
         """Reject duplicate names, bad auto-test intervals, and negative retries."""

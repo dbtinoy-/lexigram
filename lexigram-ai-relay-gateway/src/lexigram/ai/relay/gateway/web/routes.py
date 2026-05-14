@@ -27,6 +27,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
+from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.job_passthrough import JobPassthroughService
 from lexigram.ai.relay.gateway.web.audio_endpoints import (
     AUDIO_ROUTE_TABLE,
@@ -43,9 +44,11 @@ from lexigram.ai.relay.gateway.web.shared import (
     _error_response,
     _parse_body,
     _safe_headers,
+    auth_guard,
 )
 from lexigram.ai.relay.gateway.web.sse import SSEEncoder
 from lexigram.contracts.ai.relay import (
+    RelayAuthVerifierProtocol,
     RelayFormat,
     RelayGatewayError,
     RelayGatewayProtocol,
@@ -101,6 +104,29 @@ RELAY_ROUTE_PATHS: tuple[str, ...] = tuple(
     )
 )
 """Inbound relay paths registered by ``build_routes``, in route order."""
+
+
+async def _resolve_verifier(request: Request) -> RelayAuthVerifierProtocol | None:
+    """Resolve the verifier when auth is required, else ``None``."""
+    container: Any = getattr(request.state, "container", None)
+    if container is None:
+        return None
+    config = await container.resolve_optional(RelayGatewayConfig)
+    if config is None or not config.require_auth:
+        return None
+    return await container.resolve_optional(RelayAuthVerifierProtocol)
+
+
+def _with_auth_guard(
+    handler: Callable[..., Awaitable[Response]],
+) -> Callable[..., Awaitable[Response]]:
+    """Wrap a route handler so auth runs first, preserving the open default."""
+
+    async def guarded(request: Request) -> Response:
+        verifier = await _resolve_verifier(request)
+        return await auth_guard(request, verifier, handler)
+
+    return guarded
 
 
 async def relay_endpoint(
@@ -426,7 +452,7 @@ def build_routes(
     routes = [
         Route(
             path,
-            partial(relay_endpoint, source, resolve_gateway),
+            _with_auth_guard(partial(relay_endpoint, source, resolve_gateway)),
             methods=["POST"],
         )
         for path, source in _ROUTE_TABLE
@@ -435,7 +461,9 @@ def build_routes(
         routes.extend(
             Route(
                 path,
-                partial(passthrough_endpoint, kind, resolve_passthrough),
+                _with_auth_guard(
+                    partial(passthrough_endpoint, kind, resolve_passthrough)
+                ),
                 methods=["POST"],
             )
             for path, kind in _PASSTHROUGH_ROUTE_TABLE
@@ -443,17 +471,27 @@ def build_routes(
         routes.extend(
             Route(
                 path,
-                partial(_AUDIO_HANDLERS[kind], resolve_passthrough),
+                _with_auth_guard(partial(_AUDIO_HANDLERS[kind], resolve_passthrough)),
                 methods=["POST"],
             )
             for path, kind in AUDIO_ROUTE_TABLE
         )
-        routes.extend(build_image_routes(resolve_passthrough))
+        guarded_image_routes = [
+            Route(
+                route.path,
+                _with_auth_guard(route.endpoint),
+                methods=route.methods or ["POST"],
+            )
+            for route in build_image_routes(resolve_passthrough)
+        ]
+        routes.extend(guarded_image_routes)
     if resolve_job_passthrough is not None:
         routes.extend(
             Route(
                 path,
-                partial(job_submit_endpoint, kind, resolve_job_passthrough),
+                _with_auth_guard(
+                    partial(job_submit_endpoint, kind, resolve_job_passthrough)
+                ),
                 methods=["POST"],
             )
             for path, kind in _JOB_ROUTE_TABLE
@@ -461,7 +499,9 @@ def build_routes(
         routes.extend(
             Route(
                 _JOB_STATUS_PATH,
-                partial(job_status_endpoint, kind, resolve_job_passthrough),
+                _with_auth_guard(
+                    partial(job_status_endpoint, kind, resolve_job_passthrough)
+                ),
                 methods=["GET"],
             )
             for _, kind in _JOB_ROUTE_TABLE

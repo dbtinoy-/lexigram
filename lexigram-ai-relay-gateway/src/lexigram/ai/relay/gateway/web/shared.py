@@ -15,7 +15,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from lexigram.ai.relay.gateway.passthrough import PassthroughService
-from lexigram.contracts.ai.relay import RelayFormat, RelayGatewayError
+from lexigram.contracts.ai.relay import (
+    RelayAuthError,
+    RelayAuthVerifierProtocol,
+    RelayFormat,
+    RelayGatewayError,
+)
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
 from lexigram.serialization import loads
 
@@ -28,6 +33,7 @@ __all__ = [
     "_error_types",
     "_parse_body",
     "_safe_headers",
+    "auth_guard",
 ]
 
 ResolvePassthrough: TypeAlias = Callable[[Request], Awaitable[PassthroughService]]
@@ -123,6 +129,48 @@ def _error_response(source: RelayFormat, error: RelayGatewayError) -> Response:
             }
         }
     return JSONResponse(content=envelope, status_code=error.status_code)
+
+
+async def auth_guard(
+    request: Request,
+    verifier: RelayAuthVerifierProtocol | None,
+    handler: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    """Guard one inbound relay request with the bound verifier, if any.
+
+    Args:
+        request: The inbound Starlette request.
+        verifier: The resolved verifier; ``None`` (or a host that has
+            not bound one) lets the request through untouched.
+        handler: The wrapped route handler.
+
+    Returns:
+        The handler's response when no verifier is bound or the caller
+        authenticates (identity stored on ``request.state.relay_identity``);
+        a 401 authentication-error envelope otherwise.
+    """
+    if verifier is None:
+        return await handler(request)
+    result = await verifier.authenticate(request)
+    if result.is_err():
+        return _auth_error_response(result.unwrap_err())
+    request.state.relay_identity = result.unwrap()
+    return await handler(request)
+
+
+def _auth_error_response(err: RelayAuthError) -> JSONResponse:
+    """Build the 401 authentication-error envelope."""
+    return JSONResponse(
+        {
+            "error": {
+                "type": "authentication_error",
+                "code": err.code,
+                "message": err.message,
+                "param": None,
+            }
+        },
+        status_code=401,
+    )
 
 
 def _parse_body(
