@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 __all__ = [
     "CohereEmbeddingConfig",
@@ -43,7 +43,7 @@ class OpenAIEmbeddingConfig(EmbeddingConfig):
     """
 
     model: str = "text-embedding-3-small"
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)
     base_url: str = "https://api.openai.com/v1"
     organization: str | None = None
 
@@ -59,7 +59,7 @@ class CohereEmbeddingConfig(EmbeddingConfig):
     """
 
     model: str = "embed-english-v3.0"
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)
     input_type: str = "search_document"
 
 
@@ -73,7 +73,7 @@ class VoyageEmbeddingConfig(EmbeddingConfig):
     """
 
     model: str = "voyage-3"
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,7 @@ class JinaEmbeddingConfig(EmbeddingConfig):
     """
 
     model: str = "jina-embeddings-v3"
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)
     base_url: str = "https://api.jina.ai/v1"
 
 
