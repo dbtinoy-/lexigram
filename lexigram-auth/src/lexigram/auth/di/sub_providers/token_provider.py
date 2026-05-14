@@ -78,7 +78,11 @@ class TokenProvider(Provider):
         if secret_key:
             resolved_secret: str | None = secret_key
         elif token_config is not None:
-            resolved_secret = token_config.secret_key or None
+            resolved_secret = (
+                token_config.secret_key.get_secret_value()
+                if token_config.secret_key
+                else None
+            )
         else:
             # No config at all: ephemeral key for zero-config dev/test.
             if env in _STRICT_ENVS:

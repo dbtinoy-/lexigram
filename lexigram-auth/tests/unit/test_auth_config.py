@@ -89,7 +89,9 @@ class TestAuthConfigProductionSecurity:
     def test_accepts_secure_keys_in_production(self) -> None:
         os.environ["LEX_ENV"] = "production"
         try:
-            config = AuthConfig(secret_key="secure-key", token={"secret_key": "secure-key"})
+            config = AuthConfig(
+                secret_key="secure-key", token={"secret_key": "secure-key"}
+            )
             assert config.secret_key == "secure-key"
         finally:
             os.environ["LEX_ENV"] = "development"
@@ -233,6 +235,7 @@ class TestAuthRoleConfigDefaults:
         config = AuthRoleConfig(name="test")
         assert config.inherits == []
 
+
 class TestJWTSecretQuality:
     def test_hs384_requires_long_secret(self) -> None:
         os.environ["LEX_ENV"] = "production"
@@ -243,5 +246,18 @@ class TestJWTSecretQuality:
                     token=JWTConfig(secret_key="short", algorithm="HS384"),
                 )
             assert "SECURITY ERROR" in str(excinfo.value)
+        finally:
+            os.environ["LEX_ENV"] = "development"
+
+
+class TestJWTSecretMasking:
+    def test_jwt_secret_key_is_masked_from_plain_string(self) -> None:
+        os.environ["LEX_ENV"] = "development"
+        try:
+            cfg = JWTConfig(secret_key="x" * 64)
+            secret_attr = getattr(cfg, "secret_key")
+            assert hasattr(secret_attr, "get_secret_value")
+            assert "x" * 64 not in repr(secret_attr)
+            assert secret_attr.get_secret_value() == "x" * 64
         finally:
             os.environ["LEX_ENV"] = "development"

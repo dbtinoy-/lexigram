@@ -26,3 +26,10 @@ def test_development_cookie_relaxes_https_only_but_keeps_samesite() -> None:
 def test_production_with_default_secret_refuses_to_build() -> None:
     with pytest.raises(ValueError, match="session_secret"):
         AdminAuthConfig(env="production", session_secret="change-me-in-production")
+
+
+def test_cookie_kwargs_secret_key_is_plain_string() -> None:
+    cfg = AdminAuthConfig(env="production", session_secret="y" * 64)
+    kwargs = build_session_cookie_kwargs(cfg)
+    assert isinstance(kwargs["secret_key"], str)
+    assert kwargs["secret_key"] == "y" * 64

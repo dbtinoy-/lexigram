@@ -25,7 +25,7 @@ def build_session_cookie_kwargs(cfg: AdminAuthConfig) -> SessionCookieKwargs:
     """
     is_prod = cfg.env == "production"
     return SessionCookieKwargs(
-        secret_key=cfg.session_secret,
+        secret_key=cfg.session_secret.get_secret_value(),
         https_only=is_prod,
         same_site="strict" if is_prod else "lax",
         max_age=cfg.session_lifetime,
