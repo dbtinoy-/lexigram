@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
+from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.ratelimit import (
     InMemoryRateLimitCounter,
     RelayRateLimiter,
 )
+from lexigram.ai.relay.gateway.web.routes import _with_auth_guard
 from lexigram.contracts.ai.relay import (
     RelayAuthIdentity,
+    RelayAuthVerifierProtocol,
     RelayRateLimitCounterProtocol,
     RelayRateLimitDecision,
 )
+from lexigram.contracts.core.result import Ok
+from lexigram.serialization import loads
 
 
 async def test_window_expiry_resets_counter() -> None:
@@ -114,3 +124,103 @@ async def test_protocol_compliance() -> None:
     assert isinstance(InMemoryRateLimitCounter(), RelayRateLimitCounterProtocol)
     decision = RelayRateLimitDecision(allowed=True, count=1, ttl_seconds=10)
     assert decision.allowed is True
+
+
+# --- route-level guard composition ---
+
+
+class FakeVerifier:
+    """Minimal ``RelayAuthVerifierProtocol`` double with a canned identity."""
+
+    async def authenticate(self, request: object) -> object:
+        return Ok(RelayAuthIdentity(user_id="u1", token_id="t1"))
+
+
+class FakeRateLimitContainer:
+    """Container double resolving config, verifier, and counter bindings."""
+
+    def __init__(
+        self,
+        config: object,
+        verifier: FakeVerifier | None = None,
+        counter: RelayRateLimitCounterProtocol | None = None,
+    ) -> None:
+        self._config = config
+        self._verifier = verifier
+        self._counter = counter
+
+    async def resolve_optional(self, service_type: type[Any]) -> Any | None:
+        if service_type is RelayGatewayConfig:
+            return self._config
+        if service_type is RelayAuthVerifierProtocol:
+            return self._verifier
+        if service_type is RelayRateLimitCounterProtocol:
+            return self._counter
+        return None
+
+
+def _make_request(body: bytes = b'{"model": "gpt-4"}') -> Request:
+    """Build a request that streams *body* exactly once, cached by Starlette."""
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/v1/chat/completions",
+            "headers": [],
+        },
+        receive=receive,
+    )
+
+
+async def _echo_handler(request: Request) -> JSONResponse:
+    """Trivial endpoint double."""
+    return JSONResponse({"ok": True})
+
+
+async def test_guarded_route_second_request_gets_429() -> None:
+    container = FakeRateLimitContainer(
+        config=RelayGatewayConfig(
+            require_auth=True,
+            rate_limits={"*": {"max": 1, "window_seconds": 60}},
+        ),
+        verifier=FakeVerifier(),
+        counter=InMemoryRateLimitCounter(),
+    )
+    guarded = _with_auth_guard(_echo_handler)
+    first = _make_request()
+    first.state.container = container
+    response = await guarded(first)
+    assert response.status_code == 200
+    second = _make_request()
+    second.state.container = container
+    response = await guarded(second)
+    assert response.status_code == 429
+    envelope = loads(response.body)
+    assert envelope["error"]["type"] == "rate_limit_error"
+    assert envelope["error"]["code"] == "RATE_LIMITED"
+    assert isinstance(envelope["error"]["retry_after_seconds"], int)
+
+
+async def test_guarded_route_succeeds_without_rules() -> None:
+    container = FakeRateLimitContainer(
+        config=RelayGatewayConfig(require_auth=True),
+        verifier=FakeVerifier(),
+        counter=InMemoryRateLimitCounter(),
+    )
+    guarded = _with_auth_guard(_echo_handler)
+    for _ in range(2):
+        request = _make_request()
+        request.state.container = container
+        response = await guarded(request)
+        assert response.status_code == 200
+
+
+async def test_guarded_route_succeeds_without_container() -> None:
+    guarded = _with_auth_guard(_echo_handler)
+    for _ in range(2):
+        response = await guarded(_make_request())
+        assert response.status_code == 200
