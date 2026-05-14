@@ -14,12 +14,15 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus, ProviderPri
 from lexigram.contracts.core.health import HealthCheckCategory
 from lexigram.contracts.security.protocols import KeyDerivationProtocol
 from lexigram.di.provider import Provider
+from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
+
+logger = get_logger(__name__)
 
 __all__ = ["AuthProvider"]
 
@@ -70,6 +73,25 @@ class AuthProvider(Provider):
                 kdf=c.resolve(KeyDerivationProtocol)
             ),
         )
+
+        if self._config.relay_verification:
+            from lexigram.auth.authn.apikeys import APIKeyManager
+            from lexigram.auth.authn.relay import RelayApiKeyVerifier
+            from lexigram.contracts.ai.relay import RelayAuthVerifierProtocol
+            from lexigram.contracts.auth import APIKeyRepositoryProtocol
+
+            if not container.has(APIKeyRepositoryProtocol):
+                logger.warning(
+                    "relay_verifier_skipped",
+                    reason="APIKeyRepositoryProtocol not bound",
+                )
+                return
+            container.singleton(
+                RelayAuthVerifierProtocol,
+                factory=lambda c: RelayApiKeyVerifier(
+                    manager=APIKeyManager(repo=c.resolve(APIKeyRepositoryProtocol))
+                ),
+            )
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot the auth provider."""
