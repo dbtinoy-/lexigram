@@ -97,7 +97,7 @@ class AzureOpenAIClient(OpenAIClient):
         except ImportError as exc:
             raise ImportError(
                 "AzureOpenAIClient requires the 'openai' package. "
-                "Install with: pip install lexigram-intelligence[openai]"
+                "Install with: pip install lexigram-ai-llm[openai]"
             ) from exc
 
         # Call AbstractLLMClient.__init__ directly, bypassing OpenAIClient.__init__,

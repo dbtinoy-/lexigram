@@ -424,6 +424,6 @@ class MyService:
 - [Application Lifecycle](/fundamentals/application-lifecycle/) — the composition root and boot sequence
 - [Dependency Injection](/fundamentals/dependency-injection/) — scopes, decorators, and manual resolution
 - [Providers](/fundamentals/providers/) — the 2-phase lifecycle and boot ordering
-- [Web Guide](/guides/web/) — controllers, middleware, and routing in depth
+- [Web Guide](/getting-started/first-app/) — controllers, middleware, and routing in depth
 - [Testing](/guides/testing/) — fakes, test beds, and protocol compliance suites
 - [Ecosystem](/ecosystem/) — every extension package and what it does

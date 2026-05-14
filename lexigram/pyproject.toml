@@ -74,6 +74,7 @@ dependencies = [
     "orjson>=3.0.0",
     "structlog>=25.1.0",             # Structured logging foundation
     "pydantic>=2.10.0",               # Required: used unconditionally by config, validation
+    "jinja2>=3.1.0",
 ]
 
 # =============================================================================
@@ -317,10 +318,6 @@ show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = "tests.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "examples.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

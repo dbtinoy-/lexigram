@@ -13,7 +13,11 @@ from typing import Any
 
 import structlog
 
+from lexigram.logging import get_logger
 from lexigram.logging.redaction import get_redactor
+
+logger = get_logger(__name__)
+_otel_warned = [False]
 from lexigram.logging.types import _LOGLEVEL_TO_INT, LogLevel
 
 # ---------------------------------------------------------------------------
@@ -88,7 +92,15 @@ def _otel_processor(
             event_dict["trace_id"] = format(ctx.trace_id, "032x")
             event_dict["span_id"] = format(ctx.span_id, "016x")
     except ImportError:
-        pass
+        if not _otel_warned[0]:
+            _otel_warned[0] = True
+            # No kwargs here: this warning can be the first log call of the
+            # process, firing before configure_logging() resolves structlog's
+            # lazy proxy — kwargs crash against the raw PrintLogger default.
+            logger.warning(
+                "opentelemetry_not_installed; install opentelemetry-api for "
+                "trace_id/span_id injection into log events"
+            )
     return event_dict
 
 

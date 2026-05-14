@@ -65,7 +65,7 @@ class OpenAICompatibleClient(OpenAIClient):
         except ImportError as exc:
             raise ImportError(
                 f"{type(self).__name__} requires the 'openai' package. "
-                "Install with: pip install lexigram-intelligence[openai]"
+                "Install with: pip install lexigram-ai-llm[openai]"
             ) from exc
 
         from lexigram.ai.llm.clients.base import AbstractLLMClient

@@ -79,7 +79,7 @@ def test_rules_generator_is_registered_and_writes_expected_sections(tmp_path: Pa
 
     assert generator is not None
     result = generator.run(root=tmp_path)
-    markdown = (tmp_path / "AUDIT_RULES.md").read_text(encoding="utf-8")
+    markdown = (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_RULES.md").read_text(encoding="utf-8")
 
     assert result.success is True
     assert "## Severity Summary" in markdown

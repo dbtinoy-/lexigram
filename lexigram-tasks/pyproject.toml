@@ -40,6 +40,9 @@ dependencies = [
     "typing-extensions>=4.0.0",
     "croniter>=1.4.0",
     "psutil>=5.9.0",
+    "starlette>=0.28.0",
+    "typer>=0.9.0",
+    "jinja2>=3.1.0",
 ]
 authors = [
     { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
@@ -171,7 +174,6 @@ strict_equality = true
 show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },
 ]
 

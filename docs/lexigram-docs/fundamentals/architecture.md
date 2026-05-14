@@ -94,7 +94,7 @@ app.add_provider(DatabaseProvider())          # INFRASTRUCTURE priority — boot
 app.add_provider(WebProvider())               # PRESENTATION priority — boots last
 ```
 
-Boot order follows [provider priority](/fundamentals/providers/#provider-priorities), so infrastructure (database, cache) is ready before the web layer starts serving.
+Boot order follows [provider priority](/fundamentals/providers/#2-provider-priorities), so infrastructure (database, cache) is ready before the web layer starts serving.
 
 ---
 

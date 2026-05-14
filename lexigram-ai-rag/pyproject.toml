@@ -29,6 +29,9 @@ dependencies = [
     "lexigram-contracts>=0.1.0",
     "lexigram>=0.1.1",
     "typing-extensions>=4.0.0",
+    "aiofiles>=23.0.0",
+    "numpy>=1.24.0",
+    "pyyaml>=6.0.0",
 ]
 [project.urls]
 Homepage = "https://lexigram.dev"
@@ -38,9 +41,16 @@ Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
+audio = [
+    "librosa>=0.10.0",
+    "mutagen>=1.47.0",
+]
+video = [
+    "opencv-python>=4.8.0",
+]
 pdf = ["pypdf2>=3.0"]
 web = ["beautifulsoup4>=4.12", "aiohttp>=3.9"]
-clip = ["transformers>=4.30", "torch>=2.0"]
+clip = ["transformers>=4.30", "torch>=2.0", "pillow>=10.0.0"]
 compression = ["llmlingua>=0.2.0"]
 reranking = ["flashrank>=0.2.0"]
 test = [
@@ -113,7 +123,6 @@ show_error_codes = true
 strict = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
 ]
 
 [tool.ruff]

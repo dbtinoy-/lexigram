@@ -269,8 +269,8 @@ For WebSocket tests, mock or stub the `WebSocket` class at the protocol boundary
 
 ## Next Steps
 
-- [Routing](/fundamentals/routing/) — mounting WebSocket and SSE endpoints
-- [Security & Guards](/guides/security/) — `GuardProtocol` for WebSocket auth
+- [Routing](/getting-started/first-app/) — controllers and route mounting basics
+- [Security & Guards](/guides/authentication/) — `GuardProtocol` for WebSocket auth
 - [Dependency Injection](/fundamentals/dependency-injection/) — binding protocols to implementations
 - [MCP Guide](/guides/ai-mcp/) — SSE transport for the Model Context Protocol
 - [`lexigram-web` package](/packages/lexigram-web/) — full config reference, decorators, middleware

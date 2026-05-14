@@ -90,7 +90,7 @@ def test_quality_generator_includes_ruff_and_mypy_tool_evidence(
     generator = QualityAuditGenerator()
 
     result = generator.run(root=tmp_path)
-    markdown = (tmp_path / "AUDIT_QUALITY.md").read_text(encoding="utf-8")
+    markdown = (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_QUALITY.md").read_text(encoding="utf-8")
 
     assert result.success is True
     assert "## Tool Results" in markdown
@@ -144,7 +144,7 @@ def test_quality_generator_writes_report_for_timeout_and_command_error(
     generator = QualityAuditGenerator()
 
     result = generator.run(root=tmp_path)
-    markdown = (tmp_path / "AUDIT_QUALITY.md").read_text(encoding="utf-8")
+    markdown = (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_QUALITY.md").read_text(encoding="utf-8")
 
     assert result.success is True
     assert "## Tool Results" in markdown

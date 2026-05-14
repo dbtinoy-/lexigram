@@ -97,7 +97,6 @@ strict = true
 show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
 ]
 
 [tool.ruff]

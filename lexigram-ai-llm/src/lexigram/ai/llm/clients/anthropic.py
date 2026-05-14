@@ -73,7 +73,7 @@ class AnthropicClient(AbstractLLMClient):
         except ImportError as e:
             raise ImportError(
                 "Anthropic client requires 'anthropic' package. "
-                "Install with: pip install lexigram-intelligence[anthropic]",
+                "Install with: pip install lexigram-ai-llm[anthropic]",
             ) from e
 
         api_key = config.api_key.get_secret_value() if config.api_key else None

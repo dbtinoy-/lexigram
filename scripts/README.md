@@ -34,6 +34,7 @@ Audit targets call the same CLI:
 - `make audit-quality`
 - `make audit-rules`
 - `make audit-tests`
+- `make audit-docs-links`
 - `make scripts-audit`
 - `make scripts-audit-index`
 - `make scripts-audit-validate`
@@ -45,6 +46,7 @@ Quality and test audits are evidence-backed:
 - `AUDIT_QUALITY.md` records live `ruff check` and `mypy` command evidence.
 - `AUDIT_TESTS.md` records live `pytest` execution evidence plus parsed examples.
 - `AUDIT_RULES.md` records Lexigram architecture misalignments found by the rules scan.
+- `AUDIT_DOC_LINKS.md` records dead internal links inside `docs/lexigram-docs/` (missing targets, missing anchors, `/packages/` routes without a `docs/` folder). The `docs-links` audit fails when any dead link is found, so `make audit-package` catches link rot before merge.
 
 ## Testing
 

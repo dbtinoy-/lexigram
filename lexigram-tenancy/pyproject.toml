@@ -29,6 +29,7 @@ dependencies = [
     "lexigram>=0.1.1",
     "lexigram-contracts>=0.1.0",
     "typing-extensions>=4.0.0",
+    "typer>=0.9.0",
 ]
 
 [project.urls]
@@ -104,7 +105,6 @@ show_error_codes = true
 disallow_any_generics = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "examples.*", ignore_errors = true },
 ]
 
 [tool.ruff]

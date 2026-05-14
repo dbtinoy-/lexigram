@@ -17,14 +17,14 @@
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 234 ms | `uv run ruff check .` |
-| `Mypy` | **PASS** | 0 | 96789 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 242 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 78664 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `234 ms`
+- Duration: `242 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -36,7 +36,7 @@ All checks passed!
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `96789 ms`
+- Duration: `78664 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
@@ -77,7 +77,7 @@ All per-package mypy checks passed.
 | `lexigram-graph` | 25 | 31 |
 | `lexigram-graphql` | 74 | 60 |
 | `lexigram-http` | 31 | 25 |
-| `lexigram-monitor` | 79 | 50 |
+| `lexigram-monitor` | 79 | 51 |
 | `lexigram-multimedia` | 21 | 23 |
 | `lexigram-multimedia-beat` | 11 | 6 |
 | `lexigram-multimedia-image` | 13 | 9 |
@@ -86,7 +86,7 @@ All per-package mypy checks passed.
 | `lexigram-multimedia-tts` | 20 | 12 |
 | `lexigram-multimedia-upscale` | 15 | 8 |
 | `lexigram-multimedia-video` | 24 | 19 |
-| `lexigram-nosql` | 42 | 37 |
+| `lexigram-nosql` | 42 | 38 |
 | `lexigram-notification` | 47 | 29 |
 | `lexigram-queue` | 47 | 31 |
 | `lexigram-resilience` | 53 | 31 |

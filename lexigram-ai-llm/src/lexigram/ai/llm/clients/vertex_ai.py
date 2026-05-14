@@ -97,7 +97,7 @@ class VertexAIClient(AbstractLLMClient):
         except ImportError as exc:
             raise ImportError(
                 "VertexAIClient requires 'google-auth'. "
-                "Install with: pip install lexigram-intelligence[vertex]"
+                "Install with: pip install google-cloud-aiplatform"
             ) from exc
 
         extra: dict[str, Any] = config.extra or {}
