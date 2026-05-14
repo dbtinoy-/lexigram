@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-memory"
-version = "0.1.3005"
+version = "0.1.3006"
 description = "AI memory system for the Lexigram Framework — episodic, semantic, and working memory"
 readme = "README.md"
 requires-python = ">=3.11"
