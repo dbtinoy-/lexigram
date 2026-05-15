@@ -74,6 +74,25 @@ class RelayChannelRegistry:
         """
         return self._channels
 
+    def reload(self, channels: tuple[RelayChannel, ...]) -> None:
+        """Replace the channel table (boot reconcile from a durable store).
+
+        Runtime overrides are preserved for channels that remain in the
+        new table and dropped for channels that were removed, so a boot
+        reconcile never resurrects a drained channel and never carries
+        overrides for channels that no longer exist.
+
+        Args:
+            channels: The new channel tuple, in selection order.
+        """
+        remaining = {channel.name for channel in channels}
+        self._runtime_enabled = {
+            name: enabled
+            for name, enabled in self._runtime_enabled.items()
+            if name in remaining
+        }
+        self._channels = channels
+
     def set_runtime_enabled(self, channel: str, enabled: bool) -> None:
         """Override the eligibility of *channel* at runtime.
 

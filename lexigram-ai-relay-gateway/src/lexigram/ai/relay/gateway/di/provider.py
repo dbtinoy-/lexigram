@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
+from lexigram.ai.relay.gateway.loader import DurableChannelLoader
 from lexigram.ai.relay.gateway.operations.auto_test import RelayChannelAutoTester
 from lexigram.ai.relay.gateway.operations.controls import (
     InMemoryRelayPolicyStore,
@@ -36,6 +37,7 @@ from lexigram.contracts.ai.governance import (
 )
 from lexigram.contracts.ai.relay import (
     MediaResolverProtocol,
+    RelayChannelStoreProtocol,
     RelayConverterProtocol,
     RelayGatewayProtocol,
     RelayPolicyStoreProtocol,
@@ -226,8 +228,11 @@ class RelayGatewayProvider(Provider):
         logger.info("relay_gateway_provider_registered")
 
     async def boot(self, container: BootContainerProtocol) -> None:
-        """Reconcile persisted policy drains into runtime selection.
+        """Reconcile durable channels and policy drains into selection.
 
+        When the container resolves ``RelayChannelStoreProtocol``, the
+        durable rows are merged over the static configuration and
+        installed in the runtime registry before the policy drain runs.
         Channels the policy store marks disabled (while the static
         configuration still enables them) are drained in the runtime
         registry so dispatch honors the persisted policy from the first
@@ -236,12 +241,21 @@ class RelayGatewayProvider(Provider):
 
         Args:
             container: The booted container used to resolve the policy
-                store and channel registry.
+                store, channel registry, and optional channel store.
         """
         registry = await container.resolve(RelayChannelRegistry)
         policy = await container.resolve(RelayPolicyStoreProtocol)
+        channels = self._config.channels
+        store = await container.resolve_optional(RelayChannelStoreProtocol)
+        if store is not None:
+            loader = DurableChannelLoader(store)
+            merged = await loader.load(self._config.channels)
+            if merged is not self._config.channels:
+                registry.reload(merged)
+                channels = merged
+                logger.info("relay_gateway_channels_reconciled", count=len(merged))
         snapshot = await policy.load()
-        for channel in self._config.channels:
+        for channel in channels:
             if channel.enabled and not snapshot.enabled_channels.get(
                 channel.name, True
             ):
