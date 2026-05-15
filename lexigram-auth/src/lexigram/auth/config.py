@@ -196,9 +196,10 @@ class JWTConfig(BaseConfig):
                     f"{env.value.upper()}.\n"
                     "You MUST set a secure secret key via LEX_AUTH__TOKEN__SECRET_KEY.",
                 )
-            if self.algorithm.startswith("HS") and len(
-                self.secret_key.get_secret_value()
-            ) < 32:
+            if (
+                self.algorithm.startswith("HS")
+                and len(self.secret_key.get_secret_value()) < 32
+            ):
                 raise ValueError(
                     f"SECURITY ERROR: {self.algorithm} requires a secret of at "
                     f"least 32 bytes in {env.value}.\n"
