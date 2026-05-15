@@ -14,6 +14,7 @@ from typing import Any, TypeAlias
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from lexigram.ai.relay.gateway.logging import RelayRequestLogger
 from lexigram.ai.relay.gateway.passthrough import PassthroughService
 from lexigram.ai.relay.gateway.ratelimit import RelayRateLimiter
 from lexigram.contracts.ai.relay import (
@@ -22,8 +23,10 @@ from lexigram.contracts.ai.relay import (
     RelayAuthVerifierProtocol,
     RelayFormat,
     RelayGatewayError,
+    RelayRequestLogEntry,
 )
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
+from lexigram.primitives import clock
 from lexigram.serialization import loads
 
 __all__ = [
@@ -36,6 +39,7 @@ __all__ = [
     "_parse_body",
     "_safe_headers",
     "auth_guard",
+    "log_request",
     "rate_limit_guard",
 ]
 
@@ -226,6 +230,69 @@ async def rate_limit_guard(
             }
         },
         status_code=429,
+    )
+
+
+def _status_for(status_code: int) -> str:
+    """Map an HTTP status to the request-log entry status vocabulary."""
+    if status_code == 401:
+        return "unauthorized"
+    if status_code == 429:
+        return "rate_limited"
+    if status_code >= 400:
+        return "failed"
+    return "completed"
+
+
+def log_request(
+    request: Request,
+    logger: RelayRequestLogger | None,
+    *,
+    kind: str,
+    status: str,
+    model: str,
+    error_code: str = "",
+    latency_ms: int = 0,
+) -> None:
+    """Build and emit one redaction-safe entry for a finished dispatch.
+
+    Metadata only: identity from ``request.state.relay_identity``
+    (empty strings when unauthenticated), endpoint kind, model, status,
+    latency, and an optional error code.  Never touches the request body
+    or headers, and never blocks: emission is fire-and-forget.
+
+    Args:
+        request: The finished inbound request.
+        logger: The resolved emitter; ``None`` (no store bound) skips
+            logging entirely.
+        kind: The endpoint kind label (e.g. ``"chat"``, ``"embeddings"``).
+        status: The entry status (``completed``, ``failed``,
+            ``rate_limited``, ``unauthorized``).
+        model: The requested model name.
+        error_code: Machine-readable gateway error code for failures.
+        latency_ms: Dispatch latency in milliseconds.
+    """
+    if logger is None:
+        return
+    identity = getattr(request.state, "relay_identity", None)
+    user_id = identity.user_id if isinstance(identity, RelayAuthIdentity) else ""
+    token_id = identity.token_id if isinstance(identity, RelayAuthIdentity) else ""
+    request_id = getattr(request.state, "request_id", None)
+    if not isinstance(request_id, str):
+        request_id = ""
+    logger.log(
+        RelayRequestLogEntry(
+            request_id=request_id,
+            user_id=user_id,
+            token_id=token_id,
+            endpoint_kind=kind,
+            model=model,
+            channel_name="",
+            status=status,
+            error_code=error_code,
+            latency_ms=latency_ms,
+            created_at=clock.now(),
+        )
     )
 
 
