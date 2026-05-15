@@ -8,9 +8,11 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass
 import secrets
+import stat
 import string
 
 from lexigram.logging import get_logger
+from lexigram.security.secrets.store import SecretAccessError
 
 logger = get_logger(__name__)
 
@@ -97,6 +99,7 @@ class DotenvSecretBackend(SecretBackend):
 
             path = Path(self.env_file)
             if path.exists():
+                self._assert_restrictive_permissions(path)
                 with open(path) as f:
                     for raw_line in f:
                         line = raw_line.strip()
@@ -104,16 +107,32 @@ class DotenvSecretBackend(SecretBackend):
                             if "=" in line:
                                 key, value = line.split("=", 1)
                                 self._secrets[key.strip()] = value.strip()
+        except SecretAccessError:
+            raise
         except (RuntimeError, OSError, AttributeError, LookupError) as exc:
             logger.debug("secrets_load_failed", error=str(exc))
 
     def _save(self) -> None:
         try:
-            with open(self.env_file, "w") as f:
+            from pathlib import Path
+
+            path = Path(self.env_file)
+            with open(path, "w") as f:
                 for key, value in self._secrets.items():
                     f.write(f"{key}={value}\n")
+            path.chmod(0o600)
         except (RuntimeError, OSError, AttributeError, LookupError) as exc:
             logger.debug("secrets_save_failed", error=str(exc))
+
+    @staticmethod
+    def _assert_restrictive_permissions(path: Path) -> None:
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if mode & 0o077:
+            raise SecretAccessError(
+                f"Dotenv secret file '{path}' permissions are too open "
+                f"({oct(mode)}); expected owner-only permissions."
+                "Run `chmod 600` on the file to fix."
+            )
 
     def get(self, key: str) -> str | None:
         return self._secrets.get(key)
