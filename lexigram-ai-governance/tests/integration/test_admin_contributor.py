@@ -165,6 +165,8 @@ class TestContributorDiscovery:
             "/ai-governance/relay-usage",
             "/ai-governance/relay-quotas",
             "/ai-governance/relay-settlements",
+            "/ai-governance/relay-logs",
+            "/ai-governance/relay-rankings",
         }
 
     def test_widget_endpoints_have_matching_routes(self) -> None:
@@ -177,10 +179,10 @@ class TestContributorDiscovery:
             assert health.check_endpoint in route_paths
 
     def test_read_only_pages_do_not_require_control_permissions(self) -> None:
-        """Pages carry no permission gate beyond the contributor default."""
+        """Pages carry only read-only permission gates."""
         contributor = GovernanceAdminContributor()
         for page in contributor.get_management_pages():
-            assert page.permission in (None, "governance.read")
+            assert page.permission in (None, "governance.read", "relay.logs")
 
 
 class TestReadOnlyPages:

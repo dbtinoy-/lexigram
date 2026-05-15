@@ -68,3 +68,4 @@ def test_usage_service_protocol_is_runtime_checkable() -> None:
     assert RelayUsageServiceProtocol.__name__ == "RelayUsageServiceProtocol"
     assert hasattr(RelayUsageServiceProtocol, "daily_usage")
     assert hasattr(RelayUsageServiceProtocol, "model_rank")
+    assert hasattr(RelayUsageServiceProtocol, "list_requests")

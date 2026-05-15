@@ -8,7 +8,10 @@ package boundaries safely.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from lexigram.contracts.ai.relay.logs import RelayRequestLogEntry
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +45,18 @@ class RelayUsageServiceProtocol(Protocol):
     async def daily_usage(self, user_id: str, days: int) -> list[RelayDailyUsage]: ...
 
     async def model_rank(self, days: int, limit: int) -> list[RelayModelRank]: ...
+
+    async def list_requests(
+        self,
+        days: int,
+        page: int,
+        page_size: int,
+        *,
+        user_id: str | None = None,
+        token_id: str | None = None,
+    ) -> list[RelayRequestLogEntry]:
+        """List recent request-log entries, newest first."""
+        ...
 
 
 __all__ = ["RelayDailyUsage", "RelayModelRank", "RelayUsageServiceProtocol"]
