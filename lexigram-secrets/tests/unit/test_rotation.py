@@ -72,3 +72,47 @@ class TestRotationDecorator:
         warning = await decorator.check_warnings("key")
         assert warning is not None
         assert "approaching rotation deadline" in warning
+
+
+class TestRotationGraceBufferEviction:
+    @pytest.fixture
+    def store(self) -> FakeRotatableSecretStore:
+        return FakeRotatableSecretStore()
+
+    async def test_expired_rotation_is_evicted_on_get_rotated(self, store) -> None:
+        from datetime import UTC, datetime, timedelta
+
+        from lexigram.secrets.types import VersionedSecret
+
+        await store.set("key", "hello")
+        decorator = RotationDecorator(
+            store, RotationSchedule(max_age_seconds=999999.0, grace_period_seconds=0.0)
+        )
+        old_secret = await store.get_current_version("key")
+        decorator._rotated_at["key"] = datetime.now(UTC) - timedelta(seconds=1)
+        decorator._rotated_old["key"] = VersionedSecret(
+            key="key",
+            version=1,
+            value=old_secret.value,
+            created_at=old_secret.created_at,
+        )
+        await decorator.get_rotated("key")
+        assert "key" not in decorator._rotated_old
+        assert "key" not in decorator._rotated_at
+
+    async def test_buffer_is_bounded(self, store) -> None:
+        decorator = RotationDecorator(store, RotationSchedule(max_age_seconds=0.0))
+        for i in range(80):
+            await store.set(f"key-{i}", f"value-{i}")
+        for i in range(80):
+            await decorator.get_rotated(f"key-{i}")
+        assert len(decorator._rotated_old) <= 64
+
+    async def test_grace_period_still_serves_old_value(self, store) -> None:
+        await store.set("key", "hello")
+        decorator = RotationDecorator(
+            store, RotationSchedule(max_age_seconds=0.0, grace_period_seconds=3600.0)
+        )
+        await decorator.get_rotated("key")
+        served = await decorator.get_current_version("key")
+        assert str(served.value) == "hello"
