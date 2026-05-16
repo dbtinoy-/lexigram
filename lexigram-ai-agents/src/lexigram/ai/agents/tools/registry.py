@@ -122,9 +122,9 @@ class ToolRegistryImpl(Registry[str, ToolProtocol], ToolRegistryProtocol):
     def list_visible_tools(self) -> list[ToolProtocol]:
         """List tools visible to the current caller module.
 
-        If no module graph or caller is set, returns all tools.
+        If no caller module is set, returns all tools (standalone mode).
         """
-        if not self._module_graph or not self._caller_module:
+        if not self._caller_module:
             return self.list_tools()
 
         visible = []
@@ -248,15 +248,14 @@ class ToolRegistryImpl(Registry[str, ToolProtocol], ToolRegistryProtocol):
         """Check if a tool is visible to the current caller module.
 
         Visibility rules:
-        1. No module graph → all tools visible (standalone mode)
-        2. No caller module → all tools visible (standalone agent)
-        3. Tool has no module → visible to everyone
-        4. Tool module == caller module → visible (same module)
-        5. Tool module exports are visible to caller → visible
-        6. Tool module is global → visible
-        7. Otherwise → not visible
+        1. No caller module → all tools visible (standalone agent)
+        2. Tool has no module → visible to everyone
+        3. Tool module == caller module → visible (same module)
+        4. Tool module exports are visible to caller → visible
+        5. Tool module is global → visible
+        6. Otherwise → not visible
         """
-        if not self._module_graph or not self._caller_module:
+        if not self._caller_module:
             return True
 
         tool_module = self._tool_modules.get(tool_name)
@@ -280,12 +279,12 @@ class ToolRegistryImpl(Registry[str, ToolProtocol], ToolRegistryProtocol):
                 if tool_module in imports:
                     return True
         except (RuntimeError, TypeError, ValueError, AttributeError, OSError):
-            # If module graph lookup fails, allow access (fail open)
+            # If module graph lookup fails, deny access (fail closed)
             logger.warning(
                 "module_graph_visibility_check_failed",
                 tool=tool_name,
             )
-            return True
+            return False
 
         return False
 
