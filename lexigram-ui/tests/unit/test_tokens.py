@@ -79,3 +79,18 @@ def test_semantic_icons_unchanged() -> None:
         "danger": "alert-circle",
         "default": "info",
     }
+
+
+def test_chart_tokens_exist() -> None:
+    """Chart palette tokens must exist for chart components."""
+    from lexigram.ui.styles.design_tokens import SHADCN_DEFAULT_COLORS
+
+    for i in range(1, 6):
+        assert f"--chart-{i}" in SHADCN_DEFAULT_COLORS
+
+
+def test_shadow_xs_token_exists() -> None:
+    """Current shadcn uses --shadow-xs."""
+    from lexigram.ui.styles.design_tokens import SHADOW_TOKENS
+
+    assert "--shadow-xs" in SHADOW_TOKENS
