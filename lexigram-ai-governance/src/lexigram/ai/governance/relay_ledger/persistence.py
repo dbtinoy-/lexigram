@@ -65,6 +65,12 @@ _LIST_TOPUPS = (
     "ORDER BY created_at DESC, rowid DESC LIMIT ?"
 )
 
+_LIST_TOPUPS_ALL = (
+    "SELECT reference_id, user_id, amount, status, created_at "
+    "FROM ai_relay_topups "
+    "ORDER BY created_at DESC, rowid DESC LIMIT ?"
+)
+
 
 def _row_to_topup(row: dict[str, Any]) -> RelayTopUpRecord:
     """Rebuild a top-up record from a stored row."""
@@ -147,8 +153,19 @@ class SqlRelayLedgerStore:
         )
         return result.row_count > 0
 
-    async def list_topups(self, user_id: str, limit: int) -> list[RelayTopUpRecord]:
-        """Return *user_id* top-ups, newest first, capped at *limit*."""
+    async def list_topups(
+        self, user_id: str | None, limit: int
+    ) -> list[RelayTopUpRecord]:
+        """Return top-up records, newest first, capped at *limit*.
+
+        Args:
+            user_id: When set, only this user's records; ``None``
+                lists every top-up on the ledger.
+            limit: Maximum rows returned.
+        """
         await self._ensure_tables()
-        result = await self._db.execute_query(_LIST_TOPUPS, [user_id, limit])
+        if user_id is None:
+            result = await self._db.execute_query(_LIST_TOPUPS_ALL, [limit])
+        else:
+            result = await self._db.execute_query(_LIST_TOPUPS, [user_id, limit])
         return [_row_to_topup(row) for row in result.rows]

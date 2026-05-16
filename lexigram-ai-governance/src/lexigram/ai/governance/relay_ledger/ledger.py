@@ -192,6 +192,4 @@ class RelayLedgerService(RelayLedgerServiceProtocol):
         Returns:
             The matching records, newest first.
         """
-        if user_id is None:
-            return []
         return await self._store.list_topups(user_id, limit)
