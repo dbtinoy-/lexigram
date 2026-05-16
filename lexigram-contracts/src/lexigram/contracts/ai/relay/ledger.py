@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from lexigram.result import Result
+from lexigram.contracts.core.result import Result
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.governance import RelayUsageScope
