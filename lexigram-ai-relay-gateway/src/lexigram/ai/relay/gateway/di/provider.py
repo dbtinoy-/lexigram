@@ -248,6 +248,7 @@ class RelayGatewayProvider(Provider):
         channels = self._config.channels
         store = await container.resolve_optional(RelayChannelStoreProtocol)
         if store is not None:
+            container.singleton(RelayChannelStoreProtocol, store)
             loader = DurableChannelLoader(store)
             merged = await loader.load(self._config.channels)
             if merged is not self._config.channels:

@@ -18,6 +18,7 @@ from lexigram.ai.relay.gateway.operations.controls import RelayControlsService
 from lexigram.ai.relay.gateway.operations.health import RelayHealthService
 from lexigram.ai.relay.gateway.operations.metrics import RelayMetricsService
 from lexigram.contracts.ai.relay import (
+    RelayChannelStoreProtocol,
     RelayGatewayError,
     RelayPolicyStoreProtocol,
     TimeWindow,
@@ -373,6 +374,84 @@ class RelayGatewaySettingsPage:
                         ],
                         class_="divide-y divide-[var(--border)]",
                     ),
+                )
+            ),
+        )
+        return HTMLResponse(str(header) + render_to_string(card))
+
+
+class RelayGatewayChannelsPage:
+    """Management page at /admin/relay-gateway/channels."""
+
+    def __init__(
+        self,
+        store: RelayChannelStoreProtocol | None = None,
+    ) -> None:
+        self._store = store
+
+    async def handle(self, request: Any) -> HTMLResponse:
+        """Render durable channel rows from the channel store.
+
+        Args:
+            request: The starlette request.
+
+        Returns:
+            Read-only channel table HTML, or an explicit note when the
+            store is not registered or holds no channels.
+        """
+        header = _build_header(
+            "Relay Channels",
+            "Durable channel rows managed through the channel store.",
+        )
+        if self._store is None:
+            return HTMLResponse(
+                str(header)
+                + render_to_string(
+                    el(
+                        "p",
+                        "Channel store is not registered.",
+                        class_="text-sm text-[var(--muted-foreground)] p-6",
+                    )
+                )
+            )
+        snapshots = await self._store.list_channels()
+        rows = [
+            el(
+                "tr",
+                el("td", s.channel.name, class_="py-1.5 pr-3 font-medium"),
+                el("td", s.channel.target_format.value, class_="py-1.5 pr-3"),
+                el("td", ", ".join(s.channel.models), class_="py-1.5 pr-3"),
+                el("td", str(s.channel.priority), class_="py-1.5 pr-3"),
+                el(
+                    "td",
+                    "enabled" if s.channel.enabled else "drained",
+                    class_="py-1.5 pr-3",
+                ),
+                el("td", str(s.revision), class_="py-1.5"),
+            )
+            for s in snapshots
+        ]
+        if not rows:
+            return HTMLResponse(
+                str(header)
+                + render_to_string(
+                    el(
+                        "p",
+                        "No channels stored.",
+                        class_="text-sm text-[var(--muted-foreground)] p-6",
+                    )
+                )
+            )
+        card = Card(
+            title="Channels",
+            content=render_to_string(
+                el(
+                    "table",
+                    _thead(
+                        ("Name", "Format", "Models", "Priority", "State", "Revision")
+                    ),
+                    el("tbody", *rows, class_="divide-y divide-[var(--border)]"),
+                    class_="w-full",
                 )
             ),
         )
