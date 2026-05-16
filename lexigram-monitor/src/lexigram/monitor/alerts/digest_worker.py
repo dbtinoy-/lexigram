@@ -9,14 +9,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.infra.tasks import OnErrorPolicy
 from lexigram.logging import get_logger
-from lexigram.tasks import OnErrorPolicy, ScheduledWorker
+from lexigram.monitor.scheduling import MonitorScheduledWorker
 
 if TYPE_CHECKING:
+    from lexigram.contracts.infra.tasks import TaskManagerProtocol
     from lexigram.monitor.alerts.channels.weekly_digest import (
         WeeklyDigestDispatcher,
     )
-    from lexigram.tasks import BackgroundTaskManager
 
 logger = get_logger(__name__)
 
@@ -29,7 +30,7 @@ ONE_WEEK_SECONDS: float = 7 * 24 * 60 * 60
 DEFAULT_INITIAL_DELAY_SECONDS: float = 5 * 60
 
 
-class WeeklyDigestFlushWorker(ScheduledWorker):
+class WeeklyDigestFlushWorker(MonitorScheduledWorker):
     """Periodically calls :meth:`WeeklyDigestDispatcher.flush`.
 
     Errors are logged and the worker continues — a transient flush failure
@@ -43,7 +44,7 @@ class WeeklyDigestFlushWorker(ScheduledWorker):
 
     def __init__(
         self,
-        task_manager: BackgroundTaskManager,
+        task_manager: TaskManagerProtocol,
         dispatcher: WeeklyDigestDispatcher,
         *,
         interval_seconds: float | None = None,

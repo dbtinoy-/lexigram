@@ -4,25 +4,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.infra.tasks import OnErrorPolicy
 from lexigram.logging import get_logger
+from lexigram.monitor.scheduling import MonitorScheduledWorker
 from lexigram.monitor.slo.monitor import SLOMonitor
-from lexigram.tasks.scheduled_worker import OnErrorPolicy, ScheduledWorker
 
 if TYPE_CHECKING:
-    from lexigram.tasks.background_task_manager import BackgroundTaskManager
+    from lexigram.contracts.infra.tasks import TaskManagerProtocol
 
 logger = get_logger(__name__)
 
 
-class SLOEvaluationWorker(ScheduledWorker):
+class SLOEvaluationWorker(MonitorScheduledWorker):
     """Periodically evaluates all registered SLOs and dispatches alerts.
 
-    Extends :class:`~lexigram.tasks.scheduled_worker.ScheduledWorker` to run
+    Extends :class:`~lexigram.monitor.scheduling.MonitorScheduledWorker` to run
     :meth:`~SLOMonitor.evaluate_and_dispatch` on a fixed interval.
 
     Usage::
 
-        from lexigram.tasks.background_task_manager import BackgroundTaskManager
+        from lexigram.contracts.infra.tasks import TaskManagerProtocol
 
         worker = SLOEvaluationWorker(
             task_manager=task_manager,
@@ -40,7 +41,7 @@ class SLOEvaluationWorker(ScheduledWorker):
 
     def __init__(
         self,
-        task_manager: BackgroundTaskManager,
+        task_manager: TaskManagerProtocol,
         monitor: SLOMonitor,
         *,
         evaluation_interval: float | None = None,

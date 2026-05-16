@@ -2,13 +2,40 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+import asyncio
+from collections.abc import Awaitable
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
 if TYPE_CHECKING:
     from lexigram.contracts.core import HealthCheckResult
     from lexigram.contracts.core.result import Result
     from lexigram.contracts.infra.tasks.enums import JobStatus
     from lexigram.contracts.infra.tasks.exceptions import TaskQueueError
+
+T = TypeVar("T")
+
+
+@runtime_checkable
+class TaskManagerProtocol(Protocol):
+    """Shared background-task management service.
+
+    Implemented by ``lexigram.tasks.background_task_manager.BackgroundTaskManager``
+    (LEX-006).  Consumers resolve this protocol from the container instead of
+    importing the implementation package (e.g. ``lexigram.monitor``).
+    """
+
+    def track(self, coro: Awaitable[T]) -> asyncio.Task[T]:
+        """Track a coroutine as a background task."""
+
+    def track_named(self, name: str, coro: Awaitable[T]) -> asyncio.Task[T]:
+        """Track a coroutine as a named background task."""
+
+    @property
+    def pending_count(self) -> int:
+        """Return the number of tracked, unfinished tasks."""
+
+    async def shutdown(self, timeout: float = 30.0) -> None:
+        """Cancel all tracked tasks and wait for completion within *timeout*."""
 
 
 @runtime_checkable

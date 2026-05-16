@@ -385,14 +385,12 @@ class MonitorProvider(Provider):
             and getattr(self._config, "slo", None)
             and self._config.slo.enabled
         ):
+            from lexigram.contracts.infra.tasks import TaskManagerProtocol
             from lexigram.contracts.observability.metrics import (
                 AlertDispatcherProtocol,
             )
             from lexigram.monitor.slo.monitor import SLOMonitor
             from lexigram.monitor.slo.worker import SLOEvaluationWorker
-            from lexigram.tasks.background_task_manager import (
-                BackgroundTaskManager,
-            )
 
             slo_cfg = self._config.slo
             dispatcher: AlertDispatcherProtocol | None = None
@@ -408,11 +406,11 @@ class MonitorProvider(Provider):
                 alert_dispatcher=dispatcher,
                 suppression_window_seconds=slo_cfg.suppression_window_seconds,
             )
-            task_mgr = await container.resolve_optional(BackgroundTaskManager)
+            task_mgr = await container.resolve_optional(TaskManagerProtocol)
             if task_mgr is None:
                 logger.warning(
                     "slo_worker_skipped",
-                    detail="BackgroundTaskManager not registered; SLO worker not started",
+                    detail="TaskManagerProtocol not registered; SLO worker not started",
                 )
             else:
                 worker = SLOEvaluationWorker(
@@ -437,14 +435,12 @@ class MonitorProvider(Provider):
             digest_dispatcher = None
 
         if digest_dispatcher is not None:
+            from lexigram.contracts.infra.tasks import TaskManagerProtocol
             from lexigram.monitor.alerts.digest_worker import (
                 WeeklyDigestFlushWorker,
             )
-            from lexigram.tasks.background_task_manager import (
-                BackgroundTaskManager,
-            )
 
-            digest_task_mgr = await container.resolve(BackgroundTaskManager)
+            digest_task_mgr = await container.resolve(TaskManagerProtocol)
             digest_worker = WeeklyDigestFlushWorker(
                 task_manager=digest_task_mgr,
                 dispatcher=digest_dispatcher,

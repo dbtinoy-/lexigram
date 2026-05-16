@@ -26,6 +26,7 @@ import asyncio
 from collections.abc import Awaitable
 from typing import TypeVar
 
+from lexigram.contracts.infra.tasks import TaskManagerProtocol
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -33,9 +34,10 @@ logger = get_logger(__name__)
 T = TypeVar("T")
 
 
-class BackgroundTaskManager:
+class BackgroundTaskManager(TaskManagerProtocol):
     """Tracks and shuts down background asyncio tasks.
 
+    Implements :class:`~lexigram.contracts.infra.tasks.TaskManagerProtocol`.
     Inject as a ``singleton`` from any DI provider.  Call ``shutdown()``
     during application stop to cancel all in-flight tasks.
 
