@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 import pytest
 
@@ -19,6 +18,7 @@ class TestSoftLimitCallback:
 
     def test_type_is_callable(self) -> None:
         """Verify SoftLimitCallback accepts a callable with correct signature."""
+
         async def valid_callback(
             user_id: str | None,
             current_spend: float,
@@ -31,6 +31,7 @@ class TestSoftLimitCallback:
 
     def test_accepts_async_function(self) -> None:
         """Verify SoftLimitCallback accepts async functions."""
+
         async def async_callback(
             user_id: str | None,
             current_spend: float,
@@ -49,6 +50,7 @@ class TestSoftLimitCallback:
     def test_rejects_incorrect_signature(self) -> None:
         """Verify SoftLimitCallback rejects functions with wrong signature."""
         with pytest.raises(TypeError):
+
             def bad_callback(a: int, b: str) -> None:
                 pass
 
@@ -57,6 +59,7 @@ class TestSoftLimitCallback:
 
     def test_allows_optional_user_id(self) -> None:
         """Verify callback accepts None for user_id."""
+
         async def callback(
             user_id: str | None,
             current_spend: float,
@@ -64,12 +67,11 @@ class TestSoftLimitCallback:
         ) -> None:
             assert user_id is None
 
-        asyncio.get_event_loop().run_until_complete(
-            callback(None, 100.0, 500.0)
-        )
+        asyncio.run(callback(None, 100.0, 500.0))
 
     def test_allows_string_user_id(self) -> None:
         """Verify callback accepts string for user_id."""
+
         async def callback(
             user_id: str | None,
             current_spend: float,
@@ -77,6 +79,4 @@ class TestSoftLimitCallback:
         ) -> None:
             assert user_id == "user-123"
 
-        asyncio.get_event_loop().run_until_complete(
-            callback("user-123", 100.0, 500.0)
-        )
+        asyncio.run(callback("user-123", 100.0, 500.0))

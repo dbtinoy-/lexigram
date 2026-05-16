@@ -96,7 +96,7 @@ def test_runnable_pipe_ainvoke():
     pipe = RunnablePipe(Double(), Double())
     result = pipe.ainvoke(5)
     import asyncio
-    assert asyncio.get_event_loop().run_until_complete(result) == 20
+    assert asyncio.run(result) == 20
 
 
 def test_runnable_parallel_runs_in_parallel():
@@ -127,7 +127,7 @@ def test_runnable_lambda_wraps_async_function():
     
     rl = RunnableLambda(async_double)
     import asyncio
-    result = asyncio.get_event_loop().run_until_complete(rl.ainvoke(5))
+    result = asyncio.run(rl.ainvoke(5))
     assert result == 10
 
 
@@ -202,7 +202,7 @@ def test_runnable_generator_async():
     
     rg = RunnableGenerator(agen)
     import asyncio
-    result = asyncio.get_event_loop().run_until_complete(rg.ainvoke("abc"))
+    result = asyncio.run(rg.ainvoke("abc"))
     assert result == ["a", "b", "c"]
 
 
