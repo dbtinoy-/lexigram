@@ -9,7 +9,27 @@ All tests in this directory require a real browser and are skipped unless
 
 from __future__ import annotations
 
+import importlib.util
+import pathlib
+
 import pytest
+
+_GALLERY_PATH = pathlib.Path(__file__).parent / "gallery.py"
+
+
+def _load_gallery_module() -> object:
+    """Load tests/a11y/gallery.py without requiring 'tests' to be a package."""
+    spec = importlib.util.spec_from_file_location("a11y_gallery", _GALLERY_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture(scope="session")
+def gallery() -> dict[str, str]:
+    """Render every component to a full HTML page, light theme."""
+    return _load_gallery_module().build_gallery()
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
