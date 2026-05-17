@@ -80,7 +80,7 @@ class ProgressBar(Component):
                     class_=f"bg-primary {size_map[self.size]} rounded-full transition-all duration-300",
                     style=f"width: {percentage}%",
                 ),
-                class_=f"w-full bg-muted rounded-full {size_map[self.size]} overflow-hidden",
+                class_=f"w-full bg-secondary rounded-full {size_map[self.size]} overflow-hidden",
             ),
             class_="w-full",
         )

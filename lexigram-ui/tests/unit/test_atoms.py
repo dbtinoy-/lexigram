@@ -633,3 +633,18 @@ class TestCurrentShadcnClasses:
         html = str(Tabs([("A", "a"), ("B", "b")]))
         assert 'role="tablist"' in html
         assert "bg-muted p-1 text-muted-foreground" in html
+
+
+class TestProgressTooltipAria:
+    """ARIA attributes for ProgressBar and Tooltip."""
+
+    def test_progress_bar_role(self) -> None:
+        html = str(ProgressBar(value=60))
+        assert 'role="progressbar"' in html
+        assert 'aria-valuenow="60"' in html
+        assert 'aria-valuemin="0"' in html
+        assert 'aria-valuemax="100"' in html
+
+    def test_tooltip_aria(self) -> None:
+        html = str(Tooltip("More info"))
+        assert 'role="tooltip"' in html
