@@ -141,7 +141,10 @@ class TestRunServer:
         try:
             from lexigram.web.server.runner import run_server
 
-            with pytest.raises(ImportError, match="Granian is not installed"):
+            with (
+                patch.dict("sys.modules", {"granian": None, "granian.constants": None}),
+                pytest.raises(ImportError, match="Granian is not installed"),
+            ):
                 run_server("module:app")
         finally:
             sys.modules.update(removed)

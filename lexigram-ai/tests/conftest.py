@@ -44,12 +44,21 @@ except ImportError:
     pytest_asyncio = None
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def _setup_test_env() -> None:
-    """Set up test environment variables required for test fixtures."""
+    """Set up test environment variables required for test fixtures.
+
+    Runs per test module, restoring the key on teardown so it never leaks.
+    """
     # Set a dummy OpenAI API key for test fixture initialization
-    if not os.environ.get("OPENAI_API_KEY"):
+    _previous = os.environ.get("OPENAI_API_KEY")
+    if not _previous:
         os.environ["OPENAI_API_KEY"] = "sk-test-key-for-fixtures"
+    yield
+    if _previous is None:
+        os.environ.pop("OPENAI_API_KEY", None)
+    else:
+        os.environ["OPENAI_API_KEY"] = _previous
 
 
 try:
@@ -61,7 +70,7 @@ except ImportError:
     pass
 
 
-@ pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+@pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
 async def test_bed():
     """Async TestBed fixture for testing."""
     from lexigram.testing import TestEnvironment

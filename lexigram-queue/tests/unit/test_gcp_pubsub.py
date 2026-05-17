@@ -45,9 +45,7 @@ def _make_queue(**kwargs: Any) -> Any:
 def _make_clients() -> tuple[MagicMock, MagicMock]:
     """Return (mock_publisher, mock_subscriber) with standard defaults."""
     publisher = MagicMock()
-    publisher.topic_path = MagicMock(
-        return_value="projects/my-project/topics/my-topic"
-    )
+    publisher.topic_path = MagicMock(return_value="projects/my-project/topics/my-topic")
     pub_future = MagicMock()
     pub_future.result = MagicMock(return_value="msg-id-1")
     publisher.publish = MagicMock(return_value=pub_future)
@@ -103,6 +101,12 @@ class TestGCPPubSubQueue:
             for k in list(sys.modules)
             if k.startswith("google.cloud.pubsub_v1") or k == "google.cloud.pubsub_v1"
         }
+        # Evict leaked namespace stubs (e.g. from firestore tests) so the
+        # `from google.cloud import pubsub_v1` import fails loudly.
+        for _parent in ("google", "google.cloud"):
+            _prev = sys.modules.pop(_parent, None)
+            if _prev is not None:
+                saved[_parent] = _prev
         # Also block the top-level import path
         fake_cloud = types.ModuleType("google.cloud")
         # No pubsub_v1 attribute → import fails
@@ -253,9 +257,7 @@ class TestGCPPubSubQueue:
         queue = _make_queue(max_wait_time=0.1)
         _, subscriber = _inject_clients(queue)
 
-        envelope = {
-            "id": "m1", "topic": "jobs", "payload": {"n": 7}, "headers": {}
-        }
+        envelope = {"id": "m1", "topic": "jobs", "payload": {"n": 7}, "headers": {}}
         received_msg = _make_received_message(envelope, ack_id="ack-1")
 
         delivered = asyncio.Event()
@@ -361,7 +363,9 @@ class TestGCPPubSubQueue:
 
         subscriber.pull = MagicMock(side_effect=fake_pull)
         ack_calls: list[Any] = []
-        subscriber.acknowledge = MagicMock(side_effect=lambda **kw: ack_calls.append(kw))
+        subscriber.acknowledge = MagicMock(
+            side_effect=lambda **kw: ack_calls.append(kw)
+        )
 
         async def bad_handler(msg: BusMessage) -> None:
             handler_ran.set()

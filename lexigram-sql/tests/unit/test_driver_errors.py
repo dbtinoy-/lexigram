@@ -2,7 +2,6 @@ import sqlite3
 
 import pytest
 
-from lexigram.logging import configure_logging
 from lexigram.sql.backends.mysql import MySQLConnection
 from lexigram.sql.backends.postgres import PostgresConnection
 from lexigram.sql.backends.sqlite import SQLiteConnection
@@ -24,10 +23,6 @@ try:
     _aiomysql_error: type = aiomysql.Error
 except ImportError:
     _aiomysql_error = DatabaseError
-
-
-# Configure logging once to ensure structlog uses stdlib for caplog to work
-configure_logging("ERROR")
 
 
 class _BadExec:
