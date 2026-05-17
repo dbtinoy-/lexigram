@@ -5,7 +5,6 @@ from __future__ import annotations
 from lexigram.contracts.admin.action_hooks import ActionHookProtocol, HasActionHooks
 from lexigram.contracts.admin.audit_entry import AuditEntry, AuditOutcome
 from lexigram.contracts.admin.audit_logger import AdminAuditLoggerProtocol
-from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
 from lexigram.contracts.admin.cache_provider import CacheProviderProtocol
 from lexigram.contracts.admin.contributor import BaseAdminContributor
 from lexigram.contracts.admin.cqrs import AdminCommand, AdminQuery
@@ -75,7 +74,6 @@ __all__ = [
     "ActionHookProtocol",
     "AdminActionDefinition",
     "AdminAuditLoggerProtocol",
-    "AdminAuthorizerProtocol",
     "AdminCommand",
     "AdminContributorProtocol",
     "AdminContributorRegistryProtocol",
