@@ -194,7 +194,8 @@ class SlideOver(Component):
                 {
                     "x-show": "open",
                     "class": "relative z-50",
-                    "aria-labelledby": "slide-over-title",
+                    "aria-labelledby": f"{self.id}-title",
+                    "aria-describedby": f"{self.id}-description",
                     "role": "dialog",
                     "aria-modal": "true",
                     "x-trap": "open",
@@ -210,7 +211,8 @@ class SlideOver(Component):
                         "x-transition:leave": "ease-in-out duration-300",
                         "x-transition:leave-start": "opacity-100",
                         "x-transition:leave-end": "opacity-0",
-                        "class": "fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity",
+                        "class": "fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity",
+                        "aria_hidden": "true",
                     },
                 ),
                 el(
@@ -258,7 +260,7 @@ class SlideOver(Component):
                                                     "h2",
                                                     {
                                                         "class": title_cls,
-                                                        "id": "slide-over-title",
+                                                        "id": f"{self.id}-title",
                                                     },
                                                     self.title,
                                                 ),
@@ -292,6 +294,7 @@ class SlideOver(Component):
                                         "div",
                                         {
                                             "class": "relative flex-1 overflow-y-auto px-5 py-5",
+                                            "id": f"{self.id}-description",
                                         },
                                         *children_html,
                                     ),

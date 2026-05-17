@@ -60,7 +60,7 @@ def build_gallery() -> dict[str, str]:
         ("Label", Label("Name")),
         ("Layout", Row(Col("Cell A"), Col("Cell B"))),
         ("Link", Link("Home", href="/")),
-        ("Modal", Modal(title="Dialog", trigger="Open", is_open=True)),
+        ("Modal", Modal(title="Dialog", trigger="Open", is_open=True, footer=[Button("Close", size="sm")])),
         ("NumberInput", NumberInput(name="count")),
         ("Pagination", Pagination(page=1, total=45, per_page=20)),
         ("PasswordInput", PasswordInput(name="pw")),
@@ -93,6 +93,7 @@ def render_page(component: object) -> str:
 <meta charset="utf-8">
 <title>Component: {type(component).__name__}</title>
 <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.0/dist/cdn.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.0/dist/cdn.min.js"></script>
 <style>
 {shadcn_css()}
