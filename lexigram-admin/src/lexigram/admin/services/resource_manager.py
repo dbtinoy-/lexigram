@@ -16,8 +16,8 @@ from lexigram.admin.exceptions import (
     AdminValidationError,
     NotFoundError,
 )
-from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity, AuditLoggerProtocol
+from lexigram.contracts.auth import AuthorizerProtocol
 from lexigram.contracts.exceptions import PermissionDeniedError as PermissionDenied
 from lexigram.di.decorators import inject
 from lexigram.result import Err, Ok, Result
@@ -139,7 +139,7 @@ class ResourceManager(Generic[T]):
     that combines:
     - Data access through ResourceDataSourceProtocol protocol
     - Input validation through Validator protocol
-    - Authorization through AdminAuthorizerProtocol protocol
+    - Authorization through AuthorizerProtocol protocol
 
     All operations return Result types for explicit error handling without
     exceptions.
@@ -163,7 +163,7 @@ class ResourceManager(Generic[T]):
         resource_name: str,
         data_source: ResourceDataSourceProtocol[T],
         validator: Validator | None = None,
-        authorizer: AdminAuthorizerProtocol | None = None,
+        authorizer: AuthorizerProtocol | None = None,
         model: type[T] | None = None,
         uow: UnitOfWorkProtocol | None = None,
         audit: AuditLoggerProtocol | None = None,

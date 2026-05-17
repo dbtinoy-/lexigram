@@ -25,7 +25,7 @@ class _ContainerStub:
     def __init__(self) -> None:
         self._fail_on: set[type] = {_BrokenResource}
 
-    def singleton(self, key: Any, value: Any = None) -> None:
+    def singleton(self, key: Any, value: Any = None, **kwargs: Any) -> None:
         pass
 
     async def resolve(self, key: type, **kwargs: Any) -> Any:

@@ -35,13 +35,20 @@ _PUBLIC_PATHS: tuple[str, ...] = (
 )
 
 
+class DefaultRequestAuthorizer:
+    """Default request-entry authorizer — authenticated users pass (fail-closed on identity)."""
+
+    async def authorize_request(self, user: object, request: Request) -> bool:
+        del request  # unused
+        return getattr(user, "user_id", None) is not None
+
+
 @runtime_checkable
 class RequestAuthorizerProtocol(Protocol):
     """Protocol for request-level authorization.
 
-    Concrete implementations (e.g. PiccolinaAdminAuthPolicy) also satisfy
-    ``AdminAuthorizerProtocol`` from ``lexigram-contracts`` by implementing
-    the CRUD methods alongside this one.
+    Concrete implementations (e.g. PiccolinaAdminAuthPolicy) implement
+    ``authorize_request`` alongside the union ``AuthorizerProtocol`` methods.
     """
 
     async def authorize_request(self, user: object, request: Request) -> bool:
@@ -116,5 +123,6 @@ class AdminAuthorizationMiddleware(BaseHTTPMiddleware):
 
 __all__ = [
     "AdminAuthorizationMiddleware",
+    "DefaultRequestAuthorizer",
     "RequestAuthorizerProtocol",
 ]
