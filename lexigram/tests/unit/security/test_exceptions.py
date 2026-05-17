@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import pytest
 
+from lexigram.contracts.security import SecretNotFoundError
 from lexigram.security.exceptions import (
     MiddlewareGuardError,
     SecretAccessError,
     SecretError,
-    SecretNotFoundError,
     SecurityError,
 )
 
@@ -40,7 +40,7 @@ class TestSecretNotFoundError:
     def test_secret_not_found_error(self) -> None:
         """Test SecretNotFoundError can be instantiated."""
         err = SecretNotFoundError("api-key")
-        assert err.message == "api-key"
+        assert err.message == "Secret not found: api-key"
 
 
 class TestSecretAccessError:

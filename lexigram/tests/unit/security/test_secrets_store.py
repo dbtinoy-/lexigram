@@ -12,14 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from lexigram.security.exceptions import SecretAccessError, SecretNotFoundError
+from lexigram.contracts.security import SecretNotFoundError
+from lexigram.security.exceptions import SecretAccessError
 from lexigram.security.secrets import (
     EnvSecretStore,
     FileSecretStore,
     InMemorySecretStore,
     SecretValue,
 )
-
 
 # ---------------------------------------------------------------------------
 # Origin guard — proves core package is being exercised

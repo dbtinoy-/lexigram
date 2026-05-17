@@ -474,8 +474,7 @@ __all__ = [
 # Idempotency Decorator
 # ============================================================================
 
-from lexigram import serialization
-from lexigram.security.hashing import ambient as hashing
+from lexigram import hashing, serialization  # type: ignore[attr-defined]
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol

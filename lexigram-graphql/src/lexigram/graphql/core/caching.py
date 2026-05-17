@@ -10,10 +10,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from lexigram import hashing  # type: ignore[attr-defined]
 from lexigram import serialization as json
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
-from lexigram.security.hashing import ambient as hashing
 
 if TYPE_CHECKING:
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol

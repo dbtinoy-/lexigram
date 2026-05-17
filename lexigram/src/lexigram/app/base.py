@@ -434,7 +434,7 @@ class Application:
         :meth:`register_secrets` and :meth:`register_secrets_from_store`.
         """
         from lexigram.config.secrets import SecretsPolicy, SecretsValidator
-        from lexigram.security.exceptions import SecretNotFoundError
+        from lexigram.contracts.security import SecretNotFoundError
 
         if self._secrets_policy is not None:
             policy = self._secrets_policy

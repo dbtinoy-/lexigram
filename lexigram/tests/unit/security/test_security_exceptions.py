@@ -12,13 +12,14 @@ from __future__ import annotations
 import importlib.util
 
 from lexigram.contracts.exceptions import LexigramError
+from lexigram.contracts.exceptions.components import ComponentError
+from lexigram.contracts.security import SecretNotFoundError
 from lexigram.security.exceptions import (
     DecryptionError,
     EncryptionError,
     MiddlewareGuardError,
     SecretAccessError,
     SecretError,
-    SecretNotFoundError,
     SecurityError,
 )
 
@@ -32,8 +33,8 @@ class TestSecurityExceptionHierarchy:
     def test_secret_error_inherits_from_security_error(self) -> None:
         assert issubclass(SecretError, SecurityError)
 
-    def test_secret_not_found_error_inherits_from_secret_error(self) -> None:
-        assert issubclass(SecretNotFoundError, SecretError)
+    def test_secret_not_found_error_inherits_from_component_error(self) -> None:
+        assert issubclass(SecretNotFoundError, ComponentError)
 
     def test_secret_access_error_inherits_from_secret_error(self) -> None:
         assert issubclass(SecretAccessError, SecretError)
@@ -68,7 +69,7 @@ class TestSecretNotFoundError:
     """Tests for SecretNotFoundError."""
 
     def test_secret_not_found_error_inherits(self) -> None:
-        assert issubclass(SecretNotFoundError, SecretError)
+        assert issubclass(SecretNotFoundError, ComponentError)
 
 
 class TestSecretAccessError:
@@ -101,7 +102,6 @@ class TestExceptionAllExports:
             "MiddlewareGuardError",
             "SecretAccessError",
             "SecretError",
-            "SecretNotFoundError",
             "SecurityError",
         ]
         for item in expected:

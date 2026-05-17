@@ -26,9 +26,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
+from lexigram import hashing as ambient_hashing  # type: ignore[attr-defined]
 from lexigram.logging import get_logger
 from lexigram.result import Ok, Result
-from lexigram.security.hashing import ambient as ambient_hashing
 from lexigram.serialization import dumps_str
 
 if TYPE_CHECKING:
@@ -89,7 +89,7 @@ class CachedSearchBackend:
             **kwargs,
         }
         raw = dumps_str(parts)
-        digest = ambient_hashing.digest(raw)[:24]  # type: ignore[attr-defined]
+        digest = ambient_hashing.digest(raw)[:24]
         return f"{self._key_prefix}{index}:{digest}"
 
     # ── SearchEngine interface ─────────────────────────────────────────────

@@ -19,9 +19,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
+from lexigram import hashing  # type: ignore[attr-defined]
 from lexigram import serialization as json
 from lexigram.logging import get_logger
-from lexigram.security import Sha256Hasher
 
 if TYPE_CHECKING:
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
@@ -31,8 +31,6 @@ logger = get_logger(__name__)
 
 T = TypeVar("T")
 K = TypeVar("K")
-
-_default_hasher = Sha256Hasher()
 
 
 class CachedRepository:
@@ -59,7 +57,7 @@ class CachedRepository:
             "_table",
             "entity",
         )
-        self._hasher = hasher or _default_hasher
+        self._hasher = hasher
 
     async def _get_version(self) -> int:
         version_key = f"{self._prefix}:__version__"
@@ -165,5 +163,6 @@ class CachedRepository:
 def _hash_kwargs(kwargs: dict[str, Any], hasher: HasherProtocol | None = None) -> str:
     """Hash kwargs deterministically for cache key."""
     serialized = json.dumps(kwargs, sort_keys=True, default=str)
-    h = hasher or _default_hasher
-    return h.digest(serialized)[:12]
+    if hasher is not None:
+        return hasher.digest(serialized)[:12]
+    return hashing.hash_hex(serialized)[:12]

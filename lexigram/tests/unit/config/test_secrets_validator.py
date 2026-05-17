@@ -323,7 +323,7 @@ class MockSecretStore:
 
     def get_secret(self, name: str) -> str:
         """Get a secret, raising SecretNotFoundError if not found."""
-        from lexigram.security.exceptions import SecretNotFoundError
+        from lexigram.contracts.security import SecretNotFoundError
 
         if name not in self._secrets:
             raise SecretNotFoundError(name)
