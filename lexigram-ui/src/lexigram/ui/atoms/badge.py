@@ -39,5 +39,10 @@ class Badge(Component):
             "span",
             self.text,
             role="status",
-            class_=f"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {variant_cls}",
+            class_=(
+                "inline-flex items-center rounded-full border px-2.5 py-0.5 "
+                "text-xs font-semibold transition-colors focus:outline-none "
+                "focus:ring-2 focus:ring-ring focus:ring-offset-2 "
+                f"border-transparent {variant_cls}"
+            ),
         )

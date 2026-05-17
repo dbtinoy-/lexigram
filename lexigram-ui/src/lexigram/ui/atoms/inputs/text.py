@@ -104,8 +104,8 @@ class TextArea(AbstractInput):
         self.placeholder = placeholder
 
     def _render_input(self) -> Any:
-        # Textarea needs different height class
-        classes = self._get_input_classes().replace("h-8", "")
+        # Textarea needs a larger minimum height
+        classes = self._get_input_classes().replace("h-10", "min-h-[80px]")
 
         return el(
             "textarea",

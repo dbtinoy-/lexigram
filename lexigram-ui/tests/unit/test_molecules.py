@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 from lexigram.ui.molecules.alert import Alert
+from lexigram.ui.molecules.card import Card
 from lexigram.ui.molecules.modal import Modal
 from lexigram.ui.molecules.toast import Toast
+
+
+class TestCurrentShadcnClasses:
+    """Class parity with the current shadcn/ui registry."""
+
+    def test_card(self) -> None:
+        html = str(Card("Title", "Body"))
+        assert "rounded-lg border bg-card text-card-foreground shadow-sm" in html
 
 
 class TestModal:

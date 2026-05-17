@@ -27,7 +27,7 @@ class Card(Component):
 
     def render(self) -> Any:
         # Merge classes
-        cls = "bg-card text-card-foreground shadow rounded-xl overflow-hidden mb-6 border border-border transition-colors duration-300"
+        cls = "rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden mb-6"
         custom_cls = self.props.get("class_", self.props.get("class"))
         if custom_cls:
             cls = f"{cls} {custom_cls}"
