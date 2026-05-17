@@ -130,6 +130,10 @@ class FormField(Component):
 
         # Input
         try:
+            if self.error:
+                props = getattr(self.input_component, "props", None)
+                if isinstance(props, dict):
+                    props.setdefault("aria_invalid", "true")
             rendered_input = self.input_component.render()
             elements.append(rendered_input)
         except (AttributeError, ValueError, TypeError):
@@ -157,6 +161,7 @@ class FormField(Component):
                     "p",
                     self.error,
                     id=error_id,
+                    role="alert",
                     class_="mt-2 text-sm text-destructive font-medium",
                 ),
             )

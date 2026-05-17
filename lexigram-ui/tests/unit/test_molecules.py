@@ -255,3 +255,29 @@ class TestShadcnDialogClasses:
 
         html = str(Pagination(page=1, total=45))
         assert 'aria-label="Pagination"' in html
+
+
+class TestFormFieldA11y:
+    def test_error_is_announced(self) -> None:
+        from lexigram.ui.atoms.inputs import TextInput
+        from lexigram.ui.molecules.form_field import FormField
+
+        html = str(FormField(TextInput(name="email"), label="Email", error="Bad email"))
+        assert "aria-invalid" in html
+        assert "aria-describedby" in html
+        assert "Bad email" in html
+
+    def test_label_for_wires_input(self) -> None:
+        from lexigram.ui.atoms.inputs import TextInput
+        from lexigram.ui.molecules.form_field import FormField
+
+        html = str(FormField(TextInput(name="email"), label="Email"))
+        assert 'for="' in html
+        assert 'id="email' in html
+
+    def test_error_has_role_alert(self) -> None:
+        from lexigram.ui.atoms.inputs import TextInput
+        from lexigram.ui.molecules.form_field import FormField
+
+        html = str(FormField(TextInput(name="email"), label="Email", error="Bad email"))
+        assert 'role="alert"' in html

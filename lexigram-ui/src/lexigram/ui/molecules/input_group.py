@@ -49,6 +49,7 @@ class InputGroup(Component):
                 "label",
                 self.label,
                 for_=self.name,
+                id=f"{self.name}-label",
                 class_="block text-sm font-medium text-foreground mb-1",
             ),
             el(
@@ -93,9 +94,11 @@ class InputGroup(Component):
                 class_=f"flex rounded-lg shadow-sm ring-1 ring-inset focus-within:ring-2 focus-within:ring-inset transition-all duration-200 {'ring-destructive focus-within:ring-destructive' if self.error else 'ring-[var(--input)] focus-within:ring-ring'} bg-background",
             ),
             (
-                el("p", self.error, id=f"{self.name}-error", class_="mt-2 text-sm text-destructive")
+                el("p", self.error, id=f"{self.name}-error", role="alert", class_="mt-2 text-sm text-destructive")
                 if self.error
                 else ""
             ),
             class_="mb-6",
+            role="group",
+            aria_labelledby=f"{self.name}-label",
         )
