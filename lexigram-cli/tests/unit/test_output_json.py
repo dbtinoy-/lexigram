@@ -72,10 +72,10 @@ class TestOutputManagerJsonMode:
     def test_table_emits_list_of_dicts(self) -> None:
         out = OutputManager(json_mode=True)
         result = _capture_json_output(
-            out.table, ["name", "version"], [["fastapi", "0.100"], ["pydantic", "2.0"]]
+            out.table, ["name", "version"], [["uvicorn", "0.30"], ["pydantic", "2.0"]]
         )
         assert isinstance(result, list)
-        assert result[0]["name"] == "fastapi"
+        assert result[0]["name"] == "uvicorn"
         assert result[1]["version"] == "2.0"
 
     def test_key_value_emits_dict(self) -> None:
