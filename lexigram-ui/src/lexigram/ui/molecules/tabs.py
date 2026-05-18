@@ -78,50 +78,48 @@ class Tabs(Component):
                 "div",
                 el(
                     "nav",
-                        *[
-                            el(
-                                "a" if not self.client_side else "button",
-                                label,
-                                class_="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 "
-                                + (
-                                    "bg-background text-foreground shadow"
+                    *[
+                        el(
+                            "a" if not self.client_side else "button",
+                            label,
+                            class_="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 "
+                            + (
+                                "bg-background text-foreground shadow"
+                                if value == self.active_id
+                                else "text-muted-foreground hover:text-foreground"
+                            ),
+                            aria_current=("page" if value == self.active_id else None),
+                            **(
+                                {
+                                    "href": value,
+                                    "hx_get": value if value.startswith("/") else None,
+                                    "hx_target": "#main-content",
+                                    "hx_swap": "innerHTML",
+                                    "hx_push_url": "true",
+                                }
+                                if not self.client_side
+                                else {
+                                    "type": "button",
+                                    "@click": f"activeTab = '{value}'",
+                                    "x_bind__class": f"activeTab === '{value}' ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'",
+                                    "role": "tab",
+                                    "aria_selected": "true"
                                     if value == self.active_id
-                                    else "text-muted-foreground hover:text-foreground"
-                                ),
-                                aria_current=(
-                                    "page" if value == self.active_id else None
-                                ),
-                                **(
-                                    {
-                                        "href": value,
-                                        "hx_get": value
-                                        if value.startswith("/")
-                                        else None,
-                                        "hx_target": "#main-content",
-                                        "hx_swap": "innerHTML",
-                                        "hx_push_url": "true",
-                                    }
-                                    if not self.client_side
-                                    else {
-                                        "type": "button",
-                                        "@click": f"activeTab = '{value}'",
-                                        "x_bind__class": f"activeTab === '{value}' ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'",
-                                        "role": "tab",
-                                        "aria_selected": "true" if value == self.active_id else "false",
-                                        "aria_controls": f"tabpanel-{value}",
-                                        "id": f"tab-{value}",
-                                    }
-                                ),
-                            )
-                            for label, value in self.tabs
-                        ],
-                        class_="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-                        role="tablist",
-                        aria_label="Tabs",
-                        **keyboard_nav,
-                    ),
-                    class_="hidden sm:block mb-6",
+                                    else "false",
+                                    "aria_controls": f"tabpanel-{value}",
+                                    "id": f"tab-{value}",
+                                }
+                            ),
+                        )
+                        for label, value in self.tabs
+                    ],
+                    class_="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+                    role="tablist",
+                    aria_label="Tabs",
+                    **keyboard_nav,
                 ),
+                class_="hidden sm:block mb-6",
+            ),
             # Content container (for children like TabPanel)
             el("div", *self.children, class_="mt-4"),
             **attrs,

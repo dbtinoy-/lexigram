@@ -166,7 +166,13 @@ def render_all_tokens(
     c = colors if colors is not None else SHADCN_DEFAULT_COLORS
     dc = dark_colors if dark_colors is not None else SHADCN_DARK_COLORS
     lines = [":root {"]
-    for var, value in {**c, **SPACING_TOKENS, **TYPOGRAPHY_TOKENS, **SHADOW_TOKENS, **ANIMATION_TOKENS}.items():
+    for var, value in {
+        **c,
+        **SPACING_TOKENS,
+        **TYPOGRAPHY_TOKENS,
+        **SHADOW_TOKENS,
+        **ANIMATION_TOKENS,
+    }.items():
         lines.append(f"  {var}: {value};")
     lines.append("  color-scheme: light;")
     lines.append("}")
