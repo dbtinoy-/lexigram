@@ -72,6 +72,11 @@ class InlineToast(Component):
 
         bg_color = get_toast_classes(self.type)
         icon_name = get_semantic_icon(self.type)
+        text_color = (
+            "text-warning-foreground"
+            if self.type in ("warning",)
+            else "text-white"
+        )
 
         inner: list[Any] = [
             el(
@@ -109,11 +114,12 @@ class InlineToast(Component):
             ),
         )
 
+        is_error = self.type in ("error", "danger")
         return el(
             "div",
             *inner,
-            role="status",
-            class_=f"fixed bottom-4 right-4 {bg_color} text-white px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform flex items-center max-w-sm",
+            role="alert" if is_error else "status",
+            class_=f"fixed bottom-4 right-4 {bg_color} {text_color} px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform flex items-center max-w-sm",
             **{
                 "x-data": "{ show: true }",
                 "x-show": "show",
@@ -125,7 +131,7 @@ class InlineToast(Component):
                 "x-transition:leave-start": "opacity-100 translate-y-0",
                 "x-transition:leave-end": "opacity-0 translate-y-2",
             },
-            aria_live="polite",
+            aria_live="assertive" if is_error else "polite",
         )
 
 

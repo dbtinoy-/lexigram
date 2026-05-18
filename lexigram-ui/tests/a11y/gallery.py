@@ -36,7 +36,7 @@ from lexigram.ui.molecules.card import Card
 from lexigram.ui.molecules.dropdown import Dropdown
 from lexigram.ui.molecules.modal import Modal
 from lexigram.ui.molecules.pagination import Pagination
-from lexigram.ui.molecules.tabs import Tabs
+from lexigram.ui.molecules.tabs import TabPanel, Tabs
 from lexigram.ui.molecules.toast import InlineToast
 from lexigram.ui.organisms.forms import Form
 from lexigram.ui.organisms.slide_over import SlideOver
@@ -53,27 +53,34 @@ def build_gallery() -> dict[str, str]:
         ("Checkbox", Checkbox(name="agree", label="Agree")),
         ("Divider", Divider()),
         ("Dropdown", Dropdown("Menu", items=["Item 1", "Item 2"])),
-        ("Fieldset", Fieldset(TextInput(name="username"), legend="Account")),
-        ("Form", Form(children=[TextInput(name="field")], action_url="/save")),
+        ("Fieldset", Fieldset(TextInput(name="username", label="Username"), legend="Account")),
+        ("Form", Form(children=[TextInput(name="field", label="Field")], action_url="/save")),
         ("Icon", Icon(name="check")),
         ("InlineToast", InlineToast("Saved successfully")),
         ("Label", Label("Name")),
         ("Layout", Row(Col("Cell A"), Col("Cell B"))),
         ("Link", Link("Home", href="/")),
         ("Modal", Modal(title="Dialog", trigger="Open", is_open=True, footer=[Button("Close", size="sm")])),
-        ("NumberInput", NumberInput(name="count")),
+        ("NumberInput", NumberInput(name="count", label="Count")),
         ("Pagination", Pagination(page=1, total=45, per_page=20)),
-        ("PasswordInput", PasswordInput(name="pw")),
+        ("PasswordInput", PasswordInput(name="pw", label="Password")),
         ("ProgressBar", ProgressBar(value=60)),
         ("Radio", Radio(name="r", choices=[("a", "Alpha"), ("b", "Beta")])),
-        ("Select", Select(name="s", choices=[("a", "Alpha"), ("b", "Beta")])),
+        ("Select", Select(name="s", label="Choose one", choices=[("a", "Alpha"), ("b", "Beta")])),
         ("Skeleton", Skeleton()),
         ("SlideOver", SlideOver(title="Panel", trigger="Open", is_open=True)),
         ("Spinner", Spinner()),
         ("Switch", Switch("Toggle setting", name="toggle")),
-        ("Tabs", Tabs([("Overview", "overview"), ("Details", "details")], active_tab="overview")),
-        ("TextArea", TextArea(name="notes")),
-        ("TextInput", TextInput(name="name")),
+        ("Tabs", Tabs(
+            [("Overview", "overview"), ("Details", "details")],
+            active_tab="overview",
+            children=[
+                TabPanel("overview", "Overview content"),
+                TabPanel("details", "Details content"),
+            ],
+        )),
+        ("TextArea", TextArea(name="notes", label="Notes")),
+        ("TextInput", TextInput(name="name", label="Name")),
         ("Tooltip", Tooltip("More info here")),
     ]
 
@@ -93,10 +100,15 @@ def render_page(component: object) -> str:
 <meta charset="utf-8">
 <title>Component: {type(component).__name__}</title>
 <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = {{ darkMode: 'class' }}</script>
 <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.0/dist/cdn.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.0/dist/cdn.min.js"></script>
 <style>
 {shadcn_css()}
+:root {{ color-scheme: light; }}
+.dark {{ color-scheme: dark; }}
+[x-cloak] {{ display: none !important; }}
 body {{ font-family: var(--font-sans); margin: 2rem; background: var(--background); color: var(--foreground); }}
 </style>
 </head>
