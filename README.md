@@ -1,29 +1,30 @@
-# Give AI a pattern to follow
+# lexigram
 
-*Agents, LLMs, RAG, Skills — wired together, no glue code.*
+*async-first DI/IoC framework for python — one container, no glue code.*
 
 [![PyPI version](https://img.shields.io/pypi/v/lexigram?color=%2334D058&label=pypi%20package)](https://pypi.org/project/lexigram/)
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram?color=%2334D058)](https://pypi.org/project/lexigram/)
 [![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram/blob/main/LICENSE)
 
-![Lexigram demo](docs/demos/hero/lexigram-hero.gif)
+![Lexigram demo](lexigram/docs/gifs/hero/lexigram-hero.gif)
 
-hey — wanna ship an AI app this weekend?
+hey — wanna ship a real app this weekend?
 
-Lexigram is a python framework that hands you Agents, LLMs, RAG, Skills, and memory already wired up — no glue code, no "and then we add the queue," no 200-line config files. The full async backend is right there too: web, sql, cache, auth, queues, events — all wired through one container, all built around one rule. It's async-native, container-managed, and built so the same patterns that get you to a demo on Sunday still hold up when the weekend project turns into the company. Pick a few packages, boot the application, ship the thing.
+Lexigram is a python framework built around one idea: everything you need is already wired together. Modules register providers, providers bind contracts, and the container resolves the rest — so web, sql, cache, auth, queues, events, and the whole async backend plug in without glue code, without 200-line config files. It's async-native end to end, and every package talks through contracts, so swapping an implementation never ripples. Pick a few packages, boot the application, ship the thing.
 
-- **wired, not glued.** agents, llms, rag, memory — one container, one boot call.
+- **wired, not glued.** providers, modules, controllers — one container, one boot call.
 - **async, end to end.** the container, the modules, the controllers — concurrency-safe by construction.
 - **contracts everywhere.** every package talks through protocols, so swapping an implementation never ripples.
-- **local-first.** defaults point at any OpenAI-compatible server — Ollama, LM Studio, vLLM — hosted providers are a config change away.
+- **swappable backends.** in-memory, redis, sqlite, postgres — the same contract, a config change away.
 
 → full docs at [docs.lexigram.dev](https://docs.lexigram.dev)
 
 ## install
 
 ```bash
-uv add "lexigram[ai]"   # core + the AI family (agents, llms, rag, memory, ...)
-pip install "lexigram[ai]"   # or with pip
+uv add lexigram
+pip install lexigram
+# want the AI layer too? `uv add "lexigram[ai]"`
 ```
 
 ```text
@@ -36,35 +37,20 @@ TRUST   di · contracts · modules · async
 
 ```python
 import asyncio
+
 from lexigram import Application
 from lexigram.web import Controller, get, WebModule
-from lexigram.ai.llm import LLMModule, ClientConfig
-from lexigram.contracts.ai import LLMClientProtocol, ChatMessage, Role
 
 
-class ChatController(Controller):
-    def __init__(self, llm: LLMClientProtocol):
-        self.llm = llm
-
-    @get("/chat")
-    async def chat(self, q: str) -> dict:
-        messages = [ChatMessage(role=Role.USER, content=q)]
-        result = await self.llm.complete(messages)
-        return {"reply": result.unwrap().content}
+class HelloController(Controller):
+    @get("/hello")
+    async def hello(self, name: str = "world") -> dict:
+        return {"message": f"hello, {name}"}
 
 
 async def main():
     async with Application.boot(modules=[
-        # Local-first. To talk to a hosted provider instead, set
-        # `provider="openai"` (or "anthropic", "groq", ...) and supply
-        # the matching API key.
-        LLMModule.configure(ClientConfig(
-            provider="ollama",
-            model="llama3.2",
-            api_base="http://localhost:11434/v1",
-            api_key="ollama",
-        )),
-        WebModule.configure(controllers=[ChatController], port=8000),
+        WebModule.configure(controllers=[HelloController], port=8000),
     ]):
         await asyncio.Event().wait()
 
@@ -72,14 +58,13 @@ async def main():
 asyncio.run(main())
 ```
 
-→ http://localhost:8000/chat?q=hello
-> No API key needed if you're pointing at a local model. To talk to a hosted provider instead, set `provider="openai"` (or `"anthropic"`, `"groq"`, …), drop `api_base`, and supply the matching API key — or let `LLMModule.configure()` read the whole block from `LEX_AI_LLM__*` env vars.
+→ http://localhost:8000/hello?name=lexigram
 
 what just happened?
 
-- `Application.boot` assembled two modules — an LLM client and a web server — into one container and started them together.
-- `LLMModule.configure(...)` declared a provider, a model, and an endpoint. No SDK, no per-provider code.
-- `ChatController` resolved `LLMClientProtocol` by type from the container. Swap the provider; the controller never changes.
+- `Application.boot` assembled the web module into one container and started it.
+- `WebModule.configure(...)` registered the controller — no router setup, no middleware boilerplate.
+- `HelloController` is a plain typed class; `/hello` maps query params to arguments.
 
 ## what's in the box
 
@@ -111,12 +96,15 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 ## pointers
 
 - full docs → [docs.lexigram.dev](https://docs.lexigram.dev)
-- AI subsystems (experimental) → [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental)
-- multimedia subsystems (experimental) → [lexigram-multimedia-experimental](https://github.com/dbtinoy-/lexigram-multimedia-experimental)
 - skills for AI coding agents → [lexigram-skills](https://github.com/dbtinoy-/lexigram-framework-skills)
 - contributing → [CONTRIBUTING.md](./CONTRIBUTING.md)
 - security → [SECURITY.md](./SECURITY.md)
 - license → [LICENSE](./LICENSE)
+
+## interesting packages
+- AI subsystems (experimental) → [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental)
+- multimedia subsystems (experimental) → [lexigram-multimedia-experimental](https://github.com/dbtinoy-/lexigram-multimedia-experimental)
+
 
 ---
 
