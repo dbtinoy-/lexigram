@@ -161,7 +161,7 @@ class TestRenderTypesense:
     """Typesense filter-string rendering."""
 
     def test_equality_renders_colon(self) -> None:
-        assert render_typesense(EQ_FILTERS) == "status:active"
+        assert render_typesense(EQ_FILTERS) == 'status:"active"'
 
     def test_in_renders_bracket_list(self) -> None:
         assert render_typesense({"tags": {"in": [1, 2]}}) == "tags:[1,2]"
@@ -170,21 +170,21 @@ class TestRenderTypesense:
         assert render_typesense({"tags": {"nin": [1]}}) == "!(tags:[1])"
 
     def test_ne_renders_not_equal(self) -> None:
-        assert render_typesense({"state": {"ne": "x"}}) == "state:!=x"
+        assert render_typesense({"state": {"ne": "x"}}) == 'state:!="x"'
 
     def test_comparison_renders_operator_prefix(self) -> None:
         assert render_typesense({"score": {"gte": 80}}) == "score:>=80"
 
     def test_contains_renders_contains_fn(self) -> None:
         assert render_typesense({"title": {"contains": "framework"}}) == (
-            "title:contains(framework)"
+            'title:contains("framework")'
         )
 
     def test_or_renders_double_pipe(self) -> None:
-        assert render_typesense(OR_FILTERS) == "(role:admin) || (role:editor)"
+        assert render_typesense(OR_FILTERS) == '(role:"admin") || (role:"editor")'
 
     def test_not_renders_bang_group(self) -> None:
-        assert render_typesense(NOT_FILTERS) == "!(status:banned)"
+        assert render_typesense(NOT_FILTERS) == '!(status:"banned")'
 
     def test_and_with_nested_or(self) -> None:
         assert render_typesense(AND_NESTED) == "(a:1) && ((b:2) || (c:3))"
