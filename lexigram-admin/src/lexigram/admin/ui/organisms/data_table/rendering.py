@@ -8,7 +8,6 @@ from urllib.parse import urlencode
 from lexigram.admin.config import TableConfiguration
 from lexigram.admin.ui.organisms.data_table.actions import ActionManager
 from lexigram.admin.ui.organisms.data_table.layout import LayoutComposer
-from lexigram.admin.ui.organisms.data_table.permissions import PermissionManager
 from lexigram.admin.ui.organisms.data_table.states import StateRenderer
 from lexigram.admin.ui.organisms.data_table.views import ViewFactory
 from lexigram.admin.ui.organisms.pagination import Pagination
@@ -43,9 +42,17 @@ class DataTableRenderer:
         self.summary = summary
         self.props = props or {}
 
-        # Initialize managers
-        self.permission_manager = PermissionManager(user, config.resource_name)
-        self.permissions = self.permission_manager.check_permissions()
+        # Permission state: framework never binds a permission service at
+        # construction time; async callers hoist checks and inject the dict.
+        self.permissions = (
+            (props or {}).get("permissions")
+            or {
+                "can_view": True,
+                "can_create": True,
+                "can_update": True,
+                "can_delete": True,
+            }
+        )
 
         self.action_manager = ActionManager(config, self.permissions)
         self.action_manager.configure_actions()
