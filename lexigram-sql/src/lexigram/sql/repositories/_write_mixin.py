@@ -15,6 +15,7 @@ from lexigram.sql.exceptions import (
     ForeignKeyError,
     QueryError,
     RepositoryError,
+    TenantScopingError,
 )
 
 logger = get_logger(__name__)
@@ -44,10 +45,23 @@ class _WriteMixin:
             if "updated_at" not in data:
                 data["updated_at"] = now
 
-            if self.multi_tenant and data.get("tenant_id") is None:  # type: ignore[attr-defined]
-                tenant_id = self._db_ctx.tenant_id if self._db_ctx is not None else None  # type: ignore[attr-defined]
-                if tenant_id:
-                    data["tenant_id"] = tenant_id
+            if self.multi_tenant:  # type: ignore[attr-defined]
+                active_tenant = (  # type: ignore[attr-defined]
+                    self._db_ctx.tenant_id if self._db_ctx is not None else None
+                )
+                supplied = data.get("tenant_id")
+                if active_tenant is None:
+                    raise TenantScopingError(
+                        table=self.table_name,  # type: ignore[attr-defined]
+                        operation="INSERT",
+                    )
+                if supplied is None:
+                    data["tenant_id"] = active_tenant
+                elif supplied != active_tenant:
+                    raise TenantScopingError(
+                        table=self.table_name,  # type: ignore[attr-defined]
+                        operation="INSERT",
+                    )
 
             if self.key_field not in data or data.get(self.key_field) is None:  # type: ignore[attr-defined]
                 data.pop(self.key_field, None)  # type: ignore[attr-defined]
@@ -70,6 +84,8 @@ class _WriteMixin:
             for hook in getattr(self, "_post_save_hooks", []):
                 await hook(entity)
             return entity
+        except TenantScopingError:
+            raise
         except (
             DatabaseError,
             QueryError,
