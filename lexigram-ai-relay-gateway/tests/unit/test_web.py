@@ -16,7 +16,11 @@ from typing import Any
 from starlette.responses import JSONResponse, StreamingResponse
 
 from lexigram.ai.relay.gateway.web.contributor import RelayGatewayWebContributor
-from lexigram.ai.relay.gateway.web.routes import RELAY_ROUTE_PATHS, build_routes
+from lexigram.ai.relay.gateway.web.routes import (
+    MODEL_ROUTE_PATHS,
+    RELAY_ROUTE_PATHS,
+    build_routes,
+)
 from lexigram.ai.relay.gateway.web.sse import SSEEncoder
 from lexigram.contracts.ai.relay import (
     RelayFormat,
@@ -28,6 +32,7 @@ from lexigram.contracts.ai.relay import (
 )
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.serialization import loads
+
 
 class FakeGateway(RelayGatewayProtocol):
     """Minimal ``RelayGatewayProtocol`` double recording ``handle`` calls."""
@@ -192,15 +197,17 @@ def test_contributor_get_controllers_empty() -> None:
     assert contributor.get_middleware() == []
 
 async def test_mount_registers_routes_once() -> None:
-    """Repeated mounts register each relay path exactly once."""
+    """Repeated mounts register each relay and model path exactly once."""
     app = FakeApp()
     contributor = RelayGatewayWebContributor()
     await contributor.mount_to_app(app, object())
     await contributor.mount_to_app(app, object())
-    assert [path for path, _, _ in app.registrations] == list(RELAY_ROUTE_PATHS)
-    assert len(app.registrations) == len(RELAY_ROUTE_PATHS)
-    for _, _, methods in app.registrations:
-        assert methods == ["POST"]
+    expected = list(RELAY_ROUTE_PATHS) + list(MODEL_ROUTE_PATHS)
+    actual = [path for path, _, _ in app.registrations]
+    assert sorted(actual) == sorted(expected)
+    assert len(app.registrations) == len(expected)
+    for path, _, methods in app.registrations:
+        assert methods == (["GET", "HEAD"] if path in MODEL_ROUTE_PATHS else ["POST"])
 
 async def test_buffered_openai_chat_success() -> None:
     """A buffered chat result is returned as JSON with request metadata."""

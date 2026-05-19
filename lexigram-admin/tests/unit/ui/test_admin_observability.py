@@ -2,10 +2,12 @@
 
 import pytest
 
-from lexigram.admin.ui.observability import (
+from lexigram.ui import (
     MetricProtocol,
-    MetricsCollectorProtocol,
+    MetricsCollector,
     MetricType,
+)
+from lexigram.admin.ui.observability import (
     get_health_status,
     render_debug_panel,
     track_error,
@@ -42,21 +44,21 @@ class TestMetric:
 
 
 class TestMetricsCollector:
-    """Tests for MetricsCollectorProtocol class."""
+    """Tests for MetricsCollector class."""
 
     def test_counter_inc(self):
-        collector = MetricsCollectorProtocol()
+        collector = MetricsCollector()
         collector.inc("requests")
         assert collector.get_counter("requests") == 1
 
     def test_counter_multiple_inc(self):
-        collector = MetricsCollectorProtocol()
+        collector = MetricsCollector()
         collector.inc("requests", value=5)
         collector.inc("requests", value=3)
         assert collector.get_counter("requests") == 8
 
     def test_histogram_record(self):
-        collector = MetricsCollectorProtocol()
+        collector = MetricsCollector()
         collector.observe("latency", 0.5)
         collector.observe("latency", 1.0)
         stats = collector.get_histogram_stats("latency")
@@ -64,19 +66,19 @@ class TestMetricsCollector:
         assert stats["avg"] == 0.75
 
     def test_gauge_set(self):
-        collector = MetricsCollectorProtocol()
+        collector = MetricsCollector()
         collector.set("temperature", 72.5)
         assert collector.get_gauge("temperature") == 72.5
 
     def test_labels(self):
-        collector = MetricsCollectorProtocol()
+        collector = MetricsCollector()
         collector.inc("requests", labels={"method": "GET"})
         collector.inc("requests", labels={"method": "POST"})
         assert collector.get_counter("requests", labels={"method": "GET"}) == 1
         assert collector.get_counter("requests", labels={"method": "POST"}) == 1
 
     def test_reset(self):
-        collector = MetricsCollectorProtocol()
+        collector = MetricsCollector()
         collector.inc("requests")
         collector.reset()
         assert collector.get_counter("requests") == 0
@@ -90,7 +92,7 @@ class TestTrackingFunctions:
         from unittest.mock import MagicMock
         import lexigram.admin.lib.di as di_module
 
-        self._collector = MetricsCollectorProtocol()
+        self._collector = MetricsCollector()
         mock_resolver = MagicMock()
         mock_resolver.resolve_sync.return_value = self._collector
         self._original_resolver_fn = di_module.get_admin_resolver
@@ -169,7 +171,7 @@ class TestHealthStatus:
         from unittest.mock import MagicMock
         import lexigram.admin.lib.di as di_module
 
-        self._collector = MetricsCollectorProtocol()
+        self._collector = MetricsCollector()
         mock_resolver = MagicMock()
         mock_resolver.resolve_sync.return_value = self._collector
         self._original_resolver_fn = di_module.get_admin_resolver

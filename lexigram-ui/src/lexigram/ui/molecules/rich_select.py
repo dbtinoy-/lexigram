@@ -32,8 +32,7 @@ _OPTION_CLS = (
     "hover:bg-accent transition-colors duration-100"
 )
 _GROUP_LABEL_CLS = (
-    "px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide "
-    "text-muted-foreground"
+    "px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 )
 _SELECTED_OPTION_CLS = "bg-accent text-accent-foreground"
 _EMPTY_CLS = "px-3 py-4 text-sm text-center text-muted-foreground"

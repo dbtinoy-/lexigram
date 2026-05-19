@@ -6,9 +6,9 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram?color=%2334D058)](https://pypi.org/project/lexigram/)
 [![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram/blob/main/LICENSE)
 
-![Lexigram demo](lexigram/docs/gifs/hero/lexigram-hero.gif)
-
 hey — wanna ship a real app this weekend?
+
+![Lexigram demo](lexigram/docs/gifs/hero/lexigram-hero.gif)
 
 Lexigram is a python framework built around one idea: everything you need is already wired together. Modules register providers, providers bind contracts, and the container resolves the rest — so web, sql, cache, auth, queues, events, and the whole async backend plug in without glue code, without 200-line config files. It's async-native end to end, and every package talks through contracts, so swapping an implementation never ripples. Pick a few packages, boot the application, ship the thing.
 
@@ -22,9 +22,16 @@ Lexigram is a python framework built around one idea: everything you need is alr
 ## install
 
 ```bash
-uv add "lexigram[web]"   # core + web (what the example below uses)
+uv add "lexigram[web]"   # core + web + server (what the example below uses)
 pip install "lexigram[web]"
-# want the AI layer too? `uv add "lexigram[ai,web]"`
+
+# want the AI layer too?   `uv add "lexigram[ai,web]"`   # agents, llms, rag, memory, ...
+# want the Data layer too? `uv add "lexigram[db]"`   # nosql + storage + search, same container
+#   nosql:    `DocumentQueryBuilder` — typed document queries, multiple backends
+#   storage:  `BlobStoreProtocol` — local, memory, s3, azure, gcs (one contract)
+#   search:   `SearchEngine` — federated and hybrid search across backends
+#   resolved like anything else — constructor-injected by contract, no glue code
+# ... and many more packages available
 ```
 
 ```text
@@ -36,10 +43,9 @@ TRUST   di · contracts · modules · async
 ## 60 seconds, end to end
 
 ```python
-import asyncio
-
 from lexigram import Application
 from lexigram.web import Controller, get, WebModule
+from lexigram.web.server import run_server
 
 
 class HelloController(Controller):
@@ -48,33 +54,26 @@ class HelloController(Controller):
         return {"message": f"hello, {name}"}
 
 
-# want the Security layer too?`
-# add some security here
+app = Application()
+app.add_modules([WebModule.configure(controllers=[HelloController])])
 
-
-# want the Data layer too? `uv add ""`
-# class ...
-
-
-
-
-async def main():
-    async with Application.boot(modules=[
-        WebModule.configure(controllers=[HelloController], port=8000),
-    ]):
-        await asyncio.Event().wait()
-
-
-asyncio.run(main())
+run_server(app, port=8000)
 ```
 
 → http://localhost:8000/hello?name=lexigram
 
+## also available by default
+→ http://localhost:8000/health
+→ http://localhost:8000/docs (Swagger UI)
+→ http://localhost:8000/redoc (Redoc)
+
+
 what just happened?
 
-- `Application.boot` assembled the web module into one container and started it.
+- `Application()` + `add_modules(...)` assembled the web module — the app boots lazily when the server starts.
 - `WebModule.configure(...)` registered the controller — no router setup, no middleware boilerplate.
 - `HelloController` is a plain typed class; `/hello` maps query params to arguments.
+- `run_server(...)` serves it with uvicorn — `/health`, `/docs`, and `/redoc` come along for free.
 
 ## what's in the box
 
@@ -87,7 +86,7 @@ this repo ships the main ecosystem — the core, the backend, the contracts:
 - **`lexigram-vector`** / **`lexigram-graph`** — storage for the ai layer
 - plus auth, events, queue, tasks, http, resilience, storage, search, notification, monitor, webhook, tenancy, features, audit, graphql, nosql, workflow, and testing
 
-the AI family — agents, llms, rag, memory, skills, mcp, session, workers, observability, feedback, and the guard / governance / evaluation / prompt / relay suite — lives in [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental). multimedia (tts, music, image, video, beat, interpolate, upscale) lives in [lexigram-multimedia-experimental](https://github.com/dbtinoy-/lexigram-multimedia-experimental). same modules, same container, same rules — their own repos and cadence.
+the AI family — agents, llms, rag, memory, skills, mcp, session, workers, observability, feedback, and the guard / governance / evaluation / prompt / relay suite — lives in [lexigram-ai](https://github.com/dbtinoy-/lexigram-ai-experimental). multimedia (tts, music, image, video, beat, interpolate, upscale) lives in [lexigram-multimedia](https://github.com/dbtinoy-/lexigram-multimedia-experimental). same modules, same container, same rules — their own repos and cadence.
 
 the full list — including notification, queue, events, auth, observability, and more — lives in the [docs ecosystem](https://docs.lexigram.dev/ecosystem/).
 
@@ -103,6 +102,14 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - **providers.** lifecycle and wiring live in one place, so boot order is explicit and tests are trivial.
 - **async, end to end.** the container, the modules, the controllers — concurrency-safe by construction.
 
+## interesting subsystems and packages
+
+- CLI → [lexigram-cli](https://github.com/dbtinoy-/lexigram-cli-experimental)
+- Admin → [lexigram-admin](https://github.com/dbtinoy-/lexigram-admin-experimental)
+- UI → [lexigram-ui](https://github.com/dbtinoy-/lexigram-ui-experimental)
+- AI subsystems → [lexigram-ai](https://github.com/dbtinoy-/lexigram-ai-experimental)
+- Multimedia subsystems → [lexigram-multimedia](https://github.com/dbtinoy-/lexigram-multimedia-experimental)
+
 ## pointers
 
 - full docs → [docs.lexigram.dev](https://docs.lexigram.dev)
@@ -110,11 +117,6 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - contributing → [CONTRIBUTING.md](./CONTRIBUTING.md)
 - security → [SECURITY.md](./SECURITY.md)
 - license → [LICENSE](./LICENSE)
-
-## interesting packages
-- AI subsystems (experimental) → [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental)
-- multimedia subsystems (experimental) → [lexigram-multimedia-experimental](https://github.com/dbtinoy-/lexigram-multimedia-experimental)
-
 
 ---
 

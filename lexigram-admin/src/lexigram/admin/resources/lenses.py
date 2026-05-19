@@ -7,7 +7,7 @@ the default sort — without creating a separate resource class.
 Example::
 
     from lexigram.admin.resources.lenses import ResourceLens
-    from lexigram.admin.ui.columns import TextColumn, DateColumn, BadgeColumn
+    from lexigram.ui.columns import TextColumn, DateColumn, BadgeColumn
 
     class ActiveUsersLens(ResourceLens):
         name = "active_users"
@@ -37,8 +37,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from lexigram.admin.ui.columns import Column
     from lexigram.admin.ui.filters.base import Filter
+    from lexigram.ui.columns import Column
 
 
 class ResourceLens:

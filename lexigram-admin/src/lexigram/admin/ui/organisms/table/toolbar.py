@@ -3,10 +3,15 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
-from lexigram.admin.ui.molecules.layout_switcher import LayoutSwitcher
-from lexigram.admin.ui.molecules.search_bar import SearchBar
-from lexigram.admin.ui.molecules.view_switcher import ViewSwitcher
-from lexigram.ui import ActionButton, Component, Zones, el
+from lexigram.ui import (
+    ActionButton,
+    Component,
+    LayoutSwitcher,
+    SearchBar,
+    ViewSwitcher,
+    Zones,
+    el,
+)
 
 
 class TableToolbar(Component):
@@ -68,7 +73,7 @@ class TableToolbar(Component):
                     continue
 
                 from lexigram.admin.actions.types import ActionContext as _ActionContext
-                from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+                from lexigram.ui import HTMXAttrs
 
                 _hx_delete = getattr(action, "_hx_delete", None)
                 _hx_post = getattr(action, "_hx_post", None)
@@ -121,7 +126,7 @@ class TableToolbar(Component):
                         htmx_attrs = action._get_htmx_attrs(url, None, ctx)
                         htmx_attrs["hx-vals"] = f'{{"action":"{action.name}"}}'
                     else:
-                        from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+                        from lexigram.ui import HTMXAttrs
 
                         htmx_attrs = HTMXAttrs.for_bulk_action(
                             url=f"{url}/{action.name}",
@@ -175,7 +180,7 @@ class TableToolbar(Component):
             has_search_enabled or has_filters_available
         ):
             # Use new HTMX API for clear button
-            from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+            from lexigram.ui import HTMXAttrs
 
             clear_state = self.state.clear_filters()
             clear_attrs = HTMXAttrs.for_full_refresh(
@@ -234,7 +239,7 @@ class TableToolbar(Component):
                 *header_buttons,
                 class_="flex items-center gap-2",
             ),
-            class_="flex items-center justify-between mb-2 pb-2 border-b border-gray-100 dark:border-gray-800",
+            class_="flex items-center justify-between mb-2 pb-2 border-b border-border",
             id=Zones.TOOLBAR.id,
         )
 
@@ -252,7 +257,7 @@ class TableToolbar(Component):
 
         # Use canonical live-table-input attrs (hx-include for state + search),
         # appending filters zone so filter values are preserved on search.
-        from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+        from lexigram.ui import HTMXAttrs
 
         base_attrs = HTMXAttrs.for_live_table_input(
             self.state,
@@ -310,7 +315,7 @@ class TableToolbar(Component):
             has_search_enabled or has_filters_available
         ):
             # Use new HTMX API for clear button
-            from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+            from lexigram.ui import HTMXAttrs
 
             clear_state = self.state.clear_filters()
             clear_attrs = HTMXAttrs.for_full_refresh(

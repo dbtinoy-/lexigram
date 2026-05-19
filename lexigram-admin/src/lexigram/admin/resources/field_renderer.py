@@ -349,7 +349,7 @@ class FieldRenderer:
 
         if not field_component:
             return HTMLResponse(
-                el("span", "Field not found", class_="text-red-500"),
+                el("span", "Field not found", class_="text-destructive"),
                 status_code=404,
             )
 

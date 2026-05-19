@@ -1,6 +1,6 @@
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.molecules.pagination import Pagination
-from lexigram.admin.ui.state import TableState
+from lexigram.ui import TablePagination as Pagination
+from lexigram.ui.state import TableState
 
 
 def test_pagination_renders_page_links_with_state():

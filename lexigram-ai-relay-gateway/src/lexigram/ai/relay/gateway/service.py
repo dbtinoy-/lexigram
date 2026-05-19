@@ -28,6 +28,7 @@ from lexigram.ai.relay.gateway.errors import (
     conversion_error_to_gateway,
     with_request_id,
 )
+from lexigram.ai.relay.gateway.operations.failover import RelayFailoverTracker
 from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
 from lexigram.ai.relay.gateway.stream import UpstreamEventParser, relay_stream
 from lexigram.ai.relay.gateway.upstream import HTTPUpstreamAdapter
@@ -91,6 +92,8 @@ class RelayGatewayService:
         _streams: Optional registry of active streams used to expose
             in-flight streams and cancel handles to operators; ``None``
             disables stream registration (but not streaming itself).
+        _failover: Optional consecutive-failure tracker; when ``None``
+            upstream failures never affect runtime selection state.
     """
 
     def __init__(
@@ -105,6 +108,7 @@ class RelayGatewayService:
         billing: RelayBillingProtocol | None = None,
         media_resolver: MediaResolverProtocol | None = None,
         streams: RelayStreamRegistry | None = None,
+        failover: RelayFailoverTracker | None = None,
     ) -> None:
         """Bind the service to its dependencies.
 
@@ -123,6 +127,8 @@ class RelayGatewayService:
             streams: Optional stream registry for operator visibility
                 and forced cancellation; ``None`` keeps streaming
                 functional without registry bookkeeping.
+            failover: Optional consecutive-failure tracker; when ``None``
+                upstream failures never affect runtime selection state.
         """
         self._converter = converter
         self._codec = codec
@@ -133,6 +139,7 @@ class RelayGatewayService:
         self._billing = billing
         self._media_resolver = media_resolver
         self._streams = streams
+        self._failover = failover
 
     async def handle(
         self, request: RelayGatewayRequest
@@ -268,9 +275,7 @@ class RelayGatewayService:
                 if held_reservation is not None:
                     await billing.release(held_reservation)
                     held_reservation = None
-            outbound_model = request.model + self._config.model_suffix.get(
-                channel.name, ""
-            )
+            outbound_model = self._outbound_model(channel, request.model)
             context = RelayConversionContext(
                 request_id=request.request_id,
                 channel_name=channel.name,
@@ -306,6 +311,8 @@ class RelayGatewayService:
             )
             if upstream_response.is_err():
                 upstream_error = upstream_response.unwrap_err()
+                if self._should_track_upstream_failure(upstream_error.code):
+                    self._note_failure(channel.name)
                 if upstream_error.retryable and attempt < max_attempts:
                     tried.add(channel.name)
                     last_upstream_error = upstream_error
@@ -392,6 +399,7 @@ class RelayGatewayService:
             )
             if reservation is not None and billing is not None:
                 await self._settle(billing, reservation, converted, status="completed")
+            self._note_success(channel.name)
             metadata = RelayGatewayMetadata(
                 converter_id=converted.converter_id,
                 source=request.source,
@@ -470,7 +478,7 @@ class RelayGatewayService:
             if admitted.is_err():
                 return Err(admitted.unwrap_err()), channel.name
             reservation = admitted.unwrap()
-        outbound_model = request.model + self._config.model_suffix.get(channel.name, "")
+        outbound_model = self._outbound_model(channel, request.model)
         context = RelayConversionContext(
             request_id=request.request_id,
             channel_name=channel.name,
@@ -643,6 +651,10 @@ class RelayGatewayService:
                 status = "truncated"
             else:
                 status = "completed"
+            if status == "completed":
+                self._note_success(channel.name)
+            elif status in ("failed", "truncated"):
+                self._note_failure(channel.name)
             if streams is not None and stream_id is not None:
                 streams.unregister(stream_id)
             billing = self._billing
@@ -922,6 +934,61 @@ class RelayGatewayService:
                 error=str(err),
             )
         return upstream
+
+    def _outbound_model(self, channel: RelayChannel, alias: str) -> str:
+        """Resolve the upstream model name for *alias* on *channel*.
+
+        The channel's ``model_map`` wins when it carries the alias;
+        otherwise the alias is sent as-is.  The channel's configured
+        suffix (e.g. ``":thinking"``) is appended after the mapping.
+
+        Args:
+            channel: The selected channel.
+            alias: The client-visible model alias from the request.
+
+        Returns:
+            The model name sent to the channel's upstream.
+        """
+        return channel.resolve_model(alias) + self._config.model_suffix.get(
+            channel.name, ""
+        )
+
+    @staticmethod
+    def _should_track_upstream_failure(code: str) -> bool:
+        """Return whether *code* counts toward a channel failover ban.
+
+        Transport-level upstream failures count; a cancelled client
+        request and a malformed but delivered 2xx body do not.
+
+        Args:
+            code: The gateway error code of the failed upstream call.
+
+        Returns:
+            ``True`` when the failure should count, ``False`` otherwise.
+        """
+        return code in {
+            "UPSTREAM_ERROR",
+            "UPSTREAM_TIMEOUT",
+            "UPSTREAM_FAILED",
+        }
+
+    def _note_failure(self, channel_name: str) -> None:
+        """Count one upstream failure against *channel_name*.
+
+        Args:
+            channel_name: The channel that failed upstream.
+        """
+        if self._failover is not None:
+            self._failover.record_failure(channel_name)
+
+    def _note_success(self, channel_name: str) -> None:
+        """Reset *channel_name*'s failures and restore it when banned.
+
+        Args:
+            channel_name: The channel that succeeded upstream.
+        """
+        if self._failover is not None:
+            self._failover.record_success(channel_name)
 
     def _upstream_url(self, channel: RelayChannel, model: str) -> str:
         """Build the endpoint URL for *channel*'s target format.

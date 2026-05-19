@@ -410,7 +410,7 @@ class AuditLogView:
             timestamp_badge = el(
                 "span",
                 timestamp,
-                class_="audit-timestamp text-xs text-gray-500 dark:text-gray-400 tabular-nums",
+                class_="audit-timestamp text-xs text-muted-foreground tabular-nums",
             )
             avatar = el(
                 "span",
@@ -426,7 +426,7 @@ class AuditLogView:
             action_text = el(
                 "span",
                 action,
-                class_="audit-action text-sm text-gray-800 dark:text-gray-200",
+                class_="audit-action text-sm text-foreground",
             )
             entry_inner = el(
                 "div",
@@ -446,7 +446,7 @@ class AuditLogView:
             el(
                 "ul",
                 *items,
-                class_=f"audit-timeline divide-y divide-gray-100 dark:divide-gray-700{extra}",
+                class_=f"audit-timeline divide-y divide-border{extra}",
             )
         )
 
@@ -487,17 +487,17 @@ class UserImpersonationView:
             el(
                 "th",
                 "Name",
-                class_="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider",
+                class_="px-4 py-3 text-left text-xs font-semibold text-muted-foreground dark:text-foreground uppercase tracking-wider",
             ),
             el(
                 "th",
                 "Email",
-                class_="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider",
+                class_="px-4 py-3 text-left text-xs font-semibold text-muted-foreground dark:text-foreground uppercase tracking-wider",
             ),
             el(
                 "th",
                 "Action",
-                class_="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider",
+                class_="px-4 py-3 text-left text-xs font-semibold text-muted-foreground dark:text-foreground uppercase tracking-wider",
             ),
         )
 
@@ -532,15 +532,15 @@ class UserImpersonationView:
                     el(
                         "td",
                         name,
-                        class_="px-4 py-3 text-sm text-gray-900 dark:text-gray-100",
+                        class_="px-4 py-3 text-sm text-foreground",
                     ),
                     el(
                         "td",
                         email,
-                        class_="px-4 py-3 text-sm text-gray-600 dark:text-gray-400",
+                        class_="px-4 py-3 text-sm text-muted-foreground",
                     ),
                     el("td", button, class_="px-4 py-3"),
-                    class_="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50",
+                    class_="border-t border-border hover:bg-muted dark:hover:bg-muted/50",
                 )
             )
 
@@ -550,11 +550,11 @@ class UserImpersonationView:
                 "div",
                 el(
                     "table",
-                    el("thead", header_row, class_="bg-gray-50 dark:bg-gray-700"),
+                    el("thead", header_row, class_="bg-muted"),
                     el("tbody", *rows),
                     class_="w-full border-collapse text-sm",
                 ),
-                class_=f"admin-impersonation-view overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700{extra}",
+                class_=f"admin-impersonation-view overflow-x-auto rounded-lg border border-border{extra}",
             )
         )
 

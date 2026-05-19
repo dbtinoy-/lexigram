@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from lexigram.admin.schema import TextField
-from lexigram.admin.ui.layouts.tab_group import Tab, TabGroup
+from lexigram.ui import Tab, TabGroup
 from lexigram.ui import Element
 
 

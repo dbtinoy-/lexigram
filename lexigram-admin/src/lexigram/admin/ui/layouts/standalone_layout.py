@@ -11,6 +11,11 @@ from typing import Any
 
 from markupsafe import Markup, escape
 
+from lexigram.admin.theme.tailwind import (
+    DARK_BOOTSTRAP_SCRIPT,
+    TAILWIND_THEME_CONFIG,
+    THEME_BRIDGE_SCRIPT,
+)
 from lexigram.admin.ui.layouts.components import (
     FooterConfig,
     FooterRenderer,
@@ -18,7 +23,7 @@ from lexigram.admin.ui.layouts.components import (
     ToastConfig,
     flash_to_toast,
 )
-from lexigram.ui.layouts import BaseLayoutConfig, LayoutBase
+from lexigram.ui import BaseLayoutConfig, LayoutBase
 
 
 @dataclass
@@ -36,7 +41,7 @@ class StandaloneLayoutConfig(BaseLayoutConfig):
     centered: bool = True
 
     # Background
-    background_class: str = "bg-gray-100 dark:bg-gray-900"
+    background_class: str = "bg-muted dark:bg-background"
 
 
 @dataclass
@@ -124,11 +129,11 @@ class StandaloneLayout(LayoutBase):
                 f'<meta name="description" content="{escape(ctx.page_description)}">',
             )
 
-        # Core CSS
-        parts.append('<link rel="stylesheet" href="/admin/static/css/admin.css">')
-
         # Tailwind CSS via CDN (utility classes for layout)
         parts.append('<script src="https://cdn.tailwindcss.com"></script>')
+        parts.append(TAILWIND_THEME_CONFIG)
+        parts.append(DARK_BOOTSTRAP_SCRIPT)
+        parts.append(THEME_BRIDGE_SCRIPT)
 
         # Lucide icons
         parts.append('<script src="https://unpkg.com/lucide@latest"></script>')
@@ -154,9 +159,7 @@ class StandaloneLayout(LayoutBase):
         parts: list[str] = []
 
         # Container
-        centered_class = (
-            "min-h-screen flex flex-col justify-center" if cfg.centered else ""
-        )
+        centered_class = "min-h-screen flex flex-col" if cfg.centered else ""
         parts.append(
             f'<div class="standalone-wrapper {cfg.background_class} {centered_class}">',
         )
@@ -166,7 +169,11 @@ class StandaloneLayout(LayoutBase):
             parts.append(self._render_header())
 
         # Main content
-        main_class = "flex items-center justify-center" if cfg.centered else ""
+        main_class = (
+            "flex-1 flex items-center justify-center w-full"
+            if cfg.centered
+            else "w-full"
+        )
         parts.append(f'<main class="standalone-content {main_class}">')
         parts.append(content)
         parts.append("</main>")
@@ -214,7 +221,7 @@ class StandaloneLayout(LayoutBase):
             )
         else:
             parts.append(
-                f'<span class="text-2xl font-bold text-gray-900 dark:text-white">{escape(cfg.app_name)}</span>',
+                f'<span class="text-2xl font-bold text-foreground">{escape(cfg.app_name)}</span>',
             )
 
         parts.append("</a>")

@@ -225,14 +225,14 @@ class WidgetRegistry:
                     "div",
                     el(
                         "div",
-                        class_="text-gray-400 dark:text-gray-500 text-lg mb-1",
+                        class_="text-muted-foreground text-lg mb-1",
                     ),
                     el(
                         "p",
                         "No contributor widgets configured.",
-                        class_="text-sm text-gray-500 dark:text-gray-400",
+                        class_="text-sm text-muted-foreground",
                     ),
-                    class_="widget-empty-state bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center",
+                    class_="widget-empty-state bg-muted border border-border rounded-lg p-6 text-center",
                 )
             )
 
@@ -281,13 +281,13 @@ class WidgetRegistry:
                 "button",
                 "⚙",
                 onclick=f"openWidgetConfig('/admin/core/widgets/{widget_def.name}/config')",
-                class_="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-gray-400 hover:text-gray-600 text-sm cursor-pointer",
+                class_="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-muted-foreground hover:text-muted-foreground text-sm cursor-pointer",
             )
             title_row = el(
                 "div",
                 *title_children,
                 cog,
-                class_="widget-title text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2 flex items-center",
+                class_="widget-title text-sm font-semibold text-foreground mb-2 flex items-center",
             )
 
             # Contributor label and description
@@ -300,9 +300,9 @@ class WidgetRegistry:
             # Loading skeleton shown while HTMX request is in flight
             skeleton = el(
                 "div",
-                el("div", class_="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"),
-                el("div", class_="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"),
-                el("div", class_="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"),
+                el("div", class_="h-4 bg-muted rounded w-3/4 mb-2"),
+                el("div", class_="h-4 bg-muted rounded w-1/2 mb-2"),
+                el("div", class_="h-4 bg-muted rounded w-5/6"),
                 class_="animate-pulse py-2",
             )
 
@@ -315,7 +315,7 @@ class WidgetRegistry:
                     el(
                         "div",
                         " · ".join(subtitle_parts),
-                        class_="text-xs text-gray-500 dark:text-gray-400 mb-3",
+                        class_="text-xs text-muted-foreground mb-3",
                     ),
                 )
 
@@ -339,7 +339,7 @@ class WidgetRegistry:
                 *card_children,
                 id=f"widget-card-{widget_def.name}",
                 data_widget_name=widget_def.name,
-                class_=f"widget-card bg-white dark:bg-gray-800 rounded-lg shadow p-4 group {col_span}".strip(),
+                class_=f"widget-card bg-card rounded-lg shadow p-4 group {col_span}".strip(),
                 style=f"width:{width};",
             )
 
@@ -420,13 +420,13 @@ def render_widget_config_popup(
                         "button",
                         "Save",
                         type_="submit",
-                        class_="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700",
+                        class_="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90",
                     ),
                     el(
                         "button",
                         "Cancel",
                         type_="button",
-                        class_="ml-2 text-gray-600 px-4 py-2 rounded hover:bg-gray-100",
+                        class_="ml-2 text-muted-foreground px-4 py-2 rounded hover:bg-muted",
                         onclick="this.closest('dialog').close()",
                     ),
                     class_="mt-4 flex justify-end gap-2",

@@ -68,7 +68,7 @@ class StackedView(AbstractDataView):
                     el(
                         "span",
                         primary_val,
-                        class_="font-bold text-gray-900 dark:text-white truncate",
+                        class_="font-bold text-foreground truncate",
                     ),
                     class_="flex-1 min-w-0",
                 ),
@@ -106,7 +106,7 @@ class StackedView(AbstractDataView):
             card_header = el(
                 "div",
                 *header_parts,
-                class_="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50",
+                class_="flex items-center gap-3 p-4 border-b border-border bg-muted/50 dark:bg-card/50",
             )
 
             # Field List
@@ -128,28 +128,28 @@ class StackedView(AbstractDataView):
                         el(
                             "dt",
                             col.label,
-                            class_="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/3 flex-shrink-0",
+                            class_="text-xs font-medium text-muted-foreground uppercase tracking-wider w-1/3 flex-shrink-0",
                         ),
                         el(
                             "dd",
                             rendered_val,
-                            class_="text-sm text-gray-900 dark:text-gray-100 flex-1 min-w-0",
+                            class_="text-sm text-foreground flex-1 min-w-0",
                         ),
-                        class_="flex items-start gap-4 py-2 px-4 border-b border-gray-50 dark:border-gray-800 last:border-0",
+                        class_="flex items-start gap-4 py-2 px-4 border-b border-border last:border-0",
                     ),
                 )
 
             card_body = el(
                 "dl",
                 *fields,
-                class_="divide-y divide-gray-50 dark:divide-gray-800",
+                class_="divide-y divide-border",
             )
 
             card = el(
                 "div",
                 card_header,
                 card_body,
-                class_="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mb-4 last:mb-0",
+                class_="bg-card rounded-xl border border-border shadow-sm overflow-hidden mb-4 last:mb-0",
             )
             cards.append(card)
 

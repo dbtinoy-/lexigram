@@ -93,14 +93,14 @@ class FormRenderer:
                 el(
                     "h1",
                     f"Create {label}",
-                    class_="text-2xl font-bold text-gray-900 dark:text-white mt-2",
+                    class_="text-2xl font-bold text-foreground mt-2",
                 ),
                 class_="mb-6",
             ),
             el(
                 "div",
                 form_component,
-                class_="bg-white dark:bg-gray-800 shadow rounded-lg p-6",
+                class_="bg-card shadow rounded-lg p-6",
             ),
             class_="resource-content",
         )
@@ -183,14 +183,14 @@ class FormRenderer:
                 el(
                     "h1",
                     f"Edit {label} #{item_id}",
-                    class_="text-2xl font-bold text-gray-900 dark:text-white mt-2",
+                    class_="text-2xl font-bold text-foreground mt-2",
                 ),
                 class_="mb-6",
             ),
             el(
                 "div",
                 form_component,
-                class_="bg-white dark:bg-gray-800 shadow rounded-lg p-6",
+                class_="bg-card shadow rounded-lg p-6",
             ),
             class_="resource-content",
         )
@@ -269,7 +269,7 @@ class FormRenderer:
                                 el(
                                     "p",
                                     f"Unknown field: {fname}",
-                                    class_="text-xs text-red-500",
+                                    class_="text-xs text-destructive",
                                 )
                             )
                             continue
@@ -291,7 +291,7 @@ class FormRenderer:
                         el(
                             "p",
                             f"Error building fields: {exc}",
-                            class_="text-red-500 text-sm",
+                            class_="text-destructive text-sm",
                         )
                     )
             else:
@@ -305,9 +305,9 @@ class FormRenderer:
                                 name=fname,
                                 placeholder=fname.replace("_", " ").title(),
                                 class_=(
-                                    "block w-full rounded-md border border-gray-300 "
-                                    "dark:border-gray-600 bg-white dark:bg-gray-700 "
-                                    "text-gray-900 dark:text-gray-100 px-3 py-2 text-sm "
+                                    "block w-full rounded-md border border-border "
+                                    "dark:border-border bg-muted "
+                                    "text-foreground px-3 py-2 text-sm "
                                     "focus:outline-none focus:ring-2 focus:ring-primary-500"
                                 ),
                             ),
@@ -324,9 +324,9 @@ class FormRenderer:
                         "← Previous",
                         type="button",
                         class_=(
-                            "px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 "
-                            "border border-gray-300 dark:border-gray-600 rounded-lg "
-                            "hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            "px-4 py-2 text-sm font-medium text-foreground "
+                            "border border-border rounded-lg "
+                            "hover:bg-muted dark:hover:bg-muted transition-colors"
                         ),
                         **{"@click": "currentStep--"},
                     )
@@ -353,9 +353,9 @@ class FormRenderer:
                         submit_label,
                         type="submit",
                         class_=(
-                            "px-4 py-2 text-sm font-medium text-white bg-green-600 "
-                            "hover:bg-green-700 rounded-lg focus:outline-none "
-                            "focus:ring-2 focus:ring-green-500 transition-colors"
+                            "px-4 py-2 text-sm font-medium text-white bg-success "
+                            "hover:bg-success/90 rounded-lg focus:outline-none "
+                            "focus:ring-2 focus:ring-ring transition-colors"
                         ),
                     )
                 )
@@ -363,12 +363,12 @@ class FormRenderer:
             step_indicator = el(
                 "p",
                 f"Step {idx + 1} of {total_steps}",
-                class_="text-xs text-gray-500 dark:text-gray-400 mb-1",
+                class_="text-xs text-muted-foreground mb-1",
             )
             step_heading = el(
                 "h3",
                 step_title,
-                class_="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4",
+                class_="text-base font-semibold text-foreground mb-4",
             )
             step_els.append(
                 el(
@@ -394,15 +394,15 @@ class FormRenderer:
                 class_=(
                     f"wizard-dot inline-flex items-center justify-center w-7 h-7 "
                     f"rounded-full text-xs font-semibold transition-colors "
-                    f"{'bg-primary-600 text-white' if i == 0 else 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
+                    f"{'bg-primary-600 text-white' if i == 0 else 'bg-muted text-muted-foreground dark:text-muted-foreground'}"
                 ),
                 **{
                     ":class": (
                         f"currentStep === {i} "
                         f"? 'bg-primary-600 text-white' "
                         f": currentStep > {i} "
-                        f"? 'bg-green-500 text-white' "
-                        f": 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'"
+                        f"? 'bg-success text-success-foreground' "
+                        f": 'bg-muted text-muted-foreground dark:text-muted-foreground'"
                     )
                 },
             )
@@ -446,14 +446,14 @@ class FormRenderer:
                 el(
                     "h1",
                     f"Create {label}",
-                    class_="text-2xl font-bold text-gray-900 dark:text-white mt-2",
+                    class_="text-2xl font-bold text-foreground mt-2",
                 ),
                 class_="mb-6",
             ),
             el(
                 "div",
                 form_el,
-                class_="bg-white dark:bg-gray-800 shadow rounded-lg p-6",
+                class_="bg-card shadow rounded-lg p-6",
             ),
             class_="resource-content",
         )
@@ -654,12 +654,12 @@ class FormRenderer:
                     self.resource_name,
                     e,
                 )
-                return el("p", f"Error generating form: {e}", class_="text-red-500")
+                return el("p", f"Error generating form: {e}", class_="text-destructive")
 
         return el(
             "p",
             "No form configuration available for this resource.",
-            class_="text-gray-500",
+            class_="text-muted-foreground",
         )
 
     def _create_field_component(self, field_schema, value) -> Any:

@@ -1,7 +1,7 @@
 """Tests for trash tab (include_deleted) in the admin list view."""
 from __future__ import annotations
 
-from lexigram.admin.ui.state import TableState
+from lexigram.ui.state import TableState
 
 
 class TestTableStateIncludeDeleted:

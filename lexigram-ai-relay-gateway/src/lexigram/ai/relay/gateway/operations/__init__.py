@@ -5,6 +5,7 @@ from lexigram.ai.relay.gateway.operations.controls import (
     InMemoryRelayPolicyStore,
     RelayControlsService,
 )
+from lexigram.ai.relay.gateway.operations.failover import RelayFailoverTracker
 from lexigram.ai.relay.gateway.operations.health import (
     CONVERTER_ID,
     RelayChannelCheckerProtocol,
@@ -25,6 +26,7 @@ __all__ = [
     "RelayChannelCheckerProtocol",
     "RelayChannelProbeResult",
     "RelayControlsService",
+    "RelayFailoverTracker",
     "RelayHealthService",
     "RelayMetricsService",
     "RelayRouteEvent",

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.ai.relay.gateway.catalog import ModelCatalogService
 from lexigram.ai.relay.gateway.passthrough import PassthroughService
 from lexigram.ai.relay.gateway.web.routes import build_routes
 from lexigram.contracts.ai.relay import RelayGatewayProtocol
@@ -88,7 +89,17 @@ class RelayGatewayWebContributor:
             )
             return await request_container.resolve(PassthroughService)
 
-        routes = build_routes(_resolve, resolve_passthrough=_resolve_passthrough)
+        async def _resolve_model_catalog(request: Any) -> ModelCatalogService:
+            request_container: Any = (
+                getattr(request.state, "container", None) or container
+            )
+            return await request_container.resolve(ModelCatalogService)
+
+        routes = build_routes(
+            _resolve,
+            resolve_passthrough=_resolve_passthrough,
+            resolve_model_catalog=_resolve_model_catalog,
+        )
         for route in routes:
             path = route.path
             if any(
@@ -96,4 +107,6 @@ class RelayGatewayWebContributor:
                 for existing in getattr(app, "routes", [])
             ):
                 continue
-            app.add_route(path, route.endpoint, methods=["POST"])
+            app.add_route(
+                path, route.endpoint, methods=sorted(route.methods or ["POST"])
+            )

@@ -73,15 +73,15 @@ class MorphToRelationManager(RelationManager):
         current_id_html = ""
         if self.current_id:
             current_id_html = (
-                f'<div class="mt-2 text-sm text-gray-600 dark:text-gray-400">'
+                f'<div class="mt-2 text-sm text-muted-foreground">'
                 f"  Currently: {self.current_type} #{self.current_id}"
                 f"</div>"
             )
 
         return f"""<div class="relation-panel p-4" id="relation-panel-{rel_name}">
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-                <select class="block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-sm"
+                <label class="block text-sm font-medium text-foreground mb-1">Type</label>
+                <select class="block w-full rounded-lg border-border dark:bg-card text-sm"
                         name="{rel_name}_type"
                         hx-get="/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/records"
                         hx-target="#{rel_name}-records" hx-trigger="change">
@@ -90,13 +90,13 @@ class MorphToRelationManager(RelationManager):
                 </select>
             </div>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Record</label>
-                <input type="text" class="block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-sm mb-2"
+                <label class="block text-sm font-medium text-foreground mb-1">Record</label>
+                <input type="text" class="block w-full rounded-lg border-border dark:bg-card text-sm mb-2"
                        placeholder="Search records..."
                        hx-trigger="keyup changed delay:300ms"
                        hx-get="/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/records"
                        hx-target="#{rel_name}-records" hx-include="[name='{rel_name}_type']" />
-                <div id="{rel_name}-records" class="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div id="{rel_name}-records" class="max-h-48 overflow-y-auto border border-border rounded-lg">
                     {current_id_html}
                 </div>
             </div>

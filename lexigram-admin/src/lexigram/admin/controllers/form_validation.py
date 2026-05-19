@@ -41,7 +41,7 @@ class FormValidationController(AdminController):
                 await asyncio.sleep(0.1)  # Simulate API call
                 if field_value and "@" not in field_value:
                     return HTMLResponse(
-                        content='<span class="text-red-500 text-sm">Invalid email address</span>',
+                        content='<span class="text-destructive text-sm">Invalid email address</span>',
                         status_code=200,
                     )
 
@@ -53,7 +53,7 @@ class FormValidationController(AdminController):
             logger = get_logger(__name__)
             logger.exception("Field validation error for %s", field_name)
             return HTMLResponse(
-                content=f'<span class="text-red-500 text-sm">Validation error: {e!s}</span>',
+                content=f'<span class="text-destructive text-sm">Validation error: {e!s}</span>',
                 status_code=400,
             )
 
@@ -96,13 +96,13 @@ class FormValidationController(AdminController):
             if suggestions:
                 items_html = "".join(
                     [
-                        f'<div class="px-3 py-2 hover:bg-gray-100 cursor-pointer" '
+                        f'<div class="px-3 py-2 hover:bg-muted cursor-pointer" '
                         f"onclick=\"selectAutocomplete('{field_name}', '{suggestion}')\">{suggestion}</div>"
                         for suggestion in suggestions[:5]  # Limit to 5 suggestions
                     ],
                 )
                 return HTMLResponse(
-                    content=f'<div class="absolute z-10 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">{items_html}</div>',
+                    content=f'<div class="absolute z-10 bg-card border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">{items_html}</div>',
                     status_code=200,
                 )
             return HTMLResponse(content="", status_code=200)
@@ -113,7 +113,7 @@ class FormValidationController(AdminController):
             logger = get_logger(__name__)
             logger.exception("Autocomplete error for %s", field_name)
             return HTMLResponse(
-                content=f'<div class="text-red-500 text-sm">Autocomplete error: {e!s}</div>',
+                content=f'<div class="text-destructive text-sm">Autocomplete error: {e!s}</div>',
                 status_code=400,
             )
 

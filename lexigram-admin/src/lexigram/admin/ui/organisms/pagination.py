@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.admin.ui.molecules.jump_to_page import JumpToPage
-from lexigram.admin.ui.molecules.page_size_selector import PageSizeSelector
-from lexigram.admin.ui.molecules.pagination_links import PaginationLinks
-from lexigram.ui import Component, Link, Zones, el
+from lexigram.ui import (
+    Component,
+    JumpToPage,
+    Link,
+    PageSizeSelector,
+    PaginationLinks,
+    Zones,
+    el,
+)
 
 
 class Pagination(Component):
@@ -108,7 +113,7 @@ class Pagination(Component):
             "div",
             {
                 "id": "table-pagination",
-                "class": "flex items-center justify-between border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-3 mt-4",
+                "class": "flex items-center justify-between border-t border-border bg-background py-3 mt-4",
             },
             # Mobile View
             el(
@@ -119,14 +124,14 @@ class Pagination(Component):
                     el(
                         "span",
                         "Previous",
-                        class_=f"relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 {'invisible' if self.page <= 1 else ''}",
+                        class_=f"relative inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground {'invisible' if self.page <= 1 else ''}",
                     )
                     if self.page <= 1
                     else Link(
                         "Previous",
                         f"{self.base_url}?page={max(1, self.page - 1)}&per_page={self.per_page}{self.extra_query}",
                         color="muted",
-                        class_=f"relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 {'invisible' if self.page <= 1 else ''}",
+                        class_=f"relative inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted {'invisible' if self.page <= 1 else ''}",
                         hx_get=f"{self.base_url}?page={max(1, self.page - 1)}&per_page={self.per_page}{self.extra_query}",
                         hx_trigger="click",
                         hx_target=self.hx_target,
@@ -142,7 +147,7 @@ class Pagination(Component):
                     el(
                         "span",
                         "Next",
-                        class_=f"relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 {'invisible' if not self.next_cursor and self.page >= total_pages else ''}",
+                        class_=f"relative ml-3 inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground {'invisible' if not self.next_cursor and self.page >= total_pages else ''}",
                     )
                     if (not self.next_cursor and self.page >= total_pages)
                     else Link(
@@ -150,7 +155,7 @@ class Pagination(Component):
                         f"{self.base_url}?cursor={self.next_cursor}&per_page={self.per_page}{self.extra_query}"
                         if self.next_cursor
                         else f"{self.base_url}?page={min(total_pages, self.page + 1)}&per_page={self.per_page}{self.extra_query}",
-                        class_=f"relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 {'invisible' if not self.next_cursor and self.page >= total_pages else ''}",
+                        class_=f"relative ml-3 inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted {'invisible' if not self.next_cursor and self.page >= total_pages else ''}",
                         hx_get=f"{self.base_url}?cursor={self.next_cursor}&per_page={self.per_page}{self.extra_query}"
                         if self.next_cursor
                         else f"{self.base_url}?page={min(total_pages, self.page + 1)}&per_page={self.per_page}{self.extra_query}",
@@ -182,7 +187,7 @@ class Pagination(Component):
                         " of ",
                         el("span", str(self.total), class_="font-bold"),
                         " results",
-                        class_="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-semibold",
+                        class_="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold",
                     ),
                 ),
                 # Pagination Controls

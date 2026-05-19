@@ -164,7 +164,7 @@ class WidgetController:
                 el(
                     "div",
                     title,
-                    class_="widget-title text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1",
+                    class_="widget-title text-xs font-semibold text-muted-foreground mb-1",
                 )
             )
         if error:
@@ -172,7 +172,7 @@ class WidgetController:
                 el(
                     "div",
                     error,
-                    class_="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 mb-2",
+                    class_="text-xs text-destructive bg-destructive/10 rounded px-2 py-1 mb-2",
                 )
             )
         children.append(el("div", body, class_="widget-content"))
@@ -198,14 +198,14 @@ class WidgetController:
                 "div",
                 el(
                     "div",
-                    class_="text-red-500 dark:text-red-400 text-lg mb-1",
+                    class_="text-destructive text-lg mb-1",
                 ),
                 el(
                     "p",
                     message,
-                    class_="text-sm text-gray-500 dark:text-gray-400",
+                    class_="text-sm text-muted-foreground",
                 ),
-                class_="widget-error-card bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center",
+                class_="widget-error-card bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-center",
                 **data_attrs,
             )
         )
@@ -361,7 +361,7 @@ class WidgetController:
             el(
                 "p",
                 "Enable/disable widgets and configure their parameters.",
-                class_="text-sm text-gray-500 mb-6",
+                class_="text-sm text-muted-foreground mb-6",
             ),
         ]
 
@@ -409,12 +409,12 @@ class WidgetController:
                         el(
                             "span",
                             f" ({wdef.contributor})",
-                            class_="text-xs text-gray-400 ml-1",
+                            class_="text-xs text-muted-foreground ml-1",
                         ),
                         class_="flex items-center mb-2",
                     ),
                     el("div", *field_inputs, class_="ml-6"),
-                    class_="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700 last:border-0",
+                    class_="mb-4 pb-4 border-b border-border last:border-0",
                 )
                 rows.append(widget_row)
 
@@ -427,16 +427,16 @@ class WidgetController:
                     "button",
                     "Save All Changes",
                     type_="submit",
-                    class_="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700",
+                    class_="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90",
                 ),
                 el(
                     "button",
                     "Cancel",
                     type_="button",
-                    class_="ml-2 text-gray-600 px-4 py-2 rounded hover:bg-gray-100",
+                    class_="ml-2 text-muted-foreground px-4 py-2 rounded hover:bg-muted",
                     onclick="this.closest('dialog').close()",
                 ),
-                class_="mt-6 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-gray-800 py-3 border-t",
+                class_="mt-6 flex justify-end gap-2 sticky bottom-0 bg-card py-3 border-t",
             ),
             **{
                 "hx-post": "/admin/core/widgets/customize/save",

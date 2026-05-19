@@ -45,8 +45,12 @@ class FooterRenderer:
         sticky_class = "footer-sticky" if self.config.sticky else ""
         divider_class = "footer-divider" if self.config.show_divider else ""
 
-        parts.append(f'<footer class="admin-footer {sticky_class} {divider_class}">')
-        parts.append('<div class="footer-content">')
+        parts.append(
+            f'<footer class="admin-footer {sticky_class} {divider_class} w-full border-t border-border bg-background">',
+        )
+        parts.append(
+            '<div class="footer-content mx-auto flex w-full max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-6 py-4">',
+        )
 
         # Left section
         parts.append('<div class="footer-left">')
@@ -69,7 +73,7 @@ class FooterRenderer:
             parts.append(self.config.custom_right)
         elif self.config.show_version and self.config.version:
             parts.append(
-                f'<span class="footer-version">v{escape(self.config.version)}</span>',
+                f'<span class="footer-version text-sm text-muted-foreground">v{escape(self.config.version)}</span>',
             )
 
         parts.append("</div>")
@@ -94,14 +98,15 @@ class FooterRenderer:
         holder = self.config.copyright_holder or "All rights reserved"
 
         return (
-            f'<span class="footer-copyright">&copy; {year_str} {escape(holder)}</span>'
+            f'<span class="footer-copyright text-sm text-muted-foreground">'
+            f"&copy; {year_str} {escape(holder)}</span>"
         )
 
     def _render_links(self) -> str:
         """Render footer links."""
         parts: list[str] = []
 
-        parts.append('<nav class="footer-links">')
+        parts.append('<nav class="footer-links flex items-center gap-4">')
 
         for link in self.config.links:
             icon = ""
@@ -111,7 +116,7 @@ class FooterRenderer:
             parts.append(f"""
             <a href="{escape(link.url)}"
                target="{escape(link.target)}"
-               class="footer-link">
+               class="footer-link text-sm text-muted-foreground hover:text-foreground transition-colors">
                 {icon}{escape(link.label)}
             </a>
             """)

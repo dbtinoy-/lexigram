@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from lexigram.admin.ui.actions.standard import EditAction
+from lexigram.ui.actions.standard import EditAction
 from lexigram.admin.ui.organisms.table.views.stacked import StackedView
 from lexigram.admin.ui.organisms.table.views.tabular import TabularView
 

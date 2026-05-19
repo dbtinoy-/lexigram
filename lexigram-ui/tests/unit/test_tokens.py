@@ -81,20 +81,15 @@ def test_semantic_icons_unchanged() -> None:
 
 
 def test_chart_tokens_exist() -> None:
-    """Chart palette tokens must exist for chart components."""
-    from lexigram.ui.styles.design_tokens import SHADCN_DEFAULT_COLORS
+    """Chart palette tokens must exist in both themes."""
+    from lexigram.ui.styles.design_tokens import (
+        SHADCN_DARK_COLORS,
+        SHADCN_DEFAULT_COLORS,
+    )
 
     for i in range(1, 6):
         assert f"--chart-{i}" in SHADCN_DEFAULT_COLORS
-
-
-def test_chart_utilities_exist() -> None:
-    """Chart token utility classes must exist for chart components."""
-    from lexigram.ui.styles.design_tokens import SEMANTIC_UTILITY_CLASSES
-
-    for i in range(1, 6):
-        assert f"bg-chart-{i}" in SEMANTIC_UTILITY_CLASSES
-        assert f"text-chart-{i}" in SEMANTIC_UTILITY_CLASSES
+        assert f"--chart-{i}" in SHADCN_DARK_COLORS
 
 
 def test_shadow_xs_token_exists() -> None:

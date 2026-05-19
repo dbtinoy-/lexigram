@@ -152,19 +152,19 @@
         <h2 class="text-primary-400">Request Details</h2>
         <table class="error-table">
             <tr>
-                <td class="text-gray-400"><strong>Method:</strong></td>
+                <td class="text-muted-foreground"><strong>Method:</strong></td>
                 <td class="text-gray-200">{{ request_method }}</td>
             </tr>
             <tr>
-                <td class="text-gray-400"><strong>URL:</strong></td>
+                <td class="text-muted-foreground"><strong>URL:</strong></td>
                 <td class="text-gray-200">{{ request_url }}</td>
             </tr>
             <tr>
-                <td class="text-gray-400"><strong>Path:</strong></td>
+                <td class="text-muted-foreground"><strong>Path:</strong></td>
                 <td id="request-path" class="text-gray-200">{{ request_path }}</td>
             </tr>
             <tr>
-                <td class="text-gray-400"><strong>Query:</strong></td>
+                <td class="text-muted-foreground"><strong>Query:</strong></td>
                 <td class="text-gray-200">{{ request_query }}</td>
             </tr>
         </table>
@@ -176,7 +176,7 @@
         <table class="error-table">
             {% for key, value in local_vars.items() %}
             <tr>
-                <td class="text-gray-400"><strong>{{ key }}:</strong></td>
+                <td class="text-muted-foreground"><strong>{{ key }}:</strong></td>
                 <td><code class="error-code text-primary-300">{{ value }}</code></td>
             </tr>
             {% endfor %}

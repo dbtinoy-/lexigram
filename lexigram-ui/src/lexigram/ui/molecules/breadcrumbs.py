@@ -33,7 +33,11 @@ class Breadcrumbs(Component):
                         "div",
                         el(
                             "a",
-                            get_icon("home", class_name="h-5 w-5 flex-shrink-0", aria_hidden="true"),
+                            get_icon(
+                                "home",
+                                class_name="h-5 w-5 flex-shrink-0",
+                                aria_hidden="true",
+                            ),
                             href="/admin",
                             class_="text-muted-foreground hover:text-foreground transition-colors",
                         ),

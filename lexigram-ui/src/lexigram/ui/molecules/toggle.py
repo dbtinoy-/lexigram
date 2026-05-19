@@ -117,15 +117,22 @@ class ToggleIcon(Component):
         icon_size = "w-5 h-5" if self.size == "sm" else "w-6 h-6"
         on_icon = get_icon(self.icon_on, size=icon_size)
         off_icon = get_icon(self.icon_off, size=icon_size)
+        icon_cls = "text-muted-foreground"
 
         return el(
             "button",
-            el("span", on_icon, x_show=f"{self.state_var}", class_="text-warning", aria_hidden="true"),
+            el(
+                "span",
+                on_icon,
+                x_show=f"{self.state_var}",
+                class_=icon_cls,
+                aria_hidden="true",
+            ),
             el(
                 "span",
                 off_icon,
                 x_show=f"!{self.state_var}",
-                class_="text-muted-foreground",
+                class_=icon_cls,
                 aria_hidden="true",
             ),
             class_="p-2 rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",

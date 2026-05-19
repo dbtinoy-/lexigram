@@ -54,14 +54,14 @@ class DraftController(AdminController):
             # Return success indicator for UI
             timestamp = datetime.now().strftime("%H:%M:%S")
             return HTMLResponse(
-                content=f'<span class="text-xs text-gray-400 italic">Draft saved at {timestamp}</span>',
+                content=f'<span class="text-xs text-muted-foreground italic">Draft saved at {timestamp}</span>',
                 status_code=200,
             )
 
         except Exception as _save_err:  # noqa: BLE001 — controller boundary; autosave errors must not crash the request
             logger.exception("Failed to save draft for %s", form_id)
             return HTMLResponse(
-                content='<span class="text-xs text-red-400">Autosave failed</span>',
+                content='<span class="text-xs text-destructive">Autosave failed</span>',
                 status_code=500,
             )
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from lexigram.ui.styles.theme import shadcn_css
+from lexigram.ui import shadcn_css
 
 
 class AdminThemeService:

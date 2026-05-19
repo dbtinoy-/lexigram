@@ -258,10 +258,10 @@ class TestPackageWidgetRenderer:
         }
         html = renderer.render("request_rate.html", context)
 
-        assert "Request Rate" in html
         assert "12.5" in html
         assert "45000" in html
         assert "0.5" in html
+        assert "text-success" in html
 
     def test_render_template_not_found(self, renderer: PackageWidgetRenderer) -> None:
         """Test that rendering non-existent template raises error."""

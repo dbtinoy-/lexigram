@@ -48,7 +48,9 @@ class DebugPanel(Component):
         slow_list = []
         if stats.get("slow_requests"):
             slow_list.append(
-                el("h4", "Slow Requests", class_="font-bold mt-4 mb-2 text-red-600"),
+                el(
+                    "h4", "Slow Requests", class_="font-bold mt-4 mb-2 text-destructive"
+                ),
             )
             for req in stats["slow_requests"]:
                 slow_list.append(
@@ -64,7 +66,7 @@ class DebugPanel(Component):
                             f"{req['duration_ms']:.1f}ms",
                             class_="text-xs font-bold",
                         ),
-                        class_="p-2 bg-red-50 dark:bg-red-900/20 rounded mb-1",
+                        class_="p-2 bg-destructive/10 rounded mb-1",
                     ),
                 )
 
@@ -79,12 +81,12 @@ class DebugPanel(Component):
                     "button",
                     "Clear Stats",
                     hx_post="/admin//debug/clear",
-                    class_="mt-6 w-full py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm transition-colors text-gray-700",
+                    class_="mt-6 w-full py-2 bg-muted hover:bg-muted rounded text-sm transition-colors text-foreground",
                 ),
                 class_="p-6 h-full overflow-y-auto",
             ),
             id="debug-panel",
-            class_="fixed right-0 top-0 bottom-0 w-80 bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 z-50 transform transition-transform",
+            class_="fixed right-0 top-0 bottom-0 w-80 bg-card shadow-2xl border-l border-border z-50 transform transition-transform",
             # We assume Alpine.js is present or using simple CSS/HTMX for toggle
             x_data="{ open: false }",
             x_show="open",

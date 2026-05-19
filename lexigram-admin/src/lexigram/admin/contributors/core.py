@@ -19,7 +19,7 @@ from lexigram.contracts.admin.types import (
 )
 from lexigram.contracts.core.result import Result
 from lexigram.result import Err, Ok
-from lexigram.ui.charts.types import ChartConfig, ChartDataPoint, ChartType
+from lexigram.ui import ChartConfig, ChartDataPoint, ChartType
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import ContainerResolverProtocol

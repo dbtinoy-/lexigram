@@ -1,8 +1,8 @@
 from lexigram.admin.actions.base import HeaderAction
 from lexigram.admin.actions.standard import DeleteBulkAction
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.columns.types import TextColumn
-from lexigram.admin.ui.molecules.pagination import Pagination
+from lexigram.ui.columns.types import TextColumn
+from lexigram.ui import TablePagination as Pagination
 from lexigram.admin.ui.organisms.data_table import DataTable
 
 

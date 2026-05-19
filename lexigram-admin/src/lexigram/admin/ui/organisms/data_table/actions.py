@@ -14,7 +14,7 @@ from lexigram.admin.actions.standard import (
 )
 from lexigram.admin.actions.types import ActionColor
 from lexigram.admin.config import TableConfiguration
-from lexigram.admin.ui.actions.base import Action as OldActionBase
+from lexigram.ui import Action as OldActionBase
 
 OLD_ACTION_TYPES = (OldActionBase,)
 
@@ -177,7 +177,7 @@ def render_bulk_action_button(action: Any) -> Any:
     _color = getattr(action, "_color", None)
     _action_name = getattr(action, "name", "")
 
-    from lexigram.admin.ui.htmx_attrs import HTMXAttrs
+    from lexigram.ui import HTMXAttrs
 
     _method = "DELETE" if _hx_delete else "POST"
     _url = _hx_delete or _hx_post or ""

@@ -167,12 +167,12 @@ class FormBase(Component, metaclass=FormMeta):
         actions = el(
             "div",
             Button("Submit", type="submit", color="primary"),
-            class_="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700 mt-6",
+            class_="flex justify-end pt-4 border-t border-border mt-6",
         )
 
         attrs = {
             "method": self.method,
-            "class": "bg-white p-6 rounded-lg shadow dark:bg-gray-800",
+            "class": "bg-card p-6 rounded-lg shadow",
         }
         if self.action:
             attrs["action"] = self.action

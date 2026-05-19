@@ -62,7 +62,7 @@ class TestFormValidationController:
         req = _mock_request(method="POST", form={"email": "not-an-email"})
         resp = await controller.validate_field("email", req)
         assert resp.status_code == 200
-        assert b"text-red-500" in resp.body
+        assert b"text-destructive" in resp.body
         assert b"Invalid email address" in resp.body
 
     @pytest.mark.asyncio

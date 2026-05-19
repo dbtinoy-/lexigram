@@ -1,6 +1,6 @@
 from lexigram.admin.actions.standard import DeleteBulkAction
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.columns.types import TextColumn
+from lexigram.ui.columns.types import TextColumn
 from lexigram.admin.ui.organisms.data_table import DataTable
 
 

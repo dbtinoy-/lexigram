@@ -10,7 +10,7 @@ from lexigram.admin.ui.organisms.data_table.permissions import PermissionManager
 from lexigram.admin.ui.organisms.data_table.rendering import DataTableRenderer
 from lexigram.admin.ui.organisms.data_table.states import StateRenderer
 from lexigram.admin.ui.organisms.data_table.views import ViewFactory, ViewStrategy
-from lexigram.admin.ui.state import TableState
+from lexigram.ui import TableState
 
 __all__ = [
     "ActionManager",

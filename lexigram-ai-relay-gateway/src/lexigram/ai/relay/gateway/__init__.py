@@ -8,6 +8,7 @@ through :class:`RelayGatewayModule` / :class:`RelayGatewayProvider`.
 
 from __future__ import annotations
 
+from lexigram.ai.relay.gateway.catalog import ModelCatalogService
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
@@ -24,6 +25,7 @@ from lexigram.ai.relay.gateway.operations import (
     RelayChannelCheckerProtocol,
     RelayChannelProbeResult,
     RelayControlsService,
+    RelayFailoverTracker,
     RelayHealthService,
     RelayMetricsService,
     RelayRouteEvent,
@@ -39,6 +41,7 @@ __all__ = [
     "CredentialInjectingHTTPClient",
     "HTTPUpstreamAdapter",
     "InMemoryRelayPolicyStore",
+    "ModelCatalogService",
     "NullChannelCredentialProvider",
     "PassthroughService",
     "RelayChannelAutoTester",
@@ -47,6 +50,7 @@ __all__ = [
     "RelayChannelProbeResult",
     "RelayChannelRegistry",
     "RelayControlsService",
+    "RelayFailoverTracker",
     "RelayGatewayConfig",
     "RelayGatewayModule",
     "RelayGatewayProvider",

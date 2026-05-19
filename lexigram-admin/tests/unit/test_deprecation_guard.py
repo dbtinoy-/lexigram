@@ -11,7 +11,7 @@ import pytest
 
 from lexigram.admin.resources.base import Resource
 from lexigram.admin.schema import BooleanField, TextField
-from lexigram.admin.ui.columns.types import TextColumn
+from lexigram.ui.columns.types import TextColumn
 
 
 class TestDeprecationWarnings:

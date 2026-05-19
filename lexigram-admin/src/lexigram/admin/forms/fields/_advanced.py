@@ -150,10 +150,10 @@ class JsonField(Field):
             "id": self.name,
             "rows": str(self.rows),
             "class": (
-                "block w-full rounded-md border border-gray-300 dark:border-gray-600 "
-                "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 "
+                "block w-full rounded-md border border-border "
+                "bg-card text-foreground "
                 "font-mono text-sm p-3 "
-                "focus:outline-none focus:ring-2 focus:ring-blue-500 "
+                "focus:outline-none focus:ring-2 focus:ring-ring "
                 "disabled:opacity-50"
             ),
             "spellcheck": "false",
@@ -171,16 +171,16 @@ class JsonField(Field):
             self.label or self.name,
             **{
                 "for": self.name,
-                "class": "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1",
+                "class": "block text-sm font-medium text-foreground mb-1",
             },
         )
         error_el = (
-            el("p", str(self.errors[0]), class_="mt-1 text-sm text-red-600")
+            el("p", str(self.errors[0]), class_="mt-1 text-sm text-destructive")
             if self.errors
             else None
         )
         help_el = (
-            el("p", self.help_text, class_="mt-1 text-xs text-gray-500")
+            el("p", self.help_text, class_="mt-1 text-xs text-muted-foreground")
             if self.help_text
             else None
         )

@@ -55,14 +55,14 @@ class SearchController:
         if not results.has_results:
             return (
                 '<div class="search-results-empty '
-                "text-center py-8 px-4 text-sm text-gray-500 dark:text-gray-400"
+                "text-center py-8 px-4 text-sm text-muted-foreground dark:text-muted-foreground"
                 '">No results found</div>'
             )
 
         sections: list[str] = []
         count_text = f"{results.total_count} result{'s' if results.total_count != 1 else ''} across {results.group_count} resource{'s' if results.group_count != 1 else ''}"
         sections.append(
-            '<div class="search-summary px-4 py-2 text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-700/50">'
+            '<div class="search-summary px-4 py-2 text-xs text-muted-foreground border-b border-border/50">'
             f"{count_text}"
             "</div>"
         )
@@ -86,28 +86,28 @@ class SearchController:
                     f'<a href="{r.url}" '
                     f'class="search-result-item '
                     f"block px-4 py-3 "
-                    f"hover:bg-gray-50 dark:hover:bg-gray-700/50 "
-                    f"focus:bg-blue-50 dark:focus:bg-blue-900/20 "
+                    f"hover:bg-muted dark:hover:bg-muted/50 "
+                    f"focus:bg-muted "
                     f'focus:outline-none transition-colors" '
                     f'hx-get="{r.url}" hx-target="body" hx-push-url="true">'
                     f'<span class="search-result-title '
-                    f"block text-sm font-medium text-gray-900 dark:text-gray-100"
+                    f"block text-sm font-medium text-foreground"
                     f'">{r.title}</span>'
                     f"{subtitle_html}"
                     f'<span class="search-result-resource '
-                    f"inline-block text-xs text-gray-400 dark:text-gray-500 mt-0.5"
+                    f"inline-block text-xs text-muted-foreground dark:text-muted-foreground mt-0.5"
                     f'">{resource_label}</span>'
                     f"</a>"
                 )
 
             sections.append(
                 '<div class="search-resource-group '
-                "border-b border-gray-100 dark:border-gray-700/50 last:border-b-0"
+                "border-b border-border/50 last:border-b-0"
                 '">'
                 f'<div class="search-resource-header '
                 f"px-4 py-2 text-xs font-semibold uppercase tracking-wider "
-                f"text-gray-500 dark:text-gray-400 "
-                f"bg-gray-50 dark:bg-gray-800/50"
+                f"text-muted-foreground dark:text-muted-foreground "
+                f"bg-muted dark:bg-card/50"
                 f'">{resource_label}</div>'
                 f"{items_html}"
                 "</div>"
@@ -115,7 +115,7 @@ class SearchController:
 
         return (
             '<div class="search-results '
-            "rounded-xl shadow-lg bg-white dark:bg-gray-800 "
+            "rounded-xl shadow-lg bg-card "
             "overflow-hidden max-h-[70vh] overflow-y-auto"
             '">' + "".join(sections) + "</div>"
         )

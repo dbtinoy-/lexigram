@@ -257,7 +257,7 @@ class HeaderRenderer:
             <div x-show="open" @click.away="open = false" class="user-panel">
                 <div class="user-info">
                     <div class="font-medium">{escape(self.user.name)}</div>
-                    <div class="text-sm text-gray-500">{escape(self.user.email)}</div>
+                    <div class="text-sm text-muted-foreground">{escape(self.user.email)}</div>
                     {role_badge}
                 </div>
                 <div class="user-menu-items">
@@ -268,7 +268,7 @@ class HeaderRenderer:
                         <i data-lucide="settings" class="w-4 h-4"></i> Settings
                     </a>
                     <hr class="my-1">
-                    <a href="{escape(self.config.logout_url)}" class="user-menu-item text-red-600">
+                    <a href="{escape(self.config.logout_url)}" class="user-menu-item text-destructive">
                         <i data-lucide="log-out" class="w-4 h-4"></i> Logout
                     </a>
                 </div>

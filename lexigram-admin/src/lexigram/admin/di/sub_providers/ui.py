@@ -35,8 +35,8 @@ class AdminUISubProvider:
         from lexigram.admin.layout.layout_manager import LayoutManager
         from lexigram.admin.navigation.assembler import NavigationAssembler
         from lexigram.admin.services.component_registry import ComponentRegistry
-        from lexigram.admin.ui.observability import MetricsCollectorProtocol
         from lexigram.admin.ui.organisms.form_registry import FormFieldRegistry
+        from lexigram.ui import MetricsCollector
 
         container.singleton(ComponentRegistry, ComponentRegistry())
         container.singleton(FormFieldRegistry, FormFieldRegistry())
@@ -48,7 +48,7 @@ class AdminUISubProvider:
         # LayoutType (an enum, not a registered service) as a dependency.
         container.singleton(LayoutManager, LayoutManager())
 
-        container.singleton(MetricsCollectorProtocol, MetricsCollectorProtocol)
+        container.singleton(MetricsCollector, MetricsCollector)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot UI services: initialize component registry and navigation."""

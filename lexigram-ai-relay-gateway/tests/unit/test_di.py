@@ -30,6 +30,7 @@ from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.di.provider import RelayGatewayProvider
 from lexigram.ai.relay.gateway.operations.auto_test import RelayChannelAutoTester
+from lexigram.ai.relay.gateway.operations.failover import RelayFailoverTracker
 from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
 from lexigram.ai.relay.gateway.service import RelayGatewayService
 from lexigram.ai.relay.gateway.stream import UpstreamEventParser, relay_stream
@@ -766,3 +767,56 @@ async def test_register_twice_behavior() -> None:
     service = await container.resolve(RelayGatewayProtocol)
     result = await service.handle(make_request())
     assert result.is_ok()
+
+
+async def test_failover_tracker_bound_and_wired() -> None:
+    """Auto-disable wiring binds the tracker and bans a failing channel."""
+    provider = RelayGatewayProvider(
+        config=RelayGatewayConfig(
+            channels=(make_channel(),),
+            auto_disable_on_failures=True,
+            failover_failure_threshold=1,
+        ),
+        converter=FakeConverter(),
+        http_client=FakeHTTPClient(response=ok_upstream_response(status=502)),
+    )
+    container = Container()
+    await provider.register(container)
+    assert container.has(RelayFailoverTracker)
+    service = await container.resolve(RelayGatewayProtocol)
+    result = await service.handle(make_request())
+    assert result.is_err()
+    registry = await container.resolve(RelayChannelRegistry)
+    assert registry.runtime_enabled() == {CHANNEL_NAME: False}
+
+
+async def test_failover_absent_when_disabled() -> None:
+    """The default config binds no failover tracker."""
+    provider = RelayGatewayProvider(config=make_config())
+    container = Container()
+    await provider.register(container)
+    assert container.has(RelayFailoverTracker) is False
+
+
+async def test_boot_late_binds_container_dependencies() -> None:
+    """Boot resolves converter and HTTP client from the container."""
+    provider = RelayGatewayProvider(config=make_config())
+    container = Container()
+    container.singleton(RelayConverterProtocol, FakeConverter())
+    container.singleton(HTTPClientProtocol, FakeHTTPClient(response=ok_upstream_response()))
+    await provider.register(container)
+    assert container.has(RelayGatewayProtocol) is False
+    await provider.boot(container)
+    assert container.has(RelayGatewayProtocol)
+    service = await container.resolve(RelayGatewayProtocol)
+    result = await service.handle(make_request())
+    assert result.is_ok()
+
+
+async def test_boot_without_any_dependencies_stays_unbound() -> None:
+    """Boot without converter or HTTP client keeps the gateway unbound."""
+    provider = RelayGatewayProvider(config=make_config())
+    container = Container()
+    await provider.register(container)
+    await provider.boot(container)
+    assert container.has(RelayGatewayProtocol) is False

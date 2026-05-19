@@ -502,7 +502,9 @@ class PassthroughService:
                 return Err(admitted.unwrap_err()), channel.name
             reservation = admitted.unwrap()
         body = _as_relay_body(request.payload)
-        outbound_model = request.model + self._config.model_suffix.get(channel.name, "")
+        outbound_model = channel.resolve_model(
+            request.model
+        ) + self._config.model_suffix.get(channel.name, "")
         body_data = body.data
         if isinstance(body_data, Mapping):
             outbound = dict(body_data)

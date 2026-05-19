@@ -61,7 +61,7 @@ class DynamicForm(Component):
             if field.help_text and field.type != FormFieldType.CHECKBOX:
                 form_content.append(
                     h.p(
-                        class_="mt-1 text-xs text-gray-500 dark:text-gray-400 mb-4 -mt-4",
+                        class_="mt-1 text-xs text-muted-foreground mb-4 -mt-4",
                     )[field.help_text],
                 )
 
@@ -77,7 +77,7 @@ class DynamicForm(Component):
         form_attrs = {
             "action": self.action,
             "method": self.method,
-            "class_": "space-y-4 bg-white p-6 rounded-lg shadow",
+            "class_": "space-y-4 bg-card p-6 rounded-lg shadow",
         }
         if self.hx_post:
             form_attrs["hx_post"] = self.hx_post
@@ -88,7 +88,7 @@ class DynamicForm(Component):
 
         return Form(
             children=[
-                h.h2(class_="text-lg font-medium text-gray-900 mb-4")[
+                h.h2(class_="text-lg font-medium text-foreground mb-4")[
                     self.schema.title
                 ],
                 form_content,

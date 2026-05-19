@@ -46,7 +46,7 @@ class ShowcaseController:
             el(
                 "h1",
                 "Component Showcase",
-                class_="text-3xl font-bold text-gray-900 dark:text-white mb-8",
+                class_="text-3xl font-bold text-foreground mb-8",
             ),
             el(
                 "div",
@@ -55,7 +55,7 @@ class ShowcaseController:
                     el(
                         "h2",
                         "Stateful Components",
-                        class_="text-xl font-semibold text-gray-900 dark:text-white mb-4",
+                        class_="text-xl font-semibold text-foreground mb-4",
                     ),
                     el(
                         "ul",
@@ -83,7 +83,7 @@ class ShowcaseController:
                         ),
                         class_="space-y-2 list-disc list-inside",
                     ),
-                    class_="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700",
+                    class_="p-6 bg-card rounded-lg shadow-md border border-border",
                 ),
                 class_="max-w-4xl",
             ),

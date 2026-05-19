@@ -31,8 +31,11 @@ from lexigram.ui.htmx.helpers import (
     hx_websocket,
 )
 from lexigram.ui.htmx.sse import SSE, SSEEventType, SSEMessage, SSEStream
+from lexigram.ui.htmx.table_attrs import HTMXAttrs, HTMXAttrsBuilder
 
 __all__ = [
+    "HTMXAttrs",
+    "HTMXAttrsBuilder",
     "HtmxActionResponse",
     "SSE",
     "SSEEventType",

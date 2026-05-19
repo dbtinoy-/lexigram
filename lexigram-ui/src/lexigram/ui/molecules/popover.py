@@ -64,7 +64,9 @@ class Popover(Component):
                     },
                     el(
                         "div",
-                        {"class": "relative grid bg-popover text-popover-foreground p-4 gap-4"},
+                        {
+                            "class": "relative grid bg-popover text-popover-foreground p-4 gap-4"
+                        },
                         *children_html,
                     ),
                 ),

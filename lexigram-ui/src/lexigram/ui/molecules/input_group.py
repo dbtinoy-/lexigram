@@ -74,7 +74,9 @@ class InputGroup(Component):
                     id=self.name,
                     value=self.value,
                     placeholder=self.placeholder,
-                    **({"aria_describedby": f"{self.name}-error"} if self.error else {}),
+                    **(
+                        {"aria_describedby": f"{self.name}-error"} if self.error else {}
+                    ),
                     **({"aria_invalid": "true"} if self.error else {}),
                     class_=f"block w-full min-w-0 flex-1 border-0 bg-transparent py-2 text-foreground placeholder:text-muted-foreground focus:ring-0 sm:text-sm {'pl-1' if self.prefix else 'pl-3'} {'pr-1' if self.suffix else 'pr-3'}",
                 ),
@@ -94,7 +96,13 @@ class InputGroup(Component):
                 class_=f"flex rounded-lg shadow-sm ring-1 ring-inset focus-within:ring-2 focus-within:ring-inset transition-all duration-200 {'ring-destructive focus-within:ring-destructive' if self.error else 'ring-[var(--input)] focus-within:ring-ring'} bg-background",
             ),
             (
-                el("p", self.error, id=f"{self.name}-error", role="alert", class_="mt-2 text-sm text-destructive")
+                el(
+                    "p",
+                    self.error,
+                    id=f"{self.name}-error",
+                    role="alert",
+                    class_="mt-2 text-sm text-destructive",
+                )
                 if self.error
                 else ""
             ),

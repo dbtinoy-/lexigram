@@ -1,4 +1,4 @@
-from lexigram.admin.ui.columns import TextColumn
+from lexigram.ui.columns import TextColumn
 
 
 def test_header_shows_sortable_indicator_when_not_sorted():

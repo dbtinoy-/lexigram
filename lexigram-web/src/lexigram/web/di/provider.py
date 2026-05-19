@@ -326,7 +326,9 @@ class WebProvider(Provider):
                     # user-supplied override should take precedence over the
                     # framework's own controller.
                     if isinstance(controller_cls, type) and any(
-                        isinstance(ec, type) and ec is not controller_cls and issubclass(ec, controller_cls)
+                        isinstance(ec, type)
+                        and ec is not controller_cls
+                        and issubclass(ec, controller_cls)
                         for ec in self.controllers
                     ):
                         continue

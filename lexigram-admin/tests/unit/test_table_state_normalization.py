@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from lexigram.admin.ui.state import TableState
+from lexigram.ui.state import TableState
 
 def make_req(query_params):
     return SimpleNamespace(query_params=query_params)

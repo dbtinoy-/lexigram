@@ -3,7 +3,7 @@ import random
 from typing import Any
 
 from lexigram.admin.resources.base import Resource
-from lexigram.admin.ui.columns import (
+from lexigram.ui.columns import (
     BadgeColumn,
     BooleanColumn,
     Column,

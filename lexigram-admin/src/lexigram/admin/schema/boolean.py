@@ -32,8 +32,8 @@ class BooleanField(SchemaField[bool]):
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
         if value:
-            return Element("span", "\u2713", class_="text-green-600")
-        return Element("span", "\u2717", class_="text-red-600")
+            return Element("span", "\u2713", class_="text-success")
+        return Element("span", "\u2717", class_="text-destructive")
 
     def from_form(self, raw: str | None) -> Result[bool | None, FieldError]:
         if raw is None:

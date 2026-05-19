@@ -8,7 +8,7 @@ gateway error, and the gateway service protocol implemented by the
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
@@ -31,6 +31,7 @@ class RelayChannel:
     weight: int = 100
     enabled: bool = True
     timeout_seconds: float = 60.0
+    model_map: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate the channel configuration."""
@@ -44,6 +45,25 @@ class RelayChannel:
             raise ValueError("timeout_seconds must be positive")
         if self.weight < 0:
             raise ValueError("weight must not be negative")
+        unknown = set(self.model_map) - set(self.models)
+        if unknown:
+            raise ValueError(
+                f"model_map keys must be listed in models; unknown: {sorted(unknown)}"
+            )
+
+    def resolve_model(self, alias: str) -> str:
+        """Resolve the upstream model name for *alias*.
+
+        The mapping wins when it carries *alias*; otherwise the alias is
+        used as its own upstream name.
+
+        Args:
+            alias: The client-visible model alias.
+
+        Returns:
+            The model name sent to the channel's upstream.
+        """
+        return self.model_map.get(alias, alias)
 
 
 @dataclass(frozen=True, slots=True)

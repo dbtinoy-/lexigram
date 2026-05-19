@@ -1,4 +1,4 @@
-from lexigram.admin.ui.organisms.table.client_logic import (
+from lexigram.ui import (
     DataTableScriptRenderer,
 )
 

@@ -73,12 +73,12 @@ class ConfigLayout(Component):
             el(
                 "h1",
                 self.title,
-                class_="text-2xl font-bold text-gray-900 dark:text-white",
+                class_="text-2xl font-bold text-foreground",
             ),
             el(
                 "p",
                 "Manage system configuration, environment variables, and application settings.",
-                class_="text-gray-500 dark:text-gray-400 mt-1",
+                class_="text-muted-foreground mt-1",
             ),
             class_="mb-2",
         )
@@ -95,7 +95,7 @@ class ConfigLayout(Component):
                 "div",
                 self._render_icon(category.icon),
                 el("span", category.label, class_="font-medium"),
-                class_=f"flex items-center gap-2 px-3 py-2 text-sm {'text-primary-700 dark:text-primary-400' if is_active_category else 'text-gray-600 dark:text-gray-400'}",
+                class_=f"flex items-center gap-2 px-3 py-2 text-sm {'text-primary-700 dark:text-primary-400' if is_active_category else 'text-muted-foreground dark:text-muted-foreground'}",
             )
 
             # Spec links within category
@@ -112,7 +112,7 @@ class ConfigLayout(Component):
                         hx_target="#main-content",
                         hx_swap="innerHTML",
                         hx_push_url="true",
-                        class_=f"block px-3 py-2 pl-9 text-sm rounded-lg transition-colors {'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-medium' if is_active_spec else 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'}",
+                        class_=f"block px-3 py-2 pl-9 text-sm rounded-lg transition-colors {'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-medium' if is_active_spec else 'text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-card'}",
                     ),
                 )
 
@@ -126,7 +126,7 @@ class ConfigLayout(Component):
                     else el(
                         "div",
                         "No configurations",
-                        class_="px-3 py-2 pl-9 text-xs text-gray-400 italic",
+                        class_="px-3 py-2 pl-9 text-xs text-muted-foreground italic",
                     ),
                     class_="mb-4",
                 ),
@@ -135,7 +135,7 @@ class ConfigLayout(Component):
         return el(
             "nav",
             *groups,
-            class_="w-full lg:w-64 flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4",
+            class_="w-full lg:w-64 flex-shrink-0 bg-card rounded-xl border border-border p-4",
             aria_label="Configuration categories",
         )
 
@@ -157,12 +157,12 @@ class ConfigLayout(Component):
                     el(
                         "h3",
                         "Select a Configuration",
-                        class_="text-lg font-semibold text-gray-900 dark:text-white",
+                        class_="text-lg font-semibold text-foreground",
                     ),
                     el(
                         "p",
                         "Choose a configuration from the sidebar to view and edit settings.",
-                        class_="text-gray-500 dark:text-gray-400 mt-2 max-w-sm",
+                        class_="text-muted-foreground mt-2 max-w-sm",
                     ),
                     class_="text-center py-16",
                 ),
@@ -177,4 +177,4 @@ class ConfigLayout(Component):
 
             return get_icon(icon_name, class_name="w-5 h-5 opacity-70")
         except (ImportError, ModuleNotFoundError, AttributeError):
-            return el("span", "●", class_="text-gray-400")
+            return el("span", "●", class_="text-muted-foreground")

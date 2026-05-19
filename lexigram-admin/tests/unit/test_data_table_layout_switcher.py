@@ -1,4 +1,4 @@
-from lexigram.admin.ui.columns.types import TextColumn
+from lexigram.ui.columns.types import TextColumn
 from lexigram.admin.ui.organisms.data_table import DataTable
 
 

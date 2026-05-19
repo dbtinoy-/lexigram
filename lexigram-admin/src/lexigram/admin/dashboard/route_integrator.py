@@ -104,12 +104,31 @@ class AdminPageHandler:
         )
         nav_items, system_menu_items = resolve_admin_nav(request)
 
+        theme_css = ""
+        try:
+            from lexigram.admin.theme.service import AdminThemeService
+
+            service = AdminThemeService(primary_color="#6b7280")
+            theme_css = service.generate_theme_css()
+        except Exception:  # noqa: BLE001 — non-fatal
+            pass
+
+        user_menu_items: list[dict[str, str]] = [
+            {
+                "label": "Settings",
+                "href": "/admin/settings",
+                "icon": "settings",
+            },
+        ]
+
         shell = AdminShell(
             content=content,
             title=title,
             user=user,
             nav_items=nav_items,
             system_menu_items=system_menu_items,
+            user_menu_items=user_menu_items,
+            theme_css=theme_css,
         )
         shell_html = render_to_string(shell)
 
@@ -176,8 +195,8 @@ async def _placeholder_page(request: Any) -> HTMLResponse:
     content = (
         '<div class="flex items-center justify-center h-64">'
         '<div class="text-center">'
-        '<h2 class="text-xl font-semibold text-gray-400">Under Construction</h2>'
-        '<p class="text-gray-500 mt-2">This page has not been implemented yet.</p>'
+        '<h2 class="text-xl font-semibold text-muted-foreground">Under Construction</h2>'
+        '<p class="text-muted-foreground mt-2">This page has not been implemented yet.</p>'
         "</div></div>"
     )
 
@@ -200,12 +219,22 @@ async def _placeholder_page(request: Any) -> HTMLResponse:
         )
         nav_items, system_menu_items = resolve_admin_nav(request)
 
+        theme_css = ""
+        try:
+            from lexigram.admin.theme.service import AdminThemeService
+
+            service = AdminThemeService(primary_color="#6b7280")
+            theme_css = service.generate_theme_css()
+        except Exception:  # noqa: BLE001 — non-fatal
+            pass
+
         shell = AdminShell(
             content=content,
             title="Under Construction",
             user=user,
             nav_items=nav_items,
             system_menu_items=system_menu_items,
+            theme_css=theme_css,
         )
         shell_html = render_to_string(shell)
 

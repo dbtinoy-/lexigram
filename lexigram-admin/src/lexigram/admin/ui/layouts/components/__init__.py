@@ -17,13 +17,12 @@ from lexigram.admin.ui.layouts.components.sidebar import (
     SidebarRenderer,
     build_nav_from_resources,
 )
-from lexigram.ui.layouts.footer import (
+from lexigram.ui import (
     FooterConfig,
     FooterLink,
     FooterRenderer,
-)
-from lexigram.ui.layouts.head import HeadConfig, HeadRenderer
-from lexigram.ui.layouts.server_toasts import (
+    HeadConfig,
+    HeadRenderer,
     ServerToastChannel,
     ToastConfig,
     ToastData,

@@ -6,8 +6,8 @@ all active state dimensions across controls when multiple are active.
 
 from lexigram.admin.ui.filters.types import SelectFilter
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
-from lexigram.admin.ui.molecules.pagination import Pagination
-from lexigram.admin.ui.state import TableState
+from lexigram.ui import TablePagination as Pagination
+from lexigram.ui.state import TableState
 from lexigram.ui import render_to_string
 
 

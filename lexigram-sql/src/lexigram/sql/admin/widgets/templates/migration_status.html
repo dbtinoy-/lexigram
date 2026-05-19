@@ -1,12 +1,10 @@
-<div class="card h-100">
-  <div class="card-body">
-    <h6 class="card-title text-muted">Migrations</h6>
+<div class="h-full">
+    <h6 class="text-sm font-semibold text-muted-foreground mb-2">Migrations</h6>
     {% if is_current %}
-    <div class="text-success fw-bold">✓ Up to date</div>
+    <div class="text-success font-bold">✓ Up to date</div>
     {% else %}
-    <div class="text-warning fw-bold">{{ pending_count }} pending</div>
+    <div class="text-warning font-bold">{{ pending_count }} pending</div>
     {% endif %}
-    <div class="text-muted small mt-2">Version: {{ current_version }}</div>
-    <div class="text-muted small">Applied: {{ total_applied }}</div>
-  </div>
+    <div class="text-xs text-muted-foreground mt-2">Version: {{ current_version }}</div>
+    <div class="text-xs text-muted-foreground">Applied: {{ total_applied }}</div>
 </div>

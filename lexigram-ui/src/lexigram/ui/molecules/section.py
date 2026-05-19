@@ -129,7 +129,9 @@ class Section(Component):
 
         section_attrs = {}
         if self.collapsible:
-            section_attrs["x_data"] = f"{{ collapsed: {'true' if self.collapsed else 'false'} }}"
+            section_attrs["x_data"] = (
+                f"{{ collapsed: {'true' if self.collapsed else 'false'} }}"
+            )
 
         return el(
             "div",

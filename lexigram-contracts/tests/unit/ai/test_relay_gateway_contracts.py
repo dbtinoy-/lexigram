@@ -1,4 +1,5 @@
 """Tests for the relay gateway contracts (channels, requests, errors, protocols)."""
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, fields
@@ -103,6 +104,25 @@ class TestRelayChannel:
     def test_missing_target_format_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
             RelayChannel(name="x", upstream_base_url="https://x", models=("m",))
+
+    def test_model_map_defaults_to_empty(self) -> None:
+        channel = make_channel()
+        assert channel.model_map == {}
+
+    def test_resolve_model_uses_alias_when_unmapped(self) -> None:
+        channel = make_channel()
+        assert channel.resolve_model("gpt-4o") == "gpt-4o"
+
+    def test_resolve_model_uses_mapping_when_present(self) -> None:
+        channel = make_channel(
+            model_map={"gpt-4o": "gpt-4o-2024-11-20"},
+        )
+        assert channel.resolve_model("gpt-4o") == "gpt-4o-2024-11-20"
+        assert channel.resolve_model("unknown-alias") == "unknown-alias"
+
+    def test_rejects_model_map_keys_outside_models(self) -> None:
+        with pytest.raises(ValueError, match="model_map"):
+            make_channel(model_map={"other-model": "gpt-4o"})
 
     def test_frozen(self) -> None:
         channel = make_channel()

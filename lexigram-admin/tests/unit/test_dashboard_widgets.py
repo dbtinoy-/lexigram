@@ -34,13 +34,13 @@ class TestStatCard:
         html = str(StatCard(stat).render())
         assert "↑" in html
         assert "+5%" in html
-        assert "text-green-600" in html
+        assert "text-success" in html
 
     def test_renders_change_indicator_negative(self) -> None:
         stat = Stat(label="Errors", value="10", change="−3%", change_positive=False)
         html = str(StatCard(stat).render())
         assert "↓" in html
-        assert "text-red-600" in html
+        assert "text-destructive" in html
 
     def test_renders_description(self) -> None:
         stat = Stat(label="X", value="0", description="Helpful context")
@@ -61,7 +61,7 @@ class TestStatCard:
         stat = Stat(label="X", value="0", color="nonexistent")
         # Should fall back to blue without raising
         html = str(StatCard(stat).render())
-        assert "bg-blue-100" in html
+        assert "bg-info/10" in html
 
 
 # ---------------------------------------------------------------------------
@@ -153,19 +153,19 @@ class TestSystemHealthWidget:
         entries = [HealthEntry(name="DB", status="ok")]
         html = str(SystemHealthWidget(entries).render())
         assert "OK" in html
-        assert "text-green-600" in html
+        assert "text-success" in html
 
     def test_renders_degraded_status(self) -> None:
         entries = [HealthEntry(name="Cache", status="degraded")]
         html = str(SystemHealthWidget(entries).render())
         assert "DEGRADED" in html
-        assert "text-yellow-600" in html
+        assert "text-warning" in html
 
     def test_renders_down_status(self) -> None:
         entries = [HealthEntry(name="Worker", status="down")]
         html = str(SystemHealthWidget(entries).render())
         assert "DOWN" in html
-        assert "text-red-600" in html
+        assert "text-destructive" in html
 
     def test_renders_latency_when_set(self) -> None:
         entries = [HealthEntry(name="API", status="ok", latency_ms=42)]

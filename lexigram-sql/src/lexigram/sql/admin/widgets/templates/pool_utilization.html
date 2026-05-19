@@ -1,13 +1,11 @@
-<div class="card h-100">
-  <div class="card-body">
-    <h6 class="card-title text-muted">Database Pool</h6>
-    <div class="metric-value fs-4 fw-bold">{{ active_connections }}/{{ pool_size }}</div>
-    <div class="metric-label text-muted small">Active Connections</div>
-    <div class="progress mt-3" style="height: 8px;">
-      <div class="progress-bar bg-primary" role="progressbar"
+<div class="h-full">
+    <h6 class="text-sm font-semibold text-muted-foreground mb-2">Database Pool</h6>
+    <div class="text-lg font-bold text-foreground">{{ active_connections }}/{{ pool_size }}</div>
+    <div class="text-xs text-muted-foreground">Active Connections</div>
+    <div class="w-full bg-muted rounded h-2 overflow-hidden mt-3">
+      <div class="h-full bg-primary rounded transition-all duration-500" role="progressbar"
            style="width: {{ utilization_pct }}%" aria-valuenow="{{ utilization_pct }}"
            aria-valuemin="0" aria-valuemax="100"></div>
     </div>
-    <div class="text-end small mt-1">{{ utilization_pct }}% utilized</div>
-  </div>
+    <div class="text-right text-xs mt-1 text-muted-foreground">{{ utilization_pct }}% utilized</div>
 </div>

@@ -35,6 +35,18 @@ if TYPE_CHECKING:
         table_aria,
         tabpanel_aria,
     )
+    from lexigram.ui.actions import (
+        Action,
+        ActionTarget,
+        BulkAction,
+        CreateAction,
+        DeleteAction,
+        DeleteBulkAction,
+        EditAction,
+        ExportAction,
+        ExportBulkAction,
+        ViewAction,
+    )
     from lexigram.ui.atoms.badge import Badge
     from lexigram.ui.atoms.button import Button, SubmitButton
     from lexigram.ui.atoms.divider import Divider
@@ -90,6 +102,16 @@ if TYPE_CHECKING:
         PieChart,
         Sparkline,
     )
+    from lexigram.ui.columns import (
+        BadgeColumn,
+        BooleanColumn,
+        Column,
+        CurrencyColumn,
+        DateColumn,
+        ImageColumn,
+        ListColumn,
+        TextColumn,
+    )
     from lexigram.ui.config import (
         BaseLayoutConfig,
         DebounceConfig,
@@ -129,7 +151,7 @@ if TYPE_CHECKING:
         timeout_error,
         validation_error,
     )
-    from lexigram.ui.htmx import helpers, htmx, sse
+    from lexigram.ui.htmx import HTMXAttrs, HTMXAttrsBuilder, helpers, htmx, sse
     from lexigram.ui.layouts import (
         BaseLayoutContext,
         CSSManager,
@@ -145,15 +167,29 @@ if TYPE_CHECKING:
     from lexigram.ui.molecules.breadcrumbs import Breadcrumbs
     from lexigram.ui.molecules.builder import Builder
     from lexigram.ui.molecules.card import Card
+    from lexigram.ui.molecules.data_table_client_logic import DataTableScriptRenderer
+    from lexigram.ui.molecules.date_hierarchy import DateHierarchyFilter
+    from lexigram.ui.molecules.date_range_filter import DateRangeFilter
     from lexigram.ui.molecules.dropdown import Dropdown
     from lexigram.ui.molecules.empty_state import EmptyState
     from lexigram.ui.molecules.error_state import ErrorState
+    from lexigram.ui.molecules.filter_dropdown import FilterDropdown
     from lexigram.ui.molecules.form_actions import FormActions
     from lexigram.ui.molecules.form_field import FormField
+    from lexigram.ui.molecules.infolist import (
+        InfolistEntry,
+        InfolistEntryType,
+        InfolistWidget,
+    )
+    from lexigram.ui.molecules.inline_edit_cell import InlineEditCell
     from lexigram.ui.molecules.input_group import InputGroup
+    from lexigram.ui.molecules.jump_to_page import JumpToPage
+    from lexigram.ui.molecules.layout_switcher import LayoutSwitcher
     from lexigram.ui.molecules.loading_overlay import LoadingOverlay
     from lexigram.ui.molecules.metric_card import MetricCard
     from lexigram.ui.molecules.modal import Modal
+    from lexigram.ui.molecules.page_size_selector import PageSizeSelector
+    from lexigram.ui.molecules.pagination_links import PaginationLinks
     from lexigram.ui.molecules.popover import Popover
     from lexigram.ui.molecules.realtime import LiveCounter, RealTimeFeed
     from lexigram.ui.molecules.rich_select import RichSelect
@@ -161,6 +197,8 @@ if TYPE_CHECKING:
     from lexigram.ui.molecules.simple_alert import SimpleAlert
     from lexigram.ui.molecules.stack import Stack
     from lexigram.ui.molecules.stat_card import StatCard
+    from lexigram.ui.molecules.tab_group import Tab, TabGroup
+    from lexigram.ui.molecules.table_pagination import TablePagination
     from lexigram.ui.molecules.tabs import TabPanel, Tabs
     from lexigram.ui.molecules.toast import (
         InlineToast,
@@ -177,9 +215,17 @@ if TYPE_CHECKING:
         VirtualScroll,
     )
     from lexigram.ui.organisms.activity_feed import ActivityFeed
+    from lexigram.ui.organisms.filter_drawer import FilterDrawer
     from lexigram.ui.organisms.forms import Form
+    from lexigram.ui.organisms.live_polling import AutoRefreshWidget, LiveDataTable
+    from lexigram.ui.organisms.notification_bell import NotificationBell
     from lexigram.ui.organisms.repeater import Repeater
+    from lexigram.ui.organisms.simple_pagination import SimplePagination
     from lexigram.ui.organisms.slide_over import SlideOver
+    from lexigram.ui.organisms.sortable_list import SortableRecordList
+    from lexigram.ui.organisms.systembox import SystemBox
+    from lexigram.ui.organisms.task_progress import TaskProgress
+    from lexigram.ui.organisms.userbox import UserBox
     from lexigram.ui.performance.observability import (
         MetricProtocol,
         MetricsCollector,
@@ -198,6 +244,8 @@ if TYPE_CHECKING:
         optimize_htmx_response,
     )
     from lexigram.ui.protocols import RenderableProtocol
+    from lexigram.ui.state import TableState
+    from lexigram.ui.styles.theme import shadcn_css
 
 _LAZY_IMPORTS: dict[str, str] = {
     # ---- Core primitives ----
@@ -216,6 +264,28 @@ _LAZY_IMPORTS: dict[str, str] = {
     "Zone": "lexigram.ui.core.zones",
     "Zones": "lexigram.ui.core.zones",
     "SwapMode": "lexigram.ui.core.zones",
+    # ---- Table state ----
+    "TableState": "lexigram.ui.state",
+    # ---- Table actions ----
+    "Action": "lexigram.ui.actions",
+    "ActionTarget": "lexigram.ui.actions",
+    "BulkAction": "lexigram.ui.actions",
+    "CreateAction": "lexigram.ui.actions",
+    "DeleteAction": "lexigram.ui.actions",
+    "DeleteBulkAction": "lexigram.ui.actions",
+    "EditAction": "lexigram.ui.actions",
+    "ExportAction": "lexigram.ui.actions",
+    "ExportBulkAction": "lexigram.ui.actions",
+    "ViewAction": "lexigram.ui.actions",
+    # ---- Table columns ----
+    "Column": "lexigram.ui.columns",
+    "TextColumn": "lexigram.ui.columns",
+    "BadgeColumn": "lexigram.ui.columns",
+    "BooleanColumn": "lexigram.ui.columns",
+    "DateColumn": "lexigram.ui.columns",
+    "ImageColumn": "lexigram.ui.columns",
+    "CurrencyColumn": "lexigram.ui.columns",
+    "ListColumn": "lexigram.ui.columns",
     # ---- Icons ----
     "get_icon": "lexigram.ui.atoms.icons",
     "IconDefinition": "lexigram.ui.atoms.icons",
@@ -225,6 +295,8 @@ _LAZY_IMPORTS: dict[str, str] = {
     "helpers": "lexigram.ui.htmx",
     "sse": "lexigram.ui.htmx",
     "HtmxActionResponse": "lexigram.ui.htmx.action_response",
+    "HTMXAttrs": "lexigram.ui.htmx.table_attrs",
+    "HTMXAttrsBuilder": "lexigram.ui.htmx.table_attrs",
     # ---- Exceptions & errors ----
     "UIError": "lexigram.ui.exceptions",
     "ErrorCategory": "lexigram.ui.exceptions",
@@ -299,6 +371,7 @@ _LAZY_IMPORTS: dict[str, str] = {
     "Grid": "lexigram.ui.atoms.layout",
     "Row": "lexigram.ui.atoms.layout",
     "Stack": "lexigram.ui.molecules.stack",
+    "shadcn_css": "lexigram.ui.styles.theme",
     # ---- Atoms — inputs (base + text) ----
     "AbstractInput": "lexigram.ui.atoms.inputs",
     "Input": "lexigram.ui.atoms.inputs",
@@ -311,6 +384,26 @@ _LAZY_IMPORTS: dict[str, str] = {
     "Slider": "lexigram.ui.atoms.inputs",
     "DateInput": "lexigram.ui.atoms.inputs",
     "TimePicker": "lexigram.ui.atoms.inputs",
+    # ---- Molecules — table controls ----
+    "DateHierarchyFilter": "lexigram.ui.molecules.date_hierarchy",
+    "DateRangeFilter": "lexigram.ui.molecules.date_range_filter",
+    "DataTableScriptRenderer": "lexigram.ui.molecules.data_table_client_logic",
+    "FilterDropdown": "lexigram.ui.molecules.filter_dropdown",
+    "InlineEditCell": "lexigram.ui.molecules.inline_edit_cell",
+    "JumpToPage": "lexigram.ui.molecules.jump_to_page",
+    "PageSizeSelector": "lexigram.ui.molecules.page_size_selector",
+    "SearchBar": "lexigram.ui.molecules.search_bar",
+    # ---- Molecules — pagination family ----
+    "LayoutSwitcher": "lexigram.ui.molecules.layout_switcher",
+    "PaginationLinks": "lexigram.ui.molecules.pagination_links",
+    "TablePagination": "lexigram.ui.molecules.table_pagination",
+    "ViewSwitcher": "lexigram.ui.molecules.view_switcher",
+    # ---- Molecules — detail widgets ----
+    "InfolistEntry": "lexigram.ui.molecules.infolist",
+    "InfolistEntryType": "lexigram.ui.molecules.infolist",
+    "InfolistWidget": "lexigram.ui.molecules.infolist",
+    "Tab": "lexigram.ui.molecules.tab_group",
+    "TabGroup": "lexigram.ui.molecules.tab_group",
     # ---- Atoms — inputs (selection) ----
     "Select": "lexigram.ui.atoms.inputs",
     "MultiSelect": "lexigram.ui.atoms.inputs",
@@ -388,6 +481,16 @@ _LAZY_IMPORTS: dict[str, str] = {
     "AdminCard": "lexigram.ui.organisms.admin",
     "PageLayout": "lexigram.ui.organisms.admin",
     "SlideOver": "lexigram.ui.organisms.slide_over",
+    # ---- Organisms — admin-suite additions ----
+    "AutoRefreshWidget": "lexigram.ui.organisms.live_polling",
+    "LiveDataTable": "lexigram.ui.organisms.live_polling",
+    "NotificationBell": "lexigram.ui.organisms.notification_bell",
+    "TaskProgress": "lexigram.ui.organisms.task_progress",
+    "UserBox": "lexigram.ui.organisms.userbox",
+    "SystemBox": "lexigram.ui.organisms.systembox",
+    "SortableRecordList": "lexigram.ui.organisms.sortable_list",
+    "FilterDrawer": "lexigram.ui.organisms.filter_drawer",
+    "SimplePagination": "lexigram.ui.organisms.simple_pagination",
     # ---- Layouts ----
     "LayoutBase": "lexigram.ui.layouts",
     "BaseLayoutContext": "lexigram.ui.layouts.base_layout",

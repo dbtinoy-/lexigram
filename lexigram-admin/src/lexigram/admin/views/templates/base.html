@@ -36,11 +36,7 @@
         
         /* Show scrollbar thumb on hover */
         *:hover::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1; /* gray-300 */
-        }
-        
-        .dark *:hover::-webkit-scrollbar-thumb {
-            background-color: #4b5563; /* gray-600 */
+            background-color: var(--border);
         }
 
         /* Smooth animations for drawer and overlays */
@@ -102,7 +98,53 @@
     <script>window.addEventListener("unhandledrejection",function(e){e.promise&&e.promise.catch(function(){});if(!e.reason)return;var r=e.reason;if(r.isFromCancelledTransition||r instanceof TypeError){e.preventDefault();e.stopImmediatePropagation()}})</script>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class' }</script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'var(--background)',
+                        foreground: 'var(--foreground)',
+                        card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
+                        popover: { DEFAULT: 'var(--popover)', foreground: 'var(--popover-foreground)' },
+                        primary: { DEFAULT: 'var(--primary)', foreground: 'var(--primary-foreground)' },
+                        secondary: { DEFAULT: 'var(--secondary)', foreground: 'var(--secondary-foreground)' },
+                        muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
+                        accent: { DEFAULT: 'var(--accent)', foreground: 'var(--accent-foreground)' },
+                        destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
+                        border: 'var(--border)',
+                        input: 'var(--input)',
+                        ring: 'var(--ring)',
+                        success: { DEFAULT: 'var(--color-success)', foreground: 'var(--color-success-foreground)' },
+                        warning: { DEFAULT: 'var(--color-warning)', foreground: 'var(--color-warning-foreground)' },
+                        info: { DEFAULT: 'var(--color-info)', foreground: 'var(--color-info-foreground)' },
+                        'chart-1': 'var(--chart-1)',
+                        'chart-2': 'var(--chart-2)',
+                        'chart-3': 'var(--chart-3)',
+                        'chart-4': 'var(--chart-4)',
+                        'chart-5': 'var(--chart-5)'
+                    },
+                    borderRadius: {
+                        lg: 'var(--radius)',
+                        md: 'calc(var(--radius) - 2px)',
+                        sm: 'calc(var(--radius) - 4px)'
+                    }
+                }
+            }
+        };
+        (function () {
+            var stored = localStorage.getItem('darkMode');
+            var dark = stored !== null ? stored === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (dark) document.documentElement.classList.add('dark');
+        })();
+        window.toggleTheme = function () {
+            var dark = !document.documentElement.classList.contains('dark');
+            document.documentElement.classList.toggle('dark', dark);
+            localStorage.setItem('darkMode', String(dark));
+            window.dispatchEvent(new CustomEvent('darkmode-change', { detail: { dark: dark } }));
+        };
+    </script>
 
     <!-- HTMX Error Debugging -->
     <script>
@@ -131,7 +173,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 
-<body class="{% block body_class %}bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-screen{% endblock %}" {%
+<body class="{% block body_class %}bg-gradient-to-br from-muted via-white to-muted min-h-screen{% endblock %}" {%
     block body_attrs %}{% endblock %}>
     {% block content %}{% endblock %}
 

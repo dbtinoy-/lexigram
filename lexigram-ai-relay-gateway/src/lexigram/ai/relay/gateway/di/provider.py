@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.ai.relay.gateway.catalog import ModelCatalogService
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
@@ -19,6 +20,7 @@ from lexigram.ai.relay.gateway.operations.controls import (
     InMemoryRelayPolicyStore,
     RelayControlsService,
 )
+from lexigram.ai.relay.gateway.operations.failover import RelayFailoverTracker
 from lexigram.ai.relay.gateway.operations.health import (
     RelayChannelCheckerProtocol,
     RelayHealthService,
@@ -79,10 +81,13 @@ class RelayGatewayProvider(Provider):
     - ``RelayControlsService`` — permissioned control mutations (always)
     - ``RelayChannelAutoTester`` — background channel auto-tester (only
       when ``auto_test_channels`` is enabled in the configuration)
+    - ``RelayFailoverTracker`` — reactive consecutive-failure tracking
+      (only when ``auto_disable_on_failures`` is enabled)
     - ``RelayGatewayProtocol`` — the gateway service (only when both the
       converter and an HTTP client are available)
     - ``PassthroughService`` — passthrough endpoint dispatch (same
       availability as the gateway service)
+    - ``ModelCatalogService`` — the served-model catalog (always)
 
     Args:
         config: Gateway channel table and conversion metadata. Defaults
@@ -148,6 +153,10 @@ class RelayGatewayProvider(Provider):
         )
         self._audit = audit
         self._auto_tester: RelayChannelAutoTester | None = None
+        self._failover: RelayFailoverTracker | None = None
+        self._registry: RelayChannelRegistry | None = None
+        self._stream_registry: RelayStreamRegistry | None = None
+        self._service_bound = False
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register the gateway configuration, registry, and service.
@@ -162,6 +171,8 @@ class RelayGatewayProvider(Provider):
         """
         registry = RelayChannelRegistry(self._config)
         streams = RelayStreamRegistry()
+        self._registry = registry
+        self._stream_registry = streams
         container.singleton(RelayGatewayConfig, self._config)
         container.singleton(RelayChannelRegistry, registry)
         container.singleton(RelayStreamRegistry, streams)
@@ -173,6 +184,10 @@ class RelayGatewayProvider(Provider):
             policy=self._policy_store,
         )
         container.singleton(RelayHealthService, health_service)
+        container.singleton(
+            ModelCatalogService,
+            ModelCatalogService(registry=registry),
+        )
         if self._config.auto_test_channels:
             self._auto_tester = RelayChannelAutoTester(
                 health=health_service,
@@ -180,6 +195,12 @@ class RelayGatewayProvider(Provider):
                 interval_seconds=self._config.auto_test_interval_seconds,
             )
             container.singleton(RelayChannelAutoTester, self._auto_tester)
+        if self._config.auto_disable_on_failures:
+            self._failover = RelayFailoverTracker(
+                registry=registry,
+                threshold=self._config.failover_failure_threshold,
+            )
+            container.singleton(RelayFailoverTracker, self._failover)
         metrics_service = RelayMetricsService(
             events=self._metrics_events,
             converter=self._converter_registry,
@@ -205,26 +226,57 @@ class RelayGatewayProvider(Provider):
                 missing="HTTPClientProtocol",
             )
             return
+        self._register_services(container, self._converter, self._http_client)
+
+    def _register_services(
+        self,
+        container: ContainerRegistrarProtocol,
+        converter: RelayConverterProtocol,
+        http_client: HTTPClientProtocol,
+    ) -> None:
+        """Bind the gateway and passthrough services to the container.
+
+        The failover tracker, when enabled, is shared with the gateway
+        service so consecutive upstream failures adjust runtime
+        selection state.
+
+        Args:
+            container: The container registrar to bind into.
+            converter: The conversion engine the gateway converts with.
+            http_client: The HTTP client driving the upstream adapter.
+        """
+        registry = (
+            self._registry
+            if self._registry is not None
+            else RelayChannelRegistry(self._config)
+        )
+        streams = (
+            self._stream_registry
+            if self._stream_registry is not None
+            else RelayStreamRegistry()
+        )
         service = RelayGatewayService(
-            converter=self._converter,
+            converter=converter,
             codec=RelayPayloadCodec(),
             registry=registry,
-            upstream=HTTPUpstreamAdapter(self._http_client),
+            upstream=HTTPUpstreamAdapter(http_client),
             config=self._config,
             authorizer=self._authorizer,
             billing=self._billing,
             media_resolver=self._media_resolver,
             streams=streams,
+            failover=self._failover,
         )
         container.singleton(RelayGatewayProtocol, service)
         passthrough_service = PassthroughService(
             registry=registry,
-            upstream=HTTPUpstreamAdapter(self._http_client),
+            upstream=HTTPUpstreamAdapter(http_client),
             config=self._config,
             authorizer=self._authorizer,
             billing=self._billing,
         )
         container.singleton(PassthroughService, passthrough_service)
+        self._service_bound = True
         logger.info("relay_gateway_provider_registered")
 
     async def boot(self, container: BootContainerProtocol) -> None:
@@ -236,19 +288,26 @@ class RelayGatewayProvider(Provider):
         Channels the policy store marks disabled (while the static
         configuration still enables them) are drained in the runtime
         registry so dispatch honors the persisted policy from the first
-        request onward. When auto-testing is enabled, the background
-        sweep is started after reconciliation.
+        request onward.  When no converter or HTTP client was injected at
+        construction, the container's own ``RelayConverterProtocol`` and
+        ``HTTPClientProtocol`` bindings are resolved here and the gateway
+        services are bound late, so the module-only composition
+        (``RelayModule`` + ``RelayGatewayModule`` + ``HTTPModule``) gets
+        a working gateway without caller-owned instances.  When
+        auto-testing is enabled, the background sweep is started after
+        reconciliation.
 
         Args:
             container: The booted container used to resolve the policy
-                store, channel registry, and optional channel store.
+                store, channel registry, optional channel store, and
+                late-bound gateway dependencies.
         """
         registry = await container.resolve(RelayChannelRegistry)
         policy = await container.resolve(RelayPolicyStoreProtocol)
         channels = self._config.channels
         store = await container.resolve_optional(RelayChannelStoreProtocol)
         if store is not None:
-            container.singleton(RelayChannelStoreProtocol, store)
+            container.bind(RelayChannelStoreProtocol, store)
             loader = DurableChannelLoader(store)
             merged = await loader.load(self._config.channels)
             if merged is not self._config.channels:
@@ -261,6 +320,20 @@ class RelayGatewayProvider(Provider):
                 channel.name, True
             ):
                 registry.set_runtime_enabled(channel.name, False)
+        if not self._service_bound:
+            converter = await container.resolve_optional(RelayConverterProtocol)
+            http_client = await container.resolve_optional(HTTPClientProtocol)
+            if converter is not None and http_client is not None:
+                self._register_services(container, converter, http_client)
+                logger.info(
+                    "relay_gateway_provider_late_bound",
+                    dependency="container",
+                )
+            else:
+                logger.warning(
+                    "relay_gateway_missing_dependency",
+                    missing="RelayConverterProtocol/HTTPClientProtocol",
+                )
         if self._auto_tester is not None:
             await self._auto_tester.start()
         logger.info("relay_gateway_provider_booted")

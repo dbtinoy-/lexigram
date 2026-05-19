@@ -62,7 +62,7 @@ class TestSearchResultsHTMLStructure:
         assert 'class="search-results' in html
         assert "rounded-xl" in html
         assert "shadow-lg" in html
-        assert "bg-white" in html
+        assert "bg-card" in html
 
     def test_resource_group_has_divider_classes(
         self, controller: SearchController
@@ -84,7 +84,7 @@ class TestSearchResultsHTMLStructure:
     ) -> None:
         html = controller._render_results(self.populated_results())
         assert 'class="search-result-item' in html
-        assert "hover:bg-gray-50" in html
+        assert "hover:bg-muted" in html
         assert "focus:outline-none" in html
         assert "transition-colors" in html
 
@@ -102,7 +102,7 @@ class TestSearchResultsHTMLStructure:
         html = controller._render_results(self.populated_results())
         assert 'class="search-result-resource' in html
         assert "text-xs" in html
-        assert "text-gray-400" in html
+        assert "text-muted-foreground" in html
 
     def test_subtitle_has_block_classes_when_present(
         self, controller: SearchController

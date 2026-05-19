@@ -11,9 +11,15 @@ from typing import Any
 
 from lexigram.admin.resources.base import Resource
 from lexigram.admin.schema import BooleanField, DateField, SelectField, TextField
-from lexigram.admin.ui.actions import CreateAction, DeleteAction, EditAction
-from lexigram.admin.ui.columns import BadgeColumn, DateColumn, TextColumn
 from lexigram.admin.ui.filters import SelectFilter, ToggleFilter
+from lexigram.ui import (
+    BadgeColumn,
+    CreateAction,
+    DateColumn,
+    DeleteAction,
+    EditAction,
+    TextColumn,
+)
 
 
 class UserResource(Resource):

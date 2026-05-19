@@ -1,5 +1,5 @@
 from lexigram.ui.core.base import render_to_string
-from lexigram.admin.ui.organisms.task_progress import TaskProgress
+from lexigram.ui import TaskProgress
 
 
 def test_task_progress_renders_retry_as_action_button():

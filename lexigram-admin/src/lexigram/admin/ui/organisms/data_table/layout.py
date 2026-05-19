@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.config import TableConfiguration
-from lexigram.admin.ui.state import TableState
-from lexigram.ui import el
+from lexigram.ui import TableState, el
 
 
 class LayoutComposer:

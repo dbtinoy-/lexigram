@@ -1,13 +1,6 @@
 from __future__ import annotations
 
-# Admin-specific UI components stay imported from inside admin
-from lexigram.admin.ui.htmx_attrs import HTMXAttrs, HTMXAttrsBuilder
-from lexigram.admin.ui.molecules.date_range_filter import DateRangeFilter
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
-from lexigram.admin.ui.molecules.filter_dropdown import FilterDropdown
-from lexigram.admin.ui.molecules.jump_to_page import JumpToPage
-from lexigram.admin.ui.molecules.page_size_selector import PageSizeSelector
-from lexigram.admin.ui.molecules.pagination_links import PaginationLinks
 from lexigram.admin.ui.observability import (
     get_health_status,
     log_htmx_request,
@@ -23,12 +16,10 @@ from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.admin.ui.organisms.dynamic_form import DynamicForm
 from lexigram.admin.ui.organisms.pagination import Pagination
 from lexigram.admin.ui.organisms.sidebar import Sidebar, SidebarItem, SidebarSection
-from lexigram.admin.ui.organisms.task_progress import TaskProgress
 from lexigram.admin.ui.organisms.topbar import ThemeToggle, TopBar
-from lexigram.admin.ui.organisms.userbox import UserBox
-from lexigram.admin.ui.state import TableState
 from lexigram.admin.ui.templates.shell import AdminShell
 
+# Admin-specific UI components stay imported from inside admin
 # Public-API imports — never reach into lexigram.ui internals.
 # If a symbol is missing from `lexigram.ui`, fix `lexigram-ui/src/lexigram/ui/__init__.py`
 # rather than deep-path-importing here.
@@ -58,6 +49,7 @@ from lexigram.ui import (
     Component,
     Container,
     DateInput,
+    DateRangeFilter,
     # Config
     DebounceConfig,
     Divider,
@@ -70,12 +62,16 @@ from lexigram.ui import (
     FieldError,
     Fieldset,
     FileUpload,
+    FilterDropdown,
     Form,
     FormActions,
     Grid,
     Hidden,
+    HTMXAttrs,
+    HTMXAttrsBuilder,
     Icon,
     InputGroup,
+    JumpToPage,
     Label,
     Link,
     LoadingOverlay,
@@ -88,6 +84,8 @@ from lexigram.ui import (
     Modal,
     MultiSelect,
     NumberInput,
+    PageSizeSelector,
+    PaginationLinks,
     PasswordInput,
     Popover,
     ProgressBar,
@@ -114,15 +112,18 @@ from lexigram.ui import (
     # Zones
     SwapMode,
     Switch,
+    TableState,
     TabPanel,
     Tabs,
     TagsInput,
+    TaskProgress,
     TextArea,
     TextInput,
     TimePicker,
     Toast,
     Toggle,
     Tooltip,
+    UserBox,
     Zone,
     Zones,
     add_htmx_timing_header,
