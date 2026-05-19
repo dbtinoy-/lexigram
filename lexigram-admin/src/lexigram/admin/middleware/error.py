@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import traceback
 from typing import Any
+from urllib.parse import quote
 
+from starlette.datastructures import URL
 from starlette.exceptions import HTTPException as HTTPError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -106,12 +108,21 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
         exc: Exception | None = None,
     ) -> Response:
         """Create HTMX error response with professional styling."""
-        # 1. Handle 401 - Return JSON with login_url, no HX-Redirect to avoid redirect loop
+        # 1. Handle 401 - Full-page redirect to login via HX-Redirect so the
+        #    login page is not swapped into the current component. Loop-guarded
+        #    when the request already targets the login page.
         if status_code == 401:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "session_expired", "login_url": self.login_url},
-            )
+            if str(request.url.path).rstrip("/") == str(self.login_url).rstrip("/"):
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "session_expired", "login_url": self.login_url},
+                )
+            full = request.url.path if not request.url.query else f"{request.url.path}?{request.url.query}"
+            next_url = quote(full, safe="/?=&")
+            login_url = f"{self.login_url}?next={next_url}"
+            response = Response(status_code=200)
+            response.headers["HX-Redirect"] = login_url
+            return response
 
         # 2. Map Status to Metadata
         title = "Error"
@@ -189,16 +200,6 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
 
         # 1. Handle 401 - Redirect to Login
         if status_code == 401:
-            from starlette.datastructures import URL
-
-            # Only redirect if not already on login page to avoid loops
-            if str(request.url.path).rstrip("/") == str(self.login_url).rstrip("/"):
-                # We are on login page but still got 401? Probably bad credentials or logic.
-                # Just return the page as is or a clean 401?
-                # Usually 401 on login page means "Invalid credentials" which is handled by POST.
-                # If GET 401, it's weird. Let's redirect to login nicely?
-                pass
-
             login_url = URL(self.login_url).include_query_params(next=str(request.url))
             return RedirectResponse(url=str(login_url), status_code=302)
 

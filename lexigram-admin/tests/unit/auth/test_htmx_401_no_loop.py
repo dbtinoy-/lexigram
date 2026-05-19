@@ -1,7 +1,9 @@
-"""Tests for HTMX 401 handling — no redirect loop (AUTH-16).
+"""Tests for HTMX 401 handling (AUTH-16).
 
-Verifies that AdminErrorMiddleware returns JSON with login_url instead
-of an HX-Redirect header when handling a 401 for an HTMX request.
+Verifies that AdminErrorMiddleware returns an HX-Redirect header for
+401 responses on HTMX requests, forcing a full-page navigation to the
+login page instead of swapping the login page into the current
+component. Requests already targeting the login page still get JSON.
 """
 
 from __future__ import annotations
@@ -30,20 +32,29 @@ def _make_htmx_request(path: str = "/admin/users") -> Request:
 
 
 class TestAdminErrorMiddlewareHtmx401:
-    def test_htmx_401_returns_json_not_hx_redirect(self) -> None:
-        """HTMX 401 returns JSON with login_url, no HX-Redirect header."""
+    def test_htmx_401_returns_hx_redirect(self) -> None:
+        """HTMX 401 returns HX-Redirect for a full-page login navigation."""
         mw = AdminErrorMiddleware(app=MagicMock(), debug=False)
         exc = HTTPError(status_code=401, detail="Unauthorized")
 
         resp = mw._make_htmx_response(_make_htmx_request(), 401, "Unauthorized", exc)
 
+        assert resp.status_code == 200
+        assert resp.headers.get("HX-Redirect") == "/admin/login?next=/admin/users"
+        assert "HX-Redirect" in resp.headers
+
+    def test_htmx_401_on_login_page_returns_json(self) -> None:
+        """HTMX 401 on the login page itself returns JSON to avoid a loop."""
+        mw = AdminErrorMiddleware(app=MagicMock(), debug=False)
+        exc = HTTPError(status_code=401, detail="Unauthorized")
+
+        resp = mw._make_htmx_response(_make_htmx_request("/admin/login"), 401, "Unauthorized", exc)
+
         assert resp.status_code == 401
-        assert resp.headers.get("content-type") == "application/json"
 
         body = json_loads(resp.body)
         assert body["error"] == "session_expired"
         assert body["login_url"] == "/admin/login"
-        assert "HX-Redirect" not in resp.headers
 
     def test_htmx_403_returns_htmx_fragment(self) -> None:
         """HTMX 403 returns HTMX fragment, not plain JSON."""

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from lexigram.logging import get_logger
@@ -86,17 +86,35 @@ class AdminAuthGuardMiddleware:
                 return
 
         # No valid session — redirect to login preserving the original URL.
+        # HTMX requests get HX-Redirect so the browser performs a full page
+        # navigation; a plain 307 would make htmx swap the login page into
+        # the current component (e.g. a widget container).
         logger.debug("auth_guard.unauthenticated path=%s", path)
         next_url = quote(path, safe="/")
-        redirect = RedirectResponse(
-            url=f"/admin/login?next={next_url}",
-            status_code=307,
-        )
-        await redirect(scope, receive, send)
+        login_url = f"/admin/login?next={next_url}"
+        if self._is_htmx(scope):
+            response = Response(status_code=200)
+            response.headers["HX-Redirect"] = login_url
+        else:
+            response = RedirectResponse(url=login_url, status_code=307)
+        await response(scope, receive, send)
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_htmx(scope: Scope) -> bool:
+        """Return True when the request carries the htmx HX-Request header.
+
+        Args:
+            scope: ASGI connection scope.
+
+        Returns:
+            True for htmx fragment requests.
+        """
+        headers = dict(scope.get("headers") or ())
+        return headers.get(b"hx-request") == b"true"
 
     def _is_bypass_path(self, path: str) -> bool:
         """Return True if the path should bypass auth enforcement.
