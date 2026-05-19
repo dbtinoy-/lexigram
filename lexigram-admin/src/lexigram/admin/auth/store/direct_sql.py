@@ -150,10 +150,6 @@ class DirectSQLAdminUserStore:
             logger.exception("Failed to ensure admin_users table exists")
             raise
 
-    async def _ensure_table_exists(self) -> None:
-        """Deprecated alias — use :meth:`ensure_schema` (spec Step 3)."""
-        await self.ensure_schema()
-
     async def list_users(self) -> list[Any]:
         """Return all admin users ordered by creation time.
 
