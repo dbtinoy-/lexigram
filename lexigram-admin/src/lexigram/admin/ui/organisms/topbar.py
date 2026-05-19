@@ -177,7 +177,7 @@ class TopBar(Component):
                             stroke_width="2",
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
                         ),
-                        class_="w-5 h-5 text-gray-400",
+                        class_="w-5 h-5 text-gray-600 dark:text-gray-300",
                         fill="none",
                         viewBox="0 0 24 24",
                         stroke="currentColor",
@@ -185,7 +185,7 @@ class TopBar(Component):
                     el(
                         "span",
                         "Search (Cmd+K)",
-                        class_="ml-3 text-gray-400 text-sm hidden sm:block",
+                        class_="ml-3 text-gray-600 dark:text-gray-300 text-sm hidden sm:block",
                     ),
                     class_="flex items-center w-full max-w-md px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors",
                     **{"x-on:click": "$dispatch('open-command-palette')"},
