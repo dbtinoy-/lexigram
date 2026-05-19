@@ -10,12 +10,12 @@ WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
 # Every component in the gallery (kept in sync with tests/a11y/gallery.py).
 GALLERY_NAMES = [
-    "Alert", "Badge", "Button", "Card", "Checkbox", "Divider",
+    "Alert", "Badge", "BarChart", "Button", "Card", "Checkbox", "Divider",
     "Dropdown", "Fieldset", "Form", "Icon", "InlineToast", "Label",
-    "Layout", "Link", "Modal", "NumberInput", "Pagination",
-    "PasswordInput", "ProgressBar", "Radio", "Select", "Skeleton",
-    "SlideOver", "Spinner", "Switch", "Tabs", "TextArea", "TextInput",
-    "Tooltip",
+    "Layout", "LineChart", "Link", "Modal", "NumberInput", "Pagination",
+    "PasswordInput", "PieChart", "ProgressBar", "Radio", "Select", "Skeleton",
+    "SlideOver", "Sparkline", "Spinner", "Switch", "Tabs", "TextArea",
+    "TextInput", "Tooltip",
 ]
 
 # Components known to fail interactive checks until hardened (Phase 3).
@@ -49,7 +49,10 @@ def test_axe_wcag_light(page: object, gallery: dict[str, str], name: str) -> Non
 
 @pytest.mark.parametrize(
     "name",
-    ["Button", "Card", "Form", "Modal", "Select", "SlideOver", "Switch", "Tabs"],
+    [
+        "BarChart", "Button", "Card", "Form", "LineChart", "Modal", "PieChart",
+        "Select", "SlideOver", "Sparkline", "Switch", "Tabs",
+    ],
 )
 def test_axe_wcag_dark(page: object, gallery: dict[str, str], name: str) -> None:
     """No WCAG violations in dark theme (contrast)."""
