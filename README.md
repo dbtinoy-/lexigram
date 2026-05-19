@@ -22,9 +22,9 @@ Lexigram is a python framework built around one idea: everything you need is alr
 ## install
 
 ```bash
-uv add lexigram
-pip install lexigram
-# want the AI layer too? `uv add "lexigram[ai]"`
+uv add "lexigram[web]"   # core + web (what the example below uses)
+pip install "lexigram[web]"
+# want the AI layer too? `uv add "lexigram[ai,web]"`
 ```
 
 ```text
@@ -46,6 +46,16 @@ class HelloController(Controller):
     @get("/hello")
     async def hello(self, name: str = "world") -> dict:
         return {"message": f"hello, {name}"}
+
+
+# want the Security layer too?`
+# add some security here
+
+
+# want the Data layer too? `uv add ""`
+# class ...
+
+
 
 
 async def main():

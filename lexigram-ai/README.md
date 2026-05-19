@@ -22,9 +22,9 @@ hey — wanna ship an AI app this weekend?
 ## install
 
 ```bash
-uv add lexigram-ai            # the coordinator
-uv add "lexigram[ai]"         # or the whole framework + the ai family
-pip install "lexigram[ai]"
+uv add "lexigram[ai,web]"    # framework + web + the ai family (what the example below uses)
+uv add lexigram-ai           # just the coordinator
+pip install "lexigram[ai,web]"
 ```
 
 ## 60 seconds, end to end
