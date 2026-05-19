@@ -7,11 +7,14 @@ Provides :class:`SQLRepository`, a concrete SQL-backed implementation of
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from lexigram.contracts.data.identifiers import Column, Table
 from lexigram.logging import get_logger
 from lexigram.primitives.data import AbstractRepository
+from lexigram.sql.context.keys import TENANT_ID
 from lexigram.sql.repositories._advanced_mixin import _AdvancedMixin
 from lexigram.sql.repositories._filter_mixin import _FilterMixin
 from lexigram.sql.repositories._read_mixin import _ReadMixin
@@ -46,8 +49,6 @@ class SQLRepository(  # type: ignore[misc]
     being interpolated into SQL.
     """
 
-
-
     def __init__(
         self,
         provider: DatabaseProviderProtocol,
@@ -65,6 +66,10 @@ class SQLRepository(  # type: ignore[misc]
         self.soft_delete_enabled = soft_delete_enabled
         self.multi_tenant = multi_tenant
         self._db_ctx = db_ctx
+        if multi_tenant and db_ctx is None:
+            raise ValueError(
+                "multi_tenant=True requires db_ctx; pass a DbContext from create_db_context()"
+            )
         self._rls_policy = rls_policy
         self._write_table_name: str | None = None
         self._read_only_fields: list[str] = []
@@ -215,6 +220,39 @@ class SQLRepository(  # type: ignore[misc]
             ``True`` if deleted, ``False`` otherwise.
         """
         return await self.delete_by_id(entity_id)
+
+    @asynccontextmanager
+    async def with_tenant_scope(self, tenant_id: str) -> AsyncGenerator[None, None]:
+        """Async context manager that scopes the repo to *tenant_id*.
+
+        Sets the db-context ``TENANT_ID`` for the block and resets it on
+        exit, mirroring :meth:`_RLSMixin.with_admin_scope` for the
+        no-active-scope case.  These two context managers are the *only*
+        ways a ``multi_tenant`` repository runs without an ambient tenant.
+
+        Example::
+
+            async with repo.with_tenant_scope("tenant-abc"):
+                rows = await repo.find_many()   # WHERE tenant_id = 'tenant-abc'
+
+        Args:
+            tenant_id: The tenant to scope the block to.
+
+        Yields:
+            ``None`` — the body runs tenant-scoped.
+
+        Raises:
+            RuntimeError: If the repository has no ``db_ctx`` configured.
+        """
+        if self._db_ctx is None:
+            raise RuntimeError(
+                "with_tenant_scope() called on a repository that has no db_ctx configured."
+            )
+        token = self._db_ctx.set(TENANT_ID, tenant_id)
+        try:
+            yield
+        finally:
+            self._db_ctx.reset(TENANT_ID, token)
 
     # ------------------------------------------------------------------
     # High-level convenience method (entity OR primary-key value)
