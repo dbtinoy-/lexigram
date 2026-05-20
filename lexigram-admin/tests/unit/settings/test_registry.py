@@ -117,6 +117,33 @@ class TestPydanticConfigSpecNodes:
         assert isinstance(nodes["retries"], EnumNode)
         assert nodes["retries"].validate(2) == "2"
 
+    def test_enum_default_coerced_to_string(self) -> None:
+        nodes = IntLiteralSpec.get_nodes()
+        assert nodes["retries"].default == "1"
+
+    def test_shared_instance_override_name_isolated(self) -> None:
+        shared = EnumNode(options=["a", "b"], default="a", label="Shared")
+
+        class FirstSpec(PydanticConfigSpec):
+            """Spec 1 using the shared instance."""
+
+            namespace = "test.shared1"
+            model = ColorModel
+            node_overrides = {"mode": shared}
+
+        class SecondSpec(PydanticConfigSpec):
+            """Spec 2 using the same shared instance."""
+
+            namespace = "test.shared2"
+            model = ColorModel
+            node_overrides = {"color": shared}
+
+        first = FirstSpec.get_nodes()
+        second = SecondSpec.get_nodes()
+        assert first["mode"]._name == "mode"
+        assert second["color"]._name == "color"
+        assert shared._name != "color"
+
     def test_enum_node_instance_override(self) -> None:
         class InstOverrideSpec(PydanticConfigSpec):
             """Spec with an EnumNode instance override."""

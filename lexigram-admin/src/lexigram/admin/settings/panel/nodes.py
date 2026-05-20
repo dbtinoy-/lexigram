@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import copy
 from dataclasses import MISSING
 import re
 from typing import TYPE_CHECKING, Any, Literal, get_args, get_origin, get_type_hints
@@ -266,8 +267,9 @@ class PydanticConfigSpec(ConfigSpec):
 
             override = cls.node_overrides.get(name)
             if isinstance(override, AbstractConfigNode):
-                override._name = name
-                nodes[name] = override
+                node = copy.copy(override)
+                node._name = name
+                nodes[name] = node
                 continue
 
             node_cls = override
@@ -286,6 +288,8 @@ class PydanticConfigSpec(ConfigSpec):
                         "required"
                     ]:
                         kwargs["default"] = options[0]
+                    if kwargs["default"] is not None:
+                        kwargs["default"] = str(kwargs["default"])
                 else:
                     node_cls = StringNode
 
