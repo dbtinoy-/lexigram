@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from dataclasses import MISSING
+import re
+from typing import TYPE_CHECKING, Any, Literal, get_args, get_origin, get_type_hints
 
 if TYPE_CHECKING:
     from lexigram.domain import DomainModel
@@ -11,6 +13,7 @@ if TYPE_CHECKING:
 __all__ = [
     "AbstractConfigNode",
     "BooleanNode",
+    "ColorNode",
     "ConfigSpec",
     "ConfigSpecMeta",
     "EnumNode",
@@ -19,6 +22,8 @@ __all__ = [
     "SecretNode",
     "StringNode",
 ]
+
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 class AbstractConfigNode(ABC):
@@ -73,6 +78,17 @@ class StringNode(AbstractConfigNode):
         return str(value) if value is not None else self.default
 
 
+class ColorNode(StringNode):
+    """Configuration node for hex color values."""
+
+    def validate(self, value: Any) -> str:
+        """Validate value is a 6-digit hex color, else fall back to default."""
+        val = str(value) if value is not None else self.default
+        if not _HEX_COLOR_RE.match(val):
+            return self.default
+        return val
+
+
 class IntNode(AbstractConfigNode):
     """Configuration node for integer values."""
 
@@ -108,10 +124,8 @@ class EnumNode(AbstractConfigNode):
     def validate(self, value: Any) -> str:
         """Validate that value is a member of the allowed options."""
         val = str(value)
-        if isinstance(self.options, list):
-            if val not in self.options:
-                return self.default
-        elif val not in self.options:
+        allowed = list(self.options) if isinstance(self.options, dict) else self.options
+        if val not in allowed:
             return self.default
         return val
 
@@ -146,6 +160,8 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
     namespace: str = ""
     label: str = ""
     icon: str = "cog"
+    description: str = ""
+    required_permissions: frozenset[str] = frozenset()
 
     _nodes: dict[str, AbstractConfigNode] = {}
 
@@ -161,40 +177,71 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
             "namespace": cls.namespace,
             "label": cls.label,
             "icon": cls.icon,
+            "description": cls.description,
             "nodes": [node.to_dict() for node in cls.get_nodes().values()],
         }
 
 
 class PydanticConfigSpec(ConfigSpec):
-    """Spec that derives its nodes from a Pydantic model."""
+    """Spec that derives its nodes from a DomainModel.
+
+    ``DomainModel`` is dataclass-backed (pydantic ``FieldInfo`` defaults are
+    converted to ``dataclasses.field(metadata=...)`` at class creation), so
+    nodes are built from ``__dataclass_fields__`` plus resolved type hints.
+    """
 
     model: type[DomainModel] | None = None
+    node_overrides: dict[str, type[AbstractConfigNode]] = {}
 
     @classmethod
     def get_nodes(cls) -> dict[str, AbstractConfigNode]:
-        """Build nodes dynamically from the bound Pydantic model's fields."""
+        """Build nodes dynamically from the bound model's fields."""
         if not cls.model:
             return {}
 
+        ensure = getattr(cls.model, "_ensure_dataclass", None)
+        if callable(ensure):
+            ensure(cls.model)
+
+        dc_fields = getattr(cls.model, "__dataclass_fields__", {})
+        hints = getattr(cls.model, "_cached_type_hints", None)
+        if not hints:
+            try:
+                hints = get_type_hints(cls.model)
+            except (NameError, TypeError, AttributeError):
+                hints = {}
+
         nodes: dict[str, AbstractConfigNode] = {}
-        # Collect nodes from pydantic model fields
-        for name, field in cls.model.model_fields.items():  # type: ignore[attr-defined]
-            # Basic mapping from pydantic to ConfigNode
-            node_cls: type[AbstractConfigNode] = StringNode
-            annotation = field.annotation
+        for name, field in dc_fields.items():
+            annotation = hints.get(name, str)
+            default = field.default
+            if default is MISSING:
+                default = None
+            has_default = default is not None or field.default_factory is not MISSING
+            metadata = field.metadata or {}
 
-            if annotation is int:
-                node_cls = IntNode
-            elif annotation is bool:
-                node_cls = BooleanNode
-            # Type mappings could be extended for more types in future
+            kwargs: dict[str, Any] = {
+                "label": metadata.get("title") or name.replace("_", " ").title(),
+                "default": default,
+                "help_text": metadata.get("description"),
+                "required": not has_default,
+            }
 
-            node = node_cls(
-                label=field.title or name.replace("_", " ").title(),
-                default=field.default if field.default != ... else None,
-                help_text=field.description,
-                required=field.is_required(),
+            node_cls: type[AbstractConfigNode] = cls.node_overrides.get(
+                name, StringNode
             )
+            if annotation is bool:
+                node_cls = BooleanNode
+            elif annotation is int:
+                node_cls = IntNode
+            elif get_origin(annotation) is Literal:
+                node_cls = EnumNode
+                options = list(get_args(annotation))
+                kwargs["options"] = options
+                if default is None or default not in options:
+                    kwargs["default"] = options[0]
+
+            node = node_cls(**kwargs)
             node._name = name
             nodes[name] = node
 
