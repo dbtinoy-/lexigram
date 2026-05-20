@@ -147,3 +147,45 @@ async def test_multiple_tenants_cached_separately() -> None:
     await validator.validate("tenant-a")
     # Should have 2 unique calls (b counted once, a counted twice but cached)
     assert provider.get_tenant.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_authorize_allows_trusted_resolver() -> None:
+    validator = TenantValidator(provider=AsyncMock(), membership=None)
+    assert await validator.authorize(resolver_name="jwt_claim", user_id=None, tenant_id="t-1") is True
+
+
+@pytest.mark.asyncio
+async def test_authorize_default_denies_without_membership() -> None:
+    validator = TenantValidator(provider=AsyncMock(), membership=None, strict_membership=True)
+    assert await validator.authorize(resolver_name="header", user_id="u-1", tenant_id="t-1") is False
+
+
+@pytest.mark.asyncio
+async def test_authorize_default_denies_anonymous() -> None:
+    membership = AsyncMock()
+    membership.user_belongs_to_tenant = AsyncMock(return_value=True)
+    validator = TenantValidator(provider=AsyncMock(), membership=membership, strict_membership=True)
+    assert await validator.authorize(resolver_name="header", user_id=None, tenant_id="t-1") is False
+
+
+@pytest.mark.asyncio
+async def test_authorize_membership_grant_binds() -> None:
+    membership = AsyncMock()
+    membership.user_belongs_to_tenant = AsyncMock(return_value=True)
+    validator = TenantValidator(provider=AsyncMock(), membership=membership, strict_membership=True)
+    assert await validator.authorize(resolver_name="header", user_id="u-1", tenant_id="t-1") is True
+
+
+@pytest.mark.asyncio
+async def test_authorize_membership_denial_blocks() -> None:
+    membership = AsyncMock()
+    membership.user_belongs_to_tenant = AsyncMock(return_value=False)
+    validator = TenantValidator(provider=AsyncMock(), membership=membership, strict_membership=True)
+    assert await validator.authorize(resolver_name="header", user_id="u-1", tenant_id="t-1") is False
+
+
+@pytest.mark.asyncio
+async def test_authorize_strict_false_reproduces_old_behavior() -> None:
+    validator = TenantValidator(provider=AsyncMock(), membership=None, strict_membership=False)
+    assert await validator.authorize(resolver_name="header", user_id="u-1", tenant_id="t-1") is True

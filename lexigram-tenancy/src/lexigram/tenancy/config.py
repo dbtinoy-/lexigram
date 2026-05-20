@@ -35,6 +35,13 @@ class ResolutionConfig:
         jwt_claim_key: JWT claim key read by :class:`JWTClaimTenantResolver`.
         validator_cache_ttl: Seconds a validated :class:`TenantInfo` is cached
             by :class:`TenantValidator`.
+        trusted_resolvers: Resolver names exempt from the membership
+            cross-check because their source is server-verified.
+            Defaults to ``["jwt_claim"]``.
+        strict_membership: Default-deny gate.  When ``True`` (default), a
+            tenant resolved by a non-trusted resolver is bound only after
+            the membership cross-check passes.  Setting ``False`` reproduces
+            the pre-fix behavior for migration only and is **unsafe**.
     """
 
     resolvers: list[str] = field(
@@ -45,6 +52,8 @@ class ResolutionConfig:
     path_pattern: str | None = DEFAULT_PATH_PATTERN
     jwt_claim_key: str = DEFAULT_JWT_CLAIM_KEY
     validator_cache_ttl: int = DEFAULT_VALIDATOR_CACHE_TTL
+    trusted_resolvers: list[str] = field(default_factory=lambda: ["jwt_claim"])
+    strict_membership: bool = True
 
 
 @dataclass

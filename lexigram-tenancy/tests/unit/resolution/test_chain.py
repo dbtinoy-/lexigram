@@ -169,3 +169,34 @@ async def test_multiple_resolvers_all_return_none() -> None:
     result = await composite.resolve(ctx)
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_with_source_returns_name_and_tenant() -> None:
+    registry = ResolverRegistry.from_config(resolver_names=["jwt_claim", "header"])
+    resolver = CompositeResolver(registry)
+    ctx = TenantResolutionContext(headers={"x-tenant-id": "from-header"}, claims={"tenant_id": "from-jwt"})
+    assert await resolver.resolve_with_source(ctx) == ("jwt_claim", "from-jwt")
+
+
+@pytest.mark.asyncio
+async def test_resolve_with_source_falls_through() -> None:
+    registry = ResolverRegistry.from_config(resolver_names=["jwt_claim", "header"])
+    resolver = CompositeResolver(registry)
+    ctx = TenantResolutionContext(headers={"x-tenant-id": "from-header"}, claims={})
+    assert await resolver.resolve_with_source(ctx) == ("header", "from-header")
+
+
+@pytest.mark.asyncio
+async def test_resolve_with_source_none_when_fails() -> None:
+    registry = ResolverRegistry.from_config(resolver_names=["header"])
+    resolver = CompositeResolver(registry)
+    assert await resolver.resolve_with_source(TenantResolutionContext(headers={})) is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_delegates_to_resolve_with_source() -> None:
+    registry = ResolverRegistry.from_config(resolver_names=["header"])
+    resolver = CompositeResolver(registry)
+    ctx = TenantResolutionContext(headers={"x-tenant-id": "from-header"})
+    assert await resolver.resolve(ctx) == "from-header"

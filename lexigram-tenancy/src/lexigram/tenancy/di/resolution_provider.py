@@ -63,7 +63,24 @@ class TenantResolutionProvider(Provider):
             resolver: ServiceResolver,
         ) -> TenantValidator:
             provider = await resolver.resolve(TenantProviderProtocol)
-            return TenantValidator(provider, cache_ttl=cache_ttl)
+            resolve_optional = getattr(resolver, "resolve_optional", None)
+            membership = None
+            if resolve_optional is not None:
+                from lexigram.contracts.tenancy.protocols import (
+                    TenantMembershipProtocol,
+                )
+
+                try:
+                    membership = await resolve_optional(TenantMembershipProtocol)
+                except Exception:
+                    membership = None  # noqa: BLE001 — optional contract; default-deny applies
+            return TenantValidator(
+                provider,
+                cache_ttl=cache_ttl,
+                membership=membership,
+                trusted_resolvers=self._config.trusted_resolvers,
+                strict_membership=self._config.strict_membership,
+            )
 
         container.singleton(TenantValidator, factory=_validator_factory)
 
