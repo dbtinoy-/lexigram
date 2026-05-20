@@ -9,6 +9,7 @@ import pytest
 from lexigram.admin.settings.panel.nodes import (
     BooleanNode,
     ColorNode,
+    ConfigSpec,
     EnumNode,
     IntNode,
     PydanticConfigSpec,
@@ -24,7 +25,7 @@ class ColorModel(DomainModel):
     name: str = Field(default="x", title="Name")
     count: int = Field(default=3, title="Count")
     enabled: bool = Field(default=True, title="Enabled")
-    mode: Literal["a", "b"] = Field(default="a", title="Mode")
+    mode: Literal["a", "b"] = Field(default="zzz", title="Mode")
     color: str = Field(default="#123456", title="Color")
 
 
@@ -48,6 +49,19 @@ class OverrideSpec(PydanticConfigSpec):
     namespace = "test.override"
     model = OverrideModel
     node_overrides = {"count": ColorNode}
+
+
+class IntLiteralModel(DomainModel):
+    """Model with non-string Literal."""
+
+    retries: Literal[1, 2, 3] = Field(1, title="Retries")
+
+
+class IntLiteralSpec(PydanticConfigSpec):
+    """Spec bound to IntLiteralModel."""
+
+    namespace = "test.intliteral"
+    model = IntLiteralModel
 
 
 class TestColorNode:
@@ -98,6 +112,105 @@ class TestPydanticConfigSpecNodes:
         nodes = OverrideSpec.get_nodes()
         assert isinstance(nodes["count"], ColorNode)
 
+    def test_enum_options_coerced_to_strings(self) -> None:
+        nodes = IntLiteralSpec.get_nodes()
+        assert isinstance(nodes["retries"], EnumNode)
+        assert nodes["retries"].validate(2) == "2"
+
+    def test_enum_node_instance_override(self) -> None:
+        class InstOverrideSpec(PydanticConfigSpec):
+            """Spec with an EnumNode instance override."""
+
+            namespace = "test.instoverride"
+            model = ColorModel
+            node_overrides = {"mode": EnumNode(options=["x", "y"], label="Mode")}
+
+        nodes = InstOverrideSpec.get_nodes()
+        assert isinstance(nodes["mode"], EnumNode)
+        assert nodes["mode"].options == ["x", "y"]
+        assert nodes["mode"].label == "Mode"
+
+    def test_required_literal_has_no_default(self) -> None:
+        class ReqLiteralModel(DomainModel):
+            """Model with required Literal."""
+
+            mode: Literal["a", "b"] = Field(..., title="Mode")
+
+        class ReqLiteralSpec(PydanticConfigSpec):
+            """Spec bound to ReqLiteralModel."""
+
+            namespace = "test.reqliteral"
+            model = ReqLiteralModel
+
+        nodes = ReqLiteralSpec.get_nodes()
+        assert nodes["mode"].required is True
+        assert nodes["mode"].default is None
+
+    def test_int_node_enforces_ge_le(self) -> None:
+        class BoundedModel(DomainModel):
+            """Model with bounded int field."""
+
+            ttl: int = Field(60, ge=0, title="TTL")
+
+        class BoundedSpec(PydanticConfigSpec):
+            """Spec bound to BoundedModel."""
+
+            namespace = "test.bounded"
+            model = BoundedModel
+
+        nodes = BoundedSpec.get_nodes()
+        assert nodes["ttl"].validate(-5) == 60
+        assert nodes["ttl"].validate(120) == 120
+
+    def test_plain_pydantic_model_binding_raises(self) -> None:
+        from pydantic import BaseModel as PydanticBaseModel
+
+        class PlainModel(PydanticBaseModel):
+            """Plain pydantic model."""
+
+            name: str
+
+        class PlainSpec(PydanticConfigSpec):
+            """Spec bound to a non-dataclass model."""
+
+            namespace = "test.plain"
+            model = PlainModel
+
+        with pytest.raises(TypeError):
+            PlainSpec.get_nodes()
+
+    def test_static_node_inheritance(self) -> None:
+        class ParentSpec(ConfigSpec):
+            """Parent static-node spec."""
+
+            namespace = "test.parent"
+            a = StringNode(label="A", default=None)
+
+        class ChildSpec(ParentSpec):
+            """Child static-node spec."""
+
+            namespace = "test.child"
+            b = StringNode(label="B", default=None)
+
+        assert set(ChildSpec.get_nodes()) == {"a", "b"}
+
+
+class TestEnumNode:
+    """Tests for EnumNode validate behavior."""
+
+    def test_enum_validate_string_and_dict_options(self) -> None:
+        node = EnumNode(options=["red", "blue"], default="red", label="Color")
+        assert node.validate("blue") == "blue"
+        assert node.validate("green") == "red"
+
+        dict_node = EnumNode(
+            options={"on": "Enabled", "off": "Disabled"},
+            default="on",
+            label="Switch",
+        )
+        assert dict_node.validate("on") == "on"
+        assert dict_node.validate("nope") == "on"
+
 
 class TestSpecMetadata:
     """Tests for spec description and permissions metadata."""
@@ -135,8 +248,7 @@ class TestOptionalFields:
         assert nodes["note"].default is None
 
 
-@pytest.mark.asyncio
-async def test_get_nodes_empty_when_no_model() -> None:
+def test_get_nodes_empty_when_no_model() -> None:
     class NoModelSpec(PydanticConfigSpec):
         namespace = "test.nomodel"
 

@@ -92,12 +92,43 @@ class ColorNode(StringNode):
 class IntNode(AbstractConfigNode):
     """Configuration node for integer values."""
 
+    def __init__(
+        self,
+        label: str,
+        default: Any = None,
+        help_text: str | None = None,
+        required: bool = False,
+        readonly: bool = False,
+        icon: str | None = None,
+        category: str | None = None,
+        ge: int | None = None,
+        le: int | None = None,
+        **extra,
+    ) -> None:
+        super().__init__(
+            label,
+            default=default,
+            help_text=help_text,
+            required=required,
+            readonly=readonly,
+            icon=icon,
+            category=category,
+            **extra,
+        )
+        self.ge = ge
+        self.le = le
+
     def validate(self, value: Any) -> int:
         """Validate and coerce value to int."""
         try:
-            return int(value)
+            val = int(value)
         except (ValueError, TypeError):
             return self.default
+        if self.ge is not None and val < self.ge:
+            return self.default
+        if self.le is not None and val > self.le:
+            return self.default
+        return val
 
 
 class BooleanNode(AbstractConfigNode):
@@ -144,7 +175,9 @@ class ConfigSpecMeta(type):
     """Metaclass to collect nodes defined on a spec."""
 
     def __new__(mcs, name, bases, attrs) -> Any:
-        nodes = {}
+        nodes: dict[str, AbstractConfigNode] = {}
+        for base in bases:
+            nodes.update(getattr(base, "_nodes", {}))
         for key, value in attrs.items():
             if isinstance(value, AbstractConfigNode):
                 value._name = key
@@ -191,7 +224,7 @@ class PydanticConfigSpec(ConfigSpec):
     """
 
     model: type[DomainModel] | None = None
-    node_overrides: dict[str, type[AbstractConfigNode]] = {}
+    node_overrides: dict[str, type[AbstractConfigNode] | AbstractConfigNode] = {}
 
     @classmethod
     def get_nodes(cls) -> dict[str, AbstractConfigNode]:
@@ -204,6 +237,10 @@ class PydanticConfigSpec(ConfigSpec):
             ensure(cls.model)
 
         dc_fields = getattr(cls.model, "__dataclass_fields__", {})
+        if not dc_fields:
+            raise TypeError(
+                f"{cls.__name__} model must be a dataclass-backed DomainModel"
+            )
         hints = getattr(cls.model, "_cached_type_hints", None)
         if not hints:
             try:
@@ -227,17 +264,27 @@ class PydanticConfigSpec(ConfigSpec):
                 "required": not has_default,
             }
 
-            node_cls: type[AbstractConfigNode] = cls.node_overrides.get(name)
+            override = cls.node_overrides.get(name)
+            if isinstance(override, AbstractConfigNode):
+                override._name = name
+                nodes[name] = override
+                continue
+
+            node_cls = override
             if node_cls is None:
                 if annotation is bool:
                     node_cls = BooleanNode
                 elif annotation is int:
                     node_cls = IntNode
+                    kwargs["ge"] = metadata.get("ge")
+                    kwargs["le"] = metadata.get("le")
                 elif get_origin(annotation) is Literal:
                     node_cls = EnumNode
-                    options = list(get_args(annotation))
+                    options = [str(o) for o in get_args(annotation)]
                     kwargs["options"] = options
-                    if default is None or default not in options:
+                    if (default is None or str(default) not in options) and not kwargs[
+                        "required"
+                    ]:
                         kwargs["default"] = options[0]
                 else:
                     node_cls = StringNode
