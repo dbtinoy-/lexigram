@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.admin.settings.panel.models import CacheSettings
 from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
@@ -14,8 +15,8 @@ class CacheSpec(PydanticConfigSpec):
     namespace = "admin.cache"
     label = "Response Caching"
     icon = "cube-transparent"
-    # CacheConfig was removed from lexigram.config; spec has no bound model.
-    model = None
+    description = "Toggle response caching and set the default TTL."
+    model = CacheSettings
 
 
 def register_spec(registry: ConfigRegistry) -> None:

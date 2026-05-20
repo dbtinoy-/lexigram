@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from lexigram.admin.settings.panel.nodes import AbstractConfigNode, ConfigSpec
 
-from lexigram.admin.settings.panel.utils import map_config_node_type
-
 __all__ = [
     "ConfigRegistry",
     "EnvStore",
@@ -85,37 +83,37 @@ class ConfigRegistry:
         if category in self._category_map:
             self._category_map[category].append(spec.namespace)
 
-        # Bridge to SettingsRegistry for unified resolution and DB persistence
-        try:
-            from lexigram.admin.settings.service import (
-                SettingDefinition,
-                SettingsRegistry,
-            )
-
-            for node_key, node in spec.get_nodes().items():
-                full_key = f"{spec.namespace}.{node_key}"
-                if SettingsRegistry.get(full_key):
-                    continue
-
-                definition = SettingDefinition(
-                    key=full_key,
-                    scope=["global"],
-                    type=map_config_node_type(node),
-                    default=node.default,
-                    label=node.label,
-                    description=node.help_text,
-                    category=node.category or spec.label,
-                )
-                SettingsRegistry.register(definition)
-        except (ImportError, ValueError, TypeError, RuntimeError):
-            pass
-
     def get_specs(self, category: str) -> list[type[ConfigSpec]]:
-        """Get all registered specs for a category."""
+        """Get all registered specs for a category that have editable nodes."""
         namespaces = self._category_map.get(category, [])
         return [
-            self._specs[ns] for ns in filter(lambda ns: ns in self._specs, namespaces)
+            self._specs[ns]
+            for ns in namespaces
+            if ns in self._specs and self._specs[ns].get_nodes()
         ]
+
+    def get_spec(self, namespace: str) -> type[ConfigSpec] | None:
+        """Get a registered spec by namespace."""
+        return self._specs.get(namespace)
+
+    def has_store(self, name: str) -> bool:
+        """Check whether a store is registered."""
+        return name in self._stores
+
+    @classmethod
+    def with_defaults(cls) -> ConfigRegistry:
+        """Build a registry pre-populated with all built-in bound specs."""
+        registry = cls()
+        from lexigram.admin.settings.panel import (
+            register_branding_spec,
+            register_cache_spec,
+            register_security_spec,
+        )
+
+        register_branding_spec(registry)
+        register_cache_spec(registry)
+        register_security_spec(registry)
+        return registry
 
     def get_node(self, full_key: str) -> AbstractConfigNode | None:
         """Get a ConfigNode by its full key (namespace.key)."""

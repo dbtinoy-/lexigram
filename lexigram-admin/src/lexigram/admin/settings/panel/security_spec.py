@@ -1,7 +1,8 @@
-"""Security headers configuration specification."""
+"""Security configuration specification."""
 
 from __future__ import annotations
 
+from lexigram.admin.settings.panel.models import SecuritySettings
 from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
@@ -14,8 +15,8 @@ class SecuritySpec(PydanticConfigSpec):
     namespace = "admin.security"
     label = "Security Headers"
     icon = "lock-closed"
-    # SecurityHeadersConfig was removed from lexigram.config; spec has no bound model.
-    model = None
+    description = "Content-Security-Policy and HSTS settings."
+    model = SecuritySettings
 
 
 def register_spec(registry: ConfigRegistry) -> None:

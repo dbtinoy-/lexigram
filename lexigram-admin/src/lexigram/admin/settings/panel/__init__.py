@@ -10,11 +10,14 @@ directly from ``lexigram.admin.settings.panel``.
 
 from __future__ import annotations
 
+from lexigram.admin.settings.panel.branding_spec import BrandingSpec
+from lexigram.admin.settings.panel.branding_spec import (
+    register_spec as register_branding_spec,
+)
 from lexigram.admin.settings.panel.cache_spec import CacheSpec
 from lexigram.admin.settings.panel.cache_spec import (
     register_spec as register_cache_spec,
 )
-from lexigram.admin.settings.panel.controller import ConfigController
 from lexigram.admin.settings.panel.features_spec import FeaturesSpec
 from lexigram.admin.settings.panel.features_spec import (
     register_spec as register_features_spec,
@@ -25,6 +28,7 @@ from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.nodes import (
     AbstractConfigNode,
     BooleanNode,
+    ColorNode,
     ConfigSpec,
     ConfigSpecMeta,
     EnumNode,
@@ -64,9 +68,10 @@ __all__ = [
     "DEFAULT_CATEGORIES",
     "AbstractConfigNode",
     "BooleanNode",
+    "BrandingSpec",
     "CacheSpec",
+    "ColorNode",
     "ConfigCategory",
-    "ConfigController",
     "ConfigDashboardUI",
     "ConfigLayout",
     "ConfigRegistry",
@@ -87,6 +92,7 @@ __all__ = [
     "StoreBase",
     "StringNode",
     "get_default_categories",
+    "register_branding_spec",
     "register_cache_spec",
     "register_features_spec",
     "register_i18n_spec",
