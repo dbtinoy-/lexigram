@@ -93,3 +93,22 @@ class TestSpecs:
         values = await registry.get_values("admin.cache", store_name="test")
         assert values["enabled"] is False
         assert values["default_ttl"] == 120
+
+
+class TestRegistryEdgeCases:
+    """Edge cases for registry lookups and stores."""
+
+    def test_get_specs_empty_registry(self) -> None:
+        registry = ConfigRegistry()
+        assert registry.get_specs("system") == []
+
+    async def test_save_values_unknown_namespace_is_noop(self) -> None:
+        registry = ConfigRegistry()
+        register_cache_spec(registry)
+        await registry.save_values("admin.nope", {"x": "1"})
+
+    async def test_get_values_unknown_namespace_is_empty(self) -> None:
+        registry = ConfigRegistry()
+        register_cache_spec(registry)
+        values = await registry.get_values("admin.nope")
+        assert values == {}

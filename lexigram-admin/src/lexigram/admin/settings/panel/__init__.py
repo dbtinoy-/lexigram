@@ -4,8 +4,8 @@ This package contains all UI-layer components for the admin configuration
 panel: node definitions, spec registry, category types, layout, dashboard UI,
 controller, and the built-in spec registrations.
 
-Re-exports every public symbol from all sub-modules so that callers can import
-directly from ``lexigram.admin.settings.panel``.
+Public exports for the settings panel. Spec bindings and models are imported
+by spec modules, not re-exported here.
 """
 
 from __future__ import annotations
