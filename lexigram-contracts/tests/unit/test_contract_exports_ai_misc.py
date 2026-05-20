@@ -74,6 +74,7 @@ EXPECTED_MODULE_EXPORTS: dict[str, list[str]] = {
         "MCPTransportError",
     ],
     "lexigram.contracts.mcp.protocols": [
+        "MCPAuthorizerProtocol",
         "MCPPromptHandlerProtocol",
         "MCPPromptProviderProtocol",
         "MCPResourceHandlerProtocol",

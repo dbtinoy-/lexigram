@@ -187,7 +187,26 @@ class MCPPromptHandlerProtocol(Protocol):
         ...
 
 
+@runtime_checkable
+class MCPAuthorizerProtocol(Protocol):
+    """Authorize an initialized client's method invocation.
+
+    Satisfied by any identity/scope resolver the host binds; the
+    server core consults it once per non-handshake request.
+    """
+
+    async def authorize(
+        self,
+        method: str,
+        params: dict[str, Any],
+        client_info: dict[str, Any],
+    ) -> bool:
+        """Return True to allow dispatch, False to reject with -32000."""
+        ...
+
+
 __all__ = [
+    "MCPAuthorizerProtocol",
     "MCPPromptHandlerProtocol",
     "MCPPromptProviderProtocol",
     "MCPResourceHandlerProtocol",

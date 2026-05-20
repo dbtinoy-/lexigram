@@ -162,6 +162,27 @@ class TenantProviderProtocol(Protocol):
 
 
 @runtime_checkable
+class TenantMembershipProtocol(Protocol):
+    """Verifies whether an authenticated caller belongs to a tenant.
+
+    Implemented by the application (e.g. over a ``tenant_memberships``
+    table, a ``users.tenant_id`` column, or an external identity service).
+    The framework does not ship an implementation; the app binds one in
+    the DI container.  Membership caching is delegated to the implementer.
+
+    See Also:
+        ``docs/superpowers/specs/2026-08-16-security-tenancy-design.md`` §3.1
+        for the required sign-off and the deferred schema-provisioning option
+        (framework-managed ``tenant_memberships`` table).
+    """
+
+    async def user_belongs_to_tenant(self, user_id: str, tenant_id: str) -> bool:
+        """Return ``True`` when *user_id* may act under *tenant_id*.
+        """
+        ...
+
+
+@runtime_checkable
 class TenantConfigProviderProtocol(Protocol):
     """Per-tenant configuration key-value store.
 
@@ -268,6 +289,7 @@ class TenantIsolationStrategyProtocol(Protocol):
 __all__ = [
     "TenantConfigProviderProtocol",
     "TenantIsolationStrategyProtocol",
+    "TenantMembershipProtocol",
     "TenantProviderProtocol",
     "TenantResolverProtocol",
 ]
