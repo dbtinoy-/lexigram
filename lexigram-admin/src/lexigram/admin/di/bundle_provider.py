@@ -149,6 +149,9 @@ class AdminProvider(Provider):
         container.singleton("admin_bundle", self)
         # Register NavItemBuilder as a pre-built instance (config is not in container)
         container.singleton(NavItemBuilder, nav_item_builder)
+        from lexigram.admin.settings.panel.registry import ConfigRegistry
+
+        container.singleton(ConfigRegistry, ConfigRegistry.with_defaults)
         # Register built-in controllers
         container.singleton(WidgetController, WidgetController)
         container.singleton(DashboardController, DashboardController)
@@ -244,6 +247,17 @@ class AdminProvider(Provider):
             admin_settings_service = AdminSettingsService(
                 config_provider=config_provider,
             )
+            from lexigram.admin.settings.panel.registry import ConfigRegistry
+            from lexigram.admin.settings.store import TenantConfigStore
+
+            try:
+                registry = await admin_resolver.resolve(
+                    ConfigRegistry,
+                    bypass_visibility=True,
+                )
+                registry.register_store("db", TenantConfigStore(admin_settings_service))
+            except Exception:
+                _log.warning("admin.settings_store_registration_failed")
         except Exception:
             try:
                 admin_settings_service = AdminSettingsService()
@@ -360,14 +374,36 @@ class AdminProvider(Provider):
 
         # Mount SettingsController (theme & branding settings)
         try:
-            from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+            from lexigram.admin.auth.protocols import (
+                AdminAuditLogServiceProtocol,
+                AdminCsrfServiceProtocol,
+            )
             from lexigram.admin.controllers.settings import SettingsController
             from lexigram.admin.engine.renderer import AdminRenderer
+            from lexigram.admin.settings.panel.registry import ConfigRegistry
 
             csrf_service: AdminCsrfServiceProtocol | None = None
             try:
                 csrf_service = await admin_resolver.resolve(
                     AdminCsrfServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                pass
+
+            registry: ConfigRegistry | None = None
+            try:
+                registry = await admin_resolver.resolve(
+                    ConfigRegistry,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                pass
+
+            audit_service: AdminAuditLogServiceProtocol | None = None
+            try:
+                audit_service = await admin_resolver.resolve(
+                    AdminAuditLogServiceProtocol,
                     bypass_visibility=True,
                 )
             except Exception:
@@ -381,6 +417,8 @@ class AdminProvider(Provider):
                 renderer=renderer,
                 settings_service=admin_settings_service,
                 csrf_service=csrf_service,
+                audit_service=audit_service,
+                registry=registry,
             )
             controller_instances.append(settings_controller)
         except Exception as exc:
