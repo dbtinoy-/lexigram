@@ -4,22 +4,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from htpy import el as _el
-
-from lexigram.admin.forms.builder import Form
 from lexigram.admin.settings.panel.nodes import ConfigSpec
 from lexigram.ui import (
     Card,
     FieldSchema,
+    Form,
     FormActions,
     NumberInput,
     Select,
     Stack,
     TextInput,
     Toggle,
+    el,
 )
-
-el: Any = _el
 
 __all__ = ["ConfigDashboardUI"]
 
@@ -182,6 +179,7 @@ class ConfigDashboardUI:
         spec: dict[str, Any],
         values: dict[str, Any],
         action: str,
+        csrf_token: str | None = None,
     ) -> Any:
         """Render a standalone configuration form for use within ConfigLayout.
 
@@ -189,6 +187,7 @@ class ConfigDashboardUI:
             spec: Configuration spec dictionary with nodes
             values: Current values for the spec
             action: Form action URL
+            csrf_token: Optional CSRF token rendered as a hidden input
 
         Returns:
             Card component containing the configuration form
@@ -200,6 +199,11 @@ class ConfigDashboardUI:
         for node_data in nodes:
             fields.append(self.render_field(node_data, values))
 
+        hidden = []
+        if csrf_token:
+            hidden.append(el("input", type="hidden", name="_csrf", value=csrf_token))
+        hidden.append(el("input", type="hidden", name="_ns", value=namespace))
+
         return Card(
             title=spec.get("label", "Configuration"),
             subtitle=spec.get("description", ""),
@@ -210,7 +214,7 @@ class ConfigDashboardUI:
                     hx_target="#config-card",
                     hx_swap="outerHTML",
                     children=[
-                        el("input", type="hidden", name="_ns", value=namespace),
+                        *hidden,
                         Stack(gap=4, children=fields),
                         el("div", class_="h-4"),
                         FormActions(submit_label="Save Changes"),
@@ -261,6 +265,13 @@ class ConfigDashboardUI:
                 name=name,
                 value=value,
                 type="password",
+                disabled=readonly,
+            )
+        elif node_type == "color":
+            input_comp = TextInput(
+                name=name,
+                value=str(value) if value is not None else "",
+                type="color",
                 disabled=readonly,
             )
         else:  # string and others
