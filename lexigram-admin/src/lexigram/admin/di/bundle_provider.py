@@ -149,9 +149,6 @@ class AdminProvider(Provider):
         container.singleton("admin_bundle", self)
         # Register NavItemBuilder as a pre-built instance (config is not in container)
         container.singleton(NavItemBuilder, nav_item_builder)
-        from lexigram.admin.settings.panel.registry import ConfigRegistry
-
-        container.singleton(ConfigRegistry, ConfigRegistry.with_defaults)
         # Register built-in controllers
         container.singleton(WidgetController, WidgetController)
         container.singleton(DashboardController, DashboardController)

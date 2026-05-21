@@ -59,7 +59,7 @@ class AdminCoreSubProvider:
         container.singleton(AdminRenderer, AdminRenderer)
 
         container.singleton(DependencyTracker, DependencyTracker)
-        container.singleton(ConfigRegistry, ConfigRegistry)
+        container.singleton(ConfigRegistry, ConfigRegistry.with_defaults)
 
         # Feature flags: register the admin service only.
         # The concrete FlagManagerProtocol implementation is expected to be
