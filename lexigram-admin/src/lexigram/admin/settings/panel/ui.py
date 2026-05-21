@@ -201,7 +201,9 @@ class ConfigDashboardUI:
 
         hidden = []
         if csrf_token:
-            hidden.append(el("input", type="hidden", name="_csrf", value=csrf_token))
+            hidden.append(
+                el("input", type="hidden", name="csrf_token", value=csrf_token)
+            )
         hidden.append(el("input", type="hidden", name="_ns", value=namespace))
 
         return Card(
@@ -215,7 +217,7 @@ class ConfigDashboardUI:
                     hx_swap="outerHTML",
                     children=[
                         *hidden,
-                        Stack(gap=4, children=fields),
+                        el("div", *fields, class_="space-y-4"),
                         el("div", class_="h-4"),
                         FormActions(submit_label="Save Changes"),
                     ],

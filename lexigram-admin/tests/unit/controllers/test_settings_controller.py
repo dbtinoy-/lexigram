@@ -189,3 +189,50 @@ class TestSettingsController:
         req.path_params = {"namespace": "admin.branding"}
         await controller.save_spec(req)
         audit.log_event.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_save_spec_int_and_bool_fields_not_flagged_invalid(
+        self, renderer: MagicMock
+    ) -> None:
+        audit = AsyncMock()
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=ConfigRegistry.with_defaults(),
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "csrf_token": "token",
+                "enabled": "true",
+                "default_ttl": "120",
+            },
+            user=_FakeUser(),
+        )
+        req.path_params = {"namespace": "admin.cache"}
+        await controller.save_spec(req)
+        call_kwargs = audit.log_event.await_args
+        assert call_kwargs is not None
+        assert call_kwargs.kwargs["metadata"]["invalid"] == []
+
+
+class TestRenderedForm:
+    """Tests for actual rendered form output."""
+
+    def test_form_renders_real_html(self) -> None:
+        from lexigram.admin.settings.panel import BrandingSpec
+        from lexigram.admin.settings.panel.ui import ConfigDashboardUI
+        from lexigram.ui.core.base import render_to_string
+
+        ui = ConfigDashboardUI()
+        html = render_to_string(
+            ui.render_config_form(
+                spec=BrandingSpec.to_dict(),
+                values={},
+                action="/admin/settings/admin.branding",
+                csrf_token="tok123",
+            )
+        )
+        assert "<form" in html
+        assert 'name="csrf_token"' in html
+        assert 'value="tok123"' in html
