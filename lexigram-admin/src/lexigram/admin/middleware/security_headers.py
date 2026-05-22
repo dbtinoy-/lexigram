@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.admin.settings.panel.models import DEFAULT_CSP
 from lexigram.contracts.security import SecurityHeadersProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -16,17 +17,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 logger = get_logger(__name__)
-
-# Default Content-Security-Policy — allows HTMX inline scripts / styles
-_DEFAULT_CSP = (
-    "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com; "
-    "style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com; "
-    "img-src 'self' data:; "
-    "font-src 'self'; "
-    "connect-src 'self' https://unpkg.com; "
-    "frame-ancestors 'none';"
-)
 
 
 @inject
@@ -39,7 +29,7 @@ class AdminSecurityHeaders:
 
     def __init__(
         self,
-        csp: str = _DEFAULT_CSP,
+        csp: str = DEFAULT_CSP,
         hsts_max_age: int = 63072000,  # 2 years
     ) -> None:
         self._headers: dict[str, str] = {
@@ -80,18 +70,44 @@ class SecurityHeadersMiddleware:
     """ASGI middleware that injects security headers on every HTTP response.
 
     Wraps the inner application and calls AdminSecurityHeaders.apply on the
-    response headers before they are sent to the client.
+    response headers before they are sent to the client. When a
+    ``settings_store`` is provided, CSP and HSTS values are read from it on
+    first use (once per process) and cached.
     """
 
     def __init__(
         self,
         app: Callable,
         headers_service: SecurityHeadersProtocol | None = None,
+        settings_store: Any = None,
     ) -> None:
         self._app = app
         self._service: SecurityHeadersProtocol = (
             headers_service if headers_service is not None else AdminSecurityHeaders()
         )
+        self._settings_store = settings_store
+        self._resolved: SecurityHeadersProtocol | None = None
+
+    async def _resolve_headers(self) -> SecurityHeadersProtocol:
+        """Return the headers service, applying settings overrides once."""
+        if self._resolved is not None:
+            return self._resolved
+
+        service = self._service
+        if self._settings_store is not None:
+            try:
+                csp = await self._settings_store.get("admin.security.csp")
+                hsts = await self._settings_store.get("admin.security.hsts_max_age")
+                if csp or hsts:
+                    service = AdminSecurityHeaders(
+                        csp=str(csp) if csp else DEFAULT_CSP,
+                        hsts_max_age=int(hsts) if hsts else 63072000,
+                    )
+            except (RuntimeError, ValueError, TypeError) as exc:
+                logger.warning("admin.security_headers.settings_error", error=str(exc))
+
+        self._resolved = service
+        return service
 
     async def __call__(
         self,
@@ -103,6 +119,8 @@ class SecurityHeadersMiddleware:
             await self._app(scope, receive, send)
             return
 
+        service = await self._resolve_headers()
+
         async def send_with_headers(message: dict[str, Any]) -> None:
             if message["type"] == "http.response.start":
                 raw_headers: list[tuple[bytes, bytes]] = list(
@@ -112,7 +130,7 @@ class SecurityHeadersMiddleware:
                 existing: dict[str, str] = {
                     k.decode(): v.decode() for k, v in raw_headers
                 }
-                updated = self._service.apply(existing)
+                updated = service.apply(existing)
                 message = {
                     **message,
                     "headers": [(k.encode(), v.encode()) for k, v in updated.items()],
