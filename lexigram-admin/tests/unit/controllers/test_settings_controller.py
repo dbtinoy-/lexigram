@@ -8,6 +8,7 @@ import pytest
 from starlette.requests import Request
 
 from lexigram.admin.controllers.settings import SettingsController
+from lexigram.admin.settings.panel import BooleanNode, ConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
 
@@ -214,6 +215,40 @@ class TestSettingsController:
         call_kwargs = audit.log_event.await_args
         assert call_kwargs is not None
         assert call_kwargs.kwargs["metadata"]["invalid"] == []
+
+    @pytest.mark.asyncio
+    async def test_save_spec_permission_denied(self, renderer: MagicMock) -> None:
+        from starlette.responses import RedirectResponse
+
+        registry = ConfigRegistry.with_defaults()
+        registry.register_spec("system", GatedSpec)
+
+        audit = AsyncMock()
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=registry,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={"flag": "true"},
+            user=_FakeUser(permissions=frozenset({"admin.other"})),
+        )
+        req.path_params = {"namespace": "admin.gated"}
+        resp = await controller.save_spec(req)
+        assert isinstance(resp, RedirectResponse)
+        audit.log_event.assert_awaited_once()
+
+
+class GatedSpec(ConfigSpec):
+    """Spec requiring a permission."""
+
+    namespace = "admin.gated"
+    label = "Gated"
+    icon = "lock"
+    description = ""
+    required_permissions = frozenset({"admin.settings.edit"})
+    flag = BooleanNode(label="Flag", default=True)
 
 
 class TestRenderedForm:

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
+from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
@@ -95,17 +96,16 @@ class SettingsController(AdminController):
         self,
         request: Request,
         success: bool = True,
+        event_type: AdminSecurityEventType = AdminSecurityEventType.SETTINGS_UPDATED,
         **metadata: Any,
     ) -> None:
         """Append a settings change to the security audit log, best-effort."""
         if not self._audit_service:
             return
         try:
-            from lexigram.admin.auth.types import AdminSecurityEventType
-
             client = getattr(request, "client", None)
             await self._audit_service.log_event(
-                event_type=AdminSecurityEventType.SETTINGS_UPDATED,
+                event_type=event_type,
                 ip_address=getattr(client, "host", "unknown"),
                 user_agent=request.headers.get("user-agent", "") or "",
                 success=success,
@@ -184,7 +184,12 @@ class SettingsController(AdminController):
         if spec.required_permissions and not permissions.issuperset(
             spec.required_permissions
         ):
-            await self._audit(request, success=False, reason="permission_denied")
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                reason="permission_denied",
+            )
             self.flash("You do not have permission to edit this setting.", "error")
             return RedirectResponse(
                 url=f"/admin/settings/{namespace}",
