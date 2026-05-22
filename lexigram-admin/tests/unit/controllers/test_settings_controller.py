@@ -217,6 +217,59 @@ class TestSettingsController:
         assert call_kwargs.kwargs["metadata"]["invalid"] == []
 
     @pytest.mark.asyncio
+    async def test_save_spec_normalizes_on_to_true_for_boolean(
+        self, renderer: MagicMock
+    ) -> None:
+        audit = AsyncMock()
+        registry = ConfigRegistry.with_defaults()
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=registry,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "csrf_token": "token",
+                "enabled": "on",
+                "default_ttl": "120",
+            },
+            user=_FakeUser(),
+        )
+        req.path_params = {"namespace": "admin.cache"}
+        await controller.save_spec(req)
+        call_kwargs = audit.log_event.await_args
+        assert call_kwargs is not None
+        assert call_kwargs.kwargs["metadata"]["invalid"] == []
+        values = await registry.get_values("admin.cache")
+        assert values["enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_save_spec_persists_false_for_unchecked_boolean(
+        self, renderer: MagicMock
+    ) -> None:
+        audit = AsyncMock()
+        registry = ConfigRegistry.with_defaults()
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=registry,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "csrf_token": "token",
+                "enabled": "false",
+                "default_ttl": "120",
+            },
+            user=_FakeUser(),
+        )
+        req.path_params = {"namespace": "admin.cache"}
+        await controller.save_spec(req)
+        values = await registry.get_values("admin.cache")
+        assert values["enabled"] is False
+
+    @pytest.mark.asyncio
     async def test_save_spec_permission_denied(self, renderer: MagicMock) -> None:
         from starlette.responses import RedirectResponse
 

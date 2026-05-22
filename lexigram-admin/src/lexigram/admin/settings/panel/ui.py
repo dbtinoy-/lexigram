@@ -7,6 +7,7 @@ from typing import Any
 from lexigram.admin.settings.panel.nodes import ConfigSpec
 from lexigram.ui import (
     Card,
+    Component,
     FieldSchema,
     Form,
     FormActions,
@@ -19,6 +20,35 @@ from lexigram.ui import (
 )
 
 __all__ = ["ConfigDashboardUI"]
+
+
+class BooleanField(Component):
+    """Toggle with a hidden false input so unchecked states persist."""
+
+    def __init__(
+        self,
+        name: str,
+        value: bool,
+        label: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.name = name
+        self.value = value
+        self.label = label
+
+    def render(self) -> Any:
+        return el(
+            "div",
+            Toggle(
+                name=self.name,
+                value="true",
+                checked=self.value,
+                label=self.label,
+            ),
+            el("input", type="hidden", name=self.name, value="false"),
+            class_="flex flex-col",
+            id=f"{self.name}-field",
+        )
 
 
 class ConfigDashboardUI:
@@ -241,9 +271,9 @@ class ConfigDashboardUI:
         input_comp: Any = None
 
         if node_type == "boolean":
-            input_comp = Toggle(
+            input_comp = BooleanField(
                 name=name,
-                checked=bool(value),
+                value=bool(value),
                 label=label,
             )
         elif node_type == "int":
