@@ -123,7 +123,7 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 - [x] Task 7 (P2) — specification `Field*` identifier wrap; document `where_raw`/`order_by_raw` escape hatches
 - [x] Task 8 (Low) — AdminSession repository `_TABLE` → `Table()`
 
-### 3.3 Tenancy isolation — `plans/2026-08-16-security-tenancy.md` (s)
+### 3.3 Tenancy isolation — `plans/2026-08-16-security-tenancy.md` `[x]` (sign-off recorded 2026-08-17)
 
 - [ ] Task 1 (F2) — implement `set_tenant_from_scope`/`reset_tenant` on `DbContext` (bridge wiring)
 - [ ] Task 2 (F2/F3) — enforcement core: `TenantScopingError`, fail-closed filter, construction guard, `with_tenant_scope` — **must merge with Task 1 together** (B3)
@@ -160,17 +160,17 @@ Partially executed 2026-08-16 (`75568cd`): production hard-fail when CSRF disabl
 - [ ] Task 5 (F-W8) — web↔admin CSRF boundary hygiene
 - [ ] Task 6 — full verification
 
-### 3.7 Secrets / credentials — `plans/2026-08-16-security-secrets.md` (s)
+### 3.7 Secrets / credentials — `plans/2026-08-16-security-secrets.md` `[x]`
 
-- [ ] Task 1 (F1) — `SecretsConfig` env derivation + production validator + replace `FakeRotatableSecretStore` default
-- [ ] Task 2 (F3) — `AuthenticationProvider` strict-env raise; delete dev-secret literal; widen HS validator
-- [ ] Task 3 (F2) — `SecretStr` for `JWTConfig.secret_key` / `AdminAuthConfig.session_secret`
-- [ ] Task 4 (F4) — mask embedding `api_key` fields (`repr=False`)
-- [ ] Task 5 (F5) — fail-closed cloud backend semantics + empty-credential boot error
-- [ ] Task 6 (F6) — `DotenvSecretBackend` permission discipline (chmod 0600)
-- [ ] Task 7 (F7) — `SecretValue.__format__` masking
-- [ ] Task 8 (F8) — `RotationDecorator` grace-buffer eviction
-- [ ] Task 9 — full verification
+- [x] Task 1 (F1) — `SecretsConfig` env derivation + production validator + replace `FakeRotatableSecretStore` default — done `18ed4fc9`
+- [x] Task 2 (F3) — `AuthenticationProvider` strict-env raise; delete dev-secret literal; widen HS validator — done `8c42f442`
+- [x] Task 3 (F2) — `SecretStr` for `JWTConfig.secret_key` / `AdminAuthConfig.session_secret` — done `dcf41bcc`
+- [x] Task 4 (F4) — mask embedding `api_key` fields (`repr=False`) — done `af865844`
+- [x] Task 5 (F5) — fail-closed cloud backend semantics + empty-credential boot error — done `1d62650c`
+- [x] Task 6 (F6) — `DotenvSecretBackend` permission discipline (chmod 0600) — done `89f9a1ed` (lives in `lexigram-cli`, not `lexigram-secrets`)
+- [x] Task 7 (F7) — `SecretValue.__format__` masking — done `d9ee4482`
+- [x] Task 8 (F8) — `RotationDecorator` grace-buffer eviction — done `0e1490b9`
+- [x] Task 9 — full verification — done 2026-08-17; §2.B Task 0 ownership resolved (standalone `lexigram-secrets` owns backends; cli owns DotenvSecretBackend); ruff/format clean 43 files; suites 111+154+37+58+4 passed; greps: dev literal 0, FakeRotatableSecretStore in src 0, backends only noqa'd non-swallowing `except`
 
 ### 3.8 SSRF / outbound — `plans/2026-08-16-security-ssrf.md` `[x]`
 
