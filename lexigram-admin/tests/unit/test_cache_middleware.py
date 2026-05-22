@@ -4,10 +4,10 @@ import pytest
 
 from lexigram.admin.middleware.cache import AdminCacheMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_backend(*, get_result=None, set_result=None):
     """Build a minimal CacheBackendProtocol mock that returns Result values."""
@@ -110,10 +110,12 @@ async def test_cache_bypass_no_cache(mock_app):
 
 @pytest.mark.asyncio
 async def test_cache_disabled_via_settings(mock_app, mock_settings):
-    mock_settings.get.side_effect = (
-        lambda k: False if k == "admin.cache.enabled" else None
+    mock_settings.get.side_effect = lambda k, default=None: (
+        False if k == "admin.cache.enabled" else default
     )
-    backend = _make_backend(get_result={"status_code": 200, "headers": [], "body": b"Old"})
+    backend = _make_backend(
+        get_result={"status_code": 200, "headers": [], "body": b"Old"}
+    )
     middleware = AdminCacheMiddleware(
         mock_app, cache_backend=backend, settings_service=mock_settings
     )
