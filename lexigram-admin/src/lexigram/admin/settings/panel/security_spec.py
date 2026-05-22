@@ -17,6 +17,7 @@ class SecuritySpec(PydanticConfigSpec):
     icon = "lock-closed"
     description = "Content-Security-Policy and HSTS settings."
     model = SecuritySettings
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:
