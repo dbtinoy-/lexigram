@@ -117,7 +117,11 @@ class AdminErrorMiddleware(BaseHTTPMiddleware):
                     status_code=401,
                     content={"error": "session_expired", "login_url": self.login_url},
                 )
-            full = request.url.path if not request.url.query else f"{request.url.path}?{request.url.query}"
+            full = (
+                request.url.path
+                if not request.url.query
+                else f"{request.url.path}?{request.url.query}"
+            )
             next_url = quote(full, safe="/?=&")
             login_url = f"{self.login_url}?next={next_url}"
             response = Response(status_code=200)
