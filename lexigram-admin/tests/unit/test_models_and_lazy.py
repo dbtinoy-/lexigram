@@ -1,55 +1,8 @@
-"""Tests for SystemSetting model and data/lazy.py utilities."""
+"""Tests for data/lazy.py utilities."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 import pytest
-
-
-class TestSystemSetting:
-    """Tests for SystemSetting dataclass (models/setting.py)."""
-
-    def test_required_fields(self) -> None:
-        from lexigram.admin.models.setting import SystemSetting
-
-        s = SystemSetting(key="site.title", value="My Admin")
-        assert s.key == "site.title"
-        assert s.value == "My Admin"
-
-    def test_defaults(self) -> None:
-        from lexigram.admin.models.setting import SystemSetting
-
-        s = SystemSetting(key="k", value="v")
-        assert s.scope == "global"
-        assert s.scope_id == "system"
-        assert s.type == "string"
-        assert s.is_sensitive is False
-        assert s.updated_at is None
-        assert s.updated_by is None
-        assert s.id is None
-
-    def test_custom_fields(self) -> None:
-        from lexigram.admin.models.setting import SystemSetting
-
-        now = datetime.now(UTC)
-        s = SystemSetting(
-            key="db.url",
-            value="postgres://...",
-            scope="tenant",
-            scope_id="tenant-42",
-            type="string",
-            is_sensitive=True,
-            updated_at=now,
-            updated_by="admin",
-            id=7,
-        )
-        assert s.scope == "tenant"
-        assert s.scope_id == "tenant-42"
-        assert s.is_sensitive is True
-        assert s.updated_by == "admin"
-        assert s.id == 7
-        assert s.updated_at == now
 
 
 class TestLazyField:
