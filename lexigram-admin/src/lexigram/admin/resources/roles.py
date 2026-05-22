@@ -5,14 +5,14 @@ from __future__ import annotations
 from typing import Any, cast
 
 from lexigram.admin.config import AdminRbacConfig
-from lexigram.admin.rbac.types import AdminRole
 from lexigram.admin.resources.base import Resource
+from lexigram.contracts.auth import RoleDefinition
 
 
 class RolesResource(Resource):
     """Manage RBAC roles and permissions."""
 
-    model = cast("Any", AdminRole)
+    model = cast("Any", RoleDefinition)
     name = "roles"
     label = "Roles"
     icon = "shield-check"
@@ -42,7 +42,7 @@ class RolesResource(Resource):
     # Read-only fields (ensure system roles cannot be renamed easily)
     readonly_fields = ["created_at", "updated_at"]
 
-    def can_delete(self, item: AdminRole) -> bool:
+    def can_delete(self, item: RoleDefinition) -> bool:
         """Prevent deletion of system roles and the super-admin role.
 
         Args:
@@ -55,7 +55,7 @@ class RolesResource(Resource):
         super_admin_role = AdminRbacConfig().super_admin_role
         return not (item.is_system or item.name == super_admin_role)
 
-    def can_update(self, item: AdminRole) -> bool:
+    def can_update(self, item: RoleDefinition) -> bool:
         """Prevent renaming of system roles."""
         # This is a simplification; ideally we'd allow updating permissions but not name
         return True

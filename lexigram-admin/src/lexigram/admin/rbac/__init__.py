@@ -12,16 +12,16 @@ from lexigram.admin.rbac.schema import (
     FieldPermission,
     ResourcePermissions,
 )
-from lexigram.admin.rbac.types import Permission, Policy, PolicyContext, Role
+from lexigram.admin.rbac.types import Policy, PolicyContext
+from lexigram.contracts.auth import RoleDefinition
 
 __all__ = [
     "ActionPermission",
     "FieldPermission",
-    "Permission",
     "Policy",
     "PolicyContext",
     "ResourcePermissions",
-    "Role",
+    "RoleDefinition",
     "get_policy",
     "get_resource_permissions",
     "register_policy",

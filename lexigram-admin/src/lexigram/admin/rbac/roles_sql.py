@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
-from lexigram.admin.rbac.types import AdminRole
 from lexigram.admin.sql_dialect import is_postgres, now_expr
+from lexigram.contracts.auth import RoleDefinition
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -88,7 +88,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
         await self._db.execute(create_sql, [])
         self._initialized = True
 
-    async def list_roles(self) -> list[AdminRole]:
+    async def list_roles(self) -> list[RoleDefinition]:
         """Return all roles ordered by name (see protocol docs)."""
         result = await self._db.execute_query(
             f"SELECT name, description, permissions, inherits, is_system FROM {_TABLE} ORDER BY name",
@@ -96,7 +96,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
         )
         return [self._row_to_role(row) for row in self._rows(result)]
 
-    async def get_role(self, name: str) -> AdminRole | None:
+    async def get_role(self, name: str) -> RoleDefinition | None:
         """Look up a role by name (see protocol docs)."""
         result = await self._db.execute_query(
             f"SELECT name, description, permissions, inherits, is_system FROM {_TABLE} WHERE name = ?",
@@ -105,7 +105,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
         rows = self._rows(result)
         return self._row_to_role(rows[0]) if rows else None
 
-    async def create_role(self, role: AdminRole) -> None:
+    async def create_role(self, role: RoleDefinition) -> None:
         """Insert a new role (see protocol docs)."""
         await self._db.execute(
             f"INSERT INTO {_TABLE} (name, description, permissions, inherits, is_system) VALUES (?, ?, ?, ?, ?)",
@@ -118,7 +118,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
             ],
         )
 
-    async def update_role(self, role: AdminRole) -> None:
+    async def update_role(self, role: RoleDefinition) -> None:
         """Update an existing role by name (see protocol docs)."""
         await self._db.execute(
             f"UPDATE {_TABLE} SET description = ?, permissions = ?, inherits = ?, is_system = ?, "
@@ -155,9 +155,9 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
         return []
 
     @staticmethod
-    def _row_to_role(row: dict[str, Any]) -> AdminRole:
-        """Build an AdminRole from a provider row."""
-        return AdminRole(
+    def _row_to_role(row: dict[str, Any]) -> RoleDefinition:
+        """Build an RoleDefinition from a provider row."""
+        return RoleDefinition(
             name=str(row.get("name", "")),
             description=str(row.get("description", "")),
             permissions=_load_list(row.get("permissions")),
