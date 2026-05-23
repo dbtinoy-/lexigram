@@ -8,6 +8,7 @@ from typing import Any, cast
 from starlette.requests import Request
 from starlette.routing import Route
 
+from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.dashboard.widget_types import ConfigField
 from lexigram.admin.params import parse_widget_params
 from lexigram.contracts.admin.protocols import AdminContributorRegistryProtocol
@@ -17,6 +18,8 @@ from lexigram.logging import get_logger
 from lexigram.ui import el
 
 logger = get_logger(__name__)
+
+_REQUIRED_PERMISSIONS = frozenset({"admin.settings.edit"})
 
 
 @inject
@@ -31,10 +34,45 @@ class WidgetController:
 
     prefix = ""
 
-    def __init__(self, registry: AdminContributorRegistryProtocol) -> None:
+    def __init__(
+        self,
+        registry: AdminContributorRegistryProtocol,
+        audit_service: Any = None,
+    ) -> None:
         self._registry = registry
         self._settings_service: Any = None
         self._resolver: Any = None
+        self._audit_service = audit_service
+
+    # -- helpers --
+
+    def _user_has_edit_permission(self, request: Request) -> bool:
+        """Check whether the requesting user may mutate widget prefs."""
+        user = getattr(getattr(request, "state", None), "user", None)
+        permissions = frozenset(getattr(user, "permissions", None) or ())
+        return permissions.issuperset(_REQUIRED_PERMISSIONS)
+
+    async def _audit(
+        self,
+        request: Request,
+        success: bool = True,
+        event_type: AdminSecurityEventType = AdminSecurityEventType.SETTINGS_UPDATED,
+        **metadata: Any,
+    ) -> None:
+        """Append a widget-prefs change to the security audit log, best-effort."""
+        if not self._audit_service:
+            return
+        try:
+            client = getattr(request, "client", None)
+            await self._audit_service.log_event(
+                event_type=event_type,
+                ip_address=getattr(client, "host", "unknown"),
+                user_agent=request.headers.get("user-agent", "") or "",
+                success=success,
+                metadata=metadata,
+            )
+        except Exception:  # noqa: BLE001 — audit failures must not break saves
+            logger.warning("widgets.audit_failed", **metadata)
 
     def get_routes(self) -> list[Any]:
         """Extract decorated routes from this controller instance."""
@@ -283,6 +321,16 @@ class WidgetController:
         """Save a single widget's configuration."""
         from starlette.responses import HTMLResponse
 
+        if not self._user_has_edit_permission(request):
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                reason="permission_denied",
+                route="save_widget_config",
+            )
+            return HTMLResponse("Permission denied", status_code=403)
+
         tenant_id = "default"
         user_id = "default"
 
@@ -316,12 +364,27 @@ class WidgetController:
         prefs["configs"] = configs
         if self._settings_service:
             await self._settings_service.set_widget_prefs(tenant_id, user_id, prefs)
+        await self._audit(
+            request,
+            widget_name=widget_name or "",
+            kind="widget_config",
+        )
         return HTMLResponse("", status_code=204)
 
     @post("/core/widgets/reorder")
     async def reorder_widgets(self, request: Request) -> object:
         """Save widget order after drag-and-drop."""
         from starlette.responses import HTMLResponse
+
+        if not self._user_has_edit_permission(request):
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                reason="permission_denied",
+                route="reorder_widgets",
+            )
+            return HTMLResponse("Permission denied", status_code=403)
 
         tenant_id = "default"
         user_id = "default"
@@ -336,6 +399,7 @@ class WidgetController:
         prefs["order"] = {name: idx for idx, name in enumerate(order_list)}
         if self._settings_service:
             await self._settings_service.set_widget_prefs(tenant_id, user_id, prefs)
+        await self._audit(request, kind="widget_reorder")
         return HTMLResponse("", status_code=204)
 
     @get("/core/widgets/customize")
@@ -453,6 +517,16 @@ class WidgetController:
         """Save all widget configurations from the customize panel."""
         from starlette.responses import HTMLResponse
 
+        if not self._user_has_edit_permission(request):
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                reason="permission_denied",
+                route="save_all_widget_configs",
+            )
+            return HTMLResponse("Permission denied", status_code=403)
+
         tenant_id = "default"
         user_id = "default"
 
@@ -488,6 +562,11 @@ class WidgetController:
         }
         if self._settings_service:
             await self._settings_service.set_widget_prefs(tenant_id, user_id, prefs)
+        await self._audit(
+            request,
+            kind="widget_customize",
+            widget_count=len(all_widget_names),
+        )
         return HTMLResponse("", status_code=204)
 
 

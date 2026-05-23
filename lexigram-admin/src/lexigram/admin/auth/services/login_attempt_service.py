@@ -8,9 +8,14 @@ import hashlib
 from lexigram.admin.auth.errors import AccountLockedError, RateLimitExceededError
 from lexigram.admin.auth.protocols import (
     AdminAccountLockoutStoreProtocol,
+    AdminAuditLogServiceProtocol,
     AdminLoginAttemptStoreProtocol,
 )
-from lexigram.admin.auth.types import AdminLockoutStatus, AdminLoginAttempt
+from lexigram.admin.auth.types import (
+    AdminLockoutStatus,
+    AdminLoginAttempt,
+    AdminSecurityEventType,
+)
 from lexigram.contracts.infra.cache import CacheBackendProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -38,6 +43,7 @@ class AdminLoginAttemptService:
         ip_limit_per_hour: int = 60,
         lockout_thresholds: list[tuple[int, int]] | None = None,
         permanent_lockout_threshold: int = 50,
+        audit_service: AdminAuditLogServiceProtocol | None = None,
     ) -> None:
         """Initialize with stores and configuration.
 
@@ -67,6 +73,7 @@ class AdminLoginAttemptService:
             (20, 1440),
         ]
         self._permanent_lockout_threshold = permanent_lockout_threshold
+        self._audit_service = audit_service
 
     async def check_ip_rate_limit(self, ip_address: str) -> None:
         """Check if IP is rate-limited. Raises RateLimitExceededError if exceeded.
@@ -271,11 +278,22 @@ class AdminLoginAttemptService:
     async def clear_lockout(self, email: str) -> None:
         """Clear lockout and failure records on successful login.
 
+        Audits an ``ACCOUNT_UNLOCKED`` event when an active lockout existed.
+
         Args:
             email: Email to clear.
         """
+        active = await self._lockout_store.get_active_lockout(email)
         await self._lockout_store.clear_lockout(email)
         await self._attempt_store.clear_failures(email)
+        if active and self._audit_service:
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.ACCOUNT_UNLOCKED,
+                ip_address="",
+                user_agent="",
+                success=True,
+                metadata={"email": email},
+            )
         logger.debug(
             "account_lockout.cleared",
             email_hash=hashlib.sha256(email.encode()).hexdigest()[:8],

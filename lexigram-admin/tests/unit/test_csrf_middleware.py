@@ -332,3 +332,79 @@ class TestAdminCsrfEnforcementFormField:
         )
         await _collect_response(mw, scope)
         svc.validate_token.assert_called_once_with("anonymous", "tok")
+
+
+class TestAdminCsrfViolationAudit:
+    @pytest.mark.asyncio
+    async def test_invalid_token_emits_csrf_violation(self) -> None:
+        """Invalid tokens must be recorded as CSRF violations, best-effort."""
+        from lexigram.admin.auth.types import AdminSecurityEventType
+
+        audit_service = MagicMock()
+        audit_service.log_event = MagicMock()
+        mw = AdminCsrfMiddleware(
+            MagicMock(),
+            _make_csrf_service(valid=False),
+            audit_service=audit_service,
+        )
+        scope = _make_scope(
+            "POST",
+            "/admin/users",
+            headers={b"x-csrf-token": b"bad"},
+            session={},
+        )
+        status, _ = await _collect_response(mw, scope, body=b"")
+        assert status == 403
+        audit_service.log_event.assert_called_once_with(
+            event_type=AdminSecurityEventType.CSRF_VIOLATION,
+            ip_address="unknown",
+            user_agent="",
+            success=False,
+            metadata={"path": "/admin/users", "reason": "token_invalid"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_missing_token_emits_csrf_violation(self) -> None:
+        """Missing tokens must be recorded with reason token_missing."""
+        from lexigram.admin.auth.types import AdminSecurityEventType
+
+        audit_service = MagicMock()
+        mw = AdminCsrfMiddleware(
+            MagicMock(),
+            _make_csrf_service(valid=True),
+            audit_service=audit_service,
+        )
+        await _collect_response(
+            mw,
+            _make_scope("POST", "/admin/users", session={}),
+            body=b"",
+        )
+        metadata = audit_service.log_event.call_args.kwargs["metadata"]
+        assert audit_service.log_event.call_args.kwargs["event_type"] == (
+            AdminSecurityEventType.CSRF_VIOLATION
+        )
+        assert metadata["reason"] == "token_missing"
+
+    @pytest.mark.asyncio
+    async def test_valid_token_emits_no_violation(self) -> None:
+        """Validated requests must not be audited as violations."""
+        audit_service = MagicMock()
+
+        async def inner_app(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"ok"})
+
+        mw = AdminCsrfMiddleware(inner_app, _make_csrf_service(valid=True), audit_service=audit_service)
+        status, body = await _collect_response(
+            mw,
+            _make_scope(
+                "POST",
+                "/admin/users",
+                headers={b"x-csrf-token": b"tok"},
+                session={},
+            ),
+            body=b"",
+        )
+        assert status == 200
+        assert body == b"ok"
+        assert audit_service.log_event.call_count == 0

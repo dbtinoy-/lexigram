@@ -296,6 +296,10 @@ class AdminProvider(Provider):
                 widget_controller, "_settings_service"
             ):
                 widget_controller._settings_service = admin_settings_service
+            if audit_service is not None and hasattr(
+                widget_controller, "_audit_service"
+            ):
+                widget_controller._audit_service = audit_service
         except Exception as exc:
             _log.error(
                 "admin.widget_controller_resolution_failed",
@@ -496,15 +500,32 @@ class AdminProvider(Provider):
 
         # Wire AdminCsrfMiddleware when the CSRF service is available.
         try:
-            from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+            from lexigram.admin.auth.protocols import (
+                AdminAuditLogServiceProtocol,
+                AdminCsrfServiceProtocol,
+            )
             from lexigram.admin.middleware.csrf import AdminCsrfMiddleware
 
             csrf_service = await admin_resolver.resolve(
                 AdminCsrfServiceProtocol,
                 bypass_visibility=True,
             )
+            csrf_audit_service = None
+            try:
+                csrf_audit_service = await admin_resolver.resolve(
+                    AdminAuditLogServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:  # noqa: BLE001 — CSRF audit is optional
+                pass
             middleware_stack.append(
-                (AdminCsrfMiddleware, {"csrf_service": csrf_service})
+                (
+                    AdminCsrfMiddleware,
+                    {
+                        "csrf_service": csrf_service,
+                        "audit_service": csrf_audit_service,
+                    },
+                )
             )
             _log.debug("admin.csrf_middleware_wired")
         except Exception as exc:  # noqa: BLE001 — CSRF middleware is optional
