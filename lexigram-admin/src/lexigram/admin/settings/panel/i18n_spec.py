@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.admin.settings.panel.models import I18nSettings
 from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
@@ -14,8 +15,9 @@ class I18nSpec(PydanticConfigSpec):
     namespace = "admin.i18n"
     label = "Internationalization"
     icon = "globe"
-    # I18nConfig was removed from lexigram.config; spec has no bound model.
-    model = None
+    description = "Default locale and timezone for admin pages."
+    model = I18nSettings
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:

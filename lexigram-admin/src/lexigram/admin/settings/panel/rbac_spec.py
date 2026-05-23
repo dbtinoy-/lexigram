@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.admin.settings.panel.models import RbacSettings
 from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
@@ -14,8 +15,9 @@ class RBACSpec(PydanticConfigSpec):
     namespace = "admin.rbac"
     label = "Access Control (RBAC)"
     icon = "shield-check"
-    # RBACConfig was removed from lexigram.config; spec has no bound model.
-    model = None
+    description = "Default role and anonymous access policy."
+    model = RbacSettings
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:

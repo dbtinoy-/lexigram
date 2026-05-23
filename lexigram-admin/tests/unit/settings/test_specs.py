@@ -13,7 +13,13 @@ from lexigram.admin.settings.panel import (
     register_cache_spec,
     register_security_spec,
 )
-from lexigram.admin.settings.panel.nodes import BooleanNode, ColorNode, EnumNode, IntNode, StringNode
+from lexigram.admin.settings.panel.nodes import (
+    BooleanNode,
+    ColorNode,
+    EnumNode,
+    IntNode,
+    StringNode,
+)
 from lexigram.admin.settings.panel.registry import MemoryStore
 
 
@@ -22,7 +28,13 @@ class TestSpecs:
 
     def test_branding_spec_nodes(self) -> None:
         nodes = BrandingSpec.get_nodes()
-        assert set(nodes) == {"site_name", "primary_color", "logo_url", "favicon_url", "dark_mode"}
+        assert set(nodes) == {
+            "site_name",
+            "primary_color",
+            "logo_url",
+            "favicon_url",
+            "dark_mode",
+        }
         assert isinstance(nodes["site_name"], StringNode)
         assert isinstance(nodes["primary_color"], ColorNode)
         assert isinstance(nodes["dark_mode"], EnumNode)
@@ -42,17 +54,42 @@ class TestSpecs:
         assert isinstance(nodes["hsts_max_age"], IntNode)
         assert "default-src" in nodes["csp"].default
 
-    def test_unbound_specs_have_no_nodes(self) -> None:
+    def test_newly_bound_specs_have_real_nodes(self) -> None:
         from lexigram.admin.settings.panel import (
             FeaturesSpec,
             I18nSpec,
             ProfilerSpec,
-            RBACSpec,
             RateLimitSpec,
+            RBACSpec,
         )
 
-        for spec in (FeaturesSpec, I18nSpec, ProfilerSpec, RBACSpec, RateLimitSpec):
-            assert spec.get_nodes() == {}
+        assert set(FeaturesSpec.get_nodes()) == {
+            "activity_feed",
+            "api_docs",
+            "audit_logging",
+            "autosave",
+            "command_palette",
+            "keyboard_shortcuts",
+            "notifications",
+            "optimistic_updates",
+            "search",
+            "theme_toggle",
+            "undo_redo",
+            "webhooks",
+        }
+        assert set(I18nSpec.get_nodes()) == {"default_locale", "default_timezone"}
+        assert set(ProfilerSpec.get_nodes()) == {"enabled", "slow_threshold_ms"}
+        assert set(RBACSpec.get_nodes()) == {"default_role", "allow_anonymous"}
+        assert set(RateLimitSpec.get_nodes()) == {
+            "burst_size",
+            "bulk_per_minute",
+            "create_per_minute",
+            "delete_per_minute",
+            "enabled",
+            "requests_per_hour",
+            "requests_per_minute",
+            "update_per_minute",
+        }
 
     def test_register_spec_deduplicates(self) -> None:
         registry = ConfigRegistry()
@@ -71,7 +108,16 @@ class TestSpecs:
     def test_with_defaults_registers_all_bound_specs(self) -> None:
         registry = ConfigRegistry.with_defaults()
         namespaces = {s.namespace for s in registry.get_specs("system")}
-        assert namespaces == {"admin.branding", "admin.cache", "admin.security"}
+        assert namespaces == {
+            "admin.branding",
+            "admin.cache",
+            "admin.security",
+            "admin.features",
+            "admin.i18n",
+            "admin.profiler",
+            "admin.rate_limit",
+            "admin.rbac",
+        }
         assert registry.get_spec("admin.cache") is CacheSpec
         assert registry.get_spec("admin.nope") is None
 

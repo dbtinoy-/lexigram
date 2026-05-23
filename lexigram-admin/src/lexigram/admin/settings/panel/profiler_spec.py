@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.admin.settings.panel.models import ProfilerSettings
 from lexigram.admin.settings.panel.nodes import PydanticConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 
@@ -14,8 +15,9 @@ class ProfilerSpec(PydanticConfigSpec):
     namespace = "admin.profiler"
     label = "Performance Profiler"
     icon = "clock"
-    # ProfilerConfig was removed from lexigram.config; spec has no bound model.
-    model = None
+    description = "Request profiling toggle and slow-request threshold."
+    model = ProfilerSettings
+    required_permissions = frozenset({"admin.settings.edit"})
 
 
 def register_spec(registry: ConfigRegistry) -> None:
