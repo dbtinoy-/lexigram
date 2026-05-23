@@ -130,6 +130,7 @@
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/core/routing.py:9 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py:8 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py:9 |
+| `lexigram.tasks` | optional extra "tasks" | guard | lexigram-admin/src/lexigram/admin/di/bundle_provider.py:429 |
 | `httpx` | declared | guard | lexigram-admin/src/lexigram/admin/data/adapters/api_adapter.py:8 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/engine/renderer.py:12 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/engine/renderer.py:13 |
