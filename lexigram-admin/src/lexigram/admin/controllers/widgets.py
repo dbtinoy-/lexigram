@@ -8,6 +8,7 @@ from typing import Any, cast
 from starlette.requests import Request
 from starlette.routing import Route
 
+from lexigram.admin.auth.protocols import AdminAuditLogServiceProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.dashboard.widget_types import ConfigField
 from lexigram.admin.params import parse_widget_params
@@ -37,7 +38,7 @@ class WidgetController:
     def __init__(
         self,
         registry: AdminContributorRegistryProtocol,
-        audit_service: Any = None,
+        audit_service: AdminAuditLogServiceProtocol | None = None,
     ) -> None:
         self._registry = registry
         self._settings_service: Any = None

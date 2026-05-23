@@ -35,14 +35,14 @@ class PoolHealthController(AdminController):
 
     def __init__(
         self,
-        renderer: AdminRenderer,
+        renderer: AdminRenderer | None = None,
         pool_manager: PoolManagerProtocol | None = None,
         task_manager: TaskManagerProtocol | None = None,
     ) -> None:
         """Initialize the pool health controller.
 
         Args:
-            renderer: AdminRenderer instance (DI-injected).
+            renderer: AdminRenderer instance (DI-injected, optional).
             pool_manager: PoolManager instance for querying pool state (optional).
             task_manager: TaskManagerProtocol instance (optional).
         """
