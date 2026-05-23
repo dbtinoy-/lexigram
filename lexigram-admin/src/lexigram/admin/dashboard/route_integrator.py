@@ -36,6 +36,31 @@ def _strip_optional(tp: Any) -> Any:
     return tp
 
 
+_DEFAULT_PRIMARY_COLOR = "#6b7280"
+
+
+async def _resolve_primary_color(container: Any) -> str:
+    """Resolve the saved branding primary color, best-effort.
+
+    Falls back to the framework default when no registry/db store is
+    available.
+    """
+    try:
+        from lexigram.admin.settings.panel.registry import ConfigRegistry
+
+        registry = await container.resolve(
+            ConfigRegistry,
+            bypass_visibility=True,
+        )
+        values = await registry.get_values("admin.branding", "db")
+        color = values.get("primary_color")
+        if color:
+            return str(color)
+    except Exception:  # noqa: BLE001 — non-fatal
+        pass
+    return _DEFAULT_PRIMARY_COLOR
+
+
 class AdminPageHandler:
     """ASGI adapter that resolves a management page handler from the DI
     container at request time and delegates to its ``handle()`` method.
@@ -67,7 +92,7 @@ class AdminPageHandler:
                 "admin_page_handler_error",
                 page=self._page_cls.__name__,
             )
-            response = await _placeholder_page(request)
+            response = await _placeholder_page(request, self._container)
 
         try:
             is_htmx = bool(request.headers.get("hx-request"))
@@ -108,7 +133,9 @@ class AdminPageHandler:
         try:
             from lexigram.admin.theme.service import AdminThemeService
 
-            service = AdminThemeService(primary_color="#6b7280")
+            service = AdminThemeService(
+                primary_color=await _resolve_primary_color(self._container)
+            )
             theme_css = service.generate_theme_css()
         except Exception:  # noqa: BLE001 — non-fatal
             pass
@@ -185,12 +212,19 @@ class AdminPageHandler:
         return self._page_cls(**kwargs)
 
 
-async def _placeholder_page(request: Any) -> HTMLResponse:
+async def _placeholder_page(
+    request: Any,
+    container: Any | None = None,
+) -> HTMLResponse:
     """Placeholder for admin pages without an implemented handler.
 
     For HTMX requests returns only the content fragment (no shell) so
     the sidebar/topbar from the existing page stays intact.  For direct
     navigation returns the full admin layout.
+
+    Args:
+        request: Starlette request.
+        container: Optional resolver for theme settings.
     """
     content = (
         '<div class="flex items-center justify-center h-64">'
@@ -223,7 +257,13 @@ async def _placeholder_page(request: Any) -> HTMLResponse:
         try:
             from lexigram.admin.theme.service import AdminThemeService
 
-            service = AdminThemeService(primary_color="#6b7280")
+            service = AdminThemeService(
+                primary_color=(
+                    await _resolve_primary_color(container)
+                    if container is not None
+                    else _DEFAULT_PRIMARY_COLOR
+                )
+            )
             theme_css = service.generate_theme_css()
         except Exception:  # noqa: BLE001 — non-fatal
             pass
