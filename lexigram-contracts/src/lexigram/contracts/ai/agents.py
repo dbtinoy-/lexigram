@@ -518,71 +518,16 @@ class RunnableAgentProtocol(Protocol):
         ...
 
 
-class AgentExecutor:
-    """Execute an agent (like LangChain's AgentExecutor).
-
-    Analogous to LangChain's AgentExecutor for running agents.
-    """
-
-    def __init__(self, agent: RunnableAgentProtocol) -> None:
-        self.agent = agent
-
-    def run(self, input: str) -> str:
-        """Run the agent synchronously."""
-        import asyncio
-
-        return asyncio.run(self.arun(input))
-
-    async def arun(self, input: str) -> str:
-        """Run the agent asynchronously."""
-        plan = await self.agent.plan(input)
-        return await self.agent.execute(plan)
-
-
-class AgentWithTools:
-    """Agent with tools (like LangChain's agent with tools).
-
-    Analogous to LangChain's tool-calling agents.
-    """
-
-    def __init__(self, tools: list[Any] | None = None) -> None:
-        self.tools = tools or []
-
-    def add_tool(self, tool: Any) -> None:
-        self.tools.append(tool)
-
-
-class PlanExecuteAgent:
-    """Plan-then-execute agent (like LangChain's PlanAndExecuteAgent).
-
-    Analogous to LangChain's PlanAndExecuteAgent.
-    """
-
-    def __init__(self) -> None:
-        pass
-
-    def run(self, input: str) -> str:
-        """Run the plan-execute agent."""
-        return f"planned and executed: {input}"
-
-    async def arun(self, input: str) -> str:
-        """Run the plan-execute agent asynchronously."""
-        return f"planned and executed: {input}"
-
-
 __all__ = [
     "AgentError",
     "AgentEvent",
     "AgentEventType",
     "AgentExecutionContext",
-    "AgentExecutor",
     "AgentExecutorProtocol",
     "AgentProtocol",
     "AgentResponse",
     "AgentStrategyProtocol",
-    "AgentWithTools",
     "MemoryProtocol",
-    "PlanExecuteAgent",
     "RunnableAgentProtocol",
     "SkillComposerProtocol",
     "StrategyError",
