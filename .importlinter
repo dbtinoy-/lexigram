@@ -334,6 +334,7 @@ name = AI sub-packages do not import from each other
 type = independence
 modules =
     lexigram.ai.agents
+    lexigram.ai.evaluation
     lexigram.ai.feedback
     lexigram.ai.governance
     lexigram.ai.guard
