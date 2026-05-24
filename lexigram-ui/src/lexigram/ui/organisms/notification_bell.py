@@ -14,7 +14,8 @@ class NotificationBell(Component):
 
     Args:
         sse_url: SSE endpoint URL for real-time notification events.
-        inbox_url: Link to the full notification inbox page.
+        inbox_url: Link to the full notification inbox page. The
+            "View all" footer is only rendered when a URL is set.
         max_display: Maximum number of notifications shown in the dropdown.
         **props: Extra HTML attributes forwarded to the root element.
     """
@@ -22,7 +23,7 @@ class NotificationBell(Component):
     def __init__(
         self,
         sse_url: str = "/admin/_sse/events",
-        inbox_url: str = "/admin/notifications",
+        inbox_url: str | None = None,
         max_display: int = 10,
         **props: Any,
     ) -> None:
@@ -147,17 +148,23 @@ class NotificationBell(Component):
                         "No new notifications",
                     ),
                 ),
-                # Footer (show when more notifications exist than max_display)
-                el(
-                    "div",
-                    el(
-                        "a",
-                        {
-                            "href": self.inbox_url,
-                            "class": "block w-full text-center px-4 py-2 text-xs text-primary-600 dark:text-primary-400 hover:bg-muted dark:hover:bg-muted/50 rounded-b-xl transition-colors",
-                        },
-                        "View all notifications",
-                    ),
+                # Footer (only when an inbox page exists)
+                *(
+                    (
+                        el(
+                            "div",
+                            el(
+                                "a",
+                                {
+                                    "href": self.inbox_url,
+                                    "class": "block w-full text-center px-4 py-2 text-xs text-primary-600 dark:text-primary-400 hover:bg-muted dark:hover:bg-muted/50 rounded-b-xl transition-colors",
+                                },
+                                "View all notifications",
+                            ),
+                        ),
+                    )
+                    if self.inbox_url
+                    else ()
                 ),
             ),
             # Alpine.js component registration
