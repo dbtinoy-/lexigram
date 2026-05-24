@@ -502,11 +502,12 @@ class AdminShell(Component):
 
         dark_mode_init = self.dark_mode or ""
         if dark_mode_init == "dark":
-            dm_expr = "true"
+            server_default_expr = "true"
         elif dark_mode_init == "light":
-            dm_expr = "false"
+            server_default_expr = "false"
         else:
-            dm_expr = "localStorage.getItem('darkMode') !== null ? localStorage.getItem('darkMode') === 'true' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)"
+            server_default_expr = "(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)"
+        dm_expr = f"localStorage.getItem('darkMode') !== null ? localStorage.getItem('darkMode') === 'true' : {server_default_expr}"
 
         return el(
             "div",

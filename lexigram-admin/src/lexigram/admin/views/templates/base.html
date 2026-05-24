@@ -135,7 +135,10 @@
         };
         (function () {
             var stored = localStorage.getItem('darkMode');
-            var dark = stored !== null ? stored === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            var serverDefault = {{ dark_mode | default('') | tojson }};
+            var dark = stored !== null ? stored === 'true'
+                : serverDefault ? serverDefault === 'dark'
+                : window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (dark) document.documentElement.classList.add('dark');
         })();
         window.toggleTheme = function () {

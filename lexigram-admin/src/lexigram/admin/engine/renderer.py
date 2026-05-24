@@ -329,6 +329,7 @@ class AdminRenderer:
                 "title": title,
                 "site_name": site_name,
                 "favicon_url": favicon_url,
+                "dark_mode": dark_mode,
                 "csrf_token": csrf_token,
             },
         )
