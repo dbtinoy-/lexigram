@@ -193,6 +193,12 @@ class WebRouterManager:
         Uses collect_routes() if available (recommended), otherwise falls back
         to _routes attribute (legacy metaclass-based approach).
         """
+        # Mirror the controller into the global route registry so admin
+        # pages and tooling can discover the routes actually being mounted.
+        from lexigram.web.routing import register_controller
+
+        register_controller(controller_cls)
+
         # Collect routes from controller
         routes = controller_cls.collect_routes()
 

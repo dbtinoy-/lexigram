@@ -6,8 +6,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.cache.backends.memory import MemoryCacheBackend
+from lexigram.cache.config import (
+    CacheBackendConfig,
+    CacheConfig,
+    MemoryBackendConfig,
+    RedisBackendConfig,
+    resolve_backend_type,
+)
 from lexigram.cache.di import provider
 from lexigram.cache.di.provider import CacheProvider
+from lexigram.cache.types import BackendType
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
 from lexigram.testing.clock import FixedClock
@@ -42,7 +51,8 @@ class TestCacheProviderModule:
     def test_provider_invalid_attribute_raises_attribute_error(self) -> None:
         """Test that accessing invalid attribute raises AttributeError"""
         with pytest.raises(
-            AttributeError, match=r"module .* has no attribute 'InvalidAttribute'",
+            AttributeError,
+            match=r"module .* has no attribute 'InvalidAttribute'",
         ):
             _ = provider.InvalidAttribute
 
@@ -146,3 +156,37 @@ class TestCacheProviderMethods:
         await provider.boot(container)
 
         cache_repository.observe.assert_called_once_with(source_repository)
+
+
+class TestCacheProviderTypedBackendConfigs:
+    """CacheProvider works with the strongly-typed backend config classes."""
+
+    def test_resolve_backend_type_typed_configs(self) -> None:
+        """resolve_backend_type handles strongly-typed and flattened configs."""
+        assert (
+            resolve_backend_type(MemoryBackendConfig(name="memory"))
+            == BackendType.MEMORY
+        )
+        assert (
+            resolve_backend_type(RedisBackendConfig(name="redis")) == BackendType.REDIS
+        )
+        flatten = CacheBackendConfig(name="flat", type=BackendType.MEMCACHED)
+        assert resolve_backend_type(flatten) == BackendType.MEMCACHED
+
+    @pytest.mark.asyncio
+    async def test_register_accepts_memory_backend_config(self) -> None:
+        """register() must accept MemoryBackendConfig (backend_type property)."""
+        cfg = CacheConfig(backends=[MemoryBackendConfig(name="memory", default=True)])
+        provider = CacheProvider(config=cfg)
+        container = MagicMock()
+        container.singleton = MagicMock()
+
+        await provider.register(container)
+
+    @pytest.mark.asyncio
+    async def test_create_backend_with_memory_backend_config(self) -> None:
+        """create_backend() builds a memory backend from MemoryBackendConfig."""
+        from lexigram.cache.backends.factory import create_backend
+
+        backend = await create_backend(MemoryBackendConfig(name="memory"))
+        assert isinstance(backend, MemoryCacheBackend)

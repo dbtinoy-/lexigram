@@ -339,6 +339,30 @@ class WebProvider(Provider):
             if isinstance(controller_cls, type):
                 container.singleton(controller_cls, controller_cls)
 
+        # Expose the active middleware pipeline to admin pages and tooling.
+        # The registry mirrors exactly what the app runs: the always-present
+        # DIScopeMiddleware plus contributed and user-supplied middleware.
+        from lexigram.web.middleware.base import MiddlewareRegistry
+        from lexigram.web.middleware.di_scope import DIScopeMiddleware
+        from lexigram.web.middleware.registry import (
+            MiddlewareAdapterRegistry,
+        )
+
+        middleware_registry = MiddlewareRegistry()
+        middleware_registry.register_middleware(DIScopeMiddleware)
+        for middleware_cls in self.middleware:
+            cls = (
+                middleware_cls
+                if isinstance(middleware_cls, type)
+                else type(middleware_cls)
+            )
+            middleware_registry.register_middleware(cls)
+        container.singleton(MiddlewareRegistry, middleware_registry)
+        container.singleton(
+            MiddlewareAdapterRegistry,
+            MiddlewareAdapterRegistry(),
+        )
+
         # Auto-register user classes decorated with @singleton / @injectable.
         # Scan loaded non-framework modules so script-mode apps work without
         # manually calling container.singleton() for each service.

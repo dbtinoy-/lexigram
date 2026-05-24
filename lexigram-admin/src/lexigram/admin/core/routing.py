@@ -74,6 +74,37 @@ class AdminRouter:
             ),
         )
 
+    def alias_route(self, source_path: str, alias_path: str, name: str) -> bool:
+        """Register ``alias_path`` with the same endpoint as ``source_path``.
+
+        Used to expose a route under an additional path (e.g. cluster
+        areas under the center namespace). Returns ``True`` when the
+        source route was found and aliased.
+
+        Args:
+            source_path: Path of the already-registered route.
+            alias_path: Additional path to register.
+            name: Route name for the alias.
+
+        Returns:
+            Whether the source route existed and the alias was added.
+        """
+        source = next(
+            (r for r in self._extra_routes if r.path == source_path),
+            None,
+        )
+        if source is None:
+            return False
+        self._extra_routes.append(
+            Route(
+                alias_path,
+                endpoint=source.endpoint,
+                methods=source.methods,
+                name=name,
+            ),
+        )
+        return True
+
     def mount(self, app: Starlette) -> Starlette | None:
         """Mount admin panel to a Starlette application.
 

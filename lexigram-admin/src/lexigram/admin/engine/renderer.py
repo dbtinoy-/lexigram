@@ -21,12 +21,16 @@ except ImportError:
     Markup = str  # type: ignore[misc,assignment]
 
 
-def resolve_admin_nav(request: Any) -> tuple[list, list]:
-    """Resolve nav items and system menu items from NavItemBuilder on the request.
+def resolve_admin_nav(request: Any) -> tuple[list, list, list | None]:
+    """Resolve nav items, system menu items, and cluster secondary nav.
 
     Merges NavItemBuilder resource items with NavigationAssembler contributor
     navigation items. Active-state detection is computed per-request based on
     the current URL path.
+
+    Cluster groups (e.g. infrastructure) are collapsed in the primary sidebar
+    into a single landing entry; when the current path belongs to the cluster,
+    the secondary nav for its center is returned as the third element.
 
     Duplicates are removed at three levels:
     1. Group header dedup — assembler group headers that match builder
@@ -41,21 +45,41 @@ def resolve_admin_nav(request: Any) -> tuple[list, list]:
         request: The current request (Starlette Request).
 
     Returns:
-        A tuple of (nav_items, system_menu_items) lists.
+        A tuple of (nav_items, system_menu_items, secondary_nav).
     """
     nav_builder = None
     assembler_nav_items: list[dict] = []
+    assembler_groups: dict | None = None
     state = getattr(request, "app", None) if request else None
     if state and hasattr(state, "state"):
         nav_builder = getattr(state.state, "nav_builder", None)
         assembler_nav_items = getattr(state.state, "assembler_nav_items", None) or []
+        assembler_groups = getattr(state.state, "assembler_groups", None) or None
 
     if nav_builder is None:
-        return [], []
+        return [], [], None
 
     current_path: str | None = (
         str(request.url.path) if request and hasattr(request, "url") else None
     )
+
+    from lexigram.admin.navigation.clusters import (
+        build_secondary_nav,
+        cluster_items,
+        collapse_cluster_in_primary,
+        is_cluster_path,
+    )
+
+    cluster_nav: list | None = None
+    items = cluster_items(assembler_groups)
+    if items:
+        if is_cluster_path(current_path, items):
+            cluster_nav = build_secondary_nav(items, current_path)
+        assembler_nav_items = collapse_cluster_in_primary(
+            assembler_nav_items,
+            current_path,
+            items,
+        )
 
     # Build from NavItemBuilder with active-state detection
     builder_items = nav_builder.build_nav_items(current_path=current_path)
@@ -138,7 +162,7 @@ def resolve_admin_nav(request: Any) -> tuple[list, list]:
             group_labels.setdefault(current_group, set()).add(label)
         merged.append(item)
 
-    return merged, system_menu_items
+    return merged, system_menu_items, cluster_nav
 
 
 @dataclass
@@ -213,13 +237,18 @@ class AdminRenderer:
         Returns:
             HTMLResponse with rendered page
         """
+        from lexigram.admin.navigation.clusters import (
+            CLUSTER_ICON,
+            CLUSTER_LABEL,
+            CLUSTER_URL,
+        )
         from lexigram.admin.state.context import AdminContextManager
         from lexigram.admin.ui.templates.shell import AdminShell
         from lexigram.ui.core.base import render_to_string
 
         user = getattr(request.state, "user", None) if request else None
 
-        nav_items, system_menu_items = resolve_admin_nav(request)
+        nav_items, system_menu_items, _ = resolve_admin_nav(request)
 
         # Read flash messages from request context and consume them
         ctx = AdminContextManager.get_context()
@@ -244,6 +273,11 @@ class AdminRenderer:
             pass
 
         user_menu_items: list[dict[str, str]] = [
+            {
+                "label": CLUSTER_LABEL,
+                "href": CLUSTER_URL,
+                "icon": CLUSTER_ICON,
+            },
             {
                 "label": "Settings",
                 "href": "/admin/settings",

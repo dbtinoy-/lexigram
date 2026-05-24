@@ -293,9 +293,10 @@ class AdminShell(Component):
         topbar_html = raw(render_to_string(topbar))
 
         content_node = self.content
-        # Normalize content to an HTML string and wrap it so the shell
-        # always exposes a stable `#main-content` element for HTMX targets.
-        # We use `raw(render_to_string(...))` to avoid escaping HTML.
+        # Normalize content to an HTML string so the shell always exposes a
+        # stable `#main-content` element (with constant classes) for HTMX
+        # targets. Cluster centers render their sidebar inside the content
+        # and own their layout.
         content_inner = raw(render_to_string(content_node))
 
         # 4. Handle Notifications (Toast)

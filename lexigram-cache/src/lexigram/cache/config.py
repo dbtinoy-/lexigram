@@ -637,6 +637,27 @@ def default_cache_config() -> CacheOperationConfig:
     )
 
 
+def resolve_backend_type(config: CacheBackendConfig) -> BackendType:
+    """Return the backend type from a backend configuration.
+
+    The flattened :class:`CacheBackendConfig` stores the type in the
+    ``type`` field while the strongly-typed classes
+    (:class:`MemoryBackendConfig`, :class:`RedisBackendConfig`,
+    :class:`MemcachedBackendConfig`) expose it via the ``backend_type``
+    property. This helper normalizes both shapes.
+
+    Args:
+        config: Backend configuration, either shape.
+
+    Returns:
+        The resolved :class:`BackendType`.
+    """
+    backend_type = getattr(config, "backend_type", None)
+    if backend_type is not None:
+        return backend_type
+    return config.type
+
+
 def make_cache_config(**kwargs: Any) -> CacheConfig:
     """Helper to create cache config from kwargs.
 
@@ -774,4 +795,5 @@ __all__ = [
     "get_backend_type_from_string",
     "make_cache_config",
     "make_cache_service_config",
+    "resolve_backend_type",
 ]

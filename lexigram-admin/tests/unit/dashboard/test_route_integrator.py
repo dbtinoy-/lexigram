@@ -98,6 +98,116 @@ class TestRouteIntegrator:
             integrator.register([FakeContributor()])
 
 
+class TestClusterAliases:
+    def _integrator(self, router: object) -> RouteIntegrator:
+        return RouteIntegrator(
+            router=router,  # type: ignore[arg-type]
+            naming_policy=NamingPolicy(mode="warn"),
+            route_prefix="/admin",
+        )
+
+    def test_real_page_route_is_aliased_under_cluster_namespace(self) -> None:
+        from lexigram.admin.core.routing import AdminRouter
+        from lexigram.admin.navigation.clusters import CLUSTER_GROUP
+        from lexigram.contracts.admin import (
+            ManagementPageDefinition,
+            NavigationContribution,
+        )
+
+        router = AdminRouter(config=MagicMock())
+        handler = MagicMock(return_value="page")
+
+        class ClusterContributor(FakeContributor):
+            name = "cluster"
+            package_source = "cluster_pkg"
+
+            def get_navigation_items(self):
+                return [
+                    NavigationContribution(
+                        label="Web",
+                        url="/admin/web",
+                        icon="globe",
+                        group=CLUSTER_GROUP,
+                    ),
+                ]
+
+            def get_management_pages(self):
+                return [
+                    ManagementPageDefinition(
+                        name="web_overview",
+                        title="Web",
+                        contributor="web",
+                        route_path="/web",
+                        handler=handler,
+                    ),
+                ]
+
+        self._integrator(router).register([ClusterContributor()])
+
+        paths = [r.path for r in router._extra_routes]
+        assert "/infrastructure/web" in paths
+        source = next(r for r in router._extra_routes if r.path == "/web")
+        alias = next(r for r in router._extra_routes if r.path == "/infrastructure/web")
+        assert alias.endpoint == source.endpoint == handler
+        assert alias.name == "cluster_alias_web"
+
+    def test_placeholder_route_is_aliased_under_cluster_namespace(self) -> None:
+        from lexigram.admin.core.routing import AdminRouter
+        from lexigram.admin.navigation.clusters import CLUSTER_GROUP
+        from lexigram.contracts.admin import NavigationContribution
+
+        router = AdminRouter(config=MagicMock())
+
+        class NavOnlyContributor(FakeContributor):
+            name = "cluster"
+            package_source = "cluster_pkg"
+
+            def get_navigation_items(self):
+                return [
+                    NavigationContribution(
+                        label="Cache",
+                        url="/admin/cache",
+                        icon="zap",
+                        group=CLUSTER_GROUP,
+                    ),
+                ]
+
+        self._integrator(router).register([NavOnlyContributor()])
+
+        paths = [r.path for r in router._extra_routes]
+        assert "/cache" in paths
+        assert "/infrastructure/cache" in paths
+        source = next(r for r in router._extra_routes if r.path == "/cache")
+        alias = next(
+            r for r in router._extra_routes if r.path == "/infrastructure/cache"
+        )
+        assert alias.endpoint == source.endpoint
+
+    def test_non_cluster_nav_items_get_no_alias(self) -> None:
+        from lexigram.admin.core.routing import AdminRouter
+        from lexigram.contracts.admin import NavigationContribution
+
+        router = AdminRouter(config=MagicMock())
+
+        class FrameworkContributor(FakeContributor):
+            name = "framework"
+            package_source = "framework_pkg"
+
+            def get_navigation_items(self):
+                return [
+                    NavigationContribution(
+                        label="Auth",
+                        url="/admin/auth",
+                        icon="lock",
+                    ),
+                ]
+
+        self._integrator(router).register([FrameworkContributor()])
+
+        paths = [r.path for r in router._extra_routes]
+        assert "/infrastructure/auth" not in paths
+
+
 class TestResolvePrimaryColor:
     @pytest.mark.asyncio
     async def test_returns_saved_branding_color(self) -> None:

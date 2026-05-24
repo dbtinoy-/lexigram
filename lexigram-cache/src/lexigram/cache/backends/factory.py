@@ -12,7 +12,11 @@ from typing import TYPE_CHECKING, Any
 from lexigram.cache.backends.memcached import MemcachedCacheBackend
 from lexigram.cache.backends.memory import MemoryCacheBackend
 from lexigram.cache.backends.redis import RedisCacheBackend
-from lexigram.cache.config import CacheBackendConfig, default_cache_config
+from lexigram.cache.config import (
+    CacheBackendConfig,
+    default_cache_config,
+    resolve_backend_type,
+)
 from lexigram.cache.types import BackendType
 
 if TYPE_CHECKING:
@@ -40,16 +44,16 @@ async def create_backend(
     if config.default_ttl is not None:
         cache_config.default_ttl = config.default_ttl
     cache_config.key_prefix = config.key_prefix
-    cache_config.enable_metrics = config.enable_metrics
+    cache_config.enable_metrics = getattr(config, "enable_metrics", True)
 
-    if config.type == BackendType.MEMORY:
+    if resolve_backend_type(config) == BackendType.MEMORY:
         return MemoryCacheBackend(
             config=cache_config,
             max_size=config.max_size,
             hooks=hooks,
         )
 
-    if config.type == BackendType.REDIS:
+    if resolve_backend_type(config) == BackendType.REDIS:
         if not config.redis_url:
             raise ValueError("Redis backend requires a redis_url")
 
@@ -72,13 +76,13 @@ async def create_backend(
 
         return RedisCacheBackend(store=state_store, config=cache_config, hooks=hooks)
 
-    if config.type == BackendType.MEMCACHED:
+    if resolve_backend_type(config) == BackendType.MEMCACHED:
         return MemcachedCacheBackend(
             servers=config.memcached_servers or [],
             config=cache_config,
         )
 
-    raise ValueError(f"Unsupported backend type: {config.type}")
+    raise ValueError(f"Unsupported backend type: {resolve_backend_type(config)}")
 
 
 __all__ = ["create_backend"]

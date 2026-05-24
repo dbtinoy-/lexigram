@@ -135,7 +135,7 @@ class ConfigLayout(Component):
         return el(
             "nav",
             *groups,
-            class_="w-full lg:w-64 flex-shrink-0 bg-card rounded-xl border border-border p-4",
+            class_="w-full lg:w-64 flex-shrink-0",
             aria_label="Configuration categories",
         )
 

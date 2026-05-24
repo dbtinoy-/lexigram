@@ -13,6 +13,7 @@ from lexigram.resilience.di.provider import ResilienceProvider
 
 
 @module(
+    is_global=True,
     providers=[ResilienceProvider],
     exports=[CircuitBreakerRegistryProtocol, ResiliencePipelineFactoryProtocol],
 )
