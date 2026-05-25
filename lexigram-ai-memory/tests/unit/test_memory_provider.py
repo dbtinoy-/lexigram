@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+from structlog.testing import capture_logs
+
+from lexigram.ai.memory.config import MemoryConfig
 from lexigram.ai.memory.di.provider import MemoryProvider
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
+
+
+def _events_with_name(logs: list[dict], name: str) -> list[dict]:
+    """Filter captured structlog events by event name."""
+    return [entry for entry in logs if entry.get("event") == name]
 
 
 class TestMemoryProviderStructure:
@@ -74,3 +82,40 @@ class TestMemoryProviderLifecycle:
 
         # Should complete without error
         await prov.shutdown()
+
+
+class TestMemoryProviderBackendWarning:
+    """Test that unimplemented default_backend values surface a warning.
+
+    Note:
+        The framework's structlog pipeline renders through
+        ``PrintLoggerFactory``, so ``caplog`` never sees native structlog
+        events. Assertions use ``structlog.testing.capture_logs()``, which
+        swaps in a capture factory and restores the global config on exit.
+    """
+
+    @pytest.mark.asyncio
+    async def test_warns_when_unimplemented_backend_requested(self) -> None:
+        """Verify a warning is emitted for unimplemented backends."""
+        provider = MemoryProvider(config=MemoryConfig(default_backend="database"))
+        container = MagicMock()
+        container.singleton = MagicMock()
+
+        with capture_logs() as logs:
+            await provider.register(container)
+
+        diagnostics = _events_with_name(logs, "memory_backend_not_implemented")
+        assert len(diagnostics) == 1
+        assert diagnostics[0]["requested_backend"] == "database"
+
+    @pytest.mark.asyncio
+    async def test_no_warning_for_default_in_memory_backend(self) -> None:
+        """Verify no warning is emitted for the default in-memory backend."""
+        provider = MemoryProvider(config=MemoryConfig())
+        container = MagicMock()
+        container.singleton = MagicMock()
+
+        with capture_logs() as logs:
+            await provider.register(container)
+
+        assert _events_with_name(logs, "memory_backend_not_implemented") == []
