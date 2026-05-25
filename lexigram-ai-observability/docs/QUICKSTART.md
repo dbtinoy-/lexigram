@@ -13,12 +13,6 @@ description: Install, wire, and run AI observability for LLM and vector calls.
 uv add lexigram-ai-observability
 ```
 
-Optional OpenTelemetry export:
-
-```bash
-uv add "lexigram-ai-observability[opentelemetry]"
-```
-
 ## Minimal Example
 
 ```python
