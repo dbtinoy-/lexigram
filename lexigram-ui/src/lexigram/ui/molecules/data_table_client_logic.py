@@ -231,9 +231,6 @@ class DataTableScriptRenderer:
             document.addEventListener('htmx:afterSwap', (e) => {{
                 try {{
                     const target = e.detail.target;
-                    if (window.Alpine && target) {{
-                        try {{ Alpine.initTree(target); }} catch (err) {{ }}
-                    }}
                     if (window.htmx && target) {{
                         try {{ htmx.process(target); }} catch (err) {{ }}
                     }}

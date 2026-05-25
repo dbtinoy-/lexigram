@@ -29,6 +29,7 @@ def _mock_request(
 
     req.form = _form
     req.state = MagicMock(user=user)
+    req.scope = {}
     return req
 
 

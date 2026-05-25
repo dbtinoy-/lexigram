@@ -217,7 +217,9 @@ class SettingsController(AdminController):
                 status_code=302,
             )
 
-        form = await request.form()
+        form = request.scope.get("admin_form_data")
+        if form is None:
+            form = await request.form()
 
         nodes = spec.get_nodes()
         updates = {

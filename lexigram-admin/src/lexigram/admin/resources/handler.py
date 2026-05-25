@@ -460,7 +460,9 @@ class BulkActionHandler:
             return HTMLResponse(html)
 
         # ── Bulk action execution (POST) ──
-        form = await request.form()
+        form = request.scope.get("admin_form_data")
+        if form is None:
+            form = await request.form()
         action_name = form.get("action", "")
         form_ids = form.getlist("ids") if hasattr(form, "getlist") else []
 

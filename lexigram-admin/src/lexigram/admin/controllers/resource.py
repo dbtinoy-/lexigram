@@ -326,7 +326,9 @@ class ResourceController(ABC, Generic[T]):
     async def create(self, request: Request) -> Response:
         """Create new resource."""
         async with AdminContextManager(request) as ctx:
-            form_data = await request.form()
+            form_data = request.scope.get("admin_form_data")
+            if form_data is None:
+                form_data = await request.form()
             data = dict(form_data)
 
             # Validate
@@ -395,7 +397,9 @@ class ResourceController(ABC, Generic[T]):
         """Update existing resource."""
         async with AdminContextManager(request) as ctx:
             item_id = request.path_params.get("id")
-            form_data = await request.form()
+            form_data = request.scope.get("admin_form_data")
+            if form_data is None:
+                form_data = await request.form()
             data = dict(form_data)
 
             # Validate
@@ -574,7 +578,9 @@ class ResourceController(ABC, Generic[T]):
     async def bulk_action(self, request: Request) -> Response:
         """Handle bulk actions."""
         async with AdminContextManager(request) as ctx:
-            form_data = await request.form()
+            form_data = request.scope.get("admin_form_data")
+            if form_data is None:
+                form_data = await request.form()
             action = form_data.get("action")
             ids = form_data.getlist("ids")
 

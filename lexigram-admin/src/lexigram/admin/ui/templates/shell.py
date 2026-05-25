@@ -530,6 +530,6 @@ class AdminShell(Component):
             # Modal container for HTMX modals
             el("div", id=Zones.MODAL.id, class_="absolute z-[100]"),
             # Slide-over container for side panels
-            el("div", id=Zones.SLIDE_OVER.id, class_="absolute z-[100]"),
+            el("div", id=Zones.SLIDE_OVER.id, class_="fixed inset-0 z-[100] pointer-events-none"),
             CommandPalette(commands=self.commands),
         )

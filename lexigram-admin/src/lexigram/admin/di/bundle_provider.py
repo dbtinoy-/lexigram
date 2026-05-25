@@ -285,7 +285,10 @@ class AdminProvider(Provider):
 
         # Resolve built-in WidgetController (best-effort)
         try:
-            from lexigram.admin.auth.protocols import AdminAuditLogServiceProtocol
+            from lexigram.admin.auth.protocols import (
+                AdminAuditLogServiceProtocol,
+                AdminCsrfServiceProtocol,
+            )
             from lexigram.admin.controllers.widgets import WidgetController
 
             widget_controller = await admin_resolver.resolve(
@@ -308,6 +311,17 @@ class AdminProvider(Provider):
                 widget_controller, "_audit_service"
             ):
                 widget_controller._audit_service = audit_service
+            try:
+                csrf_service = await admin_resolver.resolve(
+                    AdminCsrfServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                csrf_service = None
+            if csrf_service is not None and hasattr(
+                widget_controller, "_csrf_service"
+            ):
+                widget_controller._csrf_service = csrf_service
         except Exception as exc:
             _log.error(
                 "admin.widget_controller_resolution_failed",

@@ -280,7 +280,12 @@ class WidgetRegistry:
             cog = el(
                 "button",
                 "⚙",
-                onclick=f"openWidgetConfig('/admin/core/widgets/{widget_def.name}/config')",
+                **{
+                    "hx-get": f"/admin/core/widgets/{widget_def.name}/config",
+                    "hx-target": "#slide-over-container",
+                    "hx-swap": "innerHTML",
+                    "hx-push-url": "false",
+                },
                 class_="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-muted-foreground hover:text-muted-foreground text-sm cursor-pointer",
             )
             title_row = el(
@@ -406,41 +411,44 @@ def render_widget_config_popup(
             ),
         )
 
-    return str(
-        el(
-            "dialog",
+    from lexigram.admin.ui.organisms.admin_slide_over import (
+        render_slide_over_fragment,
+    )
+
+    form = el(
+        "form",
+        *rows,
+        el("input", type_="hidden", name="widget_name", value=widget_name),
+        id=f"widget-config-form-{widget_name}",
+        **{
+            "hx-post": "/admin/core/widgets/config",
+            "hx-swap": "none",
+            "hx-on:htmx:after-request": "if(event.detail.successful){window.location.reload();}",
+        },
+        class_="space-y-3",
+    )
+
+    return render_slide_over_fragment(
+        title=f"Configure: {title}",
+        subtitle="Update this widget's settings.",
+        content=form,
+        size="md",
+        footer=[
             el(
-                "form",
-                el("h3", f"Configure: {title}", class_="text-lg font-semibold mb-4"),
-                *rows,
-                el("input", type_="hidden", name="widget_name", value=widget_name),
-                el(
-                    "div",
-                    el(
-                        "button",
-                        "Save",
-                        type_="submit",
-                        class_="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90",
-                    ),
-                    el(
-                        "button",
-                        "Cancel",
-                        type_="button",
-                        class_="ml-2 text-muted-foreground px-4 py-2 rounded hover:bg-muted",
-                        onclick="this.closest('dialog').close()",
-                    ),
-                    class_="mt-4 flex justify-end gap-2",
-                ),
-                **{
-                    "hx-post": "/admin/core/widgets/config",
-                    "hx-swap": "none",
-                    "hx-on:htmx:afterRequest": "document.getElementById('widget-config-dialog').close()",
-                },
-                class_="p-6",
+                "button",
+                "Cancel",
+                type_="button",
+                **{"x-on:click": "open = false"},
+                class_="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-foreground bg-card border border-border hover:bg-muted transition-colors",
             ),
-            id=f"config-{widget_name}",
-            class_="rounded shadow-lg border",
-        ),
+            el(
+                "button",
+                "Save",
+                type_="submit",
+                form=f"widget-config-form-{widget_name}",
+                class_="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors",
+            ),
+        ],
     )
 
 
