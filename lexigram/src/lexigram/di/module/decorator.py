@@ -306,19 +306,19 @@ def _create_scan_provider(
     Returns:
         A ``Provider`` subclass ready for inclusion in the module's provider list.
     """
-    from lexigram.app._injectable_provider import _InjectableAutoProvider
+    from lexigram.app import InjectableAutoProvider
 
     # Create a unique subclass so each module gets its own scan provider
     provider_cls = type(
         f"_ScanProvider_{module_name}",
-        (_InjectableAutoProvider,),
+        (InjectableAutoProvider,),
         {},
     )
 
     # Override __init__ to inject the discovered injectables
     captured_injectables = list(injectables)
 
-    original_init = _InjectableAutoProvider.__init__
+    original_init = InjectableAutoProvider.__init__
 
     def __init__(self: Any) -> None:  # noqa: N807
         original_init(self, captured_injectables)
