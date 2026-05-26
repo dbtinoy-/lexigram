@@ -226,3 +226,28 @@ async def test_all_subsystem_accessors_are_exposed_with_task_names() -> None:
 
     beat = provider.beat
     assert isinstance(beat, BeatAccessor)
+
+
+@pytest.mark.asyncio
+async def test_video_accessor_gets_whole_video_services_when_processor_present() -> (
+    None
+):
+    from unittest.mock import AsyncMock
+
+    from lexigram.contracts.multimedia.protocols import VideoProcessor
+    from lexigram.multimedia.interpolate.video_interpolation_service import (
+        VideoInterpolationService,
+    )
+    from lexigram.multimedia.upscale.video_upscale_service import VideoUpscaleService
+
+    provider = MultimediaProvider(config=MultimediaConfig())
+    container = _FakeContainer()
+    container.singleton(VideoProcessor, AsyncMock())
+    await provider.register(container)
+
+    video = provider.video
+
+    assert video._video_upscale_service is not None
+    assert isinstance(video._video_upscale_service, VideoUpscaleService)
+    assert video._video_interpolation_service is not None
+    assert isinstance(video._video_interpolation_service, VideoInterpolationService)

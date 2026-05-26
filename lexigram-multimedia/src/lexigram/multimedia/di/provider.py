@@ -347,6 +347,10 @@ class MultimediaProvider(Provider):
             processing=processing,
             storage=self._storage,
             path_prefix=(f"{self._config.storage_path_prefix}video/processed/in/"),
+            video_upscale_service=self._sub_providers["upscale"]._video_upscale_service,
+            video_interpolation_service=(
+                self._sub_providers["interpolate"]._video_interpolation_service
+            ),
         )
 
     @property

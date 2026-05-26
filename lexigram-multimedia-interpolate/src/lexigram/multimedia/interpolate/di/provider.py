@@ -22,6 +22,9 @@ if TYPE_CHECKING:
         CircuitBreakerProtocol,
         RetryPolicyProtocol,
     )
+    from lexigram.multimedia.interpolate.video_interpolation_service import (
+        VideoInterpolationService,
+    )
 
 logger = get_logger(__name__)
 
@@ -43,6 +46,7 @@ class InterpolationGenerationProvider(Provider):
         self._task_handler: InterpolationTask | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
+        self._video_interpolation_service: VideoInterpolationService | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -95,6 +99,7 @@ class InterpolationGenerationProvider(Provider):
             video_interpolation_service = VideoInterpolationService(
                 interpolation_provider=self._backend, video_processor=video_processor
             )
+            self._video_interpolation_service = video_interpolation_service
             container.singleton(VideoInterpolationService, video_interpolation_service)
 
         logger.info("interpolation_registered", backend=self._config.backend)

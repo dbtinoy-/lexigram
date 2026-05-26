@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.result import Result
@@ -26,11 +26,15 @@ class VideoAccessor:
         processing: SubsystemAccessor,
         storage: Any,
         path_prefix: str,
+        video_upscale_service: Any | None = None,
+        video_interpolation_service: Any | None = None,
     ) -> None:
         self._generation = generation
         self._processing = processing
         self._storage = storage
         self._path_prefix = path_prefix
+        self._video_upscale_service = video_upscale_service
+        self._video_interpolation_service = video_interpolation_service
 
     async def generate(
         self, request: VideoRequest
@@ -75,6 +79,42 @@ class VideoAccessor:
             self._processing._task_name, params, idempotency_key=idempotency_key
         )
         return JobHandle.from_idempotency_result(result, is_duplicate=is_duplicate)
+
+    async def upscale_video(
+        self, asset: MediaAsset, *, scale_factor: Literal[2, 4] = 4
+    ) -> Result[MediaAsset, MultimediaError]:
+        from lexigram.contracts.core.result import Err
+        from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
+
+        if self._video_upscale_service is None:
+            return Err(
+                ProviderNotInstalledError(
+                    "Whole-video upscaling requires a VideoProcessor to be "
+                    "configured — none was found when the upscale subsystem "
+                    "registered."
+                )
+            )
+        return await self._video_upscale_service.upscale_video(
+            asset, scale_factor=scale_factor
+        )
+
+    async def interpolate_video(
+        self, asset: MediaAsset, *, factor: Literal[2, 4] = 2, fps: float
+    ) -> Result[MediaAsset, MultimediaError]:
+        from lexigram.contracts.core.result import Err
+        from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
+
+        if self._video_interpolation_service is None:
+            return Err(
+                ProviderNotInstalledError(
+                    "Whole-video interpolation requires a VideoProcessor to be "
+                    "configured — none was found when the interpolate "
+                    "subsystem registered."
+                )
+            )
+        return await self._video_interpolation_service.interpolate_video(
+            asset, factor=factor, fps=fps
+        )
 
 
 __all__ = ["VideoAccessor"]
