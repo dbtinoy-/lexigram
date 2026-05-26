@@ -1,9 +1,15 @@
+import dataclasses
 from unittest.mock import AsyncMock
 
 import pytest
 
 from lexigram.contracts.core.result import Ok
-from lexigram.contracts.multimedia.types import ComposeVideo, MediaAsset
+from lexigram.contracts.multimedia.types import (
+    ComposeVideo,
+    MediaAsset,
+    VideoMode,
+    VideoRequest,
+)
 from lexigram.multimedia.video.tasks import VideoGenerationTask, VideoProcessingTask
 
 
@@ -48,6 +54,46 @@ async def test_task_forwards_extra_to_request() -> None:
 
     sent_request = backend.generate.await_args.args[0]
     assert sent_request.extra == {"motion_bucket_id": 200}
+
+
+@pytest.mark.asyncio
+async def test_run_preserves_all_video_request_fields() -> None:
+    captured: list[VideoRequest] = []
+
+    async def fake_generate(request: VideoRequest):
+        captured.append(request)
+        return Ok(
+            MediaAsset(
+                mime_type="video/mp4",
+                provider="test",
+                bytes_data=b"x",
+                uri=None,
+                metadata={},
+            )
+        )
+
+    backend = AsyncMock()
+    backend.generate = fake_generate
+    task = VideoGenerationTask(backend=backend)
+
+    request = VideoRequest(
+        prompt="a cat",
+        model="sora-2",
+        mode=VideoMode.FIRST_LAST_FRAME,
+        last_frame_image="frame.png",
+        reference_images=["ref1.png"],
+        reference_videos=["ref1.mp4"],
+        reference_audios=["ref1.mp3"],
+        generate_audio=True,
+        return_last_frame=True,
+        ratio="16:9",
+        seed=42,
+    )
+    params = dataclasses.asdict(request)
+
+    await task.run(params)
+
+    assert captured[0] == request
 
 
 @pytest.mark.asyncio
