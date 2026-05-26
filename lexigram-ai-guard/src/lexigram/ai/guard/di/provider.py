@@ -138,6 +138,7 @@ class GuardProvider(Provider):
                     model=cfg.guard_model,
                     threshold=cfg.llm_guard_threshold,
                     action=cfg.injection_action,
+                    fail_open=cfg.llm_guard_fail_open,
                 ),
             )
         )
@@ -149,6 +150,7 @@ class GuardProvider(Provider):
                     model=cfg.guard_model,
                     threshold=cfg.llm_guard_threshold,
                     action=cfg.injection_action,
+                    fail_open=cfg.llm_guard_fail_open,
                 ),
             )
         )

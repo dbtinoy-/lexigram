@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from lexigram.ai.agents.executor import AgentExecutorImpl
@@ -251,3 +253,63 @@ class TestAgentStreamingGovernance:
         error_events = [e for e in events if e.type == "error"]
 
         assert len(error_events) > 0
+
+
+class TestAgentStreamingGuardFailClosed:
+    """astream() must fail closed on guard infrastructure errors (both legs)."""
+
+    @pytest.mark.asyncio
+    async def test_streaming_fails_closed_on_guard_infrastructure_error(self) -> None:
+        """A guard-pipeline crash must abort the stream (mirrors run())."""
+        from lexigram.ai.agents.executor.streaming import AgentEventType
+
+        class _CrashingPipeline:
+            async def check_input(self, content, **kwargs):
+                raise RuntimeError("guard service down")
+
+            async def check_output(self, content, **kwargs):
+                raise RuntimeError("guard service down")
+
+        executor = AgentExecutorImpl(llm=MockLLM())
+        executor._guard_pipeline = _CrashingPipeline()
+        agent = MockAgent(name="test")
+
+        events: list[Any] = []
+        async for event in executor.astream(agent=agent, message="hello", user_id=None):
+            events.append(event)
+
+        assert any(e.type == AgentEventType.ERROR for e in events)
+        assert all(e.type != AgentEventType.MESSAGE for e in events)
+
+    @pytest.mark.asyncio
+    async def test_streaming_fails_closed_on_guard_output_error(self) -> None:
+        """An output-leg guard crash must abort the stream (re-audit G1).
+
+        The output check return was previously discarded at :150, so an
+        output-side guard error still yielded MESSAGE + FINISHED(success=True).
+        """
+        from types import SimpleNamespace
+
+        from lexigram.ai.agents.executor.streaming import AgentEventType
+        from lexigram.result import Ok
+
+        class _OutputCrashingPipeline:
+            async def check_input(self, content, **kwargs):
+                return Ok(SimpleNamespace(blocked=False, final_content=content))
+
+            async def check_output(self, content, **kwargs):
+                raise RuntimeError("guard service down")
+
+        executor = AgentExecutorImpl(llm=MockLLM())
+        executor._guard_pipeline = _OutputCrashingPipeline()
+        agent = MockAgent(name="test")
+
+        events: list[Any] = []
+        async for event in executor.astream(agent=agent, message="hello", user_id=None):
+            events.append(event)
+
+        assert any(e.type == AgentEventType.ERROR for e in events)
+        assert all(e.type != AgentEventType.MESSAGE for e in events)
+        finished = [e for e in events if e.type == AgentEventType.FINISHED]
+        assert finished
+        assert finished[-1].data.get("success") is False

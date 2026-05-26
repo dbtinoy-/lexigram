@@ -98,6 +98,16 @@ class TestGuardConfig:
         config = GuardConfig(restricted_topics=["politics", "religion", "violence"])
         assert config.restricted_topics == ["politics", "religion", "violence"]
 
+    def test_llm_guard_fail_open_default_false(self) -> None:
+        """LLM guards fail closed on infrastructure errors by default."""
+        config = GuardConfig()
+        assert config.llm_guard_fail_open is False
+
+    def test_llm_guard_fail_open_explicit_true(self) -> None:
+        """Explicit True restores the legacy fully fail-open posture."""
+        config = GuardConfig(llm_guard_fail_open=True)
+        assert config.llm_guard_fail_open is True
+
     def test_full_custom_config(self) -> None:
         """Test configuring all options."""
         config = GuardConfig(

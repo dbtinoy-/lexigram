@@ -148,7 +148,28 @@ async def astream(
 
         response = result.unwrap()
 
-        await _check_guard_output(self, response.message, message, session_id, user_id)
+        guard_ok = await _check_guard_output(
+            self, response.message, message, session_id, user_id
+        )
+        if not guard_ok:
+            yield AgentEvent(
+                type=AgentEventType.ERROR,
+                data={
+                    "error": "Output blocked by guard pipeline",
+                    "agent_name": agent.name,
+                },
+                run_id=run_id,
+            )
+            yield AgentEvent(
+                type=AgentEventType.FINISHED,
+                data={
+                    "agent_name": agent.name,
+                    "success": False,
+                    "error": "Output blocked",
+                },
+                run_id=run_id,
+            )
+            return
 
         yield AgentEvent(
             type=AgentEventType.MESSAGE,
@@ -248,8 +269,9 @@ async def _check_guard_input(
         if blocked:
             logger.warning("input_blocked", session_id=session_id)
             return False
-    except Exception as e:
-        logger.warning("guard_input_check_failed", error=str(e))
+    except (RuntimeError, OSError) as exc:
+        logger.warning("guard_input_check_failed", error=str(exc))
+        return False
     return True
 
 
@@ -278,8 +300,9 @@ async def _check_guard_output(
         if blocked:
             logger.warning("output_blocked", session_id=session_id)
             return False
-    except Exception as e:
-        logger.warning("guard_output_check_failed", error=str(e))
+    except (RuntimeError, OSError) as exc:
+        logger.warning("guard_output_check_failed", error=str(exc))
+        return False
     return True
 
 
