@@ -323,3 +323,23 @@ async def test_comfyui_health_check_hits_system_stats(mocker) -> None:
     assert result.status == HealthStatus.HEALTHY
     called_url = mock_get.call_args.args[0]
     assert called_url.endswith("/system_stats")
+
+
+@pytest.mark.asyncio
+async def test_wan22_backend_gets_its_own_default_timeout_when_unset() -> None:
+    provider = VideoGenerationProvider(config=VideoConfig(backend="wan22"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    assert provider._backend._timeout == 180.0
+
+
+@pytest.mark.asyncio
+async def test_explicit_timeout_still_overrides_backend_default() -> None:
+    provider = VideoGenerationProvider(
+        config=VideoConfig(backend="wan22", timeout=30.0)
+    )
+    container = _FakeContainer()
+    await provider.register(container)
+
+    assert provider._backend._timeout == 30.0
