@@ -40,7 +40,6 @@ Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 stability-audio = []
-local-inproc = []
 ace-step-server = ["torch", "ace-step"]
 stable-audio-open-server = ["torch", "stable-audio-tools"]
 test = [

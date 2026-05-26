@@ -41,7 +41,6 @@ Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 elevenlabs = []
 openai = []
-local-inproc = []
 chatterbox-server = ["torch", "chatterbox-tts", "torchaudio"]
 kokoro-server = ["kokoro", "soundfile"]
 f5-tts-server = ["f5-tts", "torch", "torchaudio"]

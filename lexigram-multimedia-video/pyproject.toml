@@ -41,7 +41,6 @@ Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 runway = []
 openai = []
-local-inproc = []
 wan22-server = ["torch", "wan"]
 cogvideox-server = ["torch", "diffusers", "transformers"]
 svd-server = ["torch", "diffusers"]
