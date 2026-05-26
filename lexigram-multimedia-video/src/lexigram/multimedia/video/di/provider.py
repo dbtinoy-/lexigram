@@ -69,7 +69,9 @@ class VideoGenerationProvider(Provider):
 
         self._config = self._requested_config or self._config or VideoConfig()
         self._timeout_kwargs: _TimeoutKwargs = (
-            {"timeout": self._config.timeout} if self._config.timeout is not None else {}
+            {"timeout": self._config.timeout}
+            if self._config.timeout is not None
+            else {}
         )
         container.singleton(VideoConfig, self._config)
 
