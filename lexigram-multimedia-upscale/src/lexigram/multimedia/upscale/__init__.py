@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from lexigram.multimedia.upscale.config import UpscaleConfig
 from lexigram.multimedia.upscale.di import UpscaleGenerationProvider
-from lexigram.multimedia.upscale.exceptions import UpscaleTimeoutError
 from lexigram.multimedia.upscale.module import UpscaleModule
 from lexigram.multimedia.upscale.providers import (
     HatUpscaleProvider,
@@ -20,6 +19,5 @@ __all__ = [
     "UpscaleGenerationProvider",
     "UpscaleModule",
     "UpscaleTask",
-    "UpscaleTimeoutError",
     "VideoUpscaleService",
 ]

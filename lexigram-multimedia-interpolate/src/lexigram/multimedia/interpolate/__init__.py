@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from lexigram.multimedia.interpolate.config import InterpolationConfig
 from lexigram.multimedia.interpolate.di import InterpolationGenerationProvider
-from lexigram.multimedia.interpolate.exceptions import InterpolationTimeoutError
 from lexigram.multimedia.interpolate.module import InterpolationModule
 from lexigram.multimedia.interpolate.providers import RifeInterpolationProvider
 from lexigram.multimedia.interpolate.tasks import InterpolationTask
@@ -17,7 +16,6 @@ __all__ = [
     "InterpolationGenerationProvider",
     "InterpolationModule",
     "InterpolationTask",
-    "InterpolationTimeoutError",
     "RifeInterpolationProvider",
     "VideoInterpolationService",
 ]
