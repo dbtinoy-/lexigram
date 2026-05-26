@@ -91,6 +91,49 @@ class TestAgentBuilder:
 
         assert agent.guard_pipeline is mock_pipeline
 
+    @pytest.mark.asyncio
+    async def test_builder_pipeline_reaches_executor_run(self) -> None:
+        """A with_guard_pipeline agent must have its pipeline consulted by run()."""
+        from types import SimpleNamespace
+
+        from lexigram.ai.agents.executor.executor import AgentExecutorImpl
+
+        class RecordingStrategy:
+            seen_kwarg = None
+
+            async def execute(self, message, **kwargs):
+                RecordingStrategy.seen_kwarg = kwargs.get("guard_pipeline")
+                from lexigram.contracts.ai.agents import AgentResponse
+                from lexigram.result import Ok
+
+                return Ok(AgentResponse(message=message, total_tokens=0, tool_calls=[]))
+
+        class SpyPipeline:
+            input_called = False
+
+            async def check_input(self, content, **kwargs):
+                SpyPipeline.input_called = True
+                from lexigram.result import Ok
+
+                return Ok(SimpleNamespace(blocked=False, final_content=content))
+
+            async def check_output(self, content, **kwargs):
+                from lexigram.result import Ok
+
+                return Ok(SimpleNamespace(blocked=False, final_content=content))
+
+        from lexigram.ai.agents.agent.builder import AgentBuilder
+
+        pipeline = SpyPipeline()
+        agent = AgentBuilder("guarded_agent").with_guard_pipeline(pipeline).build()  # type: ignore[arg-type]
+        agent._strategy = RecordingStrategy()  # _BuiltAgent.strategy is read-only
+        executor = AgentExecutorImpl(llm=SimpleNamespace())  # pipeline absent on executor
+        result = await executor.run(agent=agent, message="hello")
+
+        assert result.is_ok()
+        assert SpyPipeline.input_called is True
+        assert RecordingStrategy.seen_kwarg is pipeline
+
     def test_with_governance(self) -> None:
         """Test governance configuration."""
         agent = (
