@@ -644,3 +644,30 @@ class TestAgentExecutorGuardPipeline:
 
         assert result.is_ok()
         assert result.unwrap().message == "Output Redacted"
+
+    @pytest.mark.asyncio
+    async def test_run_passes_pipeline_into_strategy_kwargs(self) -> None:
+        pipeline = MockGuardPipeline(input_action="allow")
+
+        class CaptureStrategy:
+            seen = None
+
+            async def execute(self, message, **kwargs):
+                type(self).seen = kwargs.get("guard_pipeline")
+                from lexigram.contracts.ai.agents import AgentResponse
+                from lexigram.result import Ok
+
+                return Ok(
+                    AgentResponse(message="done", total_tokens=0, tool_calls=[])
+                )
+
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=pipeline),
+            llm=MockLLM(),
+        )
+        agent = MockAgent(name="test")
+        agent.strategy = CaptureStrategy()
+
+        result = await executor.run(agent=agent, message="Hello")
+        assert result.is_ok()
+        assert CaptureStrategy.seen is pipeline

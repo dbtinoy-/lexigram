@@ -135,6 +135,7 @@ class FunctionCallingStrategy(AbstractStrategy):
         system_prompt: str = kwargs.get("system_prompt", "")
         memory = kwargs.get("memory")
         tool_registry = kwargs.get("tool_registry")
+        guard_pipeline = kwargs.get("guard_pipeline")
 
         steps: list[ReasoningStep] = []
         tool_records: list[ToolExecutionRecord] = []
@@ -169,6 +170,7 @@ class FunctionCallingStrategy(AbstractStrategy):
                     steps,
                     tool_records,
                     tool_map,
+                    guard_pipeline=guard_pipeline,
                 ):
                     continue
 
@@ -221,6 +223,7 @@ class FunctionCallingStrategy(AbstractStrategy):
                         steps,
                         tool_records,
                         tool_map,
+                        guard_pipeline=guard_pipeline,
                     )
                     continue
                 final = content
@@ -387,6 +390,7 @@ class FunctionCallingStrategy(AbstractStrategy):
         steps: list[ReasoningStep],
         tool_records: list[ToolExecutionRecord],
         tool_map: dict[str, ToolProtocol],
+        guard_pipeline: Any = None,
     ) -> bool:
         """Execute native tool calls and feed results back as tool messages.
 
@@ -416,6 +420,12 @@ class FunctionCallingStrategy(AbstractStrategy):
 
             observation = (
                 str(record.result) if record.succeeded else f"Error: {record.error}"
+            )
+            # Guard before truncation so detectors see the full content
+            from lexigram.ai.agents.strategies.guard_hook import guard_observation
+
+            observation = await guard_observation(
+                guard_pipeline, observation, tool_name=tool_name
             )
             if len(observation) > self.observation_max_chars:
                 observation = (
@@ -460,6 +470,7 @@ class FunctionCallingStrategy(AbstractStrategy):
         steps: list[ReasoningStep],
         tool_records: list[ToolExecutionRecord],
         tool_map: dict[str, ToolProtocol],
+        guard_pipeline: Any = None,
     ) -> None:
         """Execute a tool requested through text markers (fallback path)."""
         record = await self._execute_tool(tool_name, tool_args, tool_map)
@@ -467,6 +478,12 @@ class FunctionCallingStrategy(AbstractStrategy):
 
         observation = (
             str(record.result) if record.succeeded else f"Error: {record.error}"
+        )
+        # Guard before truncation so detectors see the full content
+        from lexigram.ai.agents.strategies.guard_hook import guard_observation
+
+        observation = await guard_observation(
+            guard_pipeline, observation, tool_name=tool_name
         )
         if len(observation) > self.observation_max_chars:
             observation = observation[: self.observation_max_chars] + "\n[TRUNCATED]"

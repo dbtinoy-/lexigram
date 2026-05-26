@@ -172,6 +172,7 @@ class SupervisorStrategy(AbstractStrategy):
             and full delegation trace. ``Err(AgentError)`` on failure.
         """
         system_prompt: str = kwargs.get("system_prompt", "")
+        guard_pipeline = kwargs.get("guard_pipeline")
         steps: list[ReasoningStep] = []
         tool_calls: list[ToolExecutionRecord] = []
         usage = TokenAccumulator()
@@ -314,6 +315,13 @@ class SupervisorStrategy(AbstractStrategy):
                 )
 
             tool_calls.append(record)
+
+            # Guard before feeding back so the raw observation never hits context
+            from lexigram.ai.agents.strategies.guard_hook import guard_observation
+
+            observation = await guard_observation(
+                guard_pipeline, observation, tool_name=tool_name
+            )
 
             # Derive agent name from tool name for the observation
             agent_display = (
