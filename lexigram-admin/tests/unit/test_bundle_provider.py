@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import logging
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -110,7 +108,7 @@ class TestAdminProvider:
                 if token_name == "AdminCsrfServiceProtocol":
                     raise RuntimeError("csrf unavailable")
                 if token_name == "NavItemBuilder":
-                    return SimpleNamespace(set_resources=lambda resources: None)
+                    return SimpleNamespace(set_resources=lambda _: None)
                 return SimpleNamespace()
 
         class _FakeRouter:
@@ -314,7 +312,7 @@ class TestAdminProvider:
                 if token_name == "AdminCsrfServiceProtocol":
                     raise RuntimeError("csrf unavailable")
                 if token_name == "NavItemBuilder":
-                    return SimpleNamespace(set_resources=lambda resources: None)
+                    return SimpleNamespace(set_resources=lambda _: None)
                 return SimpleNamespace()
 
         captured: dict[str, object] = {}
