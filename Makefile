@@ -55,8 +55,9 @@ lint-fix:  ## Run ruff check + format (auto-fix)
 	$(RUFF) format .
 
 .PHONY: lint-boundaries
-lint-boundaries:  ## Enforce import boundary contracts (namespace-aware import-linter)
+lint-boundaries:  ## Enforce import boundary + private-access contracts
 	$(UV) run python tools/lint_imports.py
+	$(UV) run python tools/lint_private_access.py
 
 .PHONY: type
 type:  ## Run mypy on core, lexigram-web and all TYPED_PKGS (each with its own pyproject config)
@@ -89,6 +90,7 @@ ci:  ## Full CI pipeline: lint + boundary-check + type-check + tests with covera
 	$(RUFF) check . \
 	  && $(RUFF) format --check . \
 	  && $(UV) run python tools/lint_imports.py \
+	  && $(UV) run python tools/lint_private_access.py \
 	  && $(MYPY) $(CORE_SRC) \
 	  && cd $(WEB_DIR) && $(MYPY) src/lexigram/web
 	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
@@ -310,6 +312,10 @@ audit-docs-links:
 audit-docs-claims:
 	$(UV) run python -m scripts.cli audit run docs-claims
 
+.PHONY: audit-docs-defaults
+audit-docs-defaults:
+	$(UV) run python -m scripts.cli audit run docs-defaults
+
 .PHONY: audit-docs-imports
 audit-docs-imports:
 	$(UV) run python -m scripts.cli audit run docs-imports
@@ -323,7 +329,7 @@ audit-package-dry:
 	$(UV) run python -m scripts.cli audit list
 
 .PHONY: audit-package
-audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links audit-docs-imports audit-docs-claims scripts-audit-index
+audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links audit-docs-imports audit-docs-claims audit-docs-defaults scripts-audit-index
 	@echo "All AUDIT files generated in docs/lexigram-docs/audit"
 
 # All-packages audit targets (write to repo root)
@@ -367,12 +373,16 @@ audit-docs-links-all:
 audit-docs-claims-all:
 	$(UV) run python -m scripts.cli audit run docs-claims --all
 
+.PHONY: audit-docs-defaults-all
+audit-docs-defaults-all:
+	$(UV) run python -m scripts.cli audit run docs-defaults --all
+
 .PHONY: audit-docs-imports-all
 audit-docs-imports-all:
 	$(UV) run python -m scripts.cli audit run docs-imports --all
 
 .PHONY: audit-package-all
-audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all audit-optional-imports-all audit-docs-links-all audit-docs-imports-all audit-docs-claims-all scripts-audit-index-all
+audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all audit-optional-imports-all audit-docs-links-all audit-docs-imports-all audit-docs-claims-all audit-docs-defaults-all scripts-audit-index-all
 	@echo "All AUDIT files generated at repo root"
 
 .PHONY: scripts-audit

@@ -496,3 +496,54 @@ ignore_imports =
     lexigram.cli.** -> lexigram.cli.protocols
     lexigram.admin.** -> lexigram.admin.auth.protocols
     lexigram.admin.** -> lexigram.admin.auth.store.protocols
+
+# =============================================================================
+# Contract 8 — lexigram.admin imports only its allowed dependency set
+# =============================================================================
+# Admin is a high-level composite.  Per AGENTS.md §1.2 it may import from:
+#   * core namespaces (lexigram.app, lexigram.config, lexigram.di, ...),
+#   * lexigram.contracts,
+#   * documented exceptions: lexigram.auth, lexigram.cache, lexigram.features,
+#     lexigram.resilience, lexigram.ui.
+# Everything else is forbidden — cross-subsystem imports must route through
+# contracts or the container.
+
+[importlinter:contract:admin-import-allowlist]
+name = lexigram.admin imports only its allowed dependency set
+type = forbidden
+source_modules =
+    lexigram.admin
+forbidden_modules =
+    lexigram.ai
+    lexigram.cli
+    lexigram.events
+    lexigram.graph
+    lexigram.graphql
+    lexigram.http
+    lexigram.monitor
+    lexigram.multimedia
+    lexigram.nosql
+    lexigram.notification
+    lexigram.queue
+    lexigram.search
+    lexigram.sql
+    lexigram.storage
+    lexigram.tasks
+    lexigram.testing
+    lexigram.vector
+    lexigram.web
+    lexigram.workflow
+
+# =============================================================================
+# Contract 9 — lexigram.auth must not import lexigram.admin (auth ⊥ admin)
+# =============================================================================
+# The panel delegates to auth, never the reverse: prevents an admin<->auth
+# cycle and keeps lexigram-auth reusable without the dashboard layer.
+
+[importlinter:contract:auth-banned-from-admin]
+name = lexigram.auth must not import lexigram.admin
+type = forbidden
+source_modules =
+    lexigram.auth
+forbidden_modules =
+    lexigram.admin
