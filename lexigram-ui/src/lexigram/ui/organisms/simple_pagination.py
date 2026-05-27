@@ -2,8 +2,7 @@
 
 Provides ``SimplePagination`` which renders only Previous/Next navigation
 without a total page count.  This is a critical performance optimisation
-for large tables where ``COUNT(*)`` is expensive (FilamentPHP Y, React
-Admin Y, Laravel Nova Y).
+for large tables where ``COUNT(*)`` is expensive (React Admin Y).
 
 The component uses a ``has_next_page`` boolean (set from the data layer
 by fetching ``per_page + 1`` rows and checking if the extra row exists)

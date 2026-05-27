@@ -1,5 +1,5 @@
 """
-FilamentPHP-style Column system for DataTable.
+Column system for DataTable.
 
 Example usage:
     from lexigram.ui.columns import TextColumn, BadgeColumn, DateColumn

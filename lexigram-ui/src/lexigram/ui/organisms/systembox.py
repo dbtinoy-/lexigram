@@ -148,10 +148,6 @@ class SystemBox(Component):
                             # Merge other attrs
                             **attrs,
                         },
-                        hx_get=href,
-                        hx_target="#main-content",
-                        hx_swap="innerHTML",
-                        hx_push_url="true",
                     ),
                 )
             else:

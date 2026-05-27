@@ -475,22 +475,23 @@ class AdminShell(Component):
                 // (bindings registered but effects never run) because Alpine's
                 // observer and this initTree race each other through the same
                 // directive deferral queue. Wait for the observer to settle,
-                // then run initTree — it is idempotent and completes missing
-                // initialization. Only run on full body swaps, not widget
-                // fragment swaps.
+                // then run initTree — it can only be safely re-run on a scoped
+                // subtree, not the whole body (see below). Only run on full
+                // body swaps, not widget fragment swaps.
                 document.body.addEventListener('htmx:afterSwap', function(evt) {{
                     if (evt.detail && evt.detail.elt !== document.body) return;
-                    // Apply the sidebar width class synchronously (before the
-                    // next paint) so a fresh sidebar never flashes at auto
-                    // width while initTree below is deferred.
-                    var aside = document.getElementById('main-sidebar');
-                    if (aside) {{
-                        aside.classList.remove('w-24', 'w-72');
-                        aside.classList.add(localStorage.getItem('sidebarMini') === 'true' ? 'w-24' : 'w-72');
-                    }}
                     setTimeout(function() {{
                         try {{
-                            if (window.Alpine) window.Alpine.initTree(document.body);
+                            // Scope the re-init to the swapped content region
+                            // only. Alpine's initTree is not idempotent: it
+                            // re-registers every directive it walks, and
+                            // re-initializing the shell chrome (x-for
+                            // templates like the notification list) a second
+                            // time leaves duplicate cleanups behind, so the
+                            // second cleanup run throws (x-for reads
+                            // _x_lookup after the first cleanup deleted it).
+                            var mainContent = document.getElementById('main-content');
+                            if (mainContent && window.Alpine) window.Alpine.initTree(mainContent);
                         }} catch (err) {{ /* noop: initTree is best-effort */ }}
                     }}, 200);
                 }});
@@ -498,14 +499,14 @@ class AdminShell(Component):
                 // htmx's handleAttributes restore step runs right before
                 // htmx:afterSettle and resets each node with an id back to
                 // its pristine server markup -- which wipes the width class
-                // we applied above. Re-apply it after the restore so the
-                // sidebar never paints at auto width.
+                // Alpine's x-bind effect applied to the sidebar. Re-running
+                // the aside's own effects restores the class through Alpine's
+                // bookkeeping, so the mini-mode toggle keeps working.
                 document.body.addEventListener('htmx:afterSettle', function(evt) {{
                     if (evt.detail && evt.detail.elt !== document.body) return;
                     var aside = document.getElementById('main-sidebar');
-                    if (aside) {{
-                        aside.classList.remove('w-24', 'w-72');
-                        aside.classList.add(localStorage.getItem('sidebarMini') === 'true' ? 'w-24' : 'w-72');
+                    if (aside && aside._x_runEffects) {{
+                        aside._x_runEffects();
                     }}
                 }});
 

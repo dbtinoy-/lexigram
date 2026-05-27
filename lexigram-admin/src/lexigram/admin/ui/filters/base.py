@@ -190,7 +190,7 @@ class Filter(AbstractField):
         Apply filter to a query.
 
         Args:
-            query: Query object (SQLAlchemy, Django ORM, etc.)
+            query: Query object (SQLAlchemy, etc.)
             value: Filter value to apply
 
         Returns:

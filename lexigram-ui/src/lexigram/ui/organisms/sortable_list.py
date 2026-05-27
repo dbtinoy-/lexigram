@@ -1,8 +1,7 @@
 """Sortable / drag-n-drop record reorder component.
 
 Provides :class:`SortableRecordList` — a table that lets users drag rows
-into a new order and persists the new order via an HTMX PATCH request
-(FilamentPHP: Y, Django Admin: E).
+into a new order and persists the new order via an HTMX PATCH request.
 
 Usage::
 

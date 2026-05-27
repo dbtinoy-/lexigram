@@ -6,7 +6,7 @@ Internal design of the `lexigram-admin` package and its role in the Lexigram fra
 
 ## Role in the System
 
-`lexigram-admin` is an async-first admin panel framework analogous to Laravel Filament. It provides declarative Resource definitions, CRUD routing, HTMX-driven interactions, RBAC, and a contributor system for extension packages.
+`lexigram-admin` is an async-first admin panel framework with declarative Resource definitions, CRUD routing, HTMX-driven interactions, RBAC, and a contributor system for extension packages.
 
 ```mermaid
 flowchart TB

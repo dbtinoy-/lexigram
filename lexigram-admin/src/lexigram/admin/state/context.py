@@ -63,8 +63,10 @@ class AdminContext:
 
     @property
     def is_htmx(self) -> bool:
-        """Check if this is an HTMX request."""
-        return self.htmx is not None and self.htmx.is_htmx
+        """Check if this request expects a fragment swap."""
+        if self.htmx is None or not self.htmx.is_htmx:
+            return False
+        return wants_fragment(self.request)
 
     def can(self, permission: str) -> bool:
         """Check if user has permission."""
@@ -130,6 +132,17 @@ class HTMXInfo:
             ).lower()
             == "true",
         )
+
+
+def wants_fragment(request: Request) -> bool:
+    """Return True when the request expects a fragment swap.
+
+    Requests that carry an explicit ``HX-Target`` header (other than
+    ``body``) are fragment swaps. Boosted navigations and plain requests
+    carry no target and must receive a full page instead.
+    """
+    target = request.headers.get("HX-Target")
+    return bool(target and target != "body")
 
 
 class AdminContextManager:

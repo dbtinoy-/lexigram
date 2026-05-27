@@ -1,11 +1,10 @@
-"""Date hierarchy filter — Django Admin-style year/month/day drill-down.
+"""Date hierarchy filter — year/month/day drill-down.
 
 Renders a breadcrumb-style date navigation bar that lets users drill into
 a dataset by year, then month, then day.  Each level is a clickable link
 that adds the appropriate ``year=``, ``month=``, ``day=`` query parameters.
 
-Django Admin is the only framework with built-in date hierarchy; this
-brings that feature to lexigram-admin.
+Built-in date hierarchy for admin panels.
 
 Usage::
 

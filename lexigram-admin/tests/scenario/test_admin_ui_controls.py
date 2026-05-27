@@ -21,13 +21,13 @@ from starlette.applications import Starlette
 
 from lexigram.admin.controllers.resource import ResourceController, ResourceMeta
 from lexigram.admin.data.data_source import QueryResult
-from lexigram.ui.actions import Action, BulkAction
-from lexigram.ui.columns.types import BadgeColumn, DateColumn, TextColumn
 from lexigram.admin.ui.filters import SelectFilter
 from lexigram.admin.ui.organisms.data_table import DataTable
 from lexigram.admin.ui.organisms.sidebar import SidebarItem, SidebarSection
 from lexigram.admin.ui.templates.shell import AdminShell
 from lexigram.ui import el, render_to_string
+from lexigram.ui.actions import Action, BulkAction
+from lexigram.ui.columns.types import BadgeColumn, DateColumn, TextColumn
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -533,7 +533,7 @@ class TestBulkAction:
         resp = await client.post(
             "/item/bulk",
             data={"action": "delete", "ids": ["1", "2"]},
-            headers={"hx-request": "true"},
+            headers={"hx-request": "true", "hx-target": "main"},
         )
         assert resp.status_code == 200
 

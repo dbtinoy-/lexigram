@@ -1,7 +1,7 @@
 """Alternative resource list view implementations — Calendar, Kanban, Tree.
 
-EXPERIMENTAL: These view types are paused. See the follow-up Filament
-evolution plan for the path forward (Page abstraction).
+EXPERIMENTAL: These view types are paused. See the admin evolution plan
+for the path forward (Page abstraction).
 """
 
 from __future__ import annotations

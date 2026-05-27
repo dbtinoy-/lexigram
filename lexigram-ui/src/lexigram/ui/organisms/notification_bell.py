@@ -67,6 +67,7 @@ class NotificationBell(Component):
                 "div",
                 {
                     "x-show": "open",
+                    "x-cloak": True,
                     "x-on:click.away": "close()",
                     "x-transition:enter": "transition ease-out duration-200",
                     "x-transition:enter-start": "opacity-0 translate-y-1",
@@ -180,6 +181,7 @@ document.addEventListener('alpine:init', () => {{
         toggle() {{ this.open = !this.open; }},
         close() {{ this.open = false; }},
         init() {{
+            if (this.eventSource) return;
             this.eventSource = new EventSource('{self.sse_url}');
             this.eventSource.addEventListener('notification', (e) => {{
                 const data = JSON.parse(e.data);
@@ -203,8 +205,21 @@ document.addEventListener('alpine:init', () => {{
                 }}
             }});
             this.eventSource.addEventListener('error', () => {{}});
+            const el = this.$el;
+            const observer = new MutationObserver(() => {{
+                if (!el.isConnected) {{
+                    observer.disconnect();
+                    this.destroy();
+                }}
+            }});
+            observer.observe(document.body, {{ childList: true, subtree: true }});
+            this._observer = observer;
         }},
         destroy() {{
+            if (this._observer) {{
+                this._observer.disconnect();
+                this._observer = null;
+            }}
             if (this.eventSource) this.eventSource.close();
         }},
         markAsRead(id) {{

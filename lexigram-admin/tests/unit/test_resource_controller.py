@@ -373,7 +373,7 @@ class TestCreateAction:
             "POST",
             "/admin/item",
             form_data={"name": "New Item"},
-            headers={"hx-request": "true"},
+            headers={"hx-request": "true", "hx-target": "main"},
         )
         response = await self.controller.create(request)
         assert response.status_code == 200
@@ -470,7 +470,7 @@ class TestDeleteAction:
             "DELETE",
             "/admin/item/1",
             path_params={"id": "1"},
-            headers={"hx-request": "true"},
+            headers={"hx-request": "true", "hx-target": "main"},
         )
         response = await self.controller.delete(request)
         assert response.status_code == 200
@@ -535,7 +535,7 @@ class TestBulkAction:
             "POST",
             "/admin/item/bulk",
             form_data={"action": "delete", "ids": ["1"]},
-            headers={"hx-request": "true"},
+            headers={"hx-request": "true", "hx-target": "main"},
         )
 
         async def _form():

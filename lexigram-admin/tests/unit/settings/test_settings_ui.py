@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
-from lexigram.ui.core.base import render_to_string
+from lexigram.ui import render_to_string
 
 
 def _cache_spec_dict() -> dict:

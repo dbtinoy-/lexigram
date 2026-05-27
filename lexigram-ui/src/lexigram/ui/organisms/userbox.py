@@ -124,10 +124,6 @@ class UserBox(Component):
                     menu_item.get("label", ""),
                     href=href,
                     class_="group flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted dark:hover:bg-card rounded-md",
-                    hx_get=href,
-                    hx_target="#main-content",
-                    hx_swap="innerHTML",
-                    hx_push_url="true",
                     **attrs,
                 ),
             )

@@ -374,9 +374,27 @@ class TestWidgetRegistry:
             ),
         ]
         html = registry.render_contributor_widgets(widgets)
-        # Should contain the every-Nms trigger
+        # Should contain the every-Nms trigger with a stagger delay
         assert "every 10000ms" in html
-        assert "load, every" in html
+        assert "load delay:0ms, every" in html
+
+        # Stagger delays scale with widget index
+        widgets2 = [
+            *widgets,
+            DashboardWidgetDefinition(
+                name="second_widget",
+                title="Second",
+                contributor="test",
+                render_endpoint="/admin/test/second",
+                size=WidgetSize.SMALL,
+                category=WidgetCategory.CUSTOM,
+                order=2,
+                refresh_interval_seconds=0,
+            ),
+        ]
+        html2 = registry.render_contributor_widgets(widgets2)
+        assert "load delay:0ms, every" in html2
+        assert "load delay:350ms" in html2
 
     def test_render_contributor_widgets_no_refresh(self) -> None:
         """Test no polling trigger when interval is zero."""
@@ -404,5 +422,5 @@ class TestWidgetRegistry:
         ]
         html = registry.render_contributor_widgets(widgets)
         assert "every" not in html
-        # Should still have the load trigger
-        assert 'hx-trigger="load"' in html
+        # Should still have the load trigger with a stagger delay
+        assert 'hx-trigger="load delay:0ms"' in html

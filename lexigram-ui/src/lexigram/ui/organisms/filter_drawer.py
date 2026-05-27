@@ -1,6 +1,6 @@
 """Stacked/sidebar filter drawer — slide-over panel with all filters.
 
-Provides a FilamentPHP-style ``FilterDrawer`` component that:
+Provides a ``FilterDrawer`` component that:
 - Opens as a slide-over panel from the right on click of a "Filters" button
 - Stacks all filter controls vertically for readability
 - Shows an active-filter count badge on the trigger button

@@ -15,6 +15,7 @@ from lexigram.admin.navigation.clusters import (
     CLUSTER_URL,
     cluster_child_href,
 )
+from lexigram.admin.state.context import wants_fragment
 from lexigram.contracts.admin.types import (
     ManagementPageDefinition,
     SettingsPanelDefinition,
@@ -102,7 +103,7 @@ class AdminPageHandler:
             response = await _placeholder_page(request, self._container)
 
         try:
-            is_htmx = bool(request.headers.get("hx-request"))
+            is_htmx = wants_fragment(request)
         except KeyError:
             is_htmx = False
         if not is_htmx and isinstance(response, HTMLResponse):
@@ -308,7 +309,7 @@ async def _placeholder_page(
             ClusterLayout(items=secondary_nav, content=raw(content))
         )
 
-    is_htmx = bool(request.headers.get("hx-request"))
+    is_htmx = wants_fragment(request)
 
     if is_htmx:
         return HTMLResponse(content)

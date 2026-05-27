@@ -11,6 +11,7 @@ from lexigram.admin.config import AdminConfig
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.exceptions import AdminValidationError
 from lexigram.admin.rbac.service import PermissionService
+from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.ui import Form, SlideOver, el, render_to_string
@@ -46,7 +47,7 @@ class FormRenderer:
         label = self.resource_name.replace("_", " ").title()
 
         # Check if HTMX request (for modal/slider loading)
-        is_htmx = request.headers.get("HX-Request") == "true"
+        is_htmx = wants_fragment(request)
 
         # Get form display mode from resource configuration
         display_mode = "modal"  # default
@@ -131,7 +132,7 @@ class FormRenderer:
         label = self.resource_name.replace("_", " ").title()
 
         # Check if HTMX request (for modal/slide-over loading)
-        is_htmx = request.headers.get("HX-Request") == "true"
+        is_htmx = wants_fragment(request)
 
         # Get form display mode from resource configuration
         display_mode = "slider"  # default for edit
@@ -429,7 +430,7 @@ class FormRenderer:
             },
         )
 
-        is_htmx = request.headers.get("HX-Request") == "true"
+        is_htmx = wants_fragment(request)
         if is_htmx:
             return HTMLResponse(render_to_string(form_el))
 

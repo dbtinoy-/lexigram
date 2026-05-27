@@ -73,6 +73,14 @@ class TaskProgress(Component):
                     this.error = 'Connection lost';
                     this.eventSource.close();
                 }});
+
+                const obs = new MutationObserver(() => {{
+                    if (!this.$el.isConnected) {{
+                        obs.disconnect();
+                        if (this.eventSource) this.eventSource.close();
+                    }}
+                }});
+                obs.observe(document.body, {{ childList: true, subtree: true }});
             """,
             "destroy": """
                 if (this.eventSource) {

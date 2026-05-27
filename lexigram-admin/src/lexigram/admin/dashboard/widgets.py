@@ -237,7 +237,7 @@ class WidgetRegistry:
             )
 
         parts: list[str] = []
-        for widget_def in contributor_widgets:
+        for widget_index, widget_def in enumerate(contributor_widgets):
             # Map widget size to grid column span
             size_col_map = {
                 WidgetSize.SMALL: "",
@@ -262,7 +262,11 @@ class WidgetRegistry:
             widget_class = self.get(lookup_key) or self.get(widget_def.name)
 
             # Build common HTMX trigger: load on page render, plus optional polling.
-            load_trigger = "load"
+            # Initial loads are staggered so the dashboard does not fire every
+            # widget request at once — that would saturate the browser's HTTP/1.1
+            # connection pool (~6 per origin) and starve sidebar navigation
+            # requests for the whole drain.
+            load_trigger = f"load delay:{widget_index * 350}ms"
             if refresh_trigger:
                 load_trigger = f"{load_trigger}, {refresh_trigger}"
 

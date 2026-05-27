@@ -25,8 +25,6 @@ from starlette.routing import Route
 from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
 from lexigram.admin.middleware.auth import AdminAuthMiddleware
 from lexigram.admin.middleware.error import AdminErrorMiddleware
-from lexigram.contracts import AuthenticatedUserProtocol
-
 
 # ---------------------------------------------------------------------------
 # Fake user
@@ -71,13 +69,18 @@ class _FakeUserStore:
 def _make_app(
     user_store: _FakeUserStore | None = None,
     session_service: AdminSessionServiceProtocol | None = None,
+    excluded_paths: list[str] | None = None,
 ) -> Starlette:
     """Build a minimal Starlette app with the admin auth middleware stack."""
+    if excluded_paths is None:
+        excluded_paths = [
+            "/admin/login",
+            "/admin/static",
+            "/admin/health",
+        ]
 
     async def protected_route(request):
-        return JSONResponse(
-            {"ok": True, "user_id": request.state.user.user_id}
-        )
+        return JSONResponse({"ok": True, "user_id": request.state.user.user_id})
 
     async def login_route(request):
         request.session["session_id"] = "test-sid"
@@ -100,11 +103,7 @@ def _make_app(
                 user_store=user_store,
                 session_service=session_service,
                 require_auth=True,
-                excluded_paths=[
-                    "/admin/login",
-                    "/admin/static",
-                    "/admin/health",
-                ],
+                excluded_paths=excluded_paths,
             ),
         ],
     )
@@ -130,8 +129,24 @@ async def test_anonymous_request_returns_401_or_redirect() -> None:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_anonymous_htmx_request_returns_json_401() -> None:
-    """Anonymous HTMX request returns JSON 401 with login_url."""
+async def test_anonymous_htmx_fragment_request_gets_hx_redirect() -> None:
+    """Anonymous HTMX fragment request gets HX-Redirect to login (no loop)."""
+    app = _make_app()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        resp = await client.get(
+            "/admin/users",
+            headers={"HX-Request": "true", "HX-Target": "main"},
+        )
+        assert resp.status_code == 200
+        assert resp.headers["HX-Redirect"].startswith("/admin/login")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_anonymous_htmx_request_without_target_redirects() -> None:
+    """Anonymous HTMX request without a target is a full-page nav -> 302."""
     app = _make_app()
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://testserver"
@@ -139,6 +154,21 @@ async def test_anonymous_htmx_request_returns_json_401() -> None:
         resp = await client.get(
             "/admin/users",
             headers={"HX-Request": "true"},
+        )
+        assert resp.status_code in (302, 401)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_htmx_fragment_on_login_returns_json_401() -> None:
+    """HTMX fragment request already targeting login gets JSON 401 (loop guard)."""
+    app = _make_app(excluded_paths=[])
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        resp = await client.get(
+            "/admin/login",
+            headers={"HX-Request": "true", "HX-Target": "main"},
         )
         assert resp.status_code == 401
         body = resp.json()
