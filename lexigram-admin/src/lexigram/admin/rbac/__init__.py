@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lexigram.admin.rbac.policies import get_policy, register_policy
+from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
 from lexigram.admin.rbac.registry import (
     get_resource_permissions,
     register_resource_permissions,
@@ -17,6 +18,7 @@ from lexigram.contracts.auth import RoleDefinition
 
 __all__ = [
     "ActionPermission",
+    "AdminRoleStoreProtocol",
     "FieldPermission",
     "Policy",
     "PolicyContext",
