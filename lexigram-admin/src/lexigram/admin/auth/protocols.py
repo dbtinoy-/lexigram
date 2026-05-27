@@ -15,11 +15,14 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from lexigram.contracts.audit import AuditLoggerProtocol
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from lexigram.admin.auth.errors import AdminAuthError
     from lexigram.admin.auth.types import (
         AdminAuthResult,
         AdminLockoutInfo,
         AdminLoginAttempt,
+        AdminPasswordResetToken,
         AdminPasswordValidationResult,
         AdminSecurityEvent,
         AdminSecurityEventType,
@@ -432,6 +435,82 @@ class AdminSessionServiceProtocol(Protocol):
         ...
 
 
+@runtime_checkable
+class AdminPasswordResetTokenStoreProtocol(Protocol):
+    """Persistence contract for password reset tokens.
+
+    Implementations:
+        - :class:`~lexigram.admin.auth.store.password_reset_token_sql.AdminPasswordResetTokenSqlStore`
+    """
+
+    async def ensure_schema(self) -> None:
+        """Create the token table if it does not exist."""
+        ...
+
+    async def create(self, email: str, token_hash: str, expires_at: datetime) -> None:
+        """Persist a new token record.
+
+        Args:
+            email: Email the token is issued for.
+            token_hash: sha256 hex digest of the raw token.
+            expires_at: UTC expiry timestamp.
+        """
+        ...
+
+    async def find_by_hash(self, token_hash: str) -> AdminPasswordResetToken | None:
+        """Look up a token by its sha256 hash.
+
+        Args:
+            token_hash: sha256 hex digest of the raw token.
+
+        Returns:
+            Token record or ``None`` when unknown.
+        """
+        ...
+
+    async def mark_consumed(self, token_hash: str) -> bool:
+        """Atomically mark a token consumed.
+
+        Args:
+            token_hash: sha256 hex digest of the raw token.
+
+        Returns:
+            ``True`` when the token existed and was not already consumed.
+        """
+        ...
+
+
+@runtime_checkable
+class AdminPasswordResetServiceProtocol(Protocol):
+    """Password reset orchestration contract."""
+
+    async def request_reset(
+        self,
+        email: str,
+        ip_address: str,
+        user_agent: str,
+        base_url: str,
+    ) -> Result[None, AdminAuthError]:
+        """Issue a reset token and notify the user.
+
+        Always returns ``Ok(None)`` for unknown emails (anti-enumeration).
+        """
+        ...
+
+    async def confirm_reset(
+        self,
+        token: str,
+        new_password: str,
+        ip_address: str = "",
+        user_agent: str = "",
+    ) -> Result[None, AdminAuthError]:
+        """Validate a token and apply a new password.
+
+        Consumes the token on success and invalidates all user sessions.
+        """
+        ...
+
+
 __all__ = [
     "AdminAccountLockoutStoreProtocol",
     "AdminAuditLogServiceProtocol",
@@ -441,5 +520,7 @@ __all__ = [
     "AdminLoginAttemptServiceProtocol",
     "AdminLoginAttemptStoreProtocol",
     "AdminPasswordPolicyServiceProtocol",
+    "AdminPasswordResetServiceProtocol",
+    "AdminPasswordResetTokenStoreProtocol",
     "AdminSessionServiceProtocol",
 ]
