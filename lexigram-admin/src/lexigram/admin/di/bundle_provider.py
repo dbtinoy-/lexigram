@@ -318,9 +318,7 @@ class AdminProvider(Provider):
                 )
             except Exception:
                 csrf_service = None
-            if csrf_service is not None and hasattr(
-                widget_controller, "_csrf_service"
-            ):
+            if csrf_service is not None and hasattr(widget_controller, "_csrf_service"):
                 widget_controller._csrf_service = csrf_service
         except Exception as exc:
             _log.error(
@@ -437,10 +435,14 @@ class AdminProvider(Provider):
 
         # Mount ProgressController (SSE/status progress tracking) — best-effort.
         # Tries an integrator-registered tracker first; falls back to the
-        # in-memory tracker from lexigram-tasks (optional integration —
-        # without it the controller is skipped, like other optional seats).
+        # admin-owned LocalProgressTracker (no dependency on optional
+        # integration packages — without one the controller mounts with the
+        # in-process tracker instead of being skipped).
         try:
-            from lexigram.admin.controllers.progress import ProgressController
+            from lexigram.admin.controllers.progress import (
+                LocalProgressTracker,
+                ProgressController,
+            )
 
             try:
                 progress_controller = await admin_resolver.resolve(
@@ -448,16 +450,14 @@ class AdminProvider(Provider):
                     bypass_visibility=True,
                 )
             except Exception:
-                from lexigram.tasks.progress import InMemoryProgressTracker
-
                 progress_controller = ProgressController(
-                    tracker=InMemoryProgressTracker()
+                    tracker=LocalProgressTracker()
                 )
             controller_instances.append(progress_controller)
         except ModuleNotFoundError as exc:
             _log.info(
                 "admin.progress_controller_skipped",
-                reason="lexigram_tasks_not_installed",
+                reason="progress_controller_unavailable",
                 error=str(exc),
             )
         except Exception as exc:
@@ -701,6 +701,14 @@ class AdminProvider(Provider):
             _log.debug("admin.error_middleware_wired")
         except Exception as exc:  # noqa: BLE001 — error middleware is optional
             _log.warning("admin.error_middleware_skipped", reason=str(exc))
+
+        # Wire HX-Push-Url for body-targeted htmx GETs so client-side
+        # navigation (htmx.ajax with target "body") keeps the address bar
+        # in sync and htmx history (back/forward) works.
+        from lexigram.admin.middleware.nav_push import AdminNavPushMiddleware
+
+        middleware_stack.append((AdminNavPushMiddleware, {}))
+        _log.debug("admin.nav_push_middleware_wired")
 
         # Wrap resource data sources with tenant scoping when enabled
         if self._config.tenancy.enabled:

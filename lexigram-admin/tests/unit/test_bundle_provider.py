@@ -290,5 +290,58 @@ class TestAdminProvider:
             if token_name in admin_owned_tokens
         )
 
+    @pytest.mark.asyncio
+    async def test_mount_to_app_progress_controller_uses_local_tracker_fallback(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When DI can't resolve ProgressController, it should fall back to
+        the admin-owned LocalProgressTracker, not import lexigram-tasks."""
+        from lexigram.admin.controllers.progress import LocalProgressTracker
+
+        class _Resolver:
+            async def resolve(
+                self,
+                token: object,
+                *,
+                bypass_visibility: bool = False,
+            ) -> object:
+                token_name = getattr(token, "__name__", token.__class__.__name__)
+                if token_name == "ProgressController":
+                    raise RuntimeError("no tracker registered")
+                if token_name == "AdminUserStoreProtocol":
+                    raise RuntimeError("store unavailable")
+                if token_name == "AdminCsrfServiceProtocol":
+                    raise RuntimeError("csrf unavailable")
+                if token_name == "NavItemBuilder":
+                    return SimpleNamespace(set_resources=lambda resources: None)
+                return SimpleNamespace()
+
+        captured: dict[str, object] = {}
+
+        class _FakeRouter:
+            def __init__(self, **kwargs: object) -> None:
+                captured.update(kwargs)
+
+            def mount(self, app: object) -> object:
+                return app
+
+        provider = AdminProvider()
+        app = SimpleNamespace(state=SimpleNamespace())
+        monkeypatch.setattr(
+            "lexigram.admin.core.routing.AdminRouter",
+            _FakeRouter,
+        )
+
+        await provider.mount_to_app(app, _Resolver())
+
+        controllers = captured.get("controllers")
+        assert isinstance(controllers, list)
+        progress_controllers = [
+            c for c in controllers if type(c).__name__ == "ProgressController"
+        ]
+        assert len(progress_controllers) == 1
+        assert isinstance(progress_controllers[0].tracker, LocalProgressTracker)
+
 
 __all__ = ["TestAdminProvider"]
