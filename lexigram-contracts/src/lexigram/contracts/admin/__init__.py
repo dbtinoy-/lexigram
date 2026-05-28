@@ -30,6 +30,10 @@ from lexigram.contracts.admin.page_handler import (
     ManagementPageHandler,
 )
 from lexigram.contracts.admin.pii_redactor import PiiRedactorProtocol
+from lexigram.contracts.admin.principal import (
+    AdminPrincipal,
+    AdminPrincipalProviderProtocol,
+)
 from lexigram.contracts.admin.protocols import (
     AdminContributorProtocol,
     AdminContributorRegistryProtocol,
@@ -81,6 +85,8 @@ __all__ = [
     "AdminError",
     "AdminHealthDefinition",
     "AdminPageHandlerProtocol",
+    "AdminPrincipal",
+    "AdminPrincipalProviderProtocol",
     "AdminQuery",
     "AdminRepositoryProtocol",
     "AdminRouteSpec",
