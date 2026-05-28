@@ -22,6 +22,8 @@ class MockAgent:
         self.name = name
         self._tools = tools or []
         self.system_prompt = system_prompt
+        self.strategy: Any = None
+        self.guard_pipeline: Any = None
 
     @property
     def tools(self):
@@ -270,7 +272,7 @@ class TestAgentStreamingGuardFailClosed:
             async def check_output(self, content, **kwargs):
                 raise RuntimeError("guard service down")
 
-        executor = AgentExecutorImpl(llm=MockLLM())
+        executor = AgentExecutorImpl(llm=MockLLM())  # type: ignore[arg-type]
         executor._guard_pipeline = _CrashingPipeline()
         agent = MockAgent(name="test")
 
@@ -300,7 +302,7 @@ class TestAgentStreamingGuardFailClosed:
             async def check_output(self, content, **kwargs):
                 raise RuntimeError("guard service down")
 
-        executor = AgentExecutorImpl(llm=MockLLM())
+        executor = AgentExecutorImpl(llm=MockLLM())  # type: ignore[arg-type]
         executor._guard_pipeline = _OutputCrashingPipeline()
         agent = MockAgent(name="test")
 
@@ -313,3 +315,59 @@ class TestAgentStreamingGuardFailClosed:
         finished = [e for e in events if e.type == AgentEventType.FINISHED]
         assert finished
         assert finished[-1].data.get("success") is False
+
+
+class TestAgentStreamingGuardOverride:
+    """Agent-level guard pipeline override must win over the executor default."""
+
+    @pytest.mark.asyncio
+    async def test_astream_consults_agent_guard_pipeline_override(self) -> None:
+        """astream() must consult the agent's pipeline, not the executor's default."""
+        from types import SimpleNamespace
+
+        from lexigram.result import Ok
+
+        class _RecordingPipeline:
+            def __init__(self, name: str):
+                self.name = name
+                self.checks: list[str] = []
+
+            async def check_input(self, content, **kwargs):
+                self.checks.append("input")
+                return Ok(SimpleNamespace(blocked=False, final_content=content))
+
+            async def check_output(self, content, **kwargs):
+                self.checks.append("output")
+                return Ok(SimpleNamespace(blocked=False))
+
+        class _RecordingStrategy:
+            def __init__(self):
+                self.guard_pipeline: Any = None
+
+            async def execute(self, **kwargs):
+                self.guard_pipeline = kwargs.get("guard_pipeline")
+                response = SimpleNamespace(
+                    message="hello back",
+                    step_count=1,
+                    tool_call_count=0,
+                    total_tokens=10,
+                    duration_ms=5,
+                )
+                return Ok(response)
+
+        executor = AgentExecutorImpl(llm=MockLLM())  # type: ignore[arg-type]
+        executor_pipeline = _RecordingPipeline("executor")
+        executor._guard_pipeline = executor_pipeline
+        agent_pipeline = _RecordingPipeline("agent")
+        agent = MockAgent(name="test")
+        agent.guard_pipeline = agent_pipeline
+        agent.strategy = _RecordingStrategy()
+
+        events = [
+            e
+            async for e in executor.astream(agent=agent, message="hello", user_id=None)
+        ]
+
+        assert any(e.type == "message" for e in events)
+        assert agent.strategy.guard_pipeline is agent_pipeline
+        assert executor_pipeline.checks == []

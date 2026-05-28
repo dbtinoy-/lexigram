@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from lexigram.ai.agents.executor.executor import AgentExecutorImpl
     from lexigram.contracts.ai.agents import AgentProtocol
+    from lexigram.contracts.ai.guards import GuardPipelineProtocol
 
 
 async def astream(
@@ -77,7 +78,13 @@ async def astream(
         )
         return
 
-    guard_ok = await _check_guard_input(self, message, session_id, user_id)
+    # Agent-level pipeline (AgentBuilder.with_guard_pipeline) wins over the
+    # DI-provided one; the DI pipeline remains the standard default.
+    guard_pipeline = getattr(agent, "guard_pipeline", None) or self._guard_pipeline
+
+    guard_ok = await _check_guard_input(
+        self, guard_pipeline, message, session_id, user_id
+    )
     if not guard_ok:
         yield AgentEvent(
             type=AgentEventType.ERROR,
@@ -120,7 +127,7 @@ async def astream(
             temperature=getattr(agent, "temperature", 0.7),
             tool_registry=kwargs.get("tool_registry"),
             memory=getattr(agent, "memory", None),
-            guard_pipeline=self._guard_pipeline,
+            guard_pipeline=guard_pipeline,
             **kwargs,
         )
 
@@ -149,7 +156,7 @@ async def astream(
         response = result.unwrap()
 
         guard_ok = await _check_guard_output(
-            self, response.message, message, session_id, user_id
+            self, guard_pipeline, response.message, message, session_id, user_id
         )
         if not guard_ok:
             yield AgentEvent(
@@ -248,16 +255,17 @@ async def _check_governance(
 
 async def _check_guard_input(
     self: AgentExecutorImpl,
+    guard_pipeline: GuardPipelineProtocol | None,
     message: str,
     session_id: str | None,
     user_id: str | None,
 ) -> bool:
     """Check input guard pipeline."""
-    if not self._guard_pipeline:
+    if not guard_pipeline:
         return True
 
     try:
-        guard_res = await self._guard_pipeline.check_input(
+        guard_res = await guard_pipeline.check_input(
             content=message,
             metadata={"session_id": session_id, "user_id": user_id},
         )
@@ -277,17 +285,18 @@ async def _check_guard_input(
 
 async def _check_guard_output(
     self: AgentExecutorImpl,
+    guard_pipeline: GuardPipelineProtocol | None,
     output: str,
     original_input: str,
     session_id: str | None,
     user_id: str | None,
 ) -> bool:
     """Check output guard pipeline."""
-    if not self._guard_pipeline:
+    if not guard_pipeline:
         return True
 
     try:
-        guard_res = await self._guard_pipeline.check_output(
+        guard_res = await guard_pipeline.check_output(
             content=output,
             original_input=original_input,
             metadata={"session_id": session_id, "user_id": user_id},
