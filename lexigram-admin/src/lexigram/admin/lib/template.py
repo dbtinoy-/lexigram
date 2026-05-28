@@ -22,6 +22,7 @@ def render_login_page(
     error: str = "",
     site_name: str = "Lexigram Admin",
     csrf_token: str = "",
+    notice: str = "",
 ) -> str:
     """Render a standalone login page.
 
@@ -30,6 +31,7 @@ def render_login_page(
         error: Error message to display.
         site_name: Site name for branding.
         csrf_token: CSRF token to embed as a hidden form field.
+        notice: Optional success notice to display (e.g. after a password reset).
 
     Returns:
         HTML string for login page.
@@ -37,6 +39,8 @@ def render_login_page(
     flash_messages: list[tuple[str, str]] = []
     if error:
         flash_messages.append(("error", error))
+    if notice:
+        flash_messages.append(("success", notice))
 
     config = StandaloneLayoutConfig(
         app_name=site_name,
@@ -70,6 +74,133 @@ def render_login_page(
             <button type="submit"
                     class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Sign In</button>
         </form>
+    </div>
+    """
+
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
+
+
+def render_password_reset_request_page(
+    site_name: str = "Lexigram Admin",
+    csrf_token: str = "",
+    error: str = "",
+    sent: bool = False,
+) -> str:
+    """Render a standalone password reset request page.
+
+    Args:
+        site_name: Site name for branding.
+        csrf_token: CSRF token to embed as a hidden form field.
+        error: Error message to display.
+        sent: When True, shows the generic "check your email" notice
+            (anti-enumeration; identical for known and unknown emails).
+
+    Returns:
+        HTML string for the request page.
+    """
+    flash_messages: list[tuple[str, str]] = []
+    if error:
+        flash_messages.append(("error", error))
+    if sent:
+        flash_messages.append(
+            (
+                "success",
+                "If an account exists for that email, a password reset link has been sent.",
+            )
+        )
+
+    config = StandaloneLayoutConfig(
+        app_name=site_name,
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title="Password Reset",
+        flash_messages=flash_messages,
+    )
+
+    content = f"""
+    <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-foreground mb-2">Forgot Password?</h1>
+            <p class="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
+        </div>
+        <form method="post" action="/admin/password-reset">
+            <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium text-foreground mb-2">Email</label>
+                <input type="email" id="email" name="email" placeholder="your@email.com" required autofocus
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <button type="submit"
+                    class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Send Reset Link</button>
+        </form>
+        <p class="mt-4 text-center text-sm">
+            <a href="/admin/login" class="text-primary hover:underline">Back to sign in</a>
+        </p>
+    </div>
+    """
+
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
+
+
+def render_password_reset_confirm_page(
+    token: str,
+    site_name: str = "Lexigram Admin",
+    csrf_token: str = "",
+    error: str = "",
+) -> str:
+    """Render a standalone password reset confirm page.
+
+    Args:
+        token: Raw reset token from the emailed link.
+        site_name: Site name for branding.
+        csrf_token: CSRF token to embed as a hidden form field.
+        error: Error message to display.
+
+    Returns:
+        HTML string for the confirm page.
+    """
+    flash_messages: list[tuple[str, str]] = []
+    if error:
+        flash_messages.append(("error", error))
+
+    config = StandaloneLayoutConfig(
+        app_name=site_name,
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title="Set New Password",
+        flash_messages=flash_messages,
+    )
+
+    content = f"""
+    <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-foreground mb-2">Set New Password</h1>
+            <p class="text-sm text-muted-foreground">Choose a strong new password</p>
+        </div>
+        <form method="post" action="/admin/password-reset/{escape(token)}">
+            <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+            <div class="mb-4">
+                <label for="password" class="block text-sm font-medium text-foreground mb-2">New Password</label>
+                <input type="password" id="password" name="password" placeholder="New password" required autofocus
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <div class="mb-4">
+                <label for="password_confirmation" class="block text-sm font-medium text-foreground mb-2">Confirm Password</label>
+                <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Repeat password" required
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <button type="submit"
+                    class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Reset Password</button>
+        </form>
+        <p class="mt-4 text-center text-sm">
+            <a href="/admin/login" class="text-primary hover:underline">Back to sign in</a>
+        </p>
     </div>
     """
 
