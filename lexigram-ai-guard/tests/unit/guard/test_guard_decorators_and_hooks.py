@@ -78,6 +78,38 @@ class TestGuardDecorators:
         with pytest.raises((RuntimeError, GuardPipelineError)):
             asyncio.run(chat(prompt="hello"))
 
+    def test_decorator_forward_empty_redaction_fails_closed(self) -> None:
+        """Redacting input to empty forwards the empty string, not the raw text."""
+        import asyncio
+
+        from lexigram.ai.guard.decorators import guarded
+        from lexigram.ai.guard.pipeline.result import GuardCheckResult
+
+        class _WipeGuard:
+            name = "wipe"
+
+            async def check(self, content: str, **kwargs: object):
+                from lexigram.result import Ok
+
+                return Ok(
+                    GuardCheckResult.redact(
+                        self.name,
+                        redacted_content="",
+                        reason="wiped by policy",
+                    )
+                )
+
+        calls: list[str] = []
+
+        @guarded(input_guards=[_WipeGuard()])  # type: ignore[list-item]
+        async def chat(prompt: str) -> str:
+            calls.append(prompt)
+            return f"echo:{prompt}"
+
+        result = asyncio.run(chat(prompt="secret payload"))
+        assert calls == [""]
+        assert result == "echo:"
+
     def test_decorator_preserves_signature_and_metadata(self) -> None:
         import asyncio
 

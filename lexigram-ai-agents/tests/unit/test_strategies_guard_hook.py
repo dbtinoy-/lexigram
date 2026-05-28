@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-from lexigram.result import Err, Ok
+from lexigram.result import Ok
 
 
 class MockObservationPipeline:
@@ -85,3 +84,14 @@ async def test_guard_observation_noop_without_pipeline() -> None:
     from lexigram.ai.agents.strategies.guard_hook import guard_observation
 
     assert await guard_observation(None, "anything", tool_name="x") == "anything"
+
+
+@pytest.mark.asyncio
+async def test_guard_observation_redact_to_empty_fails_closed() -> None:
+    """Redacting to empty must not fall back to the raw content."""
+
+    from lexigram.ai.agents.strategies.guard_hook import guard_observation
+
+    pipeline = MockObservationPipeline(final_content="")
+    out = await guard_observation(pipeline, "raw tool output", tool_name="ls")
+    assert out == ""
