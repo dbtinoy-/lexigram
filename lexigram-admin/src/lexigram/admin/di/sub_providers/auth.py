@@ -296,6 +296,7 @@ class AdminAuthSubProvider:
             AdminAuditLogStoreProtocol,
             AdminLoginAttemptServiceProtocol,
             AdminLoginAttemptStoreProtocol,
+            AdminPasswordResetServiceProtocol,
             AdminPasswordResetTokenStoreProtocol,
         )
 
@@ -330,6 +331,20 @@ class AdminAuthSubProvider:
             logger.debug("admin_auth.cache_wired")
         except Exception:
             logger.debug("admin_auth.cache_not_available")
+
+        # ── Wire cache into AdminPasswordResetService (optional) ──────────
+        try:
+            from lexigram.contracts.infra.cache import CacheBackendProtocol
+
+            _cache = await container.resolve(CacheBackendProtocol)
+            _reset_svc = await container.resolve(
+                AdminPasswordResetServiceProtocol, bypass_visibility=True
+            )
+            if hasattr(_reset_svc, "_cache"):
+                _reset_svc._cache = _cache
+            logger.debug("admin_auth.reset_cache_wired")
+        except Exception:
+            logger.debug("admin_auth.reset_cache_not_available")
 
     async def shutdown(self) -> None:
         """Shut down auth services."""

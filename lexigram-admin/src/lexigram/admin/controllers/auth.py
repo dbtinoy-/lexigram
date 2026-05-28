@@ -288,12 +288,17 @@ class AuthController(AdminController):
             )
 
         if self._password_reset_service is not None:
-            await self._password_reset_service.request_reset(
+            result = await self._password_reset_service.request_reset(
                 email=email,
                 ip_address=self._get_client_ip(request),
                 user_agent=request.headers.get("user-agent", ""),
                 base_url=str(request.base_url),
             )
+            if result.is_err():
+                return RedirectResponse(
+                    url=f"/admin/password-reset?error={quote_plus(str(result.unwrap_err()))}",
+                    status_code=302,
+                )
         return RedirectResponse(url="/admin/password-reset?sent=1", status_code=302)
 
     # ------------------------------------------------------------------
