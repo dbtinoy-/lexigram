@@ -14,10 +14,15 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from lexigram.admin.auth.protocols import (
     AdminAuthServiceProtocol,
     AdminCsrfServiceProtocol,
+    AdminPasswordResetServiceProtocol,
 )
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
-from lexigram.admin.lib.template import render_login_page
+from lexigram.admin.lib.template import (
+    render_login_page,
+    render_password_reset_confirm_page,
+    render_password_reset_request_page,
+)
 from lexigram.admin.observability.admin_metrics import AdminMetrics
 from lexigram.contracts.core import TaskManagerProtocol
 from lexigram.contracts.web import get, post
@@ -46,6 +51,7 @@ class AuthController(AdminController):
         renderer: AdminRenderer,
         task_manager: TaskManagerProtocol | None = None,
         metrics: AdminMetrics | None = None,
+        password_reset_service: AdminPasswordResetServiceProtocol | None = None,
     ) -> None:
         """Initialise auth controller.
 
@@ -57,11 +63,14 @@ class AuthController(AdminController):
             task_manager: Optional task manager; injected by the container in
                 production, omitted in tests.
             metrics: Optional admin metrics collector.
+            password_reset_service: Optional password reset orchestrator;
+                injected by the container when registered, ``None`` otherwise.
         """
         super().__init__(renderer, task_manager)
         self._auth_service = auth_service
         self._csrf_service = csrf_service
         self._metrics = metrics or AdminMetrics(None)
+        self._password_reset_service = password_reset_service
 
     # ------------------------------------------------------------------
     # GET /login
@@ -88,12 +97,18 @@ class AuthController(AdminController):
             return RedirectResponse(url=next_url, status_code=302)
 
         error = request.query_params.get("error", "")
+        notice = request.query_params.get("notice", "")
 
         csrf_session_id = secrets.token_urlsafe(16)
         request.session["csrf_session_id"] = csrf_session_id
         csrf_token = self._csrf_service.generate_token(csrf_session_id)
 
-        html = render_login_page(next_url=next_url, error=error, csrf_token=csrf_token)
+        html = render_login_page(
+            next_url=next_url,
+            error=error,
+            csrf_token=csrf_token,
+            notice=notice,
+        )
         return HTMLResponse(content=html)
 
     # ------------------------------------------------------------------
@@ -199,6 +214,187 @@ class AuthController(AdminController):
 
         request.session.clear()
         return RedirectResponse(url="/admin/login", status_code=302)
+
+    # ------------------------------------------------------------------
+    # GET /password-reset — request form
+    # ------------------------------------------------------------------
+
+    @get("/password-reset")
+    async def password_reset_request_form(
+        self, request: Request
+    ) -> HTMLResponse | RedirectResponse:
+        """Display the standalone password reset request form.
+
+        Redirects authenticated users to the admin home.  A fresh CSRF
+        token is embedded for unauthenticated visitors.
+
+        Args:
+            request: Incoming HTTP request.
+
+        Returns:
+            HTMLResponse with the rendered request page, or a
+            RedirectResponse when already authenticated.
+        """
+        user = getattr(request.state, "user", None)
+        if user and user.user_id != "guest":
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        error = request.query_params.get("error", "")
+        sent = request.query_params.get("sent", "") == "1"
+
+        csrf_session_id = secrets.token_urlsafe(16)
+        request.session["csrf_session_id"] = csrf_session_id
+        csrf_token = self._csrf_service.generate_token(csrf_session_id)
+
+        html = render_password_reset_request_page(
+            error=error, csrf_token=csrf_token, sent=sent
+        )
+        return HTMLResponse(content=html)
+
+    # ------------------------------------------------------------------
+    # POST /password-reset — request submit
+    # ------------------------------------------------------------------
+
+    @post("/password-reset")
+    async def password_reset_request_submit(self, request: Request) -> RedirectResponse:
+        """Process the password reset request form.
+
+        Always redirects to the generic ``sent`` notice — the response is
+        identical whether or not the email exists (anti-enumeration).
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to the request page with ``sent=1``.
+        """
+        form_data = await request.form()
+        email = str(form_data.get("email", ""))
+        csrf_token = str(form_data.get("csrf_token", ""))
+
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            return RedirectResponse(
+                url=f"/admin/password-reset?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        if not email:
+            return RedirectResponse(
+                url=f"/admin/password-reset?error={quote_plus('Email is required.')}",
+                status_code=302,
+            )
+
+        if self._password_reset_service is not None:
+            await self._password_reset_service.request_reset(
+                email=email,
+                ip_address=self._get_client_ip(request),
+                user_agent=request.headers.get("user-agent", ""),
+                base_url=str(request.base_url),
+            )
+        return RedirectResponse(url="/admin/password-reset?sent=1", status_code=302)
+
+    # ------------------------------------------------------------------
+    # GET /password-reset/{token} — confirm form
+    # ------------------------------------------------------------------
+
+    @get("/password-reset/{token}")
+    async def password_reset_confirm_form(
+        self, request: Request
+    ) -> HTMLResponse | RedirectResponse:
+        """Display the standalone confirm form for a reset token.
+
+        Args:
+            request: Incoming HTTP request (``token`` from path params).
+
+        Returns:
+            HTMLResponse with the rendered confirm page, or a
+            RedirectResponse when already authenticated.
+        """
+        user = getattr(request.state, "user", None)
+        if user and user.user_id != "guest":
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        token = request.path_params.get("token", "")
+        error = request.query_params.get("error", "")
+
+        csrf_session_id = secrets.token_urlsafe(16)
+        request.session["csrf_session_id"] = csrf_session_id
+        csrf_token = self._csrf_service.generate_token(csrf_session_id)
+
+        html = render_password_reset_confirm_page(
+            token=token, error=error, csrf_token=csrf_token
+        )
+        return HTMLResponse(content=html)
+
+    # ------------------------------------------------------------------
+    # POST /password-reset/{token} — confirm submit
+    # ------------------------------------------------------------------
+
+    @post("/password-reset/{token}")
+    async def password_reset_confirm_submit(self, request: Request) -> RedirectResponse:
+        """Process the new-password form.
+
+        Validates CSRF and password/confirmation match, then delegates to
+        the reset service.  On success the user is redirected to the login
+        page with a success notice; on failure back to the confirm form
+        with an error message.
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to the login page or back to the confirm form.
+        """
+        token = request.path_params.get("token", "")
+        form_data = await request.form()
+        password = str(form_data.get("password", ""))
+        password_confirmation = str(form_data.get("password_confirmation", ""))
+        csrf_token = str(form_data.get("csrf_token", ""))
+
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            return RedirectResponse(
+                url=f"/admin/password-reset/{token}?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        if not password or password != password_confirmation:
+            return RedirectResponse(
+                url=f"/admin/password-reset/{token}?error={quote_plus('Passwords do not match.')}",
+                status_code=302,
+            )
+
+        if self._password_reset_service is None:
+            return RedirectResponse(
+                url=f"/admin/password-reset/{token}?error={quote_plus('Password reset is not available.')}",
+                status_code=302,
+            )
+
+        result = await self._password_reset_service.confirm_reset(
+            token=token,
+            new_password=password,
+            ip_address=self._get_client_ip(request),
+            user_agent=request.headers.get("user-agent", ""),
+        )
+        if result.is_ok():
+            logger.info("admin.password_reset_confirm_success", token_prefix=token[:8])
+            return RedirectResponse(
+                url=f"/admin/login?notice={quote_plus('Password reset successful. Please sign in.')}",
+                status_code=302,
+            )
+
+        logger.warning(
+            "admin.password_reset_confirm_failed", error=str(result.unwrap_err())
+        )
+        return RedirectResponse(
+            url=f"/admin/password-reset/{token}?error={quote_plus(str(result.unwrap_err()))}",
+            status_code=302,
+        )
 
     # ------------------------------------------------------------------
     # Helpers
