@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
+from lexigram.admin.ui.organisms.table.views.summarizers import compute_summaries
 from lexigram.ui import Checkbox, el
 
 HEADER_HEIGHT = 50
@@ -55,7 +56,11 @@ class TabularView(AbstractDataView):
             *self.render_rows(),
             class_="bg-card divide-y divide-border",
         )
-        tfoot = self.render_summary() if self.summary else ""
+        tfoot = (
+            self.render_summary(self.effective_summary())
+            if self.effective_summary()
+            else ""
+        )
 
         density_class = getattr(
             self.config, "density_css_class", "table-density-normal"
@@ -564,7 +569,14 @@ class TabularView(AbstractDataView):
             )
             output_list.append(detail_row)
 
-    def render_summary(self) -> Any:
+    def effective_summary(self) -> dict[str, Any] | None:
+        """Resolve footer summaries: explicit summary or per-column aggregates."""
+        if self.summary:
+            return self.summary
+        computed = compute_summaries(self.data, self.config.columns)
+        return computed or None
+
+    def render_summary(self, summary: dict[str, Any] | None = None) -> Any:
         summary_cells = []
         left_offset = 0
 
@@ -593,7 +605,7 @@ class TabularView(AbstractDataView):
 
         # Data columns
         for col in self.config.columns:
-            val = self.summary.get(col.name, "") if self.summary else ""
+            val = summary.get(col.name, "") if summary else ""
             cls = "px-6 py-3 text-sm font-bold text-foreground sticky bottom-0 z-20 bg-muted dark:bg-background border-t border-border"
             style = ""
 
