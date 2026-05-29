@@ -30,6 +30,24 @@ class Role:
     inherits: list[str] = field(default_factory=list)  # Parent role names
 
 
+@dataclass
+class AdminRole:
+    """A role as persisted and edited by the RBAC admin UI.
+
+    Uses string permissions (``"resource.action"``) for direct
+    compatibility with ``AuthorizationService`` and the
+    ``admin_users.roles`` column.  Distinct from :class:`Role` (which
+    wraps rbac :class:`Permission` objects) — the UI model is the
+    string form.
+    """
+
+    name: str
+    description: str = ""
+    permissions: list[str] = field(default_factory=list)
+    inherits: list[str] = field(default_factory=list)
+    is_system: bool = False
+
+
 @dataclass(frozen=True)
 class PolicyContext:
     """Context passed to policy evaluators."""
