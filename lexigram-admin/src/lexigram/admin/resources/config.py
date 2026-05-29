@@ -40,6 +40,9 @@ class TableConfiguration(DomainModel):
     resource_prefix: str | None = None
     expandable_relationship: str | None = None
     density: str = "normal"
+    empty_state_title: str | None = None
+    empty_state_message: str | None = None
+    empty_state_icon: str | None = None
 
     @property
     def filters(self) -> Any | None:
@@ -83,6 +86,10 @@ class ResourceConfig:
         self._group_label: str | None = None
         self._group_icon: str | None = None
         self._group_order: int | None = None
+        self._empty_state_title: str | None = None
+        self._empty_state_message: str | None = None
+        self._empty_state_icon: str | None = None
+        self._group_by: str | None = None
 
     @staticmethod
     def builder() -> ResourceConfig:
@@ -139,6 +146,17 @@ class ResourceConfig:
         self._per_page = max(1, count)
         return self
 
+    def group_by(self, column: str) -> ResourceConfig:
+        """Set the default grouping column for the resource list view.
+
+        Users can override the group via the table toolbar dropdown.
+
+        Args:
+            column: Column name to group rows by.
+        """
+        self._group_by = column
+        return self
+
     def sort(self, field: str, order: Literal["asc", "desc"] = "asc") -> ResourceConfig:
         """Set the default sort field and order."""
         self._default_sort_field = field
@@ -163,6 +181,28 @@ class ResourceConfig:
     def description(self, description: str) -> ResourceConfig:
         """Set the resource description."""
         self._description = description
+        return self
+
+    def empty_state(
+        self,
+        *,
+        title: str | None = None,
+        message: str | None = None,
+        icon: str | None = None,
+    ) -> ResourceConfig:
+        """Override empty-state copy for the resource list view.
+
+        Args:
+            title: Empty-state heading.
+            message: Empty-state helper text.
+            icon: Empty-state icon (emoji or icon name).
+        """
+        if title is not None:
+            self._empty_state_title = title
+        if message is not None:
+            self._empty_state_message = message
+        if icon is not None:
+            self._empty_state_icon = icon
         return self
 
     def record_title(self, func: Any) -> ResourceConfig:

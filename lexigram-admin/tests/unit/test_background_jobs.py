@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
-from lexigram.admin.services.background_jobs import BackgroundJob, BackgroundJobService
-
+from lexigram.admin.services.background_jobs import BackgroundJobService
+from lexigram.admin.services.export import ExportService
+from lexigram.admin.services.import_ import AdminImportService
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_svc(**kwargs) -> BackgroundJobService:
     return BackgroundJobService(**kwargs)
@@ -20,6 +24,7 @@ def _make_svc(**kwargs) -> BackgroundJobService:
 # ---------------------------------------------------------------------------
 # Enqueue import
 # ---------------------------------------------------------------------------
+
 
 class TestEnqueueImport:
     @pytest.mark.asyncio
@@ -70,6 +75,7 @@ class TestEnqueueImport:
 # Enqueue export
 # ---------------------------------------------------------------------------
 
+
 class TestEnqueueExport:
     @pytest.mark.asyncio
     async def test_returns_job_id(self) -> None:
@@ -101,6 +107,7 @@ class TestEnqueueExport:
 # ---------------------------------------------------------------------------
 # Status / query
 # ---------------------------------------------------------------------------
+
 
 class TestJobStatus:
     @pytest.mark.asyncio
@@ -156,13 +163,22 @@ class TestJobStatus:
         await asyncio.sleep(0.1)
         status = await svc.get_status(job_id)
         assert status is not None
-        for key in ("job_id", "job_type", "resource_type", "actor_id", "status", "percent", "created_at"):
+        for key in (
+            "job_id",
+            "job_type",
+            "resource_type",
+            "actor_id",
+            "status",
+            "percent",
+            "created_at",
+        ):
             assert key in status
 
 
 # ---------------------------------------------------------------------------
 # Cancel
 # ---------------------------------------------------------------------------
+
 
 class TestCancel:
     @pytest.mark.asyncio
@@ -184,6 +200,7 @@ class TestCancel:
 # Eviction
 # ---------------------------------------------------------------------------
 
+
 class TestEviction:
     @pytest.mark.asyncio
     async def test_evicts_when_over_max(self) -> None:
@@ -193,4 +210,126 @@ class TestEviction:
         await asyncio.sleep(0.2)
         # Only max_retained_jobs completed jobs should remain
         all_jobs = svc.list_jobs()
-        assert len(all_jobs) <= 3 + 2  # completed ≤ 3, some may still be pending/running
+        assert (
+            len(all_jobs) <= 3 + 2
+        )  # completed ≤ 3, some may still be pending/running
+
+
+class _FakeDataSource:
+    """Minimal IDataSource double used by AdminImportService commits."""
+
+    def __init__(self) -> None:
+        self.created: list[dict[str, Any]] = []
+
+    async def create(self, row: dict[str, Any]) -> SimpleNamespace:
+        self.created.append(row)
+        return SimpleNamespace(id=str(len(self.created)))
+
+
+class _FakeExportSource:
+    """Minimal IExportDataSource double used by ExportService.execute_export."""
+
+    def __init__(self, items: list[dict[str, Any]], total: int) -> None:
+        self._items = items
+        self._total = total
+
+    async def get_export_data(
+        self,
+        filters: dict[str, Any],
+        columns: list[str],
+        sort_by: str | None = None,
+        sort_order: str = "asc",
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[dict[str, Any]]:
+        return self._items
+
+    async def get_export_count(self, filters: dict[str, Any]) -> int:
+        return self._total
+
+    async def get_column_definitions(self) -> list[dict[str, Any]]:
+        return []
+
+
+class _FakeStorage:
+    """Minimal BlobStoreProtocol double used by export backends."""
+
+    def __init__(self) -> None:
+        self.uploads: list[tuple[str, bytes, str]] = []
+
+    async def upload(self, file_path: str, content: bytes, content_type: str) -> str:
+        self.uploads.append((file_path, content, content_type))
+        return file_path
+
+
+# ---------------------------------------------------------------------------
+# Enqueue with real services
+# ---------------------------------------------------------------------------
+
+
+class TestEnqueueImportWithRealService:
+    @pytest.mark.asyncio
+    async def test_imports_through_admin_import_service(self) -> None:
+        ds = _FakeDataSource()
+        svc = BackgroundJobService(import_service=AdminImportService(data_source=ds))
+        job_id = await svc.enqueue_import(
+            "user", b"name,email\nAlice,a@b.com", filename="users.csv"
+        )
+        await asyncio.sleep(0.1)
+        status = await svc.get_status(job_id)
+        assert status is not None
+        assert status["status"] == "completed"
+        assert status["result"]["rows_imported"] == 1
+        assert ds.created == [{"name": "Alice", "email": "a@b.com"}]
+
+    @pytest.mark.asyncio
+    async def test_unsupported_filename_fails_job(self) -> None:
+        svc = BackgroundJobService(
+            import_service=AdminImportService(data_source=_FakeDataSource())
+        )
+        job_id = await svc.enqueue_import("user", b"data", filename="users.xlsx")
+        await asyncio.sleep(0.1)
+        status = await svc.get_status(job_id)
+        assert status is not None
+        assert status["status"] == "failed"
+        assert "Unsupported file format" in status["error"]
+
+
+class TestEnqueueExportWithRealService:
+    @pytest.mark.asyncio
+    async def test_exports_through_export_service(self) -> None:
+        source = _FakeExportSource(items=[{"id": "1"}], total=1)
+        exporter = ExportService(storage=_FakeStorage(), task_manager=object())
+        svc = BackgroundJobService(export_service=exporter, export_data_source=source)
+        job_id = await svc.enqueue_export(
+            "user", export_format="csv", filters={"active": True}
+        )
+        await asyncio.sleep(0.1)
+        status = await svc.get_status(job_id)
+        assert status is not None
+        assert status["status"] == "completed"
+        assert status["result"]["rows_exported"] == 1
+        assert status["result"]["download_url"].startswith("/admin/exports/download")
+        assert status["result"]["export_format"] == "csv"
+
+    @pytest.mark.asyncio
+    async def test_export_without_data_source_fails(self) -> None:
+        exporter = ExportService(storage=_FakeStorage(), task_manager=object())
+        svc = BackgroundJobService(export_service=exporter)
+        job_id = await svc.enqueue_export("user", export_format="csv")
+        await asyncio.sleep(0.1)
+        status = await svc.get_status(job_id)
+        assert status is not None
+        assert status["status"] == "failed"
+        assert "data source" in status["error"]
+
+    @pytest.mark.asyncio
+    async def test_export_with_unknown_format_fails(self) -> None:
+        source = _FakeExportSource(items=[], total=0)
+        exporter = ExportService(storage=_FakeStorage(), task_manager=object())
+        svc = BackgroundJobService(export_service=exporter, export_data_source=source)
+        job_id = await svc.enqueue_export("user", export_format="tsv")
+        await asyncio.sleep(0.1)
+        status = await svc.get_status(job_id)
+        assert status is not None
+        assert status["status"] == "failed"

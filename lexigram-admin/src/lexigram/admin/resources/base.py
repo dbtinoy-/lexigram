@@ -17,6 +17,7 @@ from lexigram.admin.data.data_source import IDataSource
 from lexigram.admin.resources.config import TableConfiguration
 
 if TYPE_CHECKING:
+    from lexigram.admin.actions.base import HeaderAction
     from lexigram.admin.forms.components import FormBase
     from lexigram.admin.layout.layout_manager import LayoutManager
     from lexigram.admin.rbac.schema import ResourcePermissions
@@ -86,6 +87,7 @@ class Resource:
     columns: list[Column] = []
     actions: list[Action] = []
     action_layout: str = "horizontal"
+    header_actions: list[HeaderAction] = []
     bulk_actions: list[BulkAction] = []
     filters: list[Filter] = []
 
@@ -95,6 +97,14 @@ class Resource:
 
     page_size: int = 20
     default_sort: str | None = None
+
+    # Optional default grouping column (users can override via the toolbar)
+    group_by: str | None = None
+
+    # Table empty-state copy overrides (None = framework defaults)
+    empty_state_title: str | None = None
+    empty_state_message: str | None = None
+    empty_state_icon: str | None = None
 
     # Form Configuration
     form_class: type[FormBase] | None = None
@@ -624,10 +634,31 @@ class Resource:
             cls._get_config_value(cfg, "view", view_fallback) if cfg else view_fallback
         )
 
+        empty_state_title = (
+            cls._get_config_value(cfg, "empty_state_title", cls.empty_state_title)
+            if cfg
+            else cls.empty_state_title
+        )
+        empty_state_message = (
+            cls._get_config_value(cfg, "empty_state_message", cls.empty_state_message)
+            if cfg
+            else cls.empty_state_message
+        )
+        empty_state_icon = (
+            cls._get_config_value(cfg, "empty_state_icon", cls.empty_state_icon)
+            if cfg
+            else cls.empty_state_icon
+        )
+        group_by = (
+            cls._get_config_value(cfg, "group_by", cls.group_by)
+            if cfg
+            else cls.group_by
+        )
+
         return TableConfiguration(
             columns=columns,
             actions=actions,
-            header_actions=[],
+            header_actions=list(cls.header_actions),
             bulk_actions=list(cls.bulk_actions),
             filter_options=filters,
             per_page=per_page,
@@ -637,6 +668,10 @@ class Resource:
             action_layout=action_layout,
             default_layout=default_layout,
             default_view=default_view,
+            empty_state_title=empty_state_title,
+            empty_state_message=empty_state_message,
+            empty_state_icon=empty_state_icon,
+            group_by=group_by,
         )
 
     @classmethod

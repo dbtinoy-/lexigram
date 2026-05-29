@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from lexigram.admin.actions.base import Action, RowAction
+from lexigram.admin.actions.exceptions import ActionError
 from lexigram.admin.actions.standard import CloneAction
 from lexigram.admin.actions.types import ActionColor, ActionContext
 
@@ -38,11 +41,24 @@ class TestCloneAction:
         assert action.label == "Copy"
 
     @pytest.mark.asyncio
-    async def test_execute_returns_ok(self) -> None:
+    async def test_execute_returns_err_without_data_source(self) -> None:
         action = CloneAction()
         ctx = ActionContext(resource_name="users")
         result = await action.execute({"id": 1}, ctx)
-        assert result.is_ok()
-        value = result.unwrap()
-        assert isinstance(value, dict)
-        assert "Cloned" in value["message"]
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), ActionError)
+
+    @pytest.mark.asyncio
+    async def test_execute_returns_err_without_record_id(self) -> None:
+        class FakeDataSource:
+            async def find_one(self, item_id: Any) -> dict:
+                return {"id": item_id, "name": "test"}
+
+            async def create(self, data: dict) -> dict:
+                return {"id": "new-1", **data}
+
+        action = CloneAction(data_source=FakeDataSource())
+        ctx = ActionContext(resource_name="users")
+        result = await action.execute({}, ctx)
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), ActionError)

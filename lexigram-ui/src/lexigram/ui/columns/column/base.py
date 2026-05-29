@@ -56,6 +56,7 @@ class Column(ABC):
         self._visibility_classes: list[str] = []
         self._pinned: str | None = None  # 'left' or 'right'
         self._masker: Callable[[Any], str] | None = None
+        self._summarizer: str | None = None  # 'sum', 'average', 'count', 'range'
 
     def get_value(self, record: dict) -> Any:
         """Extract value from record."""

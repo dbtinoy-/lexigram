@@ -22,11 +22,13 @@ class StaticFilesMiddleware(BaseHTTPMiddleware):
         prefix: str = "/static",
         html: bool = False,
         check_dir: bool = True,
+        cache_max_age: int = 31536000,
     ) -> None:
         super().__init__(app)
         self.directory = Path(directory)
         self.prefix = prefix.rstrip("/")
         self.html = html
+        self.cache_max_age = cache_max_age
 
         if check_dir and not self.directory.exists():
             raise RuntimeError(f"Static files directory '{directory}' does not exist")
@@ -76,7 +78,7 @@ class StaticFilesMiddleware(BaseHTTPMiddleware):
         return FileResponse(
             path=file_path,
             media_type=content_type,
-            headers={"Cache-Control": "public, max-age=31536000"},  # 1 year cache
+            headers={"Cache-Control": f"public, max-age={self.cache_max_age}"},
         )
 
 

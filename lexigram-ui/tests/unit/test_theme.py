@@ -15,9 +15,26 @@ def test_shadcn_css_contains_dark_block() -> None:
 
 def test_shadcn_css_contains_default_variables() -> None:
     css = shadcn_css()
-    assert "--background: oklch(0.98 0 0)" in css
-    assert "--foreground: oklch(0.17 0 0)" in css
-    assert "--primary: oklch(0.546 0.245 262.881)" in css
+    assert "--background: oklch(1 0 0)" in css
+    assert "--foreground: oklch(0.145 0 0)" in css
+    assert "--primary: oklch(0.205 0 0)" in css
+
+
+def test_shadcn_css_contains_sidebar_tokens() -> None:
+    css = shadcn_css()
+    assert "--sidebar: oklch(0.985 0 0)" in css
+    assert "--sidebar-foreground: oklch(0.145 0 0)" in css
+    assert "--sidebar-primary: oklch(0.205 0 0)" in css
+    assert "--sidebar-border: oklch(0.922 0 0)" in css
+    assert "--sidebar-ring: oklch(0.708 0 0)" in css
+
+
+def test_shadcn_css_contains_dark_sidebar_tokens() -> None:
+    css = shadcn_css()
+    assert "--sidebar: oklch(0.205 0 0)" in css
+    assert "--sidebar-foreground: oklch(0.985 0 0)" in css
+    assert "--sidebar-primary: oklch(0.488 0.243 264.376)" in css
+    assert "--sidebar-border: oklch(1 0 0 / 10%)" in css
 
 
 def test_shadcn_css_has_no_static_utility_classes() -> None:

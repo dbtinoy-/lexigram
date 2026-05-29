@@ -470,6 +470,20 @@ class TableState(DomainModel):
         """Return a copy with a new layout type."""
         return self.model_copy(update={"layout": layout})
 
+    def with_group_by(self, group_by: str | None) -> TableState:
+        """Return a copy with a new grouping column.
+
+        Pass ``None`` to clear grouping. Resets to page 1 since
+        grouping changes the result set.
+
+        Example:
+            new_state = state.with_group_by("category")
+            cleared = state.with_group_by(None)
+        """
+        return self.model_copy(
+            update={"group_by": group_by, "page": 1, "cursor": None},
+        )
+
     def with_include_deleted(self, include_deleted: bool) -> TableState:
         """Return a copy with a new include_deleted value.
 

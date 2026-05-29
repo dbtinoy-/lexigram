@@ -498,6 +498,110 @@ class ResourceController(ABC, Generic[T]):
         )
         return HTMLResponse(html)
 
+    async def bulk_purge_confirm(self, request: Request) -> Response:
+        """Render a bulk purge confirmation slide-over panel.
+
+        Called via HTMX GET from a PurgeBulkAction button. Reads the
+        selected record IDs from the query string and renders a
+        slide-over confirmation panel posting ``action=purge``.
+        """
+        ids = request.query_params.getlist("ids")
+        record_count = len(ids)
+
+        bulk_url = f"{self.meta.prefix}/{self.meta.name}/bulk"
+        html = render_bulk_delete_confirm(
+            record_count=record_count,
+            bulk_url=bulk_url,
+            action="purge",
+            title="Purge Records",
+            heading="Confirm Bulk Purge",
+            confirm_phrase="PURGE",
+            subtitle=f"Purging {record_count} record{'s' if record_count != 1 else ''}",
+            confirm_label="Purge",
+            message=(
+                f"You are about to permanently purge <strong>{record_count}</strong> "
+                f"record{'s' if record_count != 1 else ''}. "
+                "This action <strong>cannot be undone</strong>."
+            ),
+        )
+        return HTMLResponse(html)
+
+    async def bulk_restore_confirm(self, request: Request) -> Response:
+        """Render a bulk restore confirmation slide-over panel.
+
+        Called via HTMX GET from a RestoreBulkAction button. Reads the
+        selected record IDs from the query string and renders a
+        slide-over confirmation panel posting ``action=restore``.
+        """
+        ids = request.query_params.getlist("ids")
+        record_count = len(ids)
+
+        bulk_url = f"{self.meta.prefix}/{self.meta.name}/bulk"
+        html = render_bulk_delete_confirm(
+            record_count=record_count,
+            bulk_url=bulk_url,
+            action="restore",
+            title="Restore Records",
+            heading="Confirm Bulk Restore",
+            confirm_phrase="RESTORE",
+            subtitle=f"Restoring {record_count} record{'s' if record_count != 1 else ''}",
+            confirm_label="Restore",
+            message=(
+                f"You are about to restore <strong>{record_count}</strong> "
+                f"soft-deleted record{'s' if record_count != 1 else ''}."
+            ),
+            variant="default",
+            confirm_button_class=(
+                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium "
+                "text-white bg-success hover:bg-success/90 "
+                "focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 "
+                "transition-colors shadow-sm "
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+            ),
+        )
+        return HTMLResponse(html)
+
+    # ── Import downloads (example CSV / failed-import report) ──
+    # The base controller has no resource reference; subclasses can set
+    # `self._import_action = ImportAction(...)` in their __init__ to
+    # enable the download routes.
+
+    def _find_import_action(self) -> Any:
+        """Return the configured ImportAction, or None."""
+        return getattr(self, "_import_action", None)
+
+    async def import_example(self, request: Request) -> Response:
+        """Serve the resource's import example CSV template as a download."""
+        action = self._find_import_action()
+        if action is None or not action.example_csv():
+            return HTMLResponse(
+                "<h1>Import not configured for this resource</h1>",
+                status_code=404,
+            )
+        return Response(
+            content=action.example_csv(),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{action.example_filename}"'
+                )
+            },
+        )
+
+    async def import_report(self, request: Request) -> Response:
+        """Serve a stored failed-import report as a CSV download."""
+        action = self._find_import_action()
+        report_id = request.query_params.get("report_id", "")
+        content = action.report_csv(report_id) if action else None
+        if content is None:
+            return HTMLResponse("<h1>Report not found</h1>", status_code=404)
+        filename = action.report_filename(report_id) or "import-errors.csv"
+        return Response(
+            content=content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     async def delete(self, request: Request) -> Response:
         """Delete resource (soft or hard depending on soft_delete_enabled)."""
         async with AdminContextManager(request) as ctx:
@@ -619,6 +723,18 @@ class ResourceController(ABC, Generic[T]):
         if action == "delete":
             count = await data_source.bulk_delete(ids)
             return f"Deleted {count} items"
+
+        if action == "purge":
+            count = await data_source.bulk_delete(ids)
+            return f"Purged {count} items"
+
+        if action == "restore":
+            restored = 0
+            for item_id in ids:
+                updated = await data_source.update(item_id, {"deleted_at": None})
+                if updated is not None:
+                    restored += 1
+            return f"Restored {restored} items"
 
         return f"Unknown action: {action}"
 
@@ -767,6 +883,18 @@ class ResourceController(ABC, Generic[T]):
                 self.bulk_delete_confirm,
                 methods=["GET"],
             ),
+            Route(
+                f"{prefix}/bulk-purge-confirm",
+                self.bulk_purge_confirm,
+                methods=["GET"],
+            ),
+            Route(
+                f"{prefix}/bulk-restore-confirm",
+                self.bulk_restore_confirm,
+                methods=["GET"],
+            ),
+            Route(f"{prefix}/import-example", self.import_example, methods=["GET"]),
+            Route(f"{prefix}/import-report", self.import_report, methods=["GET"]),
             Route(f"{prefix}/{{id}}", self.detail, methods=["GET"]),
             Route(f"{prefix}/{{id}}/edit", self.edit_form, methods=["GET"]),
             Route(

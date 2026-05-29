@@ -196,43 +196,69 @@ When `default_theme="default"`, the layout generates CSS custom properties via `
 | Variable | Light Default | Dark Default |
 |----------|--------------|--------------|
 | `--background` | `oklch(1 0 0)` | `oklch(0.145 0 0)` |
-| `--foreground` | `oklch(0.145 0 0)` | `oklch(0.925 0 0)` |
-| `--card` | `oklch(1 0 0)` | `oklch(0.145 0 0)` |
-| `--card-foreground` | `oklch(0.145 0 0)` | `oklch(0.925 0 0)` |
-| `--popover` | `oklch(1 0 0)` | `oklch(0.145 0 0)` |
-| `--popover-foreground` | `oklch(0.145 0 0)` | `oklch(0.925 0 0)` |
+| `--foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` |
+| `--card` | `oklch(1 0 0)` | `oklch(0.205 0 0)` |
+| `--card-foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` |
+| `--popover` | `oklch(1 0 0)` | `oklch(0.205 0 0)` |
+| `--popover-foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` |
 
 ### Interactive Colors
 
 | Variable | Light | Dark |
 |----------|-------|------|
-| `--primary` | `oklch(0.205 0.042 265)` | `oklch(0.825 0.12 265)` |
-| `--primary-foreground` | `oklch(0.985 0 0)` | `oklch(0.205 0.042 265)` |
-| `--secondary` | `oklch(0.965 0.016 265)` | `oklch(0.27 0.03 265)` |
-| `--secondary-foreground` | `oklch(0.205 0.042 265)` | `oklch(0.985 0 0)` |
-| `--muted` | `oklch(0.965 0.016 265)` | `oklch(0.27 0.03 265)` |
-| `--muted-foreground` | `oklch(0.535 0.02 265)` | `oklch(0.715 0.015 265)` |
-| `--accent` | `oklch(0.965 0.016 265)` | `oklch(0.27 0.03 265)` |
-| `--accent-foreground` | `oklch(0.205 0.042 265)` | `oklch(0.985 0 0)` |
-| `--destructive` | `oklch(0.577 0.245 27)` | `oklch(0.704 0.191 22)` |
-| `--destructive-foreground` | `oklch(0.985 0 0)` | `oklch(0.985 0 0)` |
+| `--primary` | `oklch(0.205 0 0)` | `oklch(0.922 0 0)` |
+| `--primary-foreground` | `oklch(0.985 0 0)` | `oklch(0.205 0 0)` |
+| `--secondary` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` |
+| `--secondary-foreground` | `oklch(0.205 0 0)` | `oklch(0.985 0 0)` |
+| `--muted` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` |
+| `--muted-foreground` | `oklch(0.556 0 0)` | `oklch(0.708 0 0)` |
+| `--accent` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` |
+| `--accent-foreground` | `oklch(0.205 0 0)` | `oklch(0.985 0 0)` |
+| `--destructive` | `oklch(0.577 0.245 27.325)` | `oklch(0.704 0.191 22.216)` |
+| `--destructive-foreground` | `oklch(1 0 0)` | `oklch(0.97 0 0)` |
 
 ### Borders & Rings
 
 | Variable | Light | Dark |
 |----------|-------|------|
-| `--border` | `oklch(0.92 0.008 265)` | `oklch(0.27 0.03 265)` |
-| `--input` | `oklch(0.92 0.008 265)` | `oklch(0.27 0.03 265)` |
-| `--ring` | `oklch(0.205 0.042 265)` | `oklch(0.825 0.12 265)` |
-| `--radius` | `0.5rem` | `0.5rem` |
+| `--border` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 10%)` |
+| `--input` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 15%)` |
+| `--ring` | `oklch(0.708 0 0)` | `oklch(0.556 0 0)` |
+| `--radius` | `0.625rem` | `0.625rem` |
+
+### Chart Colors
+
+| Variable | Light | Dark |
+|----------|-------|------|
+| `--chart-1` | `oklch(0.87 0 0)` | `oklch(0.87 0 0)` |
+| `--chart-2` | `oklch(0.556 0 0)` | `oklch(0.556 0 0)` |
+| `--chart-3` | `oklch(0.439 0 0)` | `oklch(0.439 0 0)` |
+| `--chart-4` | `oklch(0.371 0 0)` | `oklch(0.371 0 0)` |
+| `--chart-5` | `oklch(0.269 0 0)` | `oklch(0.269 0 0)` |
+
+### Sidebar Colors
+
+| Variable | Light | Dark |
+|----------|-------|------|
+| `--sidebar` | `oklch(0.985 0 0)` | `oklch(0.205 0 0)` |
+| `--sidebar-foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` |
+| `--sidebar-primary` | `oklch(0.205 0 0)` | `oklch(0.488 0.243 264.376)` |
+| `--sidebar-primary-foreground` | `oklch(0.985 0 0)` | `oklch(0.985 0 0)` |
+| `--sidebar-accent` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` |
+| `--sidebar-accent-foreground` | `oklch(0.205 0 0)` | `oklch(0.985 0 0)` |
+| `--sidebar-border` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 10%)` |
+| `--sidebar-ring` | `oklch(0.708 0 0)` | `oklch(0.556 0 0)` |
 
 ### Status Colors
 
 | Variable | Light | Dark |
 |----------|-------|------|
-| `--color-success` | `oklch(0.645 0.185 150)` | `oklch(0.645 0.185 150)` |
-| `--color-warning` | `oklch(0.75 0.18 85)` | `oklch(0.75 0.18 85)` |
-| `--color-info` | `oklch(0.65 0.15 250)` | `oklch(0.65 0.15 250)` |
+| `--color-success` | `oklch(0.52 0.18 149.214)` | `oklch(0.76 0.14 149.214)` |
+| `--color-success-foreground` | `oklch(1 0 0)` | `oklch(0.97 0 0)` |
+| `--color-warning` | `oklch(0.795 0.184 86.047)` | `oklch(0.82 0.15 86.047)` |
+| `--color-warning-foreground` | `oklch(0.145 0 0)` | `oklch(0.2 0 0)` |
+| `--color-info` | `oklch(0.56 0.23 277.117)` | `oklch(0.74 0.135 277.116)` |
+| `--color-info-foreground` | `oklch(1 0 0)` | `oklch(0.97 0 0)` |
 
 ### Gray Scale
 

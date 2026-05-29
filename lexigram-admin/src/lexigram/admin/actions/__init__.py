@@ -66,6 +66,11 @@ _EXPORTS = {
     "ActionGroup": "lexigram.admin.actions.row_manager",
     "IRowDataSource": "lexigram.admin.actions.row_manager",
     "RowActionManager": "lexigram.admin.actions.row_manager",
+    # relation
+    "AssociateAction": "lexigram.admin.actions.relation",
+    "AttachAction": "lexigram.admin.actions.relation",
+    "DetachAction": "lexigram.admin.actions.relation",
+    "DissociateAction": "lexigram.admin.actions.relation",
 }
 
 __all__ = list(_EXPORTS.keys())
