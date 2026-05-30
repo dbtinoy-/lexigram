@@ -107,9 +107,11 @@ class AliasLimitValidator:
         count = self.count_aliases(document)
 
         if count > self._max_aliases:
-            raise GraphQLError(
+            error = GraphQLError(
                 f"Query has {count} aliases, exceeding maximum of {self._max_aliases}",
             )
+            error.safe = True
+            raise error
 
         logger.debug("Query has %d aliases (limit: %d)", count, self._max_aliases)
 
@@ -139,8 +141,8 @@ class AliasLimitExtension(SchemaExtension):
         """
         self._validator = AliasLimitValidator(max_aliases=max_aliases)
 
-    def on_operation(self) -> Iterator[None]:
-        """Hook called during operation execution."""
+    def on_validate(self) -> Iterator[None]:
+        """Hook called during operation validation."""
         execution_context = self.execution_context
 
         # Validate alias count

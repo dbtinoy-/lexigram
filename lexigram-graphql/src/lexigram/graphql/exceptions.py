@@ -48,6 +48,7 @@ class QueryTooDeepError(GraphQLError):
 
     _code: str = "LEX_ERR_GQL_004"
     code = GraphQLErrorCode.QUERY_TOO_DEEP
+    safe = True
 
 
 # --- Validation ---
@@ -71,6 +72,7 @@ class QueryTooComplexError(GraphQLError):
 
     _code: str = "LEX_ERR_GQL_007"
     code = GraphQLErrorCode.QUERY_TOO_COMPLEX
+    safe = True
 
 
 class ResolverError(GraphQLError):

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from lexigram.graphql import constants as const
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
@@ -70,6 +71,7 @@ class SchemaValidator:
         schema: Any,
         max_depth: int = 10,
         max_aliases: int = 10,
+        max_complexity: int = const.DEFAULT_MAX_COMPLEXITY,
     ) -> None:
         """Initialize the validator.
 
@@ -77,13 +79,18 @@ class SchemaValidator:
             schema: GraphQL schema.
             max_depth: Maximum query depth (delegated to DepthLimitValidator).
             max_aliases: Maximum number of aliases (delegated to AliasLimitValidator).
+            max_complexity: Maximum query complexity (delegated to ComplexityAnalyzer).
         """
         from lexigram.graphql.security.alias import AliasLimitValidator
+        from lexigram.graphql.security.complexity import ComplexityAnalyzer
         from lexigram.graphql.security.depth import DepthLimitValidator
 
         self._schema = schema
         self._depth_validator = DepthLimitValidator(max_depth=max_depth)
         self._alias_validator = AliasLimitValidator(max_aliases=max_aliases)
+        self._complexity_analyzer = ComplexityAnalyzer(
+            max_complexity=max_complexity,
+        )
 
     def validate_query(
         self,
@@ -135,6 +142,13 @@ class SchemaValidator:
                     f"Query has {alias_count} aliases, exceeding limit of "
                     f"{self._alias_validator.max_aliases}",
                 )
+
+            # Complexity — delegate to ComplexityAnalyzer (single source of truth)
+            complexity_ok, complexity_result = self._complexity_analyzer.check(
+                document, schema
+            )
+            if not complexity_ok:
+                result.add_error(complexity_result.warnings[0])
 
             # Field count (informational only — no dedicated security validator needed)
             result.field_count = self._count_fields(document)

@@ -86,6 +86,20 @@ class ComplexityConfig(BaseConfig):
     default_list_cost: float = Field(default=10.0, ge=0)
 
 
+class AliasLimitConfig(BaseConfig):
+    """Query alias limiting configuration.
+
+    Attributes:
+        enabled: Whether alias limiting is enabled.
+        max_aliases: Maximum allowed aliases per query.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    enabled: bool = True
+    max_aliases: int = Field(default=const.DEFAULT_MAX_ALIASES, ge=1)
+
+
 class PersistedQueryConfig(BaseConfig):
     """Automatic Persisted Queries configuration.
 
@@ -275,6 +289,7 @@ class GraphQLConfig(BaseConfig):
         cache: Response caching settings
         depth_limit: Query depth limiting
         complexity: Query complexity settings
+        alias_limit: Query alias limiting
         persisted_queries: Persisted queries settings
         batch: Batch query settings
         introspection: Introspection settings
@@ -320,6 +335,7 @@ class GraphQLConfig(BaseConfig):
     cache: CacheConfig = Field(default_factory=CacheConfig)
     depth_limit: DepthLimitConfig = Field(default_factory=DepthLimitConfig)
     complexity: ComplexityConfig = Field(default_factory=ComplexityConfig)
+    alias_limit: AliasLimitConfig = Field(default_factory=AliasLimitConfig)
     persisted_queries: PersistedQueryConfig = Field(
         default_factory=PersistedQueryConfig
     )
@@ -423,6 +439,7 @@ class GraphQLConfig(BaseConfig):
 
 
 __all__ = [
+    "AliasLimitConfig",
     "CacheConfig",
     "DataLoaderConfig",
     "DepthLimitConfig",

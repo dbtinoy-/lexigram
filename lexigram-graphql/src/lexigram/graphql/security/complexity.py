@@ -7,9 +7,13 @@ can be multiplied based on pagination arguments.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from strawberry.extensions import SchemaExtension
+
+from lexigram.graphql import constants as const
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
@@ -378,6 +382,33 @@ class ComplexityAnalyzer:
             raise QueryTooComplexError(msg)
 
 
+class ComplexityLimitExtension(SchemaExtension):
+    """Enforce query complexity on every operation.
+
+    Wraps :class:`ComplexityAnalyzer` at the schema-extension boundary so the
+    limit applies to every execution path through the schema.
+    """
+
+    def __init__(
+        self,
+        max_complexity: int = const.DEFAULT_MAX_COMPLEXITY,
+        default_field_cost: float = 1.0,
+        default_list_cost: float = 10.0,
+    ) -> None:
+        self._analyzer = ComplexityAnalyzer(
+            max_complexity=max_complexity,
+            default_field_cost=default_field_cost,
+            default_list_cost=default_list_cost,
+        )
+
+    def on_validate(self) -> Iterator[None]:
+        """Reject the operation when complexity exceeds the configured maximum."""
+        execution_context = self.execution_context
+        if execution_context.graphql_document:
+            self._analyzer.validate(execution_context.graphql_document)
+        yield
+
+
 # Convenience function for quick analysis
 def analyze_complexity(
     query: str,
@@ -401,6 +432,7 @@ def analyze_complexity(
 
 __all__ = [
     "ComplexityAnalyzer",
+    "ComplexityLimitExtension",
     "ComplexityResult",
     "analyze_complexity",
     "cost",

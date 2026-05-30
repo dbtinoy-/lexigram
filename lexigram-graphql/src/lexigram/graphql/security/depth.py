@@ -234,8 +234,8 @@ class DepthLimitExtension(SchemaExtension):
             ignore_introspection=ignore_introspection,
         )
 
-    def on_operation(self) -> Iterator[None]:
-        """Hook called during operation execution."""
+    def on_validate(self) -> Iterator[None]:
+        """Hook called during operation validation."""
         execution_context = self.execution_context
 
         # Validate depth
