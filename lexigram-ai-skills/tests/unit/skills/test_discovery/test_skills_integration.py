@@ -38,7 +38,7 @@ Second skill instructions.
 """)
         
         registry = SkillRegistry()
-        scanner = SkillSourceScanner()
+        scanner = SkillSourceScanner(skill_root=tmp_path, allowed_script_types=("py",))
         
         count = await scanner.scan(registry, tmp_path)
         
@@ -66,7 +66,7 @@ Execute the script.
 """)
         
         registry = SkillRegistry()
-        scanner = SkillSourceScanner()
+        scanner = SkillSourceScanner(skill_root=tmp_path, allowed_script_types=("py",))
         
         count = await scanner.scan(registry, tmp_path)
         assert count == 1
@@ -93,7 +93,7 @@ Process these: $ARGUMENTS
 """)
         
         registry = SkillRegistry()
-        scanner = SkillSourceScanner()
+        scanner = SkillSourceScanner(skill_root=tmp_path, allowed_script_types=("py",))
         
         await scanner.scan(registry, tmp_path)
         
@@ -123,7 +123,7 @@ Main instructions.
 """)
         
         registry = SkillRegistry()
-        scanner = SkillSourceScanner()
+        scanner = SkillSourceScanner(skill_root=tmp_path, allowed_script_types=("py",))
         
         await scanner.scan(registry, tmp_path)
         
@@ -148,7 +148,7 @@ Nested skill instructions.
 """)
         
         registry = SkillRegistry()
-        scanner = SkillSourceScanner()
+        scanner = SkillSourceScanner(skill_root=tmp_path, allowed_script_types=("py",))
         
         count = await scanner.scan(registry, tmp_path)
         
