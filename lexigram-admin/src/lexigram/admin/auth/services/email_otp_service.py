@@ -93,9 +93,7 @@ class AdminEmailOtpService:
             elapsed = (datetime.now(UTC) - last_sent_at).total_seconds()
             if elapsed < self._config.resend_cooldown_seconds:
                 return Err(
-                    EmailOtpCooldownError(
-                        "Please wait before requesting another code."
-                    )
+                    EmailOtpCooldownError("Please wait before requesting another code.")
                 )
 
         secret = generate_totp_secret()
@@ -107,9 +105,7 @@ class AdminEmailOtpService:
         if self._notification_service is None:
             await self._audit_failure(user_id, "no_mailer")
             return Err(
-                EmailOtpDeliveryError(
-                    "No email delivery service is configured."
-                )
+                EmailOtpDeliveryError("No email delivery service is configured.")
             )
 
         result = await self._notification_service.notify_email_otp(
@@ -134,9 +130,7 @@ class AdminEmailOtpService:
             )
         return Ok(None)
 
-    async def verify_otp(
-        self, user_id: str, code: str
-    ) -> Result[bool, AdminAuthError]:
+    async def verify_otp(self, user_id: str, code: str) -> Result[bool, AdminAuthError]:
         """Verify a code and consume it when valid.
 
         Args:

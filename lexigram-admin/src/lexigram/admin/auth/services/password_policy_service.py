@@ -128,23 +128,15 @@ class AdminPasswordPolicyService:
         ("at least", AdminPasswordRule.TOO_SHORT),
     )
 
-    def _map_failures(
-        self, report: str, password: str
-    ) -> list[AdminPasswordViolation]:
+    def _map_failures(self, report: str, password: str) -> list[AdminPasswordViolation]:
         violations: list[AdminPasswordViolation] = []
         for part in report.split("; "):
             rule = next(
-                (
-                    rule
-                    for needle, rule in self._RULE_MAP
-                    if needle in part
-                ),
+                (rule for needle, rule in self._RULE_MAP if needle in part),
                 None,
             )
             if rule is None:
-                logger.warning(
-                    "password_policy.unmapped_rule", rule_text=part
-                )
+                logger.warning("password_policy.unmapped_rule", rule_text=part)
                 continue
             violations.append(
                 AdminPasswordViolation(
@@ -153,9 +145,7 @@ class AdminPasswordPolicyService:
             )
         return violations
 
-    def _message_for(
-        self, rule: AdminPasswordRule, password: str
-    ) -> str:
+    def _message_for(self, rule: AdminPasswordRule, password: str) -> str:
         """Return the stable admin UI message for a violated rule."""
         if rule is AdminPasswordRule.TOO_SHORT:
             minimum = int(getattr(self._policy, "min_length", 12))
@@ -171,8 +161,7 @@ class AdminPasswordPolicyService:
             return "Password must contain at least one digit."
         if rule is AdminPasswordRule.MISSING_SPECIAL:
             return (
-                "Password must contain at least one special character"
-                " (!@#$%^&* etc.)."
+                "Password must contain at least one special character (!@#$%^&* etc.)."
             )
         return "Password is too common. Please choose a more unique password."
 
