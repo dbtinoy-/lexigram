@@ -6,6 +6,7 @@ including introspection query generation and result handling.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -13,6 +14,9 @@ if TYPE_CHECKING:
 
     Schema = StrawberrySchema
 
+from strawberry.extensions import SchemaExtension
+
+from lexigram.graphql.exceptions import GraphQLError
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -340,4 +344,60 @@ class IntrospectionHandler:
         return print_schema(graphql_schema)  # type: ignore[arg-type]
 
 
-__all__ = ["IntrospectionHandler", "get_introspection_query"]
+def _document_has_introspection(document: Any) -> bool:
+    """Return True if any selection in the document targets an introspection field.
+
+    Detection mirrors the depth validator's skip logic
+    (:class:`~lexigram.graphql.security.depth.DepthLimitValidator`): fields
+    whose names start with ``__``.
+    """
+    for definition in document.definitions:
+        if not hasattr(definition, "selection_set") or definition.selection_set is None:
+            continue
+        to_visit = [definition.selection_set]
+        while to_visit:
+            selection_set = to_visit.pop()
+            for selection in selection_set.selections:
+                if hasattr(selection, "name") and selection.name is not None:
+                    name = (
+                        selection.name.value
+                        if hasattr(selection.name, "value")
+                        else str(selection.name)
+                    )
+                    if name.startswith("__"):
+                        return True
+                if hasattr(selection, "selection_set") and selection.selection_set:
+                    to_visit.append(selection.selection_set)
+    return False
+
+
+class IntrospectionGuardExtension(SchemaExtension):
+    """Reject every introspection operation.
+
+    Registered by :class:`~lexigram.graphql.schema.builder.SchemaBuilderProtocol`
+    only when introspection is *not* effectively enabled — that is, when
+    ``IntrospectionConfig.enabled`` is False or the current environment is
+    not listed in ``IntrospectionConfig.allowed_environments``. Production is
+    additionally force-disabled at config validation time
+    (``GraphQLConfig._auto_disable_introspection_in_production``), so the
+    guard is guaranteed present on production deployments.
+    """
+
+    def on_validate(self) -> Iterator[None]:
+        """Reject the operation when it targets introspection fields."""
+        execution_context = self.execution_context
+        document = execution_context.graphql_document
+        if document is not None and _document_has_introspection(document):
+            error = GraphQLError("Introspection is disabled")
+            error.safe = (
+                True  # amendment 2026-08-17: keep the message under default mask_errors
+            )
+            raise error
+        yield
+
+
+__all__ = [
+    "IntrospectionGuardExtension",
+    "IntrospectionHandler",
+    "get_introspection_query",
+]

@@ -134,13 +134,18 @@ class IntrospectionConfig(BaseConfig):
     """GraphQL introspection configuration.
 
     Attributes:
-        enabled: Whether introspection is enabled. Defaults to ``True`` but the
-            executor automatically disables it in environments not listed in
-            ``allowed_environments``.
-        allowed_environments: Set of environment names (matched against
-            ``LEX_ENV`` or the app environment) where introspection is
-            permitted. Defaults to ``{"development", "testing"}``; production
-            is intentionally excluded.
+        enabled: Whether introspection is enabled. Introspection is served
+            only when this is True *and* the current environment is listed
+            in ``allowed_environments``; otherwise the schema builder
+            registers the
+            :class:`~lexigram.graphql.core.introspection.IntrospectionGuardExtension`,
+            which rejects introspection operations at request time. In
+            production this flag is force-disabled at config validation
+            time (fail-closed at boot).
+        allowed_environments: Set of environment names (matched case-
+            insensitively against ``GraphQLConfig.env`` or ``LEX_ENV``)
+            where introspection is permitted. Defaults to
+            ``{"development", "testing"}``; production is excluded.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
@@ -384,6 +389,20 @@ class GraphQLConfig(BaseConfig):
         env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
         if env_raw.lower() == "production":
             self.playground.enabled = False
+        return self
+
+    @model_validator(mode="after")
+    def _auto_disable_introspection_in_production(self) -> GraphQLConfig:
+        """Force introspection off when running in a production environment.
+
+        Mirrors :meth:`_auto_disable_playground_in_production`: when
+        ``LEX_ENV`` (or ``env``) is production, introspection is disabled
+        regardless of the value supplied in configuration — fail-closed at
+        boot, not at request-documentation level.
+        """
+        env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
+        if env_raw.lower() == "production":
+            self.introspection.enabled = False
         return self
 
     @property

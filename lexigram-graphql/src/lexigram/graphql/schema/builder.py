@@ -223,12 +223,22 @@ class SchemaBuilderProtocol:
         if self._scalar_overrides:
             schema_kwargs["scalar_overrides"] = self._scalar_overrides
 
+        import os
+
+        from lexigram.graphql.core.introspection import IntrospectionGuardExtension
         from lexigram.graphql.security.alias import AliasLimitExtension
         from lexigram.graphql.security.complexity import ComplexityLimitExtension
         from lexigram.graphql.security.depth import DepthLimitExtension
 
         cfg = self._config
+        env_raw = cfg.env or os.getenv("LEX_ENV", "development") or "development"
+        introspection_enabled = (
+            cfg.introspection.enabled
+            and env_raw.lower() in cfg.introspection.allowed_environments
+        )
         security_extensions: list[Any] = []
+        if not introspection_enabled:
+            security_extensions.insert(0, IntrospectionGuardExtension())
         if cfg.depth_limit.enabled:
             security_extensions.append(
                 DepthLimitExtension(

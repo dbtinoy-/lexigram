@@ -80,6 +80,34 @@ class TestPlaygroundAutoDisableInProduction:
         assert config.playground.enabled is False
 
 
+class TestIntrospectionAutoDisableInProduction:
+    """GraphQLConfig.introspection.enabled is forced to False in production."""
+
+    def test_introspection_disabled_when_lexigram_env_production(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Introspection is forcibly disabled when LEX_ENV=production."""
+        monkeypatch.setenv("LEX_ENV", "production")
+        cfg = GraphQLConfig()
+        assert cfg.introspection.enabled is False
+
+    def test_introspection_not_disabled_for_staging(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Staging keeps introspection enabled at boot (gated at request time instead)."""
+        monkeypatch.setenv("LEX_ENV", "staging")
+        cfg = GraphQLConfig()
+        assert cfg.introspection.enabled is True  # gated at request time instead
+
+    def test_introspection_not_disabled_for_development(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Development environment keeps introspection enabled."""
+        monkeypatch.setenv("LEX_ENV", "development")
+        cfg = GraphQLConfig()
+        assert cfg.introspection.enabled is True
+
+
 # ---------------------------------------------------------------------------
 # G3: GraphQLResponse http_headers field
 # ---------------------------------------------------------------------------
