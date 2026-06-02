@@ -27,9 +27,6 @@ from lexigram.admin.lib.template import (
 from lexigram.admin.rbac.protocols import AdminRoleServiceProtocol
 from lexigram.contracts.web import get, post
 from lexigram.di.decorators import inject
-from lexigram.logging import get_logger
-
-logger = get_logger(__name__)
 
 _RBAC_RESOURCES: tuple[str, ...] = ("roles", "users", "settings")
 _RBAC_ACTIONS: tuple[str, ...] = (
@@ -119,9 +116,11 @@ class RbacController(AdminController):
         Returns:
             HTMLResponse with the create-role form.
         """
+        roles = await self._role_service.list_roles() if self._role_service else []
         csrf_token = self._get_csrf_token(request)
         html = render_role_form_page(
             permission_options=_permission_options(),
+            inherits_options=[r.name for r in roles],
             error=str(request.query_params.get("error", "")),
             notice=str(request.query_params.get("notice", "")),
             csrf_token=csrf_token,
@@ -147,12 +146,15 @@ class RbacController(AdminController):
         name = str(form.get("name", "")).strip()
         description = str(form.get("description", "")).strip()
         permissions = self._collect_permissions(form)
+        inherits = sorted(
+            {str(v).strip() for v in form.getlist("inherits") if str(v).strip()}
+        )
         if not name:
             return self._error_redirect("/admin/roles/new", "Role name is required.")
 
         if self._role_service is not None:
             result = await self._role_service.create_role(
-                name, description, permissions, []
+                name, description, permissions, inherits
             )
             if result.is_err():
                 return self._error_redirect(
@@ -178,6 +180,7 @@ class RbacController(AdminController):
         """
         name = request.path_params.get("name", "")
         role = None
+        roles: list[Any] = []
         if self._role_service is not None:
             roles = await self._role_service.list_roles()
             role = next((r for r in roles if r.name == name), None)
@@ -186,6 +189,10 @@ class RbacController(AdminController):
             role=role,
             permission_options=_permission_options(),
             selected=set(role.permissions) if role else set(),
+            inherits_options=[r.name for r in roles if r.name != name]
+            if roles
+            else None,
+            inherited=set(role.inherits) if role else set(),
             error=str(request.query_params.get("error", "")),
             csrf_token=csrf_token,
         )
@@ -211,10 +218,13 @@ class RbacController(AdminController):
         )
         description = str(form.get("description", "")).strip()
         permissions = self._collect_permissions(form)
+        inherits = sorted(
+            {str(v).strip() for v in form.getlist("inherits") if str(v).strip()}
+        )
 
         if self._role_service is not None:
             result = await self._role_service.update_role(
-                name, description, permissions, []
+                name, description, permissions, inherits
             )
             if result.is_err():
                 return self._error_redirect(
@@ -325,18 +335,14 @@ class RbacController(AdminController):
         user_id = str(request.path_params.get("user_id", ""))
         roles = sorted({str(v) for v in form.getlist("roles")})
         if self._user_store is not None:
-            try:
-                users = await self._user_store.list_users()
-                user = next(
-                    (u for u in users if getattr(u, "user_id", None) == user_id), None
-                )
-                if user is None:
-                    return self._error_redirect("/admin/users", "User not found.")
-                user.roles = roles
-                await self._user_store.update_user(user)
-            except Exception as exc:
-                logger.warning("admin.user_roles_update_failed", error=str(exc))
-                return self._error_redirect("/admin/users", "Could not update roles.")
+            users = await self._user_store.list_users()
+            user = next(
+                (u for u in users if getattr(u, "user_id", None) == user_id), None
+            )
+            if user is None:
+                return self._error_redirect("/admin/users", "User not found.")
+            user.roles = roles
+            await self._user_store.update_user(user)
         return RedirectResponse(
             url="/admin/users?notice=User roles updated.", status_code=302
         )
