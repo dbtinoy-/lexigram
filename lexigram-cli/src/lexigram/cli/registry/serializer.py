@@ -183,26 +183,6 @@ class TOMLSerializer(AsyncStringSerializerProtocol):
         return tomllib.loads(data)
 
 
-class PickleSerializer(AsyncStringSerializerProtocol):
-    """Python pickle serializer."""
-
-    name = "pickle"
-    content_type = "application/python-pickle"
-    file_extension = "pkl"
-
-    def serialize(self, data: Any) -> bytes:
-        import pickle
-
-        return pickle.dumps(data)
-
-    def deserialize(self, data: str | bytes) -> Any:
-        import pickle
-
-        if isinstance(data, str):
-            data = data.encode("utf-8")
-        return pickle.loads(data)
-
-
 class SerializerRegistry:
     """Registry for serializers.
 
@@ -242,7 +222,6 @@ class SerializerRegistry:
             self.register(MessagePackSerializer)
             self.register(CBORSerializer)
             self.register(TOMLSerializer)
-            self.register(PickleSerializer)
             self._initialized = True
 
 
@@ -268,7 +247,6 @@ __all__ = [
     "CompactJSONSerializer",
     "JSONSerializer",
     "MessagePackSerializer",
-    "PickleSerializer",
     "SerializerRegistry",
     "TOMLSerializer",
     "YAMLSerializer",

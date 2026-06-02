@@ -9,6 +9,26 @@ from lexigram.cache.exceptions import CacheSerializationError as SerializationEr
 from lexigram.cache.serialization.compression import CompressingSerializer
 
 
+class _HostilePickleTarget:
+    """Module-level hostile class for RCE-gadget tests."""
+
+    def __reduce__(self):
+        import os
+
+        return (os.system, ("echo pwned",))
+
+
+class _BenignCustomType:
+    """Module-level custom class whose pickled global reference must be denied."""
+
+
+class _Gadget:
+    """Module-level class with an attribute for allowlist round-trip tests."""
+
+    def __init__(self) -> None:
+        self.payload = "boom"
+
+
 class TestCompressingSerializer:
     """Test CompressingSerializer functionality."""
 
@@ -165,6 +185,53 @@ class TestCompressingSerializer:
 
         with pytest.raises(SerializationError, match="Failed to deserialize value"):
             await serializer.deserialize(corrupted)
+
+    @pytest.mark.asyncio
+    async def test_deserialize_rejects_unsafe_global(self):
+        """Test deserialization rejects payloads referencing non-builtin globals."""
+        serializer = CompressingSerializer()
+
+        hostile = (
+            serializer.MARKER_UNCOMPRESSED + pickle.dumps(_BenignCustomType())
+        ).hex()
+
+        with pytest.raises(SerializationError):
+            await serializer.deserialize(hostile)
+
+    @pytest.mark.asyncio
+    async def test_deserialize_rejects_os_system_gadget(self):
+        """Test deserialization rejects the classic os.system gadget."""
+        serializer = CompressingSerializer()
+
+        payload = (
+            serializer.MARKER_UNCOMPRESSED + pickle.dumps(_HostilePickleTarget())
+        ).hex()
+
+        with pytest.raises(SerializationError):
+            await serializer.deserialize(payload)
+
+    @pytest.mark.asyncio
+    async def test_deserialize_denies_unallowed_class(self):
+        """Test empty allowlist denies every custom class (deny-by-default)."""
+        serializer = CompressingSerializer(allowed_classes=())
+
+        hostile = (
+            serializer.MARKER_UNCOMPRESSED + pickle.dumps(_Gadget())
+        ).hex()
+
+        with pytest.raises(SerializationError):
+            await serializer.deserialize(hostile)
+
+    @pytest.mark.asyncio
+    async def test_deserialize_allows_configured_class(self):
+        """Test an explicitly allowlisted class round-trips."""
+        serializer = CompressingSerializer(allowed_classes=(_Gadget,))
+
+        value = (serializer.MARKER_UNCOMPRESSED + pickle.dumps(_Gadget())).hex()
+        result = await serializer.deserialize(value)
+
+        assert isinstance(result, _Gadget)
+        assert result.payload == "boom"
 
     @pytest.mark.asyncio
     async def test_roundtrip_various_types(self):
