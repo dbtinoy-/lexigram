@@ -10,8 +10,57 @@ import uuid
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import loads as json_loads
 
 logger = get_logger(__name__)
+
+
+def _parse_list(value: Any) -> list[str]:
+    """Normalize a roles/permissions column value into a string list.
+
+    Handles real lists (Postgres JSONB arrays), Postgres array literals
+    (``"{admin,editor}"``), and JSON text (SQLite TEXT columns).
+
+    Args:
+        value: Raw column value.
+
+    Returns:
+        List of string entries; empty when the value is ``None`` or empty.
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    text = str(value).strip()
+    if text.startswith("{") and text.endswith("}"):
+        inner = text[1:-1].strip()
+        return [part.strip() for part in inner.split(",")] if inner else []
+    if text.startswith("[") and text.endswith("]"):
+        try:
+            parsed = json_loads(text)
+        except ValueError:
+            return []
+        return [str(v) for v in parsed] if isinstance(parsed, list) else []
+    return []
+
+
+def _row_to_user(row: dict[str, Any]) -> Any:
+    """Build a mutable user record object from an ``admin_users`` row."""
+
+    class _UserObj:
+        def __init__(self, row: dict[str, Any]) -> None:
+            self.user_id = str(row.get("id") or row.get("user_id"))
+            self.name = row.get("name")
+            self.email = row.get("email")
+            self.roles = _parse_list(row.get("roles"))
+            self.permissions = _parse_list(row.get("permissions"))
+            self.hashed_password = row.get("hashed_password")
+            self.is_active = row.get("is_active")
+
+        def record_login(self) -> Any:
+            """Record login - no-op for admin users"""
+
+    return _UserObj(row)
 
 
 @inject
@@ -98,6 +147,26 @@ class DirectSQLAdminUserStore:
         except Exception as _schema_err:  # noqa: BLE001 — schema setup may fail with DB-specific errors; log and propagate
             logger.exception("Failed to ensure admin_users table exists")
             raise
+
+    async def list_users(self) -> list[Any]:
+        """Return all admin users ordered by creation time.
+
+        Returns:
+            Mutable user record objects (same type as
+            ``get_user_by_email``) — one per row, oldest first.
+        """
+        result = await self.db_provider.execute_query(
+            "SELECT * FROM admin_users ORDER BY created_at",
+            [],
+        )
+        rows = []
+        if hasattr(result, "rows") and result.rows:
+            rows = list(result.rows)
+        elif isinstance(result, list):
+            rows = result
+        elif isinstance(result, dict):
+            rows = [result]
+        return [_row_to_user(row) for row in rows]
 
     async def get_admin_count(self) -> int:
         """Count total admin users."""
@@ -341,21 +410,7 @@ class DirectSQLAdminUserStore:
             bool(row.get("hashed_password")),
         )
 
-        class _UserObj:
-            def __init__(self, row: dict[str, Any]) -> None:
-                self.user_id = str(row.get("id") or row.get("user_id"))
-                self.name = row.get("name")
-                self.email = row.get("email")
-                # Add attributes needed for update
-                self.roles = row.get("roles", [])
-                self.permissions = row.get("permissions", [])
-                self.hashed_password = row.get("hashed_password")
-                self.is_active = row.get("is_active")
-
-            def record_login(self) -> Any:
-                """Record login - no-op for admin users"""
-
-        return _UserObj(row)
+        return _row_to_user(row)
 
     async def get_user_by_id(self, user_id: str) -> Any | None:
         await self._ensure_table_exists()
@@ -385,20 +440,7 @@ class DirectSQLAdminUserStore:
             row.get("is_active"),
         )
 
-        class _UserObj:
-            def __init__(self, row: dict[str, Any]) -> None:
-                self.user_id = str(row.get("id") or row.get("user_id"))
-                self.name = row.get("name")
-                self.email = row.get("email")
-                self.roles = row.get("roles", [])
-                self.permissions = row.get("permissions", [])
-                self.hashed_password = row.get("hashed_password")
-                self.is_active = row.get("is_active")
-
-            def record_login(self) -> Any:
-                """Record login - no-op for admin users"""
-
-        return _UserObj(row)
+        return _row_to_user(row)
 
     async def update_user(self, user: Any) -> None:
         await self._ensure_table_exists()
