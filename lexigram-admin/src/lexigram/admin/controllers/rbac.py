@@ -326,7 +326,14 @@ class RbacController(AdminController):
         roles = sorted({str(v) for v in form.getlist("roles")})
         if self._user_store is not None:
             try:
-                await self._user_store.update_user(user_id, {"roles": roles})
+                users = await self._user_store.list_users()
+                user = next(
+                    (u for u in users if getattr(u, "user_id", None) == user_id), None
+                )
+                if user is None:
+                    return self._error_redirect("/admin/users", "User not found.")
+                user.roles = roles
+                await self._user_store.update_user(user)
             except Exception as exc:
                 logger.warning("admin.user_roles_update_failed", error=str(exc))
                 return self._error_redirect("/admin/users", "Could not update roles.")

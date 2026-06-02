@@ -55,6 +55,7 @@ class _DummyRenderer:
 
 def create_app(*, csrf_valid: bool = True, delete_error: bool = False) -> Starlette:
     role_service = _make_role_service()
+    user_store = _make_user_store()
     if delete_error:
         from lexigram.admin.rbac.errors import SystemRoleError
 
@@ -63,7 +64,7 @@ def create_app(*, csrf_valid: bool = True, delete_error: bool = False) -> Starle
         csrf_service=_make_csrf_service(valid=csrf_valid),
         renderer=_DummyRenderer(),
         role_service=role_service,
-        user_store=_make_user_store(),
+        user_store=user_store,
     )
 
     async def roles_list(request):
@@ -107,6 +108,8 @@ def create_app(*, csrf_valid: bool = True, delete_error: bool = False) -> Starle
 
     app = Starlette(routes=routes)
     app.add_middleware(SessionMiddleware, secret_key="test-secret-key-for-tests")
+    app.state.user_store = user_store
+    app.state.role_service = role_service
     return app
 
 
@@ -278,3 +281,6 @@ async def test_user_roles_submit_updates_user() -> None:
         )
         assert r.status_code == 302
         assert "notice=" in r.headers["location"]
+        user = app.state.user_store.update_user.await_args.args[0]
+        assert user.user_id == "u1"
+        assert user.roles == ["editor"]
