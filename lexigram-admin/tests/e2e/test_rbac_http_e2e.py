@@ -101,6 +101,12 @@ def create_app(*, csrf_valid: bool = True, delete_error: bool = False) -> Starle
     async def user_roles_submit(request):
         return await controller.user_roles_submit(request)
 
+    async def user_permissions_form(request):
+        return await controller.user_permissions_form(request)
+
+    async def user_permissions_submit(request):
+        return await controller.user_permissions_submit(request)
+
     routes = [
         Route("/admin/roles", roles_list, methods=["GET"]),
         Route("/admin/roles/new", role_new_form, methods=["GET"]),
@@ -111,6 +117,16 @@ def create_app(*, csrf_valid: bool = True, delete_error: bool = False) -> Starle
         Route("/admin/users", users_list, methods=["GET"]),
         Route("/admin/users/{user_id}/roles", user_roles_form, methods=["GET"]),
         Route("/admin/users/{user_id}/roles", user_roles_submit, methods=["POST"]),
+        Route(
+            "/admin/users/{user_id}/permissions",
+            user_permissions_form,
+            methods=["GET"],
+        ),
+        Route(
+            "/admin/users/{user_id}/permissions",
+            user_permissions_submit,
+            methods=["POST"],
+        ),
     ]
 
     app = Starlette(routes=routes)
@@ -300,3 +316,49 @@ async def test_user_roles_submit_updates_user() -> None:
         user = app.state.user_store.update_user.await_args.args[0]
         assert user.user_id == "u1"
         assert user.roles == ["editor"]
+
+
+@pytest.mark.asyncio
+async def test_users_list_links_to_permissions_editing() -> None:
+    app = create_app()
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as client:
+        r = await client.get("/admin/users")
+        assert r.status_code == 200
+        assert "/admin/users/u1/permissions" in r.text
+
+
+@pytest.mark.asyncio
+async def test_user_permissions_form_renders_grouped_checkboxes() -> None:
+    app = create_app()
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as client:
+        r = await client.get("/admin/users/u1/permissions")
+        assert r.status_code == 200
+        assert 'name="permissions"' in r.text
+        assert "roles.list" in r.text
+        assert "csrf-test-token" in r.text
+
+
+@pytest.mark.asyncio
+async def test_user_permissions_submit_updates_user() -> None:
+    app = create_app()
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        await client.get("/admin/users/u1/permissions")
+        r = await client.post(
+            "/admin/users/u1/permissions",
+            data={"permissions": "roles.view", "csrf_token": "csrf-test-token"},
+        )
+        assert r.status_code == 302
+        assert "notice=" in r.headers["location"]
+        store = app.state.user_store
+        store.update_user.assert_awaited_once()
+        updated = store.update_user.await_args.args[0]
+        assert updated.user_id == "u1"
+        assert updated.permissions == ["roles.view"]
