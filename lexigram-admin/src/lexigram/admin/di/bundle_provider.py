@@ -152,6 +152,10 @@ class AdminProvider(Provider):
         # Register built-in controllers
         container.singleton(WidgetController, WidgetController)
         container.singleton(DashboardController, DashboardController)
+        # Register the RBAC permission inventory (populated at mount time)
+        from lexigram.admin.rbac.inventory import PermissionInventoryService
+
+        container.singleton(PermissionInventoryService, PermissionInventoryService)
         # Register controller classes for DI resolution
         for controller_cls in self._controllers:
             try:
@@ -218,6 +222,21 @@ class AdminProvider(Provider):
                 self._mount_failures[f"resource:{resource_cls.__name__}"] = str(exc)
                 if self._config.strict_resource_resolution:
                     raise
+
+        # Populate the RBAC permission inventory from registered resources
+        try:
+            from lexigram.admin.rbac.inventory import PermissionInventoryService
+
+            inventory = await admin_resolver.resolve(
+                PermissionInventoryService,
+                bypass_visibility=True,
+            )
+            inventory.register_resources(resources_dict.keys())
+        except Exception as exc:  # noqa: BLE001 — discovery is best-effort
+            _log.warning(
+                "admin.rbac_inventory_discovery_failed",
+                error=str(exc),
+            )
 
         # Resolve controller instances from container (best-effort)
         controller_instances: list[Any] = []

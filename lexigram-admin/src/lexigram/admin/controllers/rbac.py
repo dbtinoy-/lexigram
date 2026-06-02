@@ -16,6 +16,7 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
+from lexigram.admin.config import AdminConfig
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import (
@@ -25,31 +26,10 @@ from lexigram.admin.lib.template import (
     render_user_roles_page,
     render_users_list_page,
 )
+from lexigram.admin.rbac.inventory import PermissionInventoryService
 from lexigram.admin.rbac.protocols import AdminRoleServiceProtocol
 from lexigram.contracts.web import get, post
 from lexigram.di.decorators import inject
-
-_RBAC_RESOURCES: tuple[str, ...] = ("roles", "users", "settings")
-_RBAC_ACTIONS: tuple[str, ...] = (
-    "list",
-    "view",
-    "create",
-    "update",
-    "delete",
-    "export",
-)
-
-
-def _permission_options() -> dict[str, list[str]]:
-    """Grouped permission inventory: ``{resource: ["resource.action", ...]}``.
-
-    Returns:
-        Mapping of built-in resource to its listable permission strings.
-    """
-    return {
-        resource: [f"{resource}.{action}" for action in _RBAC_ACTIONS]
-        for resource in _RBAC_RESOURCES
-    }
 
 
 @inject
@@ -64,6 +44,8 @@ class RbacController(AdminController):
         renderer: AdminRenderer,
         role_service: AdminRoleServiceProtocol | None = None,
         user_store: AdminUserStoreProtocol | None = None,
+        inventory: PermissionInventoryService | None = None,
+        config: AdminConfig | None = None,
         task_manager: object | None = None,
     ) -> None:
         """Initialise the RBAC controller.
@@ -74,12 +56,21 @@ class RbacController(AdminController):
             role_service: Role CRUD orchestrator; ``None`` renders pages
                 without persistence wiring.
             user_store: Admin user persistence for the users pages.
+            inventory: Permission inventory backing the permission
+                checkboxes; defaults to a builtin-only instance when
+                ``None``.
+            config: Admin config; ``None`` falls back to the default
+                super-admin role name ``"superadmin"``.
             task_manager: Optional task manager (unused by this controller).
         """
         super().__init__(renderer, task_manager)
         self._csrf_service = csrf_service
         self._role_service = role_service
         self._user_store = user_store
+        self._inventory = inventory or PermissionInventoryService()
+        self._super_admin_role = (
+            config.rbac.super_admin_role if config else "superadmin"
+        )
 
     # ------------------------------------------------------------------
     # GET /roles — roles list
@@ -100,6 +91,7 @@ class RbacController(AdminController):
             roles,
             error=str(request.query_params.get("error", "")),
             notice=str(request.query_params.get("notice", "")),
+            super_admin_role=self._super_admin_role,
         )
         return HTMLResponse(content=html)
 
@@ -120,7 +112,7 @@ class RbacController(AdminController):
         roles = await self._role_service.list_roles() if self._role_service else []
         csrf_token = self._get_csrf_token(request)
         html = render_role_form_page(
-            permission_options=_permission_options(),
+            permission_options=self._inventory.options(),
             inherits_options=[r.name for r in roles],
             error=str(request.query_params.get("error", "")),
             notice=str(request.query_params.get("notice", "")),
@@ -188,7 +180,7 @@ class RbacController(AdminController):
         csrf_token = self._get_csrf_token(request)
         html = render_role_form_page(
             role=role,
-            permission_options=_permission_options(),
+            permission_options=self._inventory.options(),
             selected=set(role.permissions) if role else set(),
             inherits_options=[r.name for r in roles if r.name != name]
             if roles
@@ -196,6 +188,7 @@ class RbacController(AdminController):
             inherited=set(role.inherits) if role else set(),
             error=str(request.query_params.get("error", "")),
             csrf_token=csrf_token,
+            super_admin_role=self._super_admin_role,
         )
         return HTMLResponse(content=html)
 
@@ -255,6 +248,10 @@ class RbacController(AdminController):
                 "/admin/roles", "Invalid or expired security token. Please try again."
             )
         name = str(request.path_params.get("name", ""))
+        if name == self._super_admin_role:
+            return self._error_redirect(
+                "/admin/roles", "Super admin role cannot be deleted."
+            )
         if self._role_service is not None:
             result = await self._role_service.delete_role(name)
             if result.is_err():
@@ -282,6 +279,7 @@ class RbacController(AdminController):
             users,
             error=str(request.query_params.get("error", "")),
             notice=str(request.query_params.get("notice", "")),
+            super_admin_role=self._super_admin_role,
         )
         return HTMLResponse(content=html)
 
@@ -373,7 +371,7 @@ class RbacController(AdminController):
         csrf_token = self._get_csrf_token(request)
         html = render_user_permissions_page(
             user,
-            permission_options=_permission_options(),
+            permission_options=self._inventory.options(),
             selected=set(getattr(user, "permissions", []) if user else []),
             error=str(request.query_params.get("error", "")),
             csrf_token=csrf_token,
@@ -398,21 +396,15 @@ class RbacController(AdminController):
         user_id = str(request.path_params.get("user_id", ""))
         permissions = self._collect_permissions(form)
         if self._user_store is not None:
-            try:
-                users = await self._user_store.list_users()
-                user = next(
-                    (u for u in users if str(getattr(u, "user_id", "")) == user_id),
-                    None,
-                )
-                if user is None:
-                    return self._error_redirect("/admin/users", "User not found.")
-                user.permissions = permissions
-                await self._user_store.update_user(user)
-            except Exception as exc:
-                logger.warning("admin.user_permissions_update_failed", error=str(exc))
-                return self._error_redirect(
-                    "/admin/users", "Could not update permissions."
-                )
+            users = await self._user_store.list_users()
+            user = next(
+                (u for u in users if str(getattr(u, "user_id", "")) == user_id),
+                None,
+            )
+            if user is None:
+                return self._error_redirect("/admin/users", "User not found.")
+            user.permissions = permissions
+            await self._user_store.update_user(user)
         return RedirectResponse(
             url="/admin/users?notice=User permissions updated.", status_code=302
         )

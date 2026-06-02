@@ -20,6 +20,12 @@ from typing import Any, Protocol
 from starlette.requests import Request as StarletteRequest
 from starlette.types import Scope
 
+from lexigram.admin.auth.errors import (
+    AccountLockedError,
+    AdminAuthError,
+    InvalidCredentialsError,
+    RateLimitExceededError,
+)
 from lexigram.admin.auth.integration import AdminUser
 from lexigram.contracts import AuthenticatedUserProtocol
 from lexigram.logging import get_logger
@@ -123,7 +129,7 @@ class DelegatingAuthAdapter:
         password: str,
         ip_address: str,
         user_agent: str = "",
-    ) -> Result[AdminAuthResult, str]:
+    ) -> Result[AdminAuthResult, AdminAuthError]:
         """Authenticate an admin user via lexigram-auth.
 
         Pipeline:
@@ -135,13 +141,14 @@ class DelegatingAuthAdapter:
         6. Audit logging (admin concern).
 
         Returns:
-            Ok(AdminAuthResult) on success, Err(str) on failure.
+            ``Ok(AdminAuthResult)`` on success, or ``Err(AdminAuthError)``
+            when rate-limited, locked out, or credentials are invalid.
         """
         # Step 1 — IP rate limit
         if self._rate_limiter is not None:
             try:
                 await self._rate_limiter.check_ip_rate_limit(ip_address)
-            except Exception as exc:
+            except RateLimitExceededError as exc:
                 if self._audit is not None:
                     await self._audit.log_login_failure(
                         email=email,
@@ -153,13 +160,13 @@ class DelegatingAuthAdapter:
                     ip_address=ip_address,
                     email=email,
                 )
-                return Err(str(exc))
+                return Err(exc)
 
         # Step 2 — Account lockout
         if self._lockout is not None:
             try:
                 await self._lockout.check_account_lockout(email)
-            except Exception as exc:
+            except AccountLockedError as exc:
                 if self._audit is not None:
                     await self._audit.log_login_failure(
                         email=email,
@@ -171,11 +178,11 @@ class DelegatingAuthAdapter:
                     email=email,
                     ip_address=ip_address,
                 )
-                return Err(str(exc))
+                return Err(exc)
 
         # Step 3 — Credential verification via lexigram-auth
         if self._auth_service is None:
-            return Err("Authentication service unavailable")
+            return Err(AdminAuthError("Authentication service unavailable"))
         result = await self._auth_service.authenticate_user(email, password)  # type: ignore[attr-defined]
         if result.is_err():
             if self._audit is not None:
@@ -185,7 +192,7 @@ class DelegatingAuthAdapter:
                     reason="invalid_credentials",
                 )
             logger.info("admin_auth_failure", email=email, ip_address=ip_address)
-            return Err("Invalid email or password.")
+            return Err(InvalidCredentialsError("Invalid email or password."))
 
         framework_user: AuthenticatedUserProtocol = result.unwrap()
 

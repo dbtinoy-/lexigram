@@ -115,6 +115,15 @@ class AdminFeaturesConfig(DomainModel):
 
 
 @dataclass(init=False)
+class AdminRbacConfig(DomainModel):
+    """RBAC editing-page configuration."""
+
+    #: Role name granted wildcard admin rights.  Matches the role string
+    #: already special-cased by settings/widgets/impersonation.
+    super_admin_role: str = Field(default="superadmin")
+
+
+@dataclass(init=False)
 class AdminPasswordPolicyConfig(DomainModel):
     """Password policy configuration for admin authentication.
 
@@ -510,6 +519,7 @@ class AdminConfig(BaseConfig):
     # Sub-configs
     auth: AdminAuthConfig = Field(default_factory=AdminAuthConfig)
     features: AdminFeaturesConfig = Field(default_factory=AdminFeaturesConfig)
+    rbac: AdminRbacConfig = Field(default_factory=AdminRbacConfig)
     data: AdminDataConfig = Field(default_factory=AdminDataConfig)
     observability: AdminObservabilityConfig = Field(
         default_factory=AdminObservabilityConfig
@@ -651,6 +661,7 @@ __all__ = [
     "AdminObservabilityConfig",
     "AdminPasswordPolicyConfig",
     "AdminRateLimitConfig",
+    "AdminRbacConfig",
     "AdminSecurityConfig",
     "AdminStorageConfig",
     "AdminUIConfig",

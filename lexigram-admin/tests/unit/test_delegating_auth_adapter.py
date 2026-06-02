@@ -180,9 +180,11 @@ class TestAuthenticateAdmin:
 
     @pytest.mark.asyncio
     async def test_rate_limiter_rejects(self) -> None:
+        from lexigram.admin.auth.errors import RateLimitExceededError
+
         rate_limiter = _StubRateLimiter()
         rate_limiter.check_ip_rate_limit = AsyncMock(
-            side_effect=Exception("Rate limit exceeded")
+            side_effect=RateLimitExceededError("Rate limit exceeded")
         )
 
         adapter = DelegatingAuthAdapter(
@@ -198,13 +200,16 @@ class TestAuthenticateAdmin:
         )
 
         assert result.is_err()
-        assert "Rate limit" in result.unwrap_err()
+        assert isinstance(result.unwrap_err(), RateLimitExceededError)
+        assert "Rate limit" in str(result.unwrap_err())
 
     @pytest.mark.asyncio
     async def test_lockout_rejects(self) -> None:
+        from lexigram.admin.auth.errors import AccountLockedError
+
         lockout = _StubLockout()
         lockout.check_account_lockout = AsyncMock(
-            side_effect=Exception("Account locked")
+            side_effect=AccountLockedError("Account locked")
         )
 
         adapter = DelegatingAuthAdapter(

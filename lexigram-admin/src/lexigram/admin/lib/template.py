@@ -467,6 +467,7 @@ def render_roles_list_page(
     error: str = "",
     notice: str = "",
     csrf_token: str = "",
+    super_admin_role: str = "superadmin",
 ) -> str:
     """Render the roles management list page.
 
@@ -475,6 +476,7 @@ def render_roles_list_page(
         error: Optional error flash message.
         notice: Optional success flash message.
         csrf_token: CSRF token for the inline delete forms.
+        super_admin_role: Role name treated as protected system role.
 
     Returns:
         HTML string for the roles list page.
@@ -485,13 +487,19 @@ def render_roles_list_page(
           <td>{escape(role.name)}</td>
           <td>{escape(role.description or "")}</td>
           <td>{len(role.permissions)}</td>
-          <td>{"system" if role.is_system else "custom"}</td>
+          <td>{
+            "system" if (role.is_system or role.name == super_admin_role) else "custom"
+        }</td>
           <td>
             <a href="/admin/roles/{escape(role.name)}/edit">Edit</a>
-            <form method="post" action="/admin/roles/{escape(role.name)}/delete" style="display:inline">
+            {
+            ""
+            if (role.is_system or role.name == super_admin_role)
+            else f'''<form method="post" action="/admin/roles/{escape(role.name)}/delete" style="display:inline">
               <input type="hidden" name="csrf_token" value="{escape(csrf_token)}" />
               <button type="submit">Delete</button>
-            </form>
+            </form>'''
+        }
           </td>
         </tr>
         """
@@ -520,6 +528,7 @@ def render_role_form_page(
     error: str = "",
     notice: str = "",
     csrf_token: str = "",
+    super_admin_role: str = "superadmin",
 ) -> str:
     """Render the role create/edit form page.
 
@@ -534,6 +543,7 @@ def render_role_form_page(
         error: Optional error flash message.
         notice: Optional success flash message.
         csrf_token: CSRF token for the form.
+        super_admin_role: Role name treated as protected system role.
 
     Returns:
         HTML string for the role form page.
@@ -577,7 +587,11 @@ def render_role_form_page(
         else ""
     )
     name_value = f'value="{escape(role.name)}"' if role else ""
-    name_disabled = 'disabled="disabled"' if role and role.is_system else ""
+    name_disabled = (
+        'disabled="disabled"'
+        if role and (role.is_system or role.name == super_admin_role)
+        else ""
+    )
     action = f"/admin/roles/{escape(role.name)}/edit" if role else "/admin/roles/new"
     return _page_shell(
         f"{'Edit' if role else 'Create'} role",
@@ -606,6 +620,7 @@ def render_users_list_page(
     *,
     error: str = "",
     notice: str = "",
+    super_admin_role: str = "superadmin",
 ) -> str:
     """Render the admin users list page with role badges.
 
@@ -613,6 +628,7 @@ def render_users_list_page(
         users: Admin user records to display.
         error: Optional error flash message.
         notice: Optional success flash message.
+        super_admin_role: Role name that badges the user as a super admin.
 
     Returns:
         HTML string for the users list page.
@@ -626,8 +642,19 @@ def render_users_list_page(
             {", ".join(escape(str(r)) for r in (getattr(user, "roles", None) or []))}
           </td>
           <td>
-            <a href="/admin/users/{escape(str(getattr(user, "user_id", "")))}/roles">Edit roles</a>
-            <a href="/admin/users/{escape(str(getattr(user, "user_id", "")))}/permissions">Edit permissions</a>
+            {
+            "Super admin"
+            if super_admin_role in (getattr(user, "roles", None) or ())
+            else ""
+        }
+          </td>
+          <td>
+            <a href="/admin/users/{
+            escape(str(getattr(user, "user_id", "")))
+        }/roles">Edit roles</a>
+            <a href="/admin/users/{
+            escape(str(getattr(user, "user_id", "")))
+        }/permissions">Edit permissions</a>
           </td>
         </tr>
         """
@@ -638,7 +665,7 @@ def render_users_list_page(
         f"""
         {_flash(error, notice)}
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Super</th><th>Actions</th></tr></thead>
           <tbody>{rows}</tbody>
         </table>
         """,
