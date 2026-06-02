@@ -577,9 +577,7 @@ def backup(
             cmd = backend.build_backup_command(conn.params, output_path)
             out.info(f"Backing up {backend.name} database to {output_path}...")
 
-            # Use registry method to determine shell usage
-            use_shell = backend.uses_shell()
-            subprocess.run(cmd, check=True, shell=use_shell)
+            subprocess.run(cmd, check=True)
             out.success(f"Database backed up to {output_path}")
         except subprocess.CalledProcessError as e:
             out.error(f"Backup failed: {e}")
@@ -634,10 +632,8 @@ def restore(
 
         out.info(f"Restoring {backend.name} database from {input_path}...")
 
-        # Use registry method to determine shell usage
-        use_shell = backend.uses_shell()
         with open(input_path) as f:
-            subprocess.run(cmd, stdin=f, check=True, shell=use_shell)
+            subprocess.run(cmd, stdin=f, check=True)
 
         out.success(f"Database restored from {input_path}")
 
@@ -654,7 +650,9 @@ def restore(
 def setup(
     package: Annotated[
         str | None,
-        typer.Option("--package", help="Only run setup for this package's contributions."),
+        typer.Option(
+            "--package", help="Only run setup for this package's contributions."
+        ),
     ] = None,
 ) -> None:
     """Run schema setup for all installed packages that need database tables."""

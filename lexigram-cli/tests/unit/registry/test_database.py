@@ -42,7 +42,6 @@ class TestDatabaseBackend:
 
         b = TestBackend()
         assert b.supports_backup() is False
-        assert b.uses_shell() is False
 
 
 class TestSQLiteBackend:
@@ -206,15 +205,22 @@ class TestMySQLBackend:
         tables = await b.get_tables(mock_provider)
         assert "users" in tables
 
-    def test_uses_shell_true(self) -> None:
-        b = MySQLBackend()
-        assert b.uses_shell() is True
-
     def test_build_backup_command(self) -> None:
         with patch("lexigram.cli.registry.database.shutil.which", return_value="/usr/bin/mysqldump"):
             b = MySQLBackend()
             cmd = b.build_backup_command({"user": "root", "password": "pass", "host": "localhost", "database": "mydb"}, "backup.sql")
-            assert "mysqldump" in cmd[0]
+            assert cmd[0] == "mysqldump"
+            assert "--result-file=backup.sql" in cmd
+            assert ">" not in cmd
+            assert "<" not in cmd
+
+    def test_build_restore_command_uses_stdin(self) -> None:
+        with patch.object(MySQLBackend, "get_client_binary", return_value="/usr/bin/mysql"):
+            b = MySQLBackend()
+            cmd = b.build_restore_command({"user": "root", "database": "mydb"}, "backup.sql")
+            assert cmd[0] == "mysql"
+            assert "<" not in cmd
+            assert "backup.sql" not in cmd
 
 
 class TestDatabaseRegistry:

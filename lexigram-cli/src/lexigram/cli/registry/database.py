@@ -80,10 +80,6 @@ class DatabaseBackend(abc.ABC):
         """Check if restore is supported."""
         return self.get_client_binary() is not None
 
-    def uses_shell(self) -> bool:
-        """Check if the backend requires shell=True for subprocess calls."""
-        return False
-
 
 class SQLiteBackend(DatabaseBackend):
     """SQLite database backend."""
@@ -345,9 +341,9 @@ class MySQLBackend(DatabaseBackend):
             cmd.extend(["-p" + params["password"]])
         if params.get("host"):
             cmd.extend(["-h", params["host"]])
+        # --result-file avoids shell redirection for the output
+        cmd.extend(["--result-file=" + output_path])
         cmd.append(params.get("database", "mysql"))
-        # Redirect output to file
-        cmd.extend([">", output_path])
         return cmd
 
     def build_restore_command(
@@ -355,7 +351,11 @@ class MySQLBackend(DatabaseBackend):
         params: dict[str, Any],
         input_path: str,
     ) -> list[str]:
-        """Build MySQL restore command."""
+        """Build MySQL restore command.
+
+        The backup file is piped to the mysql client via stdin by the
+        caller; shell redirection is never used.
+        """
         binary = shutil.which("mysql")
         if not binary:
             raise RuntimeError("mysql client not found")
@@ -367,12 +367,7 @@ class MySQLBackend(DatabaseBackend):
         if params.get("host"):
             cmd.extend(["-h", params["host"]])
         cmd.append(params.get("database", "mysql"))
-        cmd.extend(["<", input_path])
         return cmd
-
-    def uses_shell(self) -> bool:
-        """MySQL uses shell=True for redirect operators."""
-        return True
 
 
 class DatabaseRegistry:
