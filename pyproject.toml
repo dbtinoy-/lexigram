@@ -188,6 +188,11 @@ lexigram-multimedia-upscale = { workspace = true }
 lexigram-multimedia-interpolate = { workspace = true }
 lexigram-multimedia-beat = { workspace = true }
 
+[tool.uv.extra-build-dependencies]
+# madmom@0.16.1 (lexigram-multimedia-beat optional extra) does not declare
+# its build dependencies; make them available in the isolated build env.
+madmom = ["Cython", "numpy"]
+
 [project.urls]
 Homepage = "https://lexigram.dev"
 Repository = "https://github.com/dbtinoy-/lexigram"
