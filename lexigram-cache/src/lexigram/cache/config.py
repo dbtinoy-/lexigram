@@ -55,7 +55,7 @@ class CacheOperationConfig(DomainModel):
         max_memory: Maximum memory usage in bytes.
         key_prefix: Prefix for all cache keys.
         enable_metrics: Whether to enable metrics collection.
-        serializer_type: Type of serializer to use (json, pickle, msgpack).
+        serializer_type: Type of serializer to use (json, msgpack).
     """
 
     default_ttl: int | None = Field(None, description="Default TTL in seconds")

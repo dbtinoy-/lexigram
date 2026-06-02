@@ -73,7 +73,7 @@ cache:
 1. For JSON serializer, ensure all values are JSON-serializable (no `datetime`, `set`, custom objects)
 2. For non-serializable objects, either:
    - Convert to a dict before caching
-   - Enable pickle: `cache.service.allow_pickle: true`
+   - Register the value type in the deny-by-default type registry (`DEFAULT_REGISTRY`) for typed reconstruction
 3. Use a custom `AsyncStringSerializerProtocol` implementation
 
 ## Default backend not found after configuration

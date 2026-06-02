@@ -124,15 +124,14 @@ await cache.invalidate_tags(["articles"])
 
 ### Serialization
 
-By default, `CacheService` serializes complex objects to JSON. For backward compatibility, pickle is available but must be explicitly opted in:
+`CacheService` serializes values to JSON by default. JSON is the only built-in safe serializer — pickle is not available:
 
 ```python
 cache.service:
   default_serializer: "json"    # default
-  allow_pickle: false           # opt-in required for pickle
 ```
 
-Available serializers: `JSONSerializer`, `PickleSerializer`, `CompressingSerializer`.
+Available serializers: `JSONSerializer` (default), `MsgPackSerializer` (optional, compact binary), `CompressingSerializer` (wraps another serializer with gzip/zlib). Objects reconstructed through `@cacheable` type tags are resolved only against the deny-by-default `lexigram.cache.serialization.DEFAULT_REGISTRY` (or the serializer's `allowed_classes` allowlist) — never through dynamic imports.
 
 ### Decorator Syntax
 
@@ -202,7 +201,7 @@ class UserService:
 - ✅ **Set `default_ttl`** on backends to prevent unbounded cache growth
 - ✅ **Use tag-based invalidation** for group cache clearing
 - ✅ **Enable stampede protection** for expensive-to-compute values
-- ⚠️ **Opt in to pickle** only if you need to cache non-JSON-serializable objects
+- ⚠️ **Cache only JSON-serializable values**; for non-serializable objects, register the value type in the deny-by-default type registry (`DEFAULT_REGISTRY`) or use a custom `AsyncStringSerializerProtocol`
 - ❌ **Don't cache user secrets** (passwords, tokens) in plain text
 - ❌ **Don't skip TTL** for volatile data — always set an expiration
 

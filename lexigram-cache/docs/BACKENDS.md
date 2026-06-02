@@ -144,7 +144,7 @@ Configured via `service.default_serializer` (default: `json`). Available options
 | Serializer | Class | Key features |
 |------------|-------|--------------|
 | `json` | `JSONSerializer` | Safe, cross-language, no extra deps |
-| `pickle` | `PickleSerializer` | Supports arbitrary Python objects (opt-in) |
+| `msgpack` | `MsgPackSerializer` | Compact binary (optional dependency) |
 | `compression` | `CompressingSerializer` | Wraps another serializer with gzip/zlib |
 
 ## Testing
