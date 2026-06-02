@@ -1,9 +1,13 @@
 """Tests for cache service decorators module"""
 
+from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.cache.backends.memory.backend import MemoryCacheBackend
+from lexigram.cache.config import CacheOperationConfig
+from lexigram.cache.serialization.type_registry import DEFAULT_REGISTRY
 from lexigram.cache.service.decorators import (
     CacheDecorator,
     cache,
@@ -11,6 +15,20 @@ from lexigram.cache.service.decorators import (
     invalidate_cache,
     remember,
 )
+from lexigram.domain import DomainModel
+from lexigram.result import Ok
+
+
+@dataclass
+class _User(DomainModel):
+    """Domain model used as the registered cached type."""
+
+    user_id: str
+    name: str
+
+
+class _Hostile:
+    """Module-level class whose envelope must never be imported on read."""
 
 
 class TestCacheDecorator:
@@ -296,3 +314,124 @@ class TestDecoratorIntegration:
         assert documented_func.__name__ == "documented_func"
         assert documented_func.__doc__ == "A well-documented function."
         assert documented_func.__annotations__ == {"x": int, "y": str, "return": str}
+
+
+class TestCacheableTypedLookup:
+    """@cacheable envelope reconstruction via the registered type registry."""
+
+    @pytest.fixture
+    def backend(self) -> MemoryCacheBackend:
+        """In-memory cache backend with a real store."""
+        config = CacheOperationConfig(default_ttl=300, key_prefix="test")
+        backend = MemoryCacheBackend(config)
+        backend._store.get = AsyncMock(side_effect=backend._store.get)
+        backend._store.set = AsyncMock(side_effect=backend._store.set)
+        return backend
+
+    @pytest.fixture
+    def registered_user(self) -> type[_User]:
+        """Register _User on DEFAULT_REGISTRY for the duration of a test."""
+        DEFAULT_REGISTRY.register(_User)
+        yield _User
+        DEFAULT_REGISTRY.clear()
+
+    def test_deserialize_unknown_tag_returns_raw_payload_without_import(self) -> None:
+        """A hostile envelope naming os.system is never imported (D3 poisoning)."""
+        from lexigram.cache.decorators import _deserialize
+
+        poisoned = {
+            "__lx_module__": "os",
+            "__lx_class__": "system",
+            "__lx_data__": {"cmd": "echo boom"},
+        }
+        result = _deserialize(poisoned)
+        assert result == {"cmd": "echo boom"}
+
+    def test_deserialize_unregistered_local_class_degrades_to_data(self) -> None:
+        """A real-but-unregistered class envelope degrades to raw data."""
+        from lexigram.cache.decorators import _deserialize
+
+        payload = {
+            "__lx_module__": _Hostile.__module__,
+            "__lx_class__": _Hostile.__qualname__,
+            "__lx_data__": {"marker": True},
+        }
+        result = _deserialize(payload)
+        assert result == {"marker": True}
+
+    @pytest.mark.asyncio
+    async def test_registered_type_round_trip(
+        self, backend: MemoryCacheBackend, registered_user: type[_User],
+    ) -> None:
+        """A registered domain model survives the cache round-trip."""
+        from lexigram.cache.decorators import cacheable
+
+        class Service:
+            def __init__(self) -> None:
+                self._cache = backend
+
+            @cacheable(ttl=60, key_prefix="users")
+            async def get_user(self, user_id: str) -> _User:
+                return _User(user_id=user_id, name="Ada")
+
+        service = Service()
+        result = await service.get_user("u1")
+
+        assert isinstance(result, _User)
+        assert result.user_id == "u1"
+        assert result.name == "Ada"
+
+        cached = await service.get_user("u1")
+        assert isinstance(cached, _User)
+        assert cached.user_id == "u1"
+        assert cached.name == "Ada"
+
+    @pytest.mark.asyncio
+    async def test_result_wrapped_registered_type(
+        self, backend: MemoryCacheBackend, registered_user: type[_User],
+    ) -> None:
+        """A Result-wrapped registered domain model round-trips as Ok."""
+        from lexigram.cache.decorators import cacheable
+
+        class Service:
+            def __init__(self) -> None:
+                self._cache = backend
+
+            @cacheable(ttl=60, key_prefix="users")
+            async def get_user(self, user_id: str):
+                return Ok(_User(user_id=user_id, name="Grace"))
+
+        service = Service()
+        first = await service.get_user("u2")
+        assert first.is_ok()
+
+        second = await service.get_user("u2")
+        assert second.is_ok()
+        cached_user = second.unwrap()
+        assert isinstance(cached_user, _User)
+        assert cached_user.name == "Grace"
+
+    @pytest.mark.asyncio
+    async def test_unregistered_type_denied_by_default(
+        self, backend: MemoryCacheBackend,
+    ) -> None:
+        """An unregistered type envelope is never reconstructed."""
+        from lexigram.cache.decorators import cacheable
+
+        class Service:
+            def __init__(self) -> None:
+                self._cache = backend
+
+            @cacheable(ttl=60, key_prefix="secrets")
+            async def get_secret(self, secret: str) -> _User:
+                return _User(user_id="u3", name=secret)
+
+        service = Service()
+        first = await service.get_secret("hunter2")
+        assert isinstance(first, _User)
+
+        # Second call reads the cached envelope; since the type is not
+        # registered it must degrade to raw data, never be reconstructed.
+        second = await service.get_secret("hunter2")
+        assert isinstance(second, dict)
+        assert second.get("name") == "hunter2"
