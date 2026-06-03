@@ -7,10 +7,12 @@ from __future__ import annotations
 from typing import Any
 import uuid
 
+from lexigram.admin.auth.errors import SetupAlreadyCompletedError
 from lexigram.admin.sql_dialect import is_postgres
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import dumps_str
 from lexigram.serialization import loads as json_loads
 
@@ -63,6 +65,16 @@ def _row_to_user(row: dict[str, Any]) -> Any:
             """Record login - no-op for admin users"""
 
     return _UserObj(row)
+
+
+class _CreatedUser:
+    """Lightweight created-user record returned by claim_first_admin."""
+
+    def __init__(self, uid: str, name: str, email: str) -> None:
+        self.user_id = uid
+        self.name = name
+        self.username = name
+        self.email = email
 
 
 @inject
@@ -377,6 +389,89 @@ class DirectSQLAdminUserStore:
                 name,
             )
             raise
+
+    async def claim_first_admin(
+        self,
+        name: str,
+        email: str,
+        hashed_password: str,
+        roles: list[str],
+    ) -> Result[Any, SetupAlreadyCompletedError]:
+        """Atomically insert the first admin account only if none exists.
+
+        Runs a single ``INSERT ... SELECT ... WHERE NOT EXISTS`` statement so
+        that concurrent first-run submissions cannot both insert.
+
+        Args:
+            name: Display name.
+            email: Unique email address — used as the login identifier.
+            hashed_password: Pre-hashed credential.
+            roles: Role strings for the new account.
+
+        Returns:
+            Ok(_CreatedUser) when this call inserted the first admin account;
+            ``Err(SetupAlreadyCompletedError)`` when the table already holds
+            an admin account and nothing was inserted.
+        """
+        await self.ensure_schema()
+        admin_id = str(uuid.uuid4())
+        serialize_lists = not is_postgres(self.db_provider)
+
+        if serialize_lists:
+            sql = (
+                "INSERT INTO admin_users "
+                "(id, name, email, hashed_password, roles, permissions, is_active) "
+                "SELECT ?, ?, ?, ?, ?, ?, ? "
+                "WHERE NOT EXISTS (SELECT 1 FROM admin_users)"
+            )
+            params: list[Any] = [
+                admin_id,
+                name,
+                email,
+                hashed_password,
+                dumps_str(roles),
+                "[]",
+                True,
+            ]
+        else:
+            sql = (
+                "INSERT INTO admin_users "
+                "(id, name, email, hashed_password, roles, permissions, is_active) "
+                "SELECT ?, ?, ?, ?, roles::jsonb, permissions::jsonb, ? "
+                "WHERE NOT EXISTS (SELECT 1 FROM admin_users)"
+            )
+            params = [admin_id, name, email, hashed_password, roles, [], True]
+
+        result = await self.db_provider.execute(sql, params)
+        if hasattr(result, "success") and not result.success:
+            raise RuntimeError(
+                "claim_first_admin failed: "
+                f"{getattr(result, 'error_message', 'unknown error')}"
+            )
+
+        # 1 inserted row → Ok; 0 rows → Err. Postgres reports the insert via
+        # RETURNING-style rows, SQLite via row_count on the QueryResult.
+        row = None
+        if hasattr(result, "rows") and result.rows:
+            row = result.rows[0]
+        elif isinstance(result, list) and result:
+            row = result[0]
+        elif isinstance(result, dict):
+            row = result
+
+        inserted = bool(row) or getattr(result, "row_count", 0) > 0
+        if not inserted:
+            return Err(SetupAlreadyCompletedError())
+
+        if row:
+            return Ok(
+                _CreatedUser(
+                    str(row.get("id")),
+                    str(row.get("name") or ""),
+                    str(row.get("email") or ""),
+                )
+            )
+        return Ok(_CreatedUser(admin_id, name, email))
 
     # Also need helper for email lookup if we use it in logic
     async def get_user_by_email(self, email: str) -> Any | None:

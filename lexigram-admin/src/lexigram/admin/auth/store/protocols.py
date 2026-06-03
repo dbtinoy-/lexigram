@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
+from lexigram.admin.auth.errors import SetupAlreadyCompletedError
+from lexigram.result import Result
+
 
 @runtime_checkable
 class AdminUserStoreProtocol(Protocol):
@@ -69,6 +72,33 @@ class AdminUserStoreProtocol(Protocol):
         Returns:
             A lightweight object exposing at least ``user_id``, ``name``, and
             ``email`` attributes.
+        """
+        ...
+
+    async def claim_first_admin(
+        self,
+        name: str,
+        email: str,
+        hashed_password: str,
+        roles: list[str],
+    ) -> Result[Any, SetupAlreadyCompletedError]:
+        """Atomically create the first admin account if none exists yet.
+
+        Implementations must make the emptiness-check plus insert a single
+        atomic operation (e.g. ``INSERT ... SELECT ... WHERE NOT EXISTS``
+        or an ``asyncio.Lock`` around an in-memory insert), so that two
+        concurrent ``POST /setup`` submissions cannot both succeed.
+
+        Args:
+            name: Display name.
+            email: Unique email address — used as the login identifier.
+            hashed_password: Pre-hashed credential.
+            roles: Role strings for the new account (e.g. ``["superadmin"]``).
+
+        Returns:
+            Ok(user-like object) when this call created the first admin
+            account; ``Err(SetupAlreadyCompletedError)`` when at least one
+            admin account already exists and nothing was inserted.
         """
         ...
 
