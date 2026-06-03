@@ -192,6 +192,7 @@ class AdminAuthSubProvider:
         _auth_cfg = getattr(self._config, "auth", None)
         _pp_cfg = getattr(_auth_cfg, "password_policy", None)
         _sec_cfg = getattr(_auth_cfg, "security", None)
+        _mfa_cfg = getattr(_auth_cfg, "mfa", None)
 
         # ── AdminAuditLogService — DI-wired via @inject ───────────────────
         container.singleton(AdminAuditLogServiceProtocol, AdminAuditLogService)
@@ -273,6 +274,37 @@ class AdminAuthSubProvider:
             AdminPasswordResetServiceProtocol, AdminPasswordResetService
         )
 
+        # ── AdminMfaService — @inject subclass captures config values ────
+        # Follows the _AdminSessionServiceConfigured pattern: the inner class
+        # passes MFA config from the closure while the container injects the
+        # store and audit service.
+        from lexigram.admin.auth.protocols import (
+            AdminMfaServiceProtocol,
+            AdminMfaStoreProtocol,
+        )
+        from lexigram.admin.auth.services.mfa_service import AdminMfaService
+        from lexigram.admin.auth.store.mfa_sql import AdminMfaSqlStore
+        from lexigram.admin.config import AdminMfaConfig
+
+        container.singleton(AdminMfaStoreProtocol, AdminMfaSqlStore)
+
+        @inject
+        class _AdminMfaServiceConfigured(AdminMfaService):
+            """Admin-scoped MFA service with config-driven settings."""
+
+            def __init__(
+                self,
+                store: AdminMfaStoreProtocol,
+                audit_service: AdminAuditLogServiceProtocol,
+            ) -> None:
+                super().__init__(
+                    config=_mfa_cfg or AdminMfaConfig(),
+                    store=store,
+                    audit_service=audit_service,
+                )
+
+        container.singleton(AdminMfaServiceProtocol, _AdminMfaServiceConfigured)
+
         # ── AdminRoleService — DI-wired RBAC orchestrator ────────────────
         # The @inject decorator resolves role_store from the container.
         # authorization_service and audit_service are optional (None when
@@ -310,6 +342,7 @@ class AdminAuthSubProvider:
             AdminAuditLogStoreProtocol,
             AdminLoginAttemptServiceProtocol,
             AdminLoginAttemptStoreProtocol,
+            AdminMfaStoreProtocol,
             AdminPasswordResetServiceProtocol,
             AdminPasswordResetTokenStoreProtocol,
         )
@@ -320,6 +353,7 @@ class AdminAuthSubProvider:
             AdminAccountLockoutStoreProtocol,
             AdminAuditLogStoreProtocol,
             AdminPasswordResetTokenStoreProtocol,
+            AdminMfaStoreProtocol,
             AdminRoleStoreProtocol,
         ):
             try:
