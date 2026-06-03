@@ -77,3 +77,16 @@ class TestRequestTimeGating:
         result = await _executor(GraphQLConfig()).execute(INTROSPECTION_QUERY)
         assert result.is_ok()
         assert not result.unwrap().errors
+
+    @pytest.mark.asyncio
+    async def test_introspection_guard_precedes_depth_limit(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("LEX_ENV", "production")
+        cfg = GraphQLConfig(depth_limit={"max_depth": 2, "ignore_introspection": False})
+        deep_introspection = "{ __schema { queryType { fields { name } } } }"
+        result = await _executor(cfg).execute(deep_introspection)
+        assert result.is_ok()
+        response = result.unwrap()
+        assert response.errors
+        assert "Introspection is disabled" in response.errors[0].message
