@@ -15,7 +15,9 @@ all five (#20 Non-SQL's spec was verified/updated 2026-08-17 to also cover
 the aggregation-pipeline injection surface); plans written 2026-08-17.
 Round 5 (§8 below) and Round 6 (§9 below)
 added 5 areas each; design specs written for all ten, plans written
-2026-08-17 (Round 5) / 2026-08-16 (Round 6). Round 7 (§10 below)
+2026-08-17 (Round 5) / 2026-08-16 (Round 6). Round 6's first area —
+setup-wizard takeover (§28, row 26) — was **executed 2026-08-17 (Lane 1)**;
+the remaining four Round 6 areas are not started. Round 7 (§10 below)
 added 6 more areas from a focused lexigram-admin pass (2026-08-16); design
 specs for all six written 2026-08-16, plans written 2026-08-17,
 none executed yet. Round 8 (§11
@@ -189,8 +191,9 @@ Partially executed 2026-08-16 (`75568cd`): production hard-fail when CSRF disabl
 - [x] Task 2 (F2) — delete or restrict the three pickle deserializers (`lexigram-cache`, `lexigram-search`, `lexigram-cli`) — **done 2026-08-17 (Lane 2)**: cache `CompressingSerializer` switched to restricted unpickler with deny-by-default `allowed_classes` allowlist (empty set denies every class; os.system / custom-class gadget tests deny; allowlist round-trip test); search `caching.py` pickle branches deleted (json-only, `serializer` closed to `Literal["json"]`, pickle config raises `CacheError`); CLI `PickleSerializer` class + registration + tests deleted
 - [x] Task 3 (F3) — `@cacheable` type-tag gadget: registered type registry, deny-by-default — **done 2026-08-17 (Lane 2)**: new `serialization/type_registry.py` — `TypeRegistry` (empty `__init__`, `with_defaults()`, `register` validates `model_validate`, `get(module, qualname)`, `clear()`) + `DEFAULT_REGISTRY`; `_deserialize` resolves tags only against `DEFAULT_REGISTRY` — zero `importlib` in the gadget path, unregistered envelopes degrade to raw data with a warning; `cacheable` docstring documents the registration contract; exports via `serialization/__init__.py` + lazy `lexigram.cache` map; provider `_initialize_serializers` documents the single registration surface; tests: new `test_type_registry.py` (5 tests) + `service/test_decorators.py` poisoning / registered-round-trip / Result-round-trip / unregistered-denied with `DEFAULT_REGISTRY` fixture + teardown
 - [x] Task 4 (F4) — CLI MySQL backup/restore: drop `shell=True`, fix redirection — **done 2026-08-17 (Lane 2)**: MySQL backup uses `--result-file=<path>` (no `>` redirect); restore drops `<` redirect (stdin pipe already wired); `uses_shell()` removed (base + override + tests); zero `shell=True` remaining in `lexigram-cli/src`
-- [x] Task 5 (F5) — delete the dormant shell-string runner (`scripts/audit/base.py:243`) — done 2026-08-17, class deleted; `shell=True` sweep clean (remaining hits: comment in lexigram-ai-rag/video.py, (s)-gated D4 docstrings)
-- [x] Task 6 — full verification — **done 2026-08-17 (Lane 2)**: ruff check green repo-wide; ruff format applied to lane files (remaining format-diffs are pre-existing non-lane files, left as-is); mypy clean on all 4 lane packages + core (combined multi-root `mypy pkg/src ...` hits a pre-existing "duplicate module lexigram" invocation artifact — per-package runs are clean); 2695 unit tests green across lexigram-cache + lexigram-search + lexigram-cli + lexigram-ai-skills (`-m "not integration"` per AGENTS.md dev rule); plan `docs/superpowers/plans/2026-08-16-security-deserialization.md` checkboxes marked, commit steps skipped per user; bonus lane hygiene: `lexigram-cli/registry/secrets.py` pre-existing missing-`Path`-import mypy error fixed, stale `serializer_type` docstring "(json, pickle, msgpack)" corrected to "(json, msgpack)"
+- [x] Task 5 (F5) — delete the dormant shell-string runner (`scripts/audit/base.py:243`) — done 2026-08-17: deletion landed via `9dae6077`; `base.py` later re-added by concurrent refactor `9ea3ab8f` but is shell-free — `shell=True`/`uses_shell` sweep across `scripts/` is zero, content satisfied, no further commit needed
+- [x] Task 6 — full verification — **done 2026-08-17 (Lane 2)**: ruff check green repo-wide; ruff format applied to lane files (remaining format-diffs are pre-existing non-lane files, left as-is); mypy clean on all 4 lane packages + core (combined multi-root `mypy pkg/src ...` hits a pre-existing "duplicate module lexigram" invocation artifact — per-package runs are clean); 2695 unit tests green across lexigram-cache + lexigram-search + lexigram-cli + lexigram-ai-skills (`-m "not integration"` per AGENTS.md dev rule); plan checkboxes 42/42 `[x]`; bonus lane hygiene: `lexigram-cli/registry/secrets.py` pre-existing missing-`Path`-import mypy error fixed, stale `serializer_type` docstring "(json, pickle, msgpack)" corrected to "(json, msgpack)", all stale pickle/`allow_pickle` docs claims removed (GUIDE/BACKENDS/CONFIGURATION/TROUBLESHOOTING + `LEX_CACHE__SERVICE__ALLOW_PICKLE` rows in both REF_ENV_VARS.md copies)
+- **Commits landed 2026-08-17 (user-authorized): `3693c4fc` (F1 sandbox), `831b6a38` (F2 pickles), `034a3f2e` (F3 registry), `98ce1fb3` (F4 cli mysql), `f3dca175` (final review fixes). Lane 2 (§3.3 tenancy / §3.7 secrets / §3.9 deserialization / §40 search-filter injection) is CLOSED — all sections implemented, verified, committed.**
 
 ### 3.10 Plugins — `plans/2026-08-16-security-plugins.md` `[~]`
 
@@ -348,13 +351,13 @@ Round 5 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 
 ---
 
-## 9. Round 6 — Findings + Specs + Plans (No Execution Yet)
+## 9. Round 6 — Findings + Specs + Plans (1 of 5 executed — row 26)
 
 Round 6 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§28-32), per user request to "continue with the next round for more areas." Design specs written 2026-08-16 for all five; implementation plans written 2026-08-16 for all five — no code change executed yet:
 
 | # | Area | Doc section | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|------|
-| 26 | **First-run setup wizard race/takeover** | §28 | High ×1 | `specs/2026-08-16-security-setup-wizard-takeover-design.md` | `plans/2026-08-16-security-setup-wizard-takeover.md` |
+| 26 | **First-run setup wizard race/takeover** | §28 | High ×1 | `specs/2026-08-16-security-setup-wizard-takeover-design.md` | `plans/2026-08-16-security-setup-wizard-takeover.md` — **EXECUTED 2026-08-17 (Lane 1)** |
 | 27 | **Admin session/authorization middleware boot-time fail-open** | §29 | Med ×1 | `specs/2026-08-16-security-session-authz-failopen-design.md` | `plans/2026-08-16-security-session-authz-failopen.md` |
 | 28 | **CSV export formula/DDE injection** | §30 | Med ×1 | `specs/2026-08-16-security-csv-export-injection-design.md` | `plans/2026-08-16-security-csv-export-injection.md` |
 | 29 | **Connection pool health/management endpoint authorization** | §31 | Med ×1 | `specs/2026-08-16-security-pool-health-authz-design.md` | `plans/2026-08-16-security-pool-health-authz.md` |
