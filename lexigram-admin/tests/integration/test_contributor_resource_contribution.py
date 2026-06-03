@@ -92,7 +92,9 @@ class TestContributorResourceContribution:
 
         with patch.object(AdminRouter, "__init__", fake_init):
             with patch.object(AdminRouter, "mount", return_value=None):
-                config = AdminConfig()
+                config = AdminConfig.from_dict(
+                    {"auth": {"security": {"setup_token": "test-setup-token"}}}
+                )
                 bundle = AdminProvider(config=config)
                 container = Container()
                 from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
@@ -131,7 +133,9 @@ class TestContributorResourceContribution:
 
         with patch.object(AdminRouter, "__init__", fake_init):
             with patch.object(AdminRouter, "mount", return_value=None):
-                config = AdminConfig()
+                config = AdminConfig.from_dict(
+                    {"auth": {"security": {"setup_token": "test-setup-token"}}}
+                )
                 bundle = AdminProvider(config=config)
                 container = Container()
                 from lexigram.contracts.data.sql.database import DatabaseProviderProtocol

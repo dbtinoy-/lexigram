@@ -47,8 +47,14 @@ class _FakeDataSource:
 
 @pytest.mark.asyncio
 async def test_all_consumers_share_one_authorizer_instance() -> None:
+    from lexigram.admin.config import AdminConfig
+
     container = Container()
-    provider = AdminProvider()
+    provider = AdminProvider(
+        config=AdminConfig.from_dict(
+            {"auth": {"security": {"setup_token": "test-setup-token"}}}
+        )
+    )
     await provider.register(container)
     await provider.boot(container)
 

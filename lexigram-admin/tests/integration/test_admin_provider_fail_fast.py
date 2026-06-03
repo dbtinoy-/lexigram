@@ -30,7 +30,12 @@ async def test_strict_mode_raises_on_resource_resolution_failure(
     from lexigram.admin.di.bundle_provider import AdminProvider
     from lexigram.di.container import Container
 
-    config = AdminConfig(strict_resource_resolution=True)
+    config = AdminConfig.from_dict(
+        {
+            "strict_resource_resolution": True,
+            "auth": {"security": {"setup_token": "test-setup-token"}},
+        }
+    )
     provider = AdminProvider(
         config=config,
         resources=[_BrokenResource],
@@ -51,7 +56,12 @@ async def test_permissive_mode_swallows_resource_resolution_failure(
     from lexigram.admin.di.bundle_provider import AdminProvider
     from lexigram.di.container import Container
 
-    config = AdminConfig(strict_resource_resolution=False)
+    config = AdminConfig.from_dict(
+        {
+            "strict_resource_resolution": False,
+            "auth": {"security": {"setup_token": "test-setup-token"}},
+        }
+    )
     provider = AdminProvider(
         config=config,
         resources=[_BrokenResource],

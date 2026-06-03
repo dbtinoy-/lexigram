@@ -44,7 +44,12 @@ async def test_permissive_mount_failure_marks_admin_degraded() -> None:
     container = _ContainerStub()
 
     provider = AdminProvider(
-        config=AdminConfig(strict_resource_resolution=False),
+        config=AdminConfig.from_dict(
+            {
+                "strict_resource_resolution": False,
+                "auth": {"security": {"setup_token": "test-setup-token"}},
+            }
+        ),
         resources=[_BrokenResource],
     )
     await provider.register(container)
