@@ -14,12 +14,15 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from lexigram.admin.auth.protocols import (
     AdminAuthServiceProtocol,
     AdminCsrfServiceProtocol,
+    AdminMfaServiceProtocol,
     AdminPasswordResetServiceProtocol,
 )
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import (
     render_login_page,
+    render_mfa_challenge_page,
+    render_mfa_setup_page,
     render_password_reset_confirm_page,
     render_password_reset_request_page,
 )
@@ -52,6 +55,7 @@ class AuthController(AdminController):
         task_manager: TaskManagerProtocol | None = None,
         metrics: AdminMetrics | None = None,
         password_reset_service: AdminPasswordResetServiceProtocol | None = None,
+        mfa_service: AdminMfaServiceProtocol | None = None,
     ) -> None:
         """Initialise auth controller.
 
@@ -65,12 +69,21 @@ class AuthController(AdminController):
             metrics: Optional admin metrics collector.
             password_reset_service: Optional password reset orchestrator;
                 injected by the container when registered, ``None`` otherwise.
+            mfa_service: Optional TOTP 2FA orchestrator; injected by the
+                container when registered, ``None`` otherwise.
         """
         super().__init__(renderer, task_manager)
         self._auth_service = auth_service
         self._csrf_service = csrf_service
         self._metrics = metrics or AdminMetrics(None)
         self._password_reset_service = password_reset_service
+        self._mfa_service = mfa_service
+
+    def _fresh_csrf(self, request: Request) -> str:
+        """Generate a fresh CSRF token bound to a new session id."""
+        csrf_session_id = secrets.token_urlsafe(16)
+        request.session["csrf_session_id"] = csrf_session_id
+        return self._csrf_service.generate_token(csrf_session_id)
 
     # ------------------------------------------------------------------
     # GET /login
@@ -168,6 +181,20 @@ class AuthController(AdminController):
 
         if result.is_ok():
             auth_result = result.unwrap()
+            if auth_result.mfa_required:
+                # 2FA challenge — park the identity in the session; the
+                # /login/2fa flow completes the login with a TOTP code.
+                request.session["mfa_pending_user_id"] = auth_result.user_id
+                request.session["mfa_pending_email"] = auth_result.email
+                request.session["mfa_pending_roles"] = auth_result.roles
+                request.session["mfa_pending_next"] = next_url
+                logger.info(
+                    "auth.login_mfa_challenge",
+                    user_id=auth_result.user_id,
+                    email=auth_result.email,
+                )
+                return RedirectResponse(url="/admin/login/2fa", status_code=302)
+
             request.session["admin_user_id"] = auth_result.user_id
             request.session["admin_user_email"] = auth_result.email
             if hasattr(auth_result, "session_id"):
@@ -214,6 +241,313 @@ class AuthController(AdminController):
 
         request.session.clear()
         return RedirectResponse(url="/admin/login", status_code=302)
+
+    # ------------------------------------------------------------------
+    # GET /login/2fa — challenge form
+    # ------------------------------------------------------------------
+
+    @get("/login/2fa")
+    async def mfa_challenge_form(self, request: Request) -> HTMLResponse | RedirectResponse:
+        """Display the standalone TOTP challenge form.
+
+        Only reachable when a pending 2FA challenge exists in the session
+        (parked by ``login_submit``); otherwise the user is redirected to
+        the login page.  A fresh CSRF token is embedded in the form.
+
+        Args:
+            request: Incoming HTTP request.
+
+        Returns:
+            HTMLResponse with the rendered challenge page, or a
+            RedirectResponse to /admin/ or /admin/login.
+        """
+        user = getattr(request.state, "user", None)
+        if user and user.user_id != "guest":
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        pending_user_id = request.session.get("mfa_pending_user_id", "")
+        if not pending_user_id:
+            return RedirectResponse(url="/admin/login", status_code=302)
+
+        email = request.session.get("mfa_pending_email", "")
+        next_url = request.session.get("mfa_pending_next", "/admin/")
+        error = request.query_params.get("error", "")
+        csrf_token = self._fresh_csrf(request)
+
+        html = render_mfa_challenge_page(
+            email=email,
+            error=error,
+            csrf_token=csrf_token,
+            next_url=next_url,
+        )
+        return HTMLResponse(content=html)
+
+    # ------------------------------------------------------------------
+    # POST /login/2fa — challenge submit
+    # ------------------------------------------------------------------
+
+    @post("/login/2fa")
+    async def mfa_challenge_submit(self, request: Request) -> RedirectResponse:
+        """Complete a 2FA challenge and finish the login.
+
+        Verifies the CSRF token, delegates code verification to
+        ``AdminAuthServiceProtocol.complete_mfa_login``, and on success
+        populates the session exactly like ``login_submit``.  On failure
+        the challenge page is re-shown with an error message.
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to the pending destination on success, or back
+            to the challenge page with an error query parameter.
+        """
+        form_data = await request.form()
+        code = str(form_data.get("code", ""))
+        csrf_token = str(form_data.get("csrf_token", ""))
+
+        pending_user_id = request.session.get("mfa_pending_user_id", "")
+        if not pending_user_id:
+            return RedirectResponse(url="/admin/login", status_code=302)
+
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            logger.warning(
+                "auth.csrf_validation_failed", ip=self._get_client_ip(request)
+            )
+            return RedirectResponse(
+                url=f"/admin/login/2fa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        if not code:
+            return RedirectResponse(
+                url=f"/admin/login/2fa?error={quote_plus('Verification code is required.')}",
+                status_code=302,
+            )
+
+        ip = self._get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")
+
+        result = await self._auth_service.complete_mfa_login(
+            user_id=pending_user_id,
+            email=request.session.get("mfa_pending_email", ""),
+            roles=request.session.get("mfa_pending_roles", []),
+            code=code,
+            ip_address=ip,
+            user_agent=user_agent,
+        )
+
+        if result.is_err():
+            self._metrics.record_login(status="failure")
+            error_msg = str(result.unwrap_err())
+            logger.warning(
+                "auth.mfa_code_failed", user_id=pending_user_id, reason=error_msg
+            )
+            return RedirectResponse(
+                url=f"/admin/login/2fa?error={quote_plus(error_msg)}",
+                status_code=302,
+            )
+
+        auth_result = result.unwrap()
+        next_url = request.session.get("mfa_pending_next", "/admin/")
+        request.session["admin_user_id"] = auth_result.user_id
+        request.session["admin_user_email"] = auth_result.email
+        request.session["session_id"] = auth_result.session_id
+        for key in (
+            "mfa_pending_user_id",
+            "mfa_pending_email",
+            "mfa_pending_roles",
+            "mfa_pending_next",
+        ):
+            request.session.pop(key, None)
+        self._metrics.record_login(status="success")
+        logger.info(
+            "auth.login_success",
+            user_id=auth_result.user_id,
+            email=auth_result.email,
+            redirect=next_url,
+        )
+        return RedirectResponse(url=next_url, status_code=302)
+
+    # ------------------------------------------------------------------
+    # GET /profile/mfa — self-service 2FA settings
+    # ------------------------------------------------------------------
+
+    @get("/profile/mfa")
+    async def mfa_profile_form(self, request: Request) -> HTMLResponse | RedirectResponse:
+        """Display the authenticated user's 2FA settings page.
+
+        Shows the disable form when 2FA is active; otherwise generates a
+        fresh secret, QR code, and confirm form.  Requires an authenticated
+        request (``request.state.user`` provided by the auth guard).
+
+        Args:
+            request: Incoming HTTP request.
+
+        Returns:
+            HTMLResponse with the rendered setup page, or a RedirectResponse
+            when unauthenticated or 2FA is disabled in configuration.
+        """
+        user = getattr(request.state, "user", None)
+        if not user or user.user_id == "guest":
+            return RedirectResponse(
+                url="/admin/login?next=/admin/profile/mfa", status_code=302
+            )
+        if self._mfa_service is None:
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        error = request.query_params.get("error", "")
+        notice = request.query_params.get("notice", "")
+        csrf_token = self._fresh_csrf(request)
+        user_id = str(user.user_id)
+
+        if await self._mfa_service.is_enabled(user_id):
+            html = render_mfa_setup_page(
+                enabled=True, error=error, notice=notice, csrf_token=csrf_token
+            )
+        else:
+            result = await self._mfa_service.start_setup(user_id, str(user.email))
+            if result.is_err():
+                html = render_mfa_setup_page(
+                    enabled=False,
+                    error=str(result.unwrap_err()),
+                    csrf_token=csrf_token,
+                )
+            else:
+                secret, _, svg = result.unwrap()
+                request.session["mfa_pending_secret"] = secret
+                html = render_mfa_setup_page(
+                    enabled=False,
+                    qr_svg=svg,
+                    secret=secret,
+                    error=error,
+                    notice=notice,
+                    csrf_token=csrf_token,
+                )
+        return HTMLResponse(content=html)
+
+    # ------------------------------------------------------------------
+    # POST /profile/mfa/setup — enable 2FA
+    # ------------------------------------------------------------------
+
+    @post("/profile/mfa/setup")
+    async def mfa_setup_submit(self, request: Request) -> RedirectResponse:
+        """Confirm a newly generated TOTP secret.
+
+        Validates the code from the setup form against the pending secret
+        stashed in the session; only a valid code persists the secret.
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to /admin/profile/mfa with a notice on success
+            or an error query parameter on failure.
+        """
+        user = getattr(request.state, "user", None)
+        if not user or user.user_id == "guest":
+            return RedirectResponse(
+                url="/admin/login?next=/admin/profile/mfa", status_code=302
+            )
+        if self._mfa_service is None:
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        form_data = await request.form()
+        csrf_token = str(form_data.get("csrf_token", ""))
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            logger.warning(
+                "auth.csrf_validation_failed", ip=self._get_client_ip(request)
+            )
+            return RedirectResponse(
+                url=f"/admin/profile/mfa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        code = str(form_data.get("code", ""))
+        secret = request.session.pop("mfa_pending_secret", "")
+        if not code or not secret:
+            return RedirectResponse(
+                url=f"/admin/profile/mfa?error={quote_plus('Verification code is required.')}",
+                status_code=302,
+            )
+
+        result = await self._mfa_service.confirm_setup(str(user.user_id), secret, code)
+        if result.is_err():
+            return RedirectResponse(
+                url=f"/admin/profile/mfa?error={quote_plus(str(result.unwrap_err()))}",
+                status_code=302,
+            )
+        return RedirectResponse(
+            url="/admin/profile/mfa?notice="
+            + quote_plus("Two-factor authentication enabled."),
+            status_code=302,
+        )
+
+    # ------------------------------------------------------------------
+    # POST /profile/mfa/disable — disable 2FA
+    # ------------------------------------------------------------------
+
+    @post("/profile/mfa/disable")
+    async def mfa_disable_submit(self, request: Request) -> RedirectResponse:
+        """Disable 2FA after validating the current TOTP code.
+
+        Requires the user to prove possession of the secret by entering a
+        valid current code.
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to /admin/profile/mfa with a notice on success
+            or an error query parameter on failure.
+        """
+        user = getattr(request.state, "user", None)
+        if not user or user.user_id == "guest":
+            return RedirectResponse(
+                url="/admin/login?next=/admin/profile/mfa", status_code=302
+            )
+        if self._mfa_service is None:
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        form_data = await request.form()
+        csrf_token = str(form_data.get("csrf_token", ""))
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            logger.warning(
+                "auth.csrf_validation_failed", ip=self._get_client_ip(request)
+            )
+            return RedirectResponse(
+                url=f"/admin/profile/mfa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        code = str(form_data.get("code", ""))
+        if not code:
+            return RedirectResponse(
+                url=f"/admin/profile/mfa?error={quote_plus('Verification code is required.')}",
+                status_code=302,
+            )
+
+        result = await self._mfa_service.disable(str(user.user_id), code)
+        if result.is_err():
+            return RedirectResponse(
+                url=f"/admin/profile/mfa?error={quote_plus(str(result.unwrap_err()))}",
+                status_code=302,
+            )
+        request.session.pop("mfa_pending_secret", None)
+        return RedirectResponse(
+            url="/admin/profile/mfa?notice="
+            + quote_plus("Two-factor authentication disabled."),
+            status_code=302,
+        )
 
     # ------------------------------------------------------------------
     # GET /password-reset — request form
