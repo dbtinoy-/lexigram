@@ -13,11 +13,14 @@ from lexigram.admin.auth.errors import (
     AccountLockedError,
     AdminAuthError,
     InvalidCredentialsError,
+    MfaNotEnabledError,
+    MfaVerificationFailedError,
     RateLimitExceededError,
 )
 from lexigram.admin.auth.protocols import (
     AdminAuditLogServiceProtocol,
     AdminLoginAttemptServiceProtocol,
+    AdminMfaServiceProtocol,
     AdminSessionServiceProtocol,
 )
 from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
@@ -51,6 +54,7 @@ class AdminAuthService:
         attempt_service: IP rate limiting and account lockout enforcement.
         audit_service: Security event recording (fire-and-forget).
         session_service: Session lifecycle management.
+        mfa_service: Optional TOTP 2FA challenge service (None disables 2FA).
         session_lifetime: Absolute session TTL in seconds (default 86400 = 24h).
     """
 
@@ -60,12 +64,14 @@ class AdminAuthService:
         attempt_service: AdminLoginAttemptServiceProtocol,
         audit_service: AdminAuditLogServiceProtocol,
         session_service: AdminSessionServiceProtocol,
+        mfa_service: AdminMfaServiceProtocol | None = None,
         session_lifetime: int = 86400,
     ) -> None:
         self._user_store = user_store
         self._attempt_service = attempt_service
         self._audit_service = audit_service
         self._session_service = session_service
+        self._mfa_service = mfa_service
         self._session_lifetime = session_lifetime
 
     # ------------------------------------------------------------------
@@ -88,6 +94,9 @@ class AdminAuthService:
         2. ``check_account_lockout`` — raises ``AccountLockedError`` if the
            account is temporarily or permanently locked.
         3. ``user_store.authenticate`` — returns ``None`` on invalid credentials.
+        3b. Two-factor challenge — when the user has 2FA enabled, returns a
+           result with ``mfa_required=True`` (no session created); the caller
+           must finish via ``complete_mfa_login``.
         4. Record success attempt and clear lockout state.
         5. Create a new session via ``session_service``.
         6. Emit ``LOGIN_SUCCESS`` audit event.
@@ -100,6 +109,8 @@ class AdminAuthService:
 
         Returns:
             ``Ok(AdminAuthResult)`` containing session details on success.
+            ``Ok(AdminAuthResult)`` with ``mfa_required=True`` (empty
+            ``session_id``) when the user must complete a 2FA challenge.
             ``Err(RateLimitExceededError)`` when the IP is rate-limited.
             ``Err(AccountLockedError)`` when the account is locked.
             ``Err(InvalidCredentialsError)`` when credentials are invalid.
@@ -171,6 +182,31 @@ class AdminAuthService:
             )
             return Err(InvalidCredentialsError("Invalid email or password."))
 
+        # Step 3b — Two-factor challenge (when enabled for this user)
+        if self._mfa_service is not None:
+            mfa_enabled = await self._mfa_service.is_enabled(str(user.user_id))
+            if mfa_enabled:
+                await self._audit_service.log_event(
+                    event_type=AdminSecurityEventType.MFA_CHALLENGE_ISSUED,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    success=True,
+                    admin_user_id=str(user.user_id),
+                    metadata={"email": str(user.email)},
+                )
+                roles: list[str] = list(getattr(user, "roles", []) or [])
+                return Ok(
+                    AdminAuthResult(
+                        session_id="",
+                        user_id=str(user.user_id),
+                        email=str(user.email),
+                        roles=roles,
+                        expires_at=datetime.now(UTC)
+                        + timedelta(seconds=self._session_lifetime),
+                        mfa_required=True,
+                    )
+                )
+
         # Step 4 — Record success and clear lockout
         await self._attempt_service.record_attempt(
             email=email,
@@ -223,6 +259,140 @@ class AdminAuthService:
                 session_id=session_id,
                 user_id=str(user.user_id),
                 email=str(user.email),
+                roles=roles,
+                expires_at=expires_at,
+            )
+        )
+
+    async def complete_mfa_login(
+        self,
+        user_id: str,
+        email: str,
+        roles: list[str],
+        code: str,
+        ip_address: str,
+        user_agent: str,
+    ) -> Result[AdminAuthResult, AdminAuthError]:
+        """Complete a login after a successful TOTP challenge.
+
+        Called by the 2FA form once the user supplies a valid code.  Runs
+        the post-credential pipeline that ``authenticate`` deferred when it
+        returned ``mfa_required=True``: attempt recording, lockout
+        clearance, session creation, and audit logging.
+
+        Args:
+            user_id: Admin user UUID (from the pending challenge).
+            email: Admin user email (from the pending challenge).
+            roles: Role names for the user (from the pending challenge).
+            code: TOTP code to verify.
+            ip_address: Client IP address used for rate limiting and audit.
+            user_agent: Client user-agent string used for audit.
+
+        Returns:
+            ``Ok(AdminAuthResult)`` with a real session on success.
+            ``Err(MfaVerificationFailedError)`` when the code is invalid.
+            ``Err(MfaNotEnabledError)`` when 2FA is unavailable.
+        """
+        if self._mfa_service is None:
+            return Err(
+                MfaNotEnabledError(
+                    "Two-factor authentication is not enabled for this account."
+                )
+            )
+
+        # Step 1 — Verify the TOTP code
+        verification = await self._mfa_service.verify_code(user_id, code)
+        if verification.is_err():
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.MFA_CHALLENGE_FAILED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                admin_user_id=user_id,
+                metadata={"email": email},
+            )
+            logger.warning("admin_mfa_code_not_available", user_id=user_id)
+            return verification
+
+        if not verification.unwrap():
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.MFA_CHALLENGE_FAILED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                admin_user_id=user_id,
+                metadata={"email": email},
+            )
+            await self._attempt_service.record_attempt(
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                failure_reason="invalid_mfa_code",
+            )
+            logger.warning("admin_mfa_code_failed", user_id=user_id, email=email)
+            return Err(MfaVerificationFailedError("Invalid verification code."))
+
+        await self._audit_service.log_event(
+            event_type=AdminSecurityEventType.MFA_VERIFIED,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True,
+            admin_user_id=user_id,
+            metadata={"email": email},
+        )
+
+        # Step 2 — Record success and clear lockout
+        await self._attempt_service.record_attempt(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True,
+        )
+        await self._attempt_service.clear_lockout(email)
+
+        # Step 3 — Create session
+        session_id: str = await self._session_service.create_session(
+            user_id=user_id,
+            email=email,
+            roles=roles,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await self._audit_service.log_event(
+            event_type=AdminSecurityEventType.SESSION_CREATED,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True,
+            admin_user_id=user_id,
+            metadata={"email": email, "session_id": session_id},
+        )
+
+        expires_at: datetime = datetime.now(UTC) + timedelta(
+            seconds=self._session_lifetime
+        )
+
+        # Step 4 — Audit success
+        await self._audit_service.log_event(
+            event_type=AdminSecurityEventType.LOGIN_SUCCESS,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True,
+            admin_user_id=user_id,
+            metadata={"email": email, "session_id": session_id},
+        )
+        logger.info(
+            "admin_login_success",
+            user_id=user_id,
+            email=email,
+            ip_address=ip_address,
+        )
+
+        return Ok(
+            AdminAuthResult(
+                session_id=session_id,
+                user_id=user_id,
+                email=email,
                 roles=roles,
                 expires_at=expires_at,
             )
