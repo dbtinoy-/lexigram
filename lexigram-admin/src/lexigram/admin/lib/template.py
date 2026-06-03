@@ -208,6 +208,156 @@ def render_password_reset_confirm_page(
     return layout.render(content)
 
 
+def render_mfa_challenge_page(
+    email: str = "",
+    error: str = "",
+    csrf_token: str = "",
+    next_url: str = "/admin/",
+) -> str:
+    """Render a standalone TOTP 2FA challenge page.
+
+    Shown after password authentication when the user has 2FA enabled;
+    completes the login by posting a verification code to
+    ``/admin/login/2fa``.
+
+    Args:
+        email: Account email (displayed in the guidance copy).
+        error: Error message to display.
+        csrf_token: CSRF token to embed as a hidden form field.
+        next_url: Destination to redirect to after successful verification.
+
+    Returns:
+        HTML string for the challenge page.
+    """
+    flash_messages: list[tuple[str, str]] = []
+    if error:
+        flash_messages.append(("error", error))
+
+    config = StandaloneLayoutConfig(
+        app_name="Lexigram Admin",
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title="Two-Factor Authentication",
+        flash_messages=flash_messages,
+    )
+
+    content = f"""
+    <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-foreground mb-2">Verification Code</h1>
+            <p class="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app{escape(' for ' + email) if email else ''}</p>
+        </div>
+        <form method="post" action="/admin/login/2fa">
+            <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+            <input type="hidden" name="next" value="{escape(next_url)}">
+            <div class="mb-4">
+                <label for="code" class="block text-sm font-medium text-foreground mb-2">Code</label>
+                <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+                       pattern="[0-9]{{6}}" maxlength="6" placeholder="123456" required autofocus
+                       class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+            </div>
+            <button type="submit"
+                    class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Verify &amp; Sign In</button>
+        </form>
+    </div>
+    """
+
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
+
+
+def render_mfa_setup_page(
+    enabled: bool,
+    qr_svg: str = "",
+    secret: str = "",
+    error: str = "",
+    notice: str = "",
+    csrf_token: str = "",
+) -> str:
+    """Render the profile 2FA setup page.
+
+    When 2FA is disabled the page shows a QR code and secret plus a
+    confirm form posting to ``/admin/profile/mfa/setup``.  When enabled it
+    shows a disable form posting to ``/admin/profile/mfa/disable``.
+
+    Args:
+        enabled: True when 2FA is already active.
+        qr_svg: Inline SVG QR code (trusted output of the MFA service).
+        secret: Base32 TOTP secret to store in the authenticator.
+        error: Error message to display.
+        notice: Success notice to display.
+        csrf_token: CSRF token to embed as a hidden form field.
+
+    Returns:
+        HTML string for the setup page.
+    """
+    flash_messages: list[tuple[str, str]] = []
+    if error:
+        flash_messages.append(("error", error))
+    if notice:
+        flash_messages.append(("success", notice))
+
+    config = StandaloneLayoutConfig(
+        app_name="Lexigram Admin",
+        show_footer=True,
+        centered=True,
+    )
+    context = StandaloneLayoutContext(
+        page_title="Two-Factor Authentication",
+        flash_messages=flash_messages,
+    )
+
+    if enabled:
+        content = f"""
+        <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-foreground mb-2">Two-Factor Authentication</h1>
+                <p class="text-sm text-muted-foreground">Enabled — your account is protected by an authenticator app</p>
+            </div>
+            <p class="text-sm text-foreground mb-4">To disable 2FA, enter your current code.</p>
+            <form method="post" action="/admin/profile/mfa/disable">
+                <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+                <div class="mb-4">
+                    <label for="code" class="block text-sm font-medium text-foreground mb-2">Current Code</label>
+                    <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+                           pattern="[0-9]{{6}}" maxlength="6" placeholder="123456" required autofocus
+                           class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+                </div>
+                <button type="submit"
+                        class="w-full py-2.5 rounded-md bg-destructive text-destructive-foreground font-medium cursor-pointer hover:bg-destructive/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Disable 2FA</button>
+            </form>
+        </div>
+        """
+    else:
+        content = f"""
+        <div class="w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-8">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-foreground mb-2">Enable 2FA</h1>
+                <p class="text-sm text-muted-foreground">Scan the QR code with your authenticator app</p>
+            </div>
+            <div class="flex justify-center mb-4">{qr_svg}</div>
+            <p class="text-sm text-muted-foreground mb-1 break-all">If you cannot scan, enter this secret manually:</p>
+            <p class="text-center font-mono text-sm bg-muted rounded-md p-2 mb-4 break-all">{escape(secret)}</p>
+            <form method="post" action="/admin/profile/mfa/setup">
+                <input type="hidden" name="csrf_token" value="{escape(csrf_token)}">
+                <div class="mb-4">
+                    <label for="code" class="block text-sm font-medium text-foreground mb-2">Verification Code</label>
+                    <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+                           pattern="[0-9]{{6}}" maxlength="6" placeholder="123456" required autofocus
+                           class="w-full px-3 py-2 rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+                </div>
+                <button type="submit"
+                        class="w-full py-2.5 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring">Enable 2FA</button>
+            </form>
+        </div>
+        """
+
+    layout = StandaloneLayout(config=config, context=context)
+    return layout.render(content)
+
+
 def render_setup_page(
     error: str = "",
     site_name: str = "Lexigram Admin",
