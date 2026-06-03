@@ -22,6 +22,11 @@ from lexigram.contracts.multimedia.protocols import (
     VideoProcessor,
     VideoProvider,
 )
+from lexigram.contracts.multimedia.security import (
+    DEFAULT_MAX_MEDIA_BYTES,
+    assert_media_mime_allowed,
+    asset_bytes_ok,
+)
 from lexigram.contracts.multimedia.types import (
     BeatAnalysisRequest,
     BeatAnalysisResult,
@@ -57,6 +62,7 @@ from lexigram.contracts.multimedia.types import (
 )
 
 __all__ = [
+    "DEFAULT_MAX_MEDIA_BYTES",
     "BeatAnalysisError",
     "BeatAnalysisProvider",
     "BeatAnalysisRequest",
@@ -104,4 +110,6 @@ __all__ = [
     "VideoProcessor",
     "VideoProvider",
     "VideoRequest",
+    "assert_media_mime_allowed",
+    "asset_bytes_ok",
 ]
