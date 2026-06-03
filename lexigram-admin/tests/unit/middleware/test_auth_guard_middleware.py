@@ -52,3 +52,15 @@ async def test_non_htmx_request_gets_redirect_to_login() -> None:
 
     assert resp.status_code == 307
     assert resp.headers.get("location") == "/admin/login?next=/admin/widgets"
+
+
+@pytest.mark.asyncio
+async def test_2fa_challenge_path_bypasses_auth_guard() -> None:
+    """The 2FA challenge page must be reachable without a session.
+
+    The harness has no /admin/login/2fa route, so a 404 (not the 307 login
+    redirect) proves the guard let the request through.
+    """
+    resp = await _request("/admin/login/2fa", htmx=False)
+
+    assert resp.status_code == 404
