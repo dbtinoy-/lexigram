@@ -580,6 +580,77 @@ class AdminMfaServiceProtocol(Protocol):
         """Disable 2FA (requires a valid current code)."""
         ...
 
+    def get_factor(self) -> str:
+        """Return the configured second factor (``"totp"`` or ``"email"``)."""
+        ...
+
+
+@runtime_checkable
+class AdminEmailVerificationStoreProtocol(Protocol):
+    """Persistence contract for admin email verification state.
+
+    Implementations:
+        - :class:`~lexigram.admin.auth.store.email_verification_sql.AdminEmailVerificationSqlStore`
+    """
+
+    async def ensure_schema(self) -> None:
+        """Create the verification table if it does not exist."""
+        ...
+
+    async def is_verified(self, user_id: str) -> bool:
+        """Return True when the user's email is verified.
+
+        Args:
+            user_id: Admin user UUID.
+        """
+        ...
+
+    async def find_user_by_token_hash(self, token_hash: str) -> str | None:
+        """Look up the user owning an unconsumed token.
+
+        Args:
+            token_hash: sha256 hex digest of the raw token.
+
+        Returns:
+            User UUID or ``None`` when no unconsumed token matches.
+        """
+        ...
+
+    async def save_token(
+        self, user_id: str, token_hash: str, expires_at: datetime
+    ) -> None:
+        """Persist (or refresh) the verification token for a user.
+
+        Args:
+            user_id: Admin user UUID.
+            token_hash: sha256 hex digest of the raw token.
+            expires_at: UTC expiry timestamp.
+        """
+        ...
+
+    async def consume_token(self, user_id: str, token_hash: str) -> bool:
+        """Atomically verify + consume a token.
+
+        Marks the email verified and clears the token when the hash matches,
+        the token is unexpired, and the email is not already verified.
+
+        Args:
+            user_id: Admin user UUID.
+            token_hash: sha256 hex digest of the raw token.
+
+        Returns:
+            ``True`` when the token was valid and consumed.
+        """
+        ...
+
+    async def clear_token(self, user_id: str) -> None:
+        """Remove the pending verification token for a user.
+
+        Args:
+            user_id: Admin user UUID.
+        """
+        ...
+
 
 @runtime_checkable
 class AdminPasswordResetServiceProtocol(Protocol):
@@ -618,6 +689,7 @@ __all__ = [
     "AdminAuditLogStoreProtocol",
     "AdminAuthServiceProtocol",
     "AdminCsrfServiceProtocol",
+    "AdminEmailVerificationStoreProtocol",
     "AdminLoginAttemptServiceProtocol",
     "AdminLoginAttemptStoreProtocol",
     "AdminMfaServiceProtocol",
