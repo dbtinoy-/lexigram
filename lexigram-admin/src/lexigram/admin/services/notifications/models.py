@@ -17,6 +17,8 @@ class NotificationType(StrEnum):
     USER_ACTIVATED = "user_activated"
     USER_DEACTIVATED = "user_deactivated"
     PASSWORD_RESET = "password_reset"
+    EMAIL_VERIFICATION = "email_verification"
+    EMAIL_OTP = "email_otp"
     PASSWORD_CHANGED = "password_changed"
 
     # Bulk operations
