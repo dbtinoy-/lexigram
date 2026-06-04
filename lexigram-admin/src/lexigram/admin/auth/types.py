@@ -36,6 +36,11 @@ class AdminSecurityEventType(str, Enum):
     MFA_VERIFIED = "mfa_verified"
     MFA_ENABLED = "mfa_enabled"
     MFA_DISABLED = "mfa_disabled"
+    EMAIL_VERIFICATION_SENT = "email_verification_sent"
+    EMAIL_VERIFIED = "email_verified"
+    EMAIL_VERIFICATION_FAILED = "email_verification_failed"
+    EMAIL_OTP_SENT = "email_otp_sent"
+    EMAIL_OTP_FAILED = "email_otp_failed"
     ROLE_CREATED = "role_created"
     ROLE_UPDATED = "role_updated"
     ROLE_DELETED = "role_deleted"
@@ -74,6 +79,8 @@ class AdminAuthResult:
         roles: List of role names assigned to the user.
         expires_at: Absolute session expiry timestamp.
         mfa_required: True when the user must complete a 2FA challenge.
+        email_verification_required: True when login is blocked until the
+            email is verified.
     """
 
     session_id: str
@@ -82,6 +89,7 @@ class AdminAuthResult:
     roles: list[str]
     expires_at: datetime
     mfa_required: bool = False
+    email_verification_required: bool = False
 
 
 @dataclass(frozen=True)
