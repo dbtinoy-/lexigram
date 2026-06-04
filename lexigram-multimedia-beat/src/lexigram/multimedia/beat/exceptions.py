@@ -8,6 +8,11 @@ __all__ = ["BeatAnalysisDecodeError", "BeatAnalysisError"]
 
 
 class BeatAnalysisDecodeError(BeatAnalysisError):
-    """Librosa could not decode the materialized audio file."""
+    """Audio could not be decoded, or was rejected before decoding.
+
+    Covers undecodable files, unsafe asset URIs, payloads over the
+    ``max_asset_bytes`` cap, and decoded arrays over the
+    ``max_analyze_samples`` ceiling.
+    """
 
     _code = "LEX_ERR_MM_BEAT_003"
