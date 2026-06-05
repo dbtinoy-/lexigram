@@ -564,6 +564,22 @@ class TestGenericRepository:
         )
 
     @pytest.mark.asyncio
+    async def test_count_with_filters_dict(self, pydantic_repository, mock_provider):
+        """Test counting entities with dict-style filters (mirrors find())"""
+        query_result = Mock()
+        query_result.success = True
+        query_result.rows = [{"count": 3}]
+        mock_provider.execute_query.return_value = query_result
+
+        result = await pydantic_repository.count(filters={"status": "active"})
+
+        assert result == 3
+
+        mock_provider.execute_query.assert_called_once_with(
+            'SELECT COUNT(*) as count FROM "test_entities" WHERE "status" = ?', ["active"],
+        )
+
+    @pytest.mark.asyncio
     async def test_count_no_criteria(self, pydantic_repository, mock_provider):
         """Test counting all entities"""
         query_result = Mock()
