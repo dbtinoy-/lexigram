@@ -67,9 +67,13 @@ async def _resolve_reference_audio(
     parsed = urlparse(uri)
     if parsed.scheme == "file":
         root = os.environ.get("F5_TTS_REFERENCE_ROOT", "")
-        if not root or not os.path.realpath(parsed.path).startswith(
-            os.path.realpath(root)
-        ):
+        if root:
+            base = os.path.realpath(root)
+            real = os.path.realpath(parsed.path)
+            allowed = real == base or real.startswith(base.rstrip(os.sep) + os.sep)
+        else:
+            allowed = False
+        if not allowed:
             raise ValueError(
                 f"reference_audio_uri outside allowed root: {parsed.path!r}"
             )

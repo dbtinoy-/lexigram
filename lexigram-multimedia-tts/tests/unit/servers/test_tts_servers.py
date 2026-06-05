@@ -97,3 +97,22 @@ async def test_f5_reference_audio_file_scheme_allowlisted_root_allowed(
     monkeypatch.setenv("F5_TTS_REFERENCE_ROOT", str(tmp_path))
 
     assert await _resolve_reference_audio(ref_wav.as_uri()) == str(ref_wav)
+
+
+async def test_f5_reference_audio_file_scheme_sibling_root_rejected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from lexigram.multimedia.tts.servers.f5_tts_server import _resolve_reference_audio
+
+    root = tmp_path / "ref"
+    root.mkdir()
+    sibling = tmp_path / "ref2"
+    sibling.mkdir()
+    secret_wav = sibling / "secret.wav"
+    secret_wav.write_bytes(b"RIFF")
+    monkeypatch.setenv("F5_TTS_REFERENCE_ROOT", str(root))
+
+    # F5_TTS_REFERENCE_ROOT=<tmp>/ref + file://<tmp>/ref2/secret.wav → ValueError
+    # (prefix-match escape: sibling dir sharing the root's name prefix)
+    with pytest.raises(ValueError, match="outside allowed root"):
+        await _resolve_reference_audio(secret_wav.as_uri())
