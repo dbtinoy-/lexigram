@@ -52,6 +52,10 @@ class AdminMfaService:
     # Public API
     # ------------------------------------------------------------------
 
+    def get_factor(self) -> str:
+        """Return the configured second factor (``"totp"`` or ``"email"``)."""
+        return self._config.factor
+
     async def is_enabled(self, user_id: str) -> bool:
         """Return True when 2FA is enabled for the user."""
         return await self._store.is_enabled(user_id)
