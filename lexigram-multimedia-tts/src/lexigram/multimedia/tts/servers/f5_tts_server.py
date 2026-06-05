@@ -14,10 +14,22 @@ risk 1).
 
 from __future__ import annotations
 
+import os
 from typing import Any
 from urllib.parse import urlparse
 
 from aiohttp import web
+
+from lexigram.contracts.multimedia.security import (
+    DEFAULT_MAX_MEDIA_BYTES,
+    asset_bytes_ok,
+)
+from lexigram.contracts.security.url_safety import (
+    HostResolver,
+    is_safe_url_for_request,
+)
+
+MAX_BODY_BYTES: int = 64 * 1024 * 1024  # reference-audio base64/JSON window
 
 _model: Any = None
 
@@ -31,21 +43,65 @@ async def on_startup(app: web.Application) -> None:
     _model = F5TTS(device=device)
 
 
-async def _resolve_reference_audio(uri: str) -> str:
-    """Return a local filesystem path for the given reference-audio URI."""
+async def _resolve_reference_audio(
+    uri: str, *, resolver: HostResolver | None = None
+) -> str:
+    """Return a local filesystem path for the given reference-audio URI.
+
+    file:// URIs must point inside ``F5_TTS_REFERENCE_ROOT`` when that
+    environment variable is set; http(s) URIs are URL-safety checked,
+    fetched without redirects, and capped at the framework media size.
+
+    Args:
+        uri: Reference-audio URI (file://, http:// or https://).
+        resolver: Optional hostname resolver for the URL-safety check.
+            Defaults to the system resolver.
+
+    Returns:
+        A local path for the resolved audio file.
+
+    Raises:
+        ValueError: If the URI scheme is unsupported, the file path is
+            outside the allowed root, or the payload exceeds the cap.
+    """
     parsed = urlparse(uri)
     if parsed.scheme == "file":
+        root = os.environ.get("F5_TTS_REFERENCE_ROOT", "")
+        if not root or not os.path.realpath(parsed.path).startswith(
+            os.path.realpath(root)
+        ):
+            raise ValueError(
+                f"reference_audio_uri outside allowed root: {parsed.path!r}"
+            )
         return parsed.path
     if parsed.scheme in ("http", "https"):
+        if not is_safe_url_for_request(uri, resolver=resolver):
+            raise ValueError(f"unsafe reference_audio_uri: {uri!r}")
         import tempfile
 
         import aiohttp as _aiohttp
 
         async with (
             _aiohttp.ClientSession() as session,
-            session.get(uri) as resp,
+            session.get(uri, allow_redirects=False) as resp,
         ):
-            data = await resp.read()
+            declared = resp.content_length
+            if declared is not None and not asset_bytes_ok(
+                declared, max_bytes=DEFAULT_MAX_MEDIA_BYTES
+            ):
+                raise ValueError(
+                    f"reference_audio_uri body exceeds media cap: {declared} bytes"
+                )
+            chunks = []
+            total = 0
+            async for chunk in resp.content.iter_chunked(64 * 1024):
+                total += len(chunk)
+                if not asset_bytes_ok(total, max_bytes=DEFAULT_MAX_MEDIA_BYTES):
+                    raise ValueError(
+                        f"reference_audio_uri body exceeds media cap: {total} bytes"
+                    )
+                chunks.append(chunk)
+            data = b"".join(chunks)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             f.write(data)
             return f.name
@@ -75,7 +131,7 @@ async def handle_health(request: web.Request) -> web.Response:
 
 
 def main() -> None:
-    app = web.Application()
+    app = web.Application(client_max_size=MAX_BODY_BYTES)
     app.on_startup.append(on_startup)
     app.router.add_post("/generate", handle_generate)
     app.router.add_get("/health", handle_health)
