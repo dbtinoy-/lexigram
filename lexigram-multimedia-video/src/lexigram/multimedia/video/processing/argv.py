@@ -6,6 +6,8 @@ assemble command-line argument lists so they're trivially unit-testable.
 
 from __future__ import annotations
 
+import re
+
 from lexigram.contracts.multimedia.types import (
     BurnSubtitles,
     ChangeSpeed,
@@ -113,6 +115,12 @@ def build_argv(
                 vf = f"eq=brightness={brightness}:contrast={contrast}:saturation={saturation}"
             return [ffmpeg_binary, "-y", "-i", input_paths[0], "-vf", vf, output_path]
         case Transcode(codec=codec, resolution=resolution, bitrate=bitrate):
+            if codec:
+                _assert_filter_field("codec", codec, _RE_CODEC, allowed=_ALLOWED_CODECS)
+            if resolution:
+                _assert_filter_field("resolution", resolution, _RE_RESOLUTION)
+            if bitrate:
+                _assert_filter_field("bitrate", bitrate, _RE_BITRATE)
             argv = [ffmpeg_binary, "-y", "-i", input_paths[0]]
             if codec:
                 argv += ["-c:v", codec]
@@ -156,6 +164,9 @@ def build_argv(
             start=start,
             end=end,
         ):
+            _assert_filter_field("color", color, _RE_COLOR)
+            if not 1 <= font_size <= 512:
+                raise ValueError(f"ffmpeg font_size out of range: {font_size}")
             xy = _POSITION_EXPR[position]
             drawtext = (
                 f"drawtext=text='{_escape_drawtext(text)}':fontsize={font_size}"
@@ -476,17 +487,45 @@ def build_compose_argv(
     if audio_labels:
         argv += ["-map", "[a]"]
     if operation.encode is not None:
-        argv += ["-c:v", operation.encode.codec]
-        if operation.encode.bitrate:
-            argv += ["-b:v", operation.encode.bitrate]
-        if operation.encode.resolution:
-            argv += ["-s", operation.encode.resolution]
-        if operation.encode.fps:
-            argv += ["-r", str(operation.encode.fps)]
+        encode = operation.encode
+        _assert_filter_field("codec", encode.codec, _RE_CODEC, allowed=_ALLOWED_CODECS)
+        if encode.bitrate:
+            _assert_filter_field("bitrate", encode.bitrate, _RE_BITRATE)
+        if encode.resolution:
+            _assert_filter_field("resolution", encode.resolution, _RE_RESOLUTION)
+        argv += ["-c:v", encode.codec]
+        if encode.bitrate:
+            argv += ["-b:v", encode.bitrate]
+        if encode.resolution:
+            argv += ["-s", encode.resolution]
+        if encode.fps:
+            argv += ["-r", str(encode.fps)]
     if base_duration is not None:
         argv += ["-t", str(base_duration)]
     argv += ["-pix_fmt", "yuv420p", "-movflags", "+faststart", output_path]
     return argv
+
+
+_RE_COLOR = re.compile(r"^[a-zA-Z0-9_#]{1,32}$")  # ffmpeg named colors/0xRRGGBB
+_RE_CODEC = re.compile(r"^[a-zA-Z0-9_\-]{1,32}$")  # narrowed by _ALLOWED_CODECS
+_RE_RESOLUTION = re.compile(r"^\d{1,5}x\d{1,5}$")
+_RE_BITRATE = re.compile(r"^\d{1,9}[kKmMgG]?$")
+_ALLOWED_CODECS = frozenset(
+    {"libx264", "h264", "libx265", "h265", "libvpx-vp9", "vp9", "aac", "mp3", "copy"}
+)
+
+
+def _assert_filter_field(
+    kind: str,
+    value: str,
+    regex: re.Pattern[str],
+    *,
+    allowed: frozenset[str] | None = None,
+) -> None:
+    if allowed is not None and value not in allowed:
+        raise ValueError(f"unsupported ffmpeg {kind}: {value!r}")
+    if not regex.match(value):
+        raise ValueError(f"unsafe ffmpeg {kind} value: {value!r}")
 
 
 def _escape_drawtext(text: str) -> str:

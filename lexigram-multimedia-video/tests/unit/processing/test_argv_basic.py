@@ -1,3 +1,5 @@
+import pytest
+
 from lexigram.contracts.multimedia.types import (
     ChangeSpeed,
     ColorFilter,
@@ -107,3 +109,74 @@ def test_transcode_argv_full():
         "1M",
         "out.webm",
     ]
+
+
+@pytest.mark.parametrize("good", ["1920x1080", "1280x720"])
+def test_valid_resolutions_accepted(good: str) -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    argv = build_argv(
+        Transcode(asset=ASSET, format="mp4", resolution=good),
+        input_paths=["in.mp4"],
+        output_path="out.mp4",
+    )
+    assert ("-s", good) in list(zip(argv, argv[1:]))
+
+
+@pytest.mark.parametrize("bad", ["720x1280;rm", "1920x1080:extra"])
+def test_hostile_resolution_rejected(bad: str) -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    with pytest.raises(ValueError):
+        build_argv(
+            Transcode(asset=ASSET, format="mp4", resolution=bad),
+            input_paths=["in.mp4"],
+            output_path="out.mp4",
+        )
+
+
+def test_valid_bitrate_accepted() -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    argv = build_argv(
+        Transcode(asset=ASSET, format="mp4", bitrate="2M"),
+        input_paths=["in.mp4"],
+        output_path="out.mp4",
+    )
+    assert ("-b:v", "2M") in list(zip(argv, argv[1:]))
+
+
+@pytest.mark.parametrize("bad", ["2M:y=0", "2M;x", "-2M"])
+def test_hostile_bitrate_rejected(bad: str) -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    with pytest.raises(ValueError):
+        build_argv(
+            Transcode(asset=ASSET, format="mp4", bitrate=bad),
+            input_paths=["in.mp4"],
+            output_path="out.mp4",
+        )
+
+
+@pytest.mark.parametrize("codec", ["libx264", "h264", "libvpx-vp9", "copy", "aac"])
+def test_allowlisted_codecs_accepted(codec: str) -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    argv = build_argv(
+        Transcode(asset=ASSET, format="mp4", codec=codec),
+        input_paths=["in.mp4"],
+        output_path="out.mp4",
+    )
+    assert ("-c:v", codec) in list(zip(argv, argv[1:]))
+
+
+@pytest.mark.parametrize("bad", ["x;movie=/etc/passwd", "libx264:extra", "../evil"])
+def test_hostile_codec_rejected(bad: str) -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    with pytest.raises(ValueError):
+        build_argv(
+            Transcode(asset=ASSET, format="mp4", codec=bad),
+            input_paths=["in.mp4"],
+            output_path="out.mp4",
+        )

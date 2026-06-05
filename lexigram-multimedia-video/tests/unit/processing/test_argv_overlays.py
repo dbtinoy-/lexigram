@@ -1,3 +1,5 @@
+import pytest
+
 from lexigram.contracts.multimedia.types import (
     BurnSubtitles,
     Concat,
@@ -212,3 +214,37 @@ def test_raw_filter_argv_escape_hatch():
         "fast",
         "out.mp4",
     ]
+
+
+def _op(**kw) -> OverlayText:
+    base = dict(
+        asset=MediaAsset(mime_type="video/mp4", provider="t"),
+        text="hi",
+        position="center",
+    )
+    base.update(kw)
+    return OverlayText(**base)
+
+
+@pytest.mark.parametrize("color", ["white':x=0:y=0,drawtext=", "red:alpha=0.5"])
+def test_overlay_color_injection_rejected(color: str) -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    with pytest.raises(ValueError):
+        build_argv(_op(color=color), input_paths=["a.mp4"], output_path="o.mp4")
+
+
+def test_overlay_font_size_out_of_range_rejected() -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    with pytest.raises(ValueError):
+        build_argv(_op(font_size=10_000), input_paths=["a.mp4"], output_path="o.mp4")
+
+
+@pytest.mark.parametrize("good", ["white", "red", "0x00FF00", "black"])
+def test_valid_colors_still_accepted(good: str) -> None:
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    assert "fontcolor=" in " ".join(
+        build_argv(_op(color=good), input_paths=["a.mp4"], output_path="o.mp4")
+    )

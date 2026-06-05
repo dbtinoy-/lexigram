@@ -182,7 +182,7 @@ def test_encode_tail():
                 asset=MediaAsset(mime_type="audio/wav", provider="test", uri="n.wav")
             )
         ],
-        encode=EncodeSpec(codec="hevc_nvenc", bitrate="10M", resolution="1080x1920", fps=30),
+        encode=EncodeSpec(codec="libx265", bitrate="10M", resolution="1080x1920", fps=30),
     )
     argv = build_compose_argv(
         op, input_paths=["base.mp4", "layer.mov", "n.wav"], output_path="out.mp4"
@@ -193,7 +193,7 @@ def test_encode_tail():
         "-map",
         "[a]",
         "-c:v",
-        "hevc_nvenc",
+        "libx265",
         "-b:v",
         "10M",
         "-s",
@@ -223,3 +223,71 @@ def test_empty_compose_is_copy_fast_path():
     op = ComposeVideo(asset=_base())
     argv = build_compose_argv(op, input_paths=["base.mp4"], output_path="out.mp4")
     assert argv == ["ffmpeg", "-y", "-i", "base.mp4", "-c", "copy", "out.mp4"]
+
+
+@pytest.mark.parametrize("codec", ["libx264", "h264", "libvpx-vp9", "copy", "aac"])
+def test_allowlisted_codecs_accepted(codec: str) -> None:
+    from lexigram.contracts.multimedia.types import Transcode
+
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    transcode_argv = build_argv(
+        Transcode(asset=_base(), format="mp4", codec=codec),
+        input_paths=["base.mp4"],
+        output_path="out.mp4",
+    )
+    assert ("-c:v", codec) in list(zip(transcode_argv, transcode_argv[1:]))
+
+    op = ComposeVideo(
+        asset=_base(),
+        layers=[_layer()],
+        encode=EncodeSpec(codec=codec, bitrate="10M", resolution="1080x1920", fps=30),
+    )
+    argv = build_compose_argv(
+        op, input_paths=["base.mp4", "layer.mov"], output_path="out.mp4"
+    )
+    assert ("-c:v", codec) in list(zip(argv, argv[1:]))
+
+
+@pytest.mark.parametrize("bad", ["x;movie=/etc/passwd", "libx264:extra", "../evil"])
+def test_hostile_codec_resolution_bitrate_rejected(bad: str) -> None:
+    from lexigram.contracts.multimedia.types import Transcode
+
+    from lexigram.multimedia.video.processing.argv import build_argv
+
+    with pytest.raises(ValueError):
+        build_argv(
+            Transcode(asset=_base(), format="mp4", codec=bad),
+            input_paths=["base.mp4"],
+            output_path="out.mp4",
+        )
+
+    op = ComposeVideo(
+        asset=_base(),
+        layers=[_layer()],
+        encode=EncodeSpec(codec=bad, bitrate="2M", resolution="1920x1080"),
+    )
+    with pytest.raises(ValueError):
+        build_compose_argv(
+            op, input_paths=["base.mp4", "layer.mov"], output_path="out.mp4"
+        )
+
+    op = ComposeVideo(
+        asset=_base(),
+        layers=[_layer()],
+        encode=EncodeSpec(codec="libx264", bitrate="2M:y=0", resolution="1920x1080"),
+    )
+    with pytest.raises(ValueError):
+        build_compose_argv(
+            op, input_paths=["base.mp4", "layer.mov"], output_path="out.mp4"
+        )
+
+    op = ComposeVideo(
+        asset=_base(),
+        layers=[_layer()],
+        encode=EncodeSpec(codec="libx264", bitrate="2M", resolution="720x1280;rm"),
+    )
+    with pytest.raises(ValueError):
+        build_compose_argv(
+            op, input_paths=["base.mp4", "layer.mov"], output_path="out.mp4"
+        )
