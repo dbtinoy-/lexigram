@@ -64,3 +64,27 @@ async def test_2fa_challenge_path_bypasses_auth_guard() -> None:
     resp = await _request("/admin/login/2fa", htmx=False)
 
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_verify_email_page_bypasses_auth_guard() -> None:
+    """The email verification landing page must be reachable without a session."""
+    resp = await _request("/admin/verify-email", htmx=False)
+
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_verify_email_token_path_bypasses_auth_guard() -> None:
+    """Email verification token links must be reachable without a session."""
+    resp = await _request("/admin/verify-email/some-token-123", htmx=False)
+
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_unknown_login_subpath_still_auth_guarded() -> None:
+    """Prefix matching must not widen the bypass for arbitrary /login paths."""
+    resp = await _request("/admin/login/unknown-path", htmx=False)
+
+    assert resp.status_code == 307
