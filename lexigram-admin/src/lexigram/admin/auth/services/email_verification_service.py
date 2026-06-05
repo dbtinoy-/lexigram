@@ -13,9 +13,13 @@ import hashlib
 import secrets
 from typing import TYPE_CHECKING
 
-from lexigram.admin.auth.errors import EmailVerificationTokenInvalidError
+from lexigram.admin.auth.errors import (
+    EmailVerificationTokenInvalidError,
+    RateLimitExceededError,
+)
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminEmailVerificationConfig
+from lexigram.contracts.infra.cache import CacheBackendProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
@@ -47,6 +51,9 @@ class AdminEmailVerificationService:
         store: AdminEmailVerificationStoreProtocol,
         notification_service: AdminNotificationService | None = None,
         audit_service: AdminAuditLogServiceProtocol | None = None,
+        cache: CacheBackendProtocol | None = None,
+        resend_request_limit: int = 5,
+        resend_window_seconds: int = 3600,
     ) -> None:
         """Initialise the verification service.
 
@@ -56,11 +63,18 @@ class AdminEmailVerificationService:
             notification_service: Optional delivery channel for the
                 verification email (skipped when None).
             audit_service: Optional security audit logger.
+            cache: Optional cache backend for per-IP resend rate limiting;
+                ``None`` (or a failing cache) skips limiting (fail open).
+            resend_request_limit: Max resend requests per IP per window.
+            resend_window_seconds: Rate-limit window length in seconds.
         """
         self._config = config
         self._store = store
         self._notification_service = notification_service
         self._audit_service = audit_service
+        self._cache = cache
+        self._resend_request_limit = resend_request_limit
+        self._resend_window_seconds = resend_window_seconds
 
     async def is_verified(self, user_id: str) -> bool:
         """Return True when the user's email is verified.
@@ -86,12 +100,15 @@ class AdminEmailVerificationService:
         email: str,
         user_name: str,
         base_url: str = "",
+        ip_address: str = "",
     ) -> Result[None, AdminAuthError]:
         """Issue a verification link and email it to the user.
 
         No-op (Ok) when the flow is disabled or the email is already
         verified.  Delivery is fail-open: missing notification service or a
-        delivery failure only logs — the flow still returns Ok.
+        delivery failure only logs — the flow still returns Ok.  Resend
+        requests are rate limited per IP when a cache backend is wired
+        (fail open).
 
         Args:
             user_id: Admin user UUID.
@@ -99,13 +116,25 @@ class AdminEmailVerificationService:
             user_name: Display name for the email greeting.
             base_url: Origin used to build the absolute verify link
                 (e.g. ``https://panel.example.com``).
+            ip_address: Client IP for resend rate limiting.
 
         Returns:
             ``Ok(None)`` always in the failure cases above; token is
             persisted before delivery so a later resend re-issues.
+            ``Err(RateLimitExceededError)`` when this IP exceeds the
+            resend limit.
         """
         if not self._config.enabled or await self._store.is_verified(user_id):
             return Ok(None)
+
+        if self._cache is not None and await self._is_rate_limited(ip_address):
+            logger.warning("email_verification_rate_limited", ip=ip_address)
+            return Err(
+                RateLimitExceededError(
+                    "Too many verification emails. Please try again later.",
+                    reason="rate_limit",
+                )
+            )
 
         token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(token.encode()).hexdigest()
@@ -185,6 +214,7 @@ class AdminEmailVerificationService:
         email: str,
         user_name: str,
         base_url: str = "",
+        ip_address: str = "",
     ) -> Result[None, AdminAuthError]:
         """Re-issue and re-send the verification email.
 
@@ -193,11 +223,42 @@ class AdminEmailVerificationService:
             email: Email address to verify.
             user_name: Display name for the email greeting.
             base_url: Origin used to build the absolute verify link.
+            ip_address: Client IP for resend rate limiting.
 
         Returns:
             ``Ok(None)`` on success or when the flow is disabled/verified.
         """
-        return await self.send_verification(user_id, email, user_name, base_url)
+        return await self.send_verification(
+            user_id, email, user_name, base_url, ip_address
+        )
+
+    async def _is_rate_limited(self, ip_address: str) -> bool:
+        """Check and increment the per-IP resend counter. Fail open.
+
+        Uses a fixed-window counter keyed by a sha256 hash of the client IP
+        (avoids PII in cache key listings). Any cache failure is treated as
+        "not limited" so a cache outage never blocks verification emails.
+
+        Args:
+            ip_address: Client IP address.
+
+        Returns:
+            ``True`` when the IP exceeds ``resend_request_limit``.
+        """
+        try:
+            ip_hash = hashlib.sha256(ip_address.encode()).hexdigest()[:16]
+            key = f"admin:email-verification:ip:{ip_hash}"
+            result = await self._cache.get(key)
+            count = int(result.unwrap()) if result.is_ok() and result.unwrap() else 0
+            if count >= self._resend_request_limit:
+                return True
+            await self._cache.set(
+                key, str(count + 1), ttl=self._resend_window_seconds
+            )
+            return False
+        except Exception:  # noqa: BLE001 — fail open on cache outages
+            logger.warning("email_verification_rate_limit_unavailable")
+            return False
 
     async def _audit_failure(
         self, reason: str, user_id: str | None = None

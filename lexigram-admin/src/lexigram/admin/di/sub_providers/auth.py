@@ -447,6 +447,7 @@ class AdminAuthSubProvider:
             AdminAccountLockoutStoreProtocol,
             AdminAuditLogStoreProtocol,
             AdminEmailOtpStoreProtocol,
+            AdminEmailVerificationServiceProtocol,
             AdminEmailVerificationStoreProtocol,
             AdminLoginAttemptServiceProtocol,
             AdminLoginAttemptStoreProtocol,
@@ -491,6 +492,20 @@ class AdminAuthSubProvider:
             logger.debug("admin_auth.cache_wired")
         except Exception:
             logger.debug("admin_auth.cache_not_available")
+
+        # ── Wire cache into AdminEmailVerificationService (optional) ─────
+        try:
+            from lexigram.contracts.infra.cache import CacheBackendProtocol
+
+            _cache = await container.resolve(CacheBackendProtocol)
+            _verif_svc = await container.resolve(
+                AdminEmailVerificationServiceProtocol, bypass_visibility=True
+            )
+            if hasattr(_verif_svc, "_cache"):
+                _verif_svc._cache = _cache
+            logger.debug("admin_auth.verification_cache_wired")
+        except Exception:
+            logger.debug("admin_auth.verification_cache_not_available")
 
         # ── Wire cache into AdminPasswordResetService (optional) ──────────
         try:

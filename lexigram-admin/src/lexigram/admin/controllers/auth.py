@@ -14,17 +14,21 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from lexigram.admin.auth.protocols import (
     AdminAuthServiceProtocol,
     AdminCsrfServiceProtocol,
+    AdminEmailOtpServiceProtocol,
+    AdminEmailVerificationServiceProtocol,
     AdminMfaServiceProtocol,
     AdminPasswordResetServiceProtocol,
 )
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import (
+    render_email_verified_page,
     render_login_page,
     render_mfa_challenge_page,
     render_mfa_setup_page,
     render_password_reset_confirm_page,
     render_password_reset_request_page,
+    render_verify_email_page,
 )
 from lexigram.admin.observability.admin_metrics import AdminMetrics
 from lexigram.contracts.core import TaskManagerProtocol
@@ -56,6 +60,9 @@ class AuthController(AdminController):
         metrics: AdminMetrics | None = None,
         password_reset_service: AdminPasswordResetServiceProtocol | None = None,
         mfa_service: AdminMfaServiceProtocol | None = None,
+        email_verification_service: AdminEmailVerificationServiceProtocol
+        | None = None,
+        email_otp_service: AdminEmailOtpServiceProtocol | None = None,
     ) -> None:
         """Initialise auth controller.
 
@@ -71,6 +78,10 @@ class AuthController(AdminController):
                 injected by the container when registered, ``None`` otherwise.
             mfa_service: Optional TOTP 2FA orchestrator; injected by the
                 container when registered, ``None`` otherwise.
+            email_verification_service: Optional email verification
+                orchestrator; ``None`` disables the verification gate.
+            email_otp_service: Optional email OTP factor orchestrator;
+                ``None`` disables email-code challenges.
         """
         super().__init__(renderer, task_manager)
         self._auth_service = auth_service
@@ -78,6 +89,8 @@ class AuthController(AdminController):
         self._metrics = metrics or AdminMetrics(None)
         self._password_reset_service = password_reset_service
         self._mfa_service = mfa_service
+        self._email_verification_service = email_verification_service
+        self._email_otp_service = email_otp_service
 
     def _fresh_csrf(self, request: Request) -> str:
         """Generate a fresh CSRF token bound to a new session id."""
@@ -183,17 +196,62 @@ class AuthController(AdminController):
             auth_result = result.unwrap()
             if auth_result.mfa_required:
                 # 2FA challenge — park the identity in the session; the
-                # /login/2fa flow completes the login with a TOTP code.
+                # /login/2fa flow completes the login with a code.  For the
+                # email factor the code is emailed right away.
+                factor = "totp"
+                if self._mfa_service is not None:
+                    factor = await self._mfa_service.get_factor()
                 request.session["mfa_pending_user_id"] = auth_result.user_id
                 request.session["mfa_pending_email"] = auth_result.email
                 request.session["mfa_pending_roles"] = auth_result.roles
                 request.session["mfa_pending_next"] = next_url
+                request.session["mfa_pending_factor"] = factor
+                if factor == "email" and self._email_otp_service is not None:
+                    otp_result = await self._email_otp_service.send_otp(
+                        user_id=auth_result.user_id,
+                        email=auth_result.email,
+                        user_name=auth_result.email,
+                    )
+                    if otp_result.is_err():
+                        logger.warning(
+                            "auth.login_email_otp_send_failed",
+                            user_id=auth_result.user_id,
+                            reason=str(otp_result.unwrap_err()),
+                        )
                 logger.info(
                     "auth.login_mfa_challenge",
                     user_id=auth_result.user_id,
                     email=auth_result.email,
+                    factor=factor,
                 )
                 return RedirectResponse(url="/admin/login/2fa", status_code=302)
+
+            if auth_result.email_verification_required:
+                # Verification gate — park the identity so the /verify-email
+                # flow can re-send links, then issue one now.
+                request.session["verify_pending_user_id"] = auth_result.user_id
+                request.session["verify_pending_email"] = auth_result.email
+                request.session["verify_pending_next"] = next_url
+                if self._email_verification_service is not None:
+                    verify_result = await self._email_verification_service.send_verification(
+                        user_id=auth_result.user_id,
+                        email=auth_result.email,
+                        user_name=auth_result.email,
+                        base_url=str(request.base_url),
+                        ip_address=ip,
+                    )
+                    if verify_result.is_err():
+                        logger.warning(
+                            "auth.login_verification_send_failed",
+                            user_id=auth_result.user_id,
+                            reason=str(verify_result.unwrap_err()),
+                        )
+                logger.info(
+                    "auth.login_verification_required",
+                    user_id=auth_result.user_id,
+                    email=auth_result.email,
+                )
+                return RedirectResponse(url="/admin/verify-email", status_code=302)
 
             request.session["admin_user_id"] = auth_result.user_id
             request.session["admin_user_email"] = auth_result.email
@@ -271,7 +329,9 @@ class AuthController(AdminController):
 
         email = request.session.get("mfa_pending_email", "")
         next_url = request.session.get("mfa_pending_next", "/admin/")
+        factor = request.session.get("mfa_pending_factor", "totp")
         error = request.query_params.get("error", "")
+        notice = request.query_params.get("notice", "")
         csrf_token = self._fresh_csrf(request)
 
         html = render_mfa_challenge_page(
@@ -279,6 +339,8 @@ class AuthController(AdminController):
             error=error,
             csrf_token=csrf_token,
             next_url=next_url,
+            factor=factor,
+            resend_notice=notice,
         )
         return HTMLResponse(content=html)
 
@@ -361,6 +423,7 @@ class AuthController(AdminController):
             "mfa_pending_email",
             "mfa_pending_roles",
             "mfa_pending_next",
+            "mfa_pending_factor",
         ):
             request.session.pop(key, None)
         self._metrics.record_login(status="success")
@@ -371,6 +434,219 @@ class AuthController(AdminController):
             redirect=next_url,
         )
         return RedirectResponse(url=next_url, status_code=302)
+
+    # ------------------------------------------------------------------
+    # POST /login/2fa/resend — resend email code
+    # ------------------------------------------------------------------
+
+    @post("/login/2fa/resend")
+    async def mfa_challenge_resend(self, request: Request) -> RedirectResponse:
+        """Resend the email verification code for a pending challenge.
+
+        Only valid for the email factor and while a challenge is parked in
+        the session.  Cooldown and delivery errors (e.g. "please wait") are
+        surfaced on the challenge page.
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to /admin/login/2fa with a notice on success or
+            an error query parameter on failure.
+        """
+        pending_user_id = request.session.get("mfa_pending_user_id", "")
+        if not pending_user_id:
+            return RedirectResponse(url="/admin/login", status_code=302)
+
+        form_data = await request.form()
+        csrf_token = str(form_data.get("csrf_token", ""))
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            logger.warning(
+                "auth.csrf_validation_failed", ip=self._get_client_ip(request)
+            )
+            return RedirectResponse(
+                url=f"/admin/login/2fa?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        factor = request.session.get("mfa_pending_factor", "totp")
+        if factor != "email" or self._email_otp_service is None:
+            return RedirectResponse(
+                url=f"/admin/login/2fa?error={quote_plus('Resending codes is not available for this factor.')}",
+                status_code=302,
+            )
+
+        email = str(form_data.get("email", "")) or request.session.get(
+            "mfa_pending_email", ""
+        )
+        result = await self._email_otp_service.send_otp(
+            user_id=pending_user_id,
+            email=email,
+            user_name=email,
+        )
+        if result.is_err():
+            logger.warning(
+                "auth.email_otp_resend_failed",
+                user_id=pending_user_id,
+                reason=str(result.unwrap_err()),
+            )
+            return RedirectResponse(
+                url=f"/admin/login/2fa?error={quote_plus(str(result.unwrap_err()))}",
+                status_code=302,
+            )
+        return RedirectResponse(
+            url="/admin/login/2fa?notice=" + quote_plus("A new code has been sent."),
+            status_code=302,
+        )
+
+    # ------------------------------------------------------------------
+    # GET /verify-email — verification landing page
+    # ------------------------------------------------------------------
+
+    @get("/verify-email")
+    async def verify_email_form(self, request: Request) -> HTMLResponse | RedirectResponse:
+        """Display the standalone email verification landing page.
+
+        Shown after a login attempt was gated on an unverified email.  Lets
+        the admin request a fresh verification link.
+
+        Args:
+            request: Incoming HTTP request.
+
+        Returns:
+            HTMLResponse with the rendered page, or a RedirectResponse when
+            already authenticated.
+        """
+        user = getattr(request.state, "user", None)
+        if user and user.user_id != "guest":
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        email = request.session.get("verify_pending_email", "")
+        next_url = request.session.get("verify_pending_next", "/admin/")
+        error = request.query_params.get("error", "")
+        notice = request.query_params.get("notice", "")
+        csrf_token = self._fresh_csrf(request)
+
+        html = render_verify_email_page(
+            email=email,
+            error=error,
+            notice=notice,
+            csrf_token=csrf_token,
+            next_url=next_url,
+        )
+        return HTMLResponse(content=html)
+
+    # ------------------------------------------------------------------
+    # POST /verify-email/resend — request a fresh verification link
+    # ------------------------------------------------------------------
+
+    @post("/verify-email/resend")
+    async def verify_email_resend(self, request: Request) -> RedirectResponse:
+        """Re-issue the verification email for a pending verification.
+
+        Rate limited per IP (5/hour, fail open) by the verification service.
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to /admin/verify-email with a notice on success
+            or an error query parameter on failure.
+        """
+        form_data = await request.form()
+        csrf_token = str(form_data.get("csrf_token", ""))
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            logger.warning(
+                "auth.csrf_validation_failed", ip=self._get_client_ip(request)
+            )
+            return RedirectResponse(
+                url=f"/admin/verify-email?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        user_id = request.session.get("verify_pending_user_id", "")
+        if not user_id:
+            return RedirectResponse(
+                url=f"/admin/login?error={quote_plus('Please sign in to request a new link.')}",
+                status_code=302,
+            )
+        if self._email_verification_service is None:
+            return RedirectResponse(
+                url=f"/admin/verify-email?error={quote_plus('Email verification is not available.')}",
+                status_code=302,
+            )
+
+        email = str(form_data.get("email", "")) or request.session.get(
+            "verify_pending_email", ""
+        )
+        result = await self._email_verification_service.send_verification(
+            user_id=user_id,
+            email=email,
+            user_name=email,
+            base_url=str(request.base_url),
+            ip_address=self._get_client_ip(request),
+        )
+        if result.is_err():
+            return RedirectResponse(
+                url=f"/admin/verify-email?error={quote_plus(str(result.unwrap_err()))}",
+                status_code=302,
+            )
+        return RedirectResponse(
+            url="/admin/verify-email?notice="
+            + quote_plus("A new verification link has been sent."),
+            status_code=302,
+        )
+
+    # ------------------------------------------------------------------
+    # GET /verify-email/{token} — consume a verification link
+    # ------------------------------------------------------------------
+
+    @get("/verify-email/{token}")
+    async def verify_email_token(self, request: Request) -> HTMLResponse:
+        """Consume a verification token from an emailed link.
+
+        Renders a confirmation page on success and a failure page (invalid,
+        used, or expired token) otherwise.  No session is required.
+
+        Args:
+            request: Incoming HTTP request (``token`` from path params).
+
+        Returns:
+            HTMLResponse with the confirmation or failure page.
+        """
+        token = request.path_params.get("token", "")
+        if self._email_verification_service is None:
+            return HTMLResponse(
+                content=render_email_verified_page(
+                    error="Email verification is not available."
+                )
+            )
+
+        result = await self._email_verification_service.verify_token(token)
+        if result.is_err():
+            logger.warning(
+                "auth.verify_email_token_failed",
+                token_prefix=token[:8],
+                reason=str(result.unwrap_err()),
+            )
+            return HTMLResponse(
+                content=render_email_verified_page(error=str(result.unwrap_err()))
+            )
+
+        for key in (
+            "verify_pending_user_id",
+            "verify_pending_email",
+            "verify_pending_next",
+        ):
+            request.session.pop(key, None)
+        logger.info("auth.verify_email_success", token_prefix=token[:8])
+        return HTMLResponse(content=render_email_verified_page())
 
     # ------------------------------------------------------------------
     # GET /profile/mfa — self-service 2FA settings
@@ -404,9 +680,19 @@ class AuthController(AdminController):
         csrf_token = self._fresh_csrf(request)
         user_id = str(user.user_id)
 
+        email_verified: bool | None = None
+        if self._email_verification_service is not None:
+            email_verified = await self._email_verification_service.is_verified(
+                user_id
+            )
+
         if await self._mfa_service.is_enabled(user_id):
             html = render_mfa_setup_page(
-                enabled=True, error=error, notice=notice, csrf_token=csrf_token
+                enabled=True,
+                error=error,
+                notice=notice,
+                csrf_token=csrf_token,
+                email_verified=email_verified,
             )
         else:
             result = await self._mfa_service.start_setup(user_id, str(user.email))
@@ -415,6 +701,7 @@ class AuthController(AdminController):
                     enabled=False,
                     error=str(result.unwrap_err()),
                     csrf_token=csrf_token,
+                    email_verified=email_verified,
                 )
             else:
                 secret, _, svg = result.unwrap()
@@ -426,6 +713,7 @@ class AuthController(AdminController):
                     error=error,
                     notice=notice,
                     csrf_token=csrf_token,
+                    email_verified=email_verified,
                 )
         return HTMLResponse(content=html)
 
