@@ -106,14 +106,26 @@ async def test_bootstrap_db_provider_resolves_usable_provider(tmp_path: Path, mo
     assert await provider.table_exists("does_not_exist") is False
 
 
-@pytest.mark.asyncio
-async def test_bootstrap_db_provider_resolves_usable_provider(tmp_path: Path, monkeypatch):
-    """_bootstrap_db_provider() resolves a usable DatabaseProviderProtocol."""
-    db_path = tmp_path / "test.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+def _empty_contributor_runtime(*_args, **_kwargs) -> "ContributorRuntime":
+    """Return an empty ContributorRuntime regardless of call arguments."""
+    from lexigram.cli.contributors.runtime import ContributorRuntime
 
-    from lexigram.cli.commands.db import _bootstrap_db_provider
+    return ContributorRuntime()
 
-    provider = await _bootstrap_db_provider()
 
-    assert await provider.table_exists("does_not_exist") is False
+def test_db_setup_reports_nothing_to_do_when_no_contributions(monkeypatch):
+    """db setup reports nothing to do when no contributions are discovered."""
+    from lexigram.cli.contributors import runtime as runtime_module
+
+    runner = CliRunner()
+
+    monkeypatch.setattr(
+        runtime_module.ContributorRuntime,
+        "from_entry_points",
+        classmethod(_empty_contributor_runtime),
+    )
+
+    result = runner.invoke(app, ["setup"])
+
+    assert result.exit_code == 0
+    assert "Nothing to do" in result.stdout
