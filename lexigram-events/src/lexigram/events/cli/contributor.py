@@ -6,6 +6,7 @@ from lexigram.contracts.cli.contributions import (
     CommandContribution,
     DoctorCheckContribution,
     HealthCheckContribution,
+    SchemaSetupContribution,
     ShellContextContribution,
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
@@ -123,6 +124,17 @@ class EventsCliContributor:
     def get_hooks(self) -> list:
         """Return no hook contributions."""
         return []
+
+    def get_schema_setup(self) -> list[SchemaSetupContribution]:
+        """Return schema setup contributions for events."""
+        return [
+            SchemaSetupContribution(
+                name="events.saga_records",
+                description="Saga orchestration state storage",
+                setup_fn_path="lexigram.events.cli.schema_setup:ensure_saga_records",
+                contributor=self.contributor_id,
+            ),
+        ]
 
 
 __all__ = ["EventsCliContributor"]
