@@ -5,6 +5,7 @@ from lexigram.contracts.cli.contributions import (
     DoctorCheckContribution,
     HealthCheckContribution,
     HookContribution,
+    SchemaSetupContribution,
     ShellContextContribution,
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
@@ -74,5 +75,13 @@ class BaseCliContributor:
 
         Returns:
             An empty list by default; override to provide hooks.
+        """
+        return []
+
+    def get_schema_setup(self) -> list[SchemaSetupContribution]:
+        """Return database schema setup contributions.
+
+        Returns:
+            An empty list by default; override to provide schema setup steps.
         """
         return []
