@@ -7,6 +7,7 @@ from lexigram.contracts.cli.contributions import (
     DoctorCheckContribution,
     HealthCheckContribution,
     HookContribution,
+    SchemaSetupContribution,
     ShellContextContribution,
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
@@ -119,6 +120,17 @@ class AuthCliContributor:
                 handler_path="lexigram.auth.cli.hooks:log_auth_command",
                 contributor="auth",
                 priority=90,
+            ),
+        ]
+
+    def get_schema_setup(self) -> list[SchemaSetupContribution]:
+        """Return schema setup contributions for auth."""
+        return [
+            SchemaSetupContribution(
+                name="auth.oauth_identities",
+                description="OAuth identity linkage storage",
+                setup_fn_path="lexigram.auth.cli.schema_setup:ensure_oauth_identities",
+                contributor=self.contributor_id,
             ),
         ]
 
