@@ -91,3 +91,29 @@ class TestDbCommand:
         assert result.exit_code == 0
         assert "Database cleared" in result.output
         mock_manager.initialize_migration_table.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_db_provider_resolves_usable_provider(tmp_path: Path, monkeypatch):
+    """_bootstrap_db_provider() resolves a usable DatabaseProviderProtocol."""
+    db_path = tmp_path / "test.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+
+    from lexigram.cli.commands.db import _bootstrap_db_provider
+
+    provider = await _bootstrap_db_provider()
+
+    assert await provider.table_exists("does_not_exist") is False
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_db_provider_resolves_usable_provider(tmp_path: Path, monkeypatch):
+    """_bootstrap_db_provider() resolves a usable DatabaseProviderProtocol."""
+    db_path = tmp_path / "test.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
+
+    from lexigram.cli.commands.db import _bootstrap_db_provider
+
+    provider = await _bootstrap_db_provider()
+
+    assert await provider.table_exists("does_not_exist") is False
