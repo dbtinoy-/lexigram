@@ -10,6 +10,7 @@ from lexigram.contracts.cli.contributions import (
     DoctorCheckContribution,
     HealthCheckContribution,
     HookContribution,
+    SchemaSetupContribution,
     ShellContextContribution,
 )
 from lexigram.contracts.cli.protocols import CliContributorProtocol
@@ -81,6 +82,7 @@ class ContributorRuntime:
     _doctor_checks: list[DoctorCheckContribution] | None = None
     _shell_contexts: list[ShellContextContribution] | None = None
     _hooks: list[HookContribution] | None = None
+    _schema_setups: list[SchemaSetupContribution] | None = None
 
     @classmethod
     def from_entry_points(
@@ -169,6 +171,16 @@ class ContributorRuntime:
             for c in self.contributors:
                 self._hooks.extend(getattr(c, "get_hooks", list)())
         return list(self._hooks)
+
+    @property
+    def schema_setups(self) -> list[SchemaSetupContribution]:
+        if self._schema_setups is None:
+            self._schema_setups = []
+            for c in self.contributors:
+                self._schema_setups.extend(
+                    getattr(c, "get_schema_setup", list)()
+                )
+        return list(self._schema_setups)
 
     def _resolve_command_conflicts(self) -> None:
         seen: dict[str, str] = {}
