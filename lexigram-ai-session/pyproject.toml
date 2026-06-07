@@ -66,6 +66,9 @@ session = "lexigram.ai.session.di.provider:SessionProvider"
 [project.entry-points."lexigram.ai.modules"]
 session = "lexigram.ai.session.module:SessionModule"
 
+[project.entry-points."lexigram.cli.contributors"]
+ai-session = "lexigram.ai.session.cli.contributor:AiSessionCliContributor"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/lexigram"]
 
