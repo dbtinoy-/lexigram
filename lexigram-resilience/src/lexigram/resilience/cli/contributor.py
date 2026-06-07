@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.cli.contributions import (
     DoctorCheckContribution,
     HealthCheckContribution,
+    SchemaSetupContribution,
     ShellContextContribution,
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
@@ -65,6 +66,17 @@ class ResilienceCliContributor:
     def get_hooks(self) -> list:
         """Return no hook contributions."""
         return []
+
+    def get_schema_setup(self) -> list[SchemaSetupContribution]:
+        """Return schema setup contributions for resilience."""
+        return [
+            SchemaSetupContribution(
+                name="resilience.idempotency_keys",
+                description="Idempotency key storage",
+                setup_fn_path="lexigram.resilience.cli.schema_setup:ensure_idempotency_keys",
+                contributor=self.contributor_id,
+            ),
+        ]
 
 
 __all__ = ["ResilienceCliContributor"]
