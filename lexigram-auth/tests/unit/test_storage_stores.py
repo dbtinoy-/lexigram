@@ -453,3 +453,60 @@ class TestMongoDBUserStore:
         count = await store.count_users()
 
         assert count == 42
+
+
+class _AsyncCtxManager:
+    """Async context manager double for scoped_context()."""
+
+    async def __aenter__(self):
+        return None
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return False
+
+
+class TestSQLAlchemyOAuthIdentityStore:
+    """Tests for SQLAlchemyOAuthIdentityStore schema bootstrap."""
+
+    @pytest.fixture
+    def mock_db(self) -> MagicMock:
+        """Build a db provider mock with a scoped async connection."""
+        conn = AsyncMock()
+        db = MagicMock()
+        db.get_scoped_connection = AsyncMock(return_value=conn)
+        db.scoped_context = MagicMock(return_value=_AsyncCtxManager())
+        return db
+
+    @pytest.mark.asyncio
+    async def test_ensure_tables_splits_ddl_into_single_statements(
+        self, mock_db: MagicMock
+    ) -> None:
+        """Each DDL statement is executed separately (multi-statement executes fail)."""
+        from lexigram.auth.storage.oauth_identity_store import (
+            SQLAlchemyOAuthIdentityStore,
+        )
+
+        store = SQLAlchemyOAuthIdentityStore(mock_db)
+
+        await store._ensure_tables()
+
+        conn = mock_db.get_scoped_connection.return_value
+        assert conn.execute.call_count == 2
+        assert all(
+            ";" not in call[0][0].rstrip(";") for call in conn.execute.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_ensure_tables_is_idempotent(self, mock_db: MagicMock) -> None:
+        """A second call skips re-executing the DDL."""
+        from lexigram.auth.storage.oauth_identity_store import (
+            SQLAlchemyOAuthIdentityStore,
+        )
+
+        store = SQLAlchemyOAuthIdentityStore(mock_db)
+
+        await store._ensure_tables()
+        await store._ensure_tables()
+
+        conn = mock_db.get_scoped_connection.return_value
+        assert conn.execute.call_count == 2

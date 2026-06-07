@@ -204,7 +204,10 @@ class SQLAlchemyOAuthIdentityStore(OAuthIdentityStore):
 
         async with self.db_provider.scoped_context():
             conn = await self.db_provider.get_scoped_connection()
-            await conn.execute(create_sql)
+            for statement in create_sql.split(";"):
+                stmt = statement.strip()
+                if stmt:
+                    await conn.execute(stmt)
 
         self._initialized = True
 
