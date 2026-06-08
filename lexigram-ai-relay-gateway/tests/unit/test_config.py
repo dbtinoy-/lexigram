@@ -88,6 +88,18 @@ def test_minimal_mapping_defaults() -> None:
     assert cfg.failover_failure_threshold == 3
     assert cfg.load_balancing == "deterministic"
     assert cfg.max_upstream_retries == 0
+    assert cfg.require_auth is True
+
+
+def test_require_auth_defaults_to_true() -> None:
+    cfg = RelayGatewayConfig()
+    assert cfg.require_auth is True
+    assert RelayGatewayConfig.from_mapping({}).require_auth is True
+
+
+def test_require_auth_explicit_false_opt_out() -> None:
+    cfg = RelayGatewayConfig.from_mapping({"require_auth": False})
+    assert cfg.require_auth is False
 
 
 def test_empty_channels_defaults() -> None:

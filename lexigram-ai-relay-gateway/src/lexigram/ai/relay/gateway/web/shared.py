@@ -26,8 +26,11 @@ from lexigram.contracts.ai.relay import (
     RelayRequestLogEntry,
 )
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
+from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.serialization import loads
+
+logger = get_logger(__name__)
 
 __all__ = [
     "_DEFAULT_ERROR_TYPES",
@@ -75,6 +78,13 @@ _ERROR_TYPE_MAP: dict[int, tuple[str, str, str]] = {
 
 _DEFAULT_ERROR_TYPES: tuple[str, str, str] = ("server_error", "api_error", "INTERNAL")
 """Error type names for every unmapped status code (including 500)."""
+
+
+class _RequireAuthMisconfigured:
+    """Sentinel type: require_auth=True but no verifier is bound."""
+
+
+_REQUIRE_AUTH_MISCONFIGURED = _RequireAuthMisconfigured()
 
 
 def _error_types(status_code: int) -> tuple[str, str, str]:
@@ -140,22 +150,28 @@ def _error_response(source: RelayFormat, error: RelayGatewayError) -> Response:
 
 async def auth_guard(
     request: Request,
-    verifier: RelayAuthVerifierProtocol | None,
+    verifier: RelayAuthVerifierProtocol | None | _RequireAuthMisconfigured,
     handler: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     """Guard one inbound relay request with the bound verifier, if any.
 
     Args:
         request: The inbound Starlette request.
-        verifier: The resolved verifier; ``None`` (or a host that has
-            not bound one) lets the request through untouched.
+        verifier: The resolved verifier; ``None`` (auth explicitly opted
+            out) lets the request through untouched, while the
+            ``_RequireAuthMisconfigured`` sentinel (auth required but no
+            verifier bound) fails closed with a 503.
         handler: The wrapped route handler.
 
     Returns:
         The handler's response when no verifier is bound or the caller
         authenticates (identity stored on ``request.state.relay_identity``);
-        a 401 authentication-error envelope otherwise.
+        a 401 authentication-error envelope when authentication fails;
+        a 503 misconfiguration envelope when required but unbound.
     """
+    if isinstance(verifier, _RequireAuthMisconfigured):
+        logger.error("relay_auth_required_but_unbound")
+        return _auth_misconfigured_response()
     if verifier is None:
         return await handler(request)
     result = await verifier.authenticate(request)
@@ -163,6 +179,20 @@ async def auth_guard(
         return _auth_error_response(result.unwrap_err())
     request.state.relay_identity = result.unwrap()
     return await handler(request)
+
+
+def _auth_misconfigured_response() -> JSONResponse:
+    """Build the 503 operator-misconfiguration envelope."""
+    return JSONResponse(
+        {
+            "error": {
+                "type": "server_error",
+                "code": "AUTH_REQUIRED_BUT_UNBOUND",
+                "message": "relay auth is required but no verifier is bound",
+            }
+        },
+        status_code=503,
+    )
 
 
 def _auth_error_response(err: RelayAuthError) -> JSONResponse:

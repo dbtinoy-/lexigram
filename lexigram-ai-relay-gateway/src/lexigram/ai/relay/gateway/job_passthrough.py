@@ -354,6 +354,7 @@ class JobPassthroughService:
                 channel_name=channel.name,
                 upstream_job_id=upstream_job_id,
                 endpoint_kind=kind,
+                submitted_by=request.tenant_id,
                 created_at=self._clock(),
             )
         )
@@ -420,6 +421,11 @@ class JobPassthroughService:
                 return Err(auth_denied(request.request_id)), ""
         record = self.job_registry.get(gateway_job_id)
         if record is None:
+            return (
+                Err(self._job_not_found_error(gateway_job_id, request.request_id)),
+                "",
+            )
+        if self._authorizer is not None and record.submitted_by != request.tenant_id:
             return (
                 Err(self._job_not_found_error(gateway_job_id, request.request_id)),
                 "",

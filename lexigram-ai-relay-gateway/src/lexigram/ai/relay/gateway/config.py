@@ -66,8 +66,8 @@ class RelayGatewayConfig:
             in-memory job registry on its next poll. Must be positive.
             Defaults to ``3600`` (one hour).
         require_auth: When ``True`` the inbound relay routes require a
-            bound ``RelayAuthVerifierProtocol``; when ``False`` (default)
-            all routes stay open, preserving today's behavior.
+            bound ``RelayAuthVerifierProtocol``; ``False`` is an explicit
+            opt-out for local/dev use only.
         rate_limits: Model name (or ``"*"`` for the token-wide rule) to
             a ``{"max": int, "window_seconds": int}`` budget.  Empty
             (default) disables the rate-limit guard entirely.
@@ -91,7 +91,7 @@ class RelayGatewayConfig:
     max_upstream_retries: int = 0
     load_balancing: Literal["deterministic", "weighted"] = "deterministic"
     job_ttl_seconds: int = 3600
-    require_auth: bool = False
+    require_auth: bool = True
     rate_limits: Mapping[str, Mapping[str, int]] = field(default_factory=dict)
     auto_disable_on_failures: bool = False
     failover_failure_threshold: int = 3
@@ -175,7 +175,7 @@ class RelayGatewayConfig:
             max_upstream_retries=int(data.get("max_upstream_retries", 0)),
             load_balancing=data.get("load_balancing", "deterministic"),
             job_ttl_seconds=int(data.get("job_ttl_seconds", 3600)),
-            require_auth=bool(data.get("require_auth", False)),
+            require_auth=bool(data.get("require_auth", True)),
             rate_limits=dict(data.get("rate_limits", {}) or {}),
             auto_disable_on_failures=bool(data.get("auto_disable_on_failures", False)),
             failover_failure_threshold=int(data.get("failover_failure_threshold", 3)),
