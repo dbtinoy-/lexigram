@@ -76,6 +76,38 @@ async def test_f5_reference_audio_fetch_capped(aiohttp_client: Any) -> None:
         )
 
 
+async def test_f5_reference_audio_fetch_rejects_non_200(aiohttp_client: Any) -> None:
+    from lexigram.multimedia.tts.servers.f5_tts_server import _resolve_reference_audio
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=404, body=b"not found")
+
+    app = web.Application()
+    app.router.add_get("/missing.wav", handler)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(ValueError, match="HTTP 404"):
+        await _resolve_reference_audio(
+            str(client.make_url("/missing.wav")), resolver=lambda _: [_PUBLIC_IP]
+        )
+
+
+async def test_f5_generate_maps_bad_reference_audio_to_400(
+    aiohttp_client: Any,
+) -> None:
+    from lexigram.multimedia.tts.servers.f5_tts_server import handle_generate
+
+    app = web.Application()
+    app.router.add_post("/generate", handle_generate)
+    client = await aiohttp_client(app)
+
+    resp = await client.post(
+        "/generate",
+        json={"reference_audio_uri": "http://127.0.0.1:9/missing.wav"},
+    )
+    assert resp.status == 400
+
+
 async def test_f5_reference_audio_file_scheme_without_allowlist_root_rejected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

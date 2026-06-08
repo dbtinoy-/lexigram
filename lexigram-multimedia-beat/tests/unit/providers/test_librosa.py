@@ -92,6 +92,31 @@ async def test_materialize_rejects_unresolvable_or_private_uri(
 
 
 @pytest.mark.asyncio
+async def test_analyze_rejects_non_200_fetch() -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=404, body=b"not found")
+
+    app = web.Application()
+    app.router.add_get("/missing.wav", handler)
+    async with TestClient(
+        TestServer(app, host="localhost"), raise_for_status=False
+    ) as client:
+        provider = LibrosaBeatAnalysisProvider(resolver=lambda _addr: [_PUBLIC_IP])
+        asset = MediaAsset(
+            mime_type="audio/wav",
+            provider="test",
+            uri=str(client.make_url("/missing.wav")),
+        )
+
+        with patch.dict(sys.modules, {"librosa": _fake_librosa()}):
+            result = await provider.analyze(BeatAnalysisRequest(asset=asset))
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), BeatAnalysisDecodeError)
+    assert "HTTP 404" in str(result.unwrap_err())
+
+
+@pytest.mark.asyncio
 async def test_analyze_rejects_fetched_payload_over_cap() -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(

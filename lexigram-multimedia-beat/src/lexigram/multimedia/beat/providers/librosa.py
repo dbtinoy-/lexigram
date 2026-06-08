@@ -99,6 +99,10 @@ class LibrosaBeatAnalysisProvider:
                     aiohttp.ClientSession() as session,
                     session.get(uri, allow_redirects=False) as resp,
                 ):
+                    if resp.status != 200:
+                        raise BeatAnalysisDecodeError(
+                            f"asset fetch failed: HTTP {resp.status}"
+                        )
                     declared = resp.content_length
                     if declared is not None and not asset_bytes_ok(
                         declared, max_bytes=self._max_asset_bytes

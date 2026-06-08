@@ -217,7 +217,10 @@ class AgentExecutorImpl(AgentExecutorProtocol):
 
         # Agent-level pipeline (AgentBuilder.with_guard_pipeline) wins over the
         # DI-provided one; the DI pipeline remains the standard default.
-        guard_pipeline = getattr(agent, "guard_pipeline", None) or self._guard_pipeline
+        agent_pipeline = getattr(agent, "guard_pipeline", None)
+        guard_pipeline = (
+            agent_pipeline if agent_pipeline is not None else self._guard_pipeline
+        )
 
         # 1.5 Guard check for input
         if guard_pipeline:
@@ -365,7 +368,11 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                     "error_type": type(e).__name__,
                 },
             )
-            return Err(AgentError(f"Tool observation blocked by guards: {e}", cause=e))
+            if isinstance(e, ToolObservationBlockedError):
+                message_text = f"Tool observation blocked by guards: {e}"
+            else:
+                message_text = f"Tool observation guard evaluation failed: {e}"
+            return Err(AgentError(message_text, cause=e))
 
         except (RuntimeError, OSError) as e:
             logger.exception("strategy_execution_failed", agent=agent.name)
