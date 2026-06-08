@@ -15,7 +15,9 @@ ASSET = MediaAsset(mime_type="video/mp4", provider="local-http", uri="a.mp4")
 
 def test_trim_argv():
     op = Trim(asset=ASSET, start=1.5, end=4.0)
-    argv = build_argv(op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg")
+    argv = build_argv(
+        op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg"
+    )
     assert argv == [
         "ffmpeg",
         "-y",
@@ -33,7 +35,9 @@ def test_trim_argv():
 
 def test_crop_argv():
     op = Crop(asset=ASSET, x=10, y=20, width=100, height=200)
-    argv = build_argv(op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg")
+    argv = build_argv(
+        op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg"
+    )
     assert argv == [
         "ffmpeg",
         "-y",
@@ -47,7 +51,9 @@ def test_crop_argv():
 
 def test_change_speed_argv():
     op = ChangeSpeed(asset=ASSET, factor=2.0)
-    argv = build_argv(op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg")
+    argv = build_argv(
+        op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg"
+    )
     assert argv == [
         "ffmpeg",
         "-y",
@@ -65,7 +71,9 @@ def test_change_speed_argv():
 
 def test_color_filter_argv_with_preset():
     op = ColorFilter(asset=ASSET, preset="grayscale")
-    argv = build_argv(op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg")
+    argv = build_argv(
+        op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg"
+    )
     assert argv == [
         "ffmpeg",
         "-y",
@@ -79,7 +87,9 @@ def test_color_filter_argv_with_preset():
 
 def test_color_filter_argv_with_manual_eq():
     op = ColorFilter(asset=ASSET, brightness=0.1, contrast=1.2, saturation=0.8)
-    argv = build_argv(op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg")
+    argv = build_argv(
+        op, input_paths=["in.mp4"], output_path="out.mp4", ffmpeg_binary="ffmpeg"
+    )
     assert argv == [
         "ffmpeg",
         "-y",
@@ -93,9 +103,15 @@ def test_color_filter_argv_with_manual_eq():
 
 def test_transcode_argv_full():
     op = Transcode(
-        asset=ASSET, format="webm", codec="libvpx-vp9", resolution="1280x720", bitrate="1M"
+        asset=ASSET,
+        format="webm",
+        codec="libvpx-vp9",
+        resolution="1280x720",
+        bitrate="1M",
     )
-    argv = build_argv(op, input_paths=["in.mp4"], output_path="out.webm", ffmpeg_binary="ffmpeg")
+    argv = build_argv(
+        op, input_paths=["in.mp4"], output_path="out.webm", ffmpeg_binary="ffmpeg"
+    )
     assert argv == [
         "ffmpeg",
         "-y",

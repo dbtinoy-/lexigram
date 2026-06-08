@@ -148,9 +148,7 @@ async def test_analyze_rejects_streamed_payload_over_cap() -> None:
 @pytest.mark.asyncio
 async def test_analyze_rejects_inline_payload_over_cap() -> None:
     provider = LibrosaBeatAnalysisProvider(max_asset_bytes=1024)
-    asset = MediaAsset(
-        mime_type="audio/wav", provider="test", bytes_data=b"\0" * 2048
-    )
+    asset = MediaAsset(mime_type="audio/wav", provider="test", bytes_data=b"\0" * 2048)
 
     with patch.dict(sys.modules, {"librosa": _fake_librosa()}):
         result = await provider.analyze(BeatAnalysisRequest(asset=asset))
