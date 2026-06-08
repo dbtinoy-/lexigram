@@ -43,7 +43,12 @@ class TestDepthLimitValidator:
         validator.validate(document)
 
     def test_validate_fail(self):
-        pytest.skip("GraphQL depth validation needs framework update")
+        query = "{ a { b { c } } }"  # depth 2
+        document = parse(query)
+        validator = DepthLimitValidator(max_depth=1)
+
+        with pytest.raises(QueryTooDeepError):
+            validator.validate(document)
 
     def test_ignore_introspection(self):
         """Test ignoring introspection queries."""
@@ -111,14 +116,24 @@ class TestDepthLimitValidator:
 class TestDepthLimitExtension:
     """Test strawberry extension."""
 
-    def test_on_operation(self):
-        pytest.skip("GraphQL extension needs framework update")
-        next(gen) # Should validate and pass (max_depth=2 >= depth=2)
-        
-        # Now fail case
-        ext = create_depth_limit(max_depth=1)
-        ext.execution_context = exec_context
-        gen = ext.on_operation()
-        
+    def test_on_validate(self):
+        """The extension validates the document during the validation hook."""
+
+        def make_ext(max_depth):
+            ext = create_depth_limit(max_depth=max_depth)
+            ext.execution_context = MagicMock(graphql_document=parse("{ a { b } }"))
+            return ext
+
+        # Pass case: depth 1 <= limit 2
+        gen = make_ext(max_depth=2).on_validate()
+        next(gen)
+        with pytest.raises(StopIteration):
+            next(gen)
+
+        # Fail case: depth 1 > limit 0
+        ext = create_depth_limit(max_depth=0)
+        ext.execution_context = MagicMock(graphql_document=parse("{ a { b } }"))
+        gen = ext.on_validate()
+
         with pytest.raises(QueryTooDeepError):
             next(gen)
