@@ -63,7 +63,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "create_model": ("lexigram.domain.models.factory", "create_model"),
     # --- Exceptions (sourced from contracts) ---
     "DomainError": ("lexigram.contracts.exceptions.domain", "DomainError"),
-    "DomainPolicyViolationError": ("lexigram.domain.exceptions", "DomainPolicyViolationError"),
+    "DomainPolicyViolationError": (
+        "lexigram.domain.exceptions",
+        "DomainPolicyViolationError",
+    ),
     "FieldError": ("lexigram.contracts.exceptions.domain", "FieldError"),
     "ValidationError": ("lexigram.contracts.exceptions.domain", "ValidationError"),
     "UnitOfWorkError": ("lexigram.contracts.data.exceptions", "UnitOfWorkError"),

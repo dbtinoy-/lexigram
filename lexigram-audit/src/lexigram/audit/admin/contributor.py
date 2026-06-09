@@ -68,9 +68,7 @@ class AuditAdminContributor(BaseAdminContributor):
         self._logger: AuditLoggerProtocol | None = None
         self._verifier: AuditVerifierProtocol | None = None
 
-    async def on_admin_boot(
-        self, container: ContainerResolverProtocol | None
-    ) -> None:
+    async def on_admin_boot(self, container: ContainerResolverProtocol | None) -> None:
         """Resolve audit dependencies from the DI container.
 
         Args:

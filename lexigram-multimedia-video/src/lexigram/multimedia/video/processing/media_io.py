@@ -109,9 +109,7 @@ def read_output_asset(path: str, *, mime_type: str, provider: str) -> MediaAsset
     return MediaAsset(mime_type=mime_type, provider=provider, bytes_data=data)
 
 
-async def _run_probe(
-    ffprobe_binary: str, args: list[str], *, timeout: float
-) -> str:
+async def _run_probe(ffprobe_binary: str, args: list[str], *, timeout: float) -> str:
     """Run ffprobe with a hard timeout, killing the process on expiry.
 
     Args:

@@ -32,14 +32,18 @@ class PermissionService:
     def set_roles(self, roles: dict[str, Any]) -> None:
         """Delegate to unified service."""
         if self.authorization_service is None:
-            logger.warning("PermissionService: No authorizer configured; skipping set_roles")
+            logger.warning(
+                "PermissionService: No authorizer configured; skipping set_roles"
+            )
             return
         self.authorization_service.set_roles(roles)
 
     async def sync_from_db(self, container: ContainerResolverProtocol) -> None:
         """Delegate to unified service."""
         if self.authorization_service is None:
-            logger.warning("PermissionService: No authorizer configured; skipping sync_from_db")
+            logger.warning(
+                "PermissionService: No authorizer configured; skipping sync_from_db"
+            )
             return
         await self.authorization_service.sync_from_db(container)
 
@@ -95,12 +99,16 @@ class PermissionService:
 
         return True
 
-    async def can_delete(self, user: Any, resource_name: str, record: Any = None) -> bool:
+    async def can_delete(
+        self, user: Any, resource_name: str, record: Any = None
+    ) -> bool:
         schema = self.get_schema(resource_name)
         if not schema:
             return True
 
-        if not await self._check_access(user, schema.can_delete, resource_name, "delete"):
+        if not await self._check_access(
+            user, schema.can_delete, resource_name, "delete"
+        ):
             return False
 
         if schema.rls_policy and record:
@@ -113,19 +121,25 @@ class PermissionService:
 
     # --- Field Level ---
 
-    async def can_view_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def can_view_field(
+        self, user: Any, resource_name: str, field_name: str
+    ) -> bool:
         schema = self.get_schema(resource_name)
         if not schema or field_name not in schema.fields:
             return True
         return await self._check_access(user, schema.fields[field_name].view_roles)
 
-    async def can_edit_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def can_edit_field(
+        self, user: Any, resource_name: str, field_name: str
+    ) -> bool:
         schema = self.get_schema(resource_name)
         if not schema or field_name not in schema.fields:
             return True
         return await self._check_access(user, schema.fields[field_name].edit_roles)
 
-    async def should_mask_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def should_mask_field(
+        self, user: Any, resource_name: str, field_name: str
+    ) -> bool:
         schema = self.get_schema(resource_name)
         if not schema or field_name not in schema.fields:
             return False

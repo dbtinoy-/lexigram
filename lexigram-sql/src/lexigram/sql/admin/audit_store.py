@@ -82,7 +82,9 @@ class SqlAdminAuditLogStore:
             "action": entry.action,
             "resource_type": entry.resource_type,
             "resource_id": entry.resource_id,
-            "outcome": entry.outcome if isinstance(entry.outcome, str) else entry.outcome.value,
+            "outcome": entry.outcome
+            if isinstance(entry.outcome, str)
+            else entry.outcome.value,
             "before_state": dumps_str(entry.before) if entry.before else None,
             "after_state": dumps_str(entry.after) if entry.after else None,
             "correlation_id": entry.correlation_id,

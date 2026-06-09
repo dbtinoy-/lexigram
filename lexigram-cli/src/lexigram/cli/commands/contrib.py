@@ -99,9 +99,7 @@ def plugin_list(
             )
 
     for error in runtime.errors.values():
-        out.print(
-            f"  [red]✗[/red] {error.contributor_id}: {error.exception}"
-        )
+        out.print(f"  [red]✗[/red] {error.contributor_id}: {error.exception}")
 
     if runtime.command_conflicts:
         out.print("\n[bold]Command conflicts:[/bold]")
@@ -132,9 +130,7 @@ def plugin_inspect(
     )
 
     if contributor is None:
-        available = ", ".join(
-            sorted(c.contributor_id for c in runtime.contributors)
-        )
+        available = ", ".join(sorted(c.contributor_id for c in runtime.contributors))
         if runtime.errors:
             available += f" (errors: {', '.join(runtime.errors)})"
         out.print(f"[red]Contributor '{name}' not found.[/red]")
@@ -201,7 +197,9 @@ def plugin_check(
     total = len(runtime.contributors) + len(runtime.errors)
     if total == 0:
         if json:
-            print('{"status": "ok", "message": "No contributors found.", "contributors": [], "errors": [], "conflicts": []}')
+            print(
+                '{"status": "ok", "message": "No contributors found.", "contributors": [], "errors": [], "conflicts": []}'
+            )
         else:
             out.print("[yellow]No contributors found.[/yellow]")
         return
@@ -210,8 +208,7 @@ def plugin_check(
         payload = {
             "status": "ok" if not runtime.errors else "error",
             "contributors": [
-                contributor.contributor_id
-                for contributor in runtime.contributors
+                contributor.contributor_id for contributor in runtime.contributors
             ],
             "errors": [
                 {
@@ -231,6 +228,7 @@ def plugin_check(
             ],
         }
         from lexigram.serialization import dumps_str
+
         print(dumps_str(payload))
     else:
         out.print(f"[bold]Checking {total} contributor(s)...[/bold]\n")
@@ -250,9 +248,7 @@ def plugin_check(
 
         out.print("")
         if runtime.errors:
-            out.print(
-                f"[red]{len(runtime.errors)} contributor(s) failed.[/red]"
-            )
+            out.print(f"[red]{len(runtime.errors)} contributor(s) failed.[/red]")
             raise typer.Exit(1)
         out.print(
             f"[green]All {len(runtime.contributors)} contributor(s) healthy.[/green]"

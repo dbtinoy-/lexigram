@@ -102,13 +102,11 @@ class NotificationsInboxPage:
         user_id = getattr(user, "id", None) if user is not None else None
 
         try:
-            raw_per_page = request.query_params.get("per_page") or request.query_params.get(
-                "limit"
-            )
+            raw_per_page = request.query_params.get(
+                "per_page"
+            ) or request.query_params.get("limit")
             per_page = (
-                int(raw_per_page)
-                if raw_per_page is not None
-                else DEFAULT_PER_PAGE
+                int(raw_per_page) if raw_per_page is not None else DEFAULT_PER_PAGE
             )
         except (TypeError, ValueError):
             per_page = DEFAULT_PER_PAGE

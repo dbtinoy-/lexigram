@@ -64,7 +64,9 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
         if self._initialized:
             return
         try:
-            create_sql = _CREATE_SQL_POSTGRES if is_postgres(self._db) else _CREATE_SQL_SQLITE
+            create_sql = (
+                _CREATE_SQL_POSTGRES if is_postgres(self._db) else _CREATE_SQL_SQLITE
+            )
             await self._db.execute(create_sql, [])
             self._initialized = True
             logger.info("Ensured %s table exists", _TABLE)

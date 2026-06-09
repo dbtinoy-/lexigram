@@ -56,9 +56,7 @@ class SearchIntegration:
         pass
 
     async def health_check(self) -> dict[str, Any]:
-        return {
-            "status": "healthy" if self.is_available else "noop"
-        }
+        return {"status": "healthy" if self.is_available else "noop"}
 
     async def query(
         self,

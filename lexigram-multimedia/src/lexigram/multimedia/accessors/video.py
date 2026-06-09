@@ -115,10 +115,10 @@ class VideoAccessor:
                     "registered."
                 )
             )
-        upscaled: Result[MediaAsset, MultimediaError] = (
-            await self._video_upscale_service.upscale_video(
-                asset, scale_factor=scale_factor
-            )
+        upscaled: Result[
+            MediaAsset, MultimediaError
+        ] = await self._video_upscale_service.upscale_video(
+            asset, scale_factor=scale_factor
         )
         return upscaled
 
@@ -158,10 +158,10 @@ class VideoAccessor:
                     "subsystem registered."
                 )
             )
-        interpolated: Result[MediaAsset, MultimediaError] = (
-            await self._video_interpolation_service.interpolate_video(
-                asset, factor=factor, fps=fps
-            )
+        interpolated: Result[
+            MediaAsset, MultimediaError
+        ] = await self._video_interpolation_service.interpolate_video(
+            asset, factor=factor, fps=fps
         )
         return interpolated
 

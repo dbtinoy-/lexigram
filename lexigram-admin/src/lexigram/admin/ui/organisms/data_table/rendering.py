@@ -44,15 +44,12 @@ class DataTableRenderer:
 
         # Permission state: framework never binds a permission service at
         # construction time; async callers hoist checks and inject the dict.
-        self.permissions = (
-            (props or {}).get("permissions")
-            or {
-                "can_view": True,
-                "can_create": True,
-                "can_update": True,
-                "can_delete": True,
-            }
-        )
+        self.permissions = (props or {}).get("permissions") or {
+            "can_view": True,
+            "can_create": True,
+            "can_update": True,
+            "can_delete": True,
+        }
 
         self.action_manager = ActionManager(config, self.permissions)
         self.action_manager.configure_actions()

@@ -191,7 +191,10 @@ class AzureServiceBusQueue:
                 if self._tracer and span:
                     self._tracer.inject_context(trace_headers, context=span.context)  # type: ignore[attr-defined]
 
-                merged_headers: dict[str, str] = {**(message.headers or {}), **trace_headers}
+                merged_headers: dict[str, str] = {
+                    **(message.headers or {}),
+                    **trace_headers,
+                }
 
                 body = json.dumps(
                     {

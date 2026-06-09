@@ -132,7 +132,6 @@ class DomainModelError(LexigramException):
     _code: str = "LEX_ERR_DOM_008"
 
 
-
 __all__ = [
     "ConfigurationError",
     "ContainerError",
