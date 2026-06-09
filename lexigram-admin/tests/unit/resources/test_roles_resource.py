@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 from starlette.requests import Request as StarletteRequest
 
-from lexigram.admin.config import AdminConfig
+from lexigram.admin.config import AdminConfig, AdminRbacConfig
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.forms.components import FormSchemaGenerator
 from lexigram.contracts.auth import RoleDefinition
@@ -93,7 +93,8 @@ class TestRolesResource:
         """The configured super-admin role is protected from deletion."""
         resource = RolesResource()
         assert (
-            resource.can_delete(RoleDefinition(name="superadmin", is_system=False)) is False
+            resource.can_delete(RoleDefinition(name="superadmin", is_system=False))
+            is False
         )
 
     def test_can_delete_allows_custom_roles(self) -> None:
@@ -101,3 +102,14 @@ class TestRolesResource:
         resource = RolesResource()
         custom = RoleDefinition(name="editor", is_system=False)
         assert resource.can_delete(custom) is True
+
+    def test_can_delete_honors_configured_super_admin_role(self) -> None:
+        """A non-default super-admin role name is protected too."""
+        resource = RolesResource(rbac_config=AdminRbacConfig(super_admin_role="root"))
+        assert (
+            resource.can_delete(RoleDefinition(name="root", is_system=False)) is False
+        )
+        assert (
+            resource.can_delete(RoleDefinition(name="superadmin", is_system=False))
+            is True
+        )

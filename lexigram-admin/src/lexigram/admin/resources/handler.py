@@ -245,14 +245,16 @@ class EditActionHandler:
 
             validated_data = validation.unwrap()
             validated = await resource.before_update(item_id, validated_data)
-            record = await resource._data_source.update(item_id, validated)
-            await resource.after_update(record)
+            record = await resource._data_source.find_one(item_id)
+            can_update = getattr(resource, "can_update", None)
+            if can_update and not can_update(record):
+                return HTMLResponse("This record cannot be updated", status_code=403)
+            updated_record = await resource._data_source.update(item_id, validated)
+            await resource.after_update(updated_record)
 
             resource_prefix = request.scope.get(
                 "admin_resource_prefix", resource.name or ""
             )
-
-            from starlette.responses import HTMLResponse
 
             return HTMLResponse(
                 f'<html><head><meta http-equiv="refresh" content="0;url=/admin/{resource_prefix}"></head><body></body></html>'

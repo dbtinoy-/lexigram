@@ -21,7 +21,7 @@ from lexigram.admin.auth.protocols import (
 )
 from lexigram.admin.auth.store import AdminUserStoreProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
-from lexigram.admin.config import AdminConfig
+from lexigram.admin.config import AdminConfig, AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import render_setup_page
@@ -54,6 +54,7 @@ class SetupController(AdminController):
         renderer: AdminRenderer,
         task_manager: TaskManagerProtocol | None = None,
         email_verification_service: AdminEmailVerificationServiceProtocol | None = None,
+        rbac_config: AdminRbacConfig | None = None,
     ) -> None:
         """Initialise setup controller.
 
@@ -73,6 +74,9 @@ class SetupController(AdminController):
                 orchestrator; when present and the gate applies to the new
                 account, a verification email is sent and the user is
                 informed after creation.
+            rbac_config: Optional; the resolved RBAC config whose
+                ``super_admin_role`` names the role granted to the first
+                admin account.
         """
         super().__init__(renderer, task_manager)
         self._config = config
@@ -81,6 +85,7 @@ class SetupController(AdminController):
         self._audit_service = audit_service
         self._csrf_service = csrf_service
         self._email_verification_service = email_verification_service
+        self._rbac_config = rbac_config
 
     def _fresh_csrf(self, request: Request) -> str:
         """Generate a fresh session-scoped CSRF token for the setup form."""
@@ -249,7 +254,7 @@ class SetupController(AdminController):
                 name=name,
                 email=email,
                 hashed_password=hashed_password,
-                roles=["superadmin"],
+                roles=[(self._rbac_config or AdminRbacConfig()).super_admin_role],
             )
         except Exception as exc:
             # Treat any persistence failure (duplicate email, DB error, etc.)

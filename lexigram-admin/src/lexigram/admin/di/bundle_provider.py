@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Self
 
+from lexigram.admin.config import AdminRbacConfig
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
@@ -155,6 +156,9 @@ class AdminProvider(Provider):
         container.singleton("admin_bundle", self)
         # Register NavItemBuilder as a pre-built instance (config is not in container)
         container.singleton(NavItemBuilder, nav_item_builder)
+        # Register the resolved RBAC config so @inject consumers read the
+        # configured super-admin role, not a fresh default instance.
+        container.singleton(AdminRbacConfig, self._config.rbac)
         # Register built-in controllers
         container.singleton(WidgetController, WidgetController)
         container.singleton(DashboardController, DashboardController)
@@ -581,6 +585,7 @@ class AdminProvider(Provider):
                 csrf_service=settings_csrf,
                 audit_service=settings_audit,
                 registry=settings_registry,
+                rbac_config=self._config.rbac,
             )
             controller_instances.append(settings_controller)
         except Exception as exc:
@@ -663,6 +668,7 @@ class AdminProvider(Provider):
                     renderer=plugins_renderer,
                     csrf_service=plugins_csrf_service,
                     audit_service=plugins_audit_service,
+                    rbac_config=self._config.rbac,
                 )
             )
         except Exception as exc:
