@@ -1,6 +1,6 @@
 import pytest
 
-from lexigram.testing import TestEnvironment
+from lexigram.testing.fixtures.bed import TestEnvironment
 from lexigram.testing.fixtures.containers import apply_overrides
 from lexigram.testing.mocks import MockProvider
 
