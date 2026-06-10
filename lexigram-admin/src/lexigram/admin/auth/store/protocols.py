@@ -124,6 +124,21 @@ class AdminUserStoreProtocol(Protocol):
         """
         ...
 
+    async def get_by_id(self, user_id: str) -> Any | None:
+        """Look up the authenticated user backing a panel session.
+
+        Called by :class:`~lexigram.admin.middleware.auth.AdminAuthMiddleware`
+        while loading the user stored in ``admin_sessions``; the returned
+        object must expose ``user_id`` and ``is_active`` for that path.
+
+        Args:
+            user_id: Unique identifier (UUID string).
+
+        Returns:
+            User object or ``None`` when no match exists.
+        """
+        ...
+
     async def update_user(self, user: Any) -> None:
         """Persist changes to an existing admin user.
 
