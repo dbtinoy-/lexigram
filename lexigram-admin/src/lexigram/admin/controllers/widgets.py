@@ -259,7 +259,7 @@ class WidgetController:
         error: str | None = None,
     ) -> str:
         """Wrap widget body in a container with optional error banner."""
-        from lexigram.ui.core.base import el, render_to_string
+        from lexigram.ui.core.base import el, raw, render_to_string
 
         inner = render_content(content)
         children: list[object] = []
@@ -279,7 +279,7 @@ class WidgetController:
                     class_="text-xs text-destructive bg-destructive/10 rounded px-2 py-1 mb-2",
                 )
             )
-        children.append(el("div", inner, class_="widget-content"))
+        children.append(el("div", raw(inner), class_="widget-content"))
         return render_to_string(el("div", *children, class_="widget-body-container"))
 
     @staticmethod

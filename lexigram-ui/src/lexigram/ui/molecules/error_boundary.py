@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.logging import get_logger
-from lexigram.ui.core.base import Component, el, render_to_string
+from lexigram.ui.core.base import Component, el, raw, render_to_string
 from lexigram.ui.molecules.error_state import ErrorState
 
 logger = get_logger(__name__)
@@ -26,7 +26,7 @@ class ErrorBoundary(Component):
         try:
             # Force rendering of children to catch exceptions early
             content = render_to_string(self.children)
-            return el("div", content, **self.props)
+            return el("div", raw(content), **self.props)
         except Exception as e:  # error boundary must catch all rendering errors
             logger.exception("Error rendering component inside ErrorBoundary")
             if self.fallback:
