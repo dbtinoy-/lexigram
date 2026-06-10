@@ -82,10 +82,10 @@ async def _run_reindex(config_path: Path, app_module: str | None) -> None:
 
             _log_banner(searchable)
 
-            from lexigram.search.engine import SearchEngine
+            from lexigram.contracts.search import SearchEngineProtocol
 
             search_engine = await app.container.resolve(
-                SearchEngine,
+                SearchEngineProtocol,
                 bypass_visibility=True,
             )
 

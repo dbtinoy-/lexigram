@@ -60,6 +60,7 @@ class InfrastructureController(AdminController):
         from lexigram.admin.engine.renderer import resolve_admin_nav
         from lexigram.admin.navigation.clusters import cluster_items
         from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
+        from lexigram.ui import render_to_string
 
         state = getattr(request, "app", None)
         groups = (
@@ -70,7 +71,12 @@ class InfrastructureController(AdminController):
         content = self._render_overview(cluster_items(groups))
         _, _, secondary_nav = resolve_admin_nav(request)
         if secondary_nav:
-            content = ClusterLayout(items=secondary_nav, content=content).render()
+            content = render_to_string(
+                ClusterLayout(items=secondary_nav, content=content)
+            )
+        else:
+            content = render_to_string(content)
+        content = render_to_string(self._render_header()) + content
         return await self.render_admin(
             request,
             content,
@@ -81,8 +87,8 @@ class InfrastructureController(AdminController):
             ),
         )
 
-    def _render_overview(self, items: list[Any]) -> Any:
-        header = el(
+    def _render_header(self) -> Any:
+        return el(
             "div",
             el(
                 "h1",
@@ -97,38 +103,33 @@ class InfrastructureController(AdminController):
             class_="mb-2",
         )
 
+    def _render_overview(self, items: list[Any]) -> Any:
         if not items:
             return el(
                 "div",
-                header,
+                el("div", "⚙️", class_="text-5xl mb-4"),
                 el(
-                    "div",
-                    el("div", "⚙️", class_="text-5xl mb-4"),
-                    el(
-                        "h3",
-                        "No Infrastructure Areas",
-                        class_="text-lg font-semibold text-foreground",
-                    ),
-                    el(
-                        "p",
-                        "Install framework packages (web, sql, cache, events, queue, tasks) to populate this center.",
-                        class_="text-muted-foreground mt-2 max-w-sm",
-                    ),
-                    class_="text-center py-16",
+                    "h3",
+                    "No Infrastructure Areas",
+                    class_="text-lg font-semibold text-foreground",
                 ),
-                class_="space-y-6",
+                el(
+                    "p",
+                    "Install framework packages (web, sql, cache, events, queue, tasks) to populate this center.",
+                    class_="text-muted-foreground mt-2 max-w-sm",
+                ),
+                class_="text-center py-16",
             )
 
         cards = [self._render_card(item) for item in items]
         return el(
             "div",
-            header,
             el(
                 "div",
                 *cards,
                 class_="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6",
             ),
-            class_="space-y-6",
+            class_="p-6",
         )
 
     def _render_card(self, item: Any) -> Any:

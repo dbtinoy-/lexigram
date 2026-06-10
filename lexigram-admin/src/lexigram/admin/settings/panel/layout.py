@@ -63,7 +63,6 @@ class ConfigLayout(Component):
                 self._render_main(),
                 class_="flex flex-col lg:flex-row gap-6",
             ),
-            class_="space-y-6",
         )
 
     def _render_header(self) -> Any:
@@ -144,7 +143,7 @@ class ConfigLayout(Component):
         if self.content:
             return el(
                 "div",
-                self.content,
+                el("div", self.content, class_="p-6"),
                 class_="flex-1 min-w-0",
             )
 

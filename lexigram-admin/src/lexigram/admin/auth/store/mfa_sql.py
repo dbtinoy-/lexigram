@@ -7,6 +7,7 @@ layer depends only on ``AdminMfaStoreProtocol`` from
 
 from __future__ import annotations
 
+from lexigram.admin.sql_dialect import is_postgres, now_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -44,17 +45,25 @@ class AdminMfaSqlStore:
         """Create the MFA table if it does not exist (idempotent)."""
         if self._initialized:
             return
-        await self._db.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {_TABLE} (
-                user_id    TEXT         PRIMARY KEY,
-                secret     VARCHAR(64)  NOT NULL,
-                enabled_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-            )
-            """,
-            [],
-        )
+        if is_postgres(self._db):
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    user_id    TEXT         PRIMARY KEY,
+                    secret     VARCHAR(64)  NOT NULL,
+                    enabled_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                )
+            """
+        else:
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    user_id    TEXT         PRIMARY KEY,
+                    secret     VARCHAR(64)  NOT NULL,
+                    enabled_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+        await self._db.execute(create_sql, [])
         self._initialized = True
 
     # ------------------------------------------------------------------
@@ -90,7 +99,7 @@ class AdminMfaSqlStore:
             VALUES (?, ?)
             ON CONFLICT (user_id) DO UPDATE SET
                 secret = excluded.secret,
-                updated_at = NOW()
+                updated_at = {now_expr(self._db)}
             """,
             [user_id, secret],
         )

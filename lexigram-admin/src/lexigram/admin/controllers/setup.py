@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import hashlib
 import os
+import secrets
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from lexigram.admin.auth.protocols import (
     AdminAuditLogServiceProtocol,
+    AdminCsrfServiceProtocol,
     AdminPasswordPolicyServiceProtocol,
 )
 from lexigram.admin.auth.store import AdminUserStoreProtocol
@@ -46,6 +48,7 @@ class SetupController(AdminController):
         user_store: AdminUserStoreProtocol,
         password_policy_service: AdminPasswordPolicyServiceProtocol,
         audit_service: AdminAuditLogServiceProtocol,
+        csrf_service: AdminCsrfServiceProtocol,
         renderer: AdminRenderer,
         task_manager: TaskManagerProtocol | None = None,
     ) -> None:
@@ -56,6 +59,8 @@ class SetupController(AdminController):
             password_policy_service: Validates passwords against all configured
                 policy rules; returns every violation, not just the first.
             audit_service: Records security events; guaranteed never to raise.
+            csrf_service: Generates and validates CSRF tokens for the
+                pre-session setup form (bypassed by the CSRF middleware).
             renderer: AdminRenderer required by AdminController base.
             task_manager: Optional; injected by container in production.
         """
@@ -63,6 +68,13 @@ class SetupController(AdminController):
         self._user_store = user_store
         self._password_policy_service = password_policy_service
         self._audit_service = audit_service
+        self._csrf_service = csrf_service
+
+    def _fresh_csrf(self, request: Request) -> str:
+        """Generate a fresh session-scoped CSRF token for the setup form."""
+        csrf_session_id = secrets.token_urlsafe(16)
+        request.session["csrf_session_id"] = csrf_session_id
+        return self._csrf_service.generate_token(csrf_session_id)
 
     # ------------------------------------------------------------------
     # GET /setup
@@ -86,7 +98,8 @@ class SetupController(AdminController):
         except (RuntimeError, ValueError, OSError) as e:
             logger.warning("setup.count_failed error=%s", e)
             html = render_setup_page(
-                error="Unable to verify setup status. Database may be unavailable."
+                error="Unable to verify setup status. Database may be unavailable.",
+                csrf_token=self._fresh_csrf(request),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
@@ -97,7 +110,10 @@ class SetupController(AdminController):
             return HTMLResponse(content=html, status_code=200)
 
         error = request.query_params.get("error", "")
-        html = render_setup_page(error=error)
+        html = render_setup_page(
+            error=error,
+            csrf_token=self._fresh_csrf(request),
+        )
         return HTMLResponse(content=html)
 
     # ------------------------------------------------------------------
@@ -126,7 +142,8 @@ class SetupController(AdminController):
         except (RuntimeError, ValueError, OSError) as e:
             logger.warning("setup.count_failed error=%s", e)
             html = render_setup_page(
-                error="Unable to verify setup status. Database may be unavailable."
+                error="Unable to verify setup status. Database may be unavailable.",
+                csrf_token=self._fresh_csrf(request),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
@@ -142,9 +159,22 @@ class SetupController(AdminController):
         password = str(form_data.get("password", "")).strip()
         confirm = str(form_data.get("confirm_password", "")).strip()
         setup_token_input = str(form_data.get("setup_token", "")).strip()
+        csrf_token = str(form_data.get("csrf_token", ""))
 
         ip = self._get_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
+
+        # ── CSRF validation ────────────────────────────────────────────
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            logger.warning("setup.csrf_validation_failed", ip=ip)
+            html = render_setup_page(
+                error="Invalid or expired security token. Please reload the page and try again.",
+                csrf_token=self._fresh_csrf(request),
+            )
+            return HTMLResponse(content=html, status_code=422)
 
         # ── Optional setup-token guard ─────────────────────────────────
         required_token = os.environ.get("ADMIN_SETUP_TOKEN", "")
@@ -157,16 +187,25 @@ class SetupController(AdminController):
                 success=False,
                 metadata={"reason": "invalid_setup_token"},
             )
-            html = render_setup_page(error="Invalid setup token.")
+            html = render_setup_page(
+                error="Invalid setup token.",
+                csrf_token=self._fresh_csrf(request),
+            )
             return HTMLResponse(content=html, status_code=403)
 
         # ── Basic field presence ───────────────────────────────────────
         if not name or not email or not password:
-            html = render_setup_page(error="All fields are required.")
+            html = render_setup_page(
+                error="All fields are required.",
+                csrf_token=self._fresh_csrf(request),
+            )
             return HTMLResponse(content=html, status_code=422)
 
         if password != confirm:
-            html = render_setup_page(error="Passwords do not match.")
+            html = render_setup_page(
+                error="Passwords do not match.",
+                csrf_token=self._fresh_csrf(request),
+            )
             return HTMLResponse(content=html, status_code=422)
 
         # ── Full password policy validation (all violations) ───────────
@@ -175,7 +214,10 @@ class SetupController(AdminController):
             violation_lines = "\n".join(
                 f"• {v.message}" for v in policy_result.violations
             )
-            html = render_setup_page(error=violation_lines)
+            html = render_setup_page(
+                error=violation_lines,
+                csrf_token=self._fresh_csrf(request),
+            )
             return HTMLResponse(content=html, status_code=422)
 
         # ── Hash and persist ───────────────────────────────────────────
@@ -192,7 +234,10 @@ class SetupController(AdminController):
             # Treat any persistence failure (duplicate email, DB error, etc.)
             # as a non-fatal setup error that is shown back to the user.
             logger.error("setup.create_user_failed", email=email, error=str(exc))
-            html = render_setup_page(error=f"Failed to create account: {exc}")
+            html = render_setup_page(
+                error=f"Failed to create account: {exc}",
+                csrf_token=self._fresh_csrf(request),
+            )
             return HTMLResponse(content=html, status_code=422)
 
         logger.info("setup.first_admin_created", email=email)

@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lexigram.admin.data.data_source import QueryResult
-from lexigram.admin.integrations.search import SearchableSpec
 from lexigram.admin.integrations.search_sync import SearchSyncDataSourceWrapper
+from lexigram.contracts.search import SearchableSpec
 
 
 class _FakeSearchEngine:

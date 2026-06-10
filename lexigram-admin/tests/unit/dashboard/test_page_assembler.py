@@ -6,6 +6,7 @@ from lexigram.contracts.admin import (
     BaseAdminContributor,
     ManagementPageDefinition,
     PageCategory,
+    PageFilterField,
 )
 
 
@@ -88,3 +89,33 @@ def test_permission_filter_hides_restricted_pages() -> None:
     names = [p.name for p in pages]
     assert "fake_pkg.users" in names
     assert "restricted_pkg.admin_panel" not in names
+
+
+def test_filters_passed_through_to_assembled_page() -> None:
+    filter_field = PageFilterField(
+        name="period",
+        type="select",
+        label="Period",
+        options=(("30d", "Last 30 days"),),
+        default="30d",
+    )
+
+    class FilterContributor(FakeContributor):
+        def get_management_pages(self):
+            return [
+                ManagementPageDefinition(
+                    name="metrics",
+                    title="Metrics",
+                    contributor="fake_pkg",
+                    route_path="/admin/fake/metrics",
+                    handler="",
+                    filters=(filter_field,),
+                ),
+            ]
+
+    a = PageAssembler(
+        naming_policy=NamingPolicy(),
+        permission_filter=PermissionFilter(),
+    )
+    pages = a.assemble([FilterContributor()])
+    assert pages[0].filters == (filter_field,)

@@ -12,6 +12,7 @@ from typing import Any
 
 from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
 from lexigram.admin.rbac.types import AdminRole
+from lexigram.admin.sql_dialect import is_postgres, now_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -60,20 +61,31 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
         """Create the roles table if it does not exist (idempotent)."""
         if self._initialized:
             return
-        await self._db.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {_TABLE} (
-                name        VARCHAR(100) PRIMARY KEY,
-                description TEXT         NOT NULL DEFAULT '',
-                permissions TEXT         NOT NULL DEFAULT '[]',
-                inherits    TEXT         NOT NULL DEFAULT '[]',
-                is_system   BOOLEAN      NOT NULL DEFAULT FALSE,
-                created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-                updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-            )
-            """,
-            [],
-        )
+        if is_postgres(self._db):
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    name        VARCHAR(100) PRIMARY KEY,
+                    description TEXT         NOT NULL DEFAULT '',
+                    permissions TEXT         NOT NULL DEFAULT '[]',
+                    inherits    TEXT         NOT NULL DEFAULT '[]',
+                    is_system   BOOLEAN      NOT NULL DEFAULT FALSE,
+                    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                )
+            """
+        else:
+            create_sql = f"""
+                CREATE TABLE IF NOT EXISTS {_TABLE} (
+                    name        VARCHAR(100) PRIMARY KEY,
+                    description TEXT         NOT NULL DEFAULT '',
+                    permissions TEXT         NOT NULL DEFAULT '[]',
+                    inherits    TEXT         NOT NULL DEFAULT '[]',
+                    is_system   BOOLEAN      NOT NULL DEFAULT FALSE,
+                    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+        await self._db.execute(create_sql, [])
         self._initialized = True
 
     async def list_roles(self) -> list[AdminRole]:
@@ -109,7 +121,8 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
     async def update_role(self, role: AdminRole) -> None:
         """Update an existing role by name (see protocol docs)."""
         await self._db.execute(
-            f"UPDATE {_TABLE} SET description = ?, permissions = ?, inherits = ?, is_system = ?, updated_at = NOW() WHERE name = ?",
+            f"UPDATE {_TABLE} SET description = ?, permissions = ?, inherits = ?, is_system = ?, "
+            f"updated_at = {now_expr(self._db)} WHERE name = ?",
             [
                 role.description,
                 dumps_str(role.permissions),

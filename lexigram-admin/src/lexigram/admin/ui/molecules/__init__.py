@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from lexigram.admin.ui.molecules.debug_panel import DebugPanel
 from lexigram.admin.ui.molecules.filter_bar import FilterBar
+from lexigram.admin.ui.molecules.toast_notification import ToastNotification
 from lexigram.ui import (
     ActionButton,
     Alert,
@@ -77,6 +78,7 @@ __all__ = [
     "StatCard",
     "TabPanel",
     "Tabs",
+    "ToastNotification",
     "Toggle",
     "ToggleIcon",
     "ViewSwitcher",

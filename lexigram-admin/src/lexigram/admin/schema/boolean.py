@@ -13,6 +13,16 @@ from lexigram.ui import Element, Switch
 class BooleanField(SchemaField[bool]):
     """A boolean toggle field rendered as a Switch."""
 
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace('_', ' ').title(),
+            value=value,
+            type=InfolistEntryType.BOOLEAN,
+        )
+
     def render_form(
         self, value: bool | None, *, errors: list[str] | None = None
     ) -> Element:
@@ -26,6 +36,8 @@ class BooleanField(SchemaField[bool]):
             kwargs["label"] = ""
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return Switch(**kwargs).render()
 
     def render_column(self, record: Any, value: bool | None) -> Element:

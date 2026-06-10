@@ -41,6 +41,10 @@ class GuardConfig:
         "/admin/login",
         "/admin/static",
         "/admin/health",
+        # Standalone pre-session flows (own CSRF + guest handling):
+        "/admin/setup",
+        "/admin/verify-email",
+        "/admin/password-reset",
     )
     # Whether to accept Authorization: Bearer <token> for admin APIs.
     # Default: False to enforce strict cookie-based admin sessions.

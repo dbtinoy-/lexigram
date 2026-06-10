@@ -9,7 +9,6 @@ from starlette.requests import Request
 
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.setup import SetupController, _hash_password
-from lexigram.contracts.web import get, post
 
 
 class _FakePolicyResult:  # noqa: N801
@@ -29,17 +28,27 @@ _CREATE_FORM = {
 }
 
 
-def _mock_request(method: str = "GET", form_data: dict | None = None) -> MagicMock:
+def _mock_request(
+    method: str = "GET",
+    form_data: dict | None = None,
+    session: dict | None = None,
+) -> MagicMock:
     """Build a minimal Starlette Request mock for setup testing."""
     req = MagicMock(spec=Request)
     req.method = method
     req.headers = {}
 
     async def _form() -> dict:
-        return form_data or {}
+        data = dict(form_data or {})
+        if method == "POST" and "csrf_token" not in data:
+            data["csrf_token"] = "test-csrf-token"
+        return data
 
     req.form = _form
     req.query_params = {}
+    req.session = (
+        {"csrf_session_id": "test-csrf-session"} if session is None else session
+    )
     return req
 
 
@@ -66,6 +75,13 @@ class TestSetupController:
         return svc
 
     @pytest.fixture
+    def csrf_service(self) -> MagicMock:
+        svc = MagicMock()
+        svc.generate_token = MagicMock(return_value="test-csrf-token")
+        svc.validate_token = MagicMock(return_value=True)
+        return svc
+
+    @pytest.fixture
     def renderer(self) -> MagicMock:
         return MagicMock()
 
@@ -75,21 +91,21 @@ class TestSetupController:
         user_store: AsyncMock,
         password_policy: MagicMock,
         audit_service: AsyncMock,
+        csrf_service: MagicMock,
         renderer: MagicMock,
     ) -> SetupController:
         return SetupController(
             user_store=user_store,
             password_policy_service=password_policy,
             audit_service=audit_service,
+            csrf_service=csrf_service,
             renderer=renderer,
         )
 
     # -- GET /setup --
 
     @pytest.mark.asyncio
-    async def test_setup_form_when_no_admins(
-        self, controller: SetupController
-    ) -> None:
+    async def test_setup_form_when_no_admins(self, controller: SetupController) -> None:
         resp = await controller.setup_form(_mock_request())
         assert resp.status_code == 200
 
@@ -109,6 +125,18 @@ class TestSetupController:
         req.query_params = {"error": "bad thing"}
         resp = await controller.setup_form(req)
         assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_setup_form_embeds_csrf_token(
+        self, controller: SetupController, csrf_service: MagicMock
+    ) -> None:
+        req = _mock_request()
+        resp = await controller.setup_form(req)
+        assert resp.status_code == 200
+        session_id = req.session["csrf_session_id"]
+        assert session_id  # fresh random session id bound to the form
+        csrf_service.generate_token.assert_called_once_with(session_id)
+        assert 'name="csrf_token" value="test-csrf-token"' in resp.body.decode()
 
     # -- DB error handling --
 
@@ -204,11 +232,53 @@ class TestSetupController:
         resp = await controller.setup_submit(req)
         assert resp.status_code == 422
 
+    @pytest.mark.asyncio
+    async def test_setup_submit_rejects_invalid_csrf(
+        self, controller: SetupController, csrf_service: MagicMock
+    ) -> None:
+        csrf_service.validate_token = MagicMock(return_value=False)
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "name": "Admin",
+                "email": "admin@test.com",
+                "password": "Str0ng!pass",
+                "confirm_password": "Str0ng!pass",
+            },
+        )
+        resp = await controller.setup_submit(req)
+        assert resp.status_code == 422
+        assert "Invalid or expired security token" in resp.body.decode()
+        csrf_service.validate_token.assert_called_once_with(
+            "test-csrf-session", "test-csrf-token"
+        )
+
+    @pytest.mark.asyncio
+    async def test_setup_submit_rejects_missing_csrf_session(
+        self, controller: SetupController, csrf_service: MagicMock
+    ) -> None:
+        req = _mock_request(
+            method="POST",
+            session={},
+            form_data={
+                "name": "Admin",
+                "email": "admin@test.com",
+                "password": "Str0ng!pass",
+                "confirm_password": "Str0ng!pass",
+            },
+        )
+        resp = await controller.setup_submit(req)
+        assert resp.status_code == 422
+        csrf_service.validate_token.assert_not_called()
+
     # -- POST /setup: success path --
 
     @pytest.mark.asyncio
     async def test_setup_submit_creates_user(
-        self, controller: SetupController, user_store: AsyncMock, audit_service: AsyncMock
+        self,
+        controller: SetupController,
+        user_store: AsyncMock,
+        audit_service: AsyncMock,
     ) -> None:
         req = _mock_request(
             method="POST",
@@ -277,7 +347,6 @@ class TestSetupController:
 
     def test_hash_password_fallback_sha256(self) -> None:
         with patch.dict("sys.modules", {"bcrypt": None}):
-            import importlib
             hashed = _hash_password("test-password")
             assert isinstance(hashed, str)
             assert len(hashed) == 64  # SHA-256 hex digest

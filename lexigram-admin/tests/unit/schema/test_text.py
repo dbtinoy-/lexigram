@@ -13,7 +13,7 @@ from lexigram.admin.schema.text import (
 )
 from lexigram.admin.schema.text_area import MarkdownField, RichTextField, TextAreaField
 from lexigram.result import Ok
-from lexigram.ui import Element
+from lexigram.ui import Element, InfolistEntryType
 
 
 class TestTextField:
@@ -116,6 +116,12 @@ class TestEmailField:
         field = EmailField(name="email")
         assert field.name == "email"
 
+    def test_render_infolist_entry_email_type(self) -> None:
+        field = EmailField(name="email")
+        entry = field.render_infolist_entry("user@example.com")
+        assert entry.type == InfolistEntryType.EMAIL
+        assert entry.value == "user@example.com"
+
     def test_render_form_type_email(self) -> None:
         field = EmailField(name="email")
         element = field.render_form("user@example.com")
@@ -165,6 +171,18 @@ class TestPasswordField:
         assert "secret123" not in output
         assert "••••••" in output
 
+    def test_render_infolist_entry_masked(self) -> None:
+        field = PasswordField(name="password")
+        entry = field.render_infolist_entry("secret123")
+        assert entry.type == InfolistEntryType.TEXT
+        assert entry.value == "••••••"
+
+    def test_render_infolist_entry_none_value(self) -> None:
+        field = PasswordField(name="password")
+        entry = field.render_infolist_entry(None)
+        assert entry.type == InfolistEntryType.TEXT
+        assert entry.value is None
+
     def test_render_column_none(self) -> None:
         field = PasswordField(name="password")
         element = field.render_column(None, None)
@@ -204,6 +222,12 @@ class TestURLField:
     def test_render_filter_returns_none(self) -> None:
         field = URLField(name="url")
         assert field.render_filter() is None
+
+    def test_render_infolist_entry_url_type(self) -> None:
+        field = URLField(name="url")
+        entry = field.render_infolist_entry("https://example.com")
+        assert entry.type == InfolistEntryType.URL
+        assert entry.value == "https://example.com"
 
 
 class TestTextAreaField:

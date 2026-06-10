@@ -74,7 +74,7 @@ async def test_notify_email_otp_renders_code() -> None:
 
 
 @pytest.mark.asyncio
-async def test_notify_email_verification_skips_without_mailer() -> None:
+async def test_notify_email_verification_fails_without_mailer() -> None:
     service = AdminNotificationService(mailer=None)
 
     result = await service.notify_email_verification(
@@ -83,11 +83,12 @@ async def test_notify_email_verification_skips_without_mailer() -> None:
         "http://panel/admin/verify-email/TOKEN123",
     )
 
-    assert result.is_ok()
+    assert result.is_err()
+    assert "No mailer backend is configured" in str(result.unwrap_err())
 
 
 @pytest.mark.asyncio
-async def test_notify_email_otp_skips_without_mailer() -> None:
+async def test_notify_email_otp_fails_without_mailer() -> None:
     service = AdminNotificationService(mailer=None)
 
     result = await service.notify_email_otp(
@@ -96,7 +97,8 @@ async def test_notify_email_otp_skips_without_mailer() -> None:
         "123456",
     )
 
-    assert result.is_ok()
+    assert result.is_err()
+    assert "No mailer backend is configured" in str(result.unwrap_err())
 
 
 @pytest.mark.asyncio

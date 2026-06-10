@@ -2,11 +2,10 @@
 
 from lexigram.admin.forms import (
     FormWizard,
-    IntegerField,
-    TextField,
     WizardDraft,
     WizardStep,
 )
+from lexigram.admin.schema import IntegerField, TextField
 
 
 class TestWizardDraft:
@@ -87,7 +86,7 @@ class TestEnhancedWizard:
                 name="preferences",
                 title="Preferences",
                 fields=[
-                    IntegerField(name="age", label="Age", min_value=18, max_value=120),
+                    IntegerField(name="age", label="Age"),
                 ],
                 description="Please enter your preferences.",
                 can_skip=True,
@@ -125,7 +124,7 @@ class TestEnhancedWizard:
         assert not wizard.jump_to_step(1)
 
         # Complete first step
-        success, errors = wizard.next_step({"first_name": "John", "last_name": "Doe"})
+        success, _errors = wizard.next_step({"first_name": "John", "last_name": "Doe"})
         assert success
 
         # Now should be able to jump to second step

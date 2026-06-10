@@ -14,6 +14,16 @@ from lexigram.ui import DateInput, Element, TimePicker
 class DateField(SchemaField[date]):
     """A date input field."""
 
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace('_', ' ').title(),
+            value=value,
+            type=InfolistEntryType.DATE,
+        )
+
     def render_form(
         self, value: date | None, *, errors: list[str] | None = None
     ) -> Element:
@@ -25,6 +35,8 @@ class DateField(SchemaField[date]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return DateInput(**kwargs).render()
 
     def render_column(self, record: Any, value: date | None) -> Element:
@@ -56,6 +68,16 @@ class DateField(SchemaField[date]):
 class DateTimeField(SchemaField[datetime]):
     """A datetime input field."""
 
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace('_', ' ').title(),
+            value=value,
+            type=InfolistEntryType.DATE,
+        )
+
     def render_form(
         self, value: datetime | None, *, errors: list[str] | None = None
     ) -> Element:
@@ -67,6 +89,8 @@ class DateTimeField(SchemaField[datetime]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return DateInput(input_type="datetime-local", **kwargs).render()
 
     def render_column(self, record: Any, value: datetime | None) -> Element:
@@ -109,6 +133,8 @@ class TimeField(SchemaField[time]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TimePicker(**kwargs).render()
 
     def render_column(self, record: Any, value: time | None) -> Element:

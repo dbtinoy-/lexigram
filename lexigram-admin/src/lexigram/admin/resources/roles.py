@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from lexigram.admin.models.auth import AdminRoleEntity  # type: ignore[import-untyped]
+from lexigram.admin.rbac.types import AdminRole
 from lexigram.admin.resources.base import Resource
 
 
 class RolesResource(Resource):
     """Manage RBAC roles and permissions."""
 
-    model = AdminRoleEntity
+    model = AdminRole
     name = "roles"
     label = "Roles"
     icon = "shield-check"

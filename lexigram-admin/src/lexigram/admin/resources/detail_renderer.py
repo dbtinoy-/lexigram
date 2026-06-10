@@ -13,7 +13,7 @@ from lexigram.admin.observability.admin_metrics import AdminMetrics, OperationTi
 from lexigram.admin.state.context import wants_fragment
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
-from lexigram.ui import el, render_to_string
+from lexigram.ui import InfolistWidget, el, render_to_string
 
 logger = get_logger(__name__)
 
@@ -282,13 +282,7 @@ class DetailRenderer:
                             if hasattr(item, "model_dump")
                             else dict(item)
                         )
-                        rows = [
-                            el("tr", el("td", el("strong", k)), el("td", str(v)))
-                            for k, v in item_dict.items()
-                        ]
-                        return render_to_string(
-                            el("table", *rows, class_="detail-table")
-                        )
+                        return self._render_item_infolist(resource, item_dict)
                     return render_to_string(el("p", "Item not found"))
             except DataError as e:
                 logger.debug(
@@ -303,6 +297,39 @@ class DetailRenderer:
                 ) from None
 
         return render_to_string(el("p", f"Item #{item_id}"))
+
+    def _render_item_infolist(self, resource, item_dict: dict) -> str:
+        """Render item fields as an infolist widget.
+
+        Prefers the resource's ``infolist()`` API when available
+        (``HasInfolist`` mixin); otherwise derives entries from the
+        resource model. Falls back to a plain key/value table when the
+        resource model cannot be introspected.
+        """
+        try:
+            if hasattr(resource, "infolist"):
+                entries = resource.infolist(item_dict)
+            else:
+                from lexigram.admin.forms.components import FormSchemaGenerator
+
+                schema = FormSchemaGenerator().from_pydantic(resource.model)
+                entries = [
+                    field.render_infolist_entry(item_dict[field.name])
+                    for field in schema.fields
+                    if field.visible_in_view and field.name in item_dict
+                ]
+            return render_to_string(InfolistWidget(entries=entries, columns=2).render())
+        except (ImportError, AttributeError, TypeError, ValueError) as exc:
+            logger.debug(
+                "infolist render failed for %s: %s",
+                self.resource_name,
+                exc,
+            )
+            rows = [
+                el("tr", el("td", el("strong", k)), el("td", str(v)))
+                for k, v in item_dict.items()
+            ]
+            return render_to_string(el("table", *rows, class_="detail-table"))
 
 
 __all__ = ["DetailRenderer"]

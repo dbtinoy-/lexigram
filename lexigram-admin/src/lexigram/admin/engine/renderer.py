@@ -279,6 +279,11 @@ class AdminRenderer:
                 "icon": CLUSTER_ICON,
             },
             {
+                "label": "Plugins",
+                "href": "/admin/plugins",
+                "icon": "plugins",
+            },
+            {
                 "label": "Settings",
                 "href": "/admin/settings",
                 "icon": "settings",

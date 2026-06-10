@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 import inspect
+import re
 import types
 from typing import TYPE_CHECKING, Any, get_args, get_origin, get_type_hints
 
@@ -14,6 +15,8 @@ from lexigram.admin.navigation.clusters import (
     CLUSTER_LABEL,
     CLUSTER_URL,
     cluster_child_href,
+    cluster_items,
+    is_cluster_path,
 )
 from lexigram.admin.state.context import wants_fragment
 from lexigram.contracts.admin.types import (
@@ -45,6 +48,43 @@ def _strip_optional(tp: Any) -> Any:
 
 
 _DEFAULT_PRIMARY_COLOR = "#6b7280"
+
+_CLUSTER_HEADER_DESCRIPTION = (
+    "Monitor and manage the services powering your application: web, data, "
+    "and runtime areas."
+)
+
+
+def _cluster_header_html() -> str:
+    """Render the cluster center top-level title + description block.
+
+    Mirrors the settings center header: a ``mb-2`` wrapper with the
+    section title and a muted one-line description, rendered above the
+    whole center layout (secondary sidebar and page content).
+    """
+    from lexigram.ui import el, render_to_string
+
+    return render_to_string(
+        el(
+            "div",
+            el("h1", CLUSTER_LABEL, class_="text-2xl font-bold text-foreground"),
+            el(
+                "p",
+                _CLUSTER_HEADER_DESCRIPTION,
+                class_="text-muted-foreground mt-1",
+            ),
+            class_="mb-2",
+        )
+    )
+
+
+#: First header block rendered by management pages (h1 + description +
+#: divider). Cluster pages have their own top-level header injected by the
+#: shell wrapper, so this inline header is dropped.
+_PAGE_HEADER_RE = re.compile(
+    r"<h1[^>]*>.*?</h1>\s*<p[^>]*>.*?</p>\s*(?:<hr[^>]*/?>)?",
+    re.S,
+)
 
 
 async def _resolve_primary_color(container: Any) -> str:
@@ -106,10 +146,40 @@ class AdminPageHandler:
             is_htmx = wants_fragment(request)
         except KeyError:
             is_htmx = False
+        if isinstance(response, HTMLResponse):
+            response = await self._apply_cluster_header(request, response)
         if not is_htmx and isinstance(response, HTMLResponse):
             response = await self._wrap_in_shell(request, response)
 
         await response(scope, receive, send)
+
+    async def _apply_cluster_header(
+        self,
+        request: StarletteRequest,
+        response: HTMLResponse,
+    ) -> HTMLResponse:
+        """Drop the page's own inline title/description block.
+
+        Cluster pages receive a single top-level header rendered above
+        the whole center layout (see ``_cluster_header_html``), so the
+        page's inline header is removed. Only applies to pages living
+        inside a cluster center (e.g. ``/admin/infrastructure/...``).
+        """
+        state = getattr(request, "app", None)
+        groups = (
+            getattr(state.state, "assembler_groups", None)
+            if state and hasattr(state, "state")
+            else None
+        )
+        if not is_cluster_path(request.url.path, cluster_items(groups)):
+            return response
+
+        content = (
+            response.body.decode()
+            if isinstance(response.body, bytes)
+            else str(response.body)
+        )
+        return HTMLResponse(_PAGE_HEADER_RE.sub("", content, count=1))
 
     async def _wrap_in_shell(
         self,
@@ -136,12 +206,46 @@ class AdminPageHandler:
             getattr(request.state, "user", None) if hasattr(request, "state") else None
         )
         nav_items, system_menu_items, secondary_nav = resolve_admin_nav(request)
+        state = getattr(request, "app", None)
+        groups = (
+            getattr(state.state, "assembler_groups", None)
+            if state and hasattr(state, "state")
+            else None
+        )
+        is_cluster = is_cluster_path(request.url.path, cluster_items(groups))
         if secondary_nav:
             from lexigram.admin.ui.organisms.secondary_nav import ClusterLayout
 
             content = render_to_string(
                 ClusterLayout(items=secondary_nav, content=raw(content))
             )
+            if is_cluster:
+                content = _cluster_header_html() + content
+
+        breadcrumbs: list[dict[str, str]] | None = None
+        if secondary_nav and is_cluster:
+            breadcrumbs = [
+                {"label": "Home", "url": "/admin/"},
+                {"label": CLUSTER_LABEL, "url": CLUSTER_URL},
+            ]
+            path = request.url.path
+            for item in secondary_nav:
+                item_href = item.get("href", "")
+                if path == item_href:
+                    breadcrumbs.append({"label": item.get("label", ""), "url": ""})
+                    title = item.get("label", title)
+                    break
+                child = next(
+                    (c for c in item.get("children", []) if path == c.get("href", "")),
+                    None,
+                )
+                if child is not None:
+                    breadcrumbs.append(
+                        {"label": item.get("label", ""), "url": item_href}
+                    )
+                    breadcrumbs.append({"label": child.get("label", ""), "url": ""})
+                    title = child.get("label", title)
+                    break
 
         theme_css = ""
         try:
@@ -159,6 +263,11 @@ class AdminPageHandler:
                 "label": CLUSTER_LABEL,
                 "href": CLUSTER_URL,
                 "icon": CLUSTER_ICON,
+            },
+            {
+                "label": "Plugins",
+                "href": "/admin/plugins",
+                "icon": "plugins",
             },
             {
                 "label": "Settings",
@@ -206,6 +315,7 @@ class AdminPageHandler:
             nav_items=nav_items,
             system_menu_items=system_menu_items,
             user_menu_items=user_menu_items,
+            breadcrumbs=breadcrumbs,
             theme_css=theme_css,
             **{
                 k: v

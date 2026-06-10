@@ -7,7 +7,7 @@ import pytest
 from lexigram.admin.schema import FieldError, SchemaField
 from lexigram.admin.schema.datetime_ import DateField, DateTimeField, TimeField
 from lexigram.result import Err, Ok
-from lexigram.ui import Element
+from lexigram.ui import Element, InfolistEntryType
 
 
 class TestDateField:
@@ -86,6 +86,12 @@ class TestDateField:
     def test_is_schema_field(self) -> None:
         field = DateField(name="published_at")
         assert isinstance(field, SchemaField)
+
+    def test_render_infolist_entry_date_type(self) -> None:
+        field = DateField(name="published_at")
+        entry = field.render_infolist_entry(date(2026, 5, 28))
+        assert entry.type == InfolistEntryType.DATE
+        assert entry.value == date(2026, 5, 28)
 
 
 class TestDateTimeField:
@@ -172,6 +178,12 @@ class TestDateTimeField:
     def test_to_form_with_none(self) -> None:
         field = DateTimeField(name="created_at")
         assert field.to_form(None) == ""
+
+    def test_render_infolist_entry_date_type(self) -> None:
+        field = DateTimeField(name="created_at")
+        entry = field.render_infolist_entry(datetime(2026, 5, 28, 15, 30))
+        assert entry.type == InfolistEntryType.DATE
+        assert entry.value == datetime(2026, 5, 28, 15, 30)
 
 
 class TestTimeField:

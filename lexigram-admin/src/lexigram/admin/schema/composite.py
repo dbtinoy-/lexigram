@@ -24,6 +24,8 @@ class JsonField(SchemaField[dict | list]):
             kwargs["label"] = self.label
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return TextArea(**kwargs).render()
 
     def render_column(self, record: Any, value: dict | list | None) -> Element:
@@ -96,6 +98,8 @@ class FileField(SchemaField[str]):
             kwargs["required"] = True
         if errors:
             kwargs["error"] = errors[0]
+        if self.readonly:
+            kwargs["disabled"] = True
         return FileUpload(**kwargs).render()
 
     def render_column(self, record: Any, value: str | None) -> Element:
@@ -124,6 +128,16 @@ class ImageField(FileField):
     """An image upload field with thumbnail preview."""
 
     thumbnail_size: int = 64
+
+    def render_infolist_entry(self, value: Any) -> Any:
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace("_", " ").title(),
+            value=value,
+            type=InfolistEntryType.IMAGE,
+        )
 
     def render_column(self, record: Any, value: str | None) -> Element:
         if value is None:

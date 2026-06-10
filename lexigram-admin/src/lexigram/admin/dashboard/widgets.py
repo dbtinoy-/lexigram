@@ -12,6 +12,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Protocol
 
+from lexigram.admin.dashboard.page_filters import widget_fetch_url
 from lexigram.contracts.admin.types import (
     DashboardWidgetDefinition,
     WidgetCategory,
@@ -197,6 +198,7 @@ class WidgetRegistry:
         self,
         contributor_widgets: list[DashboardWidgetDefinition],
         width: str = "100%",
+        page_filters: dict[str, Any] | None = None,
     ) -> str:
         """Render HTML for all contributor-supplied ``DashboardWidgetDefinition`` items.
 
@@ -215,6 +217,9 @@ class WidgetRegistry:
         Args:
             contributor_widgets: Widget definitions supplied by contributors.
             width: CSS ``width`` value applied to each card wrapper.
+            page_filters: Optional page-level filter values appended as query
+                parameters to every widget's fetch URL, so widget render
+                endpoints can react to the page's filter state.
 
         Returns:
             Concatenated HTML string for all widget cards.
@@ -331,7 +336,7 @@ class WidgetRegistry:
             body_kwargs: dict[str, Any] = {
                 "class": "widget-body",
                 "id": f"widget-{widget_def.name}-body",
-                "hx-get": widget_def.render_endpoint,
+                "hx-get": widget_fetch_url(widget_def.render_endpoint, page_filters),
                 "hx-trigger": load_trigger,
                 "hx-swap": "innerHTML",
             }
@@ -348,7 +353,7 @@ class WidgetRegistry:
                 *card_children,
                 id=f"widget-card-{widget_def.name}",
                 data_widget_name=widget_def.name,
-                class_=f"widget-card bg-card rounded-lg shadow p-4 group {col_span}".strip(),
+                class_=f"widget-card bg-card border border-border rounded-lg shadow p-4 group {col_span}".strip(),
                 style=f"width:{width};",
             )
 

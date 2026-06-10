@@ -556,16 +556,18 @@ class FormRenderer:
         # Generate form from Pydantic model
         if resource and resource.model:
             try:
+                from dataclasses import replace as dc_replace
+
                 from lexigram.admin.forms.components import FormSchemaGenerator
-                from lexigram.admin.forms.fields import FieldType
+                from lexigram.admin.schema import BelongsToField
 
                 generator = FormSchemaGenerator()
                 schema = generator.from_pydantic(resource.model)
 
                 # Populate relation field options from the related resource's data source
-                for field_schema in schema.fields:
-                    if field_schema.type == FieldType.BELONGS_TO:
-                        related_resource_name = field_schema.related_resource
+                for idx, field_schema in enumerate(schema.fields):
+                    if isinstance(field_schema, BelongsToField):
+                        related_resource_name = field_schema.resource
                         if related_resource_name and hasattr(
                             resource, "_admin_registry"
                         ):
@@ -582,13 +584,16 @@ class FormRenderer:
                                         ds = related_instance._data_source
                                         if hasattr(ds, "list_all"):
                                             records = await ds.list_all()
-                                            field_schema.options = [
-                                                {
-                                                    "value": str(getattr(r, "id", r)),
-                                                    "label": str(r),
-                                                }
+                                            options = [
+                                                (
+                                                    str(getattr(r, "id", r)),
+                                                    str(r),
+                                                )
                                                 for r in records
                                             ]
+                                            schema.fields[idx] = dc_replace(
+                                                field_schema, options=options
+                                            )
                             except Exception:
                                 import logging
 
@@ -600,9 +605,12 @@ class FormRenderer:
 
                 # Build field components from schema
                 field_components = []
+                exclude_names = set(
+                    getattr(resource, "form_exclude_fields", ()) or ()
+                )
                 for field_schema in schema.fields:
-                    # Skip auto-generated fields
-                    if field_schema.name in ("id", "created_at", "updated_at"):
+                    # Skip framework-managed / excluded fields
+                    if field_schema.name in exclude_names:
                         continue
 
                     # --- Field-level RBAC enforcement ---
@@ -618,7 +626,9 @@ class FormRenderer:
                             if mode == "edit" and not _perm_svc.can_edit_field(
                                 user, self.resource_name, field_schema.name
                             ):
-                                field_schema.editable = False
+                                field_schema = dc_replace(
+                                    field_schema, readonly=True
+                                )
                     # --- end RBAC ---
 
                     field_value = initial_data.get(
@@ -633,7 +643,7 @@ class FormRenderer:
                     )
                     if field_component:
                         if errors and field_schema.name in errors:
-                            field_component.errors = errors[field_schema.name]
+                            field_component.error = errors[field_schema.name][0]
                         field_components.append(field_component.render())
 
                 submit_label = "Update" if mode == "edit" else "Create"
@@ -664,10 +674,10 @@ class FormRenderer:
         )
 
     def _create_field_component(self, field_schema, value) -> Any:
-        """Create a field component from a FieldSchema.
+        """Create a field component from a SchemaField.
 
         Args:
-            field_schema: The field schema definition
+            field_schema: The schema field definition
             value: Initial value for the field
 
         Returns:
@@ -678,7 +688,7 @@ class FormRenderer:
         common_args = {
             "label": field_schema.label,
             "required": field_schema.required,
-            "disabled": not field_schema.editable,
+            "readonly": field_schema.readonly,
             "help_text": field_schema.help_text,
             "default": field_schema.default,
             "placeholder": field_schema.placeholder,
@@ -686,11 +696,8 @@ class FormRenderer:
         }
 
         # Use registry to get the appropriate renderer and field instance
-        renderer = _field_renderer_registry.get_renderer(
-            field_schema.type,
-            field_schema,
-        )
-        return renderer.render_field(field_schema, value, common_args).bind(value)
+        renderer = _field_renderer_registry.get_renderer(field_schema)
+        return renderer.render_field(field_schema, value, common_args)
 
 
 __all__ = ["FormRenderer"]

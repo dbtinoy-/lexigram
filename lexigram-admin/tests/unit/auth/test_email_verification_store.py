@@ -111,7 +111,7 @@ async def test_consume_token_returns_true_when_updated() -> None:
     assert consumed is True
     sql, params = provider.executed[0]
     assert "email_verified_at" in sql
-    assert "token_expires_at > NOW()" in sql
+    assert "token_expires_at > CURRENT_TIMESTAMP" in sql
     assert params == ["user-001", "abc123"]
 
 

@@ -21,13 +21,12 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Self
 
 from lexigram.admin.data.query import EqualSpec
-from lexigram.admin.forms.fields import AbstractField
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class Filter(AbstractField):
+class Filter:
     """Base class for all table filters with fluent API.
 
     This class implements the Builder pattern, allowing configuration
@@ -51,9 +50,13 @@ class Filter(AbstractField):
             name: Filter field name (used as query parameter key)
             label: Display label (defaults to title-cased name)
         """
-        # Initialize Field with label
-        generated_label = label or name.replace("_", " ").title()
-        super().__init__(label=generated_label, name=name)
+        # Initialize filter state
+        self.name = name
+        self.label = label or name.replace("_", " ").title()
+        self.placeholder: str | None = None
+        self.default: Any = None
+        self.value: Any = None
+        self.errors: list[str] = []
 
         # Additional Filter-specific state
         self._default_callback: Callable | None = None

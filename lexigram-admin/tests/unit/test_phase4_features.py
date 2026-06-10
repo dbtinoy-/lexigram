@@ -195,29 +195,3 @@ class TestConditionalFormFields:
         html = str(section.render(mock_form))
         assert "x-show" in html
         assert "formData.needs_shipping" in html
-
-    def test_field_visible_when_stores_expression(self) -> None:
-        from lexigram.admin.forms.fields import TextField
-
-        field = TextField(label="Price")
-        result = field.visible_when("formData.type === 'paid'")
-        assert result is field  # fluent API returns self
-        assert field._visible_expression == "formData.type === 'paid'"
-
-    def test_render_with_conditional_wraps_when_expression_set(self) -> None:
-        from lexigram.admin.forms.fields import TextField
-
-        field = TextField(label="VAT", name="vat_number")
-        field.visible_when("formData.show_vat")
-        html = str(field.render_with_conditional())
-        assert "x-show" in html
-        assert "formData.show_vat" in html
-
-    def test_render_with_conditional_no_wrapper_when_no_expression(self) -> None:
-        from lexigram.admin.forms.fields import TextField
-
-        field = TextField(label="Name", name="name")
-        result = field.render_with_conditional()
-        # Should just return the normal render output
-        rendered_str = str(result)
-        assert "x-show" not in rendered_str

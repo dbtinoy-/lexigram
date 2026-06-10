@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 import uuid
 
+from lexigram.admin.sql_dialect import is_postgres, since_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -60,20 +61,31 @@ class AdminLoginAttemptSqlStore:
             return
 
         try:
-            await self._db.execute(
+            if is_postgres(self._db):
+                create_sql = """
+                    CREATE TABLE IF NOT EXISTS admin_login_attempts (
+                        id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                        email         VARCHAR(255) NOT NULL,
+                        ip_address    VARCHAR(45)  NOT NULL,
+                        user_agent    TEXT         NOT NULL DEFAULT '',
+                        success       BOOLEAN      NOT NULL DEFAULT FALSE,
+                        failure_reason VARCHAR(50),
+                        attempted_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS admin_login_attempts (
-                    id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-                    email         VARCHAR(255) NOT NULL,
-                    ip_address    VARCHAR(45)  NOT NULL,
-                    user_agent    TEXT         NOT NULL DEFAULT '',
-                    success       BOOLEAN      NOT NULL DEFAULT FALSE,
-                    failure_reason VARCHAR(50),
-                    attempted_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-                )
-                """,
-                [],
-            )
+            else:
+                create_sql = """
+                    CREATE TABLE IF NOT EXISTS admin_login_attempts (
+                        id            TEXT         PRIMARY KEY,
+                        email         VARCHAR(255) NOT NULL,
+                        ip_address    VARCHAR(45)  NOT NULL,
+                        user_agent    TEXT         NOT NULL DEFAULT '',
+                        success       BOOLEAN      NOT NULL DEFAULT FALSE,
+                        failure_reason VARCHAR(50),
+                        attempted_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+            await self._db.execute(create_sql, [])
             await self._db.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_admin_login_attempts_email_attempted_at
@@ -147,7 +159,7 @@ class AdminLoginAttemptSqlStore:
         sql = (
             "SELECT COUNT(*) AS count FROM admin_login_attempts "
             "WHERE email = ? AND success = FALSE "
-            f"AND attempted_at > NOW() - INTERVAL '{since_seconds} seconds'"
+            f"AND attempted_at > {since_expr(self._db, since_seconds)}"
         )
         result = await self._db.execute_query(sql, [email])
         count = self._extract_count(result)
@@ -175,7 +187,7 @@ class AdminLoginAttemptSqlStore:
         sql = (
             "SELECT COUNT(*) AS count FROM admin_login_attempts "
             "WHERE ip_address = ? AND success = FALSE "
-            f"AND attempted_at > NOW() - INTERVAL '{since_seconds} seconds'"
+            f"AND attempted_at > {since_expr(self._db, since_seconds)}"
         )
         result = await self._db.execute_query(sql, [ip_address])
         count = self._extract_count(result)

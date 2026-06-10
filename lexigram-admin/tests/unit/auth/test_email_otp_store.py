@@ -71,7 +71,7 @@ async def test_consume_returns_true_when_updated() -> None:
     assert consumed is True
     sql, params = provider.executed[0]
     assert "used_at" in sql
-    assert "expires_at > NOW()" in sql
+    assert "expires_at > CURRENT_TIMESTAMP" in sql
     assert params == ["user-001", "abc123"]
 
 

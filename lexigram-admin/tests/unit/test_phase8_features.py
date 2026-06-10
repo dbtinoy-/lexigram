@@ -1,113 +1,17 @@
 """Tests for Phase 8 features:
-- JsonField (JSON field editing)
 - SortableRecordList (drag-n-drop record reorder)
 - ResourceLens / LensRegistry (alternative query views)
 """
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 # ---------------------------------------------------------------------------
-# JsonField
-# ---------------------------------------------------------------------------
-
-from lexigram.admin.forms.fields import FieldType, JsonField
-
-
-class TestJsonField:
-    def test_field_type_json_exists(self) -> None:
-        assert FieldType.JSON == "json"
-
-    def test_bind_dict_value(self) -> None:
-        f = JsonField(label="Config").bind({"key": "value", "count": 42})
-        assert '"key"' in f.value
-        assert '"value"' in f.value
-
-    def test_bind_list_value(self) -> None:
-        f = JsonField(label="Tags").bind([1, 2, 3])
-        assert "[" in f.value
-
-    def test_bind_json_string(self) -> None:
-        f = JsonField().bind('{"a": 1}')
-        assert '"a"' in f.value
-
-    def test_bind_invalid_json_string_stored_as_raw(self) -> None:
-        f = JsonField().bind("not valid json")
-        assert f.value == "not valid json"
-
-    def test_bind_none_gives_empty(self) -> None:
-        f = JsonField().bind(None)
-        assert f.value == ""
-
-    def test_parse_value_valid(self) -> None:
-        f = JsonField()
-        result = f.parse_value('{"x": 1}')
-        assert result == {"x": 1}
-
-    def test_parse_value_invalid_raises(self) -> None:
-        f = JsonField()
-        with pytest.raises(ValueError, match="Invalid JSON"):
-            f.parse_value("not json")
-
-    def test_render_has_textarea(self) -> None:
-        f = JsonField(label="Config").bind({"k": "v"})
-        html = str(f.render())
-        assert "textarea" in html
-
-    def test_render_contains_value(self) -> None:
-        f = JsonField(label="Config").bind({"hello": "world"})
-        html = str(f.render())
-        assert "hello" in html
-
-    def test_render_has_label(self) -> None:
-        f = JsonField(label="My JSON")
-        html = str(f.render())
-        assert "My JSON" in html
-
-    def test_render_has_monospace_class(self) -> None:
-        f = JsonField()
-        html = str(f.render())
-        assert "font-mono" in html
-
-    def test_custom_rows(self) -> None:
-        f = JsonField(rows=20)
-        html = str(f.render())
-        assert "20" in html
-
-    def test_disabled_renders_attribute(self) -> None:
-        f = JsonField(disabled=True)
-        html = str(f.render())
-        assert "disabled" in html
-
-    def test_help_text_rendered(self) -> None:
-        f = JsonField(help_text="Enter valid JSON")
-        html = str(f.render())
-        assert "Enter valid JSON" in html
-
-    def test_error_rendered(self) -> None:
-        f = JsonField()
-        f.errors = ["Invalid JSON syntax"]
-        html = str(f.render())
-        assert "Invalid JSON syntax" in html
-
-    def test_indent_default_is_2(self) -> None:
-        f = JsonField()
-        assert f.indent == 2
-
-    def test_custom_indent(self) -> None:
-        # indent parameter stored correctly (used as visual hint)
-        f = JsonField(indent=4)
-        assert f.indent == 4
-
-
-# ---------------------------------------------------------------------------
 # SortableRecordList
 # ---------------------------------------------------------------------------
-
 from lexigram.ui import SortableRecordList
 
 

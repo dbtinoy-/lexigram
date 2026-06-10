@@ -9,8 +9,8 @@ import pytest
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.controllers.dashboard import DashboardController
-from lexigram.admin.dashboard.widgets import WidgetRegistry, DashboardWidgetDefinition
-from lexigram.contracts.admin.types import WidgetCategory, WidgetSize
+from lexigram.admin.dashboard.widgets import DashboardWidgetDefinition, WidgetRegistry
+from lexigram.contracts.admin.types import PageFilterField, WidgetCategory, WidgetSize
 
 
 class TestDashboardController:
@@ -440,3 +440,86 @@ class TestRequestCache:
         assert result1 == 42
         assert result2 == 42
         compute.assert_called_once()
+
+
+class FilteredDashboardController(DashboardController):
+    """Subclass declaring a page-level filter schema."""
+
+    page_filters = [
+        PageFilterField(
+            name="period",
+            type="select",
+            label="Period",
+            options=(("30d", "Last 30 days"), ("90d", "Last 90 days")),
+            default="30d",
+        ),
+    ]
+
+
+class TestDashboardControllerFilters:
+    """Tests for the page-level filter form wiring in index()."""
+
+    @staticmethod
+    def _renderer() -> MagicMock:
+        renderer = MagicMock()
+
+        def _render(content, **kwargs):
+            return HTMLResponse(str(content))
+
+        renderer.render_page.side_effect = _render
+        return renderer
+
+    @pytest.mark.asyncio
+    async def test_index_renders_filter_form_and_annotates_widgets(self) -> None:
+        """Verify filter form + annotated widget URLs appear in the response.
+
+        With a ``page_filters`` schema defined, index() must render the
+        filter form (with query values applied) and append the current
+        filter values to each widget's HTMX fetch URL.
+        """
+        mock_request = MagicMock()
+        mock_request.query_params = {"period": "90d"}
+        mock_request.session = {}
+        mock_request.app.state.admin_resources = {}
+
+        mock_assembler = AsyncMock()
+        widgets = [
+            DashboardWidgetDefinition(
+                name="test_widget",
+                title="Filt Widget",
+                contributor="test",
+                render_endpoint="/admin/test/widgets/my_widget",
+                size=WidgetSize.MEDIUM,
+                category=WidgetCategory.CUSTOM,
+                order=1,
+            ),
+        ]
+        mock_assembler.get_all_widgets.return_value = widgets
+
+        controller = FilteredDashboardController(
+            renderer=self._renderer(),
+            assembler=mock_assembler,
+            widget_registry=WidgetRegistry(),
+        )
+        response = await controller.index(mock_request)
+        body = response.body
+        assert b'name="period"' in body
+        assert b'value="90d" selected' in body
+        assert b"hx-get" in body
+        assert b"period=90d" in body
+        assert mock_request.session["admin_page_filters.dashboard"]["period"] == "90d"
+
+    @pytest.mark.asyncio
+    async def test_index_reset_clears_session_filters(self) -> None:
+        """Verify reset query param clears persisted filter state."""
+        mock_request = MagicMock()
+        mock_request.query_params = {"reset_page_filters": "1"}
+        mock_request.session = {"admin_page_filters.dashboard": {"period": "90d"}}
+        mock_request.app.state.admin_resources = {}
+
+        controller = FilteredDashboardController(
+            renderer=self._renderer(),
+            assembler=None,
+        )
+        await controller.index(mock_request)
+        assert "admin_page_filters.dashboard" not in mock_request.session

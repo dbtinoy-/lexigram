@@ -32,6 +32,8 @@ class RelationField(SelectField):
             kwargs["error"] = errors[0]
         if self.options:
             kwargs["choices"] = self.options
+        if self.readonly:
+            kwargs["disabled"] = True
         return BelongsTo(
             name=self.name,
             resource=self.resource,
@@ -86,6 +88,8 @@ class HasManyField(RelationField):
             kwargs["error"] = errors[0]
         if self.placeholder is not None:
             kwargs["placeholder"] = self.placeholder
+        if self.readonly:
+            kwargs["disabled"] = True
         return MultiSelect(**kwargs).render()
 
     def render_column(  # type: ignore[override]
@@ -131,11 +135,13 @@ class MorphField(RelationField):
             name=f"{self.name}_type",
             choices=self.morph_types,
             value=value if value is not None else "",
+            disabled=self.readonly,
         ).render()
 
         record_select = Select(
             name=f"{self.name}_id",
             value=value if value is not None else "",
+            disabled=self.readonly,
         ).render()
 
         return Element("div", type_select, record_select, class_="morph-field")

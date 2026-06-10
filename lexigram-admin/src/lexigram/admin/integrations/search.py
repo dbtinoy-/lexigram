@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -11,20 +10,7 @@ if TYPE_CHECKING:
         ContainerResolverProtocol,
     )
 
-
-@dataclass(frozen=True)
-class SearchableSpec:
-    """Specification for search-index-based resource searching.
-
-    Attributes:
-        index_name: Name of the search index (defaults to resource name).
-        fields: Which fields to include in the searchable document body.
-        result_limit: Max results per query.
-    """
-
-    index_name: str | None = None
-    fields: tuple[str, ...] = ()
-    result_limit: int = 50
+from lexigram.contracts.search import SearchEngineProtocol
 
 
 class _NoOpSearch:
@@ -71,19 +57,43 @@ class SearchIntegration:
 
     async def health_check(self) -> dict[str, Any]:
         return {
-            "status": "healthy"
-            if self._search is not None and not isinstance(self._search, _NoOpSearch)
-            else "noop"
+            "status": "healthy" if self.is_available else "noop"
         }
 
     async def query(
-        self, index: str, query_str: str, limit: int = 50, offset: int = 0
+        self,
+        index: str,
+        query_str: str,
+        limit: int = 50,
+        offset: int = 0,
+        filters: dict[str, Any] | None = None,
+        rule: str | None = None,
     ) -> dict[str, Any]:
+        """Run a query against the search index.
+
+        Args:
+            index: Index name to search.
+            query_str: Full-text query string.
+            limit: Maximum results to return.
+            offset: Result offset for pagination.
+            filters: Canonical search filter dict (``{field: value}``,
+                ``{field: {"op": value}}``, ``{"$or": [...]}``, ...).
+            rule: Query-builder block JSON string; merged into *filters*
+                with AND semantics by the engine backend.
+
+        Returns:
+            A ``{"results": [...], "total": n}`` dict.
+        """
         engine = await self._get_engine()
         if isinstance(engine, _NoOpSearch):
             return {"results": [], "total": 0}
         result = await engine.search(
-            index_name=index, query=query_str, limit=limit, offset=offset
+            index_name=index,
+            query=query_str,
+            filters=filters,
+            rule=rule,
+            limit=limit,
+            offset=offset,
         )
         return self._unwrap(result)
 
@@ -91,9 +101,7 @@ class SearchIntegration:
         if self._search is not None:
             return self._search
         try:
-            from lexigram.search.engine import SearchEngine
-
-            self._search = await self._container.resolve(SearchEngine)
+            self._search = await self._container.resolve(SearchEngineProtocol)
         except Exception:
             self._search = _NoOpSearch()
         return self._search
@@ -115,8 +123,13 @@ class SearchIntegration:
         }
 
     @property
+    def is_available(self) -> bool:
+        """True when a real search engine is resolved (not the no-op)."""
+        return self._search is not None and not isinstance(self._search, _NoOpSearch)
+
+    @property
     def fallback_to_like(self) -> bool:
         return getattr(self._config, "fallback_to_like", True)
 
 
-__all__ = ["SearchIntegration", "SearchableSpec"]
+__all__ = ["SearchIntegration"]

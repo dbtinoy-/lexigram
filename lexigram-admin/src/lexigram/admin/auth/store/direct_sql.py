@@ -7,9 +7,11 @@ from __future__ import annotations
 from typing import Any
 import uuid
 
+from lexigram.admin.sql_dialect import is_postgres
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import dumps_str
 from lexigram.serialization import loads as json_loads
 
 logger = get_logger(__name__)
@@ -194,13 +196,17 @@ class DirectSQLAdminUserStore:
     ) -> Any:
         await self._ensure_table_exists()
         admin_id = str(uuid.uuid4())
+        # SQLite cannot bind Python lists — store roles/permissions as JSON text.
+        serialize_lists = not is_postgres(self.db_provider)
         payload = {
             "id": admin_id,
             "name": name,
             "email": email,
             "hashed_password": hashed_password,
-            "roles": roles or [],
-            "permissions": permissions or [],
+            "roles": dumps_str(roles or []) if serialize_lists else roles or [],
+            "permissions": (
+                dumps_str(permissions or []) if serialize_lists else permissions or []
+            ),
             "is_active": True,
         }
 
@@ -444,12 +450,22 @@ class DirectSQLAdminUserStore:
 
     async def update_user(self, user: Any) -> None:
         await self._ensure_table_exists()
+        # SQLite cannot bind Python lists — store roles/permissions as JSON text.
+        serialize_lists = not is_postgres(self.db_provider)
         payload = {
             "name": user.name,
             "email": user.email,
             "hashed_password": getattr(user, "hashed_password", None),
-            "roles": getattr(user, "roles", []),
-            "permissions": getattr(user, "permissions", []),
+            "roles": (
+                dumps_str(getattr(user, "roles", []))
+                if serialize_lists
+                else getattr(user, "roles", [])
+            ),
+            "permissions": (
+                dumps_str(getattr(user, "permissions", []))
+                if serialize_lists
+                else getattr(user, "permissions", [])
+            ),
             "is_active": getattr(user, "is_active", True),
         }
         await self.db_provider.execute_update(

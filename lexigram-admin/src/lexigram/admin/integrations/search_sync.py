@@ -6,7 +6,7 @@ from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
     from lexigram.admin.data.data_source import QueryResult
-    from lexigram.admin.integrations.search import SearchableSpec
+    from lexigram.contracts.search import SearchableSpec
 
 _log = get_logger(__name__)
 

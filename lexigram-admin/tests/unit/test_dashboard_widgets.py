@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from lexigram.admin.ui.organisms.dashboard.widgets import (
     ActivityFeed,
     ActivityItem,
@@ -15,7 +13,6 @@ from lexigram.admin.ui.organisms.dashboard.widgets import (
     StatCardGrid,
     SystemHealthWidget,
 )
-
 
 # ---------------------------------------------------------------------------
 # StatCard tests
@@ -237,14 +234,14 @@ class TestFieldLevelRBAC:
         assert isinstance(result, bool)
 
     def test_field_schema_editable_false_disables_field(self) -> None:
-        """FieldSchema.editable=False should cause disabled=True in component."""
-        from lexigram.admin.forms.fields import FieldSchema, FieldType
+        """SchemaField.readonly=True should disable editing in component."""
+        from lexigram.admin.schema import TextField
 
-        fs = FieldSchema(name="price", label="Price", type=FieldType.TEXT, editable=False)
-        assert fs.editable is False
+        fs = TextField(name="price", label="Price", readonly=True)
+        assert fs.readonly is True
 
     def test_field_schema_visible_false_hides_field(self) -> None:
-        from lexigram.admin.forms.fields import FieldSchema, FieldType
+        from lexigram.admin.schema import TextField
 
-        fs = FieldSchema(name="internal_id", label="Internal ID", type=FieldType.TEXT, visible=False)
-        assert fs.visible is False
+        fs = TextField(name="internal_id", label="Internal ID", visible_in_form=False)
+        assert fs.visible_in_form is False

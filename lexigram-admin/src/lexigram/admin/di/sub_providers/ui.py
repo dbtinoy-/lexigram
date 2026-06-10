@@ -35,11 +35,9 @@ class AdminUISubProvider:
         from lexigram.admin.layout.layout_manager import LayoutManager
         from lexigram.admin.navigation.assembler import NavigationAssembler
         from lexigram.admin.services.component_registry import ComponentRegistry
-        from lexigram.admin.ui.organisms.form_registry import FormFieldRegistry
         from lexigram.ui import MetricsCollector
 
         container.singleton(ComponentRegistry, ComponentRegistry())
-        container.singleton(FormFieldRegistry, FormFieldRegistry())
 
         # Register navigation assembler (container will instantiate via DI)
         container.singleton(NavigationAssembler, NavigationAssembler)

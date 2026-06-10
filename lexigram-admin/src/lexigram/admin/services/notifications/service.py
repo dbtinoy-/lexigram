@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from lexigram.admin.config import AdminNotificationConfig
 from lexigram.admin.exceptions import NotificationError
@@ -15,11 +15,9 @@ from lexigram.admin.services.notifications.models import (
 )
 from lexigram.admin.services.notifications.sender import EmailSender
 from lexigram.admin.services.notifications.templates import TemplateRenderer
+from lexigram.contracts.mailer.protocols import MailerProtocol
 from lexigram.di.decorators import inject
 from lexigram.result import Err, Ok, Result
-
-if TYPE_CHECKING:
-    from lexigram.contracts.mailer.protocols import MailerProtocol
 
 
 @inject

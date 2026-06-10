@@ -44,6 +44,17 @@ class SchemaField(ABC, Generic[T]):
     def render_column(self, record: Any, value: T | None) -> Element:
         """Render this field as a table-cell value."""
 
+    def render_infolist_entry(self, value: T | None) -> Any:
+        """Render this field as a read-only detail entry."""
+        from lexigram.ui import InfolistEntry, InfolistEntryType
+
+        return InfolistEntry(
+            name=self.name,
+            label=self.label or self.name.replace('_', ' ').title(),
+            value=value,
+            type=InfolistEntryType.TEXT,
+        )
+
     def render_filter(self, current_value: Any | None = None) -> Element | None:
         """Render this field as a filter widget. Return None to opt out."""
         return None

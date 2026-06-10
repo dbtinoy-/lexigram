@@ -12,6 +12,7 @@ from typing import Any
 import uuid
 
 from lexigram.admin.auth.types import AdminSecurityEvent, AdminSecurityEventType
+from lexigram.admin.sql_dialect import is_postgres, since_expr
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -21,7 +22,7 @@ logger = get_logger(__name__)
 
 _TABLE = "admin_security_audit_log"
 
-_CREATE_TABLE_SQL = f"""
+_CREATE_TABLE_SQL_POSTGRES = f"""
     CREATE TABLE IF NOT EXISTS {_TABLE} (
         id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         event_type  VARCHAR(50) NOT NULL,
@@ -31,6 +32,19 @@ _CREATE_TABLE_SQL = f"""
         success     BOOLEAN NOT NULL DEFAULT FALSE,
         metadata    TEXT NOT NULL DEFAULT '{{}}',
         created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+"""
+
+_CREATE_TABLE_SQL_SQLITE = f"""
+    CREATE TABLE IF NOT EXISTS {_TABLE} (
+        id          TEXT PRIMARY KEY,
+        event_type  VARCHAR(50) NOT NULL,
+        admin_user_id TEXT,
+        ip_address  VARCHAR(45) NOT NULL,
+        user_agent  TEXT NOT NULL DEFAULT '',
+        success     BOOLEAN NOT NULL DEFAULT FALSE,
+        metadata    TEXT NOT NULL DEFAULT '{{}}',
+        created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
 """
 
@@ -87,7 +101,12 @@ class AdminAuditLogSqlStore:
             return
 
         try:
-            await self._db.execute(_CREATE_TABLE_SQL, [])
+            create_table_sql = (
+                _CREATE_TABLE_SQL_POSTGRES
+                if is_postgres(self._db)
+                else _CREATE_TABLE_SQL_SQLITE
+            )
+            await self._db.execute(create_table_sql, [])
             logger.info("✅ %s table ensured", _TABLE)
 
             for index_sql in (
@@ -123,12 +142,19 @@ class AdminAuditLogSqlStore:
         await self.ensure_schema()
 
         try:
+            use_uuid_ids = is_postgres(self._db)
             payload = {
-                "id": uuid.UUID(event.id) if _is_uuid_string(event.id) else event.id,
+                "id": (
+                    uuid.UUID(event.id)
+                    if use_uuid_ids and _is_uuid_string(event.id)
+                    else event.id
+                ),
                 "event_type": event.event_type.value,
                 "admin_user_id": (
                     uuid.UUID(event.admin_user_id)
-                    if event.admin_user_id and _is_uuid_string(event.admin_user_id)
+                    if use_uuid_ids
+                    and event.admin_user_id
+                    and _is_uuid_string(event.admin_user_id)
                     else event.admin_user_id
                 ),
                 "ip_address": event.ip_address,
@@ -174,13 +200,13 @@ class AdminAuditLogSqlStore:
         await self.ensure_schema()
 
         # ``since_seconds`` is always an int — safe to interpolate directly.
-        conditions = [f"created_at > NOW() - INTERVAL '{int(since_seconds)} seconds'"]
+        conditions = [f"created_at > {since_expr(self._db, int(since_seconds))}"]
         params: list[Any] = []
 
         if admin_user_id is not None:
             params.append(
                 uuid.UUID(admin_user_id)
-                if _is_uuid_string(admin_user_id)
+                if is_postgres(self._db) and _is_uuid_string(admin_user_id)
                 else admin_user_id
             )
             conditions.append("admin_user_id = ?")

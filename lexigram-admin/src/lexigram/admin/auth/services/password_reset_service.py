@@ -26,6 +26,7 @@ from lexigram.admin.auth.protocols import (
 )
 from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.services.notifications import AdminNotificationService
 from lexigram.contracts.auth import PasswordHasherProtocol
 from lexigram.contracts.infra.cache import CacheBackendProtocol
 from lexigram.di.decorators import inject
@@ -67,7 +68,7 @@ class AdminPasswordResetService:
         auth_service: AdminAuthServiceProtocol,
         policy_service: AdminPasswordPolicyServiceProtocol,
         hasher: PasswordHasherProtocol | None = None,
-        notification_service: object | None = None,
+        notification_service: AdminNotificationService | None = None,
         token_lifetime: int = 3600,
         cache: CacheBackendProtocol | None = None,
         reset_request_limit: int = 5,

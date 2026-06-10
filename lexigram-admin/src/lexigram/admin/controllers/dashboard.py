@@ -12,9 +12,15 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.dashboard.assembler import DashboardAssembler
+from lexigram.admin.dashboard.page_filters import (
+    applied_from_query,
+    read_page_filters,
+    render_page_filter_form,
+    save_page_filters,
+)
 from lexigram.admin.dashboard.widgets import WidgetRegistry
 from lexigram.admin.engine.renderer import AdminRenderer
-from lexigram.contracts.admin.types import WidgetSize
+from lexigram.contracts.admin.types import PageFilterField, WidgetSize
 from lexigram.contracts.web import get
 from lexigram.di.decorators import inject
 from lexigram.ui import el
@@ -39,6 +45,11 @@ class DashboardController(AdminController):
     """Controller for managing and viewing dashboards."""
 
     prefix = ""
+
+    # Declared page-level filter schema (Filament HasFiltersForm parity).
+    # Subclass to declare filters; the dashboard renders an apply/reset bar
+    # and propagates the values to widget fetch URLs.
+    page_filters: list[PageFilterField] = []
 
     def __init__(
         self,
@@ -76,6 +87,13 @@ class DashboardController(AdminController):
 
         dashboard_id = request.query_params.get("id", "default")
 
+        # Page-level filter state: schema defaults → session → query params
+        filter_state: dict[str, Any] = {}
+        if self.page_filters:
+            filter_state = read_page_filters(request, "dashboard", self.page_filters)
+            if applied_from_query(request, self.page_filters):
+                save_page_filters(request, "dashboard", filter_state)
+
         breadcrumbs = self.generate_breadcrumbs(
             ("Home", "/admin/"),
             current="Dashboard",
@@ -104,9 +122,11 @@ class DashboardController(AdminController):
             contributor_widgets.sort(key=lambda w: custom_order.get(w.name, w.order))
 
         if contributor_widgets and self.widget_registry:
-            # Render HTMX lazy-load widget cards via the registry
+            # Render HTMX lazy-load widget cards via the registry, annotating
+            # each fetch URL with the current page filter values
             rendered_html = self.widget_registry.render_contributor_widgets(
                 contributor_widgets,
+                page_filters=filter_state,
             )
             widgets_section = el(
                 "div",
@@ -255,6 +275,12 @@ class DashboardController(AdminController):
             class_="text-sm bg-muted hover:bg-muted px-3 py-1.5 rounded border border-border cursor-pointer",
         )
 
+        filter_form = (
+            render_page_filter_form(self.page_filters, filter_state, "/admin/")
+            if self.page_filters
+            else None
+        )
+
         content = el(
             "div",
             el(
@@ -267,6 +293,7 @@ class DashboardController(AdminController):
                 customize_btn,
                 class_="flex items-center justify-between",
             ),
+            filter_form,
             widgets_section,
             dnd_html,
             class_="dashboard-view space-y-6",

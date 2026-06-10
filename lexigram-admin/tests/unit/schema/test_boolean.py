@@ -7,7 +7,7 @@ import pytest
 from lexigram.admin.schema import FieldError, SchemaField
 from lexigram.admin.schema.boolean import BooleanField
 from lexigram.result import Err, Ok
-from lexigram.ui import Element
+from lexigram.ui import Element, InfolistEntryType
 
 
 class TestBooleanField:
@@ -106,3 +106,16 @@ class TestBooleanField:
     def test_is_schema_field(self) -> None:
         field = BooleanField(name="active")
         assert isinstance(field, SchemaField)
+
+    def test_render_infolist_entry_boolean_type(self) -> None:
+        field = BooleanField(name="active")
+        entry = field.render_infolist_entry(True)
+        assert entry.type == InfolistEntryType.BOOLEAN
+        assert entry.name == "active"
+        assert entry.value is True
+
+    def test_render_infolist_entry_none_value(self) -> None:
+        field = BooleanField(name="active")
+        entry = field.render_infolist_entry(None)
+        assert entry.type == InfolistEntryType.BOOLEAN
+        assert entry.value is None

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import htpy as h
 
+from lexigram.admin.schema import BooleanField
 from lexigram.ui import Button, Component, Form
 
 if TYPE_CHECKING:
@@ -37,28 +38,18 @@ class DynamicForm(Component):
         self.hx_swap = hx_swap
 
     def render(self) -> Any:
-        from lexigram.admin.forms import FieldType as FormFieldType
-
         # We wrap the content in a list of htpy nodes
         form_content = []
 
-        # Render each field
-        from lexigram.admin.ui.organisms.form_registry import _form_field_registry
-
+        # Render each field via its schema render_form
         for field in self.schema.fields:
-            # RBAC: Skip invisible fields
-            if not getattr(field, "visible", True):
+            # Skip fields hidden from forms
+            if not field.visible_in_form:
                 continue
 
-            # RBAC: Handle masking
-            current_value = field.default
-            if getattr(field, "masked", False) and current_value:
-                current_value = "********"
+            form_content.append(field.render_form(field.get_default()))
 
-            renderer = _form_field_registry.get_renderer(field.type)
-            form_content.append(renderer.render(field, current_value))  # type: ignore[arg-type]
-
-            if field.help_text and field.type != FormFieldType.CHECKBOX:
+            if field.help_text and not isinstance(field, BooleanField):
                 form_content.append(
                     h.p(
                         class_="mt-1 text-xs text-muted-foreground mb-4 -mt-4",
