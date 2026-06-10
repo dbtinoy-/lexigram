@@ -8,11 +8,11 @@ package-boundary rule (extensions never depend on each other).
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
 from lexigram.logging import get_logger
+from lexigram.serialization import JSONDecodeError, dumps_str, loads_str
 
 logger = get_logger(__name__)
 
@@ -40,8 +40,8 @@ def load_disabled(path: str | Path | None = None) -> set[str]:
     if not resolved.exists():
         return set()
     try:
-        data = json.loads(resolved.read_text())
-    except (json.JSONDecodeError, OSError):
+        data = loads_str(resolved.read_text())
+    except (JSONDecodeError, OSError):
         logger.warning("plugins.state.load_failed", path=str(resolved))
         return set()
     disabled = data.get("disabled", [])
@@ -54,4 +54,4 @@ def save_disabled(names: set[str], path: str | Path | None = None) -> None:
     """Persist the set of disabled plugin names to the boot-file mirror."""
     resolved = _resolve_path(path)
     resolved.parent.mkdir(parents=True, exist_ok=True)
-    resolved.write_text(json.dumps({"disabled": sorted(names)}, indent=2))
+    resolved.write_text(dumps_str({"disabled": sorted(names)}))

@@ -64,3 +64,53 @@ def test_discover_providers_skips_unconstructible(monkeypatch: pytest.MonkeyPatc
 def test_discover_providers_empty_when_no_entry_points(monkeypatch: pytest.MonkeyPatch) -> None:
     _fake_entry_points(monkeypatch, {})
     assert discovery.discover_providers() == []
+
+
+from lexigram.contracts.plugins import PluginDescriptor
+
+_SAMPLE_DESCRIPTOR = PluginDescriptor(
+    name="relay-gateway",
+    display_name="AI Gateway",
+    description="AI relay/gateway capabilities.",
+    icon="shuffle",
+    provider_entry_point="relay-gateway",
+)
+
+
+def _fake_plugin_entry_points(
+    monkeypatch: pytest.MonkeyPatch, mapping: dict[str, PluginDescriptor]
+) -> None:
+    class _FakeEntryPoint:
+        def __init__(self, name: str, descriptor: PluginDescriptor) -> None:
+            self.name = name
+            self._descriptor = descriptor
+
+        def load(self) -> PluginDescriptor:
+            return self._descriptor
+
+    def _entry_points(*, group: str) -> list[Any]:
+        if group != "lexigram.plugins":
+            return []
+        return [_FakeEntryPoint(name, d) for name, d in mapping.items()]
+
+    monkeypatch.setattr(discovery, "_entry_points", _entry_points)
+
+
+def test_discover_plugins_returns_descriptors(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_plugin_entry_points(monkeypatch, {"relay-gateway": _SAMPLE_DESCRIPTOR})
+    result = discovery.discover_plugins()
+    assert result == [_SAMPLE_DESCRIPTOR]
+
+
+def test_discover_plugins_skips_non_descriptor(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _FakeEntryPoint:
+        name = "bad"
+
+        def load(self) -> str:
+            return "not a descriptor"
+
+    def _entry_points(*, group: str) -> list[Any]:
+        return [_FakeEntryPoint()] if group == "lexigram.plugins" else []
+
+    monkeypatch.setattr(discovery, "_entry_points", _entry_points)
+    assert discovery.discover_plugins() == []
