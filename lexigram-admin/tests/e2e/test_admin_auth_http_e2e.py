@@ -5,6 +5,8 @@ Uses mock protocol implementations at the contract boundary.
 
 from __future__ import annotations
 
+import base64
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from httpx import ASGITransport, AsyncClient
@@ -18,6 +20,16 @@ from lexigram.admin.auth.types import AdminAuthResult
 from lexigram.admin.controllers.auth import AuthController
 from lexigram.admin.controllers.profile import ProfileController
 from lexigram.result import Ok
+from lexigram.serialization import loads
+
+
+def _session_dict(set_cookie: str) -> dict:
+    """Decode the Starlette signed-but-unencrypted session cookie."""
+    raw = set_cookie.split("session=", 1)[1].split(";", 1)[0]
+    data = raw.split(".", 1)[0]
+    padded = data + "=" * (-len(data) % 4)
+    return loads(base64.urlsafe_b64decode(padded))
+
 
 # ---------------------------------------------------------------------------
 # Fakes / mocks at protocol boundary
@@ -25,7 +37,10 @@ from lexigram.result import Ok
 
 
 def _make_auth_service(
-    *, authenticated: bool = True, mfa_required: bool = False, mfa_code_valid: bool = True
+    *,
+    authenticated: bool = True,
+    mfa_required: bool = False,
+    mfa_code_valid: bool = True,
 ) -> MagicMock:
     """Return a mock AdminAuthServiceProtocol."""
     svc = MagicMock()
@@ -35,7 +50,9 @@ def _make_auth_service(
             user_id="user-001",
             email="admin@example.com",
             roles=["superadmin"],
-            expires_at=__import__("datetime").datetime(2099, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+            expires_at=__import__("datetime").datetime(
+                2099, 1, 1, tzinfo=__import__("datetime").timezone.utc
+            ),
             mfa_required=mfa_required,
         )
         svc.authenticate = AsyncMock(return_value=Ok(auth_result))
@@ -45,7 +62,9 @@ def _make_auth_service(
                 user_id="user-001",
                 email="admin@example.com",
                 roles=["superadmin"],
-                expires_at=__import__("datetime").datetime(2099, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+                expires_at=__import__("datetime").datetime(
+                    2099, 1, 1, tzinfo=__import__("datetime").timezone.utc
+                ),
             )
             if mfa_code_valid:
                 svc.complete_mfa_login = AsyncMock(return_value=Ok(full_result))
@@ -54,7 +73,9 @@ def _make_auth_service(
                 from lexigram.result import Err
 
                 svc.complete_mfa_login = AsyncMock(
-                    return_value=Err(MfaVerificationFailedError("Invalid verification code."))
+                    return_value=Err(
+                        MfaVerificationFailedError("Invalid verification code.")
+                    )
                 )
     else:
         from lexigram.admin.auth.errors import InvalidCredentialsError
@@ -91,7 +112,9 @@ def create_app(
 ) -> Starlette:
     controller = AuthController(
         auth_service=_make_auth_service(
-            authenticated=authenticated, mfa_required=mfa_required, mfa_code_valid=mfa_code_valid
+            authenticated=authenticated,
+            mfa_required=mfa_required,
+            mfa_code_valid=mfa_code_valid,
         ),
         csrf_service=_make_csrf_service(valid=csrf_valid),
         renderer=_DummyRenderer(),
@@ -176,7 +199,9 @@ async def test_get_login_form_returns_200() -> None:
     """GET /admin/login should return 200 with CSRF token embedded."""
     app = create_app()
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         r = await client.get("/admin/login")
         assert r.status_code == 200
@@ -188,7 +213,9 @@ async def test_login_logout_cycle() -> None:
     """Successful login sets session cookie; logout clears it."""
     app = create_app(authenticated=True, csrf_valid=True)
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         # GET login page
         r = await client.get("/admin/login")
@@ -208,6 +235,12 @@ async def test_login_logout_cycle() -> None:
         assert r.headers["location"] == "/admin/"
         assert "session" in r.headers.get("set-cookie", "")
 
+        # Plain login provisions the TTL stamp alongside admin_user_id.
+        session = _session_dict(r.headers["set-cookie"])
+        assert session["admin_user_id"] == "user-001"
+        expires_at = session["admin_session_expires_at"]
+        assert datetime.fromisoformat(expires_at).tzinfo is not None
+
         # Logout
         r2 = await client.get("/admin/logout")
         assert r2.status_code == 302
@@ -218,7 +251,9 @@ async def test_login_with_invalid_credentials_redirects_with_error() -> None:
     """Failed login redirects back to login with error param."""
     app = create_app(authenticated=False, csrf_valid=True)
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         r = await client.post(
             "/admin/login",
@@ -238,7 +273,9 @@ async def test_login_with_invalid_csrf_redirects_with_error() -> None:
     """Invalid CSRF token on POST /login redirects with error."""
     app = create_app(authenticated=True, csrf_valid=False)
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         r = await client.post(
             "/admin/login",
@@ -258,7 +295,9 @@ async def test_login_requires_2fa_challenge_when_mfa_enabled() -> None:
     """Password login with 2FA enabled redirects to the challenge page."""
     app = create_app(authenticated=True, mfa_required=True)
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         await client.get("/admin/login")
         r = await client.post(
@@ -288,7 +327,9 @@ async def test_complete_2fa_login_sets_session() -> None:
     """A valid TOTP code completes the login and creates the session."""
     app = create_app(authenticated=True, mfa_required=True, mfa_code_valid=True)
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         await client.get("/admin/login")
         await client.post(
@@ -307,6 +348,13 @@ async def test_complete_2fa_login_sets_session() -> None:
         assert r.status_code == 302
         assert r.headers["location"] == "/admin/"
 
+        # MFA completion stamps the expiry too.
+        session = _session_dict(r.headers["set-cookie"])
+        assert (
+            datetime.fromisoformat(session["admin_session_expires_at"]).tzinfo
+            is not None
+        )
+
         r2 = await client.get("/admin/")
         assert r2.status_code == 200
         assert r2.text == "home"
@@ -322,7 +370,9 @@ async def test_complete_2fa_login_invalid_code_redirects_error() -> None:
     """An invalid TOTP code keeps the session unauthenticated."""
     app = create_app(authenticated=True, mfa_required=True, mfa_code_valid=False)
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         await client.get("/admin/login")
         await client.post(
@@ -350,7 +400,9 @@ async def test_2fa_challenge_requires_pending_session() -> None:
     """The challenge page without a pending login redirects to /admin/login."""
     app = create_app(authenticated=True)
     async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver", follow_redirects=False
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
     ) as client:
         r = await client.get("/admin/login/2fa")
         assert r.status_code == 302

@@ -19,6 +19,7 @@ from lexigram.admin.middleware.auth_guard import AdminAuthGuardMiddleware
 
 def _make_app() -> Starlette:
     """Build an app wrapped in the auth guard with a dummy protected route."""
+
     async def widgets(request) -> PlainTextResponse:
         return PlainTextResponse("ok")
 
@@ -88,3 +89,62 @@ async def test_unknown_login_subpath_still_auth_guarded() -> None:
     resp = await _request("/admin/login/unknown-path", htmx=False)
 
     assert resp.status_code == 307
+
+
+class TestSuffixCollisionPathsAreGuarded:
+    """Protected routes whose last segment collides with a bypass suffix.
+
+    Regression for Round 7 finding 32: paths like ``/admin/plugins/login``
+    or a resource named ``register`` used to skip the session check because
+    the guard matched by suffix; membership is now exact full-path only.
+    """
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/admin/plugins/login",
+            "/admin/resources/register",
+            "/admin/register/records",
+            "/admin/setup/anything",
+            "/admin/users/health",
+            "/admin/users/health/",
+            "/admin/widgets/logout",
+        ],
+    )
+    async def test_suffix_collision_requires_session(self, path: str) -> None:
+        """Suffix-colliding paths are auth-guarded (307 without a session)."""
+        resp = await _request(path, htmx=False)
+
+        assert resp.status_code == 307
+        assert resp.headers.get("location") == f"/admin/login?next={path}"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/admin/login",
+            "/admin/login/",
+            "/admin/login/2fa",
+            "/admin/login/2fa/",
+            "/admin/verify-email",
+            "/admin/password-reset",
+            "/admin/register",
+            "/admin/register/",
+            "/admin/setup",
+        ],
+    )
+    async def test_exact_public_routes_still_bypass(self, path: str) -> None:
+        """Exact public routes (with or without trailing slash) stay public.
+
+        Note: ``/admin/register`` and ``/admin/setup`` are the legitimate
+        public registration/setup pages — a contributor resource named
+        ``register``/``setup``/``login``/``health`` collides with that
+        public route by design (naming-clash residual, recorded in the
+        Round 7 finding 32 plan). The harness has no route for these
+        paths, so a 404 (not the 307 login redirect) proves the guard let
+        the request through.
+        """
+        resp = await _request(path, htmx=False)
+
+        assert resp.status_code == 404

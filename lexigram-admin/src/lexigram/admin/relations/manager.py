@@ -10,7 +10,9 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from lexigram.ui.columns.types import Column
+from lexigram.admin.exceptions import PermissionDeniedError
 from lexigram.di.decorators import inject
+from lexigram.result import Ok, Result
 
 
 @inject
@@ -59,6 +61,35 @@ class AbstractRelationManager(ABC):
     def set_data_source(self, data_source: Any) -> None:
         """Attach a data source for pivot persistence operations."""
         self._data_source = data_source
+
+    async def get_parent(self) -> Any:
+        """Resolve the parent entity for this relationship.
+
+        Returns:
+            The resolved parent entity, or ``None`` when no parent object
+            is declared.
+
+        Note:
+            Override to resolve ``self.parent_id`` through a data source.
+        """
+        return self.parent
+
+    def can_view_parent(
+        self, parent: Any, user: Any | None = None
+    ) -> Result[None, PermissionDeniedError]:
+        """Check whether the user may view the given parent entity.
+
+        Defaults to allow; override to declare per-parent read policy.
+
+        Args:
+            parent: The resolved parent entity.
+            user: The requesting admin user.
+
+        Returns:
+            ``Ok(None)`` when viewing is permitted, ``Err`` with a
+            ``PermissionDeniedError`` when denied.
+        """
+        return Ok(None)
 
     @classmethod
     @abstractmethod

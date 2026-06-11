@@ -9,6 +9,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.controllers.search import SearchController
 from lexigram.admin.services.search_service import SearchResult, SearchResults
+from lexigram.ui.core.base import render_to_string
 
 
 class TestSearchController:
@@ -67,7 +68,9 @@ class TestSearchController:
     @pytest.mark.asyncio
     async def test_search_forwards_rule_param(self, mock_service: MagicMock) -> None:
         """The block-JSON rule is forwarded to SearchService.search."""
-        rule = '{"logic":"AND","rules":[{"field":"role","operator":"eq","value":"admin"}]}'
+        rule = (
+            '{"logic":"AND","rules":[{"field":"role","operator":"eq","value":"admin"}]}'
+        )
         mock_service.search.return_value = SearchResults(query="t")
         controller = SearchController(search_service=mock_service)
         request = MagicMock()
@@ -143,7 +146,9 @@ class TestSearchController:
         self, mock_service: MagicMock
     ) -> None:
         """A submitted rule is pre-loaded into the page's query builder."""
-        rule = '{"logic":"AND","rules":[{"field":"role","operator":"eq","value":"admin"}]}'
+        rule = (
+            '{"logic":"AND","rules":[{"field":"role","operator":"eq","value":"admin"}]}'
+        )
         mock_service.search.return_value = SearchResults(query="alice")
         mock_service.get_search_field_catalog = MagicMock(return_value=[])
         controller = SearchController(search_service=mock_service)
@@ -193,7 +198,7 @@ class TestSearchControllerRender:
 
     def test_render_no_results(self, controller: SearchController) -> None:
         results = SearchResults(query="test", total_count=0)
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert "No results found" in html
         assert "search-results-empty" in html
 
@@ -222,7 +227,7 @@ class TestSearchControllerRender:
                 ),
             ],
         )
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert "search-results" in html
         assert "search-resource-group" in html
         assert "Users" in html
@@ -251,7 +256,7 @@ class TestSearchControllerRender:
                 ),
             ],
         )
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert "search-subtitle" not in html
 
     def test_render_subtitle_included_when_present(
@@ -272,7 +277,7 @@ class TestSearchControllerRender:
                 ),
             ],
         )
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert 'class="search-subtitle"' in html
         assert "alice@example.com" in html
 
@@ -293,7 +298,7 @@ class TestSearchControllerRender:
                 ),
             ],
         )
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert 'hx-get="/admin/users/1"' in html
         assert 'hx-target="body"' in html
         assert 'hx-push-url="true"' in html
@@ -316,5 +321,76 @@ class TestSearchControllerRender:
                 ),
             ],
         )
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert html.count("search-resource-group") == 1
+
+
+class TestSearchHostileData:
+    """Regression tests: hostile result fields are escaped on both transports."""
+
+    HOSTILE_TEXT = '<script>alert("xss")</script>'
+    HOSTILE_URL = '"><img src=x onerror=alert(1)>'
+
+    @pytest.fixture
+    def mock_service(self) -> MagicMock:
+        service = MagicMock()
+        service.search = AsyncMock()
+        return service
+
+    def _hostile_results(self) -> SearchResults:
+        return SearchResults(
+            query="x",
+            total_count=1,
+            resource_counts={"users": 1},
+            results=[
+                SearchResult(
+                    resource_name="users",
+                    resource_label=self.HOSTILE_TEXT,
+                    id=1,
+                    title=self.HOSTILE_TEXT,
+                    subtitle=self.HOSTILE_TEXT,
+                    url=self.HOSTILE_URL,
+                ),
+            ],
+        )
+
+    @pytest.mark.asyncio
+    async def test_htmx_fragment_escapes_hostile_fields(
+        self, mock_service: MagicMock
+    ) -> None:
+        """The HTMX fragment must never emit raw script or markup."""
+        mock_service.search.return_value = self._hostile_results()
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "x"}
+        request.headers.get.return_value = "true"
+        response = await controller.search(request)
+        content = response.body.decode()
+        assert "<script>" not in content
+        assert "<img" not in content
+        assert "&lt;script&gt;" in content
+        assert '&lt;script&gt;alert("xss")&lt;/script&gt;' in content
+        assert "&quot;&gt;&lt;img src=x onerror=alert(1)&gt;" in content
+
+    @pytest.mark.asyncio
+    async def test_full_page_escapes_hostile_fields_once(
+        self, mock_service: MagicMock
+    ) -> None:
+        """Full page: escaped exactly once (no fragment double-escape)."""
+        mock_service.search.return_value = self._hostile_results()
+        mock_service.get_search_field_catalog = MagicMock(return_value=[])
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "x"}
+        request.headers.get.return_value = None
+        response = await controller.search(request)
+        content = response.body.decode()
+        start = content.index('id="search-results"')
+        end = content.index("<script>", start)
+        region = content[start:end]
+        assert "<script>" not in region
+        assert "<img" not in region
+        assert "&lt;script&gt;" in region
+        assert '&lt;script&gt;alert("xss")&lt;/script&gt;' in region
+        assert "&quot;&gt;&lt;img src=x onerror=alert(1)&gt;" in region
+        assert "&amp;lt;script&amp;gt;" not in region

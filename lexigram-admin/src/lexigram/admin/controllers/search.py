@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 from starlette.responses import HTMLResponse
 
+from lexigram.ui.core.base import Element, el, render_to_string
+
 if TYPE_CHECKING:
     from starlette.requests import Request
 
@@ -49,13 +51,13 @@ class SearchController:
         fragment = self._render_results(results)
 
         if request.headers.get("hx-request") == "true":
-            return HTMLResponse(fragment)
+            return HTMLResponse(render_to_string(fragment))
         return self._render_page(query, fragment, request, rule)
 
     def _render_page(
         self,
         query: str,
-        fragment: str,
+        fragment: Element,
         request: Request,
         rule: str | None = None,
     ) -> HTMLResponse:
@@ -68,7 +70,6 @@ class SearchController:
         keep swapping into ``#search-results``.
         """
         from lexigram.admin.engine.renderer import AdminRenderer
-        from lexigram.ui.core.base import el
         from lexigram.ui.organisms.query_builder import QueryBuilder
 
         catalog = self._search_service.get_search_field_catalog()
@@ -130,7 +131,7 @@ class SearchController:
             breadcrumbs=[{"label": "Search", "url": "/admin/search"}],
         )
 
-    def _render_results(self, results: SearchResults) -> str:
+    def _render_results(self, results: SearchResults) -> Element:
         """Render search results as an HTML fragment.
 
         When results are present the output is grouped by resource with
@@ -138,18 +139,20 @@ class SearchController:
         placeholder is returned.
         """
         if not results.has_results:
-            return (
-                '<div class="search-results-empty '
-                "text-center py-8 px-4 text-sm text-muted-foreground dark:text-muted-foreground"
-                '">No results found</div>'
+            return Element(
+                "div",
+                "No results found",
+                class_="search-results-empty text-center py-8 px-4 text-sm text-muted-foreground dark:text-muted-foreground",
             )
 
-        sections: list[str] = []
+        sections: list[Element] = []
         count_text = f"{results.total_count} result{'s' if results.total_count != 1 else ''} across {results.group_count} resource{'s' if results.group_count != 1 else ''}"
         sections.append(
-            '<div class="search-summary px-4 py-2 text-xs text-muted-foreground border-b border-border/50">'
-            f"{count_text}"
-            "</div>"
+            el(
+                "div",
+                count_text,
+                class_="search-summary px-4 py-2 text-xs text-muted-foreground border-b border-border/50",
+            )
         )
         for resource_name in results.resource_counts:
             resource_label: str = ""
@@ -158,51 +161,55 @@ class SearchController:
                     resource_label = r.resource_label
                     break
 
-            items_html = ""
+            items: list[Element] = []
             for r in results.results:
                 if r.resource_name != resource_name:
                     continue
-                subtitle_html = (
-                    f'<span class="search-subtitle">{r.subtitle}</span>'
-                    if r.subtitle
-                    else ""
+                children = [
+                    el(
+                        "span",
+                        r.title,
+                        class_="search-result-title block text-sm font-medium text-foreground",
+                    )
+                ]
+                if r.subtitle:
+                    children.append(el("span", r.subtitle, class_="search-subtitle"))
+                children.append(
+                    el(
+                        "span",
+                        resource_label,
+                        class_="search-result-resource inline-block text-xs text-muted-foreground dark:text-muted-foreground mt-0.5",
+                    )
                 )
-                items_html += (
-                    f'<a href="{r.url}" '
-                    f'class="search-result-item '
-                    f"block px-4 py-3 "
-                    f"hover:bg-muted dark:hover:bg-muted/50 "
-                    f"focus:bg-muted "
-                    f'focus:outline-none transition-colors" '
-                    f'hx-get="{r.url}" hx-target="body" hx-push-url="true">'
-                    f'<span class="search-result-title '
-                    f"block text-sm font-medium text-foreground"
-                    f'">{r.title}</span>'
-                    f"{subtitle_html}"
-                    f'<span class="search-result-resource '
-                    f"inline-block text-xs text-muted-foreground dark:text-muted-foreground mt-0.5"
-                    f'">{resource_label}</span>'
-                    f"</a>"
+                items.append(
+                    el(
+                        "a",
+                        *children,
+                        href=r.url,
+                        hx_get=r.url,
+                        hx_target="body",
+                        hx_push_url="true",
+                        class_="search-result-item block px-4 py-3 hover:bg-muted dark:hover:bg-muted/50 focus:bg-muted focus:outline-none transition-colors",
+                    )
                 )
 
             sections.append(
-                '<div class="search-resource-group '
-                "border-b border-border/50 last:border-b-0"
-                '">'
-                f'<div class="search-resource-header '
-                f"px-4 py-2 text-xs font-semibold uppercase tracking-wider "
-                f"text-muted-foreground dark:text-muted-foreground "
-                f"bg-muted dark:bg-card/50"
-                f'">{resource_label}</div>'
-                f"{items_html}"
-                "</div>"
+                el(
+                    "div",
+                    el(
+                        "div",
+                        resource_label,
+                        class_="search-resource-header px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground dark:text-muted-foreground bg-muted dark:bg-card/50",
+                    ),
+                    *items,
+                    class_="search-resource-group border-b border-border/50 last:border-b-0",
+                )
             )
 
-        return (
-            '<div class="search-results '
-            "rounded-xl shadow-lg bg-card "
-            "overflow-hidden max-h-[70vh] overflow-y-auto"
-            '">' + "".join(sections) + "</div>"
+        return Element(
+            "div",
+            *sections,
+            class_="search-results rounded-xl shadow-lg bg-card overflow-hidden max-h-[70vh] overflow-y-auto",
         )
 
 

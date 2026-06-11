@@ -14,6 +14,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.controllers.search import SearchController
 from lexigram.admin.services.search_service import SearchResult, SearchResults
+from lexigram.ui.core.base import render_to_string
 
 
 class TestSearchResultsHTMLStructure:
@@ -27,7 +28,7 @@ class TestSearchResultsHTMLStructure:
         self, controller: SearchController
     ) -> None:
         results = SearchResults(query="test", total_count=0)
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert 'class="search-results-empty' in html
         assert "No results found" in html
 
@@ -58,7 +59,7 @@ class TestSearchResultsHTMLStructure:
     def test_populated_results_wrapper_classes(
         self, controller: SearchController
     ) -> None:
-        html = controller._render_results(self.populated_results())
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert 'class="search-results' in html
         assert "rounded-xl" in html
         assert "shadow-lg" in html
@@ -67,14 +68,14 @@ class TestSearchResultsHTMLStructure:
     def test_resource_group_has_divider_classes(
         self, controller: SearchController
     ) -> None:
-        html = controller._render_results(self.populated_results())
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert 'class="search-resource-group' in html
         assert "border-b" in html
 
     def test_resource_header_has_styled_classes(
         self, controller: SearchController
     ) -> None:
-        html = controller._render_results(self.populated_results())
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert 'class="search-resource-header' in html
         assert "uppercase" in html
         assert "tracking-wider" in html
@@ -82,7 +83,7 @@ class TestSearchResultsHTMLStructure:
     def test_result_item_has_interactive_classes(
         self, controller: SearchController
     ) -> None:
-        html = controller._render_results(self.populated_results())
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert 'class="search-result-item' in html
         assert "hover:bg-muted" in html
         assert "focus:outline-none" in html
@@ -91,7 +92,7 @@ class TestSearchResultsHTMLStructure:
     def test_result_title_has_typography_classes(
         self, controller: SearchController
     ) -> None:
-        html = controller._render_results(self.populated_results())
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert 'class="search-result-title' in html
         assert "text-sm" in html
         assert "font-medium" in html
@@ -99,7 +100,7 @@ class TestSearchResultsHTMLStructure:
     def test_result_resource_label_has_styled_classes(
         self, controller: SearchController
     ) -> None:
-        html = controller._render_results(self.populated_results())
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert 'class="search-result-resource' in html
         assert "text-xs" in html
         assert "text-muted-foreground" in html
@@ -107,15 +108,13 @@ class TestSearchResultsHTMLStructure:
     def test_subtitle_has_block_classes_when_present(
         self, controller: SearchController
     ) -> None:
-        html = controller._render_results(self.populated_results())
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert 'class="search-subtitle' in html
         assert "block" in html
         assert "text-xs" in html
 
-    def test_dark_mode_classes_present(
-        self, controller: SearchController
-    ) -> None:
-        html = controller._render_results(self.populated_results())
+    def test_dark_mode_classes_present(self, controller: SearchController) -> None:
+        html = render_to_string(controller._render_results(self.populated_results()))
         assert "dark:" in html
 
 
@@ -128,13 +127,11 @@ class TestSearchResultsVisualStates:
 
     def test_empty_has_no_groups(self, controller: SearchController) -> None:
         empty = SearchResults(query="test", total_count=0)
-        html = controller._render_results(empty)
+        html = render_to_string(controller._render_results(empty))
         assert "search-resource-group" not in html
         assert "search-results-empty" in html
 
-    def test_populated_has_no_empty_text(
-        self, controller: SearchController
-    ) -> None:
+    def test_populated_has_no_empty_text(self, controller: SearchController) -> None:
         results = SearchResults(
             query="test",
             total_count=1,
@@ -149,14 +146,12 @@ class TestSearchResultsVisualStates:
                 ),
             ],
         )
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert "No results found" not in html
         assert "search-results-empty" not in html
         assert "search-results" in html
 
-    def test_populated_has_resource_groups(
-        self, controller: SearchController
-    ) -> None:
+    def test_populated_has_resource_groups(self, controller: SearchController) -> None:
         results = SearchResults(
             query="test",
             total_count=2,
@@ -178,7 +173,7 @@ class TestSearchResultsVisualStates:
                 ),
             ],
         )
-        html = controller._render_results(results)
+        html = render_to_string(controller._render_results(results))
         assert html.count("search-resource-group") == 2
         assert "Users" in html
         assert "Posts" in html

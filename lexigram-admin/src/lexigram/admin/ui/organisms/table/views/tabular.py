@@ -1,12 +1,35 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import re
 from typing import Any
 
 from lexigram.admin.ui.organisms.table.views.summarizers import compute_summaries
 from lexigram.ui import Checkbox, el
 
 HEADER_HEIGHT = 50
+
+_ROW_HEIGHT_RE = re.compile(r"^\d+(px|rem|em|vh|%)$")
+
+
+def _js_str(value: Any) -> str:
+    """Escape a value for a single-quoted JavaScript string context.
+
+    Composes with ``el()``'s HTML attribute escaping: the browser decodes
+    HTML entities before Alpine.js compiles the attribute as JavaScript,
+    so ``el()`` alone cannot neutralize a ``'`` breakout — this helper
+    backslash-escapes every character that could terminate or alter the
+    JS string.
+    """
+    s = str(value)
+    return (
+        s.replace("\\", "\\\\")
+        .replace("'", "\\'")
+        .replace("\r", "\\r")
+        .replace("\n", "\\n")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
 
 class AbstractDataView(ABC):
@@ -301,7 +324,7 @@ class TabularView(AbstractDataView):
                                 "i",
                                 class_="fas fa-chevron-down mr-2 transition-transform duration-200",
                                 **{
-                                    ":class": f"{{ '-rotate-90': collapsedGroups.includes('{group_name}') }}",
+                                    ":class": f"{{ '-rotate-90': collapsedGroups.includes('{_js_str(group_name)}') }}",
                                 },
                             ),
                             el(
@@ -316,7 +339,7 @@ class TabularView(AbstractDataView):
                             ),
                             type="button",
                             class_="flex items-center w-full text-left focus:outline-none",
-                            **{"@click": f"toggleGroup('{group_name}')"},
+                            **{"@click": f"toggleGroup('{_js_str(group_name)}')"},
                         ),
                         colspan=colspan,
                         class_="px-6 py-3 bg-muted/80 dark:bg-card/80 border-b border-border backdrop-blur-sm sticky left-0 z-10",
@@ -373,7 +396,7 @@ class TabularView(AbstractDataView):
                 row_left_offset += 48
 
             td_attrs: dict[str, Any] = {
-                "@click": f"handleSelect('{rid}', $event)",
+                "@click": f"handleSelect('{_js_str(rid)}', $event)",
             }
             cell_attrs: dict[str, Any] = {"@click.stop": ""}
             cells.append(
@@ -412,14 +435,16 @@ class TabularView(AbstractDataView):
                     stroke="currentColor",
                     fill="none",
                     aria_hidden="true",
-                    **{":class": f"{{ 'rotate-90': expandedIds.includes('{rid}') }}"},
+                    **{
+                        ":class": f"{{ 'rotate-90': expandedIds.includes('{_js_str(rid)}') }}"
+                    },
                 ),
                 type="button",
                 aria_label=f"Toggle details for row {rid}",
                 class_="p-1 rounded hover:bg-muted text-muted-foreground",
                 **{
-                    ":aria-expanded": f"expandedIds.includes('{rid}')",
-                    "@click": f"toggleExpand('{rid}')",
+                    ":aria-expanded": f"expandedIds.includes('{_js_str(rid)}')",
+                    "@click": f"toggleExpand('{_js_str(rid)}')",
                 },
             )
             cells.append(
@@ -516,15 +541,17 @@ class TabularView(AbstractDataView):
                 ),
             )
 
-        row_height = getattr(self.config, "density_row_height", "48px")
+        row_height = str(getattr(self.config, "density_row_height", "48px"))
+        if not _ROW_HEIGHT_RE.fullmatch(row_height):
+            row_height = "48px"
         row_attrs = {
             "class_": "hover:bg-muted dark:hover:bg-card/80 transition-shadow duration-150 border-b border-border last:border-0 group",
-            ":class": f"{{ 'bg-primary-50/50 dark:bg-primary-900/30 ring-inset ring-2 ring-primary-500/50 z-10 relative': $data.focusedId === '{rid}', 'bg-muted/30': {index} % 2 === 1 }}",
+            ":class": f"{{ 'bg-primary-50/50 dark:bg-primary-900/30 ring-inset ring-2 ring-primary-500/50 z-10 relative': $data.focusedId === '{_js_str(rid)}', 'bg-muted/30': {index} % 2 === 1 }}",
             "style": f"height: {row_height};",
         }
 
         if group_key:
-            row_attrs["x-show"] = f"!collapsedGroups.includes('{group_key}')"
+            row_attrs["x-show"] = f"!collapsedGroups.includes('{_js_str(group_key)}')"
             row_attrs["x-transition"] = ""
 
         output_list.append(el("tr", *cells, **{**row_attrs, "data-row-id": rid}))
@@ -540,13 +567,14 @@ class TabularView(AbstractDataView):
             detail_url = f"{self.config.resource_prefix}/{rid}/relations/{self.config.expandable_relationship}"
 
             detail_attrs = {
-                "x-show": f"expandedIds.includes('{rid}')",
+                "x-show": f"expandedIds.includes('{_js_str(rid)}')",
                 "x-transition": "",
             }
             # Also collapse detail if group is collapsed
             if group_key:
                 detail_attrs["x-show"] = (
-                    f"expandedIds.includes('{rid}') && !collapsedGroups.includes('{group_key}')"
+                    f"expandedIds.includes('{_js_str(rid)}') && "
+                    f"!collapsedGroups.includes('{_js_str(group_key)}')"
                 )
 
             detail_row = el(

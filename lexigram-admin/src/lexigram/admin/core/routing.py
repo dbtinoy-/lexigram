@@ -361,7 +361,11 @@ class AdminRouter:
             and resource.relations
         ):
             for rel_cls in resource.relations:
-                rel_routes = register_relation_routes(name, rel_cls)
+                rel_routes = register_relation_routes(
+                    name,
+                    rel_cls,
+                    parent_data_source=getattr(resource, "_data_source", None),
+                )
                 routes.extend(rel_routes)
 
         return routes

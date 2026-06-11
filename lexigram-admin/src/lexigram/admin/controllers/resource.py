@@ -348,7 +348,10 @@ class ResourceController(ABC, Generic[T]):
 
             # Create
             data_source = self.get_data_source()
-            created = await data_source.create(validated)
+            try:
+                created = await data_source.create(validated)
+            except ValueError as e:
+                return HTMLResponse(str(e), status_code=400)
             created_id = str(getattr(created, "id", "") if created else "")
             await self._emit_audit(
                 request,
@@ -424,7 +427,10 @@ class ResourceController(ABC, Generic[T]):
             can_update = getattr(self, "can_update", None)
             if can_update and not can_update(item):
                 return HTMLResponse("This record cannot be updated", status_code=403)
-            item = await data_source.update(item_id, validated)
+            try:
+                item = await data_source.update(item_id, validated)
+            except ValueError as e:
+                return HTMLResponse(str(e), status_code=400)
             await self._emit_audit(
                 request,
                 f"{getattr(self.meta, 'name', 'resource')}.update",
