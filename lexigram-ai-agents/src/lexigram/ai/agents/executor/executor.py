@@ -275,7 +275,10 @@ class AgentExecutorImpl(AgentExecutorProtocol):
         if self._working_memory:
             try:
                 entries = await self._working_memory.assemble(
-                    query=message, token_budget=4096
+                    query=message,
+                    token_budget=4096,
+                    owner_id=user_id or session_id or "anonymous",
+                    session_id=session_id,
                 )
                 history = [
                     ChatMessage(role=Role(e.role), content=e.content) for e in entries
@@ -452,14 +455,17 @@ class AgentExecutorImpl(AgentExecutorProtocol):
 
                 from lexigram.contracts.ai.memory import MemoryEntry
 
+                owner = user_id or session_id or "anonymous"
                 user_entry = MemoryEntry(
                     id=f"{session_id or 'no-session'}-user-{response.step_count}",
+                    owner_id=owner,
                     content=message,
                     role="user",
                     timestamp=datetime.now(UTC),
                 )
                 assistant_entry = MemoryEntry(
                     id=f"{session_id or 'no-session'}-assistant-{response.step_count}",
+                    owner_id=owner,
                     content=response.message,
                     role="assistant",
                     timestamp=datetime.now(UTC),

@@ -166,9 +166,7 @@ class BooleanFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
-        hx_props = {
-            k: v for k, v in common_args.items() if k.startswith("hx_")
-        }
+        hx_props = {k: v for k, v in common_args.items() if k.startswith("hx_")}
         return Switch(
             label=common_args.get("label") or "",
             name=common_args["name"],
@@ -237,7 +235,10 @@ class BelongsToFieldRenderer:
             **_atom_args(
                 common_args,
                 value,
-                extra={"resource": field_schema.resource, "choices": field_schema.options or []},
+                extra={
+                    "resource": field_schema.resource,
+                    "choices": field_schema.options or [],
+                },
             )
         )
 
@@ -326,7 +327,9 @@ class EmailFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
-        return TextInput(**_atom_args(common_args, value, extra={"input_type": "email"}))
+        return TextInput(
+            **_atom_args(common_args, value, extra={"input_type": "email"})
+        )
 
 
 class PasswordFieldRenderer:
@@ -358,7 +361,9 @@ class ColorFieldRenderer:
         value: Any,
         common_args: dict[str, Any],
     ) -> Any:
-        return TextInput(**_atom_args(common_args, value, extra={"input_type": "color"}))
+        return TextInput(
+            **_atom_args(common_args, value, extra={"input_type": "color"})
+        )
 
 
 class TextFieldRenderer:

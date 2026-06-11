@@ -90,7 +90,7 @@ def _annotation_names(config_cls: type) -> tuple[str, ...]:
         name
         for name, ftype in hints.items()
         if not name.startswith("_")
-        and type(ftype).__name__ != "ClassVar"
+        and typing.get_origin(ftype) is not typing.ClassVar
     )
 
 
@@ -186,7 +186,7 @@ def _nested_keypaths(config_cls: type, max_depth: int = 4) -> tuple[str, ...]:
             path = f"{prefix}.{name}" if prefix else name
             paths.append(path)
             ftype = annotations.get(name)
-            if ftype is None or type(ftype).__name__ == "ClassVar":
+            if ftype is None or typing.get_origin(ftype) is typing.ClassVar:
                 continue
             for member in _union_members(ftype):
                 element = _sequence_element(member)

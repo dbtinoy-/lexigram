@@ -38,6 +38,7 @@ class TestMemoryEntry:
         from lexigram.ai.memory.types import MemoryEntry
         return MemoryEntry(
             id="entry-1",
+            owner_id="owner-1",
             content="Test content",
             role="user",
             timestamp=datetime(2024, 1, 1, 12, 0, 0),
@@ -56,6 +57,7 @@ class TestMemoryEntry:
         from lexigram.ai.memory.types import MemoryEntry
         entry = MemoryEntry(
             id="e1",
+            owner_id="owner-1",
             content="c",
             role="user",
             timestamp=datetime.now(),
@@ -67,6 +69,7 @@ class TestMemoryEntry:
         from lexigram.ai.memory.types import MemoryEntry
         entry = MemoryEntry(
             id="e1",
+            owner_id="owner-1",
             content="c",
             role="user",
             timestamp=datetime.now(),
@@ -77,6 +80,7 @@ class TestMemoryEntry:
         from lexigram.ai.memory.types import MemoryEntry
         entry = MemoryEntry(
             id="e1",
+            owner_id="owner-1",
             content="c",
             role="user",
             timestamp=datetime.now(),
@@ -87,6 +91,7 @@ class TestMemoryEntry:
         from lexigram.ai.memory.types import MemoryEntry
         entry = MemoryEntry(
             id="e1",
+            owner_id="owner-1",
             content="c",
             role="user",
             timestamp=datetime.now(),
@@ -101,6 +106,7 @@ class TestMemoryQuery:
     def sample_query(self) -> MemoryQuery:
         from lexigram.ai.memory.types import MemoryQuery
         return MemoryQuery(
+            owner_id="owner-1",
             query="test search",
             top_k=5,
             min_relevance=0.3,
@@ -118,13 +124,13 @@ class TestMemoryQuery:
 
     def test_frozen_immutability(self) -> None:
         from lexigram.ai.memory.types import MemoryQuery
-        q = MemoryQuery(query="test")
+        q = MemoryQuery(owner_id="owner-1", query="test")
         with pytest.raises(Exception):
             q.query = "new"
 
     def test_default_values(self) -> None:
         from lexigram.ai.memory.types import MemoryQuery
-        q = MemoryQuery(query="test")
+        q = MemoryQuery(owner_id="owner-1", query="test")
         assert q.top_k == 10
         assert q.min_relevance == 0.0
         assert q.recency_weight == 0.3
@@ -142,6 +148,7 @@ class TestMemorySearchResult:
         from lexigram.ai.memory.types import MemoryEntry
         return MemoryEntry(
             id="e1",
+            owner_id="owner-1",
             content="test",
             role="user",
             timestamp=datetime.now(),

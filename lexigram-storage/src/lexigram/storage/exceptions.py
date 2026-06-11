@@ -2,25 +2,17 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.exceptions import DomainError, LexigramError
-
-
-class StorageError(LexigramError):
-    """Base exception for storage errors."""
-
-    _code: str = "LEX_ERR_STORE_001"
+from lexigram.contracts.exceptions import DomainError
+from lexigram.contracts.infra.storage.exceptions import (
+    StorageError,
+    StorageUnsupportedOperationError,
+)
 
 
 class StorageFileNotFoundError(DomainError):
     """Raised when file is not found."""
 
     _code: str = "LEX_ERR_STORE_002"
-
-
-class StorageUnsupportedOperationError(StorageError):
-    """Raised when the requested operation is not supported by the storage driver."""
-
-    _code: str = "LEX_ERR_STORE_003"
 
 
 class TransactionError(StorageError):

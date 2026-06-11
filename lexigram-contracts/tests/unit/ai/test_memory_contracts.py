@@ -23,6 +23,7 @@ class TestMemoryDataclasses:
         """MemoryEntry should be frozen (immutable)."""
         entry = MemoryEntry(
             id="1",
+            owner_id="owner-1",
             content="test",
             role="user",
             timestamp=datetime.now(timezone.utc),
@@ -34,6 +35,7 @@ class TestMemoryDataclasses:
         """MemoryEntry should have sensible defaults."""
         entry = MemoryEntry(
             id="1",
+            owner_id="owner-1",
             content="test",
             role="user",
             timestamp=datetime.now(timezone.utc),
@@ -44,13 +46,13 @@ class TestMemoryDataclasses:
 
     def test_memory_query_frozen(self) -> None:
         """MemoryQuery should be frozen."""
-        query = MemoryQuery(query="test")
+        query = MemoryQuery(owner_id="owner-1", query="test")
         with pytest.raises(AttributeError):
             query.top_k = 20
 
     def test_memory_query_defaults(self) -> None:
         """MemoryQuery should have proper defaults."""
-        query = MemoryQuery(query="test")
+        query = MemoryQuery(owner_id="owner-1", query="test")
         assert query.top_k == 10
         assert query.min_relevance == 0.0
         assert query.recency_weight == 0.3
@@ -61,6 +63,7 @@ class TestMemoryDataclasses:
         """MemorySearchResult should be frozen."""
         entry = MemoryEntry(
             id="1",
+            owner_id="owner-1",
             content="test",
             role="user",
             timestamp=datetime.now(timezone.utc),
@@ -96,13 +99,13 @@ class TestMemoryProtocols:
             async def retrieve(self, query):
                 return []
 
-            async def get_recent(self, n):
+            async def get_recent(self, n, owner_id):
                 return []
 
-            async def delete(self, entry_id):
+            async def delete(self, entry_id, owner_id):
                 pass
 
-            async def clear(self):
+            async def clear(self, owner_id):
                 pass
 
             async def health_check(self, timeout=5.0):
@@ -116,7 +119,7 @@ class TestMemoryProtocols:
         assert isinstance(WorkingMemoryProtocol, type)
 
         class MockWorking:
-            async def assemble(self, query, token_budget):
+            async def assemble(self, query, token_budget, *, owner_id, session_id=None):
                 return []
 
             async def add(self, entry):
@@ -145,7 +148,7 @@ class TestMemoryProtocols:
             async def recall(self, query):
                 return []
 
-            async def forget(self, entry_id):
+            async def forget(self, entry_id, owner_id):
                 pass
 
             async def health_check(self, timeout=5.0):

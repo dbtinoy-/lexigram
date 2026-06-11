@@ -43,8 +43,11 @@ class TestMCPServerToolHandler:
 
         tool_handler = MagicMock()
         tool_handler.list_tools = AsyncMock(return_value={"tools": [{"name": "test"}]})
-        server = MCPServer(tool_handler=tool_handler)
+        server = MCPServer(tool_handler=tool_handler, allow_unauthenticated=True)
 
+        await server.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )
         message = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
         response = await server.handle_message(message)
 
@@ -57,8 +60,11 @@ class TestMCPServerToolHandler:
 
         tool_handler = MagicMock()
         tool_handler.call_tool = AsyncMock(return_value={"content": [{"type": "text", "text": "ok"}]})
-        server = MCPServer(tool_handler=tool_handler)
+        server = MCPServer(tool_handler=tool_handler, allow_unauthenticated=True)
 
+        await server.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )
         message = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "test", "arguments": {}}}
         response = await server.handle_message(message)
 
@@ -74,8 +80,11 @@ class TestMCPServerResourceHandler:
 
         resource_handler = MagicMock()
         resource_handler.list_resources = AsyncMock(return_value={"resources": []})
-        server = MCPServer(resource_handler=resource_handler)
+        server = MCPServer(resource_handler=resource_handler, allow_unauthenticated=True)
 
+        await server.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )
         message = {"jsonrpc": "2.0", "id": 1, "method": "resources/list"}
         response = await server.handle_message(message)
 
@@ -92,8 +101,11 @@ class TestMCPServerPromptHandler:
 
         prompt_handler = MagicMock()
         prompt_handler.list_prompts = AsyncMock(return_value={"prompts": []})
-        server = MCPServer(prompt_handler=prompt_handler)
+        server = MCPServer(prompt_handler=prompt_handler, allow_unauthenticated=True)
 
+        await server.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )
         message = {"jsonrpc": "2.0", "id": 1, "method": "prompts/list"}
         response = await server.handle_message(message)
 

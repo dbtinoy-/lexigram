@@ -24,8 +24,6 @@ from lexigram.http.exceptions import (
     HTTPRetryExhaustedError,
     HTTPTimeoutError,
 )
-from lexigram.http.pool import ConnectionPool
-from lexigram.http.types import RequestContext, ResponseContext
 from lexigram.http.lib import (
     build_url,
     extract_json_type,
@@ -34,6 +32,8 @@ from lexigram.http.lib import (
     parse_headers,
     parse_url_parts,
 )
+from lexigram.http.pool import ConnectionPool
+from lexigram.http.types import RequestContext, ResponseContext
 from lexigram.http.validation import (
     validate_host,
     validate_port,
@@ -181,10 +181,16 @@ class TestConnectionPool:
 
 class TestBuildUrl:
     def test_simple_path(self) -> None:
-        assert build_url("http://api.example.com", "/users") == "http://api.example.com/users"
+        assert (
+            build_url("http://api.example.com", "/users")
+            == "http://api.example.com/users"
+        )
 
     def test_trailing_slash_on_base(self) -> None:
-        assert build_url("http://api.example.com/", "/users") == "http://api.example.com/users"
+        assert (
+            build_url("http://api.example.com/", "/users")
+            == "http://api.example.com/users"
+        )
 
     def test_query_params(self) -> None:
         url = build_url("http://localhost", "/search", {"q": "hello", "page": 2})
@@ -247,7 +253,9 @@ class TestExtractJsonType:
         assert extract_json_type("application/json") == "application/json"
 
     def test_json_with_charset(self) -> None:
-        assert extract_json_type("application/json; charset=utf-8") == "application/json"
+        assert (
+            extract_json_type("application/json; charset=utf-8") == "application/json"
+        )
 
     def test_non_json(self) -> None:
         assert extract_json_type("text/html") is None
@@ -390,7 +398,7 @@ def _make_mock_retry_policy() -> MagicMock:
     """Retry policy that executes the callable directly — no delay."""
     policy = MagicMock()
 
-    async def execute(fn):  # type: ignore[no-untyped-def]
+    async def execute(fn, method=None):  # type: ignore[no-untyped-def]
         return await fn()
 
     policy.execute = AsyncMock(side_effect=execute)
@@ -584,7 +592,9 @@ class TestHTTPClientRequests:
         cb.state = MagicMock()
         cb.state.value = "open"
 
-        client = HTTPClient(circuit_breaker=cb)
+        client = HTTPClient(
+            circuit_breaker=cb, config=HTTPClientConfig(enforce_url_safety=False)
+        )
         client._pool = SimpleNamespace(  # type: ignore[assignment]
             _session=SimpleNamespace(request=AsyncMock()),
         )
@@ -599,7 +609,9 @@ class TestHTTPClientRequests:
 
         policy = MagicMock()
         policy.execute = AsyncMock(side_effect=RetryExhaustedError("exhausted"))
-        client = HTTPClient(retry_policy=policy)
+        client = HTTPClient(
+            retry_policy=policy, config=HTTPClientConfig(enforce_url_safety=False)
+        )
         client._pool = SimpleNamespace(  # type: ignore[assignment]
             _session=SimpleNamespace(request=AsyncMock()),
         )
@@ -612,7 +624,9 @@ class TestHTTPClientRequests:
         from lexigram.http.client import HTTPClient
 
         retry_policy = _make_mock_retry_policy()
-        client = HTTPClient(retry_policy=retry_policy)
+        client = HTTPClient(
+            retry_policy=retry_policy, config=HTTPClientConfig(enforce_url_safety=False)
+        )
         # pool._session is None (not started)
 
         with pytest.raises(RuntimeError, match="not started"):

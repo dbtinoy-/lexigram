@@ -27,12 +27,18 @@ class TestEncryptionConfig:
         assert enc.type == "AES256"
 
     def test_kms_encryption(self) -> None:
-        enc = EncryptionConfig(enabled=True, type="aws:kms", kms_key_id="arn:aws:kms:us-east-1:123:key/abc")
+        enc = EncryptionConfig(
+            enabled=True, type="aws:kms", kms_key_id="arn:aws:kms:us-east-1:123:key/abc"
+        )
         assert enc.type == "aws:kms"
         assert enc.kms_key_id == "arn:aws:kms:us-east-1:123:key/abc"
 
     def test_gcs_cmek_encryption(self) -> None:
-        enc = EncryptionConfig(enabled=True, type="gcs:cmek", kms_key_id="projects/my-proj/locations/global/keyRings/kr/cryptoKeys/ck")
+        enc = EncryptionConfig(
+            enabled=True,
+            type="gcs:cmek",
+            kms_key_id="projects/my-proj/locations/global/keyRings/kr/cryptoKeys/ck",
+        )
         assert enc.type == "gcs:cmek"
 
     def test_storage_s3_config_includes_encryption(self) -> None:
@@ -83,7 +89,11 @@ class TestS3DriverBuildSseParams:
 
     def test_sse_kms_with_key_id(self) -> None:
         driver = self._make_driver(
-            EncryptionConfig(enabled=True, type="aws:kms", kms_key_id="arn:aws:kms:us-east-1:123:key/abc")
+            EncryptionConfig(
+                enabled=True,
+                type="aws:kms",
+                kms_key_id="arn:aws:kms:us-east-1:123:key/abc",
+            )
         )
         params = driver._build_sse_params()
         assert params["ServerSideEncryption"] == "aws:kms"
@@ -114,7 +124,9 @@ class TestPresignedUrlTimedelta:
 
         driver = MemoryDriver()
         with pytest.raises(StorageUnsupportedOperationError):
-            await driver.get_presigned_url("some/file.txt", expires_in=timedelta(hours=24))
+            await driver.get_presigned_url(
+                "some/file.txt", expires_in=timedelta(hours=24)
+            )
 
     @pytest.mark.asyncio
     async def test_local_driver_default_expiry_raises(self, tmp_path) -> None:

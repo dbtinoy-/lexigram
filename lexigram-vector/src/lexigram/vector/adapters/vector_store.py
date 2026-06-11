@@ -28,6 +28,7 @@ from lexigram.contracts.data.vector.types import (
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.vector.exceptions import VectorError as VectorStoreError
+from lexigram.vector.filters.validation import validate_metadata_field
 
 SearchResult = RAGSearchResult
 
@@ -157,6 +158,8 @@ class VectorStoreAdapter:
         Returns:
             A ``MetadataCondition`` or ``MetadataConditionGroup``.
         """
+        for k in filters:
+            validate_metadata_field(k)
         conditions = tuple(
             MetadataCondition(field=k, operator=FilterOperator.EQ, value=v)
             for k, v in filters.items()

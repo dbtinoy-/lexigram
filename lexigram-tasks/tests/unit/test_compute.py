@@ -41,24 +41,17 @@ def simple_task(x: int) -> int:
     return x * 2
 
 
-@pytest.mark.skip(
-    reason="Requires isolated process pool - fails in full suite due to multiprocessing state. Run: pytest lexigram-tasks/tests/unit/test_compute.py"
-)
 class TestComputePool:
-    """Test Compute pool functionality.
-
-    These tests require isolated event loop and Compute pool state.
-    They may fail in the full test suite due to global state pollution.
-    """
+    """Test Compute pool functionality through the fake executor (no real spawns)."""
 
     @pytest.mark.asyncio
-    async def test_compute_pool_configuration(self):
+    async def test_compute_pool_configuration(self, fake_executor):
         """Test pool configuration with ADAPTIVE strategy."""
         Compute.configure(strategy=PoolStrategy.ADAPTIVE, min_workers=1, max_workers=4)
         assert Compute is not None
 
     @pytest.mark.asyncio
-    async def test_simple_task_execution(self):
+    async def test_simple_task_execution(self, fake_executor):
         """Test execution of simple tasks."""
         Compute.configure(strategy=PoolStrategy.ADAPTIVE, min_workers=1, max_workers=4)
         results = []
@@ -69,7 +62,7 @@ class TestComputePool:
         assert results == [2, 4, 6]
 
     @pytest.mark.asyncio
-    async def test_cpu_intensive_task(self):
+    async def test_cpu_intensive_task(self, fake_executor):
         """Test execution of CPU-intensive task."""
         Compute.configure(strategy=PoolStrategy.ADAPTIVE, min_workers=1, max_workers=4)
         cpu_result = await Compute.run(cpu_task, 100)
@@ -77,7 +70,7 @@ class TestComputePool:
         assert cpu_result == expected
 
     @pytest.mark.asyncio
-    async def test_concurrent_task_execution(self):
+    async def test_concurrent_task_execution(self, fake_executor):
         """Test multiple concurrent tasks."""
         Compute.configure(strategy=PoolStrategy.ADAPTIVE, min_workers=1, max_workers=4)
         tasks = [Compute.run(simple_task, i) for i in range(5)]
@@ -86,7 +79,7 @@ class TestComputePool:
         assert concurrent_results == expected_results
 
     @pytest.mark.asyncio
-    async def test_compute_metrics(self):
+    async def test_compute_metrics(self, fake_executor):
         """Test that metrics are available after task execution."""
         Compute.configure(strategy=PoolStrategy.ADAPTIVE, min_workers=1, max_workers=4)
         await Compute.run(simple_task, 1)
@@ -99,7 +92,7 @@ class TestComputePool:
             assert isinstance(metrics.active_workers, int)
 
     @pytest.mark.asyncio
-    async def test_compute_pool_shutdown(self):
+    async def test_compute_pool_shutdown(self, fake_executor):
         """Test pool shutdown functionality."""
         Compute.configure(strategy=PoolStrategy.ADAPTIVE, min_workers=1, max_workers=4)
         result = await Compute.run(simple_task, 5)

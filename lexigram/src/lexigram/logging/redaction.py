@@ -3,10 +3,28 @@
 from __future__ import annotations
 
 import contextvars
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from lexigram.contracts.core.logging import RedactorProtocol
+from lexigram.contracts.core.logging import RedactorProtocol
+
+_DEFAULT_FIELD_DENYLIST: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "authorization",
+        "auth",
+        "session_id",
+        "session_token",
+        "access_token",
+        "refresh_token",
+        "private_key",
+        "client_secret",
+    }
+)
 
 
 class NoOpRedactor:
@@ -20,6 +38,65 @@ class NoOpRedactor:
         return data
 
     def redact_value(self, value: Any) -> Any:
+        return value
+
+
+class DefaultRedactor:
+    """Redact log fields whose names match the default field denylist.
+
+    Masking is key-based only (no free-text pattern matching):
+    top-level and nested dict keys matching a denylisted field name,
+    case-insensitively, are replaced with the ``"<redacted>"`` sentinel.
+    Non-denylisted values pass through unchanged, including nested
+    containers which are recursed.
+
+    Args:
+        field_denylist: Field names to mask, matched case-insensitively.
+            Defaults to ``_DEFAULT_FIELD_DENYLIST``.
+    """
+
+    def __init__(
+        self,
+        field_denylist: frozenset[str] | tuple[str, ...] | None = None,
+    ) -> None:
+        if field_denylist is None:
+            field_denylist = _DEFAULT_FIELD_DENYLIST
+        self._field_denylist = frozenset(f.lower() for f in field_denylist)
+
+    def redact_dict(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Return ``data`` with denylisted keys masked, recursing containers.
+
+        Args:
+            data: The mapping to redact.
+
+        Returns:
+            A new mapping with matching keys set to ``"<redacted>"``.
+        """
+        return {
+            key: (
+                "<redacted>"
+                if key.lower() in self._field_denylist
+                else self.redact_value(value)
+            )
+            for key, value in data.items()
+        }
+
+    def redact_value(self, value: Any) -> Any:
+        """Redact a value, recursing nested dicts and lists.
+
+        Args:
+            value: The value to redact.
+
+        Returns:
+            The value with nested denylisted keys masked; non-container
+            values pass through unchanged.
+        """
+        if isinstance(value, dict):
+            return self.redact_dict(value)
+        if isinstance(value, list):
+            return [self.redact_value(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(self.redact_value(item) for item in value)
         return value
 
 
@@ -72,6 +149,7 @@ def set_redactor(
 
 
 __all__ = [
+    "DefaultRedactor",
     "NoOpRedactor",
     "get_redactor",
     "set_redactor",

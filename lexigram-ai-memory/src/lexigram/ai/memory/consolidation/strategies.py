@@ -230,6 +230,7 @@ class TimeDecayStrategy:
             reweighted.append(
                 MemoryEntry(
                     id=entry.id,
+                    owner_id=entry.owner_id,
                     content=entry.content,
                     role=entry.role,
                     importance=new_importance,

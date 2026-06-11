@@ -62,10 +62,7 @@ class _Collector:
         """Extract the response headers from a http.response.start message."""
         for msg in self.messages:
             if msg.get("type") == "http.response.start":
-                return {
-                    k.decode(): v.decode()
-                    for k, v in msg.get("headers", [])
-                }
+                return {k.decode(): v.decode() for k, v in msg.get("headers", [])}
         return {}
 
     def status(self) -> int | None:

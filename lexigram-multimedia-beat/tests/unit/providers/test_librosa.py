@@ -3,8 +3,10 @@
 The decode-cap tests inject a minimal fake ``librosa`` module because
 ``librosa``/``soundfile`` are optional extras not installed in the dev
 venv (the ``_click_track_wav_bytes`` helper skips when soundfile is
-absent, preserving pre-existing behavior). The guards under test — real
-temp file on disk, ``Path.stat()`` size check, decoded-array ceiling —
+absent, preserving pre-existing behavior). The duration-probe tests
+inject a fake ``soundfile`` whose ``info()`` reports synthetic
+durations. The guards under test — real temp file on disk,
+``Path.stat()`` size check, duration probe, decoded-array ceiling —
 are never faked.
 """
 
@@ -62,8 +64,19 @@ def _fake_librosa(n_samples: int = 100) -> ModuleType:
     """Minimal librosa stand-in that decodes to ``n_samples`` samples."""
     fake = ModuleType("librosa", "fake librosa for decode-cap tests")
     fake.load = MagicMock(return_value=(np.zeros(n_samples), 22050))
-    fake.beat_track = MagicMock(return_value=(np.float64(120.0), np.array([0])))
     fake.frames_to_time = MagicMock(return_value=np.array([0.0]))
+    fake.beat = ModuleType("librosa.beat")
+    fake.beat.beat_track = MagicMock(return_value=(np.float64(120.0), np.array([0])))
+    return fake
+
+
+def _fake_soundfile(frames: int = 100, samplerate: int = 22050) -> ModuleType:
+    """Minimal soundfile stand-in whose ``info()`` reports given frames."""
+    fake = ModuleType("soundfile", "fake soundfile for duration-probe tests")
+    info_stub = MagicMock()
+    info_stub.frames = frames
+    info_stub.samplerate = samplerate
+    fake.info = MagicMock(return_value=info_stub)
     return fake
 
 
@@ -114,6 +127,22 @@ async def test_analyze_rejects_non_200_fetch() -> None:
     assert result.is_err()
     assert isinstance(result.unwrap_err(), BeatAnalysisDecodeError)
     assert "HTTP 404" in str(result.unwrap_err())
+
+
+@pytest.mark.asyncio
+async def test_analyze_rejects_disallowed_mime_type() -> None:
+    provider = LibrosaBeatAnalysisProvider()
+    asset = MediaAsset(mime_type="application/pdf", provider="test", bytes_data=b"x")
+
+    with patch(
+        "aiohttp.ClientSession.get",
+        AsyncMock(side_effect=AssertionError("fetch attempted")),
+    ):
+        result = await provider.analyze(BeatAnalysisRequest(asset=asset))
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), BeatAnalysisDecodeError)
+    assert "media type not allowed" in str(result.unwrap_err())
 
 
 @pytest.mark.asyncio
@@ -192,6 +221,40 @@ def test_analyze_sync_rejects_oversized_decoded_array(tmp_path: Path) -> None:
 
     assert result.is_err()
     assert isinstance(result.unwrap_err(), BeatAnalysisDecodeError)
+
+
+def test_analyze_sync_rejects_long_duration_before_decode(tmp_path: Path) -> None:
+    wav_path = tmp_path / "long.wav"
+    wav_path.write_bytes(b"x" * 1024)
+
+    provider = LibrosaBeatAnalysisProvider(max_analyze_samples=1_000)
+    fake_lib = _fake_librosa()
+    with patch.dict(
+        sys.modules,
+        {"soundfile": _fake_soundfile(frames=60 * 22050), "librosa": fake_lib},
+    ):
+        result = provider._analyze_sync(str(wav_path))
+
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), BeatAnalysisDecodeError)
+    assert "sample cap" in str(result.unwrap_err())
+    fake_lib.load.assert_not_called()
+
+
+def test_analyze_sync_probe_allows_short_duration(tmp_path: Path) -> None:
+    wav_path = tmp_path / "short.wav"
+    wav_path.write_bytes(b"x" * 1024)
+
+    provider = LibrosaBeatAnalysisProvider(max_analyze_samples=1_000)
+    fake_lib = _fake_librosa(n_samples=100)
+    with patch.dict(
+        sys.modules,
+        {"soundfile": _fake_soundfile(frames=100), "librosa": fake_lib},
+    ):
+        result = provider._analyze_sync(str(wav_path))
+
+    assert result.is_ok()
+    fake_lib.load.assert_called_once()
 
 
 @pytest.mark.asyncio

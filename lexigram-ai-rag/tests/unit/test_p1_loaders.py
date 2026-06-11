@@ -131,7 +131,9 @@ _FAKE_WEB_PAGES: dict[str, str] = {}
 
 class TestDocxLoader:
     @pytest.mark.asyncio
-    async def test_load_docx_paragraphs(self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_load_docx_paragraphs(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         path = tmp_path / "sample.docx"
         path.write_bytes(b"fake-docx")
 
@@ -166,7 +168,9 @@ class TestDocxLoader:
 
 class TestExcelLoader:
     @pytest.mark.asyncio
-    async def test_load_excel_row_mode(self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_load_excel_row_mode(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         path = tmp_path / "sample.xlsx"
         path.write_bytes(b"fake-excel")
 
@@ -204,7 +208,9 @@ class TestExcelLoader:
         assert chunks[0].metadata["sheet"] == "Sheet1"
 
     @pytest.mark.asyncio
-    async def test_load_excel_sheet_mode(self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_load_excel_sheet_mode(
+        self, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         path = tmp_path / "sheet.xlsx"
         path.write_bytes(b"fake-excel")
 
@@ -277,10 +283,7 @@ class TestCodeLoader:
     async def test_load_python_code_split_by_definitions(self, tmp_path: Any) -> None:
         path = tmp_path / "sample.py"
         path.write_text(
-            "def alpha():\n"
-            "    return 1\n\n"
-            "class Beta:\n"
-            "    pass\n",
+            "def alpha():\n    return 1\n\nclass Beta:\n    pass\n",
             encoding="utf-8",
         )
 
@@ -292,7 +295,9 @@ class TestCodeLoader:
         assert chunks[0].metadata["language"] == "py"
 
     @pytest.mark.asyncio
-    async def test_load_unknown_extension_uses_fixed_size_batches(self, tmp_path: Any) -> None:
+    async def test_load_unknown_extension_uses_fixed_size_batches(
+        self, tmp_path: Any
+    ) -> None:
         path = tmp_path / "data.unknown"
         path.write_text(
             "line1\nline2\nline3\nline4\nline5\n",
@@ -372,7 +377,9 @@ class TestSQLLoader:
 class TestWebScraperLoader:
     @pytest.fixture(autouse=True)
     def _patch_web_dependencies(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setitem(sys.modules, "bs4", SimpleNamespace(BeautifulSoup=_FakeSoup))
+        monkeypatch.setitem(
+            sys.modules, "bs4", SimpleNamespace(BeautifulSoup=_FakeSoup)
+        )
         monkeypatch.setitem(
             sys.modules,
             "aiohttp",

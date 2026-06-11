@@ -122,11 +122,7 @@ def test_render_content_message_escapes_text() -> None:
 
 def test_render_content_stat_escapes_label_value_and_delta() -> None:
     html = render_content(
-        StatContent(
-            stats=(
-                Stat(label=PAYLOAD, value=PAYLOAD, delta=PAYLOAD),
-            )
-        )
+        StatContent(stats=(Stat(label=PAYLOAD, value=PAYLOAD, delta=PAYLOAD),))
     )
     assert "<img" not in html
     assert html.count("&lt;img") == 3
@@ -145,16 +141,16 @@ def test_render_content_table_escapes_headings_and_cells() -> None:
 
 def test_render_content_health_escapes_detail() -> None:
     html = render_content(
-        HealthCheckPayload(status=HealthStatus.HEALTHY, component="Billing", detail=PAYLOAD)
+        HealthCheckPayload(
+            status=HealthStatus.HEALTHY, component="Billing", detail=PAYLOAD
+        )
     )
     assert "<img" not in html
     assert "&lt;img" in html
 
 
 def test_render_content_chart_escapes_point_labels() -> None:
-    html = render_content(
-        ChartContent(points=(ChartPoint(label=PAYLOAD, value=10),))
-    )
+    html = render_content(ChartContent(points=(ChartPoint(label=PAYLOAD, value=10),)))
     assert "<img" not in html
     assert "&lt;img" in html
 

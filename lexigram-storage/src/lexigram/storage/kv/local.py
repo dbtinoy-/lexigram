@@ -45,11 +45,31 @@ class LocalStorage(StorageBackendProtocol):
     async def disconnect(self) -> None:
         self._connected = False
 
-    def _get_file_path(self, key: str, namespace: str | None) -> Path:
+    def _get_ns_dir(self, namespace: str | None) -> Path:
+        """Map a namespace to a safe directory inside base_path.
+
+        Applies the same charset filter the key uses; ``None``/empty and
+        namespaces that filter down to a path metachar (``.``/``..``) fall
+        back to ``"default"``.
+
+        Returns:
+            A directory ``Path`` guaranteed to sit below ``base_path``.
+        """
         ns = namespace or "default"
+        safe_ns = "".join(c for c in ns if c.isalnum() or c in "._-") or "default"
+        if safe_ns in {".", ".."}:
+            safe_ns = "default"
+        ns_dir = (self.base_path / safe_ns).resolve()
+        assert ns_dir.is_relative_to(self.base_path.resolve()), (
+            f"namespace escapes base path: {namespace!r}"
+        )
+        return ns_dir
+
+    def _get_file_path(self, key: str, namespace: str | None) -> Path:
+        ns_dir = self._get_ns_dir(namespace)
         # Sanitize key for filesystem
         safe_key = "".join(c for c in key if c.isalnum() or c in "._-")
-        return self.base_path / ns / f"{safe_key}{self.file_extension}"
+        return ns_dir / f"{safe_key}{self.file_extension}"
 
     async def get(self, key: str, namespace: str | None = None) -> Any | None:
         file_path = self._get_file_path(key, namespace)
@@ -143,8 +163,7 @@ class LocalStorage(StorageBackendProtocol):
         pattern: str | None = None,
         namespace: str | None = None,
     ) -> list[str]:
-        ns = namespace or "default"
-        ns_path = self.base_path / ns
+        ns_path = self._get_ns_dir(namespace)
         if not ns_path.exists():
             return []
 
@@ -161,7 +180,7 @@ class LocalStorage(StorageBackendProtocol):
 
     async def clear(self, namespace: str | None = None) -> bool:
         ns = namespace or "default"
-        ns_path = self.base_path / ns
+        ns_path = self._get_ns_dir(namespace)
         try:
             if ns_path.exists():
                 shutil.rmtree(ns_path)

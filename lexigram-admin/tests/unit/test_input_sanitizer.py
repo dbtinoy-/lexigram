@@ -64,7 +64,7 @@ class TestAdminInputSanitizerSanitize:
     # -- Event handlers -------------------------------------------------------
 
     def test_strips_onerror_handler(self, sanitizer: AdminInputSanitizer) -> None:
-        result = sanitizer.sanitize('<img src=x onerror=alert(1)>')
+        result = sanitizer.sanitize("<img src=x onerror=alert(1)>")
         assert "onerror" not in result
 
     def test_strips_onclick_handler(self, sanitizer: AdminInputSanitizer) -> None:
@@ -87,13 +87,17 @@ class TestAdminInputSanitizerSanitize:
 
     # -- HTML entities --------------------------------------------------------
 
-    def test_escapes_standalone_lt_operator(self, sanitizer: AdminInputSanitizer) -> None:
+    def test_escapes_standalone_lt_operator(
+        self, sanitizer: AdminInputSanitizer
+    ) -> None:
         """A bare < not followed by > is not a tag — it gets entity-encoded."""
         result = sanitizer.sanitize("5 < 10")
         assert "<" not in result
         assert "&lt;" in result
 
-    def test_tag_like_content_stripped_entirely(self, sanitizer: AdminInputSanitizer) -> None:
+    def test_tag_like_content_stripped_entirely(
+        self, sanitizer: AdminInputSanitizer
+    ) -> None:
         """< b > looks like an HTML tag and is stripped by the tag regex."""
         result = sanitizer.sanitize("a < b > c")
         assert "<" not in result
@@ -107,9 +111,7 @@ class TestAdminInputSanitizerSanitize:
         result = sanitizer.sanitize('"quoted"')
         assert "&quot;" in result
 
-    def test_normalizes_encoded_entities(
-        self, sanitizer: AdminInputSanitizer
-    ) -> None:
+    def test_normalizes_encoded_entities(self, sanitizer: AdminInputSanitizer) -> None:
         # Double-encoded entity should be properly normalized
         result = sanitizer.sanitize("&amp;lt;")
         assert "&amp;" in result
@@ -139,9 +141,7 @@ class TestAdminInputSanitizerSanitizeDict:
         result = sanitizer.sanitize_dict(data)
         assert "<script" not in result["name"]
 
-    def test_non_string_values_unchanged(
-        self, sanitizer: AdminInputSanitizer
-    ) -> None:
+    def test_non_string_values_unchanged(self, sanitizer: AdminInputSanitizer) -> None:
         data: dict = {"count": 42, "active": True, "ratio": 3.14}
         result = sanitizer.sanitize_dict(data)
         assert result["count"] == 42
@@ -154,9 +154,7 @@ class TestAdminInputSanitizerSanitizeDict:
         assert "<script" not in result["user"]["bio"]
         assert "hello" in result["user"]["bio"]
 
-    def test_list_string_values_sanitized(
-        self, sanitizer: AdminInputSanitizer
-    ) -> None:
+    def test_list_string_values_sanitized(self, sanitizer: AdminInputSanitizer) -> None:
         data = {"tags": ["<b>tag1</b>", "normal", "<em>tag2</em>"]}
         result = sanitizer.sanitize_dict(data)
         for tag in result["tags"]:
@@ -178,9 +176,7 @@ class TestAdminInputSanitizerSanitizeDict:
     def test_empty_dict(self, sanitizer: AdminInputSanitizer) -> None:
         assert sanitizer.sanitize_dict({}) == {}
 
-    def test_clean_data_unchanged_values(
-        self, sanitizer: AdminInputSanitizer
-    ) -> None:
+    def test_clean_data_unchanged_values(self, sanitizer: AdminInputSanitizer) -> None:
         data = {"first": "Alice", "last": "Smith"}
         result = sanitizer.sanitize_dict(data)
         assert result["first"] == "Alice"

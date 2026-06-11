@@ -80,8 +80,11 @@ class TestMCPServerMessageHandling:
             side_effect=RuntimeError("Internal handler error")
         )
 
-        server_with_handler = MCPServer(tool_handler=tool_handler)
+        server_with_handler = MCPServer(tool_handler=tool_handler, allow_unauthenticated=True)
 
+        await server_with_handler.handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )
         message = {
             "jsonrpc": "2.0",
             "id": 1,

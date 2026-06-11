@@ -20,6 +20,7 @@ from lexigram.contracts import (
 )
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.exceptions import UnresolvableDependencyError
+from lexigram.contracts.mcp.protocols import MCPAuthorizerProtocol
 from lexigram.di.provider import Provider
 from lexigram.logging import (
     get_logger,
@@ -175,7 +176,13 @@ class MCPProvider(Provider):
 
             skill_registry = await container.resolve(SkillRegistryProtocol)
             skill_executor = await container.resolve(SkillExecutorProtocol)
-        except (LookupError, RuntimeError, AttributeError, ImportError, UnresolvableDependencyError):
+        except (
+            LookupError,
+            RuntimeError,
+            AttributeError,
+            ImportError,
+            UnresolvableDependencyError,
+        ):
             logger.debug("mcp_skills_not_available")
             return
 
@@ -409,6 +416,7 @@ class MCPProvider(Provider):
         prompt_handler = await container.resolve(PromptHandler)
         sampling_handler = await container.resolve_optional(SamplingHandler)
         logging_handler = await container.resolve_optional(LoggingHandler)
+        authorizer = await container.resolve_optional(MCPAuthorizerProtocol)
 
         server = MCPServer(
             name=self._config.server_name,
@@ -418,6 +426,8 @@ class MCPProvider(Provider):
             prompt_handler=prompt_handler,
             sampling_handler=sampling_handler,
             logging_handler=logging_handler,
+            authorizer=authorizer,
+            allow_unauthenticated=self._config.allow_unauthenticated,
         )
 
         registrar = cast("ContainerRegistrarProtocol", container)

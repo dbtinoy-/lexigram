@@ -109,8 +109,8 @@ class CLIPEmbedding:
             # callers see a helpful message rather than package internals.
             try:
                 from PIL import Image as _Image
-                import torch as _torch  # type: ignore[import-not-found]
-                from transformers import (  # type: ignore[import-not-found]
+                import torch as _torch
+                from transformers import (
                     CLIPModel as _CLIPModel,
                 )
                 from transformers import CLIPProcessor as _CLIPProcessor

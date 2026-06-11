@@ -112,7 +112,7 @@ Valid URL prefixes: `sqlite`, `postgresql`, `postgres`, `mysql`, `mariadb`, `ora
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `default_page_size` | `int` | `20` | Default pagination page size |
-| `max_page_size` | `int` | `100` | Maximum allowed page size |
+| `max_page_size` | `int` | `1000` | Maximum allowed page size |
 | `default_cursor_size` | `int` | `20` | Default cursor pagination size |
 
 ---

@@ -48,7 +48,10 @@ web:
 
 ## CSRF Protection
 
-CSRF protection is enabled by default via lexigram-web's `SecurityConfig`:
+CSRF protection is opt-in: `CSRFProtectionMiddleware` is added only when
+`SecurityConfig.security.csrf.enabled` is `true` (default `false`). When
+enabled, `csrf.secret_key` must be set — token generation and validation fail
+closed (`ValueError`) without it.
 
 ```yaml
 web:

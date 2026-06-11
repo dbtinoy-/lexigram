@@ -45,6 +45,7 @@ class VectorMemoryBackend:
 
     def _to_document(self, entry: MemoryEntry) -> Document:
         metadata: dict[str, Any] = {
+            "owner_id": entry.owner_id,
             "content": entry.content,
             "role": entry.role,
             "timestamp": entry.timestamp.isoformat(),
@@ -72,6 +73,7 @@ class VectorMemoryBackend:
 
         entry = MemoryEntry(
             id=hit.document.id or "",
+            owner_id=str(metadata.get("owner_id", "")),
             content=metadata.get("content", hit.document.text),
             role=str(metadata.get("role", "user")),
             timestamp=timestamp,
@@ -94,6 +96,7 @@ class VectorMemoryBackend:
         doc = self._to_document(
             MemoryEntry(
                 id=entry.id,
+                owner_id=entry.owner_id,
                 content=entry.content,
                 role=entry.role,
                 timestamp=entry.timestamp,
@@ -116,7 +119,11 @@ class VectorMemoryBackend:
         search_result = await self._vs.search(
             query_vector,
             top_k=query.top_k,
-            filters={"collection": self._collection, **(query.filters or {})},
+            filters={
+                "collection": self._collection,
+                "owner_id": query.owner_id,
+                **(query.filters or {}),
+            },
         )
         if search_result.is_err():
             raise MemoryStoreError(
@@ -127,12 +134,12 @@ class VectorMemoryBackend:
         results = [self._to_memory_result(hit, query) for hit in hits]
         return [result for result in results if result.score >= query.min_relevance]
 
-    async def get_recent(self, n: int) -> list[MemoryEntry]:
+    async def get_recent(self, n: int, owner_id: str) -> list[MemoryEntry]:
         if self._fallback is None:
             return []
-        return await self._fallback.get_recent(n)
+        return await self._fallback.get_recent(n, owner_id)
 
-    async def delete(self, entry_id: str) -> None:
+    async def delete(self, entry_id: str, owner_id: str) -> None:
         delete_result = await self._vs.delete([entry_id])
         if delete_result.is_err():
             raise MemoryStoreError(
@@ -140,11 +147,11 @@ class VectorMemoryBackend:
                 store="vector",
             ) from delete_result.unwrap_err()
         if self._fallback is not None:
-            await self._fallback.delete(entry_id)
+            await self._fallback.delete(entry_id, owner_id)
 
-    async def clear(self) -> None:
+    async def clear(self, owner_id: str) -> None:
         if self._fallback is not None:
-            await self._fallback.clear()
+            await self._fallback.clear(owner_id)
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         return HealthCheckResult(

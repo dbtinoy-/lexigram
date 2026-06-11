@@ -126,6 +126,7 @@ class SummaryMemoryStore:
         avg_imp = sum(e.importance for e in entries) / len(entries)
         return MemoryEntry(
             id=str(uuid4()),
+            owner_id=entries[0].owner_id,
             content=f"[summary:{len(entries)} turns] {combined}",
             role="system",
             timestamp=datetime.now(UTC),

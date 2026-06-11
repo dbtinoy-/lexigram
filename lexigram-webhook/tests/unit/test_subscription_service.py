@@ -15,7 +15,9 @@ from lexigram.webhook.subscription.service import WebhookSubscriptionService
 
 
 @pytest.fixture
-def service(store: InMemoryWebhookStore, config: WebhookConfig) -> WebhookSubscriptionService:
+def service(
+    store: InMemoryWebhookStore, config: WebhookConfig
+) -> WebhookSubscriptionService:
     """WebhookSubscriptionService wired with in-memory store."""
     return WebhookSubscriptionService(store=store, config=config)
 
@@ -24,9 +26,7 @@ class TestWebhookSubscriptionService:
     """Tests for WebhookSubscriptionService."""
 
     @pytest.mark.asyncio
-    async def test_create_valid_url(
-        self, service: WebhookSubscriptionService
-    ) -> None:
+    async def test_create_valid_url(self, service: WebhookSubscriptionService) -> None:
         """create() with valid URL returns Ok(subscription)."""
         result = await service.create("https://example.com/hook")
         assert result.is_ok()
@@ -83,9 +83,7 @@ class TestWebhookSubscriptionService:
         assert isinstance(result.unwrap_err(), InvalidWebhookURLError)
 
     @pytest.mark.asyncio
-    async def test_get_existing(
-        self, service: WebhookSubscriptionService
-    ) -> None:
+    async def test_get_existing(self, service: WebhookSubscriptionService) -> None:
         """get() returns Ok(subscription) for existing subscription."""
         create_result = await service.create("https://example.com/hook")
         sub_id = create_result.unwrap().subscription_id
@@ -121,9 +119,7 @@ class TestWebhookSubscriptionService:
         assert "previous_secret_expires" in updated.metadata
 
     @pytest.mark.asyncio
-    async def test_deactivate(
-        self, service: WebhookSubscriptionService
-    ) -> None:
+    async def test_deactivate(self, service: WebhookSubscriptionService) -> None:
         """deactivate() sets active=False."""
         create_result = await service.create("https://example.com/hook")
         sub_id = create_result.unwrap().subscription_id
@@ -135,9 +131,7 @@ class TestWebhookSubscriptionService:
         assert get_result.unwrap().active is False
 
     @pytest.mark.asyncio
-    async def test_activate(
-        self, service: WebhookSubscriptionService
-    ) -> None:
+    async def test_activate(self, service: WebhookSubscriptionService) -> None:
         """activate() sets active=True after deactivation."""
         create_result = await service.create("https://example.com/hook")
         sub_id = create_result.unwrap().subscription_id

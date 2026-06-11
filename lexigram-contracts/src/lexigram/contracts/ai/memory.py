@@ -19,6 +19,7 @@ class MemoryEntry:
 
     Attributes:
         id: Unique identifier for the entry
+        owner_id: Owner scope for the entry (user, session, or composite)
         content: The actual content/text of the memory
         role: The role (e.g., "user", "assistant", "system")
         timestamp: When this entry was created
@@ -28,6 +29,7 @@ class MemoryEntry:
     """
 
     id: str
+    owner_id: str
     content: str
     role: str
     timestamp: datetime
@@ -41,6 +43,7 @@ class MemoryQuery:
     """Query parameters for searching memory.
 
     Attributes:
+        owner_id: Owner scope the query is restricted to (user, session, or composite)
         query: The search query text
         top_k: Number of results to return (default 10)
         min_relevance: Minimum relevance score threshold (default 0.0)
@@ -51,6 +54,7 @@ class MemoryQuery:
         time_range: Optional (start_datetime, end_datetime) range
     """
 
+    owner_id: str
     query: str
     top_k: int = 10
     min_relevance: float = 0.0
@@ -139,27 +143,33 @@ class MemoryStoreProtocol(Protocol):
         """
         ...
 
-    async def get_recent(self, n: int) -> list[MemoryEntry]:
-        """Get the N most recent entries.
+    async def get_recent(self, n: int, owner_id: str) -> list[MemoryEntry]:
+        """Get the N most recent entries owned by ``owner_id``.
 
         Args:
             n: Number of entries to return
+            owner_id: Owner scope; only this owner's entries are returned
 
         Returns:
             List of recent entries in descending temporal order
         """
         ...
 
-    async def delete(self, entry_id: str) -> None:
-        """Delete an entry by ID.
+    async def delete(self, entry_id: str, owner_id: str) -> None:
+        """Delete an entry by ID, scoped to ``owner_id``.
 
         Args:
             entry_id: ID of the entry to delete
+            owner_id: Owner scope; only this owner's entry may be deleted
         """
         ...
 
-    async def clear(self) -> None:
-        """Clear all entries from the store."""
+    async def clear(self, owner_id: str) -> None:
+        """Clear all entries owned by ``owner_id`` from the store.
+
+        Args:
+            owner_id: Owner scope; only this owner's entries are cleared
+        """
         ...
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
@@ -175,7 +185,14 @@ class WorkingMemoryProtocol(Protocol):
     assembled from episodic and semantic memory based on token budgets.
     """
 
-    async def assemble(self, query: str, token_budget: int) -> list[MemoryEntry]:
+    async def assemble(
+        self,
+        query: str,
+        token_budget: int,
+        *,
+        owner_id: str,
+        session_id: str | None = None,
+    ) -> list[MemoryEntry]:
         """Assemble context window from available memory tiers.
 
         Retrieves relevant entries from episodic and semantic memory
@@ -184,6 +201,8 @@ class WorkingMemoryProtocol(Protocol):
         Args:
             query: The current query/prompt
             token_budget: Maximum tokens available for context
+            owner_id: Owner scope; only this owner's memory is assembled
+            session_id: Optional session scope for session-specific memory
 
         Returns:
             Ordered list of memory entries for context
@@ -249,11 +268,12 @@ class EpisodicMemoryProtocol(Protocol):
         """
         ...
 
-    async def forget(self, entry_id: str) -> None:
-        """Forget/delete a specific episode.
+    async def forget(self, entry_id: str, owner_id: str) -> None:
+        """Forget/delete a specific episode, scoped to ``owner_id``.
 
         Args:
             entry_id: ID of the episode to forget
+            owner_id: Owner scope; only this owner's episode may be forgotten
         """
         ...
 

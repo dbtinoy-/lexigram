@@ -179,6 +179,7 @@ class SessionManagerImpl(SessionManagerProtocol):
         if self._memory is not None:
             entry = MemoryEntry(
                 id=turn.turn_id,
+                owner_id=state.user_id or session_id,
                 content=turn.content,
                 role=turn.role,
                 timestamp=turn.timestamp,

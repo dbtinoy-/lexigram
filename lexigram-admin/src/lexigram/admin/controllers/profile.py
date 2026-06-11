@@ -160,7 +160,9 @@ class ProfileController(AdminController):
             user_id=str(user.user_id),
             mfa_enabled=mfa_enabled,
             csrf_token=self._csrf_token(request),
-            current_password_err=str(request.query_params.get("current_password_err", "")),
+            current_password_err=str(
+                request.query_params.get("current_password_err", "")
+            ),
             new_password_err=str(request.query_params.get("new_password_err", "")),
             confirmation_err=str(request.query_params.get("confirmation_err", "")),
         )
@@ -203,7 +205,9 @@ class ProfileController(AdminController):
                 url="/admin/login?next=/admin/profile", status_code=302
             )
         if self._user_store is None:
-            return self._redirect("/admin/profile", "Password change is unavailable.", True)
+            return self._redirect(
+                "/admin/profile", "Password change is unavailable.", True
+            )
 
         form = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form.get("csrf_token", ""))
@@ -218,11 +222,21 @@ class ProfileController(AdminController):
                 True,
             )
         if not current or not new_password or not confirmation:
-            params = [p for p in (
-                "current_password_err=Current%20password%20is%20required." if not current else "",
-                "new_password_err=New%20password%20is%20required." if not new_password else "",
-                "confirmation_err=Please%20confirm%20the%20new%20password." if not confirmation else "",
-            ) if p]
+            params = [
+                p
+                for p in (
+                    "current_password_err=Current%20password%20is%20required."
+                    if not current
+                    else "",
+                    "new_password_err=New%20password%20is%20required."
+                    if not new_password
+                    else "",
+                    "confirmation_err=Please%20confirm%20the%20new%20password."
+                    if not confirmation
+                    else "",
+                )
+                if p
+            ]
             return RedirectResponse(
                 url=f"/admin/profile?{'&'.join(params)}",
                 status_code=302,
@@ -264,6 +278,4 @@ class ProfileController(AdminController):
             email=user.email,
         )
         logger.info("profile.password_changed", email=user.email)
-        return self._redirect(
-            "/admin/profile", "Password updated successfully."
-        )
+        return self._redirect("/admin/profile", "Password updated successfully.")

@@ -8,7 +8,16 @@ import pytest
 
 from lexigram.ai.mcp.config import MCPConfig
 from lexigram.ai.mcp.di.provider import MCPProvider
+from lexigram.ai.mcp.server.core import MCPServer
+from lexigram.ai.mcp.server.handlers import (
+    LoggingHandler,
+    PromptHandler,
+    ResourceHandler,
+    SamplingHandler,
+    ToolHandler,
+)
 from lexigram.ai.mcp.transport import SSETransport, StdioTransport
+from lexigram.contracts.mcp.protocols import MCPAuthorizerProtocol
 
 
 class _ContainerStub:
@@ -17,6 +26,12 @@ class _ContainerStub:
 
     def singleton(self, service_type: type, instance: object) -> None:
         self.bindings[service_type] = instance
+
+    async def resolve(self, service_type: type) -> object:
+        return self.bindings[service_type]
+
+    async def resolve_optional(self, service_type: type) -> object | None:
+        return self.bindings.get(service_type)
 
 
 @pytest.mark.asyncio
@@ -47,3 +62,64 @@ def test_boot_transports_registers_concrete_transport_instances() -> None:
 
     assert isinstance(container.bindings[SSETransport], SSETransport)
     assert isinstance(container.bindings[StdioTransport], StdioTransport)
+
+
+def _handler_stubs() -> dict[type, object]:
+    return {
+        ToolHandler: AsyncMock(),
+        ResourceHandler: AsyncMock(),
+        PromptHandler: AsyncMock(),
+        SamplingHandler: AsyncMock(),
+        LoggingHandler: AsyncMock(),
+    }
+
+
+async def _boot_server_with(
+    container: _ContainerStub, config: MCPConfig | None = None
+) -> MCPProvider:
+    provider = MCPProvider(config=config or MCPConfig())
+    container.bindings.update(_handler_stubs())
+    await provider._boot_server(container)
+    return provider
+
+
+@pytest.mark.asyncio
+async def test_boot_server_threads_bound_authorizer() -> None:
+    """_boot_server() should resolve and thread a bound MCPAuthorizerProtocol."""
+    container = _ContainerStub()
+    sentinel = AsyncMock()
+    container.bindings[MCPAuthorizerProtocol] = sentinel
+
+    await _boot_server_with(container)
+
+    server = container.bindings[MCPServer]
+    assert isinstance(server, MCPServer)
+    assert server._authorizer is sentinel
+    assert server._allow_unauthenticated is False
+
+
+@pytest.mark.asyncio
+async def test_boot_server_fail_closed_when_unbound() -> None:
+    """_boot_server() without an authorizer stays fail-closed by default."""
+    container = _ContainerStub()
+
+    await _boot_server_with(container)
+
+    server = container.bindings[MCPServer]
+    assert isinstance(server, MCPServer)
+    assert server._authorizer is None
+    assert server._allow_unauthenticated is False
+
+
+@pytest.mark.asyncio
+async def test_boot_server_threads_allow_unauthenticated_config() -> None:
+    """_boot_server() should thread MCPConfig.allow_unauthenticated."""
+    container = _ContainerStub()
+
+    provider = await _boot_server_with(
+        container, config=MCPConfig(allow_unauthenticated=True)
+    )
+    server = container.bindings[MCPServer]
+    assert isinstance(server, MCPServer)
+    assert server._allow_unauthenticated is True
+    assert provider is not None

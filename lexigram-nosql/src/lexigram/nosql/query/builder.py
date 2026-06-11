@@ -5,6 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from lexigram.nosql.exceptions import NoSQLFilterError
+from lexigram.nosql.security import (
+    _regex_shape_ok,
+    validate_field_name,
+    validate_filter,
+)
+
 
 @dataclass
 class DocumentQuery:
@@ -58,12 +65,22 @@ class DocumentQueryBuilder:
     # ── Equality filters ─────────────────────────────────────────
 
     def where(self, field: str, value: Any) -> DocumentQueryBuilder:
-        """Exact match filter."""
+        """Exact match filter.
+
+        Args:
+            field: Field name. ``$``-prefixed operator names are rejected.
+            value: Exact value to match.
+
+        Returns:
+            The builder, for chaining.
+        """
+        validate_field_name(field)
         self._filter[field] = value
         return self
 
     def where_ne(self, field: str, value: Any) -> DocumentQueryBuilder:
         """Not-equal filter."""
+        validate_field_name(field)
         self._filter[field] = {"$ne": value}
         return self
 
@@ -71,21 +88,25 @@ class DocumentQueryBuilder:
 
     def where_gt(self, field: str, value: Any) -> DocumentQueryBuilder:
         """Greater-than filter."""
+        validate_field_name(field)
         self._filter[field] = {"$gt": value}
         return self
 
     def where_gte(self, field: str, value: Any) -> DocumentQueryBuilder:
         """Greater-than-or-equal filter."""
+        validate_field_name(field)
         self._filter[field] = {"$gte": value}
         return self
 
     def where_lt(self, field: str, value: Any) -> DocumentQueryBuilder:
         """Less-than filter."""
+        validate_field_name(field)
         self._filter[field] = {"$lt": value}
         return self
 
     def where_lte(self, field: str, value: Any) -> DocumentQueryBuilder:
         """Less-than-or-equal filter."""
+        validate_field_name(field)
         self._filter[field] = {"$lte": value}
         return self
 
@@ -96,6 +117,7 @@ class DocumentQueryBuilder:
         high: Any,
     ) -> DocumentQueryBuilder:
         """Range filter (inclusive on both ends)."""
+        validate_field_name(field)
         self._filter[field] = {"$gte": low, "$lte": high}
         return self
 
@@ -103,11 +125,13 @@ class DocumentQueryBuilder:
 
     def where_in(self, field: str, values: list[Any]) -> DocumentQueryBuilder:
         """In-set filter."""
+        validate_field_name(field)
         self._filter[field] = {"$in": values}
         return self
 
     def where_not_in(self, field: str, values: list[Any]) -> DocumentQueryBuilder:
         """Not-in-set filter."""
+        validate_field_name(field)
         self._filter[field] = {"$nin": values}
         return self
 
@@ -119,11 +143,13 @@ class DocumentQueryBuilder:
         exists: bool = True,
     ) -> DocumentQueryBuilder:
         """Field existence filter."""
+        validate_field_name(field)
         self._filter[field] = {"$exists": exists}
         return self
 
     def where_type(self, field: str, bson_type: str) -> DocumentQueryBuilder:
         """BSON type filter."""
+        validate_field_name(field)
         self._filter[field] = {"$type": bson_type}
         return self
 
@@ -135,24 +161,75 @@ class DocumentQueryBuilder:
         pattern: str,
         options: str = "",
     ) -> DocumentQueryBuilder:
-        """Regular expression filter."""
+        """Regular expression filter.
+
+        Args:
+            field: Field name.
+            pattern: Regex pattern, gated by the shared shape predicate.
+            options: Regex options, restricted to ``i``/``m``/``x``/``s``/``u``.
+
+        Returns:
+            The builder, for chaining.
+
+        Raises:
+            NoSQLFilterError: If the pattern or options fail the shape gate.
+        """
+        validate_field_name(field)
+        if not _regex_shape_ok(pattern, options):
+            raise NoSQLFilterError("Invalid regex pattern or options")
         self._filter[field] = {"$regex": pattern, "$options": options}
         return self
 
     def where_text(self, search: str) -> DocumentQueryBuilder:
-        """Full-text search filter."""
+        """Full-text search filter.
+
+        Args:
+            search: Non-empty search string.
+
+        Returns:
+            The builder, for chaining.
+
+        Raises:
+            NoSQLFilterError: If *search* is not a non-empty string.
+        """
+        if not isinstance(search, str) or not search:
+            raise NoSQLFilterError("$text requires a non-empty string search")
         self._filter["$text"] = {"$search": search}
         return self
 
     # ── Logical combinators ──────────────────────────────────────
 
     def and_where(self, *conditions: dict[str, Any]) -> DocumentQueryBuilder:
-        """Logical AND of multiple conditions."""
+        """Logical AND of multiple conditions.
+
+        Args:
+            *conditions: Condition filters, validated at insertion.
+
+        Returns:
+            The builder, for chaining.
+
+        Raises:
+            NoSQLFilterError: If any condition is rejected.
+        """
+        for condition in conditions:
+            validate_filter(condition)
         self._filter["$and"] = list(conditions)
         return self
 
     def or_where(self, *conditions: dict[str, Any]) -> DocumentQueryBuilder:
-        """Logical OR of multiple conditions."""
+        """Logical OR of multiple conditions.
+
+        Args:
+            *conditions: Condition filters, validated at insertion.
+
+        Returns:
+            The builder, for chaining.
+
+        Raises:
+            NoSQLFilterError: If any condition is rejected.
+        """
+        for condition in conditions:
+            validate_filter(condition)
         self._filter["$or"] = list(conditions)
         return self
 

@@ -74,6 +74,7 @@ class MemoryPruner:
 
     async def prune(
         self,
+        owner_id: str,
         importance_threshold: float = 0.1,
         max_age_hours: float = 0.0,
         dry_run: bool = False,
@@ -85,6 +86,7 @@ class MemoryPruner:
         - ``age > max_age_hours`` (if ``max_age_hours > 0``)
 
         Args:
+            owner_id: Owner scope restricting pruning to one owner's entries.
             importance_threshold: Prune entries below this importance score.
             max_age_hours: Prune entries older than this (0 = disabled).
             dry_run: If ``True``, report what would be pruned without deleting.
@@ -97,6 +99,7 @@ class MemoryPruner:
         # Retrieve all entries with a broad query
         all_results = await self._store.retrieve(
             MemoryQuery(
+                owner_id=owner_id,
                 query="",
                 top_k=10_000,
                 recency_weight=0.0,
@@ -131,7 +134,7 @@ class MemoryPruner:
 
         if not dry_run and to_prune:
             for entry_id in to_prune:
-                await self._store.delete(entry_id)
+                await self._store.delete(entry_id, owner_id)
 
         remaining = len(all_results) - len(to_prune)
 

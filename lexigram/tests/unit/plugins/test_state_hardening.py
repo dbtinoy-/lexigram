@@ -105,9 +105,7 @@ def test_concurrent_updates_do_not_lose_entries(tmp_path: Path) -> None:
         except BaseException as exc:  # pragma: no cover
             errors.append(exc)
 
-    threads = [
-        threading.Thread(target=worker, args=(str(i),)) for i in range(4)
-    ]
+    threads = [threading.Thread(target=worker, args=(str(i),)) for i in range(4)]
     for t in threads:
         t.start()
     for t in threads:

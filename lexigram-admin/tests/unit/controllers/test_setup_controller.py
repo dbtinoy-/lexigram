@@ -17,7 +17,9 @@ from lexigram.result import Err, Ok
 class _FakeCreatedUser:
     """Minimal created-user shape returned by claim_first_admin."""
 
-    def __init__(self, user_id: str = "u-created", email: str = "admin@test.com") -> None:
+    def __init__(
+        self, user_id: str = "u-created", email: str = "admin@test.com"
+    ) -> None:
         self.user_id = user_id
         self.name = "Admin"
         self.email = email

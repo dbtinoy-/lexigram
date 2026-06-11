@@ -53,6 +53,20 @@ async def test_upscale_returns_err_on_non_200() -> None:
 
 
 @pytest.mark.asyncio
+async def test_upscale_returns_err_on_disallowed_mime_type() -> None:
+    provider = HatUpscaleProvider(base_url="http://localhost:5401")
+    source = MediaAsset(mime_type="application/pdf", provider="test", bytes_data=b"x")
+
+    with patch(
+        "aiohttp.ClientSession.post", side_effect=AssertionError("fetch attempted")
+    ):
+        result = await provider.upscale(UpscaleRequest(asset=source))
+
+    assert result.is_err()
+    assert "media allowlist" in str(result.unwrap_err())
+
+
+@pytest.mark.asyncio
 async def test_upscale_returns_err_on_connection_error() -> None:
     provider = HatUpscaleProvider(base_url="http://localhost:5401")
     source = MediaAsset(mime_type="image/png", provider="test", bytes_data=b"source-png")

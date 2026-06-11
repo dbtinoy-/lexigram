@@ -29,6 +29,7 @@ def sample_entries() -> list[MemoryEntry]:
     return [
         MemoryEntry(
             id="entry-1",
+            owner_id="owner-1",
             content="First entry with some content",
             role="user",
             timestamp=now,
@@ -36,6 +37,7 @@ def sample_entries() -> list[MemoryEntry]:
         ),
         MemoryEntry(
             id="entry-2",
+            owner_id="owner-1",
             content="Second entry with longer content " * 10,
             role="assistant",
             timestamp=datetime(2024, 1, 2, tzinfo=timezone.utc),
@@ -43,6 +45,7 @@ def sample_entries() -> list[MemoryEntry]:
         ),
         MemoryEntry(
             id="entry-3",
+            owner_id="owner-1",
             content="Third entry",
             role="system",
             timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc),

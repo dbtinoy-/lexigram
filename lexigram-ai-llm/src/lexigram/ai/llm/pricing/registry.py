@@ -25,7 +25,7 @@ def _tiktoken_available() -> bool:
 def _transformers_available() -> bool:
     """Check if HuggingFace transformers is installed."""
     try:
-        import transformers  # type: ignore[import-not-found]  # noqa: F401
+        import transformers  # noqa: F401
 
         return True
     except ImportError:

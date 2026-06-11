@@ -52,7 +52,7 @@ class TestM18ResiliencePipelineHook:
         resilience = MagicMock()
         resilience.execute = AsyncMock(return_value=fake_response)
 
-        client = HTTPClient(config=HTTPClientConfig(), resilience=resilience)
+        client = HTTPClient(config=HTTPClientConfig(enforce_url_safety=False), resilience=resilience)
 
         # Patch _to_http_response so we don't need a real aiohttp response
         with patch(
@@ -77,7 +77,7 @@ class TestM18ResiliencePipelineHook:
             json=None, url="http://example.com/test", method="GET",
         )
 
-        client = HTTPClient(config=HTTPClientConfig())
+        client = HTTPClient(config=HTTPClientConfig(enforce_url_safety=False))
         assert client._resilience is None
 
         with (

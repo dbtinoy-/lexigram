@@ -89,6 +89,12 @@ class HTTPStatusError(HTTPClientError):
         )
 
 
+class HTTPUnsafeURLError(HTTPClientError):
+    """Raised when a request URL fails the SSRF safety gate."""
+
+    _code: str = "LEX_ERR_HTTP_008"
+
+
 __all__ = [
     "HTTPCircuitOpenError",
     "HTTPClientError",
@@ -97,4 +103,5 @@ __all__ = [
     "HTTPRetryExhaustedError",
     "HTTPStatusError",
     "HTTPTimeoutError",
+    "HTTPUnsafeURLError",
 ]

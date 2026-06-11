@@ -26,8 +26,8 @@ _pipeline: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _pipeline
-    from diffusers import StableVideoDiffusionPipeline  # type: ignore[import-not-found]
-    import torch  # type: ignore[import-not-found]
+    from diffusers import StableVideoDiffusionPipeline
+    import torch
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _pipeline = StableVideoDiffusionPipeline.from_pretrained(

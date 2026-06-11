@@ -15,6 +15,7 @@ Result semantics (verb methods only):
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 import time
 from typing import TYPE_CHECKING, Any
@@ -36,6 +37,7 @@ from lexigram.contracts.infra.resilience import (
 from lexigram.contracts.infra.resilience import (
     RetryError as _CoreRetryError,
 )
+from lexigram.contracts.security import is_safe_url_for_request
 from lexigram.contracts.web import HttpResponse, InterceptorProtocol
 from lexigram.contracts.web.sse import ServerSentEvent
 from lexigram.http.config import HTTPClientConfig
@@ -46,6 +48,7 @@ from lexigram.http.exceptions import (
     HTTPRetryExhaustedError,
     HTTPStatusError,
     HTTPTimeoutError,
+    HTTPUnsafeURLError,
 )
 from lexigram.http.pool import ConnectionPool
 from lexigram.http.types import RequestContext
@@ -198,6 +201,20 @@ class HTTPClient:
         """Stop the HTTP client and close the connection pool."""
         await self._pool.stop()
 
+    async def _assert_url_safe(self, url: str) -> None:
+        """Reject URLs that could reach private/reserved hosts (SSRF gate).
+
+        Args:
+            url: The request target URL to validate.
+
+        Raises:
+            HTTPUnsafeURLError: If the URL could reach a private or reserved host.
+        """
+        if self._config.enforce_url_safety and not await asyncio.to_thread(
+            is_safe_url_for_request, url
+        ):
+            raise HTTPUnsafeURLError(f"Unsafe URL rejected: {url!r}")
+
     async def request(self, method: str, url: str, **kwargs: Any) -> HttpResponse:
         """Make an HTTP request with retry and optional circuit-breaker protection.
 
@@ -243,6 +260,11 @@ class HTTPClient:
         _kwargs = dict(kwargs)
         _kwargs["headers"] = request_ctx.headers
 
+        # SSRF gate: reject URLs that could reach private/reserved hosts.
+        # Runs after the interceptor loop so the final, rewritten URL is
+        # what gets validated.
+        await self._assert_url_safe(_url)
+
         # Short-circuit immediately when circuit is already open
         if self._circuit_breaker and (
             getattr(self._circuit_breaker.state, "value", self._circuit_breaker.state)
@@ -271,7 +293,7 @@ class HTTPClient:
             if self._resilience is not None:
                 raw = await self._resilience.execute(_execute)
             else:
-                raw = await self._retry_policy.execute(_execute)
+                raw = await self._retry_policy.execute(_execute, method=_method)
         except (
             Exception
         ) as exc:  # HTTP client must normalise all resilience library exceptions
@@ -551,6 +573,8 @@ class HTTPClient:
         if self._pool._session is None:
             raise HTTPConnectionError("HTTPClient not started. Call start() first.")
 
+        await self._assert_url_safe(url)
+
         async with self._pool._session.request(method, url, **kwargs) as resp:  # type: ignore[attr-defined]
 
             async def _iter_chunks() -> AsyncIterator[bytes]:
@@ -593,6 +617,8 @@ class HTTPClient:
         """
         if self._pool._session is None:
             raise HTTPConnectionError("HTTPClient not started. Call start() first.")
+
+        await self._assert_url_safe(url)
 
         headers = dict(kwargs.pop("headers", {}))
         headers.setdefault("Accept", "text/event-stream")

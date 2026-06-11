@@ -192,6 +192,13 @@ class TestMCPConfig:
         assert config.cors_origins == []
         assert config.max_request_size == 1024 * 1024
         assert config.request_timeout == 30.0
+        assert config.allow_unauthenticated is False
+
+    def test_allow_unauthenticated_opt_in(self) -> None:
+        from lexigram.ai.mcp.config import MCPConfig
+
+        config = MCPConfig(allow_unauthenticated=True)
+        assert config.allow_unauthenticated is True
 
     def test_custom_values(self) -> None:
         from lexigram.ai.mcp.config import MCPConfig

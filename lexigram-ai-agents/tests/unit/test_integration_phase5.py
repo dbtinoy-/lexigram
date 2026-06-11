@@ -94,6 +94,7 @@ class TestExecutorWorkingMemoryAssembly:
             return_value=[
                 MemoryEntry(
                     id="m1",
+                    owner_id="owner-1",
                     content="prior context",
                     role="assistant",
                     timestamp=datetime.now(UTC),

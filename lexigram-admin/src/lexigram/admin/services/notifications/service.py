@@ -349,7 +349,8 @@ class AdminNotificationService:
             "successful": successful,
             "failed": failed,
             "duration": duration,
-            "results_url": results_url or f"{getattr(self.config, 'base_url', '')}/{resource}",
+            "results_url": results_url
+            or f"{getattr(self.config, 'base_url', '')}/{resource}",
         }
 
         subject, body, html_body = self.template_renderer.render_template(

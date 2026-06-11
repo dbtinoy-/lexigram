@@ -11,6 +11,7 @@ from lexigram.contracts.data.vector.filters import (
     MetadataConditionGroup,
 )
 from lexigram.vector.filters.compiler import FilterCompiler
+from lexigram.vector.filters.validation import validate_metadata_field
 
 _OP_MAP: dict[FilterOperator, str] = {
     FilterOperator.EQ: "=",
@@ -58,6 +59,7 @@ class PgVectorFilterCompiler(FilterCompiler):
         field = condition.field
         op = condition.operator
         value = condition.value
+        validate_metadata_field(field)
 
         json_path = f"metadata->>'{field}'"
 

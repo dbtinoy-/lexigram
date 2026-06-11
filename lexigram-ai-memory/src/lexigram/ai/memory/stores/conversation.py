@@ -33,13 +33,20 @@ class ConversationMemoryStore:
     async def store(self, entry: MemoryEntry) -> None:
         """Persist *entry* under its session (from metadata).
 
-        The session is derived from ``entry.metadata["session_id"]`` when
-        present, otherwise filed under a ``"_default"`` session.
+        Requires ``entry.metadata["session_id"]``; when absent the entry
+        is skipped with a logged warning — nothing is filed under a
+        default scope.
 
         Args:
             entry: Memory entry to store.
         """
-        session_id: str = entry.metadata.get("session_id", "_default")
+        session_id: str | None = entry.metadata.get("session_id")
+        if not session_id:
+            logger.warning(
+                "memory_store_missing_session_scope",
+                entry_id=entry.id,
+            )
+            return
         session_turns = self._sessions[session_id]
         session_turns.append(entry)
         if len(session_turns) > self._max:
@@ -50,19 +57,20 @@ class ConversationMemoryStore:
     async def retrieve(self, query: MemoryQuery) -> list[MemorySearchResult]:
         """Return entries for the session specified in *query.filters*.
 
-        Falls back to all entries if no session_id filter is given.
+        Requires a session_id filter; returns empty when absent.
 
         Args:
-            query: Search parameters including optional ``session_id`` filter.
+            query: Search parameters including the required ``session_id``
+                filter.
 
         Returns:
             Most recent entries for the matching session.
         """
         session_id = query.filters.get("session_id")
-        if session_id:
-            entries = self._sessions.get(session_id, [])
-        else:
-            entries = list(self._all.values())
+        if not session_id:
+            logger.warning("memory_retrieve_missing_session_scope")
+            return []
+        entries = self._sessions.get(session_id, [])
 
         recent = sorted(entries, key=lambda e: e.timestamp, reverse=True)[: query.top_k]
         return [
@@ -70,16 +78,21 @@ class ConversationMemoryStore:
             for e in recent
         ]
 
-    async def get_recent(self, n: int) -> list[MemoryEntry]:
-        """Return the *n* globally most recent entries.
+    async def get_recent(self, n: int, session_id: str) -> list[MemoryEntry]:
+        """Return the *n* most recent entries for one session.
 
         Args:
             n: Maximum entries to return.
+            session_id: Session whose entries are returned.
 
         Returns:
             Entries ordered newest-first.
         """
-        return sorted(self._all.values(), key=lambda e: e.timestamp, reverse=True)[:n]
+        return sorted(
+            self._sessions.get(session_id, []),
+            key=lambda e: e.timestamp,
+            reverse=True,
+        )[:n]
 
     async def delete(self, entry_id: str) -> None:
         """Remove entry from all sessions.

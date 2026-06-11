@@ -20,7 +20,7 @@ from lexigram.logging import (
 logger = get_logger(__name__)
 
 try:
-    import librosa  # type: ignore[import-not-found]
+    import librosa
 
     # import soundfile as sf
 
@@ -29,7 +29,7 @@ except ImportError:
     LIBROSA_AVAILABLE = False
 
 try:
-    import mutagen  # type: ignore[import-not-found]
+    import mutagen
 
     MUTAGEN_AVAILABLE = True
 except ImportError:
@@ -301,7 +301,7 @@ class AudioLoader:
             Transcribed text
         """
         try:
-            import whisper  # type: ignore[import-not-found]
+            import whisper
         except ImportError:
             logger.warning("Whisper not installed. Skipping transcription.")
             return ""

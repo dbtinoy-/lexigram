@@ -17,15 +17,18 @@ from lexigram.serialization.backends.json import dumps_str, loads
 if TYPE_CHECKING:
     from lexigram.contracts.data import DatabaseProviderProtocol
 
-_SELECT_ALL = "SELECT id, content, role, timestamp, importance, metadata, embedding FROM memory_entries"
+_SELECT_ALL = (
+    "SELECT id, owner_id, content, role, timestamp, importance, metadata, embedding"
+    " FROM memory_entries WHERE owner_id = $1"
+)
 _INSERT = (
-    "INSERT INTO memory_entries (id, content, role, timestamp, importance, metadata, embedding)"
-    " VALUES ($1,$2,$3,$4,$5,$6,$7)"
+    "INSERT INTO memory_entries (id, owner_id, content, role, timestamp, importance, metadata, embedding)"
+    " VALUES ($1,$2,$3,$4,$5,$6,$7,$8)"
     " ON CONFLICT (id) DO UPDATE SET content=EXCLUDED.content, importance=EXCLUDED.importance"
 )
-_DELETE = "DELETE FROM memory_entries WHERE id = $1"
-_CLEAR = "DELETE FROM memory_entries"
-_RECENT = f"{_SELECT_ALL} ORDER BY timestamp DESC LIMIT $1"
+_DELETE = "DELETE FROM memory_entries WHERE id = $1 AND owner_id = $2"
+_CLEAR = "DELETE FROM memory_entries WHERE owner_id = $1"
+_RECENT = f"{_SELECT_ALL} ORDER BY timestamp DESC LIMIT $2"
 
 
 def _normalise_timestamp(value: Any) -> datetime:
@@ -52,6 +55,7 @@ def _row_to_entry(row: dict[str, Any]) -> MemoryEntry:
 
     return MemoryEntry(
         id=str(row["id"]),
+        owner_id=str(row["owner_id"]),
         content=str(row["content"]),
         role=str(row["role"]),
         timestamp=_normalise_timestamp(row["timestamp"]),
@@ -74,6 +78,7 @@ class DatabaseMemoryBackend:
                 _INSERT,
                 [
                     entry.id,
+                    entry.owner_id,
                     entry.content,
                     entry.role,
                     entry.timestamp,
@@ -86,7 +91,7 @@ class DatabaseMemoryBackend:
     async def retrieve(self, query: MemoryQuery) -> list[MemorySearchResult]:
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
-            query_result = await conn.execute(_SELECT_ALL)
+            query_result = await conn.execute(_SELECT_ALL, [query.owner_id])
 
         entries = [_row_to_entry(row) for row in query_result.rows]
         scored: list[tuple[float, MemoryEntry]] = []
@@ -116,21 +121,21 @@ class DatabaseMemoryBackend:
             for score, entry in scored[: query.top_k]
         ]
 
-    async def get_recent(self, n: int) -> list[MemoryEntry]:
+    async def get_recent(self, n: int, owner_id: str) -> list[MemoryEntry]:
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
-            query_result = await conn.execute(_RECENT, [n])
+            query_result = await conn.execute(_RECENT, [owner_id, n])
         return [_row_to_entry(row) for row in query_result.rows]
 
-    async def delete(self, entry_id: str) -> None:
+    async def delete(self, entry_id: str, owner_id: str) -> None:
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
-            await conn.execute(_DELETE, [entry_id])
+            await conn.execute(_DELETE, [entry_id, owner_id])
 
-    async def clear(self) -> None:
+    async def clear(self, owner_id: str) -> None:
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
-            await conn.execute(_CLEAR)
+            await conn.execute(_CLEAR, [owner_id])
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         provider_result = await self._provider.health_check(timeout=timeout)

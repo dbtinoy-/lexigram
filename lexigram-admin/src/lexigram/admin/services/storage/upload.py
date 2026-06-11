@@ -17,10 +17,14 @@ from pathlib import Path
 from typing import BinaryIO
 import uuid
 
-from lexigram.contracts.infra.storage import BlobStoreProtocol, FileInfo, UploadOptions
+from lexigram.contracts.infra.storage import (
+    BlobStoreProtocol,
+    FileInfo,
+    StorageUnsupportedOperationError,
+    UploadOptions,
+)
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
-from lexigram.storage.exceptions import StorageUnsupportedOperationError
 
 logger = get_logger(__name__)
 

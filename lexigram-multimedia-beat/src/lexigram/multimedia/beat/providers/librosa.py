@@ -19,6 +19,7 @@ from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.multimedia.exceptions import MultimediaError
 from lexigram.contracts.multimedia.security import (
     DEFAULT_MAX_MEDIA_BYTES,
+    assert_media_mime_allowed,
     asset_bytes_ok,
 )
 from lexigram.contracts.multimedia.types import (
@@ -30,7 +31,10 @@ from lexigram.contracts.security.url_safety import (
     HostResolver,
     is_safe_url_for_request,
 )
+from lexigram.logging import get_logger
 from lexigram.multimedia.beat.exceptions import BeatAnalysisDecodeError
+
+logger = get_logger(__name__)
 
 
 class LibrosaBeatAnalysisProvider:
@@ -73,9 +77,16 @@ class LibrosaBeatAnalysisProvider:
             Path to the materialized temp file.
 
         Raises:
-            BeatAnalysisDecodeError: If the URI is unsafe, or the payload
-                exceeds ``max_asset_bytes``.
+            BeatAnalysisDecodeError: If the URI is unsafe, the mime type
+                is not allowed, or the payload exceeds
+                ``max_asset_bytes``.
         """
+        try:
+            assert_media_mime_allowed(asset.mime_type)
+        except ValueError as exc:
+            raise BeatAnalysisDecodeError(
+                f"media type not allowed: {asset.mime_type!r}"
+            ) from exc
         fd, path = tempfile.mkstemp(suffix=".audio")
         os.close(fd)
         try:
@@ -155,7 +166,8 @@ class LibrosaBeatAnalysisProvider:
 
         Returns:
             Ok(analysis) on success, Err(error) when the file is
-            oversized or undecodable, or the decoded array exceeds
+            oversized or undecodable, its probed duration exceeds
+            ``max_analyze_samples``, or the decoded array exceeds
             ``max_analyze_samples``.
         """
         if Path(path).stat().st_size > self._max_asset_bytes:
@@ -166,7 +178,21 @@ class LibrosaBeatAnalysisProvider:
             )
 
         try:
-            import librosa  # type: ignore[import-not-found]
+            import soundfile
+
+            info = soundfile.info(path)
+            expected_samples = int(info.frames * self._sample_rate / info.samplerate)
+            if expected_samples > self._max_analyze_samples:
+                return Err(
+                    BeatAnalysisDecodeError(
+                        f"audio duration exceeds {self._max_analyze_samples} sample cap"
+                    )
+                )
+        except (ImportError, OSError, RuntimeError, ValueError) as exc:
+            logger.debug("duration_probe_failed", path=path, error=str(exc))
+
+        try:
+            import librosa
 
             y, sr = librosa.load(path, sr=self._sample_rate)
         except Exception as exc:

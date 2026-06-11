@@ -12,6 +12,7 @@ from lexigram.contracts.ai.memory import MemoryEntry
 def _make_entry(content: str) -> MemoryEntry:
     return MemoryEntry(
         id=str(uuid4()),
+        owner_id="owner-1",
         content=content,
         role="user",
         timestamp=datetime.now(UTC),

@@ -12,6 +12,7 @@ import aiohttp
 
 from lexigram.contracts.multimedia.security import (
     DEFAULT_MAX_MEDIA_BYTES,
+    assert_media_mime_allowed,
     asset_bytes_ok,
 )
 from lexigram.contracts.multimedia.types import MediaAsset
@@ -39,7 +40,8 @@ async def materialize_asset(
     paths (the framework's internal materialization contract). Remote URIs
     are validated against the SSRF primitive (``is_safe_url_for_request``)
     and streamed with a hard byte cap; redirects are never followed and
-    non-200 responses are rejected.
+    non-200 responses are rejected. The asset's mime type must be in the
+    framework media allowlist (``assert_media_mime_allowed``).
 
     Args:
         asset: Source media asset (inline bytes, ``file://`` URI, or remote
@@ -56,6 +58,7 @@ async def materialize_asset(
 
     Raises:
         FileNotFoundError: If a ``file://`` asset path does not exist.
+        ValueError: If the mime type is not in the media allowlist.
         VideoAssetTooLargeError: If the remote payload exceeds
             ``max_bytes``.
         VideoUnsafeAssetURLError: If the remote URI is missing or not safe
@@ -63,6 +66,7 @@ async def materialize_asset(
         VideoAssetDownloadError: If the remote fetch returns a non-200
             response.
     """
+    assert_media_mime_allowed(asset.mime_type)
     if asset.has_bytes:
         suffix = _suffix_from_mime(asset.mime_type)
         path = f"{tempfile.gettempdir() if temp_dir is None else temp_dir}/{uuid.uuid4().hex}{suffix}"

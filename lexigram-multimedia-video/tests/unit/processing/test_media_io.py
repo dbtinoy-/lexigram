@@ -24,6 +24,16 @@ pytestmark_ffmpeg = pytest.mark.skipif(
 
 
 @pytest.mark.asyncio
+async def test_materialize_asset_rejects_disallowed_mime(tmp_path) -> None:
+    asset = MediaAsset(
+        mime_type="application/pdf", provider="test", bytes_data=b"fake"
+    )
+
+    with pytest.raises(ValueError, match="media allowlist"):
+        await materialize_asset(asset, temp_dir=str(tmp_path))
+
+
+@pytest.mark.asyncio
 async def test_materialize_asset_writes_bytes_to_tempfile(tmp_path):
     asset = MediaAsset(
         mime_type="video/mp4", provider="local-http", bytes_data=b"fake-mp4-bytes"

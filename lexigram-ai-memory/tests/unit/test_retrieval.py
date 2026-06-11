@@ -147,11 +147,11 @@ class TestMemoryPruner:
         store.delete = AsyncMock()
         
         pruner = MemoryPruner(store)
-        res = await pruner.prune(importance_threshold=0.1, max_age_hours=0)
+        res = await pruner.prune("owner-1", importance_threshold=0.1, max_age_hours=0)
         
         assert res.pruned_count == 1
         assert res.remaining_count == 1
-        store.delete.assert_awaited_once_with(low_imp.id)
+        store.delete.assert_awaited_once_with(low_imp.id, "owner-1")
 
     @pytest.mark.asyncio
     async def test_prune_by_age(self) -> None:
@@ -169,11 +169,11 @@ class TestMemoryPruner:
         store.delete = AsyncMock()
 
         pruner = MemoryPruner(store)
-        res = await pruner.prune(importance_threshold=0.0, max_age_hours=24)
+        res = await pruner.prune("owner-1", importance_threshold=0.0, max_age_hours=24)
 
         assert res.pruned_count == 1
         assert res.remaining_count == 1
-        store.delete.assert_awaited_once_with(old.id)
+        store.delete.assert_awaited_once_with(old.id, "owner-1")
 
     @pytest.mark.asyncio
     async def test_prune_dry_run(self) -> None:
@@ -187,7 +187,7 @@ class TestMemoryPruner:
         store.delete = AsyncMock()
         
         pruner = MemoryPruner(store)
-        res = await pruner.prune(importance_threshold=0.1, max_age_hours=0, dry_run=True)
+        res = await pruner.prune("owner-1", importance_threshold=0.1, max_age_hours=0, dry_run=True)
         
         assert res.pruned_count == 1
         assert res.remaining_count == 0

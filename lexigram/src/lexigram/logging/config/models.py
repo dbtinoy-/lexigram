@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from lexigram.config import BaseConfig
+from lexigram.logging.config.redaction import RedactionConfig
 from lexigram.logging.config.sampling import SamplingConfig
 from lexigram.validation import Field, model_validator
 
@@ -20,6 +21,7 @@ class LoggingConfig(BaseConfig):
             Example: ``{"lexigram.di": "DEBUG", "lexigram.web": "WARNING"}``.
         sampling: Optional sampling configuration for rate-limiting
             high-volume log events in production.
+        redaction: Optional configuration for log event field redaction.
     """
 
     level: str = Field(default="INFO", description="Global log level")
@@ -31,6 +33,10 @@ class LoggingConfig(BaseConfig):
     sampling: SamplingConfig = Field(
         default_factory=SamplingConfig,
         description="Log sampling configuration",
+    )
+    redaction: RedactionConfig = Field(
+        default_factory=RedactionConfig,
+        description="Log event field redaction configuration",
     )
 
     @model_validator(mode="after")

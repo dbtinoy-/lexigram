@@ -60,6 +60,12 @@ class _FakeSession:
 
 
 class TestResolveAssetBytesSchemeAndIpPolicy:
+    async def test_disallowed_mime_rejected(self) -> None:
+        with pytest.raises(ValueError, match="media allowlist"):
+            await resolve_asset_bytes(
+                MediaAsset(mime_type="application/pdf", provider="x", bytes_data=b"x")
+            )
+
     async def test_file_scheme_rejected(self) -> None:
         with pytest.raises(ValueError):
             await resolve_asset_bytes(

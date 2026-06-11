@@ -329,7 +329,9 @@ async def _load_history(
     if self._working_memory:
         try:
             entries = await self._working_memory.assemble(
-                query=message, token_budget=4096
+                query=message,
+                token_budget=4096,
+                owner_id=session_id or "anonymous",
             )
             history = [
                 ChatMessage(role=Role(e.role), content=e.content) for e in entries

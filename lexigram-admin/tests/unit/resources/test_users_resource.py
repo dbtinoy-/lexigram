@@ -47,16 +47,13 @@ def _create_request(path: str = "/admin/users/create") -> StarletteRequest:
 
 def _form_names(html: str) -> set[str]:
     names = {
-        n.replace("[]", "")
-        for n in re.findall(r'<input[^>]*name="([^"]+)"', html)
+        n.replace("[]", "") for n in re.findall(r'<input[^>]*name="([^"]+)"', html)
     }
     names |= {
-        n.replace("[]", "")
-        for n in re.findall(r'<select[^>]*name="([^"]+)"', html)
+        n.replace("[]", "") for n in re.findall(r'<select[^>]*name="([^"]+)"', html)
     }
     names |= {
-        n.replace("[]", "")
-        for n in re.findall(r'<textarea[^>]*name="([^"]+)"', html)
+        n.replace("[]", "") for n in re.findall(r'<textarea[^>]*name="([^"]+)"', html)
     }
     return names
 
@@ -86,7 +83,15 @@ class TestUsersResource:
         response = await renderer.render_create(_create_request(), UserResource)
         html = response.body.decode("utf-8", "replace")
         names = _form_names(html)
-        assert {"csrf_token", "username", "email", "roles", "permissions", "is_active", "is_verified"} <= names
+        assert {
+            "csrf_token",
+            "username",
+            "email",
+            "roles",
+            "permissions",
+            "is_active",
+            "is_verified",
+        } <= names
         assert "hashed_password" not in names
         assert "No form configuration available" not in html
 

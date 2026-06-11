@@ -18,6 +18,7 @@ class TestRecencyScorerImpl:
         older = make_entry("older", importance=0.5)
         older_ts = type(older)(
             id=older.id,
+            owner_id=older.owner_id,
             content=older.content,
             role=older.role,
             timestamp=now - timedelta(days=1),
@@ -27,6 +28,7 @@ class TestRecencyScorerImpl:
         newer = make_entry("newer", importance=0.5)
         newer_ts = type(newer)(
             id=newer.id,
+            owner_id=newer.owner_id,
             content=newer.content,
             role=newer.role,
             timestamp=now,

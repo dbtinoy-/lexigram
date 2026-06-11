@@ -103,7 +103,7 @@ Extends `HTMLDocumentConfig` with layout settings.
 | `site_logo` | `str | None` | `None` | Logo URL |
 | `site_logo_alt` | `str` | `"Logo"` | Logo alt text |
 | `theme` | `str` | `"light"` | Active theme |
-| `primary_color` | `str` | `"#3b82f6"` | Primary brand color (overridden by CSS variables in ShadCN mode) |
+| `primary_color` | `str` | `"#6b7280"` | Primary brand color (overridden by CSS variables in ShadCN mode) |
 | `accent_color` | `str` | `"#8b5cf6"` | Accent brand color |
 | `htmx_enabled` | `bool` | `True` | Enable HTMX |
 | `htmx_boost` | `bool` | `True` | Enable HTMX boost |

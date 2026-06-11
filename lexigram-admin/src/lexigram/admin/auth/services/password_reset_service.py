@@ -186,9 +186,7 @@ class AdminPasswordResetService:
             count = int(value) if value else 0
             if count >= self._reset_request_limit:
                 return True
-            await cache.set(
-                key, str(count + 1), ttl=self._reset_request_window_seconds
-            )
+            await cache.set(key, str(count + 1), ttl=self._reset_request_window_seconds)
             return False
         except Exception:  # noqa: BLE001
             logger.warning("admin.password_reset_rate_limit_unavailable")

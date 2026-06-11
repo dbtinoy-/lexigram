@@ -161,7 +161,9 @@ class TestRegisterSubmit:
         user_store = AsyncMock()
         user_store.get_user_by_email = AsyncMock(return_value=None)
         user_store.create_user = AsyncMock(
-            return_value=SimpleNamespace(user_id="u9", name="Jane", email="j@example.com")
+            return_value=SimpleNamespace(
+                user_id="u9", name="Jane", email="j@example.com"
+            )
         )
         controller = _controller(user_store=user_store, domains=["example.com"])
         resp = await controller.register_submit(_request(form=_form()))
@@ -178,7 +180,9 @@ class TestRegisterSubmit:
         user_store = AsyncMock()
         user_store.get_user_by_email = AsyncMock(return_value=None)
         user_store.create_user = AsyncMock(
-            return_value=SimpleNamespace(user_id="u7", name="Jane", email="j@example.com")
+            return_value=SimpleNamespace(
+                user_id="u7", name="Jane", email="j@example.com"
+            )
         )
         controller = _controller(user_store=user_store)
         request = _request(form=_form())

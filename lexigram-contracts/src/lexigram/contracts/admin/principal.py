@@ -8,7 +8,13 @@ from typing import Protocol, runtime_checkable
 
 @dataclass(frozen=True)
 class AdminPrincipal:
-    """A panel-view of an application principal (Strapi-style dual identity)."""
+    """A panel-view of an application principal (Strapi-style dual identity).
+
+    ``hashed_password`` is an optional write-through used by the panel's
+    app-mode store adapter: non-empty values are forwarded on
+    ``update_principal`` so implementers can persist panel-side password
+    mutations (the app's hashing policy still owns verification).
+    """
 
     user_id: str
     name: str
@@ -16,6 +22,7 @@ class AdminPrincipal:
     roles: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
     is_active: bool = True
+    hashed_password: str = ""
 
 
 @runtime_checkable

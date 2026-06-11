@@ -56,6 +56,10 @@ class HTTPClientConfig(BaseConfig):
         cookie_jar: Whether to enable an in-memory cookie jar that persists
             cookies across requests within a single :class:`HTTPClient` session.
             Defaults to ``True``.
+        enforce_url_safety: Reject per-request URLs that could reach
+            private/reserved hosts. Defaults to ``True`` (safe by default);
+            set ``False`` only for clients whose targets are fixed, trusted,
+            operator-set URLs.
     """
 
     config_section: ClassVar[str] = "http"
@@ -66,6 +70,7 @@ class HTTPClientConfig(BaseConfig):
     proxy: str | None = None
     trust_env: bool = True
     cookie_jar: bool = True
+    enforce_url_safety: bool = True
 
     def __post_init__(self) -> None:
         """Validate proxy URL format if provided."""

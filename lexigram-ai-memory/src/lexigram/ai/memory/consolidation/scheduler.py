@@ -6,13 +6,15 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from lexigram.ai.memory.config import ConsolidationConfig
+from lexigram.contracts.ai.memory import ConsolidationResult
 from lexigram.logging import (
     get_logger,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from lexigram.contracts.ai.memory import (
-        ConsolidationResult,
         MemoryConsolidatorProtocol,
         MemoryStoreProtocol,
     )
@@ -25,6 +27,7 @@ class ConsolidationScheduler:
 
     Designed to be started once and cancelled on shutdown. Consolidation
     is only triggered when the interval elapses and entries are available.
+    The sweep is scoped to an explicit owner set — never all owners.
     """
 
     def __init__(
@@ -32,6 +35,7 @@ class ConsolidationScheduler:
         store: MemoryStoreProtocol,
         consolidator: MemoryConsolidatorProtocol,
         config: ConsolidationConfig | None = None,
+        owners: Sequence[str] | None = None,
     ) -> None:
         """Initialise the scheduler.
 
@@ -39,10 +43,13 @@ class ConsolidationScheduler:
             store: Memory store to read entries from.
             consolidator: Consolidator run on each cycle.
             config: Scheduling configuration.
+            owners: Explicit owner IDs to consolidate. When ``None`` or
+                empty the scheduler runs no sweep (no unscoped access).
         """
         self._store = store
         self._consolidator = consolidator
         self._config = config or ConsolidationConfig()
+        self._owners = owners
         self._task: asyncio.Task | None = None
         self._background_tasks: set[asyncio.Task] = set()
 
@@ -73,11 +80,49 @@ class ConsolidationScheduler:
     async def run_once(self) -> ConsolidationResult:
         """Execute a single consolidation pass immediately.
 
+        Consolidates each owner in the configured owner list; with no
+        owners configured, returns a zeroed result without touching the
+        store.
+
         Returns:
-            Result of the consolidation pass.
+            Aggregated result of the consolidation passes.
         """
-        entries = await self._store.get_recent(self._config.batch_size * 10)
-        return await self._consolidator.consolidate(entries)
+        if not self._owners:
+            logger.info("consolidation_scheduler_no_owners")
+            return ConsolidationResult(
+                entries_processed=0,
+                entries_consolidated=0,
+                entries_pruned=0,
+                entities_extracted=0,
+                duration_ms=0.0,
+            )
+
+        totals = ConsolidationResult(
+            entries_processed=0,
+            entries_consolidated=0,
+            entries_pruned=0,
+            entities_extracted=0,
+            duration_ms=0.0,
+        )
+        processed = consolidated = pruned = extracted = 0
+        duration = 0.0
+        for owner_id in self._owners:
+            entries = await self._store.get_recent(
+                self._config.batch_size * 10, owner_id
+            )
+            result = await self._consolidator.consolidate(entries)
+            processed += result.entries_processed
+            consolidated += result.entries_consolidated
+            pruned += result.entries_pruned
+            extracted += result.entities_extracted
+            duration += result.duration_ms
+        return ConsolidationResult(
+            entries_processed=processed,
+            entries_consolidated=consolidated,
+            entries_pruned=pruned,
+            entities_extracted=extracted,
+            duration_ms=duration,
+        )
 
     async def _run_loop(self) -> None:
         while True:

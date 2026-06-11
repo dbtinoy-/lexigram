@@ -180,10 +180,7 @@ class TestSecurityPackageExports:
         assert web_security.CrossOriginConfig is CanonicalCrossOriginConfig
         assert web_security.HSTSConfig is CanonicalHSTSConfig
         assert web_security.SecurityConfig is CanonicalSecurityConfig
+        assert web_security.SecurityHeadersConfig is CanonicalSecurityHeadersConfig
         assert (
-            web_security.SecurityHeadersConfig is CanonicalSecurityHeadersConfig
-        )
-        assert (
-            web_security.SecurityHeadersMiddleware
-            is CanonicalSecurityHeadersMiddleware
+            web_security.SecurityHeadersMiddleware is CanonicalSecurityHeadersMiddleware
         )

@@ -28,8 +28,8 @@ _model: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _model
-    from rife import RifeModel  # type: ignore[import-not-found]
-    import torch  # type: ignore[import-not-found]
+    from rife import RifeModel
+    import torch
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _model = RifeModel(device=device)

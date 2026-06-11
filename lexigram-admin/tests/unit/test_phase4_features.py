@@ -163,7 +163,7 @@ class TestConditionalFormFields:
 
         mock_form = MagicMock()
         mock_field = MagicMock()
-        mock_field.render.return_value = "<input />"
+        mock_field.render_form.return_value = "<input />"
         mock_form.fields = {"price": mock_field}
 
         node = FieldNode(field_name="price", visible_when="formData.show_price")
@@ -178,7 +178,7 @@ class TestConditionalFormFields:
 
         mock_form = MagicMock()
         mock_field = MagicMock()
-        mock_field.render.return_value = "<input />"
+        mock_field.render_form.return_value = "<input />"
         mock_form.fields = {"name": mock_field}
 
         node = FieldNode(field_name="name")

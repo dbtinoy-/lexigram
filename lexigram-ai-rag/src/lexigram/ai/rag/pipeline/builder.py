@@ -106,7 +106,11 @@ class RAGPipeline:
         if self._working_memory:
             try:
                 memory_entries = await self._working_memory.assemble(
-                    query=query, token_budget=1024
+                    query=query,
+                    token_budget=1024,
+                    owner_id=(metadata or {}).get("user_id")
+                    or (metadata or {}).get("session_id")
+                    or "anonymous",
                 )
                 if memory_entries:
                     memory_context = "\n".join(

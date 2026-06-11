@@ -113,8 +113,7 @@ def is_cluster_path(
         return True
     current = current_path
     return any(
-        current == item.url or current.startswith(item.url + "/")
-        for item in items
+        current == item.url or current.startswith(item.url + "/") for item in items
     )
 
 

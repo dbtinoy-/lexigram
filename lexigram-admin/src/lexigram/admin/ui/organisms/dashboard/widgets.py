@@ -299,7 +299,10 @@ class ActivityFeed(Component):
                     },
                     el(
                         "i",
-                        {"data-lucide": item.icon, "class": "w-3.5 h-3.5 text-muted-foreground"},
+                        {
+                            "data-lucide": item.icon,
+                            "class": "w-3.5 h-3.5 text-muted-foreground",
+                        },
                     ),
                 )
                 rows.append(

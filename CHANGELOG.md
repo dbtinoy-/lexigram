@@ -11,15 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Folded the `lexigram-plugins` distribution into the core `lexigram` package
-  (`lexigram.plugins`). Plugin discovery is now gated by
-  `lx.discovery.auto_discover` (same switch as module auto-discovery) or the
-  explicit `PluginsModule.configure()`.
-- `PluginEngineProvider` delegates discovery to the shared
-  `discover_providers()` primitive and enforces descriptor `requires`/`conflicts`
-  via `validate_plan` (advisory; boot is never blocked).
-- Plugin state loading validates the schema `version`, failing open with a
-  `.corrupt-<timestamp>` backup for unsupported versions.
+
 
 ## [0.1.1] — 2026-04-22
 

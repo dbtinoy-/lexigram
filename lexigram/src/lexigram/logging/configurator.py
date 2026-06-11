@@ -25,6 +25,12 @@ from lexigram.logging.processors import (
     _redact_processor,
     _sampling_processor,
 )
+from lexigram.logging.redaction import (
+    _DEFAULT_FIELD_DENYLIST,
+    DefaultRedactor,
+    NoOpRedactor,
+    set_redactor,
+)
 
 
 def configure_logging(
@@ -35,6 +41,8 @@ def configure_logging(
     sampling_enabled: bool = False,
     sampling_default_rate: float = 1.0,
     sampling_rules: dict[str, float] | None = None,
+    redaction_enabled: bool = True,
+    redaction_field_denylist: tuple[str, ...] | None = None,
 ) -> None:
     """Bootstrap the logging system using pure structlog.
 
@@ -52,6 +60,10 @@ def configure_logging(
             0.1 = log ~10%).
         sampling_rules: Per-event sampling rates keyed by event name.
             Example: ``{"request_received": 0.01}``.
+        redaction_enabled: Install a field redactor for log events.
+            Defaults to True (safe by default).
+        redaction_field_denylist: Field names masked in log events; when
+            None, the default field denylist is used.
     """
     # Apply per-logger level overrides and sampling config — guarded by lock
     # so that concurrent calls to configure_logging() (e.g. in tests) are safe.
@@ -67,6 +79,15 @@ def configure_logging(
         _proc._state.sampling_default_rate = sampling_default_rate
         _proc._state.sampling_rules.clear()
         _proc._state.sampling_rules.update(sampling_rules or {})
+
+        if redaction_enabled:
+            set_redactor(
+                DefaultRedactor(
+                    field_denylist=redaction_field_denylist or _DEFAULT_FIELD_DENYLIST
+                )
+            )
+        else:
+            set_redactor(NoOpRedactor())
 
     timestamper = structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S")
 
@@ -186,6 +207,14 @@ def apply_config(logging_config: Any) -> None:
         sampling_default_rate = getattr(sampling, "default_rate", 1.0)
         sampling_rules = getattr(sampling, "rules", {})
 
+    # Redaction config (nested DomainModel)
+    redaction = getattr(logging_config, "redaction", None)
+    redaction_enabled = True
+    redaction_field_denylist: tuple[str, ...] | None = None
+    if redaction is not None:
+        redaction_enabled = getattr(redaction, "enabled", True)
+        redaction_field_denylist = getattr(redaction, "field_denylist", None)
+
     configure_logging(
         level=level,
         json_format=json_format,
@@ -193,6 +222,8 @@ def apply_config(logging_config: Any) -> None:
         sampling_enabled=sampling_enabled,
         sampling_default_rate=sampling_default_rate,
         sampling_rules=sampling_rules,
+        redaction_enabled=redaction_enabled,
+        redaction_field_denylist=redaction_field_denylist,
     )
 
 

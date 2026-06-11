@@ -128,7 +128,9 @@ def _auth_form(
     )
     children.extend(el("div", field, class_="mb-4") for field in fields)
     children.append(
-        SubmitButton(label=submit_label, variant=cast("Any", submit_variant), class_="w-full")
+        SubmitButton(
+            label=submit_label, variant=cast("Any", submit_variant), class_="w-full"
+        )
     )
     if footer is not None:
         children.append(footer)

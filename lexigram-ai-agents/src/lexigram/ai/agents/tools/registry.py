@@ -27,10 +27,9 @@ from lexigram.ai.agents.exceptions import (
     ToolNotFoundError,
 )
 from lexigram.contracts.ai.agents import ToolError, ToolProtocol, ToolRegistryProtocol
-from lexigram.result import Result
-from lexigram.primitives.registry import Registry
 from lexigram.logging import get_logger
-from lexigram.result import Err, Ok
+from lexigram.primitives.registry import Registry
+from lexigram.result import Err, Ok, Result
 
 logger = get_logger(__name__)
 

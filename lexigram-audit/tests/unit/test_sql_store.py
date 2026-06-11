@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
 from lexigram.audit.store.sql import SqlAuditStore
+from lexigram.audit.verification.checksum import compute_audit_checksum
+from lexigram.logging.redaction import DefaultRedactor, get_redactor, set_redactor
 
 
 class MockResult:
@@ -117,7 +119,6 @@ class TestSqlAuditStore:
         config = MockConfig()
         store = SqlAuditStore(db=db, config=config)
         
-        from lexigram.contracts.audit import AuditEntry
         db.rows = [
             {
                 "action": "user.login",
@@ -278,3 +279,123 @@ class TestSqlAuditStoreRowToEntry:
         }
         entry = store._row_to_entry(row)
         assert entry.severity is not None
+
+
+def _make_entry(**overrides: object) -> MagicMock:
+    """Build a MagicMock AuditEntry with sensible defaults."""
+    entry = MagicMock()
+    entry.resource_type = "User"
+    entry.resource_id = "user-1"
+    entry.action = "user.update"
+    entry.old_values = None
+    entry.new_values = None
+    entry.actor_id = "admin-1"
+    entry.occurred_at = datetime.now(UTC)
+    entry.metadata = {}
+    entry.severity = "medium"
+    entry.source = None
+    entry.outcome = "success"
+    entry.tenant_id = None
+    for k, v in overrides.items():
+        setattr(entry, k, v)
+    return entry
+
+
+class TestSqlAuditStoreRedaction:
+    """Write-path redaction: SqlAuditStore.append redacts through get_redactor()."""
+
+    @pytest.fixture
+    def mock_db(self) -> MockDb:
+        return MockDb()
+
+    @pytest.fixture
+    def mock_config(self) -> MockConfig:
+        return MockConfig()
+
+    @pytest.fixture(autouse=True)
+    def _framework_redactor(self) -> None:
+        """Install a DefaultRedactor for the duration of the test."""
+        from lexigram.logging.redaction import _redactor_var
+
+        token = set_redactor(DefaultRedactor())
+        try:
+            yield
+        finally:
+            _redactor_var.reset(token)
+
+    def _persisted_payloads(self, db: MockDb) -> tuple[str, str, str]:
+        """Return (old_values, new_values, metadata) JSON from the INSERT."""
+        insert_queries = [
+            q for q in db.executed_queries if "INSERT INTO" in q[0]
+        ]
+        assert insert_queries, "no INSERT executed"
+        sql, params = insert_queries[0]
+        return params[3], params[4], params[7]
+
+    @pytest.mark.asyncio
+    async def test_append_redacts_denylisted_keys(
+        self, mock_db: MockDb, mock_config: MockConfig
+    ) -> None:
+        """Denylisted keys are masked, non-denylisted values pass through."""
+        store = SqlAuditStore(db=mock_db, config=mock_config)
+        entry = _make_entry(
+            new_values={"password": "hunter2", "email": "a@b.c"},
+            metadata={"token": "tok-1", "user": "bob"},
+            old_values={"cleartext": "keep", "api_key": "k-xyz"},
+        )
+
+        await store.append(entry)
+
+        old_persisted, new_persisted, meta_persisted = self._persisted_payloads(mock_db)
+        assert '"<redacted>"' in new_persisted
+        assert "hunter2" not in new_persisted
+        assert "a@b.c" in new_persisted
+        assert "tok-1" not in meta_persisted
+        assert '"<redacted>"' in old_persisted
+        assert "k-xyz" not in old_persisted
+
+    @pytest.mark.asyncio
+    async def test_append_checksum_validates_redacted_row(
+        self, mock_db: MockDb, mock_config: MockConfig
+    ) -> None:
+        """Checksum computed over the redacted row must verify."""
+        from lexigram import serialization as json
+        from lexigram.audit.store.sql import _as_utc_naive
+
+        store = SqlAuditStore(db=mock_db, config=MockConfig(hmac_key="secret"))
+        entry = _make_entry(
+            new_values={"password": "hunter2", "email": "a@b.c"},
+            old_values={"api_key": "k-1"},
+            metadata={"user": "bob"},
+        )
+        await store.append(entry)
+
+        insert_queries = [q for q in mock_db.executed_queries if "INSERT INTO" in q[0]]
+        assert insert_queries
+        sql, params = insert_queries[0]
+
+        redactor = get_redactor()
+        redacted_row = {
+            "table_name": entry.resource_type,
+            "entity_id": str(entry.resource_id),
+            "action": entry.action,
+            "old_values": json.dumps_str(redactor.redact_dict(entry.old_values)),
+            "new_values": json.dumps_str(redactor.redact_dict(entry.new_values)),
+            "changed_by": entry.actor_id,
+            "changed_at": _as_utc_naive(entry.occurred_at),
+            "metadata": json.dumps_str(redactor.redact_dict(entry.metadata)),
+            "severity": str(entry.severity) if entry.severity else None,
+            "source": None,
+            "outcome": "success",
+            "tenant_id": None,
+            "correlation_id": None,
+            "causation_id": None,
+            "command_payload_hash": None,
+            "payload_size_bytes": None,
+            "entry_schema_version": 1,
+        }
+        expected = compute_audit_checksum(redacted_row, b"secret")
+        assert params[8] == expected
+        assert "<redacted>" in params[4]
+        assert "hunter2" not in params[4]
+        assert "k-1" not in params[3]

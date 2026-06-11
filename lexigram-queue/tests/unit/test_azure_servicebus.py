@@ -82,16 +82,24 @@ class TestAzureServiceBusQueue:
     async def test_connect_raises_import_error_without_sdk(self) -> None:
         """connect() raises ImportError when azure-servicebus is absent."""
         queue = _make_queue()
-        # Temporarily hide the azure modules
+        # Temporarily hide the azure modules. Use None sentinels (not just
+        # removals) so the import fails even when the SDK is installed and
+        # would otherwise be re-imported from disk.
         saved = {
             k: sys.modules.pop(k)
             for k in list(sys.modules)
             if k.startswith("azure.servicebus")
         }
+        for _mod in ("azure", "azure.servicebus", "azure.servicebus.aio"):
+            if _mod not in sys.modules:
+                sys.modules[_mod] = None
         try:
             with pytest.raises(ImportError, match="azure-servicebus"):
                 await queue.connect()
         finally:
+            for _mod in ("azure", "azure.servicebus", "azure.servicebus.aio"):
+                if sys.modules.get(_mod) is None:
+                    sys.modules.pop(_mod)
             sys.modules.update(saved)
 
     @pytest.mark.asyncio

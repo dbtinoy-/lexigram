@@ -22,7 +22,7 @@ from lexigram.logging import (
 logger = get_logger(__name__)
 
 try:
-    import cv2  # type: ignore[import-not-found]
+    import cv2
     import numpy as np
 
     CV2_AVAILABLE = True
