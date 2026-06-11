@@ -22,6 +22,10 @@ class PluginDescriptor:
     this descriptor maps to within the ``lexigram.providers`` (``EP_PROVIDERS``)
     group — the identifier that goes into the ``disabled`` set passed to
     ``lexigram.plugins.discovery.discover_providers``.
+
+    ``requires``/``conflicts`` name other plugins' ``provider_entry_point``
+    values. They are advisory metadata for validation and UI badges —
+    the engine stays passive and never enforces them at boot.
     """
 
     name: str
@@ -29,3 +33,6 @@ class PluginDescriptor:
     description: str
     icon: str
     provider_entry_point: str
+    version: str = ""
+    requires: tuple[str, ...] = ()
+    conflicts: tuple[str, ...] = ()
