@@ -6,7 +6,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.contracts.queue.protocols import QueueProtocol
 from lexigram.logging import get_logger
-from lexigram.ui import Divider, EmptyState, el, render_to_string
+from lexigram.ui import Divider, EmptyState, el, raw, render_to_string
 
 logger = get_logger(__name__)
 
@@ -105,7 +105,7 @@ class QueueJobsPage:
                                 ),
                             ),
                         ),
-                        el("tbody", rows, class_="divide-y divide-[var(--border)]"),
+                        el("tbody", raw(rows), class_="divide-y divide-[var(--border)]"),
                         class_="min-w-full table-fixed divide-y divide-[var(--border)]",
                     ),
                     class_="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]",

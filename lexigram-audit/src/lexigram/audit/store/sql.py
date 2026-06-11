@@ -11,6 +11,7 @@ from lexigram.audit.verification.checksum import compute_audit_checksum
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity, AuditQuery
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.logging import get_logger
+from lexigram.logging.redaction import get_redactor
 
 __all__ = ["SqlAuditStore"]
 
@@ -24,7 +25,11 @@ def _as_utc_naive(dt: datetime) -> datetime:
     aware datetimes must be converted to UTC and stripped of tzinfo before
     binding — asyncpg rejects aware values against TIMESTAMP columns.
     """
-    return dt.replace(tzinfo=None) if dt.tzinfo is None else dt.astimezone(UTC).replace(tzinfo=None)
+    return (
+        dt.replace(tzinfo=None)
+        if dt.tzinfo is None
+        else dt.astimezone(UTC).replace(tzinfo=None)
+    )
 
 
 class SqlAuditStore:
@@ -94,19 +99,23 @@ class SqlAuditStore:
         """Persist a single audit entry to the database.
 
         Computes an HMAC-SHA256 checksum when an HMAC key is configured.
+        Payload dicts are redacted through the framework's redactor
+        (``get_redactor()``) before serialization, so denylisted keys
+        never reach the persisted row.
 
         Args:
             entry: The audit event to store.
         """
+        redactor = get_redactor()
         row: dict[str, Any] = {
             "table_name": entry.resource_type,
             "entity_id": str(entry.resource_id),
             "action": entry.action,
-            "old_values": json.dumps_str(entry.old_values or {}),
-            "new_values": json.dumps_str(entry.new_values or {}),
+            "old_values": json.dumps_str(redactor.redact_dict(entry.old_values or {})),
+            "new_values": json.dumps_str(redactor.redact_dict(entry.new_values or {})),
             "changed_by": entry.actor_id,
             "changed_at": _as_utc_naive(entry.occurred_at),
-            "metadata": json.dumps_str(entry.metadata),
+            "metadata": json.dumps_str(redactor.redact_dict(entry.metadata or {})),
             "severity": str(entry.severity) if entry.severity else None,
             "source": entry.source or None,
             "outcome": entry.outcome or None,

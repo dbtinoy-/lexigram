@@ -9,7 +9,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.logging import get_logger
-from lexigram.ui import Badge, Divider, EmptyState, el, render_to_string
+from lexigram.ui import Badge, Divider, EmptyState, el, raw, render_to_string
 
 logger = get_logger(__name__)
 
@@ -137,7 +137,7 @@ class AuthSessionsPage:
                                 ),
                             ),
                         ),
-                        el("tbody", rows, class_="divide-y divide-[var(--border)]"),
+                        el("tbody", raw(rows), class_="divide-y divide-[var(--border)]"),
                         class_="min-w-full table-fixed divide-y divide-[var(--border)]",
                     ),
                     class_="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]",
