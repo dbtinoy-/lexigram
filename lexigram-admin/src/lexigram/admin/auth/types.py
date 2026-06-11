@@ -44,6 +44,7 @@ class AdminSecurityEventType(str, Enum):
     ROLE_CREATED = "role_created"
     ROLE_UPDATED = "role_updated"
     ROLE_DELETED = "role_deleted"
+    USER_REGISTERED = "user_registered"
 
 
 class AdminLockoutStatus(str, Enum):

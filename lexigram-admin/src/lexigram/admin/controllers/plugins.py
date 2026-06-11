@@ -2,10 +2,11 @@
 
 The page is a thin consumer of the passive ``lexigram-plugins`` primitives:
 ``discover_plugins()`` lists metadata-only descriptors, and
-``load_disabled``/``save_disabled`` read/write the boot-file mirror
-(``.lexigram/plugins.json`` by default). Toggling applies on next boot —
-the mechanism stays passive; this controller never instantiates plugins,
-only the admin-facing surface over the same primitives an app would call.
+``load_disabled``/``update_disabled`` read and mutate the boot-file mirror
+(``.lexigram/plugins.json`` by default) under an exclusive file lock.
+Toggling applies on next boot — the mechanism stays passive; this
+controller never instantiates plugins, only the admin-facing surface over
+the same primitives an app would call.
 """
 
 from __future__ import annotations
@@ -148,13 +149,25 @@ class PluginsController(AdminController):
             return self._error_redirect("/admin/plugins", "Unknown plugin.")
 
         disabled = state.load_disabled()
-        if entry_points <= disabled:
-            disabled -= entry_points
-            action = "enabled"
-        else:
-            disabled |= entry_points
-            action = "disabled"
-        state.save_disabled(disabled)
+        action = "enabled" if entry_points <= disabled else "disabled"
+
+        def flip(current: set[str]) -> set[str]:
+            """Toggle ``entry_points`` out of (or into) ``current``."""
+            if entry_points <= current:
+                current.difference_update(entry_points)
+            else:
+                current.update(entry_points)
+            return current
+
+        from lexigram.plugins.exceptions import PluginStateError
+
+        try:
+            state.update_disabled(flip)
+        except PluginStateError:
+            await self._audit(request, success=False, reason="state_write_failed")
+            return self._error_redirect(
+                "/admin/plugins", "Could not save plugin state."
+            )
         await self._audit(request, success=True, plugin=plugin_name, action=action)
         return RedirectResponse(
             url=f"/admin/plugins?notice={quote_plus(f'Plugin {action}.')}",
@@ -233,6 +246,11 @@ class PluginsController(AdminController):
                     "p",
                     descriptor.description,
                     class_="text-sm text-muted-foreground mt-1",
+                ),
+                el(
+                    "span",
+                    f"v{descriptor.version}",
+                    class_="text-xs text-muted-foreground",
                 ),
                 class_="flex-1",
             ),

@@ -9,6 +9,7 @@ from starlette.requests import Request
 
 from lexigram.admin.controllers.plugins import PluginsController
 from lexigram.contracts.plugins import PluginDescriptor
+from lexigram.plugins.exceptions import PluginStateError
 
 
 def _descriptor(name: str, entry: str, display: str | None = None) -> PluginDescriptor:
@@ -148,7 +149,7 @@ class TestPluginsController:
                 return_value=descriptors,
             ),
             patch("lexigram.plugins.state.load_disabled", return_value=set()),
-            patch("lexigram.plugins.state.save_disabled") as save,
+            patch("lexigram.plugins.state.update_disabled") as update,
         ):
             resp = await controller.toggle(
                 _mock_request(
@@ -160,9 +161,10 @@ class TestPluginsController:
             )
         assert resp.status_code == 302
         assert resp.headers["location"].startswith("/admin/plugins")
-        save.assert_called_once()
-        assert save.call_args is not None
-        assert save.call_args.args[0] == {"rag"}
+        update.assert_called_once()
+        mutator = update.call_args.args[0]
+        assert mutator(set()) == {"rag"}
+        assert mutator({"rag"}) == set()
 
     @pytest.mark.asyncio
     async def test_toggle_enables_plugin(
@@ -176,7 +178,7 @@ class TestPluginsController:
                 return_value=descriptors,
             ),
             patch("lexigram.plugins.state.load_disabled", return_value={"rag"}),
-            patch("lexigram.plugins.state.save_disabled") as save,
+            patch("lexigram.plugins.state.update_disabled") as update,
         ):
             resp = await controller.toggle(
                 _mock_request(
@@ -187,9 +189,11 @@ class TestPluginsController:
                 )
             )
         assert resp.status_code == 302
-        save.assert_called_once()
-        assert save.call_args is not None
-        assert save.call_args.args[0] == set()
+        update.assert_called_once()
+        mutator = update.call_args.args[0]
+        assert mutator(set()) == {"rag"}
+        assert mutator({"rag"}) == set()
+        assert "error" not in resp.headers["location"]
 
     @pytest.mark.asyncio
     async def test_toggle_rejects_bad_csrf(
@@ -256,7 +260,7 @@ class TestPluginsController:
                 return_value=descriptors,
             ),
             patch("lexigram.plugins.state.load_disabled", return_value=set()),
-            patch("lexigram.plugins.state.save_disabled") as save,
+            patch("lexigram.plugins.state.update_disabled") as update,
         ):
             resp = await controller.toggle(
                 _mock_request(
@@ -270,7 +274,7 @@ class TestPluginsController:
                 )
             )
         assert resp.status_code == 302
-        save.assert_called_once()
+        update.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_toggle_ignores_unknown_plugin(
@@ -284,7 +288,7 @@ class TestPluginsController:
                 return_value=descriptors,
             ),
             patch("lexigram.plugins.state.load_disabled", return_value=set()),
-            patch("lexigram.plugins.state.save_disabled") as save,
+            patch("lexigram.plugins.state.update_disabled") as update,
         ):
             resp = await controller.toggle(
                 _mock_request(
@@ -296,7 +300,7 @@ class TestPluginsController:
             )
         assert resp.status_code == 302
         assert "error" in resp.headers["location"]
-        save.assert_not_called()
+        update.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_toggle_logs_audit(
@@ -314,7 +318,7 @@ class TestPluginsController:
                 return_value=descriptors,
             ),
             patch("lexigram.plugins.state.load_disabled", return_value=set()),
-            patch("lexigram.plugins.state.save_disabled"),
+            patch("lexigram.plugins.state.update_disabled"),
         ):
             await controller.toggle(
                 _mock_request(
@@ -325,6 +329,91 @@ class TestPluginsController:
                 )
             )
         audit.log_event.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_toggle_handles_state_write_failure(
+        self,
+        controller: PluginsController,
+        descriptors: list[PluginDescriptor],
+    ) -> None:
+        with (
+            patch(
+                "lexigram.plugins.discovery.discover_plugins",
+                return_value=descriptors,
+            ),
+            patch(
+                "lexigram.plugins.state.update_disabled",
+                side_effect=PluginStateError("disk full"),
+            ) as update,
+        ):
+            resp = await controller.toggle(
+                _mock_request(
+                    method="POST",
+                    form_data={"plugin": "rag", "csrf_token": "test-csrf-token"},
+                    user=_FakeUser(),
+                    session={"csrf_session_id": "s1"},
+                )
+            )
+        assert resp.status_code == 302
+        assert "error" in resp.headers["location"]
+        update.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_toggle_uses_locked_update(
+        self,
+        controller: PluginsController,
+        descriptors: list[PluginDescriptor],
+    ) -> None:
+        with (
+            patch(
+                "lexigram.plugins.discovery.discover_plugins",
+                return_value=descriptors,
+            ),
+            patch(
+                "lexigram.plugins.state.update_disabled",
+                return_value={"rag"},
+            ) as update,
+        ):
+            resp = await controller.toggle(
+                _mock_request(
+                    method="POST",
+                    form_data={"plugin": "rag", "csrf_token": "test-csrf-token"},
+                    user=_FakeUser(),
+                    session={"csrf_session_id": "s1"},
+                )
+            )
+        assert resp.status_code == 302
+        update.assert_called_once()
+        mutator = update.call_args.args[0]
+        assert mutator(set()) == {"rag"}
+        assert mutator({"rag"}) == set()
+        assert "error" not in resp.headers["location"]
+
+    @pytest.mark.asyncio
+    async def test_index_renders_plugin_versions(
+        self, controller: PluginsController, renderer: MagicMock
+    ) -> None:
+        descriptor = PluginDescriptor(
+            name="rag",
+            display_name="RAG",
+            description="Retrieval.",
+            icon="database",
+            provider_entry_point="rag",
+            version="1.2.0",
+        )
+        with (
+            patch(
+                "lexigram.plugins.discovery.discover_plugins",
+                return_value=[descriptor],
+            ),
+            patch("lexigram.plugins.state.load_disabled", return_value=set()),
+        ):
+            resp = await controller.index(
+                _mock_request(user=_FakeUser(), session={"csrf_session_id": "s1"})
+            )
+        assert resp.status_code == 200
+        args, _ = renderer.render_page.call_args
+        assert "1.2.0" in str(args[0])
 
     @pytest.mark.asyncio
     async def test_prefix_is_plugins(self) -> None:

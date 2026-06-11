@@ -7,7 +7,6 @@ admin account has been created.
 
 from __future__ import annotations
 
-import hashlib
 import os
 import secrets
 
@@ -286,13 +285,9 @@ def _hash_password(plain: str) -> str:
     Returns:
         Hashed password string suitable for storage.
     """
-    try:
-        import bcrypt
+    from lexigram.admin.lib.password import hash_password
 
-        hashed = bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt(rounds=12))
-        return hashed.decode("utf-8")
-    except ImportError:
-        return hashlib.sha256(plain.encode()).hexdigest()
+    return hash_password(plain)
 
 
 __all__ = ["SetupController"]

@@ -205,6 +205,35 @@ class TestSearchService:
         assert MockResource2 in resources
         assert MockResourceNoSearch not in resources
 
+    def test_get_search_field_catalog_builds_from_searchable_resources(
+        self, mock_manager: MagicMock
+    ) -> None:
+        """Catalog collects searchable search_fields, deduped + labeled."""
+        service = SearchService(resource_manager=mock_manager)
+        catalog = service.get_search_field_catalog()
+        names = [entry["name"] for entry in catalog]
+        assert names == ["name", "email", "title"]
+        assert catalog[0] == {"name": "name", "label": "Name"}
+        assert catalog[2] == {"name": "title", "label": "Title"}
+
+    def test_catalog_merges_spec_fields(
+        self, mock_manager: MagicMock
+    ) -> None:
+        """Spec-only resources contribute their index fields to the catalog."""
+        mock_manager.get_all_resources = MagicMock(
+            return_value=[_IndexedResource, _IndexOnlyResource]
+        )
+        service = SearchService(resource_manager=mock_manager)
+        names = [entry["name"] for entry in service.get_search_field_catalog()]
+        assert names == ["title", "name", "description"]
+
+    def test_get_search_field_catalog_empty_when_manager_fails(
+        self, mock_manager: MagicMock
+    ) -> None:
+        mock_manager.get_all_resources.side_effect = RuntimeError("boom")
+        service = SearchService(resource_manager=mock_manager)
+        assert service.get_search_field_catalog() == []
+
 
 class _IndexedResource:
     name = "products"

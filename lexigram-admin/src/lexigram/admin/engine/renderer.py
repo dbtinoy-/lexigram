@@ -29,8 +29,9 @@ def resolve_admin_nav(request: Any) -> tuple[list, list, list | None]:
     the current URL path.
 
     Cluster groups (e.g. infrastructure) are collapsed in the primary sidebar
-    into a single landing entry; when the current path belongs to the cluster,
-    the secondary nav for its center is returned as the third element.
+    into single landing entries; when the current path belongs to a cluster
+    center, the secondary nav for that center is returned as the third
+    element.
 
     Duplicates are removed at three levels:
     1. Group header dedup — assembler group headers that match builder
@@ -47,122 +48,9 @@ def resolve_admin_nav(request: Any) -> tuple[list, list, list | None]:
     Returns:
         A tuple of (nav_items, system_menu_items, secondary_nav).
     """
-    nav_builder = None
-    assembler_nav_items: list[dict] = []
-    assembler_groups: dict | None = None
-    state = getattr(request, "app", None) if request else None
-    if state and hasattr(state, "state"):
-        nav_builder = getattr(state.state, "nav_builder", None)
-        assembler_nav_items = getattr(state.state, "assembler_nav_items", None) or []
-        assembler_groups = getattr(state.state, "assembler_groups", None) or None
+    from lexigram.admin.navigation.manager import NavigationManager
 
-    if nav_builder is None:
-        return [], [], None
-
-    current_path: str | None = (
-        str(request.url.path) if request and hasattr(request, "url") else None
-    )
-
-    from lexigram.admin.navigation.clusters import (
-        build_secondary_nav,
-        cluster_items,
-        collapse_cluster_in_primary,
-        is_cluster_path,
-    )
-
-    cluster_nav: list | None = None
-    items = cluster_items(assembler_groups)
-    if items:
-        if is_cluster_path(current_path, items):
-            cluster_nav = build_secondary_nav(items, current_path)
-        assembler_nav_items = collapse_cluster_in_primary(
-            assembler_nav_items,
-            current_path,
-            items,
-        )
-
-    # Build from NavItemBuilder with active-state detection
-    builder_items = nav_builder.build_nav_items(current_path=current_path)
-    system_menu_items = nav_builder.build_system_menu_items()
-
-    # Start with builder items, tracking what we've already seen for dedup
-    merged = list(builder_items)
-    seen_hrefs: set[str] = set()
-    group_labels: dict[str, set[str]] = {}
-    current_group = ""
-
-    for item in merged:
-        if not isinstance(item, dict):
-            continue
-        if item.get("is_group"):
-            current_group = item.get("label", "") or ""
-            group_labels.setdefault(current_group, set())
-        else:
-            href = (item.get("href", "") or "").strip()
-            if href:
-                seen_hrefs.add(href)
-            label = (item.get("label", "") or "").strip()
-            if label:
-                group_labels.setdefault(current_group, set()).add(label)
-
-    # Collect top-level items (empty group) from assembler contributions
-    # These are items emitted before any group header — inserted at the
-    # very front of merged, before builder items.
-    top_items: list[dict] = []
-    for item in assembler_nav_items:
-        if not isinstance(item, dict):
-            continue
-        if item.get("is_group"):
-            break
-        href = (item.get("href", "") or "").strip()
-        label = (item.get("label", "") or "").strip()
-        if current_path is not None and href:
-            item["active"] = current_path == href or current_path.startswith(href + "/")
-        if href:
-            seen_hrefs.add(href)
-        if label:
-            group_labels.setdefault("", set()).add(label)
-        top_items.append(item)
-
-    merged = top_items + merged
-
-    # Merge remaining assembler contributions with full dedup
-    current_group = ""
-    for item in assembler_nav_items:
-        if not isinstance(item, dict):
-            merged.append(item)
-            continue
-
-        if item.get("is_group"):
-            group_label = (item.get("label", "") or "").strip()
-            current_group = group_label
-            if group_label in group_labels:
-                continue
-            group_labels.setdefault(current_group, set())
-            merged.append(item)
-            continue
-
-        href = (item.get("href", "") or "").strip()
-        label = (item.get("label", "") or "").strip()
-
-        if href and href in seen_hrefs:
-            continue
-        if label and label in group_labels.get(current_group, set()):
-            continue
-
-        item["active"] = (
-            current_path is not None
-            and href
-            and (current_path == href or current_path.startswith(href + "/"))
-        )
-
-        if href:
-            seen_hrefs.add(href)
-        if label:
-            group_labels.setdefault(current_group, set()).add(label)
-        merged.append(item)
-
-    return merged, system_menu_items, cluster_nav
+    return NavigationManager(request).resolve_nav()
 
 
 @dataclass
@@ -237,11 +125,7 @@ class AdminRenderer:
         Returns:
             HTMLResponse with rendered page
         """
-        from lexigram.admin.navigation.clusters import (
-            CLUSTER_ICON,
-            CLUSTER_LABEL,
-            CLUSTER_URL,
-        )
+        from lexigram.admin.navigation.manager import NavigationManager
         from lexigram.admin.state.context import AdminContextManager
         from lexigram.admin.ui.templates.shell import AdminShell
         from lexigram.ui.core.base import render_to_string
@@ -272,23 +156,11 @@ class AdminRenderer:
         except Exception:  # noqa: BLE001 — non-fatal
             pass
 
-        user_menu_items: list[dict[str, str]] = [
-            {
-                "label": CLUSTER_LABEL,
-                "href": CLUSTER_URL,
-                "icon": CLUSTER_ICON,
-            },
-            {
-                "label": "Plugins",
-                "href": "/admin/plugins",
-                "icon": "plugins",
-            },
-            {
-                "label": "Settings",
-                "href": "/admin/settings",
-                "icon": "settings",
-            },
-        ]
+        user_menu_items: list[dict[str, str | None]] = (
+            NavigationManager(request).user_menu_items()
+            if request is not None
+            else []
+        )
 
         site_name = extra_context.get("site_name") or self.config.site_name
         logo_url = extra_context.get("logo_url") or ""

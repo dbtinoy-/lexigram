@@ -148,6 +148,34 @@ class SearchService:
             pass
         return resources
 
+    def get_search_field_catalog(self) -> list[dict[str, Any]]:
+        """Build a query-builder field catalog from searchable resources.
+
+        Collects the searchable field names of every resource that is
+        searchable (``search_fields`` and/or ``SearchableSpec.fields``),
+        deduplicated, labeled for display.
+
+        Returns:
+            A list of ``{"name", "label"}`` catalog entries (possibly
+            empty when no resource exposes searchable fields).
+        """
+        catalog: list[dict[str, Any]] = []
+        try:
+            for resource in self.get_searchable_resources():
+                names: list[str] = list(
+                    getattr(resource, "search_fields", None) or []
+                )
+                spec = self._index_spec(resource)
+                if spec is not None:
+                    names += list(getattr(spec, "fields", None) or [])
+                for name in dict.fromkeys(names):
+                    catalog.append(
+                        {"name": name, "label": name.replace("_", " ").title()}
+                    )
+        except Exception:  # noqa: S112
+            return []
+        return catalog
+
     @staticmethod
     def _index_spec(resource: Any) -> Any | None:
         """Return the resource's SearchableSpec, or None when not opted in."""

@@ -19,6 +19,7 @@ from lexigram.admin.auth.protocols import (
     AdminMfaServiceProtocol,
     AdminPasswordResetServiceProtocol,
 )
+from lexigram.admin.auth.store import AdminUserStoreProtocol
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import (
@@ -28,6 +29,7 @@ from lexigram.admin.lib.template import (
     render_mfa_setup_page,
     render_password_reset_confirm_page,
     render_password_reset_request_page,
+    render_register_page,
     render_verify_email_page,
 )
 from lexigram.admin.observability.admin_metrics import AdminMetrics
@@ -91,6 +93,12 @@ class AuthController(AdminController):
         self._mfa_service = mfa_service
         self._email_verification_service = email_verification_service
         self._email_otp_service = email_otp_service
+        # Self-service registration — wired by the bundle provider from
+        # ``AdminAuthConfig.registration`` (off unless explicitly enabled).
+        self._user_store: AdminUserStoreProtocol | None = None
+        self._registration_enabled = False
+        self._registration_default_role = "admin"
+        self._registration_domains: list[str] = []
 
     def _fresh_csrf(self, request: Request) -> str:
         """Generate a fresh CSRF token bound to a new session id."""
@@ -1027,6 +1035,196 @@ class AuthController(AdminController):
             url=f"/admin/password-reset/{token}?error={quote_plus(str(result.unwrap_err()))}",
             status_code=302,
         )
+
+    # ------------------------------------------------------------------
+    # GET /register — self-service registration form
+    # ------------------------------------------------------------------
+
+    @get("/register")
+    async def register_form(
+        self, request: Request
+    ) -> HTMLResponse | RedirectResponse:
+        """Display the standalone registration page.
+
+        Only reachable when self-service registration is enabled in
+        configuration; already-authenticated users are redirected home.
+
+        Args:
+            request: Incoming HTTP request.
+
+        Returns:
+            HTMLResponse with the rendered registration page, or a
+            RedirectResponse when registration is disabled or the user is
+            already signed in.
+        """
+        if not self._registration_enabled or self._user_store is None:
+            return RedirectResponse(
+                url="/admin/login?error="
+                + quote_plus("Registration is not available."),
+                status_code=302,
+            )
+        user = getattr(request.state, "user", None)
+        if user and user.user_id != "guest":
+            return RedirectResponse(url="/admin/", status_code=302)
+
+        error = request.query_params.get("error", "")
+        notice = request.query_params.get("notice", "")
+        name = request.query_params.get("name", "")
+        email = request.query_params.get("email", "")
+        csrf_token = self._fresh_csrf(request)
+
+        html = render_register_page(
+            error=error,
+            notice=notice,
+            csrf_token=csrf_token,
+            name=name,
+            email=email,
+        )
+        return HTMLResponse(content=html)
+
+    # ------------------------------------------------------------------
+    # POST /register — create the account and sign in
+    # ------------------------------------------------------------------
+
+    @post("/register")
+    async def register_submit(self, request: Request) -> RedirectResponse:
+        """Process the registration form.
+
+        Validates CSRF, required fields, password confirmation, and the
+        configured email-domain allowlist, then persists the new account
+        via the admin user store and signs the user in directly.
+
+        Args:
+            request: Incoming HTTP request carrying form data.
+
+        Returns:
+            RedirectResponse to /admin/ on success, or back to the
+            registration page with an error query parameter.
+        """
+        if not self._registration_enabled or self._user_store is None:
+            return RedirectResponse(
+                url="/admin/login?error="
+                + quote_plus("Registration is not available."),
+                status_code=302,
+            )
+
+        form_data = request.scope.get("admin_form_data") or await request.form()
+        name = str(form_data.get("name", "")).strip()
+        email = str(form_data.get("email", "")).strip().lower()
+        password = str(form_data.get("password", ""))
+        password_confirmation = str(form_data.get("password_confirmation", ""))
+        csrf_token = str(form_data.get("csrf_token", ""))
+
+        csrf_session_id = request.session.get("csrf_session_id", "")
+        if not csrf_session_id or not self._csrf_service.validate_token(
+            csrf_session_id, csrf_token
+        ):
+            logger.warning(
+                "auth.csrf_validation_failed", ip=self._get_client_ip(request)
+            )
+            return RedirectResponse(
+                url=f"/admin/register?error={quote_plus('Invalid or expired security token. Please try again.')}",
+                status_code=302,
+            )
+
+        if not name or not email or not password:
+            return RedirectResponse(
+                url=f"/admin/register?error={quote_plus('Name, email, and password are required.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                status_code=302,
+            )
+
+        if len(password) < 8:
+            return RedirectResponse(
+                url=f"/admin/register?error={quote_plus('Password must be at least 8 characters.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                status_code=302,
+            )
+
+        if password != password_confirmation:
+            return RedirectResponse(
+                url=f"/admin/register?error={quote_plus('Passwords do not match.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                status_code=302,
+            )
+
+        if self._registration_domains and "@" in email:
+            domain = email.rsplit("@", 1)[1]
+            if domain not in self._registration_domains:
+                return RedirectResponse(
+                    url=f"/admin/register?error={quote_plus('Registration is restricted to allowed email domains.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                    status_code=302,
+                )
+
+        ip = self._get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")
+        from lexigram.admin.lib.password import hash_password
+
+        hashed = hash_password(password)
+        roles = (
+            [self._registration_default_role]
+            if self._registration_default_role
+            else None
+        )
+        try:
+            created = await self._user_store.create_user(
+                name=name,
+                email=email,
+                hashed_password=hashed,
+                roles=roles,
+            )
+        except Exception as exc:  # noqa: BLE001 — persistence failures surface to the user
+            logger.warning(
+                "auth.register_create_failed",
+                email=email,
+                ip=ip,
+                error=str(exc),
+            )
+            return RedirectResponse(
+                url=f"/admin/register?error={quote_plus('Could not create the account: email may already be in use.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                status_code=302,
+            )
+
+        user_id = str(getattr(created, "user_id", "") or getattr(created, "id", ""))
+        logger.info("auth.register_success", email=email, user_id=user_id)
+
+        request.session["admin_user_id"] = user_id
+        request.session["admin_user_email"] = email
+        self._metrics.record_login(status="success")
+        await self._audit_registration(request, ip, user_agent, email)
+        return RedirectResponse(url="/admin/", status_code=302)
+
+    async def _audit_registration(
+        self, request: Request, ip_address: str, user_agent: str, email: str
+    ) -> None:
+        """Record the registration audit event (best-effort).
+
+        Resolves the audit service from the request DI container, mirroring
+        the theme-overrides pattern; failures are logged, never raised.
+
+        Args:
+            request: The current request (carries the DI container).
+            ip_address: Client IP for the audit record.
+            user_agent: Client user agent for the audit record.
+            email: Registered email address.
+        """
+        try:
+            from lexigram.admin.auth.protocols import AdminAuditLogServiceProtocol
+            from lexigram.admin.auth.types import AdminSecurityEventType
+
+            container = getattr(request.state, "container", None)
+            if container is None:
+                return
+            audit_service = await container.resolve(
+                AdminAuditLogServiceProtocol,
+                bypass_visibility=True,
+            )
+            await audit_service.log_event(
+                event_type=AdminSecurityEventType.USER_REGISTERED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=True,
+                metadata={"email": email},
+            )
+        except Exception as exc:  # noqa: BLE001 — auditing is best-effort
+            logger.warning("auth.register_audit_failed", error=str(exc))
 
     # ------------------------------------------------------------------
     # Helpers

@@ -40,7 +40,7 @@ class TestSearchController:
         request = MagicMock()
         request.query_params = {"q": "alice"}
         await controller.search(request)
-        mock_service.search.assert_awaited_once_with("alice")
+        mock_service.search.assert_awaited_once_with("alice", rule=None)
 
     @pytest.mark.asyncio
     async def test_search_uses_search_param_fallback(
@@ -51,7 +51,7 @@ class TestSearchController:
         request = MagicMock()
         request.query_params = {"search": "bob"}
         await controller.search(request)
-        mock_service.search.assert_awaited_once_with("bob")
+        mock_service.search.assert_awaited_once_with("bob", rule=None)
 
     @pytest.mark.asyncio
     async def test_search_uses_q_over_search_param(
@@ -62,7 +62,18 @@ class TestSearchController:
         request = MagicMock()
         request.query_params = {"q": "qval", "search": "sval"}
         await controller.search(request)
-        mock_service.search.assert_awaited_once_with("qval")
+        mock_service.search.assert_awaited_once_with("qval", rule=None)
+
+    @pytest.mark.asyncio
+    async def test_search_forwards_rule_param(self, mock_service: MagicMock) -> None:
+        """The block-JSON rule is forwarded to SearchService.search."""
+        rule = '{"logic":"AND","rules":[{"field":"role","operator":"eq","value":"admin"}]}'
+        mock_service.search.return_value = SearchResults(query="t")
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "t", "rule": rule}
+        await controller.search(request)
+        mock_service.search.assert_awaited_once_with("t", rule=rule)
 
     @pytest.mark.asyncio
     async def test_search_empty_query_returns_no_results_html(
@@ -97,6 +108,7 @@ class TestSearchController:
     ) -> None:
         """Direct navigation renders the search page inside the admin shell."""
         mock_service.search.return_value = SearchResults(query="alice")
+        mock_service.get_search_field_catalog = MagicMock(return_value=[])
         controller = SearchController(search_service=mock_service)
         request = MagicMock()
         request.query_params = {"q": "alice"}
@@ -106,6 +118,41 @@ class TestSearchController:
         assert "Global Search" in content
         assert 'id="search-results"' in content
         assert 'name="q"' in content
+
+    @pytest.mark.asyncio
+    async def test_search_full_page_embeds_query_builder(
+        self, mock_service: MagicMock
+    ) -> None:
+        """The full page embeds the query-builder rule input in the search form."""
+        mock_service.search.return_value = SearchResults(query="alice")
+        mock_service.get_search_field_catalog = MagicMock(
+            return_value=[{"name": "role", "label": "Role"}]
+        )
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "alice"}
+        request.headers.get.return_value = None
+        response = await controller.search(request)
+        content = response.body.decode()
+        assert 'id="search-form"' in content
+        assert 'name="rule"' in content
+        assert "Role" in content
+
+    @pytest.mark.asyncio
+    async def test_search_page_rule_round_trips_into_builder(
+        self, mock_service: MagicMock
+    ) -> None:
+        """A submitted rule is pre-loaded into the page's query builder."""
+        rule = '{"logic":"AND","rules":[{"field":"role","operator":"eq","value":"admin"}]}'
+        mock_service.search.return_value = SearchResults(query="alice")
+        mock_service.get_search_field_catalog = MagicMock(return_value=[])
+        controller = SearchController(search_service=mock_service)
+        request = MagicMock()
+        request.query_params = {"q": "alice", "rule": rule}
+        request.headers.get.return_value = None
+        response = await controller.search(request)
+        content = response.body.decode()
+        assert "admin" in content
 
     @pytest.mark.asyncio
     async def test_search_full_page_embeds_initial_results(

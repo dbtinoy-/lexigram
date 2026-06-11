@@ -29,7 +29,7 @@ class SearchController:
         self._search_service = search_service
 
     async def search(self, request: Request) -> HTMLResponse:
-        """Handle GET /admin/search?q=... or ?search=...
+        """Handle GET /admin/search?q=... or ?search=... (plus optional ?rule=...)
 
         Args:
             request: Incoming HTTP request.
@@ -44,23 +44,40 @@ class SearchController:
             or request.query_params.get("search", "")
             or ""
         )
-        results = await self._search_service.search(query)
+        rule = request.query_params.get("rule") or None
+        results = await self._search_service.search(query, rule=rule)
         fragment = self._render_results(results)
 
         if request.headers.get("hx-request") == "true":
             return HTMLResponse(fragment)
-        return self._render_page(query, fragment, request)
+        return self._render_page(query, fragment, request, rule)
 
-    def _render_page(self, query: str, fragment: str, request: Request) -> HTMLResponse:
+    def _render_page(
+        self,
+        query: str,
+        fragment: str,
+        request: Request,
+        rule: str | None = None,
+    ) -> HTMLResponse:
         """Render the search page inside the admin shell.
 
         The page embeds a search input (same HTMX wiring as the header) and a
-        results container pre-filled with the current query's results, so a
-        directly-navigated URL renders server-side and subsequent keystrokes
+        query-builder organism (block-JSON rule applied to indexed resources),
+        plus a results container pre-filled with the current query's results,
+        so a directly-navigated URL renders server-side and subsequent edits
         keep swapping into ``#search-results``.
         """
         from lexigram.admin.engine.renderer import AdminRenderer
         from lexigram.ui.core.base import el
+        from lexigram.ui.organisms.query_builder import QueryBuilder
+
+        catalog = self._search_service.get_search_field_catalog()
+        builder = QueryBuilder(
+            name="rule",
+            value=rule,
+            label="Filters",
+            fields=catalog or None,
+        )
 
         content = el(
             "div",
@@ -70,23 +87,32 @@ class SearchController:
                 class_="text-2xl font-bold mb-4 text-foreground",
             ),
             el(
-                "div",
+                "form",
                 el(
                     "div",
                     el(
-                        "input",
-                        type="search",
-                        name="q",
-                        value=query or None,
-                        placeholder="Search across resources…",
-                        autocomplete="off",
-                        hx_get="/admin/search",
-                        hx_trigger="keyup changed delay:300ms",
-                        hx_target="#search-results",
-                        class_="search-input w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary",
+                        "div",
+                        el(
+                            "input",
+                            type="search",
+                            name="q",
+                            value=query or None,
+                            placeholder="Search across resources…",
+                            autocomplete="off",
+                            hx_get="/admin/search",
+                            hx_trigger="keyup changed delay:300ms",
+                            hx_target="#search-results",
+                            hx_include="#search-form",
+                            class_="search-input w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary",
+                        ),
+                        class_="relative",
                     ),
-                    class_="relative",
+                    class_="mb-4",
                 ),
+                builder.render(),
+                id="search-form",
+                method="get",
+                action="/admin/search",
                 class_="mb-4",
             ),
             el(
