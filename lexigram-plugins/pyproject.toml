@@ -57,6 +57,9 @@ test = [
     "pytest-mock>=3.10.0",
 ]
 
+[project.entry-points."lexigram.modules"]
+PluginsModule = "lexigram.plugins.module:PluginsModule"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/lexigram"]
 
