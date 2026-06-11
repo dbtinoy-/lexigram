@@ -1047,7 +1047,7 @@ class AdminProvider(Provider):
         # Build NavigationAssembler contributions and expose on app state.
         assembler_nav_items: list[dict[str, object]] = []
         assembler_groups: dict[str, list[Any]] | None = None
-        _registry = locals().get("registry")
+        _registry = locals().get("contributor_registry")
         if _registry and contributors:
             from lexigram.admin.navigation.assembler import (
                 NavigationAssembler,
