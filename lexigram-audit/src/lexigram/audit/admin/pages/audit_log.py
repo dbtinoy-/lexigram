@@ -138,26 +138,30 @@ class AuditLogPage:
                     ),
                     el(
                         "td",
-                        render_to_string(
-                            Badge(
-                                e.outcome,
-                                variant="success"
-                                if e.outcome == "success"
-                                else "danger",
+                        raw(
+                            render_to_string(
+                                Badge(
+                                    e.outcome,
+                                    variant="success"
+                                    if e.outcome == "success"
+                                    else "danger",
+                                )
                             )
                         ),
                         class_="px-4 py-3 whitespace-nowrap text-sm",
                     ),
                     el(
                         "td",
-                        render_to_string(
-                            Badge(
-                                e.severity.value,
-                                variant="danger"
-                                if e.severity.value in ("high", "critical")
-                                else "warning"
-                                if e.severity.value == "medium"
-                                else "default",
+                        raw(
+                            render_to_string(
+                                Badge(
+                                    e.severity.value,
+                                    variant="danger"
+                                    if e.severity.value in ("high", "critical")
+                                    else "warning"
+                                    if e.severity.value == "medium"
+                                    else "default",
+                                )
                             )
                         ),
                         class_="px-4 py-3 whitespace-nowrap text-sm",
