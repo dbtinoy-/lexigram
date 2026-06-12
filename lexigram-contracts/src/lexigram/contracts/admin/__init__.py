@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.contracts.admin.action_hooks import ActionHookProtocol, HasActionHooks
 from lexigram.contracts.admin.audit_entry import AuditEntry, AuditOutcome
 from lexigram.contracts.admin.audit_logger import AdminAuditLoggerProtocol
 from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
@@ -43,6 +44,7 @@ from lexigram.contracts.admin.types import (
     ManagementPageDefinition,
     NavigationContribution,
     PageCategory,
+    PageFilterField,
     SettingsPanelDefinition,
     WidgetCategory,
     WidgetParams,
@@ -56,6 +58,7 @@ from lexigram.contracts.admin.widget_protocols import (
 from lexigram.contracts.data.data_source import DataSourceProtocol
 
 __all__ = [
+    "ActionHookProtocol",
     "AdminActionDefinition",
     "AdminAuditLoggerProtocol",
     "AdminAuthorizerProtocol",
@@ -81,11 +84,13 @@ __all__ = [
     "DashboardWidgetDefinition",
     "DataSourceProtocol",
     "ExportableProtocol",
+    "HasActionHooks",
     "HealthCheckNotFoundError",
     "ManagementPageDefinition",
     "ManagementPageHandler",
     "NavigationContribution",
     "PageCategory",
+    "PageFilterField",
     "PiiRedactorProtocol",
     "RelationLoaderProtocol",
     "SettingsPanelDefinition",
