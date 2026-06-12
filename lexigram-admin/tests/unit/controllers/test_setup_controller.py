@@ -481,11 +481,10 @@ class TestSetupController:
         assert isinstance(hashed, str)
         assert len(hashed) > 20
 
-    def test_hash_password_fallback_sha256(self) -> None:
+    def test_hash_password_fails_closed_without_bcrypt(self) -> None:
         with patch.dict("sys.modules", {"bcrypt": None}):
-            hashed = _hash_password("test-password")
-            assert isinstance(hashed, str)
-            assert len(hashed) == 64  # SHA-256 hex digest
+            with pytest.raises(RuntimeError, match="bcrypt"):
+                _hash_password("test-password")
 
     # -- route decorators --
 

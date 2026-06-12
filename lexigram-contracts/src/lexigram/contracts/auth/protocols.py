@@ -74,6 +74,43 @@ class PasswordHasherProtocol(Protocol):
         """
         ...
 
+    def needs_rehash(self, hashed_password: str) -> bool:
+        """Return True when the stored hash should be re-computed.
+
+        Implementations parse the cost parameters from the self-describing
+        stored hash and compare them against their configured target.
+        Unparseable or unknown formats return ``True`` (fail-closed) — safe
+        because rehashing only ever runs after a successful ``verify()``.
+
+        Args:
+            hashed_password: Stored hash string.
+
+        Returns:
+            True when the hash is below the configured cost target.
+        """
+        ...
+
+    async def rehash_if_needed(
+        self,
+        password: str,
+        hashed_password: str | None,
+    ) -> str | None:
+        """Rehash *password* when *hashed_password* is below the cost target.
+
+        Django ``check_password(setter=...)`` pattern: run this after a
+        successful ``verify()`` and persist the returned hash to upgrade
+        stored credentials in place.  Returns ``None`` when no upgrade is
+        needed (or no stored hash exists).
+
+        Args:
+            password: Plain text password (already verified against the hash).
+            hashed_password: Stored hash string, or None.
+
+        Returns:
+            A freshly computed hash when an upgrade is needed, else None.
+        """
+        ...
+
 
 @runtime_checkable
 class PasswordPolicyProtocol(Protocol):

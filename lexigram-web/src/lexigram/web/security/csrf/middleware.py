@@ -1,19 +1,30 @@
 """ASGI middleware for CSRF protection with dual-mode support.
 
 Supports two patterns:
-1. Double-Submit Cookie (stateless, default) — compares cookie token vs header token.
-2. Synchronizer Token (stateful, requires CacheBackendProtocol) — validates against
-   a server-side token stored in cache.
+1. Double-Submit Cookie (stateless, default) — the cookie carries an
+   HMAC-signed, expiring token (``base64url("{iss}:{ts}:{nonce}") +
+   "." + base64url(hmac)``) that must be echoed in the header.
+2. Synchronizer Token (stateful, requires CacheBackendProtocol) — validates
+   against a server-side token stored in cache.
 
-Also issues the CSRF cookie on safe methods (GET/HEAD/OPTIONS) when not present.
-Paths in ``CSRFConfig.excluded_paths`` are skipped for cookie-less requests;
-cookie-bearing requests on those paths are still validated.
+Also issues (or rotates when stale) the CSRF cookie on safe methods
+(GET/HEAD/OPTIONS). Paths in ``CSRFConfig.excluded_paths`` are skipped for
+cookie-less requests; cookie-bearing requests on those paths are still
+validated.
+
+Fail-closed behavior: when ``CSRFConfig.secret_key`` is ``None`` in cookie
+(double-submit) mode, unsafe requests are always rejected — the token cannot
+be verified — while safe-method issuance still works (development UX).
+Configure ``LEX_WEB__SECURITY__CSRF__SECRET_KEY`` (required in production).
 """
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import hmac
 import secrets
+import time
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.logging import get_logger
@@ -28,16 +39,26 @@ logger = get_logger(__name__)
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
+#: Issuer label embedded in every token (fixed per process/secret).
+_TOKEN_ISSUER = "web"
+
+
+def _b64decode(data: str) -> bytes:
+    """Decode unpadded URL-safe base64 (tokens are minted without padding)."""
+    return base64.urlsafe_b64decode(data.encode() + b"=" * (-len(data) % 4))
+
 
 class CSRFProtectionMiddleware:
     """ASGI middleware for CSRF protection.
 
     Supports both double-submit cookie and synchronizer token patterns.
-    If a ``cache`` is provided, the synchronizer token pattern is used (more secure).
-    Otherwise, the double-submit cookie pattern is used (stateless).
+    If a ``cache`` is provided, the synchronizer token pattern is used (more
+    secure). Otherwise, the double-submit cookie pattern is used (stateless)
+    with HMAC-signed, expiring tokens.
 
     Cookie issuance happens automatically on safe methods (GET/HEAD/OPTIONS)
     so that clients receive a token before submitting state-changing requests.
+    Stale cookies (older than ``token_ttl``) are rotated on safe methods.
     Paths listed in ``CSRFConfig.excluded_paths`` are skipped entirely for
     cookie-less requests; cookie-bearing requests on those paths are still
     validated, so cookie-authenticated form posts cannot bypass CSRF.
@@ -45,7 +66,8 @@ class CSRFProtectionMiddleware:
     Example::
 
         app = ASGIApp()
-        config = CSRFConfig(enabled=True, cookie_name="csrf_token")
+        config = CSRFConfig(enabled=True, cookie_name="csrf_token",
+                            secret_key="secret")
         csrf = CSRFProtectionMiddleware(app, config=config)
 
         # With cache for synchronizer pattern:
@@ -74,6 +96,60 @@ class CSRFProtectionMiddleware:
         self._exclude_auth_schemes = [
             s.lower() for s in self._config.exclude_auth_schemes
         ]
+
+    # ------------------------------------------------------------------
+    # Token encoding / signing
+    # ------------------------------------------------------------------
+
+    def _build_signed_token(self, timestamp: int) -> str | None:
+        """Build a signed, expiring CSRF token.
+
+        Returns:
+            ``base64url("{iss}:{ts}:{nonce}") + "." + base64url(hmac)``,
+            or ``None`` when no ``secret_key`` is configured (verification
+            would be impossible).
+        """
+        secret = self._config.secret_key
+        if not secret:
+            return None
+        nonce = secrets.token_hex(16)
+        payload = f"{_TOKEN_ISSUER}:{timestamp}:{nonce}"
+        encoded_payload = base64.urlsafe_b64encode(payload.encode()).rstrip(b"=")
+        signature = hmac.new(secret.encode(), encoded_payload, hashlib.sha256).digest()
+        encoded_sig = base64.urlsafe_b64encode(signature).rstrip(b"=")
+        return f"{encoded_payload.decode()}.{encoded_sig.decode()}"
+
+    def _parse_token(self, token: str) -> tuple[int, bytes] | None:
+        """Split a token into (timestamp, encoded payload) or ``None``.
+
+        Returns ``None`` for malformed tokens so callers can fail closed.
+        """
+        try:
+            encoded_payload, _ = token.split(".", 1)
+            payload = _b64decode(encoded_payload).decode()
+            issuer, ts_part, _nonce = payload.split(":", 2)
+            if issuer != _TOKEN_ISSUER:
+                return None
+            return int(ts_part), encoded_payload.encode()
+        except (ValueError, TypeError, UnicodeDecodeError):
+            return None
+
+    def _is_stale(self, token: str, now: int) -> bool:
+        """Return True when the token is missing, unparseable, or expired."""
+        parsed = self._parse_token(token)
+        if parsed is None:
+            return True
+        return now - parsed[0] > self._config.token_ttl
+
+    def _expected_signature(self, encoded_payload: bytes) -> bytes:
+        """Recompute the HMAC-SHA256 signature over the encoded payload."""
+        secret = self._config.secret_key
+        assert secret is not None
+        return hmac.new(secret.encode(), encoded_payload, hashlib.sha256).digest()
+
+    # ------------------------------------------------------------------
+    # ASGI plumbing
+    # ------------------------------------------------------------------
 
     def _cache_key(self, session_id: str) -> str:
         return f"csrf:sync:{session_id}"
@@ -135,12 +211,27 @@ class CSRFProtectionMiddleware:
         receive: Callable[[], Awaitable[dict[str, Any]]],
         send: Callable[[dict[str, Any]], Awaitable[None]],
     ) -> None:
-        """Issue or refresh a CSRF token on safe methods."""
+        """Issue or rotate a CSRF token on safe methods."""
         cookies = self._parse_cookies(scope)
         token_source = cookies.get(self._config.cookie_name)
-        new_source = token_source is None
-        if new_source:
-            token_source = secrets.token_urlsafe(32)
+        now = int(time.time())
+        synchronizer = self._cache is not None
+
+        issue_new = token_source is None
+        if (
+            not synchronizer
+            and token_source is not None
+            and self._is_stale(token_source, now)
+        ):
+            issue_new = True
+
+        if issue_new:
+            if synchronizer:
+                token_source = secrets.token_urlsafe(32)
+            else:
+                token_source = self._build_signed_token(now) or secrets.token_urlsafe(
+                    32
+                )
 
         token = token_source
         if self._cache:
@@ -156,12 +247,14 @@ class CSRFProtectionMiddleware:
         async def send_with_cookie(message: dict[str, Any]) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
-                if new_source:
+                if issue_new:
                     cookie_parts = [
                         f"{self._config.cookie_name}={token_source}",
                         f"Path={self._config.cookie_path}",
                         f"SameSite={self._config.cookie_samesite.capitalize()}",
                     ]
+                    if not synchronizer:
+                        cookie_parts.append(f"Max-Age={self._config.token_ttl}")
                     if self._config.cookie_domain:
                         cookie_parts.append(f"Domain={self._config.cookie_domain}")
                     if self._config.cookie_secure:
@@ -188,12 +281,7 @@ class CSRFProtectionMiddleware:
         send: Callable[[dict[str, Any]], Awaitable[None]],
     ) -> None:
         """Validate CSRF token on unsafe methods."""
-        # HTMX requests are same-origin by default — bypass CSRF
-        if self._get_header(scope, "hx-request"):
-            await self._app(scope, receive, send)
-            return
-
-        # Programmatic API clients (JSON) are not cookie-based
+        # Programmatic API clients (JSON) — explicit opt-in only
         content_type = (
             (self._get_header(scope, "content-type") or "")
             .split(";")[0]
@@ -204,7 +292,7 @@ class CSRFProtectionMiddleware:
             await self._app(scope, receive, send)
             return
 
-        # Token-authenticated clients don't need CSRF protection
+        # Token-authenticated clients don't need CSRF protection — explicit opt-in
         auth_header = self._get_header(scope, "authorization") or ""
         if auth_header:
             scheme = auth_header.split(" ", 1)[0].lower()
@@ -220,16 +308,47 @@ class CSRFProtectionMiddleware:
             await self._reject(scope, receive, send, "missing_token")
             return
 
-        valid = False
         if self._cache:
-            stored = await self._cache.get(self._cache_key(token_source))
-            if stored and hmac.compare_digest(cast("str", stored), header_token):
-                valid = True
-        elif hmac.compare_digest(token_source, header_token):
-            valid = True
+            # Synchronizer mode — server-side comparison via the cache.
+            stored_result = await self._cache.get(self._cache_key(token_source))
+            stored = stored_result.unwrap_or(None)
+            if not stored or not hmac.compare_digest(stored, header_token):
+                await self._reject(scope, receive, send, "token_mismatch")
+                return
+            await self._app(scope, receive, send)
+            return
 
-        if not valid:
+        # Cookie (double-submit) mode — token must be signed, fresh, and
+        # echoed verbatim.
+        secret = self._config.secret_key
+        if not secret:
+            # Without a signing secret the token cannot be verified — fail closed.
+            await self._reject(scope, receive, send, "csrf_unverifiable")
+            return
+
+        if not hmac.compare_digest(token_source, header_token):
             await self._reject(scope, receive, send, "token_mismatch")
+            return
+
+        parsed = self._parse_token(token_source)
+        if parsed is None:
+            await self._reject(scope, receive, send, "token_invalid")
+            return
+
+        ts, encoded_payload = parsed
+        if int(time.time()) - ts > self._config.token_ttl:
+            await self._reject(scope, receive, send, "token_expired")
+            return
+
+        try:
+            _, provided_sig = token_source.rsplit(".", 1)
+            provided = _b64decode(provided_sig)
+        except (ValueError, TypeError):
+            await self._reject(scope, receive, send, "token_invalid")
+            return
+
+        if not hmac.compare_digest(provided, self._expected_signature(encoded_payload)):
+            await self._reject(scope, receive, send, "token_invalid")
             return
 
         await self._app(scope, receive, send)

@@ -479,3 +479,148 @@ async def test_profile_page_redirects_guests_to_login() -> None:
         r = await client.get("/admin/profile")
         assert r.status_code == 302
         assert r.headers["location"].startswith("/admin/login")
+
+
+# ---------------------------------------------------------------------------
+# Open redirect (next-parameter) hardening
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_open_redirect_authenticated_visitor_gets_safe_location() -> None:
+    """An absolute-URL next on GET /login never redirects off-host."""
+    user = MagicMock()
+    user.user_id = "user-001"
+    user.roles = ["superadmin"]
+    app = create_app(user_routes=True, state_user=user)
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        r = await client.get("/admin/login?next=https://attacker.example/phish")
+        assert r.status_code == 302
+        assert r.headers["location"] == "/admin/"
+
+
+@pytest.mark.asyncio
+async def test_open_redirect_post_login_rejects_scheme_relative_next() -> None:
+    """A scheme-relative next on POST /login defaults to /admin/."""
+    app = create_app(authenticated=True, csrf_valid=True)
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        await client.get("/admin/login")
+        r = await client.post(
+            "/admin/login",
+            data={
+                "email": "admin@example.com",
+                "password": "MyStr0ng!Pass@word",
+                "csrf_token": "csrf-test-token",
+                "next": "//attacker.example/phish",
+            },
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/admin/"
+
+
+@pytest.mark.asyncio
+async def test_open_redirect_post_login_keeps_legitimate_relative_next() -> None:
+    """A legitimate relative next on POST /login is never coerced."""
+    app = create_app(authenticated=True, csrf_valid=True)
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        await client.get("/admin/login")
+        r = await client.post(
+            "/admin/login",
+            data={
+                "email": "admin@example.com",
+                "password": "MyStr0ng!Pass@word",
+                "csrf_token": "csrf-test-token",
+                "next": "/admin/profile/mfa",
+            },
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/admin/profile/mfa"
+
+
+@pytest.mark.asyncio
+async def test_open_redirect_mfa_sink_revalidates_poisoned_session() -> None:
+    """A poisoned mfa_pending_next in session state is re-validated at the sink."""
+    controller = AuthController(
+        auth_service=_make_auth_service(authenticated=True, mfa_required=True),
+        csrf_service=_make_csrf_service(valid=True),
+        renderer=_DummyRenderer(),
+    )
+
+    async def login_form(request):
+        return await controller.login_form(request)
+
+    async def login_submit(request):
+        return await controller.login_submit(request)
+
+    async def poisoned_challenge_submit(request):
+        request.session["mfa_pending_next"] = "//attacker.example/phish"
+        return await controller.mfa_challenge_submit(request)
+
+    app = Starlette(
+        routes=[
+            Route("/admin/login", login_form, methods=["GET"]),
+            Route("/admin/login", login_submit, methods=["POST"]),
+            Route("/admin/login/2fa", poisoned_challenge_submit, methods=["POST"]),
+        ]
+    )
+    app.add_middleware(SessionMiddleware, secret_key="test-secret-key-for-tests")
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        await client.get("/admin/login")
+        await client.post(
+            "/admin/login",
+            data={
+                "email": "admin@example.com",
+                "password": "MyStr0ng!Pass@word",
+                "csrf_token": "csrf-test-token",
+                "next": "/admin/profile/mfa",
+            },
+        )
+        r = await client.post(
+            "/admin/login/2fa",
+            data={"code": "123456", "csrf_token": "csrf-test-token"},
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/admin/"
+
+
+@pytest.mark.asyncio
+async def test_open_redirect_mfa_sink_keeps_legitimate_pending_next() -> None:
+    """A legitimate mfa_pending_next survives sink re-validation."""
+    app = create_app(authenticated=True, mfa_required=True, mfa_code_valid=True)
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        await client.get("/admin/login")
+        await client.post(
+            "/admin/login",
+            data={
+                "email": "admin@example.com",
+                "password": "MyStr0ng!Pass@word",
+                "csrf_token": "csrf-test-token",
+                "next": "/admin/profile/mfa",
+            },
+        )
+        r = await client.post(
+            "/admin/login/2fa",
+            data={"code": "123456", "csrf_token": "csrf-test-token"},
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/admin/profile/mfa"

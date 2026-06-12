@@ -499,13 +499,16 @@ class AdminPasswordResetTokenStoreProtocol(Protocol):
         ...
 
     async def mark_consumed(self, token_hash: str) -> bool:
-        """Atomically mark a token consumed.
+        """Atomically verify-and-consume a token in one statement.
 
         Args:
             token_hash: sha256 hex digest of the raw token.
 
         Returns:
-            ``True`` when the token existed and was not already consumed.
+            ``True`` only when the token existed, was unconsumed, and had
+            not expired at the instant of the write; ``False`` otherwise
+            — the caller cannot distinguish missing, already-consumed,
+            or expired without a separate lookup.
         """
         ...
 

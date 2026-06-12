@@ -8,8 +8,36 @@ import pytest
 from starlette.responses import HTMLResponse
 
 from lexigram.admin.controllers.search import SearchController
-from lexigram.admin.services.search_service import SearchResult, SearchResults
+from lexigram.admin.services.search_service import (
+    SearchResult,
+    SearchResults,
+    SearchService,
+)
 from lexigram.ui.core.base import render_to_string
+
+
+class _UsersSearchResource:
+    """Searchable resource the fixture authorizer admits."""
+
+    name = "users"
+    label = "Users"
+    search_fields = ["name"]
+
+    @classmethod
+    async def search(cls, query: str, *, limit: int = 5) -> list[dict]:
+        return [{"id": 1, "title": "Alice", "subtitle": "alice@example.com"}]
+
+
+class _PostsSearchResource:
+    """Searchable resource the fixture authorizer denies."""
+
+    name = "posts"
+    label = "Posts"
+    search_fields = ["title"]
+
+    @classmethod
+    async def search(cls, query: str, *, limit: int = 5) -> list[dict]:
+        return [{"id": 10, "title": "Hello World"}]
 
 
 class TestSearchController:
@@ -19,6 +47,7 @@ class TestSearchController:
     def mock_service(self) -> MagicMock:
         service = MagicMock()
         service.search = AsyncMock()
+        service.allowed_resources_for = AsyncMock(return_value=None)
         return service
 
     def test_can_instantiate(self, mock_service: MagicMock) -> None:
@@ -41,7 +70,9 @@ class TestSearchController:
         request = MagicMock()
         request.query_params = {"q": "alice"}
         await controller.search(request)
-        mock_service.search.assert_awaited_once_with("alice", rule=None)
+        mock_service.search.assert_awaited_once_with(
+            "alice", rule=None, allowed_resources=None
+        )
 
     @pytest.mark.asyncio
     async def test_search_uses_search_param_fallback(
@@ -52,7 +83,9 @@ class TestSearchController:
         request = MagicMock()
         request.query_params = {"search": "bob"}
         await controller.search(request)
-        mock_service.search.assert_awaited_once_with("bob", rule=None)
+        mock_service.search.assert_awaited_once_with(
+            "bob", rule=None, allowed_resources=None
+        )
 
     @pytest.mark.asyncio
     async def test_search_uses_q_over_search_param(
@@ -63,7 +96,9 @@ class TestSearchController:
         request = MagicMock()
         request.query_params = {"q": "qval", "search": "sval"}
         await controller.search(request)
-        mock_service.search.assert_awaited_once_with("qval", rule=None)
+        mock_service.search.assert_awaited_once_with(
+            "qval", rule=None, allowed_resources=None
+        )
 
     @pytest.mark.asyncio
     async def test_search_forwards_rule_param(self, mock_service: MagicMock) -> None:
@@ -76,7 +111,9 @@ class TestSearchController:
         request = MagicMock()
         request.query_params = {"q": "t", "rule": rule}
         await controller.search(request)
-        mock_service.search.assert_awaited_once_with("t", rule=rule)
+        mock_service.search.assert_awaited_once_with(
+            "t", rule=rule, allowed_resources=None
+        )
 
     @pytest.mark.asyncio
     async def test_search_empty_query_returns_no_results_html(
@@ -186,6 +223,35 @@ class TestSearchController:
         content = response.body.decode()
         assert "Alice" in content
         assert "/admin/users/1" in content
+
+    @pytest.mark.asyncio
+    async def test_search_filters_denied_resources(self) -> None:
+        """HTMX fragment excludes records the caller cannot view."""
+        authorizer = AsyncMock()
+        authorizer.can_view.side_effect = lambda user, name: {
+            "users": True,
+            "posts": False,
+        }.get(name, False)
+        manager = MagicMock()
+        manager.get_all_resources = MagicMock(
+            return_value=[_UsersSearchResource, _PostsSearchResource]
+        )
+        service = SearchService(resource_manager=manager, authorizer=authorizer)
+        original_search = service.search
+        service.search = AsyncMock(side_effect=original_search)
+        controller = SearchController(search_service=service)
+        request = MagicMock()
+        request.query_params = {"q": "alice"}
+        request.headers.get.return_value = "true"
+        request.state.user = {"id": "u1"}
+        response = await controller.search(request)
+        content = response.body.decode()
+        assert "Alice" in content
+        assert "alice@example.com" in content
+        assert "Hello World" not in content
+        assert "/admin/posts/10" not in content
+        assert service.search.await_args.kwargs["rule"] is None
+        assert service.search.await_args.kwargs["allowed_resources"] == {"users"}
 
 
 class TestSearchControllerRender:
@@ -335,6 +401,7 @@ class TestSearchHostileData:
     def mock_service(self) -> MagicMock:
         service = MagicMock()
         service.search = AsyncMock()
+        service.allowed_resources_for = AsyncMock(return_value=None)
         return service
 
     def _hostile_results(self) -> SearchResults:

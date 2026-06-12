@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from starlette.requests import Request
 
+from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.settings import SettingsController
 from lexigram.admin.settings.panel import BooleanNode, ConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
@@ -78,7 +79,7 @@ class TestSettingsController:
     async def test_spec_view_renders_form(
         self, controller: SettingsController, renderer: MagicMock
     ) -> None:
-        req = _mock_request()
+        req = _mock_request(user=_FakeUser())
         req.path_params = {"namespace": "admin.branding"}
         await controller.spec_view(req)
         renderer.render_page.assert_called_once()
@@ -421,6 +422,106 @@ class GatedSpec(ConfigSpec):
     description = ""
     required_permissions = frozenset({"admin.settings.edit"})
     flag = BooleanNode(label="Flag", default=True)
+
+
+class UngatedSpec(ConfigSpec):
+    """Spec without a required permission."""
+
+    namespace = "admin.ungated"
+    label = "Ungated"
+    icon = "lock"
+    description = ""
+    flag = BooleanNode(label="Flag", default=True)
+
+
+class TestSettingsSpecViewPermissionGate:
+    """spec_view GET requires the spec's required_permissions."""
+
+    @pytest.fixture
+    def renderer(self) -> MagicMock:
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        return renderer
+
+    def _make_controller(
+        self, renderer: MagicMock, audit: MagicMock | None = None
+    ) -> tuple[SettingsController, ConfigRegistry]:
+        registry = ConfigRegistry.with_defaults()
+        registry.register_spec("system", GatedSpec)
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=registry,
+        )
+        return controller, registry
+
+    @pytest.mark.asyncio
+    async def test_spec_view_denied_without_permission(
+        self, renderer: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        controller, registry = self._make_controller(renderer, audit)
+        registry.get_values = AsyncMock()
+        req = _mock_request(user=_FakeUser(permissions=frozenset({"admin.other"})))
+        req.path_params = {"namespace": "admin.gated"}
+        resp = await controller.spec_view(req)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/admin/settings"
+        registry.get_values.assert_not_awaited()
+        audit.log_event.assert_awaited_once()
+        call_kwargs = audit.log_event.await_args
+        assert call_kwargs is not None
+        assert (
+            call_kwargs.kwargs["event_type"] == AdminSecurityEventType.PERMISSION_DENIED
+        )
+        assert call_kwargs.kwargs["success"] is False
+        assert call_kwargs.kwargs["metadata"] == {"reason": "permission_denied"}
+
+    @pytest.mark.asyncio
+    async def test_spec_view_allowed_with_permission(self, renderer: MagicMock) -> None:
+        controller, _ = self._make_controller(renderer)
+        req = _mock_request(user=_FakeUser())
+        req.path_params = {"namespace": "admin.gated"}
+        await controller.spec_view(req)
+        renderer.render_page.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_spec_view_superadmin_bypasses_permission_gate(
+        self, renderer: MagicMock
+    ) -> None:
+        controller, _ = self._make_controller(renderer)
+        req = _mock_request(
+            user=_FakeUser(
+                permissions=frozenset({"admin.other"}), roles=["superadmin"]
+            ),
+        )
+        req.path_params = {"namespace": "admin.gated"}
+        await controller.spec_view(req)
+        renderer.render_page.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_spec_view_ungated_spec_renders_without_permissions(
+        self, renderer: MagicMock
+    ) -> None:
+        registry = ConfigRegistry.with_defaults()
+        registry.register_spec("system", UngatedSpec)
+        controller = SettingsController(renderer=renderer, registry=registry)
+        req = _mock_request(user=_FakeUser(permissions=frozenset({"admin.other"})))
+        req.path_params = {"namespace": "admin.ungated"}
+        await controller.spec_view(req)
+        renderer.render_page.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_spec_view_denied_when_audit_fails(self, renderer: MagicMock) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock(side_effect=RuntimeError("audit down"))
+        controller, _ = self._make_controller(renderer, audit)
+        req = _mock_request(user=_FakeUser(permissions=frozenset({"admin.other"})))
+        req.path_params = {"namespace": "admin.gated"}
+        resp = await controller.spec_view(req)
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/admin/settings"
 
 
 class TestRenderedForm:

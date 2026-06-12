@@ -365,7 +365,42 @@ class AdminAuthService:
             ``Err(MfaVerificationFailedError)`` when the code is invalid.
             ``Err(MfaNotEnabledError)`` when the selected factor is
             unavailable.
+            ``Err(RateLimitExceededError)`` when the IP is rate-limited.
+            ``Err(AccountLockedError)`` when the account is locked.
         """
+        # Step 0a — IP rate limit (mirrors authenticate()'s Step 1)
+        try:
+            await self._attempt_service.check_ip_rate_limit(ip_address)
+        except RateLimitExceededError as exc:
+            await self._attempt_service.record_attempt(
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                failure_reason="mfa_ip_rate_limited",
+            )
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.LOGIN_BLOCKED_IP,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                metadata={"email": email, "stage": "mfa"},
+            )
+            return Err(exc)
+
+        # Step 0b — Account lockout (mirrors authenticate()'s Step 2)
+        try:
+            await self._attempt_service.check_account_lockout(email)
+        except AccountLockedError as exc:
+            await self._audit_service.log_event(
+                event_type=AdminSecurityEventType.LOGIN_BLOCKED_LOCKOUT,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=False,
+                metadata={"email": email, "stage": "mfa"},
+            )
+            return Err(exc)
+
         if self._mfa_factor == "email":
             if self._email_otp_service is None:
                 return Err(

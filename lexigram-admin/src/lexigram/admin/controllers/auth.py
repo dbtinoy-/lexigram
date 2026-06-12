@@ -41,6 +41,8 @@ from lexigram.logging import get_logger
 
 _CACHE_CONTROL_NO_STORE = {"Cache-Control": "no-store"}
 
+_DEFAULT_NEXT = "/admin/"
+
 _LEX_ERR_RE = re.compile(r"^\[LEX_ERR_[A-Z0-9_]+\]\s+")
 _SEE_DOCS_RE = re.compile(r"\n\s*→\s*See:.*$")
 
@@ -145,7 +147,7 @@ class AuthController(AdminController):
             HTMLResponse with the rendered login page, or a RedirectResponse
             when the user is already authenticated.
         """
-        next_url = request.query_params.get("next", "/admin/")
+        next_url = self._safe_next_url(request.query_params.get("next", "/admin/"))
 
         error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
@@ -155,7 +157,9 @@ class AuthController(AdminController):
         user = getattr(request.state, "user", None)
         if user and user.user_id != "guest" and not error and not notice:
             return RedirectResponse(
-                url=next_url, status_code=302, headers=_CACHE_CONTROL_NO_STORE
+                url=self._safe_next_url(next_url),
+                status_code=302,
+                headers=_CACHE_CONTROL_NO_STORE,
             )
 
         csrf_session_id = secrets.token_urlsafe(16)
@@ -197,7 +201,7 @@ class AuthController(AdminController):
         form_data = request.scope.get("admin_form_data") or await request.form()
         email = str(form_data.get("email", ""))
         password = str(form_data.get("password", ""))
-        next_url = str(form_data.get("next", "/admin/"))
+        next_url = self._safe_next_url(str(form_data.get("next", "/admin/")))
         csrf_token = str(form_data.get("csrf_token", ""))
 
         # ── CSRF validation ────────────────────────────────────────────
@@ -321,7 +325,7 @@ class AuthController(AdminController):
 
             async with AdminContextManager(request) as ctx:
                 ctx.add_flash("Signed in successfully.", "success")
-            return RedirectResponse(url=next_url, status_code=302)
+            return RedirectResponse(url=self._safe_next_url(next_url), status_code=302)
 
         error_msg = _humanize_error(str(result.unwrap_err()))
         self._metrics.record_login(status="failure")
@@ -496,7 +500,7 @@ class AuthController(AdminController):
             email=auth_result.email,
             redirect=next_url,
         )
-        return RedirectResponse(url=next_url, status_code=302)
+        return RedirectResponse(url=self._safe_next_url(next_url), status_code=302)
 
     # ------------------------------------------------------------------
     # POST /login/2fa/resend — resend email code
@@ -1369,6 +1373,32 @@ class AuthController(AdminController):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _safe_next_url(candidate: str) -> str:
+        """Return ``candidate`` if it is a safe same-origin relative path, else the default.
+
+        Rejects absolute URLs (any scheme), scheme-relative URLs (leading
+        ``//``, interpreted by browsers as ``{current-scheme}://``), and
+        anything not starting with a single ``/``.  This is the sole point
+        every post-login/post-MFA/post-verification ``next`` value must pass
+        through before being stored in session state or used in a redirect.
+
+        Args:
+            candidate: Raw ``next`` value from user input.
+
+        Returns:
+            ``candidate`` when it starts with a single ``/`` (and not
+            ``//`` or ``/\\``), otherwise ``_DEFAULT_NEXT``.
+        """
+        if (
+            candidate
+            and candidate.startswith("/")
+            and not candidate.startswith("//")
+            and not candidate.startswith("/\\")
+        ):
+            return candidate
+        return _DEFAULT_NEXT
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract the real client IP from the request.

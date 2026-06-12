@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from lexigram.contracts.auth import AuthorizerProtocol
 
 
 @dataclass
@@ -45,8 +48,13 @@ class SearchService:
     integration instead when one is available.
     """
 
-    def __init__(self, resource_manager: Any) -> None:
+    def __init__(
+        self,
+        resource_manager: Any,
+        authorizer: AuthorizerProtocol | None = None,
+    ) -> None:
         self._resource_manager = resource_manager
+        self._authorizer = authorizer
 
     async def search(
         self,
@@ -55,6 +63,7 @@ class SearchService:
         limit: int = 5,
         per_resource: int = 5,
         rule: str | None = None,
+        allowed_resources: set[str] | None = None,
     ) -> SearchResults:
         """Search across all resources.
 
@@ -64,6 +73,9 @@ class SearchService:
             per_resource: Maximum results per resource.
             rule: Query-builder block JSON string applied to indexed
                 resources (ignored for LIKE-based resource search).
+            allowed_resources: Resource names the caller may view; results
+                from unlisted resources are skipped. None keeps
+                cross-resource behavior.
 
         Returns:
             Aggregated SearchResults.
@@ -74,6 +86,10 @@ class SearchService:
         query = query.strip()
         results = SearchResults(query=query)
         resources = self.get_searchable_resources()
+        if allowed_resources is not None:
+            resources = [
+                r for r in resources if getattr(r, "name", "") in allowed_resources
+            ]
         integration = self._get_search_integration()
 
         for resource_cls in resources:
@@ -147,6 +163,26 @@ class SearchService:
         except Exception:  # noqa: S112
             pass
         return resources
+
+    async def allowed_resources_for(self, user: Any) -> set[str] | None:
+        """Resolve the searchable resources the user may view.
+
+        Args:
+            user: Authenticated user, or None for anonymous requests.
+
+        Returns:
+            The set of viewable resource names, or None when there is no
+            permission context (no user, or no authorizer configured) —
+            callers then keep the unfiltered cross-resource behavior.
+        """
+        if user is None or self._authorizer is None:
+            return None
+        allowed: set[str] = set()
+        for resource in self.get_searchable_resources():
+            name = getattr(resource, "name", "")
+            if name and await self._authorizer.can_view(user, name):
+                allowed.add(name)
+        return allowed
 
     def get_search_field_catalog(self) -> list[dict[str, Any]]:
         """Build a query-builder field catalog from searchable resources.

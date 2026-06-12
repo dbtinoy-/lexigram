@@ -403,6 +403,7 @@ Start with providers (Pattern 2) and graduate to modules (Pattern 3) when you ne
 
 ## Next Steps
 
+- [Your First App](/getting-started/first-app/) — put the concepts to work in a running API
 - [Configuration](/getting-started/configuration/) — YAML config, environment profiles, and auto-injection
 - [Architecture](/fundamentals/architecture/) — the package boundary rules
 - [The Ecosystem](/ecosystem/) — every package, grouped by purpose

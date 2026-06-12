@@ -278,6 +278,179 @@ class TestWidgetControllerPermissionGate:
         audit.log_event.assert_awaited_once()
 
 
+class TestWidgetConfigPopupPermissionGate:
+    """widget_config_popup / customize_all_widgets GETs require edit permission."""
+
+    @pytest.fixture
+    def user_with_perm(self) -> MagicMock:
+        user = MagicMock()
+        user.permissions = frozenset({"admin.settings.edit"})
+        return user
+
+    @pytest.fixture
+    def user_without_perm(self) -> MagicMock:
+        user = MagicMock()
+        user.permissions = frozenset({"admin.users.view"})
+        return user
+
+    @pytest.fixture
+    def superadmin(self) -> MagicMock:
+        user = MagicMock()
+        user.permissions = frozenset()
+        user.roles = ["superadmin"]
+        return user
+
+    def _make_request(self, user: MagicMock) -> MagicMock:
+        request = MagicMock()
+        state = MagicMock()
+        state.user = user
+        request.state = state
+        request.client = MagicMock()
+        request.client.host = "127.0.0.1"
+        request.headers = {"user-agent": "test-agent"}
+        return request
+
+    def _make_controller(
+        self, audit: MagicMock | None = None
+    ) -> tuple[WidgetController, MagicMock]:
+        registry = MagicMock()
+        contributor = MagicMock()
+        widget_def = DashboardWidgetDefinition(
+            name="pool_utilization",
+            title="Pool Utilization",
+            contributor="sql",
+            render_endpoint="/admin/sql/widgets/pool_utilization",
+            view_kind=WidgetKind.MESSAGE,
+        )
+        contributor.get_dashboard_widgets.return_value = [widget_def]
+        contributor.get_widget_config_schema = MagicMock(return_value=[])
+        registry.get_all.return_value = [contributor]
+        settings = MagicMock()
+        settings.get_widget_prefs = AsyncMock(
+            return_value={"enabled": [], "configs": {}}
+        )
+        controller = WidgetController(registry=registry, audit_service=audit)
+        controller._settings_service = settings
+        return controller, settings
+
+    @pytest.mark.asyncio
+    async def test_widget_config_popup_denied_without_permission(
+        self, user_without_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        controller, settings = self._make_controller(audit)
+        response = await controller.widget_config_popup(
+            self._make_request(user_without_perm), name="pool_utilization"
+        )
+        assert response.status_code == 403
+        settings.get_widget_prefs.assert_not_awaited()
+        audit.log_event.assert_awaited_once_with(
+            event_type=AdminSecurityEventType.PERMISSION_DENIED,
+            ip_address="127.0.0.1",
+            user_agent="test-agent",
+            success=False,
+            metadata={
+                "reason": "permission_denied",
+                "route": "widget_config_popup",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_widget_config_popup_allowed_with_permission(
+        self, user_with_perm: MagicMock
+    ) -> None:
+        controller, settings = self._make_controller()
+        response = await controller.widget_config_popup(
+            self._make_request(user_with_perm), name="pool_utilization"
+        )
+        assert response.status_code == 200
+        settings.get_widget_prefs.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_widget_config_popup_superadmin_bypasses(
+        self, superadmin: MagicMock
+    ) -> None:
+        controller, settings = self._make_controller()
+        response = await controller.widget_config_popup(
+            self._make_request(superadmin), name="pool_utilization"
+        )
+        assert response.status_code == 200
+        settings.get_widget_prefs.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_widget_config_popup_unknown_widget_404s_before_gate(
+        self, user_without_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        registry = MagicMock()
+        registry.get_all.return_value = []
+        controller = WidgetController(registry=registry, audit_service=audit)
+        response = await controller.widget_config_popup(
+            self._make_request(user_without_perm), name="unknown_widget"
+        )
+        assert response.status_code == 404
+        audit.log_event.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_widget_config_popup_denied_when_audit_fails(
+        self, user_without_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock(side_effect=RuntimeError("audit down"))
+        controller, _ = self._make_controller(audit)
+        response = await controller.widget_config_popup(
+            self._make_request(user_without_perm), name="pool_utilization"
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_customize_all_widgets_denied_without_permission(
+        self, user_without_perm: MagicMock
+    ) -> None:
+        audit = MagicMock()
+        audit.log_event = AsyncMock()
+        controller, settings = self._make_controller(audit)
+        response = await controller.customize_all_widgets(
+            self._make_request(user_without_perm)
+        )
+        assert response.status_code == 403
+        settings.get_widget_prefs.assert_not_awaited()
+        audit.log_event.assert_awaited_once_with(
+            event_type=AdminSecurityEventType.PERMISSION_DENIED,
+            ip_address="127.0.0.1",
+            user_agent="test-agent",
+            success=False,
+            metadata={
+                "reason": "permission_denied",
+                "route": "customize_all_widgets",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_customize_all_widgets_allowed_with_permission(
+        self, user_with_perm: MagicMock
+    ) -> None:
+        controller, settings = self._make_controller()
+        response = await controller.customize_all_widgets(
+            self._make_request(user_with_perm)
+        )
+        assert response.status_code == 200
+        settings.get_widget_prefs.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_customize_all_widgets_superadmin_bypasses(
+        self, superadmin: MagicMock
+    ) -> None:
+        controller, settings = self._make_controller()
+        response = await controller.customize_all_widgets(
+            self._make_request(superadmin)
+        )
+        assert response.status_code == 200
+        settings.get_widget_prefs.assert_awaited_once()
+
+
 def _user_with_permissions(*permissions: str) -> MagicMock:
     """Build a user mock with the given permission set and no roles."""
     user = MagicMock()

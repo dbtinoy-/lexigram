@@ -29,14 +29,19 @@ from lexigram.result import Ok
 class FakeUserStore:
     """In-memory AdminUserStoreProtocol with mutable user records."""
 
-    def __init__(self, users: list[dict] | None = None) -> None:
+    def __init__(
+        self, users: list[dict] | None = None, flow: list[str] | None = None
+    ) -> None:
         self._users = {u["email"]: dict(u) for u in (users or [])}
         self.updated: list[dict] = []
+        self._flow = flow
 
     async def get_user_by_email(self, email: str) -> object | None:
         return _UserRecord(self._users[email]) if email in self._users else None
 
     async def update_user(self, user: object) -> None:
+        if self._flow is not None:
+            self._flow.append("update")
         self.updated.append(vars(user))
 
 
@@ -52,11 +57,22 @@ class _UserRecord:
 
 
 class FakeTokenStore:
-    """In-memory AdminPasswordResetTokenStoreProtocol."""
+    """In-memory AdminPasswordResetTokenStoreProtocol.
 
-    def __init__(self) -> None:
+    With ``deny_second_consume``, reads after the first consume still
+    return an unconsumed record (a stale view) while ``mark_consumed``
+    refuses, simulating a row already consumed by a concurrent writer.
+    """
+
+    def __init__(
+        self,
+        flow: list[str] | None = None,
+        deny_second_consume: bool = False,
+    ) -> None:
         self.tokens: dict[str, AdminPasswordResetToken] = {}
         self.created: list[AdminPasswordResetToken] = []
+        self._flow = flow
+        self._deny_second_consume = deny_second_consume
 
     async def ensure_schema(self) -> None:
         return None
@@ -69,11 +85,23 @@ class FakeTokenStore:
         self.created.append(token)
 
     async def find_by_hash(self, token_hash: str) -> AdminPasswordResetToken | None:
-        return self.tokens.get(token_hash)
+        token = self.tokens.get(token_hash)
+        if token is None or not self._deny_second_consume:
+            return token
+        return AdminPasswordResetToken(
+            email=token.email,
+            token_hash=token.token_hash,
+            expires_at=token.expires_at,
+            consumed_at=None,
+        )
 
     async def mark_consumed(self, token_hash: str) -> bool:
+        if self._flow is not None:
+            self._flow.append("consume")
         token = self.tokens.get(token_hash)
-        if token is None or token.consumed_at is not None:
+        if token is None:
+            return False
+        if self._deny_second_consume and token.consumed_at is not None:
             return False
         self.tokens[token_hash] = AdminPasswordResetToken(
             email=token.email,
@@ -120,6 +148,8 @@ def _make_service(
     token_lifetime: int = 3600,
     cache: object | None = None,
     reset_request_limit: int = 5,
+    flow: list[str] | None = None,
+    deny_second_consume: bool = False,
 ) -> tuple[
     AdminPasswordResetService,
     FakeUserStore,
@@ -127,8 +157,8 @@ def _make_service(
     MagicMock,
     MagicMock,
 ]:
-    user_store = FakeUserStore(users)
-    token_store = FakeTokenStore()
+    user_store = FakeUserStore(users, flow=flow)
+    token_store = FakeTokenStore(flow=flow, deny_second_consume=deny_second_consume)
     audit = MagicMock()
     audit.log_event = AsyncMock(return_value=None)
     auth_service = MagicMock()
@@ -350,6 +380,59 @@ async def test_confirm_reset_weak_password_returns_policy_error() -> None:
 
     assert result.is_err()
     assert isinstance(result.unwrap_err(), PasswordPolicyError)
+
+
+@pytest.mark.asyncio
+async def test_confirm_reset_marks_consumed_before_user_update() -> None:
+    notification = _notification()
+    flow: list[str] = []
+    service, user_store, _, _, _ = _make_service(
+        users=[
+            {
+                "user_id": "u1",
+                "name": "Admin",
+                "email": EMAIL,
+                "hashed_password": "old",
+            }
+        ],
+        notification=notification,
+        flow=flow,
+    )
+    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
+    raw_token = _raw_token_from(notification)
+
+    result = await service.confirm_reset(raw_token, NEW_PASSWORD)
+
+    assert result.is_ok()
+    assert flow.index("consume") < flow.index("update")
+    assert len(user_store.updated) == 1
+
+
+@pytest.mark.asyncio
+async def test_confirm_reset_losing_racer_rejected_at_atomic_gate() -> None:
+    notification = _notification()
+    service, user_store, _, _, _ = _make_service(
+        users=[
+            {
+                "user_id": "u1",
+                "name": "Admin",
+                "email": EMAIL,
+                "hashed_password": "old",
+            }
+        ],
+        notification=notification,
+        deny_second_consume=True,
+    )
+    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
+    raw_token = _raw_token_from(notification)
+
+    first = await service.confirm_reset(raw_token, NEW_PASSWORD)
+    second = await service.confirm_reset(raw_token, NEW_PASSWORD)
+
+    assert first.is_ok()
+    assert second.is_err()
+    assert isinstance(second.unwrap_err(), PasswordResetTokenInvalidError)
+    assert len(user_store.updated) == 1
 
 
 # ---------------------------------------------------------------------------

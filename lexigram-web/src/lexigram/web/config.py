@@ -317,7 +317,7 @@ class WebConfig(BaseConfig):
         default_factory=lambda: SecurityConfig(
             csrf=CSRFConfig(
                 enabled=True,
-                excluded_paths=["/health", "/metrics"],
+                excluded_paths=["/health", "/metrics", "/admin"],
             ),
         ),
         description="Security configuration (HSTS, CSP, cross-origin, CSRF, headers)",
@@ -412,6 +412,16 @@ class WebConfig(BaseConfig):
         # Use explicit env field if set, otherwise fall back to os.getenv
         env_raw = self.env or os.getenv("LEX_ENV", "development") or "development"
         env = str(env_raw).lower()
+        if (
+            self.cors.allowed_origins
+            and "*" in self.cors.allowed_origins
+            and self.cors.allow_credentials
+        ):
+            raise ValueError(
+                "CRITICAL SECURITY ERROR: wildcard CORS origin '*' combined with "
+                "allow_credentials=True is not permitted in any environment — "
+                "set specific origins via LEX_WEB__CORS__ALLOWED_ORIGINS.",
+            )
         if env == "production":
             if self.cors.allowed_origins and "*" in self.cors.allowed_origins:
                 raise ValueError(
@@ -423,6 +433,20 @@ class WebConfig(BaseConfig):
                     "CRITICAL SECURITY ERROR: CSRF protection is disabled in PRODUCTION.\n"
                     "You MUST enable it via LEX_WEB__SECURITY__CSRF__ENABLED.",
                 )
+            csrf_key = self.security.csrf.secret_key
+            if not csrf_key or csrf_key.strip() == "":
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: CSRF is enabled but no secret_key is set in PRODUCTION.\n"
+                    "You MUST set one via LEX_WEB__SECURITY__CSRF__SECRET_KEY.",
+                )
+            if not self.security.allowed_hosts:
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: no allowed_hosts configured for PRODUCTION.\n"
+                    "You MUST configure LEX_WEB__SECURITY__ALLOWED_HOSTS "
+                    "(host validation fails closed).",
+                )
+            # HSTS must be on in production (mirrors create_production_config).
+            self.security.hsts.enabled = True
         return self
 
 
@@ -438,14 +462,6 @@ class WebProviderConfig(BaseConfig):
     # OpenAPI settings
     openapi_title: str = Field(default="API", description="OpenAPI title")
     openapi_version: str = Field(default="1.0.0", description="OpenAPI version")
-
-    # CORS settings (provider-level)
-    cors_origins: list[str] = Field(default_factory=lambda: ["*"])
-    cors_methods: list[str] = Field(
-        default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    )
-    cors_headers: list[str] = Field(default_factory=lambda: ["*"])
-    cors_credentials: bool = Field(default=True)
 
     # Middleware and filters
     middleware: list[str] = Field(

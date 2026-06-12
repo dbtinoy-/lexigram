@@ -113,8 +113,8 @@ class PasswordHasher(PasswordHasherProtocol):
     """Bcrypt password hasher implementing the PasswordHasherProtocol.
 
     Provides secure password hashing using bcrypt with UTF-8 aware truncation.
-    ``hash`` and ``verify`` are static methods so they can be called directly
-    on the class (``await PasswordHasher.hash(password)``) or on an instance.
+    The bcrypt cost factor is per-instance (``rounds``) so the configured
+    value is honored both at construction and by the container singleton.
     """
 
     MAX_PASSWORD_BYTES = _MAX_PASSWORD_BYTES
@@ -122,9 +122,19 @@ class PasswordHasher(PasswordHasherProtocol):
     def __init__(self, rounds: int = _DEFAULT_BCRYPT_ROUNDS) -> None:
         self._rounds = rounds
 
-    @staticmethod
-    async def hash(password: str) -> str:
-        """Hash a password using bcrypt with UTF-8 aware truncation."""
+    async def hash(self, password: str) -> str:
+        """Hash a password using bcrypt with UTF-8 aware truncation.
+
+        Args:
+            password: Plain text password.
+
+        Returns:
+            Bcrypt hash string (``$2b$<cost>$...``) using the configured
+            cost factor.
+
+        Raises:
+            RuntimeError: If bcrypt is not available.
+        """
         if not bcrypt_available:
             raise RuntimeError("bcrypt library is not available")
 
@@ -132,15 +142,25 @@ class PasswordHasher(PasswordHasherProtocol):
 
         def _hash_sync(pwd_bytes: bytes) -> str:
             bcrypt = cast("Any", _bcrypt)
-            salt = bcrypt.gensalt(rounds=_DEFAULT_BCRYPT_ROUNDS)
+            salt = bcrypt.gensalt(rounds=self._rounds)
             hashed = bcrypt.hashpw(pwd_bytes, salt)
             return str(hashed.decode("ascii"))
 
         return await asyncio.to_thread(_hash_sync, password_bytes)
 
-    @staticmethod
-    async def verify(password: str, hashed_password: str | bytes) -> bool:
-        """Verify a password against its hash asynchronously."""
+    async def verify(self, password: str, hashed_password: str | bytes) -> bool:
+        """Verify a password against its hash asynchronously.
+
+        Args:
+            password: Plain text password.
+            hashed_password: Stored hash to compare against.
+
+        Returns:
+            True if the password matches the hash, False otherwise.
+
+        Raises:
+            RuntimeError: If bcrypt is not available.
+        """
         if not bcrypt_available:
             raise RuntimeError("bcrypt library is not available")
 
@@ -161,8 +181,32 @@ class PasswordHasher(PasswordHasherProtocol):
         return await asyncio.to_thread(_verify_sync, password_bytes, hashed_bytes)
 
     def needs_rehash(self, hashed_password: str) -> bool:
-        """Check if the hash needs to be rehashed."""
-        return False
+        """Compare the stored hash's cost to the configured target.
+
+        Parses the self-describing bcrypt prefix (``$2b$<cost>$...``); returns
+        ``True`` when the stored cost is below the configured ``rounds``.
+        Unparseable or unknown formats return ``True`` (fail-closed) — safe
+        because rehashing only ever runs after a successful ``verify()``.
+
+        Args:
+            hashed_password: Stored bcrypt hash string.
+
+        Returns:
+            True when the hash should be re-computed at the current cost.
+        """
+        if not isinstance(hashed_password, str) or not hashed_password:
+            return True
+        try:
+            parts = hashed_password.split("$")
+            if len(parts) >= 3 and parts[1] in ("2a", "2b", "2y", "2x"):
+                cost = int(parts[2])
+                return cost < self._rounds
+        except (ValueError, IndexError, TypeError):
+            logger.warning(
+                "password_hash_cost_unparseable",
+                hash_prefix=hashed_password[:7],
+            )
+        return True
 
     async def rehash_if_needed(
         self,
@@ -173,7 +217,7 @@ class PasswordHasher(PasswordHasherProtocol):
         if not hashed_password:
             return None
         if self.needs_rehash(hashed_password):
-            return await PasswordHasher.hash(password)
+            return await self.hash(password)
         return None
 
 

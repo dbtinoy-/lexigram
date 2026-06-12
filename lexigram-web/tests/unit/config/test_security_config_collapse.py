@@ -156,6 +156,58 @@ class TestSecurityConfigCollapseDecisions:
                 allow_origins=["*"],
             )
 
+    def test_web_config_rejects_wildcard_credentials_in_staging(self) -> None:
+        """Wildcard + credentials raises in any environment, not just production."""
+        with pytest.raises(ValueError, match="SECURITY ERROR"):
+            WebConfig(
+                env="staging",
+                cors=CORSConfig(allowed_origins=["*"], allow_credentials=True),
+            )
+
+    def test_web_config_rejects_wildcard_credentials_in_production(self) -> None:
+        """The same pair still raises in production (existing behaviour preserved)."""
+        with pytest.raises(ValueError, match="SECURITY ERROR"):
+            WebConfig(
+                env="production",
+                cors=CORSConfig(allowed_origins=["*"], allow_credentials=True),
+            )
+
+    def test_web_config_level_guard_rejects_mutated_wildcard_credentials(
+        self,
+    ) -> None:
+        """The env-independent WebConfig guard fires even when the inner
+        CORSConfig validator was bypassed via post-construction mutation."""
+        cors = CORSConfig(allowed_origins=["https://app.example.com"])
+        cors.allowed_origins = ["*"]
+        cors.allow_credentials = True
+        with pytest.raises(ValueError, match="CRITICAL SECURITY ERROR"):
+            WebConfig(env="staging", cors=cors)
+
+    def test_web_config_allows_wildcard_without_credentials_outside_production(
+        self,
+    ) -> None:
+        """Wildcard without credentials stays legal in staging/development."""
+        staging = WebConfig(
+            env="staging",
+            cors=CORSConfig(allowed_origins=["*"], allow_credentials=False),
+        )
+        development = WebConfig(
+            env="development",
+            cors=CORSConfig(allowed_origins=["*"], allow_credentials=False),
+        )
+        assert staging.cors.allowed_origins == ["*"]
+        assert development.cors.allowed_origins == ["*"]
+
+    def test_web_config_rejects_wildcard_without_credentials_in_production(
+        self,
+    ) -> None:
+        """Production-only wildcard-without-credentials raise is preserved."""
+        with pytest.raises(ValueError, match="not allowed in PRODUCTION"):
+            WebConfig(
+                env="production",
+                cors=CORSConfig(allowed_origins=["*"], allow_credentials=False),
+            )
+
     def test_middleware_adapter_pattern_cors_config(self) -> None:
         """CORSConfig supports middleware adapter pattern."""
         config = CORSConfig(

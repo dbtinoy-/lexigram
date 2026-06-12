@@ -18,6 +18,7 @@ from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
 from lexigram.admin.core.registry import AdminRegistry
 from lexigram.admin.di.bundle_provider import AdminProvider
 from lexigram.admin.middleware.authorization import RequestAuthorizerProtocol
+from lexigram.contracts.auth import AuthorizerProtocol
 from lexigram.contracts.exceptions import UnresolvableDependencyError
 
 
@@ -100,6 +101,7 @@ async def test_provider_boot_runs_without_errors() -> None:
             AdminUserStoreProtocol,
             AdminSessionServiceProtocol,
             RequestAuthorizerProtocol,
+            AuthorizerProtocol,
         ):
             return AsyncMock()
         raise UnresolvableDependencyError("missing")

@@ -186,6 +186,7 @@ class TestSearchControllerIntegration:
     async def test_search_service_invoked_with_query(self) -> None:
         mock_service = MagicMock()
         mock_service.search = AsyncMock()
+        mock_service.allowed_resources_for = AsyncMock(return_value=None)
         mock_service.search.return_value = SearchResults(
             query="alice",
             total_count=1,
@@ -205,7 +206,9 @@ class TestSearchControllerIntegration:
         request = MagicMock()
         request.query_params = {"q": "alice"}
         response = await controller.search(request)
-        mock_service.search.assert_awaited_once_with("alice", rule=None)
+        mock_service.search.assert_awaited_once_with(
+            "alice", rule=None, allowed_resources=None
+        )
         content = response.body.decode()
         assert 'class="search-results' in content
         assert "Alice" in content
@@ -214,6 +217,7 @@ class TestSearchControllerIntegration:
     async def test_search_empty_via_service_returns_empty_html(self) -> None:
         mock_service = MagicMock()
         mock_service.search = AsyncMock()
+        mock_service.allowed_resources_for = AsyncMock(return_value=None)
         mock_service.search.return_value = SearchResults(query="")
 
         controller = SearchController(search_service=mock_service)
@@ -228,6 +232,7 @@ class TestSearchControllerIntegration:
     async def test_controller_returns_html_response(self) -> None:
         mock_service = MagicMock()
         mock_service.search = AsyncMock()
+        mock_service.allowed_resources_for = AsyncMock(return_value=None)
         mock_service.search.return_value = SearchResults(query="test")
 
         controller = SearchController(search_service=mock_service)

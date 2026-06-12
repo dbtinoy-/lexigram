@@ -54,7 +54,7 @@ class AuthTestUser:
         **kwargs: Any,
     ) -> AuthTestUser:
         """Create a test user with default values."""
-        hashed_password = await PasswordHasher.hash(password)
+        hashed_password = await PasswordHasher().hash(password)
         return cls(
             user_id=f"user_{username}",
             username=username,

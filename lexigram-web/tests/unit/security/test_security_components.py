@@ -165,9 +165,6 @@ class TestSecurityPackageExports:
         from lexigram.web.security.csrf.middleware import (
             CSRFProtectionMiddleware as CanonicalCSRFMiddleware,
         )
-        from lexigram.web.security.csrf.protection import (
-            CSRFProtection as CanonicalCSRFProtection,
-        )
 
         assert web_security.CORSConfig is CanonicalCORSConfig
         assert web_security.CORSMiddleware is CanonicalCORSMiddleware
@@ -175,7 +172,6 @@ class TestSecurityPackageExports:
         assert web_security.CSPConfig is CanonicalCSPConfig
         assert web_security.CSPPolicy is CanonicalCSPPolicy
         assert web_security.CSRFConfig is CanonicalCSRFConfig
-        assert web_security.CSRFProtection is CanonicalCSRFProtection
         assert web_security.CSRFProtectionMiddleware is CanonicalCSRFMiddleware
         assert web_security.CrossOriginConfig is CanonicalCrossOriginConfig
         assert web_security.HSTSConfig is CanonicalHSTSConfig

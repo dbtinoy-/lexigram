@@ -6,7 +6,6 @@ import pytest
 
 from lexigram.web.security.config import CORSConfig, CSRFConfig, SecurityConfig
 from lexigram.web.security.cors.middleware import CORSMiddlewareFactory
-from lexigram.web.security.csrf.protection import CSRFProtection
 
 
 @pytest.mark.asyncio
@@ -29,8 +28,5 @@ async def test_web_provider_registers_http_security_configs(test_bed) -> None:
 async def test_web_provider_registers_http_security_services(test_bed) -> None:
     """WebProvider should register HTTP security helper services in DI."""
     factory = await test_bed.resolve(CORSMiddlewareFactory)
-    protection = await test_bed.resolve(CSRFProtection)
 
     assert isinstance(factory, CORSMiddlewareFactory)
-    assert isinstance(protection, CSRFProtection)
-    assert isinstance(protection.config, CSRFConfig)

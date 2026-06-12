@@ -24,6 +24,7 @@ from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
 from lexigram.admin.services.notifications import AdminNotificationService
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
+from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.logging import get_logger
 from lexigram.validation import SecretStr
 
@@ -245,8 +246,9 @@ class AdminAuthSubProvider:
         )
         if isinstance(_session_secret, SecretStr):
             _session_secret = _session_secret.get_secret_value()
-        # Token lifetime aligns with session idle TTL (AUTH-08)
-        _csrf_lifetime: int = getattr(_auth_cfg, "idle_timeout", 3600)
+        # Token lifetime follows the dedicated CSRF expiry setting (AUTH-07);
+        # the csrf_token_lifetime <= idle_timeout validator governs it.
+        _csrf_lifetime: int = getattr(_auth_cfg, "csrf_token_lifetime", 3600)
         container.singleton(
             AdminCsrfServiceProtocol,
             AdminCsrfService(secret=_session_secret, token_lifetime=_csrf_lifetime),
@@ -335,8 +337,18 @@ class AdminAuthSubProvider:
         from lexigram.admin.auth.services.mfa_service import AdminMfaService
         from lexigram.admin.auth.store.mfa_sql import AdminMfaSqlStore
         from lexigram.admin.config import AdminMfaConfig
+        from lexigram.security.encryption import EncryptionService
 
-        container.singleton(AdminMfaStoreProtocol, AdminMfaSqlStore)
+        _mfa_encryption = EncryptionService(secret_key=_session_secret)
+
+        @inject
+        class _AdminMfaSqlStoreConfigured(AdminMfaSqlStore):
+            """Admin-scoped MFA store with config-derived secret encryption."""
+
+            def __init__(self, db: DatabaseProviderProtocol) -> None:
+                super().__init__(db=db, encryption_service=_mfa_encryption)
+
+        container.singleton(AdminMfaStoreProtocol, _AdminMfaSqlStoreConfigured)
 
         @inject
         class _AdminMfaServiceConfigured(AdminMfaService):

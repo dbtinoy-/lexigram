@@ -34,6 +34,7 @@ class TestCommandPaletteController:
                 resource_counts={"users": 1},
             )
         )
+        service.allowed_resources_for = AsyncMock(return_value=None)
         return service
 
     @pytest.fixture

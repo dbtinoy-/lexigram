@@ -12,7 +12,7 @@ async def _make_user(
     user_store: InMemoryUserStore, name: str, email: str, password: str
 ):
     """Helper: hash password and create user directly in the store."""
-    hashed = await PasswordHasher.hash(password)
+    hashed = await PasswordHasher().hash(password)
     return await user_store.create_user(name=name, email=email, hashed_password=hashed)
 
 

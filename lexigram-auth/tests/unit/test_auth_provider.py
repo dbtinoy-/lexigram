@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from lexigram.auth.authn.jwt import JWTTokenManager
+from lexigram.auth.authn.password_hasher import ComposedPasswordHasher
 from lexigram.auth.authn.security import PasswordHasher, PasswordPolicy
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authz.service import AuthorizationService
@@ -39,7 +40,9 @@ class _RecordingContainer:
     def __init__(self) -> None:
         self.bindings: dict[type, object] = {}
 
-    def singleton(self, contract: type, implementation: object, **kwargs: object) -> None:
+    def singleton(
+        self, contract: type, implementation: object, **kwargs: object
+    ) -> None:
         self.bindings[contract] = implementation
 
     def transient(self, contract: type, implementation: type, **kwargs: object) -> None:
@@ -180,7 +183,6 @@ class TestAuthBundleProviderLifecycle:
 
         await prov.register(container)
 
-        assert PasswordHasher in container.bindings
         assert PasswordPolicy in container.bindings
         assert AuthenticationService in container.bindings
         assert JWTTokenManager in container.bindings
@@ -188,6 +190,11 @@ class TestAuthBundleProviderLifecycle:
         assert AuthorizationService in container.bindings
 
         assert PasswordHasherProtocol in container.bindings
+        assert isinstance(
+            container.bindings[PasswordHasherProtocol],
+            ComposedPasswordHasher,
+        )
+        assert PasswordHasher not in container.bindings
         assert PasswordPolicyProtocol in container.bindings
         assert AuthProviderProtocol in container.bindings
         assert AuthorizerProtocol in container.bindings
@@ -220,9 +227,7 @@ class TestAuthenticationProviderSecretGuard:
         from lexigram.contracts.exceptions import ConfigurationError
 
         monkeypatch.setenv("LEX_ENV", "development")
-        config = AuthConfig(
-            secret_key="dev-root-key", token=JWTConfig(secret_key="")
-        )
+        config = AuthConfig(secret_key="dev-root-key", token=JWTConfig(secret_key=""))
         monkeypatch.setenv("LEX_ENV", "production")
         with pytest.raises(ConfigurationError) as excinfo:
             AuthenticationProvider(config=config)
@@ -233,9 +238,7 @@ class TestAuthenticationProviderSecretGuard:
         from lexigram.contracts.exceptions import ConfigurationError
 
         monkeypatch.setenv("LEX_ENV", "development")
-        config = AuthConfig(
-            secret_key="dev-root-key", token=JWTConfig(secret_key="")
-        )
+        config = AuthConfig(secret_key="dev-root-key", token=JWTConfig(secret_key=""))
         monkeypatch.setenv("LEX_ENV", "staging")
         with pytest.raises(ConfigurationError) as excinfo:
             AuthenticationProvider(config=config)
@@ -245,9 +248,7 @@ class TestAuthenticationProviderSecretGuard:
         from lexigram.auth.config import AuthConfig, JWTConfig
 
         monkeypatch.setenv("LEX_ENV", "development")
-        config = AuthConfig(
-            secret_key="dev-root-key", token=JWTConfig(secret_key="")
-        )
+        config = AuthConfig(secret_key="dev-root-key", token=JWTConfig(secret_key=""))
         provider = AuthenticationProvider(config=config)
         secret = provider.token_manager._key_store.keys["default"].get_secret_value()
         assert secret

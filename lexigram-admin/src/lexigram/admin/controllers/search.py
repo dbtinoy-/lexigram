@@ -47,7 +47,11 @@ class SearchController:
             or ""
         )
         rule = request.query_params.get("rule") or None
-        results = await self._search_service.search(query, rule=rule)
+        user = getattr(request.state, "user", None)
+        allowed = await self._search_service.allowed_resources_for(user)
+        results = await self._search_service.search(
+            query, rule=rule, allowed_resources=allowed
+        )
         fragment = self._render_results(results)
 
         if request.headers.get("hx-request") == "true":

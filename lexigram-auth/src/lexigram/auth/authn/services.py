@@ -25,7 +25,10 @@ from lexigram.auth.exceptions import (
     PasswordPolicyError,
 )
 from lexigram.auth.models.user import User, UserCredentials
-from lexigram.contracts.auth.protocols import LoginAttemptTrackerProtocol
+from lexigram.contracts.auth.protocols import (
+    LoginAttemptTrackerProtocol,
+    PasswordHasherProtocol,
+)
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
@@ -225,6 +228,7 @@ class AuthenticationService:
         event_bus: EventBusProtocol | None = None,
         tracker: LoginAttemptTracker | None = None,
         hooks: HookRegistryProtocol | None = None,
+        password_hasher: PasswordHasherProtocol | None = None,
     ) -> None:
         self.password_policy = password_policy
         self.user_store = user_store
@@ -239,6 +243,11 @@ class AuthenticationService:
             lockout_duration_seconds=self.lockout_config.lockout_duration_seconds,
         )
         self._hooks = hooks
+        # The composed hasher injected by the provider; falls back to the
+        # bcrypt hasher for callers that construct the service directly.
+        self._password_hasher: PasswordHasherProtocol = (
+            password_hasher or PasswordHasher()
+        )
         # Background tasks kept alive to prevent GC before completion
         self._background_tasks: set[asyncio.Task[object]] = set()
 
@@ -315,7 +324,7 @@ class AuthenticationService:
             if creds and creds.hashed_password
             else DUMMY_PASSWORD_HASH
         )
-        verified = await PasswordHasher.verify(password, hashed)
+        verified = await self._password_hasher.verify(password, hashed)
 
         if user and user.is_active and verified:
             from lexigram.auth.hooks import AuthUserAuthenticatedHook
@@ -347,7 +356,7 @@ class AuthenticationService:
             return
 
         try:
-            new_hash = await PasswordHasher().rehash_if_needed(
+            new_hash = await self._password_hasher.rehash_if_needed(
                 password,
                 creds.hashed_password,
             )
@@ -358,8 +367,8 @@ class AuthenticationService:
                     previous_hashes=creds.previous_hashes,
                 )
                 await self.user_store.update_credentials(updated_creds)
-        except (RuntimeError, ValueError):
-            pass
+        except (RuntimeError, ValueError) as exc:
+            logger.warning("password_rehash_failed", reason=str(exc))
 
     async def register_user(
         self, request: RegisterRequest
@@ -388,7 +397,7 @@ class AuthenticationService:
         if await self.user_store.get_user_by_email(request.email):
             return Err(EmailExistsError(request.email))
 
-        hashed_password = await PasswordHasher.hash(request.password)
+        hashed_password = await self._password_hasher.hash(request.password)
 
         user = await self.user_store.create_user(
             name=request.name,

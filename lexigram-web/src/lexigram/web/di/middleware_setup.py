@@ -66,6 +66,7 @@ class MiddlewareSetup:
         """
         await self._configure_csp()
         self._add_security_headers(app)
+        self._add_host_validation(app)
         self._add_cors(app)
         await self._add_csrf(app, container)
         self._add_request_context(app, container)
@@ -118,11 +119,25 @@ class MiddlewareSetup:
     def _add_security_headers(self, app: Starlette) -> None:
         """Add security headers middleware when a security config is present."""
         if hasattr(self._config, "security") and self._config.security:
+            if not getattr(self._config.security, "enabled", True):
+                return
             app.add_middleware(
                 SecurityHeadersMiddleware,
                 config=self._config.security,
                 enabled=True,
             )
+
+    def _add_host_validation(self, app: Starlette) -> None:
+        """Add host-header validation when an allowed_hosts allowlist is set."""
+        if not hasattr(self._config, "security") or not self._config.security:
+            return
+        allowed_hosts = list(getattr(self._config.security, "allowed_hosts", []))
+        if not allowed_hosts:
+            return
+
+        from lexigram.web.middleware.host import HostValidationMiddleware
+
+        app.add_middleware(HostValidationMiddleware, allowed_hosts=allowed_hosts)
 
     def _add_cors(self, app: Starlette) -> None:
         """Add CORS middleware when CORS is enabled in config."""
@@ -137,15 +152,12 @@ class MiddlewareSetup:
 
         cors_cfg = self._config.cors
         _debug_active = is_debug_mode() or self._config.server.debug
-        _default_origins = {"http://localhost:3000", "http://localhost:8001"}
-        _configured_origins = set(cors_cfg.allow_origins)
-
         allowed_origins = cors_cfg.allow_origins
-        if _debug_active and _configured_origins == _default_origins:
+        if cors_cfg.debug_permissive and _debug_active:
             allowed_origins = ["*"]
-            logger.debug(
+            logger.warning(
                 "cors.debug_permissive",
-                reason="debug mode active, no explicit CORS config — using wildcard",
+                reason="debug_permissive=True and debug mode active — using wildcard CORS origins",
             )
 
         web_cors_config = CORSConfig(
@@ -165,10 +177,14 @@ class MiddlewareSetup:
     ) -> None:
         """Add CSRF protection middleware when opt-in config is present."""
         security_cfg = getattr(self._config, "security", None)
+        if security_cfg is None:
+            return
+        if not getattr(security_cfg, "enabled", True):
+            return
+        if not getattr(security_cfg, "enable_csrf", True):
+            return
         csrf_cfg = getattr(security_cfg, "csrf", None)
         if csrf_cfg is None or not csrf_cfg.enabled:
-            return
-        if security_cfg is not None and not getattr(security_cfg, "enable_csrf", True):
             return
 
         from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware

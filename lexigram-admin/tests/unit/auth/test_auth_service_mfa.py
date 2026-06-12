@@ -7,8 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lexigram.admin.auth.errors import (
+    AccountLockedError,
     MfaNotEnabledError,
     MfaVerificationFailedError,
+    RateLimitExceededError,
 )
 from lexigram.admin.auth.services.auth_service import AdminAuthService
 from lexigram.admin.auth.types import AdminSecurityEventType
@@ -234,6 +236,81 @@ class TestAdminAuthServiceMfa:
         assert AdminSecurityEventType.MFA_CHALLENGE_FAILED in self._event_types(
             audit_service
         )
+
+    @pytest.mark.asyncio
+    async def test_complete_mfa_login_lockout_blocks_before_verification(
+        self,
+        services: tuple[AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock],
+    ) -> None:
+        svc, attempt_service, audit_service, session_service, mfa_service = services
+        attempt_service.check_account_lockout = AsyncMock(
+            side_effect=AccountLockedError("Account is locked.")
+        )
+
+        result = await svc.complete_mfa_login(
+            user_id="user-1",
+            email="admin@example.com",
+            roles=["admin"],
+            code="123456",
+            ip_address="127.0.0.1",
+            user_agent="test-agent",
+        )
+
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), AccountLockedError)
+        mfa_service.verify_code.assert_not_awaited()
+        session_service.create_session.assert_not_awaited()
+        blocked = [
+            c.kwargs
+            for c in audit_service.log_event.await_args_list
+            if c.kwargs["event_type"] == AdminSecurityEventType.LOGIN_BLOCKED_LOCKOUT
+        ]
+        assert len(blocked) == 1
+        assert blocked[0]["metadata"] == {
+            "email": "admin@example.com",
+            "stage": "mfa",
+        }
+
+    @pytest.mark.asyncio
+    async def test_complete_mfa_login_ip_rate_limit_records_mfa_failure(
+        self,
+        services: tuple[AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock],
+    ) -> None:
+        svc, attempt_service, audit_service, session_service, mfa_service = services
+        attempt_service.check_ip_rate_limit = AsyncMock(
+            side_effect=RateLimitExceededError("Too many requests.")
+        )
+
+        result = await svc.complete_mfa_login(
+            user_id="user-1",
+            email="admin@example.com",
+            roles=["admin"],
+            code="123456",
+            ip_address="127.0.0.1",
+            user_agent="test-agent",
+        )
+
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), RateLimitExceededError)
+        mfa_service.verify_code.assert_not_awaited()
+        session_service.create_session.assert_not_awaited()
+        attempt_service.record_attempt.assert_awaited_once_with(
+            email="admin@example.com",
+            ip_address="127.0.0.1",
+            user_agent="test-agent",
+            success=False,
+            failure_reason="mfa_ip_rate_limited",
+        )
+        blocked = [
+            c.kwargs
+            for c in audit_service.log_event.await_args_list
+            if c.kwargs["event_type"] == AdminSecurityEventType.LOGIN_BLOCKED_IP
+        ]
+        assert len(blocked) == 1
+        assert blocked[0]["metadata"] == {
+            "email": "admin@example.com",
+            "stage": "mfa",
+        }
 
     @pytest.mark.asyncio
     async def test_complete_mfa_login_service_none(self) -> None:

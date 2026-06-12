@@ -70,7 +70,7 @@ class APIKeyManager:
             ``(raw_key, api_key_object)`` — the raw key is only returned once.
         """
         raw_key = self.generate_raw_key(prefix)
-        key_hash = await PasswordHasher.hash(raw_key)
+        key_hash = await PasswordHasher().hash(raw_key)
         display_prefix = raw_key[: self.DISPLAY_PREFIX_LENGTH]
 
         expires_at: datetime | None = None
@@ -124,7 +124,7 @@ class APIKeyManager:
         rows = await self._repo.find_by_prefix(display_prefix)
 
         for row in rows:
-            if await PasswordHasher.verify(raw_key, row["key_hash"]):
+            if await PasswordHasher().verify(raw_key, row["key_hash"]):
                 expires_at = row.get("expires_at")
                 if expires_at and expires_at < datetime.now():
                     logger.warning("Expired API key attempt: %s", row["id"])

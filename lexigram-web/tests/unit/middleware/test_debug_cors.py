@@ -1,9 +1,11 @@
-"""Tests for debug-mode permissive CORS auto-detection in WebProvider.
+"""Tests for debug-mode permissive CORS in WebProvider.
 
 Covers:
-- ``WebConfig(server=ServerConfig(debug=True))`` triggers permissive CORS
-  (allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]) when no
-  explicit CORS origins are configured.
+- ``server.debug=True`` alone does NOT widen CORS to wildcard — the implicit
+  auto-detection was removed; explicit ``CORSConfig.debug_permissive=True``
+  is required (a breaking change from the old behaviour).
+- ``CORSConfig.debug_permissive=True`` + debug active restores wildcard
+  (allow_origins=["*"]).
 - Explicit CORS ``allow_origins`` config is always respected, even in debug mode.
 - Non-debug mode does NOT override CORS to wildcard.
 """
@@ -32,10 +34,12 @@ def _make_debug_quickstart() -> _QuickstartApp:
         if self._booted:
             return
         from lexigram.app.base import Application
+        from lexigram.identity.di.provider import IdentityProvider
+        from lexigram.observability.di.sub_providers.observability import (
+            ObservabilityProvider,
+        )
         from lexigram.web.config import WebConfig
         from lexigram.web.di.provider import WebProvider
-        from lexigram.identity.di.provider import IdentityProvider
-        from lexigram.observability.di.sub_providers.observability import ObservabilityProvider
 
         web_config = WebConfig(server=ServerConfig(debug=True))
         web_config.security.csrf = CSRFConfig(enabled=False)
@@ -57,22 +61,92 @@ def _make_debug_quickstart() -> _QuickstartApp:
 
 
 # ---------------------------------------------------------------------------
-# Test 1 — server.debug=True enables permissive CORS with default origins
+# Test 1 — server.debug=True alone no longer widens CORS to wildcard
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_debug_mode_enables_permissive_cors() -> None:
-    """``server.debug=True`` overrides CORS to wildcard when origins are default.
+async def test_debug_mode_without_flag_keeps_default_origins() -> None:
+    """``server.debug=True`` without ``debug_permissive`` keeps default origins.
 
-    Sends a cross-origin request with an ``Origin`` header and asserts that
-    the response carries ``access-control-allow-origin: *``.
+    Sends a cross-origin request from a non-localhost origin and asserts that
+    NO ``access-control-allow-origin`` header is emitted — the implicit
+    widening is gone.
     """
 
     async def hello() -> dict:
         return {"ok": True}
 
     qs = _make_debug_quickstart()
+    qs._collect_script_routes = lambda: [  # type: ignore[method-assign]
+        _PendingRoute(path="/", method="GET", handler=hello)
+    ]
+
+    await qs._ensure_booted()
+    async with AsyncClient(
+        transport=ASGITransport(app=qs._starlette),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/", headers={"Origin": "http://example.com"})
+
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") is None
+
+
+# ---------------------------------------------------------------------------
+# Test 1b — CORSConfig.debug_permissive=True + debug restores wildcard
+# ---------------------------------------------------------------------------
+
+
+def _make_debug_permissive_quickstart() -> _QuickstartApp:
+    """Return a _QuickstartApp that boots with ``debug_permissive`` enabled."""
+    qs = _QuickstartApp()
+
+    async def _ensure_booted_permissive(self: _QuickstartApp = qs) -> None:
+        """Override boot to inject a debug WebConfig with the opt-in flag."""
+        if self._booted:
+            return
+        from lexigram.app.base import Application
+        from lexigram.identity.di.provider import IdentityProvider
+        from lexigram.observability.di.sub_providers.observability import (
+            ObservabilityProvider,
+        )
+        from lexigram.web.config import WebConfig
+        from lexigram.web.di.provider import WebProvider
+
+        web_config = WebConfig(
+            server=ServerConfig(debug=True),
+            cors=CORSConfig(debug_permissive=True),
+        )
+        web_config.security.csrf = CSRFConfig(enabled=False)
+        provider = WebProvider(web_config=web_config)
+        provider._extra_injectable_services = []
+        self._application = Application(name="lexigram-test-debug-permissive-cors")
+        self._application.add_provider(IdentityProvider())
+        self._application.add_provider(ObservabilityProvider())
+        self._application._pending_routes = self._collect_script_routes()
+        self._application.add_provider(provider)
+        await self._application.start()
+        self._starlette = provider.starlette
+        self._booted = True
+
+    import types
+
+    qs._ensure_booted = types.MethodType(_ensure_booted_permissive, qs)  # type: ignore[method-assign]
+    return qs
+
+
+@pytest.mark.asyncio
+async def test_debug_permissive_flag_restores_wildcard_cors() -> None:
+    """``CORSConfig(debug_permissive=True)`` + debug mode uses wildcard origins.
+
+    Explicit opt-in replaces the removed implicit debug widening.
+    """
+
+    async def hello() -> dict:
+        return {"ok": True}
+
+    qs = _make_debug_permissive_quickstart()
     qs._collect_script_routes = lambda: [  # type: ignore[method-assign]
         _PendingRoute(path="/", method="GET", handler=hello)
     ]
@@ -110,10 +184,12 @@ async def test_explicit_cors_config_respected_in_debug_mode() -> None:
         if self._booted:
             return
         from lexigram.app.base import Application
+        from lexigram.identity.di.provider import IdentityProvider
+        from lexigram.observability.di.sub_providers.observability import (
+            ObservabilityProvider,
+        )
         from lexigram.web.config import WebConfig
         from lexigram.web.di.provider import WebProvider
-        from lexigram.identity.di.provider import IdentityProvider
-        from lexigram.observability.di.sub_providers.observability import ObservabilityProvider
 
         web_config = WebConfig(
             server=ServerConfig(debug=True),
@@ -182,10 +258,12 @@ async def test_non_debug_mode_does_not_set_wildcard_cors() -> None:
         if self._booted:
             return
         from lexigram.app.base import Application
+        from lexigram.identity.di.provider import IdentityProvider
+        from lexigram.observability.di.sub_providers.observability import (
+            ObservabilityProvider,
+        )
         from lexigram.web.config import WebConfig
         from lexigram.web.di.provider import WebProvider
-        from lexigram.identity.di.provider import IdentityProvider
-        from lexigram.observability.di.sub_providers.observability import ObservabilityProvider
 
         # Default config — no debug flag, default origins
         web_config = WebConfig()

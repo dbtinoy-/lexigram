@@ -177,6 +177,21 @@ class SettingsController(AdminController):
             self.flash(f"Configuration '{namespace}' not found.", "error")
             return RedirectResponse(url="/admin/settings", status_code=302)
 
+        permissions = self._user_permissions(request)
+        if (
+            spec.required_permissions
+            and not self._user_is_superadmin(request)
+            and not permissions.issuperset(spec.required_permissions)
+        ):
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                reason="permission_denied",
+            )
+            self.flash("You do not have permission to view this setting.", "error")
+            return RedirectResponse(url="/admin/settings", status_code=302)
+
         categories, _ = self._build_categories(request)
         values = await self._registry.get_values(namespace, self._store_name())
 

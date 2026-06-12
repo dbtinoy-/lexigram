@@ -9,6 +9,8 @@ import uuid
 
 from lexigram.admin.auth.errors import SetupAlreadyCompletedError
 from lexigram.admin.sql_dialect import is_postgres
+from lexigram.auth import PasswordHasher
+from lexigram.contracts.auth import PasswordHasherProtocol
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -86,8 +88,13 @@ class DirectSQLAdminUserStore:
     Renamed from AdminUserStore to avoid conflict with config-backed store.
     """
 
-    def __init__(self, db_provider: DatabaseProviderProtocol) -> None:
+    def __init__(
+        self,
+        db_provider: DatabaseProviderProtocol,
+        password_hasher: PasswordHasherProtocol | None = None,
+    ) -> None:
         self.db_provider = db_provider
+        self._password_hasher = password_hasher or PasswordHasher()
         self._initialized = False
 
     async def ensure_schema(self) -> None:
@@ -590,10 +597,8 @@ class DirectSQLAdminUserStore:
         if not hashed:
             return None
         try:
-            import bcrypt
-
-            hashed_bytes = hashed.encode("utf-8") if isinstance(hashed, str) else hashed
-            if bcrypt.checkpw(password.encode("utf-8"), hashed_bytes):
+            hashed_str = hashed.decode("utf-8") if isinstance(hashed, bytes) else hashed
+            if await self._password_hasher.verify(password, hashed_str):
                 return user
         except (ValueError, TypeError) as exc:
             logger.warning(

@@ -222,5 +222,6 @@ This scans each package recursively for `Provider` subclasses and `@injectable` 
 
 ## Next Steps
 
+- [Your First App](/getting-started/first-app/) — put the structure to work in a running API
 - [Core Concepts](/getting-started/core-concepts/) — Providers, DI, Result type, and modules in depth
 - [Configuration](/getting-started/configuration/) — YAML config, profiles, and auto-injection

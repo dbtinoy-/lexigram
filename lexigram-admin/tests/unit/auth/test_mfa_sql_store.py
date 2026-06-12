@@ -5,6 +5,9 @@ from __future__ import annotations
 import pytest
 
 from lexigram.admin.auth.store.mfa_sql import AdminMfaSqlStore
+from lexigram.security.encryption import EncryptionService
+
+ENCRYPTION_KEY = EncryptionService(secret_key="test-mfa-encryption-key-32b")
 
 
 class FakeProvider:
@@ -110,3 +113,65 @@ async def test_resave_after_disable_re_enables() -> None:
 
     assert len(provider.executed) == 3
     assert "DELETE" in provider.executed[1][0]
+
+
+@pytest.mark.asyncio
+async def test_save_secret_writes_ciphertext_at_rest_with_encryption() -> None:
+    provider = FakeProvider()
+    store = AdminMfaSqlStore(provider, encryption_service=ENCRYPTION_KEY)
+
+    await store.save_secret("user-001", "SECRET")
+
+    _, params = provider.executed[0]
+    stored = params[1]
+    assert stored != "SECRET"
+    assert len(stored) > 60  # nonce 12 + tag 16 + data bytes, hex-encoded
+    assert all(c in "0123456789abcdef" for c in stored)
+
+
+@pytest.mark.asyncio
+async def test_get_secret_round_trips_encrypted_value() -> None:
+    provider = FakeProvider()
+    store = AdminMfaSqlStore(provider, encryption_service=ENCRYPTION_KEY)
+    await store.save_secret("user-001", "SECRET")
+    stored = provider.executed[0][1][1]
+    provider._rows = [{"secret": stored}]
+
+    secret = await store.get_secret("user-001")
+
+    assert secret == "SECRET"
+
+
+@pytest.mark.asyncio
+async def test_get_secret_falls_back_to_legacy_raw_value() -> None:
+    provider = FakeProvider(rows=[{"secret": "LEGACYBASE32"}])
+    store = AdminMfaSqlStore(provider, encryption_service=ENCRYPTION_KEY)
+
+    secret = await store.get_secret("user-001")
+
+    assert secret == "LEGACYBASE32"
+
+
+@pytest.mark.asyncio
+async def test_ensure_schema_widens_secret_column() -> None:
+    provider = FakeProvider()
+    store = AdminMfaSqlStore(provider)
+
+    await store.ensure_schema()
+
+    sql = provider.executed[0][0]
+    assert "VARCHAR(512)" in sql
+
+
+@pytest.mark.asyncio
+async def test_ensure_schema_issues_idempotent_postgres_alter() -> None:
+    provider = FakeProvider()
+    provider.database_type = "postgres"
+    store = AdminMfaSqlStore(provider)
+
+    await store.ensure_schema()
+
+    alters = [sql for sql, _ in provider.executed if "ALTER TABLE" in sql]
+    assert len(alters) == 1
+    assert "admin_mfa_totp" in alters[0]
+    assert "VARCHAR(512)" in alters[0]

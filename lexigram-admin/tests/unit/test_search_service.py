@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
@@ -145,6 +145,60 @@ class TestSearchService:
         assert "users" in names
         assert "posts" in names
 
+    async def test_search_filters_by_allowed_resources(
+        self, service: SearchService
+    ) -> None:
+        result = await service.search("alice", allowed_resources={"users"})
+        assert result.total_count == 1
+        assert result.resource_counts == {"users": 1}
+        assert [r.resource_name for r in result.results] == ["users"]
+
+    async def test_search_allowed_resources_empty_set_returns_nothing(
+        self, service: SearchService
+    ) -> None:
+        result = await service.search("alice", allowed_resources=set())
+        assert result.total_count == 0
+        assert result.results == []
+        assert result.has_results is False
+
+    async def test_search_allowed_resources_none_keeps_cross_resource_search(
+        self, service: SearchService
+    ) -> None:
+        result = await service.search("alice", allowed_resources=None)
+        assert result.total_count == 2
+        assert result.resource_counts == {"users": 1, "posts": 1}
+
+    async def test_allowed_resources_for_none_user_returns_none(
+        self, service: SearchService
+    ) -> None:
+        assert await service.allowed_resources_for(None) is None
+
+    async def test_allowed_resources_for_authorizerless_service_returns_none(
+        self, service: SearchService
+    ) -> None:
+        assert await service.allowed_resources_for({"id": "u1"}) is None
+
+    async def test_allowed_resources_for_gates_by_can_view(
+        self, mock_manager: MagicMock
+    ) -> None:
+        authorizer = AsyncMock()
+        authorizer.can_view.side_effect = lambda user, name: {
+            "users": True,
+            "posts": False,
+        }.get(name, False)
+        service = SearchService(
+            resource_manager=mock_manager,
+            authorizer=authorizer,
+        )
+        user = {"id": "u1"}
+        allowed = await service.allowed_resources_for(user)
+        assert allowed == {"users"}
+        assert authorizer.can_view.await_count == 2
+        assert authorizer.can_view.await_args_list == [
+            call(user, "users"),
+            call(user, "posts"),
+        ]
+
     async def test_search_aggregates_results_from_multiple_resources(
         self, service: SearchService
     ) -> None:
@@ -216,9 +270,7 @@ class TestSearchService:
         assert catalog[0] == {"name": "name", "label": "Name"}
         assert catalog[2] == {"name": "title", "label": "Title"}
 
-    def test_catalog_merges_spec_fields(
-        self, mock_manager: MagicMock
-    ) -> None:
+    def test_catalog_merges_spec_fields(self, mock_manager: MagicMock) -> None:
         """Spec-only resources contribute their index fields to the catalog."""
         mock_manager.get_all_resources = MagicMock(
             return_value=[_IndexedResource, _IndexOnlyResource]
@@ -357,6 +409,23 @@ class TestSearchServiceIndexedPath:
         assert result.resource_counts.get("products") == 1
         # docs has no search_fields -> loop returns [] -> absent
         assert "docs" not in result.resource_counts
+
+    async def test_allowed_resources_skips_denied_indexed_resources(
+        self, manager: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        integration = _FakeIntegration(
+            results=[{"id": "p1", "title": "Indexed Widget", "description": "Great"}]
+        )
+        from lexigram.admin import integrations as _integrations
+
+        monkeypatch.setitem(_integrations._registry, "SearchIntegration", integration)
+
+        service = SearchService(resource_manager=manager)
+        result = await service.search("widget", allowed_resources={"products"})
+
+        assert [r.resource_name for r in result.results] == ["products"]
+        assert result.resource_counts == {"products": 1}
+        assert integration.calls == []
 
     async def test_no_integration_keeps_default_loop(
         self, manager: MagicMock, monkeypatch: pytest.MonkeyPatch
