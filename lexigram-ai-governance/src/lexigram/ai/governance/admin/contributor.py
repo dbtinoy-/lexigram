@@ -25,7 +25,6 @@ from lexigram.contracts.admin.errors import (
     WidgetNotFoundError,
 )
 from lexigram.contracts.admin.health_payload import HealthCheckPayload
-from lexigram.contracts.admin.route_spec import AdminRouteSpec
 from lexigram.contracts.admin.types import (
     ActionParameterField,
     ActionParameterSchema,
@@ -362,34 +361,6 @@ class GovernanceAdminContributor(BaseAdminContributor):
     def get_health_definitions(self) -> Sequence[AdminHealthDefinition]:
         return list(_HEALTH_DEFS)
 
-    def get_routes(self) -> Sequence[AdminRouteSpec]:
-        """Return the widget and health render endpoints.
-
-        Returns:
-            One route spec per dashboard widget and health check.
-        """
-        routes: list[AdminRouteSpec] = [
-            AdminRouteSpec(
-                path=cast("str", widget.render_endpoint),
-                method="GET",
-                handler=_render_placeholder,
-                name=f"widgets.{widget.name}",
-                permissions=frozenset({PERMISSION_READ}),
-            )
-            for widget in _WIDGETS
-        ]
-        routes += [
-            AdminRouteSpec(
-                path=cast("str", health.check_endpoint),
-                method="GET",
-                handler=_render_placeholder,
-                name=f"health.{health.name}",
-                permissions=frozenset({PERMISSION_READ}),
-            )
-            for health in _HEALTH_DEFS
-        ]
-        return routes
-
     def get_management_pages(self) -> Sequence[ManagementPageDefinition]:
         return list(_PAGE_DEFS)
 
@@ -676,15 +647,6 @@ class GovernanceAdminContributor(BaseAdminContributor):
             page_size=1,
             status=status,
         )
-
-
-async def _render_placeholder(request: object) -> str:  # noqa: ARG001
-    """Placeholder route handler for widget endpoints.
-
-    Widget content is rendered by the admin dashboard through
-    ``render_widget``; the route spec only proves registration.
-    """
-    return ""
 
 
 def _unavailable(message: str) -> Any:
