@@ -18,6 +18,7 @@ from lexigram.contracts.admin.types import (
 
 if TYPE_CHECKING:
     from lexigram.contracts.admin.errors import AdminError
+    from lexigram.contracts.admin.health_payload import HealthCheckPayload
     from lexigram.contracts.admin.types import WidgetViewModel
     from lexigram.contracts.core.di import ContainerResolverProtocol
     from lexigram.contracts.core.result import Result
@@ -102,7 +103,7 @@ class BaseAdminContributor:
     async def render_health_check(
         self,
         check_name: str,
-    ) -> Result[str, AdminError]:
+    ) -> Result[HealthCheckPayload, AdminError]:
         """Default: this contributor does not serve the requested health check.
 
         Args:
@@ -114,8 +115,8 @@ class BaseAdminContributor:
         from lexigram.contracts.admin.errors import HealthCheckNotFoundError
         from lexigram.contracts.core.result import Err
 
-        result: Result[str, AdminError] = cast(
-            "Result[str, AdminError]",
+        result: Result[HealthCheckPayload, AdminError] = cast(
+            "Result[HealthCheckPayload, AdminError]",
             Err(HealthCheckNotFoundError(self.name, check_name)),
         )
         return result

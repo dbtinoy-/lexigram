@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from lexigram.contracts.admin.errors import AdminError
+    from lexigram.contracts.admin.health_payload import HealthCheckPayload
     from lexigram.contracts.admin.types import (
         AdminActionDefinition,
         AdminHealthDefinition,
@@ -146,15 +147,16 @@ class AdminContributorProtocol(Protocol):
     async def render_health_check(
         self,
         check_name: str,
-    ) -> Result[str, AdminError]:
-        """Render HTML result for a health check.
+    ) -> Result[HealthCheckPayload, AdminError]:
+        """Run a health check and return a structured health-check payload.
 
         Args:
             check_name: Name of the health check to run (matches check ID
                 from ``get_health_definitions``).
 
         Returns:
-            ``Ok(html_string)`` with health check result on success.
+            ``Ok(HealthCheckPayload)`` describing the check result on
+            success — the host renders it as HTML.
             ``Err(HealthCheckNotFoundError)`` if *check_name* is not served
             by this contributor.
             ``Err(AdminError)`` if the check fails for any other reason.

@@ -14,6 +14,7 @@ from lexigram.contracts.admin.errors import (
     HealthCheckNotFoundError,
     WidgetNotFoundError,
 )
+from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.operations import (
     AdminSearchableProtocol,
     AggregatableProtocol,
@@ -86,6 +87,7 @@ __all__ = [
     "ExportableProtocol",
     "HasActionHooks",
     "HealthCheckNotFoundError",
+    "HealthCheckPayload",
     "ManagementPageDefinition",
     "ManagementPageHandler",
     "NavigationContribution",

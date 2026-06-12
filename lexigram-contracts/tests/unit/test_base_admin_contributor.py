@@ -81,6 +81,16 @@ async def test_render_health_check_returns_not_found_err() -> None:
     assert result.is_err()
 
 
+async def test_render_health_check_default_returns_health_check_payload_err() -> None:
+    from lexigram.contracts.admin.contributor import BaseAdminContributor
+    from lexigram.contracts.admin.errors import HealthCheckNotFoundError
+
+    contributor = BaseAdminContributor()
+    result = await contributor.render_health_check("anything")
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), HealthCheckNotFoundError)
+
+
 def test_contributor_id_equals_name() -> None:
     c = MinimalContributor()
     assert c.contributor_id == c.name
