@@ -9,6 +9,7 @@ from lexigram.admin.contributors.exceptions import (
     ContributorNotFoundError,
     ContributorPermissionError,
 )
+from lexigram.admin.dashboard.permission_filter import PermissionFilter
 from lexigram.contracts.admin.protocols import AdminContributorProtocol
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
@@ -48,6 +49,7 @@ class DashboardAssembler:
         *,
         page_assembler: PageAssembler | None = None,
         settings_assembler: SettingsPanelAssembler | None = None,
+        permission_filter: PermissionFilter | None = None,
     ) -> None:
         self._contributors: Sequence[AdminContributorProtocol] = contributors
         self._contributors_by_id: dict[str, AdminContributorProtocol] = {
@@ -55,9 +57,12 @@ class DashboardAssembler:
         }
         self._page_assembler = page_assembler
         self._settings_assembler = settings_assembler
+        self._perms = permission_filter or PermissionFilter()
 
-    async def get_all_widgets(self) -> Sequence[DashboardWidgetDefinition]:
-        """Collect and sort widgets from all contributors by category then order.
+    async def get_all_widgets(
+        self, user: AdminUser | None = None
+    ) -> Sequence[DashboardWidgetDefinition]:
+        """Collect, dedupe, permission-filter, and sort widgets from all contributors.
 
         When two contributors register a widget with the same ``name``, a
         ``admin_widget_conflict`` warning is emitted and the later contributor's
@@ -76,7 +81,16 @@ class DashboardAssembler:
                     )
                 seen[widget.name] = contributor.contributor_id
                 by_name[widget.name] = widget
-        return sorted(by_name.values(), key=lambda w: (w.category.value, w.order))
+        sorted_widgets = sorted(
+            by_name.values(), key=lambda w: (w.category.value, w.order)
+        )
+        return self._perms.filter(
+            sorted_widgets,
+            user,
+            get_required_permissions=lambda w: (
+                frozenset({w.permission}) if w.permission else frozenset()
+            ),
+        )
 
     async def get_all_navigation(self) -> Sequence[NavigationContribution]:
         """Collect and sort navigation from all contributors by group then order.

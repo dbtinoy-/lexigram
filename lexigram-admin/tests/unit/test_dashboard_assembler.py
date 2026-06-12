@@ -6,6 +6,7 @@ import pytest
 
 from lexigram.admin.contributors.base import BaseAdminContributor
 from lexigram.admin.dashboard.assembler import DashboardAssembler
+from lexigram.admin.types import AdminUser
 from lexigram.contracts.admin.protocols import AdminDashboardProtocol
 from lexigram.contracts.admin.types import (
     AdminActionDefinition,
@@ -90,6 +91,28 @@ class EventsContributor(BaseAdminContributor):
         ]
 
 
+class GovernanceContributor(BaseAdminContributor):
+    name = "governance"
+    display_name = "Governance"
+    group = "framework"
+    icon = "shield"
+    priority = 50
+
+    def get_dashboard_widgets(self):
+        return [
+            DashboardWidgetDefinition(
+                name="governance_audit_log",
+                title="Audit Log",
+                contributor="governance",
+                render_endpoint="/admin/contrib/governance/widgets/audit-log",
+                size=WidgetSize.SMALL,
+                category=WidgetCategory.METRICS,
+                order=10,
+                permission="governance.read",
+            ),
+        ]
+
+
 class TestDashboardAssembler:
     def _make_assembler(self) -> DashboardAssembler:
         return DashboardAssembler(
@@ -143,3 +166,40 @@ class TestDashboardAssembler:
         actions = await assembler.get_all_actions()
         assert len(actions) == 1
         assert actions[0].name == "flush_cache"
+
+
+def _make_widget_permission_assembler() -> DashboardAssembler:
+    return DashboardAssembler(
+        contributors=[GovernanceContributor(), EventsContributor()]
+    )
+
+
+def _make_user(permissions: list[str] | None = None) -> AdminUser:
+    return AdminUser(
+        id="u1",
+        username="alice",
+        email="alice@example.com",
+        permissions=permissions or [],
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_all_widgets_filters_by_permission() -> None:
+    assembler = _make_widget_permission_assembler()
+    widgets = await assembler.get_all_widgets(user=_make_user())
+    names = [w.name for w in widgets]
+    assert "event_throughput" in names
+    assert "governance_audit_log" not in names
+
+
+@pytest.mark.asyncio
+async def test_get_all_widgets_returns_permitted_widget_when_user_has_permission() -> (
+    None
+):
+    assembler = _make_widget_permission_assembler()
+    widgets = await assembler.get_all_widgets(
+        user=_make_user(permissions=["governance.read"])
+    )
+    names = [w.name for w in widgets]
+    assert "event_throughput" in names
+    assert "governance_audit_log" in names

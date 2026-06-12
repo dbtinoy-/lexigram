@@ -101,7 +101,8 @@ class DashboardController(AdminController):
 
         # Use assembler widgets when available; fall back to default overview
         if self.assembler:
-            contributor_widgets = list(await self.assembler.get_all_widgets())
+            user = getattr(getattr(request, "state", None), "user", None)
+            contributor_widgets = list(await self.assembler.get_all_widgets(user=user))
         else:
             contributor_widgets = []
 
