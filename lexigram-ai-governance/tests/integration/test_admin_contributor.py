@@ -33,6 +33,7 @@ from lexigram.contracts.ai.governance import (
     RelayUsageStoreProtocol,
 )
 from lexigram.contracts.ai.relay import RelayUsage
+from lexigram.contracts.core.health import HealthStatus
 
 
 def make_scope() -> RelayUsageScope:
@@ -329,7 +330,9 @@ class TestHealth:
         contributor = GovernanceAdminContributor()
         result = await contributor.render_health_check("governance.billing")
         assert result.is_ok()
-        assert "degraded" in result.unwrap()
+        payload = result.unwrap()
+        assert payload.status == HealthStatus.DEGRADED
+        assert "unavailable" in payload.detail
 
     async def test_health_available_with_dependencies(self) -> None:
         """Present billing dependencies report as available."""
@@ -339,8 +342,9 @@ class TestHealth:
         )
         result = await contributor.render_health_check("governance.billing")
         assert result.is_ok()
-        assert "available" in result.unwrap()
-        assert "degraded" not in result.unwrap()
+        payload = result.unwrap()
+        assert payload.status == HealthStatus.HEALTHY
+        assert "available" in payload.detail
 
     async def test_unknown_health_check_returns_error(self) -> None:
         """Unknown health checks return an error result."""

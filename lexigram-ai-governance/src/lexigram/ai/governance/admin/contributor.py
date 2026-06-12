@@ -24,6 +24,7 @@ from lexigram.contracts.admin.errors import (
     HealthCheckNotFoundError,
     WidgetNotFoundError,
 )
+from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.route_spec import AdminRouteSpec
 from lexigram.contracts.admin.types import (
     ActionParameterField,
@@ -40,6 +41,7 @@ from lexigram.contracts.admin.types import (
     WidgetViewModel,
 )
 from lexigram.contracts.ai.governance import RelayUsageStoreProtocol
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
 from lexigram.ui import Card, el, render_to_string
@@ -466,7 +468,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
     async def render_health_check(
         self,
         check_name: str,
-    ) -> Result[str, AdminError]:
+    ) -> Result[HealthCheckPayload, AdminError]:
         """Render the aggregate billing health check.
 
         Args:
@@ -474,21 +476,33 @@ class GovernanceAdminContributor(BaseAdminContributor):
                 ``governance.billing`` is served.
 
         Returns:
-            Ok(html) with availability status; Err when the check is
-            unknown.
+            Ok(HealthCheckPayload) with availability status; Err when the
+            check is unknown.
         """
         if check_name != "governance.billing":
-            not_found: Result[str, AdminError] = cast(
-                "Result[str, AdminError]",
+            not_found: Result[HealthCheckPayload, AdminError] = cast(
+                "Result[HealthCheckPayload, AdminError]",
                 Err(HealthCheckNotFoundError("ai-governance", check_name)),
             )
             return not_found
         if self._store is None or self._manager is None:
             return Ok(
-                "governance billing: degraded (billing store or "
-                "reservation manager unavailable)"
+                HealthCheckPayload(
+                    status=HealthStatus.DEGRADED,
+                    component="Relay Billing",
+                    detail=(
+                        "degraded (billing store or reservation manager "
+                        "unavailable)"
+                    ),
+                )
             )
-        return Ok("governance billing: available")
+        return Ok(
+            HealthCheckPayload(
+                status=HealthStatus.HEALTHY,
+                component="Relay Billing",
+                detail="available",
+            )
+        )
 
     async def _reporter(self) -> RelayUsageReportService | None:
         """Return a report service over the resolved store, if any."""

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, cast
 from lexigram.admin.dashboard.chart_widget import ChartWidget
 from lexigram.contracts.admin.contributor import BaseAdminContributor
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
+from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.types import (
     AdminHealthDefinition,
     DashboardWidgetDefinition,
@@ -17,6 +18,7 @@ from lexigram.contracts.admin.types import (
     WidgetSize,
     WidgetViewModel,
 )
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.contracts.core.result import Result
 from lexigram.result import Err, Ok
 from lexigram.ui import ChartConfig, ChartDataPoint, ChartType
@@ -183,26 +185,25 @@ class CoreAdminContributor(BaseAdminContributor):
     async def render_health_check(
         self,
         check_name: str,
-    ) -> Result[str, AdminError]:
+    ) -> Result[HealthCheckPayload, AdminError]:
         """Render health check for admin core.
 
         Args:
             check_name: Name of the health check.
 
         Returns:
-            Result with rendered HTML or error.
+            Ok(HealthCheckPayload) with the core status, or
+            Err(AdminError) when the check is unknown.
         """
         if check_name == "admin_core":
-            return cast(
-                "Result[str, AdminError]",
-                Ok(
-                    '<div class="health-check admin-core"><span class="status healthy">Admin Core Operational</span></div>'
-                ),
+            return Ok(
+                HealthCheckPayload(
+                    status=HealthStatus.HEALTHY,
+                    component="Admin Core",
+                    detail="Admin Core Operational",
+                )
             )
-        return cast(
-            "Result[str, AdminError]",
-            Err(AdminError(f"Unknown health check: {check_name}")),
-        )
+        return Err(AdminError(f"Unknown health check: {check_name}"))
 
 
 __all__ = ["CoreAdminContributor"]

@@ -9,7 +9,13 @@ from starlette.routing import Route
 
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.widgets import WidgetController
-from lexigram.contracts.admin.types import WidgetViewModel
+from lexigram.contracts.admin.health_payload import HealthCheckPayload
+from lexigram.contracts.admin.types import (
+    AdminHealthDefinition,
+    DashboardWidgetDefinition,
+    WidgetViewModel,
+)
+from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Err, Ok
 
 
@@ -268,3 +274,182 @@ class TestWidgetControllerPermissionGate:
         )
         assert response.status_code == 403
         audit.log_event.assert_awaited_once()
+
+
+def _user_with_permissions(*permissions: str) -> MagicMock:
+    """Build a user mock with the given permission set and no roles."""
+    user = MagicMock()
+    user.permissions = frozenset(permissions)
+    user.roles = frozenset()
+    return user
+
+
+def _request_for(user: MagicMock) -> MagicMock:
+    """Build a request mock carrying the given user on state."""
+    request = MagicMock()
+    request.query_params = {}
+    state = MagicMock()
+    state.user = user
+    request.state = state
+    return request
+
+
+class TestWidgetControllerWidgetPermissionGate:
+    """Declared widget permissions gate render_widget dispatch."""
+
+    WIDGET_NAME = "widget_count"
+
+    @pytest.fixture
+    def widget_def(self) -> DashboardWidgetDefinition:
+        return DashboardWidgetDefinition(
+            name=self.WIDGET_NAME,
+            title="Widget Count",
+            contributor="sql",
+            render_endpoint="/admin/sql/widgets/widget_count",
+            permission="governance.read",
+        )
+
+    def _make_controller(
+        self, widget_def: DashboardWidgetDefinition
+    ) -> tuple[WidgetController, MagicMock]:
+        registry = MagicMock()
+        contributor = MagicMock()
+        contributor.get_dashboard_widgets.return_value = [widget_def]
+        contributor.render_widget = AsyncMock(
+            return_value=Ok(WidgetViewModel(body="<div>ok</div>"))
+        )
+        registry.get.return_value = contributor
+        return WidgetController(registry=registry), contributor
+
+    @pytest.mark.asyncio
+    async def test_render_widget_denies_when_user_lacks_declared_permission(
+        self, widget_def: DashboardWidgetDefinition
+    ) -> None:
+        controller, contributor = self._make_controller(widget_def)
+        response = await controller.render_widget(
+            request=_request_for(_user_with_permissions("admin.users.view")),
+            contributor_id="sql",
+            widget_name=self.WIDGET_NAME,
+        )
+        assert response.status_code == 200
+        assert b"widget-error-card" in response.body
+        assert b"permission" in response.body.lower()
+        contributor.render_widget.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_render_widget_allows_when_user_has_declared_permission(
+        self, widget_def: DashboardWidgetDefinition
+    ) -> None:
+        controller, contributor = self._make_controller(widget_def)
+        response = await controller.render_widget(
+            request=_request_for(
+                _user_with_permissions("admin.users.view", "governance.read")
+            ),
+            contributor_id="sql",
+            widget_name=self.WIDGET_NAME,
+        )
+        assert response.status_code == 200
+        assert b"<div>ok</div>" in response.body
+        contributor.render_widget.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_render_widget_allows_when_widget_declares_no_permission(
+        self, widget_def: DashboardWidgetDefinition
+    ) -> None:
+        widget_def = DashboardWidgetDefinition(
+            name=self.WIDGET_NAME,
+            title="Widget Count",
+            contributor="sql",
+            render_endpoint="/admin/sql/widgets/widget_count",
+        )
+        controller, contributor = self._make_controller(widget_def)
+        response = await controller.render_widget(
+            request=_request_for(_user_with_permissions()),
+            contributor_id="sql",
+            widget_name=self.WIDGET_NAME,
+        )
+        assert response.status_code == 200
+        assert b"<div>ok</div>" in response.body
+        contributor.render_widget.assert_awaited_once()
+
+
+class TestWidgetControllerHealthPermissionGate:
+    """Declared health permissions gate render_health_check dispatch."""
+
+    CHECK_NAME = "governance.billing"
+
+    @pytest.fixture
+    def health_def(self) -> AdminHealthDefinition:
+        return AdminHealthDefinition(
+            name=self.CHECK_NAME,
+            contributor="ai-governance",
+            component="Billing",
+            permission="governance.read",
+        )
+
+    def _make_controller(
+        self, health_def: AdminHealthDefinition
+    ) -> tuple[WidgetController, MagicMock]:
+        registry = MagicMock()
+        contributor = MagicMock()
+        contributor.get_health_definitions.return_value = [health_def]
+        contributor.render_health_check = AsyncMock(
+            return_value=Ok(
+                HealthCheckPayload(
+                    status=HealthStatus.HEALTHY,
+                    component="Billing",
+                    detail="available",
+                )
+            )
+        )
+        registry.get.return_value = contributor
+        return WidgetController(registry=registry), contributor
+
+    @pytest.mark.asyncio
+    async def test_render_health_permission_denied_when_user_lacks_declared_permission(
+        self, health_def: AdminHealthDefinition
+    ) -> None:
+        controller, contributor = self._make_controller(health_def)
+        response = await controller.render_health_check(
+            request=_request_for(_user_with_permissions("admin.users.view")),
+            contributor_id="ai-governance",
+            check_name=self.CHECK_NAME,
+        )
+        assert response.status_code == 403
+        contributor.render_health_check.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_render_health_permission_allowed_when_user_has_declared_permission(
+        self, health_def: AdminHealthDefinition
+    ) -> None:
+        controller, contributor = self._make_controller(health_def)
+        response = await controller.render_health_check(
+            request=_request_for(
+                _user_with_permissions("admin.users.view", "governance.read")
+            ),
+            contributor_id="ai-governance",
+            check_name=self.CHECK_NAME,
+        )
+        assert response.status_code == 200
+        assert b"health-check-badge" in response.body
+        assert b"healthy" in response.body
+        contributor.render_health_check.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_render_health_permission_allowed_when_no_permission_declared(
+        self, health_def: AdminHealthDefinition
+    ) -> None:
+        health_def = AdminHealthDefinition(
+            name=self.CHECK_NAME,
+            contributor="ai-governance",
+            component="Billing",
+        )
+        controller, contributor = self._make_controller(health_def)
+        response = await controller.render_health_check(
+            request=_request_for(_user_with_permissions()),
+            contributor_id="ai-governance",
+            check_name=self.CHECK_NAME,
+        )
+        assert response.status_code == 200
+        assert b"health-check-badge" in response.body
+        contributor.render_health_check.assert_awaited_once()
