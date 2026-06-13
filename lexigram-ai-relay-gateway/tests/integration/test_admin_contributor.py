@@ -7,6 +7,7 @@ the audited mutation action surface.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from importlib.metadata import entry_points
 from types import SimpleNamespace
 
@@ -22,12 +23,17 @@ from lexigram.ai.relay.gateway.admin.pages import (
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.operations.controls import RelayControlsService
-from lexigram.ai.relay.gateway.operations.health import RelayHealthService
+from lexigram.ai.relay.gateway.operations.health import (
+    RelayChannelCheckerProtocol,
+    RelayChannelProbeResult,
+    RelayHealthService,
+)
 from lexigram.ai.relay.gateway.operations.metrics import (
     RelayMetricsService,
     RelayRouteEvent,
 )
 from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
+from lexigram.contracts.admin.types import NavigationContribution
 from lexigram.contracts.ai.governance import AIAuditEvent, AIAuditStoreProtocol
 from lexigram.contracts.ai.relay import (
     ConversionQuality,
@@ -38,6 +44,8 @@ from lexigram.contracts.ai.relay import (
     RelayRegistryProtocol,
 )
 from lexigram.contracts.auth.guard import AuthorizerProtocol
+from lexigram.contracts.core.health import HealthStatus
+from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 
 SNAPSHOT = RelayPolicySnapshot(
     enabled_channels={"claude": True, "gemini": True},
@@ -78,6 +86,34 @@ def _request() -> SimpleNamespace:
         query_params={},
         state=SimpleNamespace(user=None),
         headers={},
+    )
+
+
+def _collect_nav_permissions(nav: NavigationContribution) -> set[str]:
+    """Collect every permission used on a nav item and its children."""
+    perms = {nav.permission} if nav.permission else set()
+    for child in nav.children:
+        perms |= _collect_nav_permissions(child)
+    return perms
+
+
+class FakeChecker(RelayChannelCheckerProtocol):
+    """Probe checker with a fixed outcome for every channel."""
+
+    def __init__(self, *, ok: bool = True, latency_ms: float | None = 5.0) -> None:
+        self._ok = ok
+        self._latency_ms = latency_ms
+
+    async def check(self, channel: RelayChannel) -> RelayChannelProbeResult | None:
+        return RelayChannelProbeResult(ok=self._ok, latency_ms=self._latency_ms)
+
+
+def _health_service(checker: RelayChannelCheckerProtocol) -> RelayHealthService:
+    """Health service probing every configured channel with *checker*."""
+    return RelayHealthService(
+        registry=RelayChannelRegistry(config()),
+        checker=checker,
+        degraded_latency_ms=200.0,
     )
 
 
@@ -176,7 +212,7 @@ class FakeContainer:
 
     async def resolve(self, target: type) -> object:
         if target not in self._services:
-            raise LookupError(f"unregistered {target!r}")
+            raise UnresolvableDependencyError(f"unregistered {target!r}")
         return self._services[target]
 
 
@@ -251,14 +287,22 @@ class TestContributorDiscovery:
             "/relay-gateway/channels",
         }
 
-    def test_widget_endpoints_have_matching_routes(self) -> None:
-        """Every widget endpoint has a matching route registration."""
+    def test_get_routes_returns_empty_default(self) -> None:
+        """Routing is handled by lexigram-admin's WidgetController, not per-contributor."""
         contributor = RelayGatewayAdminContributor()
-        route_paths = {r.path for r in contributor.get_routes()}
-        for widget in contributor.get_dashboard_widgets():
-            assert widget.render_endpoint in route_paths
-        for health in contributor.get_health_definitions():
-            assert health.check_endpoint in route_paths
+        assert list(contributor.get_routes()) == []
+
+    def test_required_permissions_includes_every_declared_permission(self) -> None:
+        """Every permission declared on this contributor's own surfaces must be
+        in required_permissions — the coarse gate must not be narrower than what
+        the contributor actually exposes."""
+        contributor = RelayGatewayAdminContributor()
+        declared = {
+            p
+            for nav in contributor.get_navigation_items()
+            for p in _collect_nav_permissions(nav)
+        } | {p.permission for p in contributor.get_management_pages() if p.permission}
+        assert declared.issubset(contributor.required_permissions)
 
     def test_actions_defined(self) -> None:
         """Both mutation actions declare control permissions and schemas."""
@@ -275,6 +319,47 @@ class TestContributorDiscovery:
         contributor = RelayGatewayAdminContributor()
         for page in contributor.get_management_pages():
             assert page.permission in (None, "relay.read")
+
+
+class TestAdminBoot:
+    async def test_on_admin_boot_logs_when_dependency_resolution_fails(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A failed DI resolution degrades gracefully but is still logged."""
+
+        class FailingContainer:
+            async def resolve(self, protocol: object) -> object:
+                raise UnresolvableDependencyError("service unavailable")
+
+        contributor = RelayGatewayAdminContributor()
+        await contributor.on_admin_boot(FailingContainer())
+
+        assert contributor._health is None  # graceful degradation, unchanged
+        assert contributor._metrics is None
+        assert contributor._controls is None
+        captured = capsys.readouterr()
+        assert "relay_gateway.dependency_unavailable" in captured.out
+
+    async def test_on_admin_boot_raises_if_an_action_handler_cannot_be_resolved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A typo'd handler string should fail loud at boot, not at click-time."""
+        from lexigram.ai.relay.gateway.admin import contributor as contributor_module
+
+        bad_actions = (
+            replace(
+                contributor_module._ACTIONS[0],
+                handler="lexigram.ai.relay.gateway.admin.actions:does_not_exist",
+            ),
+        )
+        monkeypatch.setattr(contributor_module, "_ACTIONS", bad_actions)
+
+        controls, health, metrics, _ = make_services()
+        contributor = RelayGatewayAdminContributor()
+        with pytest.raises(AttributeError):
+            await contributor.on_admin_boot(
+                FakeContainer(controls=controls, health=health, metrics=metrics)
+            )
 
 
 class TestReadOnlyPages:
@@ -441,3 +526,59 @@ class TestActions:
         contributor, _, _ = await self._contributor()
         with pytest.raises(LookupError):
             await contributor.execute_action("explode", {})
+
+
+class TestHealth:
+    async def _contributor(
+        self, health: RelayHealthService
+    ) -> RelayGatewayAdminContributor:
+        contributor = RelayGatewayAdminContributor()
+        await contributor.on_admin_boot(FakeContainer(health=health))
+        return contributor
+
+    async def test_render_health_check_returns_health_check_payload(self) -> None:
+        """Healthy channels render a structured HEALTHY payload."""
+        contributor = await self._contributor(_health_service(FakeChecker()))
+
+        result = await contributor.render_health_check("relay.channels")
+
+        assert result.is_ok()
+        payload = result.unwrap()
+        assert payload.status == HealthStatus.HEALTHY
+        assert payload.component == "Relay Channels"
+        assert "claude: healthy" in payload.detail
+        assert "gemini: healthy" in payload.detail
+
+    async def test_render_health_check_returns_degraded_payload_for_high_latency(
+        self,
+    ) -> None:
+        """A degraded channel renders a structured DEGRADED payload."""
+        contributor = await self._contributor(
+            _health_service(FakeChecker(ok=True, latency_ms=500.0))
+        )
+
+        result = await contributor.render_health_check("relay.channels")
+
+        assert result.is_ok()
+        payload = result.unwrap()
+        assert payload.status == HealthStatus.DEGRADED
+        assert payload.component == "Relay Channels"
+
+    async def test_render_health_check_returns_unhealthy_payload_for_failed_probe(
+        self,
+    ) -> None:
+        """A failed channel renders a structured UNHEALTHY payload."""
+        contributor = await self._contributor(_health_service(FakeChecker(ok=False)))
+
+        result = await contributor.render_health_check("relay.channels")
+
+        assert result.is_ok()
+        payload = result.unwrap()
+        assert payload.status == HealthStatus.UNHEALTHY
+        assert payload.component == "Relay Channels"
+
+    async def test_unknown_health_check_returns_error(self) -> None:
+        """Unknown health checks return an error result."""
+        contributor = RelayGatewayAdminContributor()
+        result = await contributor.render_health_check("unknown")
+        assert result.is_err()
