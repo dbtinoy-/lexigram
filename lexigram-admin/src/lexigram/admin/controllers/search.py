@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from starlette.responses import HTMLResponse
 
-from lexigram.ui.core.base import Element, el, render_to_string
+from lexigram.ui import Element, el, render_to_string
 
 if TYPE_CHECKING:
     from starlette.requests import Request

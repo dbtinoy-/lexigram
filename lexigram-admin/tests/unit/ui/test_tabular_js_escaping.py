@@ -12,8 +12,8 @@ from __future__ import annotations
 from lexigram.admin.actions.standard import DeleteBulkAction
 from lexigram.admin.config import TableConfiguration
 from lexigram.admin.ui.organisms.data_table import DataTable
+from lexigram.ui import render_to_string
 from lexigram.ui.columns.types import TextColumn
-from lexigram.ui.core.base import render_to_string
 
 LITMUS = "x');alert(1);//"
 

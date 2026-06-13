@@ -13,7 +13,7 @@ from lexigram.admin.services.search_service import (
     SearchResults,
     SearchService,
 )
-from lexigram.ui.core.base import render_to_string
+from lexigram.ui import render_to_string
 
 
 class _UsersSearchResource:
@@ -228,7 +228,7 @@ class TestSearchController:
     async def test_search_filters_denied_resources(self) -> None:
         """HTMX fragment excludes records the caller cannot view."""
         authorizer = AsyncMock()
-        authorizer.can_view.side_effect = lambda user, name: {
+        authorizer.can_view.side_effect = lambda _user, name: {
             "users": True,
             "posts": False,
         }.get(name, False)
