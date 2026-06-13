@@ -482,8 +482,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
                     status=HealthStatus.DEGRADED,
                     component="AI Governance Billing",
                     detail=(
-                        "degraded (billing store or reservation manager "
-                        "unavailable)"
+                        "degraded (billing store or reservation manager unavailable)"
                     ),
                 )
             )
