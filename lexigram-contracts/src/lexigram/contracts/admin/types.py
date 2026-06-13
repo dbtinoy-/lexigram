@@ -11,6 +11,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from lexigram.contracts.admin.route_spec import AdminRouteSpec
+from lexigram.contracts.admin.widget_content import WidgetContent, WidgetKind
 
 if TYPE_CHECKING:
     from lexigram.contracts.admin.page_handler import AdminPageHandlerProtocol
@@ -58,6 +59,7 @@ class DashboardWidgetDefinition:
     title: str
     contributor: str
     render_endpoint: str
+    view_kind: WidgetKind
     size: WidgetSize = WidgetSize.MEDIUM
     category: WidgetCategory = WidgetCategory.CUSTOM
     refresh_interval_seconds: int = 30
@@ -200,11 +202,11 @@ class WidgetViewModel:
     """Typed return value for widget rendering.
 
     Provides a standard contract that all widget renderers follow.
-    The ``body`` field contains the rendered HTML. If ``error`` is set,
-    the widget is in an error state and ``body`` should be an error card.
+    The ``content`` field carries structured widget content. If ``error`` is set,
+    the widget is in an error state and ``content`` should be an error card.
     """
 
-    body: str
+    content: WidgetContent
     title: str | None = None
     error: str | None = None
 
@@ -235,6 +237,7 @@ __all__ = [
     "PageCategory",
     "SettingsPanelDefinition",
     "WidgetCategory",
+    "WidgetKind",
     "WidgetParams",
     "WidgetSize",
     "WidgetViewModel",
