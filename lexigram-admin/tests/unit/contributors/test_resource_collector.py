@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from lexigram.admin.contributors.resource_collector import ResourceCollector
-from lexigram.admin.dashboard.naming_policy import NamingPolicy, NameCollisionError
+from lexigram.admin.dashboard.naming_policy import NameCollisionError, NamingPolicy
 from lexigram.admin.resources.namespace import apply_namespace
 from lexigram.contracts.admin.types import AdminRouteSpec
 
@@ -37,6 +37,14 @@ class _ContributorWithNoName:
 class _ContributorSamePkg:
     package_source = "fake_pkg"
     name = "same"
+
+    def get_resources(self):
+        return [_FakeResource]
+
+
+class _ContributorHyphenatedPkg:
+    package_source = "lexigram-template"
+    name = "hyphen"
 
     def get_resources(self):
         return [_FakeResource]
@@ -105,6 +113,12 @@ class TestResourceCollector:
         assert len(result) == 1
         assert result[0].name == "handler.users"
 
+    def test_hyphenated_package_source_collects(self) -> None:
+        collector = ResourceCollector(NamingPolicy(mode="warn"))
+        result = collector.collect([_ContributorHyphenatedPkg()])
+        assert len(result) == 1
+        assert result[0].name == "lexigram_template.users"
+
 
 class TestApplyNamespace:
     def test_creates_subclass_with_namespaced_name(self) -> None:
@@ -114,6 +128,14 @@ class TestApplyNamespace:
         wrapped = apply_namespace(OriginalResource, "fake_pkg.users")
         assert wrapped.name == "fake_pkg.users"
         assert issubclass(wrapped, OriginalResource)
+
+    def test_hyphenated_package_source_is_sanitized(self) -> None:
+        class OriginalResource:
+            name = "users"
+
+        wrapped = apply_namespace(OriginalResource, "lexigram-template.users")
+        assert wrapped.name == "lexigram_template.users"
+        assert wrapped.route_prefix == "/lexigram_template/users"
 
     def test_route_prefix_from_dotted_name(self) -> None:
         class OriginalResource:
