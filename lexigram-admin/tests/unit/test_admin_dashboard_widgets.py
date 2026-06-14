@@ -12,9 +12,10 @@ from lexigram.admin.dashboard.widgets import (
     WidgetSize,
     WidgetType,
 )
-from lexigram.contracts.admin.types import (
+from lexigram.contracts.admin import (
     DashboardWidgetDefinition,
     WidgetCategory,
+    WidgetKind,
     WidgetSize,
 )
 
@@ -256,6 +257,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
             DashboardWidgetDefinition(
                 name="beta_widget",
@@ -265,6 +267,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.SMALL,
                 category=WidgetCategory.CUSTOM,
                 order=2,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         html = registry.render_contributor_widgets(widgets)
@@ -284,6 +287,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         html = registry.render_contributor_widgets(widgets)
@@ -314,6 +318,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.SMALL,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         html = registry.render_contributor_widgets(widgets)
@@ -333,6 +338,7 @@ class TestWidgetRegistry:
             size=WidgetSize.FULL,
             category=WidgetCategory.CUSTOM,
             order=1,
+            view_kind=WidgetKind.STAT,
         )
         small_widget = DashboardWidgetDefinition(
             name="small_widget",
@@ -342,6 +348,7 @@ class TestWidgetRegistry:
             size=WidgetSize.SMALL,
             category=WidgetCategory.CUSTOM,
             order=2,
+            view_kind=WidgetKind.STAT,
         )
         html = registry.render_contributor_widgets([full_widget, small_widget])
         # FULL should get lg:col-span-4
@@ -370,6 +377,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.METRICS,
                 order=1,
+                view_kind=WidgetKind.STAT,
                 refresh_interval_seconds=10,
             ),
         ]
@@ -389,6 +397,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.SMALL,
                 category=WidgetCategory.CUSTOM,
                 order=2,
+                view_kind=WidgetKind.STAT,
                 refresh_interval_seconds=0,
             ),
         ]
@@ -417,6 +426,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.SMALL,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
                 refresh_interval_seconds=0,
             ),
         ]
@@ -437,6 +447,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         html = registry.render_contributor_widgets(
@@ -457,6 +468,7 @@ class TestWidgetRegistry:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         html = registry.render_contributor_widgets(widgets)

@@ -10,7 +10,12 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.controllers.dashboard import DashboardController
 from lexigram.admin.dashboard.widgets import DashboardWidgetDefinition, WidgetRegistry
-from lexigram.contracts.admin.types import PageFilterField, WidgetCategory, WidgetSize
+from lexigram.contracts.admin import (
+    PageFilterField,
+    WidgetCategory,
+    WidgetKind,
+    WidgetSize,
+)
 
 
 class TestDashboardController:
@@ -106,6 +111,7 @@ class TestDashboardController:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         mock_assembler.get_all_widgets.return_value = widgets
@@ -139,6 +145,7 @@ class TestDashboardController:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         mock_assembler.get_all_widgets.return_value = widgets
@@ -185,6 +192,7 @@ class TestDashboardController:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         mock_assembler.get_all_widgets.return_value = widgets
@@ -492,6 +500,7 @@ class TestDashboardControllerFilters:
                 size=WidgetSize.MEDIUM,
                 category=WidgetCategory.CUSTOM,
                 order=1,
+                view_kind=WidgetKind.STAT,
             ),
         ]
         mock_assembler.get_all_widgets.return_value = widgets

@@ -10,8 +10,8 @@ from __future__ import annotations
 import pytest
 
 from lexigram.admin.contributors.registry import ContributorRegistry
+from lexigram.contracts.admin import WidgetParams
 from lexigram.contracts.admin.errors import WidgetNotFoundError, HealthCheckNotFoundError
-from lexigram.contracts.admin.types import WidgetParams
 
 
 class TestAdminContributorImportability:
@@ -290,10 +290,11 @@ class TestWidgetTypesAndValues:
 
     def test_dashboard_widget_definition_creation(self) -> None:
         """Test DashboardWidgetDefinition can be created."""
-        from lexigram.contracts.admin.types import (
+        from lexigram.contracts.admin import (
             DashboardWidgetDefinition,
-            WidgetSize,
             WidgetCategory,
+            WidgetKind,
+            WidgetSize,
         )
 
         widget = DashboardWidgetDefinition(
@@ -303,6 +304,7 @@ class TestWidgetTypesAndValues:
             render_endpoint="/admin/test/test-widget",
             size=WidgetSize.SMALL,
             category=WidgetCategory.METRICS,
+            view_kind=WidgetKind.STAT,
         )
         assert widget.name == "test-widget"
         assert widget.title == "Test Widget"
@@ -310,13 +312,14 @@ class TestWidgetTypesAndValues:
 
     def test_dashboard_widget_definition_frozen(self) -> None:
         """Test DashboardWidgetDefinition is frozen."""
-        from lexigram.contracts.admin.types import DashboardWidgetDefinition
+        from lexigram.contracts.admin import DashboardWidgetDefinition, WidgetKind
 
         widget = DashboardWidgetDefinition(
             name="test",
             title="Test",
             contributor="test",
             render_endpoint="/test",
+            view_kind=WidgetKind.STAT,
         )
         with pytest.raises(Exception):  # FrozenInstanceError
             widget.name = "changed"

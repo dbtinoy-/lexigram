@@ -5,8 +5,13 @@ from __future__ import annotations
 import pytest
 
 from lexigram.admin.contributors.core import CoreAdminContributor
-from lexigram.contracts.admin.protocols import AdminContributorProtocol
-from lexigram.contracts.admin.types import WidgetCategory, WidgetParams
+from lexigram.contracts.admin import (
+    AdminContributorProtocol,
+    ChartContent,
+    WidgetCategory,
+    WidgetContent,
+    WidgetParams,
+)
 
 
 class TestCoreAdminContributor:
@@ -49,10 +54,9 @@ class TestCoreAdminContributor:
         params = WidgetParams()
         result = await contrib.render_widget("chart_metrics", params)
         assert result.is_ok()
-        body = result.unwrap().body
-        assert isinstance(body, str)
-        assert len(body) > 0
-        assert "Framework Metrics" in body
+        content = result.unwrap().content
+        assert isinstance(content, ChartContent)
+        assert len(content.points) > 0
 
     @pytest.mark.asyncio
     async def test_all_widgets_render(self) -> None:
@@ -62,7 +66,7 @@ class TestCoreAdminContributor:
         for w in widgets:
             result = await contrib.render_widget(w.name, params)
             assert result.is_ok(), f"Widget '{w.name}' failed to render"
-            assert len(result.unwrap().body) > 0
+            assert isinstance(result.unwrap().content, WidgetContent)
 
     def test_navigation_items_present(self) -> None:
         contrib = CoreAdminContributor()
