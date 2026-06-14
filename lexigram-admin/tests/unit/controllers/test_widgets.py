@@ -13,8 +13,10 @@ from lexigram.contracts.admin.health_payload import HealthCheckPayload
 from lexigram.contracts.admin.types import (
     AdminHealthDefinition,
     DashboardWidgetDefinition,
+    WidgetKind,
     WidgetViewModel,
 )
+from lexigram.contracts.admin.widget_content import MessageContent
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Err, Ok
 
@@ -51,7 +53,7 @@ class TestWidgetController:
     ) -> None:
         mock_registry.get.return_value = mock_contributor
         mock_contributor.render_widget = AsyncMock(
-            return_value=Ok(WidgetViewModel(body="<div>ok</div>"))
+            return_value=Ok(WidgetViewModel(content=MessageContent(text="ok")))
         )
         controller = WidgetController(registry=mock_registry)
         mock_request = MagicMock()
@@ -62,7 +64,7 @@ class TestWidgetController:
             widget_name="pool_utilization",
         )
         assert response.status_code == 200
-        assert b"<div>ok</div>" in response.body
+        assert b"ok" in response.body
 
     @pytest.mark.asyncio
     async def test_returns_200_with_error_card_on_widget_not_found(
@@ -306,6 +308,7 @@ class TestWidgetControllerWidgetPermissionGate:
             title="Widget Count",
             contributor="sql",
             render_endpoint="/admin/sql/widgets/widget_count",
+            view_kind=WidgetKind.MESSAGE,
             permission="governance.read",
         )
 
@@ -316,7 +319,7 @@ class TestWidgetControllerWidgetPermissionGate:
         contributor = MagicMock()
         contributor.get_dashboard_widgets.return_value = [widget_def]
         contributor.render_widget = AsyncMock(
-            return_value=Ok(WidgetViewModel(body="<div>ok</div>"))
+            return_value=Ok(WidgetViewModel(content=MessageContent(text="ok")))
         )
         registry.get.return_value = contributor
         return WidgetController(registry=registry), contributor
@@ -349,7 +352,7 @@ class TestWidgetControllerWidgetPermissionGate:
             widget_name=self.WIDGET_NAME,
         )
         assert response.status_code == 200
-        assert b"<div>ok</div>" in response.body
+        assert b"ok" in response.body
         contributor.render_widget.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -361,6 +364,7 @@ class TestWidgetControllerWidgetPermissionGate:
             title="Widget Count",
             contributor="sql",
             render_endpoint="/admin/sql/widgets/widget_count",
+            view_kind=WidgetKind.MESSAGE,
         )
         controller, contributor = self._make_controller(widget_def)
         response = await controller.render_widget(
@@ -369,7 +373,7 @@ class TestWidgetControllerWidgetPermissionGate:
             widget_name=self.WIDGET_NAME,
         )
         assert response.status_code == 200
-        assert b"<div>ok</div>" in response.body
+        assert b"ok" in response.body
         contributor.render_widget.assert_awaited_once()
 
 
