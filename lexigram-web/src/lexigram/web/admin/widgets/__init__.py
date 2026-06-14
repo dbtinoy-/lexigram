@@ -12,19 +12,9 @@ from lexigram.web.admin.handlers.active_connections import (
 )
 from lexigram.web.admin.handlers.request_rate import RequestRateWidgetHandler
 from lexigram.web.admin.handlers.server_status import ServerStatusWidgetHandler
-from lexigram.web.admin.renderer import PackageWidgetRenderer
-from lexigram.web.admin.viewmodels import (
-    ActiveConnectionsViewModel,
-    RequestRateViewModel,
-    ServerStatusViewModel,
-)
 
 __all__ = [
     "ServerStatusWidgetHandler",
     "ActiveConnectionsWidgetHandler",
     "RequestRateWidgetHandler",
-    "PackageWidgetRenderer",
-    "ServerStatusViewModel",
-    "ActiveConnectionsViewModel",
-    "RequestRateViewModel",
 ]

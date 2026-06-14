@@ -61,7 +61,6 @@ class WebModule(Module):
         )
         from lexigram.web.admin.handlers.request_rate import RequestRateWidgetHandler
         from lexigram.web.admin.handlers.server_status import ServerStatusWidgetHandler
-        from lexigram.web.admin.renderer import PackageWidgetRenderer
 
         return DynamicModule(
             module=cls,
@@ -71,7 +70,6 @@ class WebModule(Module):
                 WebProvider,
                 WebRateLimiterProtocol,
                 WebAdminContributor,
-                PackageWidgetRenderer,
                 ServerStatusWidgetHandler,
                 ActiveConnectionsWidgetHandler,
                 RequestRateWidgetHandler,

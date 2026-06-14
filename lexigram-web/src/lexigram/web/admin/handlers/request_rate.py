@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.admin.types import WidgetParams
 from lexigram.result import Ok, Result
-from lexigram.web.admin.viewmodels import RequestRateViewModel
 
 
 class RequestRateWidgetHandler:
@@ -15,23 +14,32 @@ class RequestRateWidgetHandler:
     For now, returns reasonable defaults (TODO: integrate with actual request tracking).
     """
 
-    async def get_data(
-        self, params: WidgetParams
-    ) -> Result[RequestRateViewModel, AdminError]:
+    async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch request rate data.
 
         Args:
             params: Widget request parameters (unused for this widget).
 
         Returns:
-            Result containing RequestRateViewModel with request metrics.
+            Result containing StatContent with request metrics.
         """
-        viewmodel = RequestRateViewModel(
-            requests_per_second=12.5,
-            total_requests=45000,
-            error_rate_pct=0.5,
+        rps, total, error_pct = 12.5, 45000, 0.5
+        tone = (
+            Tone.DANGER
+            if error_pct > 5
+            else Tone.WARNING
+            if error_pct > 1
+            else Tone.SUCCESS
         )
-        return Ok(viewmodel)
+        return Ok(
+            StatContent(
+                stats=(
+                    Stat(label="Requests/sec", value=f"{rps:.1f}"),
+                    Stat(label="Total", value=str(total)),
+                    Stat(label="Error rate", value=f"{error_pct:.1f}%", tone=tone),
+                )
+            )
+        )
 
 
 __all__ = ["RequestRateWidgetHandler"]

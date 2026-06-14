@@ -224,14 +224,6 @@ class TestWidgetRendererConfiguration:
         renderer = SqlRenderer()
         assert renderer._env.autoescape is not None
 
-    def test_web_renderer_has_jinja_env(self) -> None:
-        """Test web renderer has Jinja2 environment configured."""
-        from lexigram.web.admin.renderer import PackageWidgetRenderer as WebRenderer
-
-        renderer = WebRenderer()
-        assert hasattr(renderer, "_env")
-        assert renderer._env is not None
-
 
 class TestErrorHandling:
     """Test error handling in admin widgets."""
