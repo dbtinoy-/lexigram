@@ -67,7 +67,6 @@ class QueueModule(Module):
             FailedMessagesWidgetHandler,
         )
         from lexigram.queue.admin.handlers.queue_depth import QueueDepthWidgetHandler
-        from lexigram.queue.admin.renderer import PackageWidgetRenderer
         from lexigram.queue.di.provider import QueueProvider
 
         return DynamicModule(
@@ -76,7 +75,6 @@ class QueueModule(Module):
             exports=[
                 QueueProtocol,
                 QueueAdminContributor,
-                PackageWidgetRenderer,
                 QueueDepthWidgetHandler,
                 ConsumerLagWidgetHandler,
                 FailedMessagesWidgetHandler,
@@ -138,12 +136,15 @@ class QueueModule(Module):
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
         """
-        from lexigram.queue.config import QueueConfig
+        from lexigram.queue.config import NamedQueueConfig, QueueConfig
         from lexigram.queue.di.provider import QueueProvider
 
+        config = config or QueueConfig(
+            backends=[NamedQueueConfig(name="default", driver="memory")]
+        )
         return DynamicModule(
             module=cls,
-            providers=[QueueProvider(config=config or QueueConfig())],
+            providers=[QueueProvider(config=config)],
             exports=[QueueProtocol],
         )
 
