@@ -5,7 +5,7 @@ and backend-ping widgets into the Lexigram admin dashboard.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
 from lexigram.contracts.admin.errors import WidgetNotFoundError
@@ -18,6 +18,7 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
@@ -51,6 +52,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/cache/widgets/hit_miss_ratio",
         size=WidgetSize.LARGE,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Cache hit and miss ratio over the last rolling window.",
     ),
     DashboardWidgetDefinition(
@@ -60,6 +62,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/cache/widgets/eviction_rate",
         size=WidgetSize.SMALL,
         category=WidgetCategory.METRICS,
+        view_kind=WidgetKind.STAT,
         description="Number of keys evicted per second.",
     ),
     DashboardWidgetDefinition(
@@ -69,6 +72,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/cache/widgets/backend_ping",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
+        view_kind=WidgetKind.HEALTH,
         description="Round-trip latency to the cache backend.",
     ),
 )
@@ -147,12 +151,6 @@ class CacheAdminContributor(BaseAdminContributor):
 
     def __init__(self) -> None:
         self._handlers: dict[str, WidgetHandlerProtocol] | None = None
-        self._renderer: object | None = None
-        self._template_names: dict[str, str] = {
-            "hit_miss_ratio": "hit_miss_ratio.html",
-            "eviction_rate": "eviction_rate.html",
-            "backend_ping": "backend_ping.html",
-        }
 
     async def on_admin_boot(self, container: ContainerResolverProtocol) -> None:
         """Resolve cache admin dependencies from the DI container.
@@ -169,15 +167,7 @@ class CacheAdminContributor(BaseAdminContributor):
         from lexigram.cache.admin.handlers.hit_miss_ratio import (
             HitMissRatioWidgetHandler,
         )
-        from lexigram.cache.admin.renderer import PackageWidgetRenderer
         from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
-
-        try:
-            renderer = await container.resolve(PackageWidgetRenderer)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("cache_contributor.renderer_unavailable", error=str(exc))
-            renderer = None
-        self._renderer = renderer
 
         try:
             cache = await container.resolve(CacheBackendProtocol)
@@ -280,22 +270,16 @@ class CacheAdminContributor(BaseAdminContributor):
         if handler is None:
             return Err(WidgetNotFoundError(self.name, widget_name))  # type: ignore[arg-type]
 
-        # Check renderer is available
-        if self._renderer is None:
-            return Err(WidgetNotFoundError(self.name, widget_name))  # type: ignore[arg-type]
-
         # Fetch data via handler
         data_result = await handler.get_data(params)
         if data_result.is_err():
             return Err(data_result.unwrap_err())
 
-        # Render template
-        viewmodel = data_result.unwrap()
-        template_name = self._template_names.get(widget_name, f"{widget_name}.html")
-
-        assert self._renderer is not None
-        html = self._renderer.render(template_name, vars(viewmodel))  # type: ignore[attr-defined]
-        return Ok(WidgetViewModel(body=html))
+        content = data_result.unwrap()
+        return cast(
+            "Result[WidgetViewModel, AdminError]",
+            Ok(WidgetViewModel(content=content)),
+        )
 
 
 __all__ = ["CacheAdminContributor"]

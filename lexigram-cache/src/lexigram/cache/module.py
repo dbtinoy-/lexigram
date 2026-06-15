@@ -39,7 +39,6 @@ class CacheModule(Module):
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
         """
         from lexigram.cache.admin.contributor import CacheAdminContributor
-        from lexigram.cache.admin.renderer import PackageWidgetRenderer
         from lexigram.cache.config import CacheConfig
         from lexigram.cache.di.provider import CacheProvider
         from lexigram.contracts.ai.llm import SemanticCacheProtocol
@@ -60,7 +59,6 @@ class CacheModule(Module):
                 CacheBackendProtocol,
                 SemanticCacheProtocol,
                 CacheAdminContributor,
-                PackageWidgetRenderer,
             ],
         )
 
