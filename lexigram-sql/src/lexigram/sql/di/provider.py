@@ -520,7 +520,7 @@ class DatabaseProvider(Provider):
         self,
         container: ContainerRegistrarProtocol,
     ) -> None:
-        """Register admin widget services (renderer, handlers, contributor).
+        """Register admin widget services (handlers, contributor).
 
         Called after database backend registration.
         """
@@ -532,9 +532,7 @@ class DatabaseProvider(Provider):
             PoolUtilizationWidgetHandler,
         )
         from lexigram.sql.admin.handlers.query_stats import QueryStatsWidgetHandler
-        from lexigram.sql.admin.renderer import PackageWidgetRenderer
 
-        container.singleton(PackageWidgetRenderer, PackageWidgetRenderer)
         container.singleton(
             PoolUtilizationWidgetHandler,
             lambda: PoolUtilizationWidgetHandler(db=None),  # type: ignore[arg-type]
