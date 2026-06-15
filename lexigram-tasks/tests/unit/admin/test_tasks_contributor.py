@@ -1,4 +1,4 @@
-"""Tests for TasksAdminContributor widget rendering."""
+"""Unit tests for TasksAdminContributor widget rendering."""
 
 from __future__ import annotations
 
@@ -6,27 +6,29 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from lexigram.contracts.admin.errors import WidgetNotFoundError
+from lexigram.contracts.admin import Stat, StatContent
+from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetParams, WidgetViewModel
+from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
 from lexigram.result import Err, Ok
 from lexigram.tasks.admin.contributor import TasksAdminContributor
-from lexigram.tasks.admin.viewmodels import (
-    AvgDurationViewModel,
-    TasksSummaryViewModel,
-)
+from lexigram.tasks.admin.handlers.avg_duration import AvgDurationWidgetHandler
+from lexigram.tasks.admin.handlers.tasks_summary import TasksSummaryWidgetHandler
 
 
 @pytest.fixture
 def mock_tasks_summary_handler() -> MagicMock:
     """Create mock tasks summary handler."""
-    handler = MagicMock()
+    handler = MagicMock(spec=WidgetHandlerProtocol)
     handler.get_data = AsyncMock(
         return_value=Ok(
-            TasksSummaryViewModel(
-                pending=10,
-                running=5,
-                completed=100,
-                failed=2,
+            StatContent(
+                stats=(
+                    Stat(label="Pending", value="10"),
+                    Stat(label="Running", value="5"),
+                    Stat(label="Completed", value="100"),
+                    Stat(label="Failed", value="2"),
+                )
             )
         )
     )
@@ -36,13 +38,14 @@ def mock_tasks_summary_handler() -> MagicMock:
 @pytest.fixture
 def mock_avg_duration_handler() -> MagicMock:
     """Create mock average duration handler."""
-    handler = MagicMock()
+    handler = MagicMock(spec=WidgetHandlerProtocol)
     handler.get_data = AsyncMock(
         return_value=Ok(
-            AvgDurationViewModel(
-                avg_ms=250.5,
-                p95_ms=500.2,
-                window_minutes=60,
+            StatContent(
+                stats=(
+                    Stat(label="Avg", value="250.5ms"),
+                    Stat(label="P95", value="500.2ms"),
+                )
             )
         )
     )
@@ -50,26 +53,16 @@ def mock_avg_duration_handler() -> MagicMock:
 
 
 @pytest.fixture
-def mock_renderer() -> MagicMock:
-    """Create mock renderer."""
-    renderer = MagicMock()
-    renderer.render = MagicMock(return_value="<div>Rendered HTML</div>")
-    return renderer
-
-
-@pytest.fixture
 def contributor(
     mock_tasks_summary_handler: MagicMock,
     mock_avg_duration_handler: MagicMock,
-    mock_renderer: MagicMock,
 ) -> TasksAdminContributor:
-    """Create TasksAdminContributor with mocked dependencies."""
+    """Create TasksAdminContributor with mocked handler dependencies."""
     contrib = TasksAdminContributor()
     contrib._handlers = {
         "tasks_summary": mock_tasks_summary_handler,
         "avg_duration": mock_avg_duration_handler,
     }
-    contrib._renderer = mock_renderer
     return contrib
 
 
@@ -81,7 +74,6 @@ class TestTasksAdminContributor:
         self,
         contributor: TasksAdminContributor,
         mock_tasks_summary_handler: MagicMock,
-        mock_renderer: MagicMock,
     ) -> None:
         """Test rendering the tasks summary widget."""
         params = WidgetParams(time_window_minutes=60)
@@ -90,28 +82,17 @@ class TestTasksAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert vm.body == "<div>Rendered HTML</div>"
+        assert isinstance(vm.content, StatContent)
+        assert len(vm.content.stats) == 4
 
         # Verify handler was called
         mock_tasks_summary_handler.get_data.assert_awaited_once_with(params)
-
-        # Verify renderer was called with viewmodel dict
-        mock_renderer.render.assert_called_once()
-        call_args = mock_renderer.render.call_args
-        assert call_args[0][0] == "tasks_summary.html"
-        # context should be a dict with viewmodel attributes
-        context = call_args[0][1]
-        assert context["pending"] == 10
-        assert context["running"] == 5
-        assert context["completed"] == 100
-        assert context["failed"] == 2
 
     @pytest.mark.asyncio
     async def test_render_avg_duration_widget(
         self,
         contributor: TasksAdminContributor,
         mock_avg_duration_handler: MagicMock,
-        mock_renderer: MagicMock,
     ) -> None:
         """Test rendering the average duration widget."""
         params = WidgetParams(time_window_minutes=60)
@@ -120,20 +101,11 @@ class TestTasksAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert vm.body == "<div>Rendered HTML</div>"
+        assert isinstance(vm.content, StatContent)
+        assert len(vm.content.stats) == 2
 
         # Verify handler was called
         mock_avg_duration_handler.get_data.assert_awaited_once_with(params)
-
-        # Verify renderer was called with viewmodel dict
-        mock_renderer.render.assert_called_once()
-        call_args = mock_renderer.render.call_args
-        assert call_args[0][0] == "avg_duration.html"
-        # context should be a dict with viewmodel attributes
-        context = call_args[0][1]
-        assert context["avg_ms"] == 250.5
-        assert context["p95_ms"] == 500.2
-        assert context["window_minutes"] == 60
 
     @pytest.mark.asyncio
     async def test_render_unknown_widget_returns_not_found(
@@ -148,14 +120,23 @@ class TestTasksAdminContributor:
         assert isinstance(error, WidgetNotFoundError)
 
     @pytest.mark.asyncio
+    async def test_render_before_boot_returns_error(
+        self, mock_tasks_summary_handler: MagicMock
+    ) -> None:
+        """Test that render_widget before on_admin_boot returns an AdminError."""
+        contributor = TasksAdminContributor()
+        result = await contributor.render_widget("tasks_summary", WidgetParams())
+
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), AdminError)
+
+    @pytest.mark.asyncio
     async def test_render_widget_handler_error_propagates(
         self,
         contributor: TasksAdminContributor,
         mock_tasks_summary_handler: MagicMock,
     ) -> None:
         """Test that handler errors propagate through render_widget."""
-        from lexigram.contracts.admin.errors import AdminError
-
         error = AdminError("Handler failed")
         mock_tasks_summary_handler.get_data = AsyncMock(return_value=Err(error))
 
@@ -165,42 +146,6 @@ class TestTasksAdminContributor:
         assert result.is_err()
         returned_error = result.unwrap_err()
         assert returned_error is error
-
-    @pytest.mark.asyncio
-    async def test_render_widget_handler_error_format(
-        self,
-        mock_tasks_summary_handler: MagicMock,
-        mock_avg_duration_handler: MagicMock,
-        mock_renderer: MagicMock,
-    ) -> None:
-        """Test that handler data is rendered with correct template name."""
-        from lexigram.tasks.admin.viewmodels import TasksSummaryViewModel
-
-        handler = MagicMock()
-        handler.get_data = AsyncMock(
-            return_value=Ok(
-                TasksSummaryViewModel(
-                    pending=5,
-                    running=2,
-                    completed=50,
-                    failed=1,
-                )
-            )
-        )
-        contributor = TasksAdminContributor()
-        contributor._handlers = {
-            "tasks_summary": handler,
-            "avg_duration": mock_avg_duration_handler,
-        }
-        contributor._renderer = mock_renderer
-
-        params = WidgetParams()
-        result = await contributor.render_widget("tasks_summary", params)
-
-        assert result.is_ok()
-        mock_renderer.render.assert_called_once()
-        call_args = mock_renderer.render.call_args
-        assert call_args[0][0] == "tasks_summary.html"
 
     def test_get_dashboard_widgets_returns_two_widgets(
         self, contributor: TasksAdminContributor
@@ -228,4 +173,28 @@ class TestTasksAdminContributor:
         assert len(actions) > 0
 
 
-__all__ = ["TestTasksAdminContributor"]
+class TestTasksWidgetHandlers:
+    """Test individual widget handlers return WidgetContent."""
+
+    @pytest.mark.asyncio
+    async def test_tasks_summary_handler(self) -> None:
+        """Test tasks_summary handler returns StatContent."""
+        handler = TasksSummaryWidgetHandler()
+        result = await handler.get_data(WidgetParams())
+        assert result.is_ok()
+        content = result.unwrap()
+        assert isinstance(content, StatContent)
+        assert len(content.stats) == 4
+
+    @pytest.mark.asyncio
+    async def test_avg_duration_handler(self) -> None:
+        """Test avg_duration handler returns StatContent."""
+        handler = AvgDurationWidgetHandler()
+        result = await handler.get_data(WidgetParams())
+        assert result.is_ok()
+        content = result.unwrap()
+        assert isinstance(content, StatContent)
+        assert len(content.stats) == 2
+
+
+__all__ = ["TestTasksAdminContributor", "TestTasksWidgetHandlers"]

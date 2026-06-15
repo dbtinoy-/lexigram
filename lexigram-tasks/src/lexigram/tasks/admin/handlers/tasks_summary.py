@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.admin.types import WidgetParams
 from lexigram.result import Ok, Result
-from lexigram.tasks.admin.viewmodels import TasksSummaryViewModel
 
 
 class TasksSummaryWidgetHandler:
@@ -20,25 +19,34 @@ class TasksSummaryWidgetHandler:
     def __init__(self, queue_provider: Any = None) -> None:
         self._queue_provider = queue_provider
 
-    async def get_data(
-        self, params: WidgetParams
-    ) -> Result[TasksSummaryViewModel, AdminError]:
+    async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch task summary statistics.
+
+        Mirrors the widget template's four static cells, including each
+        cell's static tone class (running is informational, completed is
+        success, failed is destructive). The template has no tone/threshold
+        logic.
 
         Args:
             params: Widget parameters.
 
         Returns:
-            Result containing TasksSummaryViewModel or AdminError.
+            Result containing StatContent or AdminError.
         """
         # TODO: Integrate with actual task queue to fetch real stats.
         # For now, return stub data.
+        pending = 0
+        running = 0
+        completed = 0
+        failed = 0
         return Ok(
-            TasksSummaryViewModel(
-                pending=0,
-                running=0,
-                completed=0,
-                failed=0,
+            StatContent(
+                stats=(
+                    Stat(label="Pending", value=str(pending)),
+                    Stat(label="Running", value=str(running), tone=Tone.INFO),
+                    Stat(label="Completed", value=str(completed), tone=Tone.SUCCESS),
+                    Stat(label="Failed", value=str(failed), tone=Tone.DANGER),
+                )
             )
         )
 

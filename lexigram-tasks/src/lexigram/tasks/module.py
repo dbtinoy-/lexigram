@@ -63,7 +63,6 @@ class TasksModule(Module):
         from lexigram.tasks.admin.handlers.tasks_summary import (
             TasksSummaryWidgetHandler,
         )
-        from lexigram.tasks.admin.renderer import PackageWidgetRenderer
         from lexigram.tasks.di.provider import TaskProvider
 
         if queue is None:
@@ -85,7 +84,6 @@ class TasksModule(Module):
                 TaskExecutorProtocol,
                 TaskQueueProtocol,
                 TasksAdminContributor,
-                PackageWidgetRenderer,
                 AvgDurationWidgetHandler,
                 TasksSummaryWidgetHandler,
             ],
