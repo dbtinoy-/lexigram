@@ -1,0 +1,53 @@
+"""Tests for the token_refresh_rate admin widget handler."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+from lexigram.auth.admin.handlers.token_refresh_rate import (
+    TokenRefreshRateWidgetHandler,
+)
+from lexigram.contracts.admin import StatContent, Tone, WidgetParams
+
+
+async def test_token_refresh_rate_handler_returns_stat_content() -> None:
+    result = await TokenRefreshRateWidgetHandler(session_manager=MagicMock()).get_data(
+        WidgetParams()
+    )
+    content = result.unwrap()
+    assert isinstance(content, StatContent)
+
+
+async def test_token_refresh_rate_stats_mirror_template() -> None:
+    result = await TokenRefreshRateWidgetHandler(session_manager=MagicMock()).get_data(
+        WidgetParams()
+    )
+    content = result.unwrap()
+    rate = content.stats[0]
+    assert rate.label == "Refresh Rate (per minute)"
+    assert rate.value == "0.0"
+    assert rate.tone is Tone.PRIMARY
+
+
+async def test_token_refresh_rate_no_total_stat_when_zero() -> None:
+    result = await TokenRefreshRateWidgetHandler(session_manager=MagicMock()).get_data(
+        WidgetParams()
+    )
+    content = result.unwrap()
+    assert len(content.stats) == 1
+
+
+async def test_token_refresh_rate_uses_static_tone_no_threshold_ladder() -> None:
+    result = await TokenRefreshRateWidgetHandler(session_manager=MagicMock()).get_data(
+        WidgetParams()
+    )
+    content = result.unwrap()
+    assert all(stat.tone is Tone.PRIMARY for stat in content.stats)
+
+
+__all__ = [
+    "test_token_refresh_rate_handler_returns_stat_content",
+    "test_token_refresh_rate_no_total_stat_when_zero",
+    "test_token_refresh_rate_stats_mirror_template",
+    "test_token_refresh_rate_uses_static_tone_no_threshold_ladder",
+]

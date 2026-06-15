@@ -57,7 +57,6 @@ class AuthModule(Module):
         from lexigram.auth.admin.handlers.token_refresh_rate import (
             TokenRefreshRateWidgetHandler,
         )
-        from lexigram.auth.admin.renderer import PackageWidgetRenderer
         from lexigram.auth.di.bundle_provider import AuthBundleProvider
 
         return DynamicModule(
@@ -69,7 +68,6 @@ class AuthModule(Module):
                 TokenManagerProtocol,
                 PasswordHasherProtocol,
                 AuthAdminContributor,
-                PackageWidgetRenderer,
                 ActiveSessionsWidgetHandler,
                 FailedLoginsWidgetHandler,
                 TokenRefreshRateWidgetHandler,
@@ -91,14 +89,19 @@ class AuthModule(Module):
         Returns:
             A DynamicModule backed by in-memory auth storage.
         """
-        from lexigram.auth.config import AuthConfig
+        from lexigram.auth.config import AuthConfig, JWTConfig
         from lexigram.auth.di.bundle_provider import AuthBundleProvider
 
         return DynamicModule(
             module=cls,
             providers=[
                 AuthBundleProvider(
-                    config=AuthConfig(secret_key="test-secret-key-for-testing-only"),
+                    config=AuthConfig(
+                        secret_key="test-secret-key-for-testing-only",
+                        token=JWTConfig(
+                            secret_key="test-secret-key-for-testing-only",
+                        ),
+                    ),
                     initial_roles=None,
                 )
             ],

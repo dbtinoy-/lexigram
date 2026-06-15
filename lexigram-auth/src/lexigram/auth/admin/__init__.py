@@ -8,18 +8,10 @@ from lexigram.auth.admin.handlers import (
     FailedLoginsWidgetHandler,
     TokenRefreshRateWidgetHandler,
 )
-from lexigram.auth.admin.viewmodels import (
-    ActiveSessionsViewModel,
-    FailedLoginsViewModel,
-    TokenRefreshRateViewModel,
-)
 
 __all__ = [
-    "ActiveSessionsViewModel",
     "ActiveSessionsWidgetHandler",
     "AuthAdminContributor",
-    "FailedLoginsViewModel",
     "FailedLoginsWidgetHandler",
-    "TokenRefreshRateViewModel",
     "TokenRefreshRateWidgetHandler",
 ]

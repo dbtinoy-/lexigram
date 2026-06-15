@@ -12,213 +12,43 @@ from lexigram.auth.admin import (
     FailedLoginsWidgetHandler,
     TokenRefreshRateWidgetHandler,
 )
-from lexigram.auth.admin.renderer import PackageWidgetRenderer
-from lexigram.auth.admin.viewmodels import (
-    ActiveSessionsViewModel,
-    FailedLoginsViewModel,
-    TokenRefreshRateViewModel,
-)
 from lexigram.contracts.admin.errors import WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetParams, WidgetViewModel
+from lexigram.contracts.admin.widget_content import StatContent
 from lexigram.result import Ok
-
-
-class TestActiveSessionsWidgetHandler:
-    """Tests for ActiveSessionsWidgetHandler."""
-
-    @pytest.fixture
-    def mock_session_manager(self) -> MagicMock:
-        """Create a mock session manager."""
-        return MagicMock()
-
-    @pytest.mark.asyncio
-    async def test_get_data_returns_viewmodel(
-        self, mock_session_manager: MagicMock
-    ) -> None:
-        """Test that handler returns ActiveSessionsViewModel."""
-        handler = ActiveSessionsWidgetHandler(session_manager=mock_session_manager)
-        params = WidgetParams()
-
-        result = await handler.get_data(params)
-
-        assert result.is_ok()
-        viewmodel = result.unwrap()
-        assert isinstance(viewmodel, ActiveSessionsViewModel)
-        assert viewmodel.count == 0
-        assert viewmodel.peak_today == 0
-
-    @pytest.mark.asyncio
-    async def test_get_data_handles_exception(
-        self, mock_session_manager: MagicMock
-    ) -> None:
-        """Test that handler returns defaults on exception."""
-        mock_session_manager.get_active_sessions = AsyncMock(
-            side_effect=Exception("Database error")
-        )
-        handler = ActiveSessionsWidgetHandler(session_manager=mock_session_manager)
-        params = WidgetParams()
-
-        result = await handler.get_data(params)
-
-        # Handler returns safe defaults (zeros) instead of raising
-        assert result.is_ok()
-        viewmodel = result.unwrap()
-        assert viewmodel.count == 0
-        assert viewmodel.peak_today == 0
-
-
-class TestTokenRefreshRateWidgetHandler:
-    """Tests for TokenRefreshRateWidgetHandler."""
-
-    @pytest.fixture
-    def mock_session_manager(self) -> MagicMock:
-        """Create a mock session manager."""
-        return MagicMock()
-
-    @pytest.mark.asyncio
-    async def test_get_data_returns_viewmodel(
-        self, mock_session_manager: MagicMock
-    ) -> None:
-        """Test that handler returns TokenRefreshRateViewModel."""
-        handler = TokenRefreshRateWidgetHandler(session_manager=mock_session_manager)
-        params = WidgetParams(time_window_minutes=60)
-
-        result = await handler.get_data(params)
-
-        assert result.is_ok()
-        viewmodel = result.unwrap()
-        assert isinstance(viewmodel, TokenRefreshRateViewModel)
-        assert viewmodel.refreshes_per_minute == 0.0
-        assert viewmodel.total_refreshes == 0
-
-    @pytest.mark.asyncio
-    async def test_get_data_handles_exception(
-        self, mock_session_manager: MagicMock
-    ) -> None:
-        """Test that handler returns AdminError on exception."""
-        handler = TokenRefreshRateWidgetHandler(session_manager=mock_session_manager)
-        params = WidgetParams()
-
-        result = await handler.get_data(params)
-
-        assert result.is_ok()  # Should return defaults safely
-
-
-class TestFailedLoginsWidgetHandler:
-    """Tests for FailedLoginsWidgetHandler."""
-
-    @pytest.fixture
-    def mock_session_manager(self) -> MagicMock:
-        """Create a mock session manager."""
-        return MagicMock()
-
-    @pytest.mark.asyncio
-    async def test_get_data_returns_viewmodel(
-        self, mock_session_manager: MagicMock
-    ) -> None:
-        """Test that handler returns FailedLoginsViewModel."""
-        handler = FailedLoginsWidgetHandler(session_manager=mock_session_manager)
-        params = WidgetParams(time_window_minutes=60)
-
-        result = await handler.get_data(params)
-
-        assert result.is_ok()
-        viewmodel = result.unwrap()
-        assert isinstance(viewmodel, FailedLoginsViewModel)
-        assert viewmodel.count == 0
-        assert viewmodel.unique_ips == 0
-        assert viewmodel.is_elevated is False
-
-    @pytest.mark.asyncio
-    async def test_get_data_handles_exception(
-        self, mock_session_manager: MagicMock
-    ) -> None:
-        """Test that handler returns AdminError on exception."""
-        handler = FailedLoginsWidgetHandler(session_manager=mock_session_manager)
-        params = WidgetParams()
-
-        result = await handler.get_data(params)
-
-        assert result.is_ok()  # Should return defaults safely
 
 
 class TestAuthAdminContributor:
     """Tests for AuthAdminContributor."""
 
     @pytest.fixture
-    def mock_renderer(self) -> MagicMock:
-        """Mock PackageWidgetRenderer."""
-        from lexigram.auth.admin.renderer import PackageWidgetRenderer
-
-        renderer = MagicMock(spec=PackageWidgetRenderer)
-        renderer.render = MagicMock(return_value="<div>Rendered Widget</div>")
-        return renderer
-
-    @pytest.fixture
-    def mock_active_sessions_handler(self) -> MagicMock:
-        """Mock ActiveSessionsWidgetHandler."""
-        handler = MagicMock(spec=ActiveSessionsWidgetHandler)
-        handler.get_data = AsyncMock(
-            return_value=Ok(ActiveSessionsViewModel(count=5, peak_today=10))
+    def mock_handlers(self) -> dict[str, MagicMock]:
+        """Create handlers returning StatContent directly."""
+        active = MagicMock()
+        active.get_data = AsyncMock(
+            return_value=Ok(StatContent(stats=(MagicMock(),)))
         )
-        return handler
-
-    @pytest.fixture
-    def mock_token_refresh_handler(self) -> MagicMock:
-        """Mock TokenRefreshRateWidgetHandler."""
-        handler = MagicMock(spec=TokenRefreshRateWidgetHandler)
-        handler.get_data = AsyncMock(
-            return_value=Ok(
-                TokenRefreshRateViewModel(refreshes_per_minute=1.5, total_refreshes=90)
-            )
+        token = MagicMock()
+        token.get_data = AsyncMock(
+            return_value=Ok(StatContent(stats=(MagicMock(),)))
         )
-        return handler
-
-    @pytest.fixture
-    def mock_failed_logins_handler(self) -> MagicMock:
-        """Mock FailedLoginsWidgetHandler."""
-        handler = MagicMock(spec=FailedLoginsWidgetHandler)
-        handler.get_data = AsyncMock(
-            return_value=Ok(
-                FailedLoginsViewModel(count=2, unique_ips=1, is_elevated=False)
-            )
+        failed = MagicMock()
+        failed.get_data = AsyncMock(
+            return_value=Ok(StatContent(stats=(MagicMock(),)))
         )
-        return handler
-
-    @pytest.fixture
-    def mock_container(
-        self,
-        mock_renderer: MagicMock,
-        mock_active_sessions_handler: MagicMock,
-        mock_token_refresh_handler: MagicMock,
-        mock_failed_logins_handler: MagicMock,
-    ) -> MagicMock:
-        """Mock container that resolves handlers via on_admin_boot."""
-        container = MagicMock()
-        resolve_map = {
-            PackageWidgetRenderer: mock_renderer,
-            ActiveSessionsWidgetHandler: mock_active_sessions_handler,
-            TokenRefreshRateWidgetHandler: mock_token_refresh_handler,
-            FailedLoginsWidgetHandler: mock_failed_logins_handler,
+        return {
+            "active_sessions": active,
+            "token_refresh_rate": token,
+            "failed_logins": failed,
         }
-        container.resolve = AsyncMock(side_effect=resolve_map.get)
-        return container
 
     @pytest.fixture
     def contributor(
-        self,
-        mock_renderer: MagicMock,
-        mock_active_sessions_handler: MagicMock,
-        mock_token_refresh_handler: MagicMock,
-        mock_failed_logins_handler: MagicMock,
-        mock_container: MagicMock,
+        self, mock_handlers: dict[str, MagicMock]
     ) -> AuthAdminContributor:
         """Create an AuthAdminContributor instance with resolved handlers."""
         contributor = AuthAdminContributor()
-        contributor._renderer = mock_renderer
-        contributor._active_sessions_handler = mock_active_sessions_handler
-        contributor._token_refresh_handler = mock_token_refresh_handler
-        contributor._failed_logins_handler = mock_failed_logins_handler
+        contributor._handlers = mock_handlers
         return contributor
 
     def test_contributor_metadata(self, contributor: AuthAdminContributor) -> None:
@@ -257,7 +87,9 @@ class TestAuthAdminContributor:
 
     @pytest.mark.asyncio
     async def test_render_widget_active_sessions(
-        self, contributor: AuthAdminContributor
+        self,
+        contributor: AuthAdminContributor,
+        mock_handlers: dict[str, MagicMock],
     ) -> None:
         """Test rendering active_sessions widget."""
         params = WidgetParams()
@@ -266,12 +98,14 @@ class TestAuthAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert isinstance(vm.body, str)
-        assert len(vm.body) > 0  # Verify HTML is rendered
+        assert isinstance(vm.content, StatContent)
+        mock_handlers["active_sessions"].get_data.assert_awaited_once_with(params)
 
     @pytest.mark.asyncio
     async def test_render_widget_token_refresh_rate(
-        self, contributor: AuthAdminContributor
+        self,
+        contributor: AuthAdminContributor,
+        mock_handlers: dict[str, MagicMock],
     ) -> None:
         """Test rendering token_refresh_rate widget."""
         params = WidgetParams()
@@ -280,11 +114,14 @@ class TestAuthAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert isinstance(vm.body, str)
+        assert isinstance(vm.content, StatContent)
+        mock_handlers["token_refresh_rate"].get_data.assert_awaited_once_with(params)
 
     @pytest.mark.asyncio
     async def test_render_widget_failed_logins(
-        self, contributor: AuthAdminContributor
+        self,
+        contributor: AuthAdminContributor,
+        mock_handlers: dict[str, MagicMock],
     ) -> None:
         """Test rendering failed_logins widget."""
         params = WidgetParams()
@@ -293,7 +130,8 @@ class TestAuthAdminContributor:
         assert result.is_ok()
         vm = result.unwrap()
         assert isinstance(vm, WidgetViewModel)
-        assert isinstance(vm.body, str)
+        assert isinstance(vm.content, StatContent)
+        mock_handlers["failed_logins"].get_data.assert_awaited_once_with(params)
 
     @pytest.mark.asyncio
     async def test_render_widget_not_found(
@@ -308,10 +146,17 @@ class TestAuthAdminContributor:
         assert isinstance(error, WidgetNotFoundError)
         assert "nonexistent" in str(error)
 
+    @pytest.mark.asyncio
+    async def test_render_widget_before_boot_returns_not_found(self) -> None:
+        """Test that un-booted contributor returns WidgetNotFoundError."""
+        contributor = AuthAdminContributor()
+        params = WidgetParams()
+        result = await contributor.render_widget("active_sessions", params)
+
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), WidgetNotFoundError)
+
 
 __all__ = [
-    "TestActiveSessionsWidgetHandler",
     "TestAuthAdminContributor",
-    "TestFailedLoginsWidgetHandler",
-    "TestTokenRefreshRateWidgetHandler",
 ]
