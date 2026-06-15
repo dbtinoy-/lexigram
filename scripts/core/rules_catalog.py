@@ -527,8 +527,9 @@ def _detect_hardcoded_secret(
 ) -> tuple[RuleFinding, ...]:
     """Flag long literal strings assigned to secret-named module/class variables.
 
-    Test files and placeholder-looking values are skipped to keep the signal
-    high where ruff S105/S106 are noisy.
+    Test files, prose/error-message values, dummy placeholders, and `*_name`
+    references (config keys holding a secret's name, not its value) are
+    skipped to keep the signal high where ruff S105/S106 are noisy.
     """
 
     if "tests" in source_file.path.parts or source_file.path.name.startswith("test_"):
@@ -546,10 +547,14 @@ def _detect_hardcoded_secret(
         if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
             continue
         secret = value.value
-        if len(secret) < 16 or _PLACEHOLDER_RE.search(secret):
+        if len(secret) < 16 or _PLACEHOLDER_RE.search(secret) or " " in secret:
             continue
         for target in targets:
             if not isinstance(target, ast.Name) or not _SECRET_NAME_RE.search(target.id):
+                continue
+            if target.id.upper().endswith("_NAME") or "DUMMY" in target.id.upper():
+                continue
+            if secret == target.id.lower():
                 continue
             findings.append(
                 _finding(
