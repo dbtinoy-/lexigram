@@ -64,7 +64,7 @@ class FailedLoginsWidgetHandler:
             StatContent with a danger tone when elevated and neutral styling
             otherwise, plus a conditional unique-IP stat.
         """
-        tone = Tone.DANGER if is_elevated else Tone.PRIMARY
+        tone = Tone.DANGER if is_elevated else Tone.DEFAULT
         stats: list[Stat] = [
             Stat(label="Failed Logins (1 hour)", value=str(count), tone=tone),
         ]

@@ -24,7 +24,7 @@ async def test_active_sessions_stats_mirror_template() -> None:
     active = content.stats[0]
     assert active.label == "Currently Active"
     assert active.value == "0"
-    assert active.tone is Tone.PRIMARY
+    assert active.tone is Tone.DEFAULT
 
 
 async def test_active_sessions_no_peak_stat_when_zero() -> None:
@@ -40,7 +40,7 @@ async def test_active_sessions_uses_static_tone_no_threshold_ladder() -> None:
         WidgetParams()
     )
     content = result.unwrap()
-    assert all(stat.tone is Tone.PRIMARY for stat in content.stats)
+    assert all(stat.tone is Tone.DEFAULT for stat in content.stats)
 
 
 __all__ = [

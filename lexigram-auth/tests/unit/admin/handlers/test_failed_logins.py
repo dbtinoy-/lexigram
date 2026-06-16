@@ -46,7 +46,7 @@ def test_failed_logins_tone_is_static_when_not_elevated() -> None:
     handler = FailedLoginsWidgetHandler(session_manager=MagicMock())
     content = handler._build_content(3, 2, is_elevated=False)
     stat = content.stats[0]
-    assert stat.tone is Tone.PRIMARY
+    assert stat.tone is Tone.DEFAULT
 
 
 __all__ = [

@@ -40,7 +40,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/auth/widgets/active_sessions",
         size=WidgetSize.LARGE,
         category=WidgetCategory.ACTIVITY,
-        view_kind=WidgetKind.TABLE,
+        view_kind=WidgetKind.STAT,
         description="Number of currently active authenticated sessions.",
     ),
     DashboardWidgetDefinition(
@@ -60,7 +60,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/auth/widgets/failed_logins",
         size=WidgetSize.SMALL,
         category=WidgetCategory.HEALTH,
-        view_kind=WidgetKind.HEALTH,
+        view_kind=WidgetKind.STAT,
         description="Count of failed login attempts over the last hour.",
     ),
 )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import Stat, StatContent, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.contracts.ai.session import SessionManagerProtocol
 from lexigram.result import Ok, Result
@@ -53,10 +53,10 @@ class ActiveSessionsWidgetHandler:
             peak_today: Peak session count today.
 
         Returns:
-            StatContent with a static primary tone and a conditional peak stat.
+            StatContent with neutral styling and a conditional peak stat.
         """
         stats: list[Stat] = [
-            Stat(label="Currently Active", value=str(count), tone=Tone.PRIMARY),
+            Stat(label="Currently Active", value=str(count)),
         ]
         if peak_today > 0:
             stats.append(Stat(label="Peak today", value=str(peak_today)))
