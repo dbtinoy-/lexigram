@@ -41,7 +41,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/tasks/widgets/tasks_summary",
         size=WidgetSize.LARGE,
         category=WidgetCategory.ACTIVITY,
-        view_kind=WidgetKind.TABLE,
+        view_kind=WidgetKind.STAT,
         description="Overview of queued, running, and failed tasks.",
     ),
     DashboardWidgetDefinition(
