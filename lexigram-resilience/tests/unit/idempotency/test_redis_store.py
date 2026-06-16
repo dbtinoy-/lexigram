@@ -12,7 +12,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.contracts.exceptions.idempotency import IdempotencyStoreError
+from lexigram.contracts.infra.cache.exceptions import CacheError
 from lexigram.resilience.idempotency.redis import RedisIdempotencyStore
+from lexigram.result import Err, Ok
 
 
 @pytest.fixture
@@ -54,6 +57,46 @@ class TestRedisIdempotencyStoreGet:
         value = await store.get("missing-key")
 
         assert value is None
+
+    @pytest.mark.asyncio
+    async def test_get_unwraps_ok_result(
+        self, store: RedisIdempotencyStore, mock_cache: MagicMock
+    ) -> None:
+        """get() unwraps an Ok result returned by the cache backend."""
+        mock_cache.get = AsyncMock(return_value=Ok("stored-result"))
+
+        value = await store.get("req-ok")
+
+        assert value == "stored-result"
+
+    @pytest.mark.asyncio
+    async def test_get_returns_none_for_ok_none(
+        self, store: RedisIdempotencyStore, mock_cache: MagicMock
+    ) -> None:
+        """get() returns None when the backend reports a miss as Ok(None)."""
+        mock_cache.get = AsyncMock(return_value=Ok(None))
+
+        value = await store.get("req-miss")
+
+        assert value is None
+
+    @pytest.mark.asyncio
+    async def test_get_raises_idempotency_store_error_on_cache_err(
+        self, store: RedisIdempotencyStore, mock_cache: MagicMock
+    ) -> None:
+        """get() raises IdempotencyStoreError when the backend returns Err.
+
+        The raise is chained from the underlying cache error so operators can
+        see the root cause — never a bare UnwrapError.
+        """
+        cache_error = CacheError("backend down")
+        mock_cache.get = AsyncMock(return_value=Err(cache_error))
+
+        with pytest.raises(IdempotencyStoreError) as excinfo:
+            await store.get("req-err")
+
+        assert excinfo.value.__cause__ is cache_error
+        assert "req-err" in str(excinfo.value)
 
 
 class TestRedisIdempotencyStoreSet:
