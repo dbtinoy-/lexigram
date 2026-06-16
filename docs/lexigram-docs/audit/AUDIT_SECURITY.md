@@ -676,36 +676,36 @@ For more information, try '--help'.
 
 ## Open Risk Table
 
-| # | Area | Severity mix | Spec | Plan |
-|---|------|--------------|------|------|
-| 40 | **Meilisearch/Typesense filter-expression injection** (`lexigram-search/backends/filters.py`) | High ×1 | `specs/2026-08-16-security-search-filter-injection-design.md` | `plans/2026-08-16-security-search-filter-injection.md` |
-| 50 | **`lexigram-ai-governance` Redis persistence silently fails open, disabling budget/RPM enforcement** | High ×1 |  | `docs/superpowers/specs/2026-08-18-security-ai-governance-redis-failopen-design.md` Not yet written |
-| 51 | **`lexigram-ai-governance` → `lexigram-tasks` cross-extension import** | Low ×1 |  | `docs/superpowers/specs/2026-08-18-architecture-ai-governance-tasks-import-design.md` Not yet written |
-| 52 | **`lexigram-ai-observability` trace spans carry unredacted tool/agent/retriever payloads** | Med ×1 |  | `docs/superpowers/specs/2026-08-18-security-ai-observability-trace-redaction-design.md` Not yet written |
-| 53 | **`lexigram-ai-workers` document-ingestion accepts unvalidated file paths (traversal / arbitrary read)** | High ×1 |  | `docs/superpowers/specs/2026-08-18-security-ai-workers-path-traversal-design.md` Not yet written |
-| 54 | **`lexigram-ai-prompt` `max_variable_length` config flag is defined but never enforced** | Low ×1 |  | `docs/superpowers/specs/2026-08-18-quality-ai-prompt-dead-config-flag-design.md` Not yet written |
-| 55 | **`lexigram-features` empty `user_attributes` rule fails open (enabled=True for everyone)** | Low/Med ×1 |  | `docs/superpowers/specs/2026-08-18-security-features-empty-rule-failopen-design.md` Not yet written |
-| 56 | **`lexigram-monitor` `/health`+`/metrics` unauthenticated, and health checks may leak raw exception strings** | Med ×2 |  | `docs/superpowers/specs/2026-08-18-security-monitor-health-metrics-authz-design.md` Not yet written |
-| 57 | **`lexigram-monitor` still hard-depends on `lexigram-tasks` at the packaging level** | Low ×1 |  | `docs/superpowers/specs/2026-08-18-architecture-monitor-tasks-dependency-design.md` Not yet written |
-| 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 |  | `docs/superpowers/specs/2026-08-18-quality-resilience-throttle-dead-decorator-design.md` Not yet written |
-| 59 | **`lexigram-resilience` idempotency fails open on store outage, and two `unwrap()`-without-guard sites can defeat even that fallback** | Med-High ×1 |  | `docs/superpowers/specs/2026-08-18-security-resilience-idempotency-failopen-unwrap-design.md` Not yet written |
-| 60 | **`lexigram-resilience` database idempotency store's "dialect-aware" placeholder is hardcoded to `?`, breaking Postgres — deeper than reported (naive `.replace()` also can't produce sequential `$1,$2,...` for multi-param queries)** | Low ×1 |  | `docs/superpowers/specs/2026-08-18-quality-resilience-idempotency-placeholder-design.md` Not yet written |
-| 61 | lexigram-ai | High |  | Governance DI register/boot-ordering bug — `gov_persistence` wiring built during `register()` always sees pre-boot `None` for `_database_provider`/`_cache_backend`; entry-point double-registration silently overwrites the correctly-wired instance `docs/superpowers/specs/2026-08-18-security-ai-governance-di-ordering-design.md` |
-| 62 | lexigram-ai-evaluation | Medium |  | Fail-open scoring on empty reference set `docs/superpowers/specs/2026-08-18-quality-ai-evaluation-empty-reference-design.md` |
-| 63 | lexigram-ai-feedback | Medium |  | No tenant/user scoping on feedback records `docs/superpowers/specs/2026-08-18-security-ai-feedback-tenant-scoping-design.md` |
-| 64 | lexigram-ai-feedback | High |  | `FeedbackSystemWithResultPattern` is a fake-persistence stub — always returns `Ok(...)`, never stores, `get_feedback()` always returns `Ok([])`; publicly exported in `__all__` alongside the real service `docs/superpowers/specs/2026-08-18-quality-ai-feedback-fake-persistence-design.md` |
-| 65 | lexigram-ai-feedback | Medium |  | No-authz endpoint / unenforced `MAX_FEEDBACK_TEXT_LENGTH` and `MAX_CONTEXT_SIZE` constants (declared, never read) `docs/superpowers/specs/2026-08-18-security-ai-feedback-authz-limits-design.md` |
-| 66 | lexigram-audit | Critical |  | Tamper-verification is a permanent no-op — `verify_recent()` unconditionally returns `[]`, `verify_entry()` unconditionally returns `True`; admin UI's "verified" flag is therefore always green `docs/superpowers/specs/2026-08-18-security-audit-verification-noop-design.md` |
-| 67 | lexigram-audit | High |  | `purge_expired()` counts expired entries but never calls any store delete method — retention purge silently doesn't delete anything `docs/superpowers/specs/2026-08-18-security-audit-purge-noop-design.md` |
-| 68 | lexigram-audit | Medium |  | Blind `except` in log/query path `docs/superpowers/specs/2026-08-18-quality-audit-blind-except-design.md` |
-| 69 | lexigram-events | Critical |  | WebSocket streaming endpoint has no auth check, unconditionally accepts connections, `subscribe_all` has no tenant/event filtering hook `docs/superpowers/specs/2026-08-18-security-events-websocket-noauth-design.md` |
-| 70 | lexigram-events | High |  | `subscribe()`'s `event_filter` parameter is silently discarded (`_ = event_filter`, explicit "not implemented" comment) — filtering was never built despite the parameter existing in the public API `docs/superpowers/specs/2026-08-18-quality-events-filter-not-implemented-design.md` |
-| 71 | lexigram-events | Medium |  | Unbounded idempotent-decorator cache / unvalidated `table_name` `docs/superpowers/specs/2026-08-18-quality-events-cache-tablename-design.md` |
-| 72 | lexigram-queue | High |  | Default driver (`InMemoryQueue`) has no backpressure/`max_in_flight` limit, unlike every other backend (Kafka/SQS/Azure/GCP) — unbounded task spawning under load `docs/superpowers/specs/2026-08-18-resilience-queue-memory-backpressure-design.md` |
-| 73 | lexigram-queue | High |  | `RedisQueue`'s listener invokes handlers inline inside its single long-running loop with a bare `raise` on failure — first handler exception permanently kills consumption for the entire topic (poison-message DoS), unlike other backends' per-message task isolation `docs/superpowers/specs/2026-08-18-resilience-queue-redis-listener-design.md` |
-| 74 | lexigram-queue | High |  | `TransactionalOutbox` is pure in-memory — zero DB persistence despite the name/contract implying durability `docs/superpowers/specs/2026-08-18-resilience-queue-outbox-durability-design.md` |
-| 75 | lexigram-queue | Low |  | Dangling admin handler reference `docs/superpowers/specs/2026-08-18-quality-queue-admin-handler-design.md` |
-| 76 | lexigram-tasks | High |  | `persistence.py` docstrings present `LockManager` as suitable for distributed/multi-instance leader election; `LockManager`'s own docstring explicitly states it is process-local only, with no cross-process or cross-host guarantees — direct contradiction `docs/superpowers/specs/2026-08-18-quality-tasks-lockmanager-docs-design.md` |
-| 77 | lexigram-tasks | Medium |  | `IdempotencyManager.check_duplicate()` treats a storage-layer `Err` as a truthy "existing record" (no `is_ok()` guard), then does unguarded `existing["task_id"]` subscript access on the raw `Err` object — produces an unrelated `TypeError` instead of a typed error `docs/superpowers/specs/2026-08-18-quality-tasks-idempotency-err-truthy-design.md` |
-| 79 | lexigram-workflow | Medium |  | `store_database.py`'s `list_by_stage()` escapes quotes for `stage_id`/`tenant_id` but interpolates them (and `LIMIT`) into the SQL string via raw f-string rather than parameterized `?` placeholders — contrasts with sibling methods (`evict()`) in the same file that correctly parameterize `docs/superpowers/specs/2026-08-18-security-workflow-checkpoint-sql-design.md` |
+| # | Area | Severity mix |
+|---|------|--------------|
+| 40 | **Meilisearch/Typesense filter-expression injection** (`lexigram-search/backends/filters.py`) | High ×1 |
+| 50 | **`lexigram-ai-governance` Redis persistence silently fails open, disabling budget/RPM enforcement** | High ×1 |
+| 51 | **`lexigram-ai-governance` → `lexigram-tasks` cross-extension import** | Low ×1 |
+| 52 | **`lexigram-ai-observability` trace spans carry unredacted tool/agent/retriever payloads** | Med ×1 |
+| 53 | **`lexigram-ai-workers` document-ingestion accepts unvalidated file paths (traversal / arbitrary read)** | High ×1 |
+| 54 | **`lexigram-ai-prompt` `max_variable_length` config flag is defined but never enforced** | Low ×1 |
+| 55 | **`lexigram-features` empty `user_attributes` rule fails open (enabled=True for everyone)** | Low/Med ×1 |
+| 56 | **`lexigram-monitor` `/health`+`/metrics` unauthenticated, and health checks may leak raw exception strings** | Med ×2 |
+| 57 | **`lexigram-monitor` still hard-depends on `lexigram-tasks` at the packaging level** | Low ×1 |
+| 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 |
+| 59 | **`lexigram-resilience` idempotency fails open on store outage, and two `unwrap()`-without-guard sites can defeat even that fallback** | Med-High ×1 |
+| 60 | **`lexigram-resilience` database idempotency store's "dialect-aware" placeholder is hardcoded to `?`, breaking Postgres — deeper than reported (naive `.replace()` also can't produce sequential `$1,$2,...` for multi-param queries)** | Low ×1 |
+| 61 | lexigram-ai | High |
+| 62 | lexigram-ai-evaluation | Medium |
+| 63 | lexigram-ai-feedback | Medium |
+| 64 | lexigram-ai-feedback | High |
+| 65 | lexigram-ai-feedback | Medium |
+| 66 | lexigram-audit | Critical |
+| 67 | lexigram-audit | High |
+| 68 | lexigram-audit | Medium |
+| 69 | lexigram-events | Critical |
+| 70 | lexigram-events | High |
+| 71 | lexigram-events | Medium |
+| 72 | lexigram-queue | High |
+| 73 | lexigram-queue | High |
+| 74 | lexigram-queue | High |
+| 75 | lexigram-queue | Low |
+| 76 | lexigram-tasks | High |
+| 77 | lexigram-tasks | Medium |
+| 79 | lexigram-workflow | Medium |
 

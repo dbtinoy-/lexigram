@@ -250,16 +250,16 @@ def _render_open_risk_table(rows: tuple[TrackerRow, ...]) -> str:
 
     markdown = "## Open Risk Table\n\n"
     open_rows = tuple(row for row in rows if not row_is_done(row))
-    markdown += "| # | Area | Severity mix | Spec | Plan |\n"
-    markdown += "|---|------|--------------|------|------|\n"
+    markdown += "| # | Area | Severity mix |\n"
+    markdown += "|---|------|--------------|\n"
     if open_rows:
         for row in open_rows:
             markdown += (
-                f"| {row.number} | {_escape_cell(row.area)} | {_escape_cell(row.severity_mix)} | "
-                f"{row.spec} | {_escape_cell(row.plan)} |\n"
+                f"| {row.number} | {_escape_cell(row.area)} | "
+                f"{_escape_cell(row.severity_mix)} |\n"
             )
     else:
-        markdown += "| - | (none) | - | - | - |\n"
+        markdown += "| - | (none) | - |\n"
     markdown += "\n"
     return markdown
 
