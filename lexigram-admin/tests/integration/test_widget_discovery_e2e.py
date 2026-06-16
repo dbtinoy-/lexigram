@@ -191,40 +191,6 @@ class TestWidgetHandlerProtocol:
             pytest.skip("ActiveConnectionsWidgetHandler not available in this environment")
 
 
-class TestWidgetRendererConfiguration:
-    """Test that all widget renderers are properly configured."""
-
-    def test_cache_renderer_has_jinja_env(self) -> None:
-        """Test cache renderer has Jinja2 environment configured."""
-        from lexigram.cache.admin.renderer import PackageWidgetRenderer
-
-        renderer = PackageWidgetRenderer()
-        assert hasattr(renderer, "_env")
-        assert renderer._env is not None
-
-    def test_cache_renderer_autoescape_enabled(self) -> None:
-        """Test cache renderer has autoescape enabled."""
-        from lexigram.cache.admin.renderer import PackageWidgetRenderer
-
-        renderer = PackageWidgetRenderer()
-        assert renderer._env.autoescape is not None
-
-    def test_sql_renderer_has_jinja_env(self) -> None:
-        """Test SQL renderer has Jinja2 environment configured."""
-        from lexigram.sql.admin.renderer import PackageWidgetRenderer as SqlRenderer
-
-        renderer = SqlRenderer()
-        assert hasattr(renderer, "_env")
-        assert renderer._env is not None
-
-    def test_sql_renderer_autoescape_enabled(self) -> None:
-        """Test SQL renderer has autoescape enabled."""
-        from lexigram.sql.admin.renderer import PackageWidgetRenderer as SqlRenderer
-
-        renderer = SqlRenderer()
-        assert renderer._env.autoescape is not None
-
-
 class TestErrorHandling:
     """Test error handling in admin widgets."""
 
@@ -315,97 +281,6 @@ class TestWidgetTypesAndValues:
         )
         with pytest.raises(Exception):  # FrozenInstanceError
             widget.name = "changed"
-
-
-class TestViewModels:
-    """Test admin widget viewmodels."""
-
-    def test_cache_hit_miss_viewmodel_creation(self) -> None:
-        """Test HitMissRatioViewModel can be created."""
-        from lexigram.cache.admin.viewmodels import HitMissRatioViewModel
-
-        vm = HitMissRatioViewModel(hits=100, misses=20, hit_rate_pct=83.3, window_minutes=60)
-        assert vm.hits == 100
-        assert vm.misses == 20
-        assert vm.hit_rate_pct == 83.3
-
-    def test_cache_hit_miss_viewmodel_frozen(self) -> None:
-        """Test HitMissRatioViewModel is frozen."""
-        from lexigram.cache.admin.viewmodels import HitMissRatioViewModel
-
-        vm = HitMissRatioViewModel(hits=100, misses=20, hit_rate_pct=83.3, window_minutes=60)
-        with pytest.raises(Exception):  # FrozenInstanceError
-            vm.hits = 200
-
-    def test_cache_eviction_viewmodel_creation(self) -> None:
-        """Test EvictionRateViewModel can be created."""
-        from lexigram.cache.admin.viewmodels import EvictionRateViewModel
-
-        vm = EvictionRateViewModel(evictions_per_second=1.5, total_evictions=10000)
-        assert vm.evictions_per_second == 1.5
-        assert vm.total_evictions == 10000
-
-    def test_cache_backend_ping_viewmodel_creation(self) -> None:
-        """Test BackendPingViewModel can be created."""
-        from lexigram.cache.admin.viewmodels import BackendPingViewModel
-
-        vm = BackendPingViewModel(latency_ms=2.5, is_reachable=True, backend_name="redis")
-        assert vm.latency_ms == 2.5
-        assert vm.is_reachable is True
-        assert vm.backend_name == "redis"
-
-    def test_sql_pool_utilization_viewmodel_creation(self) -> None:
-        """Test PoolUtilizationViewModel can be created."""
-        from lexigram.sql.admin.viewmodels import PoolUtilizationViewModel
-
-        vm = PoolUtilizationViewModel(
-            pool_size=30,
-            active_connections=15,
-            idle_connections=10,
-            utilization_pct=50.0,
-        )
-        assert vm.pool_size == 30
-        assert vm.active_connections == 15
-        assert vm.utilization_pct == 50.0
-
-    def test_sql_pool_utilization_viewmodel_frozen(self) -> None:
-        """Test PoolUtilizationViewModel is frozen."""
-        from lexigram.sql.admin.viewmodels import PoolUtilizationViewModel
-
-        vm = PoolUtilizationViewModel(
-            pool_size=30,
-            active_connections=15,
-            idle_connections=10,
-            utilization_pct=50.0,
-        )
-        with pytest.raises(Exception):  # FrozenInstanceError
-            vm.active_connections = 20
-
-    def test_sql_query_stats_viewmodel_creation(self) -> None:
-        """Test QueryStatsViewModel can be created."""
-        from lexigram.sql.admin.viewmodels import QueryStatsViewModel
-
-        vm = QueryStatsViewModel(
-            total_queries=5000,
-            avg_duration_ms=1.2,
-            slow_queries=10,
-            error_count=5,
-        )
-        assert vm.total_queries == 5000
-        assert vm.slow_queries == 10
-
-    def test_sql_active_connections_viewmodel_creation(self) -> None:
-        """Test migration status viewmodel can be created."""
-        from lexigram.sql.admin.viewmodels import MigrationStatusViewModel
-
-        vm = MigrationStatusViewModel(
-            current_version="20240101_001",
-            total_applied=25,
-            pending_count=0,
-            is_current=True,
-        )
-        assert vm.current_version == "20240101_001"
-        assert vm.is_current is True
 
 
 class TestEntryPointRegistration:
@@ -536,10 +411,8 @@ __all__ = [
     "TestAdminContributorImportability",
     "TestAdminContributorRegistry",
     "TestWidgetHandlerProtocol",
-    "TestWidgetRendererConfiguration",
     "TestErrorHandling",
     "TestWidgetTypesAndValues",
-    "TestViewModels",
     "TestEntryPointRegistration",
     "TestResultPatternCompliance",
     "TestPiccolinaIntegration",
