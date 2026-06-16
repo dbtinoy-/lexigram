@@ -28,7 +28,7 @@ class TestQueueAdminContributor:
                 StatContent(
                     stats=(
                         Stat(label="Queue", value="default"),
-                        Stat(label="Depth", value="42", tone=Tone.PRIMARY),
+                        Stat(label="Depth", value="42"),
                         Stat(label="Max", value="100"),
                     )
                 )
@@ -134,7 +134,7 @@ class TestQueueAdminContributor:
         assert isinstance(vm, WidgetViewModel)
         assert isinstance(vm.content, StatContent)
         assert vm.content.stats[1].value == "42"
-        assert vm.content.stats[1].tone is Tone.PRIMARY
+        assert vm.content.stats[1].tone is Tone.DEFAULT
 
     @pytest.mark.asyncio
     async def test_render_widget_consumer_lag(

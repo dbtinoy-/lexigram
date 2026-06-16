@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import Stat, StatContent, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
@@ -42,7 +42,7 @@ class QueueDepthWidgetHandler:
 
         stats: list[Stat] = [
             Stat(label="Queue", value=queue_name),
-            Stat(label="Depth", value=str(depth), tone=Tone.PRIMARY),
+            Stat(label="Depth", value=str(depth)),
         ]
         if max_depth is not None:
             stats.append(Stat(label="Max", value=str(max_depth)))
