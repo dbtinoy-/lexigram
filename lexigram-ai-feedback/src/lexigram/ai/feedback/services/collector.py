@@ -7,8 +7,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.ai.feedback.constants import MAX_CONTEXT_SIZE, MAX_FEEDBACK_TEXT_LENGTH
+from lexigram.ai.feedback.exceptions import FeedbackTooLargeError
 from lexigram.ai.feedback.storage.protocols import FeedbackStoreProtocol
 from lexigram.ai.feedback.types import FeedbackItem, FeedbackType
+from lexigram.serialization import dumps_str
 
 
 class FeedbackCollector:
@@ -155,11 +158,34 @@ class FeedbackCollector:
         return item.id
 
     async def _store(self, item: FeedbackItem) -> None:
-        """Store feedback item.
+        """Store feedback item, enforcing the declared size limits.
+
+        Rejects payloads exceeding MAX_FEEDBACK_TEXT_LENGTH (TEXT values)
+        or MAX_CONTEXT_SIZE (serialized context/metadata) with
+        FeedbackTooLargeError before any mutation.
 
         Args:
             item: Feedback item to store
+
+        Raises:
+            FeedbackTooLargeError: If the item exceeds the size limits.
         """
+        if (
+            item.feedback_type == FeedbackType.TEXT
+            and isinstance(item.value, str)
+            and len(item.value) > MAX_FEEDBACK_TEXT_LENGTH
+        ):
+            raise FeedbackTooLargeError(
+                f"feedback text exceeds the {MAX_FEEDBACK_TEXT_LENGTH}-character limit"
+            )
+        if len(dumps_str(item.context, default=str)) > MAX_CONTEXT_SIZE:
+            raise FeedbackTooLargeError(
+                f"serialized context exceeds the {MAX_CONTEXT_SIZE}-character limit"
+            )
+        if len(dumps_str(item.metadata, default=str)) > MAX_CONTEXT_SIZE:
+            raise FeedbackTooLargeError(
+                f"serialized metadata exceeds the {MAX_CONTEXT_SIZE}-character limit"
+            )
         self._feedback.append(item)
         if self.storage:
             await self.storage.save(item)
