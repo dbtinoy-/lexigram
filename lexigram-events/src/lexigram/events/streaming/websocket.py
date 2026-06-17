@@ -25,16 +25,33 @@ the connection gracefully when the ASGI lifespan ends.
 
 Example
 -------
-Mount the endpoint under any ASGI router::
+Mount the endpoint under any ASGI router; pass an ``authorize`` callback
+to control which connections are accepted::
 
     from lexigram.events.streaming import StreamDispatcher
     from lexigram.events.streaming.websocket import EventWebSocketEndpoint
 
     dispatcher = StreamDispatcher()
-    ws_app = EventWebSocketEndpoint(dispatcher)
+
+    def authorize(scope: dict) -> bool:
+        # Reject connections that do not present a valid token.
+        headers = dict(scope.get("headers") or [])
+        return headers.get(b"authorization") == b"Bearer secret"
+
+    ws_app = EventWebSocketEndpoint(dispatcher, authorize=authorize)
 
     # With a bare ASGI server router:
     # app = routes.Router(routes=[Route("/ws/events", ws_app)])
+
+Warning
+-------
+By default (``authorize=None``) **every** connection is accepted and
+receives a real-time stream of **all** events published to the
+dispatcher.  Mounting this endpoint without an ``authorize`` callback
+exposes an unauthenticated firehose of every dispatched event — which
+may include business-sensitive or PII-bearing payloads.  Always pass an
+``authorize`` callback in production; the callback receives the ASGI
+``scope`` and may be synchronous or asynchronous.
 """
 
 from __future__ import annotations

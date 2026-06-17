@@ -94,6 +94,35 @@ EventsModule.configure(config)
 | `EventsModule.configure(...)` | Configure with explicit EventsConfig |
 | `EventsModule.stub()` | In-memory event store for testing |
 
+## WebSocket Event Streaming
+
+`EventWebSocketEndpoint` streams every event published to a
+`StreamDispatcher` to connected WebSocket clients in real time.
+
+> **Security:** the endpoint does **not** authenticate connections by
+> default. With no `authorize` callback, any client that can reach the
+> endpoint receives a live, unauthenticated stream of **all** dispatched
+> events — potentially business-sensitive or PII-bearing. Always pass an
+> `authorize` callback in production:
+
+```python
+from lexigram.events.streaming import EventWebSocketEndpoint, StreamDispatcher
+
+
+def authorize(scope: dict) -> bool:
+    headers = dict(scope.get("headers") or [])
+    return headers.get(b"authorization") == b"Bearer secret"
+
+
+dispatcher = StreamDispatcher()
+ws_app = EventWebSocketEndpoint(dispatcher, authorize=authorize)
+```
+
+The callback receives the ASGI connection `scope` (headers, query
+string, client) and may be synchronous or asynchronous; returning a
+falsy value rejects the connection with a `4401` close before the
+handshake is accepted.
+
 ## Key Features
 
 - **CommandBus** — Typed async command dispatch with middleware
