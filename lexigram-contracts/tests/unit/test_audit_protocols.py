@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from lexigram.contracts.audit import (
@@ -21,6 +23,7 @@ class TestAuditStoreProtocol:
             async def append(self, entry: AuditEntry) -> None: pass
             async def query(self, query: AuditQuery) -> list[AuditEntry]: return []
             async def count(self, query: AuditQuery) -> int: return 0
+            async def delete_expired(self, cutoff: datetime) -> int: return 0
 
         store = Store()
         entry = AuditEntry(action="test", actor_id="actor")
@@ -32,16 +35,29 @@ class TestAuditStoreProtocol:
             async def append(self, entry: AuditEntry) -> None: pass
             async def query(self, query: AuditQuery) -> list[AuditEntry]: return []
             async def count(self, query: AuditQuery) -> int: return 0
+            async def delete_expired(self, cutoff: datetime) -> int: return 0
 
         store = Store()
         result = await store.query(AuditQuery())
         assert isinstance(result, list)
+
+    @pytest.mark.asyncio
+    async def test_has_delete_expired_method(self) -> None:
+        class Store:
+            async def append(self, entry: AuditEntry) -> None: pass
+            async def query(self, query: AuditQuery) -> list[AuditEntry]: return []
+            async def count(self, query: AuditQuery) -> int: return 0
+            async def delete_expired(self, cutoff: datetime) -> int: return 0
+
+        store = Store()
+        assert await store.delete_expired(datetime.now(UTC)) == 0
 
     def test_is_runtime_checkable(self) -> None:
         class Store:
             async def append(self, entry: AuditEntry) -> None: pass
             async def query(self, query: AuditQuery) -> list[AuditEntry]: return []
             async def count(self, query: AuditQuery) -> int: return 0
+            async def delete_expired(self, cutoff: datetime) -> int: return 0
 
         assert isinstance(Store(), AuditStoreProtocol)
 

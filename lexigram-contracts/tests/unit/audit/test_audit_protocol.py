@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from lexigram.contracts.audit import (
@@ -34,6 +36,7 @@ class TestAuditStoreProtocolRuntime:
             async def append(self, entry: AuditEntry) -> None: ...
             async def query(self, query: AuditQuery) -> list[AuditEntry]: return []
             async def count(self, query: AuditQuery) -> int: return 0
+            async def delete_expired(self, cutoff: datetime) -> int: return 0
 
         assert isinstance(FakeStore(), AuditStoreProtocol)
 
@@ -42,6 +45,10 @@ class TestAuditStoreProtocolRuntime:
             def store(self) -> None: ...
 
         assert not isinstance(NotAStore(), AuditStoreProtocol)
+
+    def test_has_delete_expired_method(self) -> None:
+        assert hasattr(AuditStoreProtocol, "delete_expired")
+        assert callable(AuditStoreProtocol.delete_expired)
 
 
 class TestAuditInitExports:

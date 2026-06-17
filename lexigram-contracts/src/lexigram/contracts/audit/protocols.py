@@ -91,6 +91,22 @@ class AuditStoreProtocol(Protocol):
         """
         ...
 
+    async def delete_expired(self, cutoff: datetime) -> int:
+        """Delete entries whose stored expiry precedes or equals the cutoff.
+
+        Entries are identified by the ``__expires_at`` metadata stamp
+        written by ``AuditLogger.log()`` when a retention policy is
+        configured. Entries without the stamp are never deleted.
+
+        Args:
+            cutoff: UTC datetime; entries expiring at or before this
+                instant are deleted.
+
+        Returns:
+            Number of entries deleted.
+        """
+        ...
+
 
 @runtime_checkable
 class AuditVerifierProtocol(Protocol):
