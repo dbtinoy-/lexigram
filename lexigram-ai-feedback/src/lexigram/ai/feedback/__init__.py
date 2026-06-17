@@ -14,8 +14,10 @@ if TYPE_CHECKING:
     from lexigram.ai.feedback.config import FeedbackConfig
     from lexigram.ai.feedback.di.provider import FeedbackProvider
     from lexigram.ai.feedback.exceptions import (
+        FeedbackAuthorizationError,
         FeedbackError,
         FeedbackProcessingError,
+        FeedbackTooLargeError,
         FeedbackValidationError,
     )
     from lexigram.ai.feedback.hooks import (
@@ -45,10 +47,18 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FeedbackProvider": ("lexigram.ai.feedback.di.provider", "FeedbackProvider"),
     "FeedbackModule": ("lexigram.ai.feedback.module", "FeedbackModule"),
     # --- Exceptions ---
+    "FeedbackAuthorizationError": (
+        "lexigram.ai.feedback.exceptions",
+        "FeedbackAuthorizationError",
+    ),
     "FeedbackError": ("lexigram.ai.feedback.exceptions", "FeedbackError"),
     "FeedbackProcessingError": (
         "lexigram.ai.feedback.exceptions",
         "FeedbackProcessingError",
+    ),
+    "FeedbackTooLargeError": (
+        "lexigram.ai.feedback.exceptions",
+        "FeedbackTooLargeError",
     ),
     "FeedbackValidationError": (
         "lexigram.ai.feedback.exceptions",
@@ -112,6 +122,7 @@ def __dir__() -> list[str]:
 __all__ = [
     "CachedFeedbackStore",
     "DatabaseFeedbackStore",
+    "FeedbackAuthorizationError",
     "FeedbackCollector",
     "FeedbackConfig",
     "FeedbackContext",
@@ -129,6 +140,7 @@ __all__ = [
     "FeedbackSubmittedEvent",
     "FeedbackSubmittedHook",
     "FeedbackSummary",
+    "FeedbackTooLargeError",
     "FeedbackType",
     "FeedbackValidationError",
 ]
