@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from lexigram import serialization
+from lexigram.contracts.exceptions.idempotency import IdempotencyStoreError
 from lexigram.logging import get_logger
 from lexigram.resilience.config import IdempotencyConfig
 from lexigram.result import Result
@@ -120,18 +121,23 @@ class IdempotencyMiddleware:
 
         try:
             cached_result = await self._store.get(key)
-        except (OSError, ConnectionError, RuntimeError):
+        except (OSError, ConnectionError, RuntimeError, IdempotencyStoreError):
             logger.warning(
                 "Idempotency store unavailable on read for key %r; degrading to pass-through.",
                 key,
             )
             return await handler(*args, **kwargs)
 
-        cached = (
-            cached_result.unwrap()
-            if isinstance(cached_result, Result)
-            else cached_result
-        )
+        if isinstance(cached_result, Result):
+            if cached_result.is_err():
+                logger.warning(
+                    "Idempotency store unavailable on read for key %r; degrading to pass-through.",
+                    key,
+                )
+                return await handler(*args, **kwargs)
+            cached = cached_result.unwrap()
+        else:
+            cached = cached_result
         if cached is not None:
             logger.debug("Idempotency cache hit for key %r; replaying.", key)
             try:
@@ -153,7 +159,7 @@ class IdempotencyMiddleware:
             logger.debug(
                 "Idempotency result cached for key %r (ttl=%ds).", key, self._config.ttl
             )
-        except (OSError, ConnectionError, RuntimeError):
+        except (OSError, ConnectionError, RuntimeError, IdempotencyStoreError):
             logger.warning(
                 "Idempotency store unavailable on write for key %r; result not cached.",
                 key,
