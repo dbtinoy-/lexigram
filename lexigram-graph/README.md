@@ -6,7 +6,7 @@ Graph database support for the Lexigram Framework (Neo4j, in-memory).
 
 ## Overview
 
-`lexigram-graph` provides graph storage backends with DI wiring for in-memory and Neo4j implementations behind the graph contracts. It supports node and edge creation, graph traversal queries, Cypher compilation for Neo4j, and lazy graph creation with lifecycle events.
+`lexigram-graph` provides graph storage backends with DI wiring for in-memory and Neo4j implementations behind the graph contracts. It supports node and edge creation, graph traversal queries, Cypher compilation for Neo4j, and lazy graph creation.
 
 ---
 
@@ -116,8 +116,8 @@ GraphModule.configure(
 | `neo4j.max_connection_pool_size` | `100` | `LEX_GRAPH__NEO4J__MAX_CONNECTION_POOL_SIZE` | Maximum driver connection pool size |
 | `memory.max_nodes` | `1000000` | `LEX_GRAPH__MEMORY__MAX_NODES` | Node capacity for the in-memory backend |
 | `tenancy.enabled` | `False` | — | Enable per-tenant graph isolation |
-| `tenancy.strategy` | `"graph_per_tenant"` | — | `"graph_per_tenant"` or `"node_property"` |
-| `tenancy.template` | `"{logical}_{tenant}"` | — | Template for resolving tenant-specific graph names |
+| `tenancy.strategy` | `"node_property"` | — | `"node_property"` or `"graph_per_tenant"` |
+| `tenancy.template` | `"{logical}_t_{tenant}"` | — | Template for resolving tenant-specific graph names |
 
 ## Module Factory Methods
 
@@ -131,7 +131,7 @@ GraphModule.configure(
 - **In-memory backend** — no external service needed; for development and tests
 - **Neo4j backend** — async Neo4j driver with Cypher query compilation
 - **Graph traversal** — `TraversalQuery`, `StartSpec`, `TraversalStep` for graph walks
-- **Named graphs** — lazy graph creation per name with lifecycle events
+- **Named graphs** — lazy graph creation per name
 - **Connection pooling** — configurable pool size for Neo4j driver
 
 ## Testing
@@ -143,6 +143,18 @@ async with Application.boot(modules=[GraphModule.stub()]) as app:
     # Test with in-memory backend
 ```
 
+## Key Source Files
+
+| File | What it contains |
+|------|----------------|
+| `src/lexigram/graph/module.py` | `GraphModule.configure()`, `.stub()` |
+| `src/lexigram/graph/config.py` | `GraphConfig`, `GraphTenancyConfig`, `Neo4jConfig` |
+| `src/lexigram/graph/di/provider.py` | `GraphProvider` boot and registration |
+| `src/lexigram/graph/backends/memory/backend.py` | `InMemoryGraphStore` implementation |
+| `src/lexigram/graph/backends/neo4j/backend.py` | `Neo4jGraphStore` implementation |
+| `src/lexigram/graph/backends/neo4j/cypher.py` | `CypherCompiler` |
+| `src/lexigram/graph/tenancy/` | Tenancy decorator and resolver (`decorator.py`, `resolver.py`); strategy enum lives in `lexigram.contracts.data.graph.tenancy` |
+
 ## Multi-Tenancy
 
 `lexigram-graph` supports two isolation strategies:
@@ -151,20 +163,21 @@ async with Application.boot(modules=[GraphModule.stub()]) as app:
 
 | Strategy | `GraphTenancyStrategy` | How It Works |
 |----------|----------------------|--------------|
-| **Graph per tenant** | `GRAPH_PER_TENANT` | Graph names are resolved through a `TenantCollectionResolver`, giving each tenant an isolated named graph |
+| **Graph per tenant** | `GRAPH_PER_TENANT` | Graph names are resolved through a `TemplatedTenantCollectionResolver`, giving each tenant an isolated named graph |
 | **Node property** | `NODE_PROPERTY` | Graph names pass through unchanged; every node/edge gets a `tenant_id` property, and `find_nodes` auto-injects a `tenant_id` filter |
 
 ### Configuration
 
 ```python
-from lexigram.graph.config import GraphTenancyConfig, GraphConfig, GraphModule
+from lexigram.graph import GraphModule
+from lexigram.graph.config import GraphConfig, GraphTenancyConfig
 
 config = GraphConfig(
     backend="neo4j",
     tenancy=GraphTenancyConfig(
         enabled=True,
-        strategy="graph_per_tenant",  # or "node_property"
-        template="{logical}_{tenant}",
+        strategy="node_property",
+        template="{logical}_t_{tenant}",
     ),
 )
 GraphModule.configure(config)
@@ -178,15 +191,3 @@ GraphModule.configure(config)
 | `TemplatedTenantCollectionResolver` | Resolves logical → physical graph names |
 | `TenantGraphStoreDecorator` | Strategy-aware decorator: resolves names (GRAPH_PER_TENANT) or wraps returned graphs (NODE_PROPERTY) |
 | `TenantPropertyFilterGraph` | Auto-injects `tenant_id` into create_node/create_edge properties and find_nodes filters |
-
-## Key Source Files
-
-| File | What it contains |
-|------|----------------|
-| `src/lexigram/graph/module.py` | `GraphModule.configure()`, `.stub()` |
-| `src/lexigram/graph/config.py` | `GraphConfig`, `GraphTenancyConfig`, `Neo4jConfig` |
-| `src/lexigram/graph/di/provider.py` | `GraphProvider` boot and registration |
-| `src/lexigram/graph/backends/memory/backend.py` | `InMemoryGraphStore` implementation |
-| `src/lexigram/graph/backends/neo4j/backend.py` | `Neo4jGraphStore` implementation |
-| `src/lexigram/graph/backends/neo4j/cypher.py` | `CypherCompiler` |
-| `src/lexigram/graph/tenancy/` | Strategy enum, decorator, resolver, property filter graph |

@@ -24,6 +24,7 @@ class WebhookBundleProvider(Provider):
     """
 
     config_key: str | None = "webhook"
+    config_model = WebhookConfig
 
     def __init__(self, config: WebhookConfig | None = None) -> None:
         """Initialize with optional config override.

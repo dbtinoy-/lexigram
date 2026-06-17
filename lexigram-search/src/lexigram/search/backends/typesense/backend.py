@@ -9,8 +9,10 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.search.backends.base import SearchBackendBase
+from lexigram.search.backends.filters import render_typesense
 from lexigram.search.config import TypesenseConfig
 from lexigram.search.exceptions import SearchError
+from lexigram.search.filterset import merge_filters, rule_to_filters
 from lexigram.search.types import SearchResponse, SearchResult
 
 
@@ -88,6 +90,7 @@ class TypesenseBackend(SearchBackendBase):
         filters: dict[str, Any] | None = None,
         limit: int = 20,
         offset: int = 0,
+        rule: str | None = None,
         **kwargs: Any,
     ) -> Result[SearchResponse, SearchError]:
         """Search documents using Typesense."""
@@ -107,18 +110,9 @@ class TypesenseBackend(SearchBackendBase):
             }
 
             # Add filters if provided
-            if filters:
-                filter_parts = []
-                for key, value in filters.items():
-                    if isinstance(value, (list, tuple)):
-                        filter_parts.append(
-                            f"{key}: [{','.join(str(v) for v in value)}]"
-                        )
-                    else:
-                        filter_parts.append(f"{key}:{value}")
-
-                if filter_parts:
-                    search_params["filter_by"] = " && ".join(filter_parts)
+            if filters or rule:
+                filters = merge_filters(filters, rule_to_filters(rule))
+                search_params["filter_by"] = render_typesense(filters)
 
             # Execute search
             raw = await client.collections[index].documents.search(search_params)

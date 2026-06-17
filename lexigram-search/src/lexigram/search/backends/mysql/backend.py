@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 from lexigram import serialization as json
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
+from lexigram.search.backends.filters import render_mysql
+from lexigram.search.filterset import merge_filters, rule_to_filters
 from lexigram.search.types import SearchResponse
 
 if TYPE_CHECKING:
@@ -105,12 +107,23 @@ class MySQLDatabaseSearchBackend:
         limit: int = 20,
         offset: int = 0,
         sort: list[str] | None = None,
+        rule: str | None = None,
         **kwargs: Any,
     ) -> SearchResponse:
         """Full-text search using MySQL ``MATCH … AGAINST``."""
         await self._ensure_table(index_name)
 
         mode = self.fulltext_mode
+        filter_clause = ""
+        params: list[Any] = [query, query]
+        if filters or rule:
+            clause, filter_params = render_mysql(
+                merge_filters(filters, rule_to_filters(rule))
+            )
+            filter_clause = " AND " + clause
+            params.extend(filter_params)
+        params.extend([limit, offset])
+
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
             result = await conn.execute(
@@ -119,10 +132,11 @@ class MySQLDatabaseSearchBackend:
                        MATCH(searchable_text) AGAINST(%s IN {mode} MODE) AS score
                 FROM search_{index_name}
                 WHERE MATCH(searchable_text) AGAINST(%s IN {mode} MODE)
+                {filter_clause}
                 ORDER BY score DESC
                 LIMIT %s OFFSET %s
                 """,
-                [query, query, limit, offset],
+                params,
             )
             rows = result.rows if hasattr(result, "rows") else []
             results = [

@@ -8,6 +8,11 @@ from lexigram.notification.inbox.memory import InMemoryInboxStore
 from lexigram.notification.inbox.service import InboxService
 
 
+async def _boom(**kwargs: object) -> None:
+    """Hook handler that always raises, for error-isolation tests."""
+    raise RuntimeError("hook handler failed")
+
+
 class TestInboxService:
     """InboxService tests use InMemoryInboxStore as the injected backend."""
 
@@ -173,3 +178,44 @@ class TestInboxService:
         svc = InboxService()
         msg = await svc.send("user-x", "Test", "body")
         assert msg.id
+
+    @pytest.mark.asyncio
+    async def test_send_fires_inbox_sent_hook(self, service: InboxService) -> None:
+        """send() fires the INBOX_SENT_HOOK with the persisted message."""
+        from lexigram.contracts.notification.inbox import INBOX_SENT_HOOK
+        from lexigram.hooks.ambient import use as use_hooks
+        from lexigram.hooks.registry import HookRegistry
+
+        registry = HookRegistry("test-inbox-sent")
+        calls: list[dict] = []
+
+        async def capture(**kwargs: object) -> None:
+            calls.append(kwargs)
+
+        registry.register_action(INBOX_SENT_HOOK, capture)
+
+        with use_hooks(registry):
+            msg = await service.send("user-1", "Ready", "Go now")
+
+        assert len(calls) == 1
+        assert calls[0]["user_id"] == "user-1"
+        assert calls[0]["title"] == "Ready"
+        assert calls[0]["body"] == "Go now"
+        assert calls[0]["message"] is msg
+
+    @pytest.mark.asyncio
+    async def test_send_tolerates_failing_hook_handlers(
+        self, service: InboxService
+    ) -> None:
+        """A raising hook handler must not break send()."""
+        from lexigram.contracts.notification.inbox import INBOX_SENT_HOOK
+        from lexigram.hooks.ambient import use as use_hooks
+        from lexigram.hooks.registry import HookRegistry
+
+        registry = HookRegistry("test-inbox-sent-error")
+        registry.register_action(INBOX_SENT_HOOK, _boom)
+
+        with use_hooks(registry):
+            msg = await service.send("user-1", "Ready", "Go now")
+
+        assert msg.user_id == "user-1"

@@ -12,6 +12,7 @@ from lexigram.ai.workers.document_ingestion.worker import DocumentIngestionWorke
 from lexigram.ai.workers.maintenance.worker import MaintenanceWorker
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.core.provider import ProviderPriority
+from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 from lexigram.di.provider import Provider
 from lexigram.logging import (
     get_logger,
@@ -115,6 +116,7 @@ class WorkersProvider(Provider):
                 TypeError,
                 ValueError,
                 AttributeError,
+                UnresolvableDependencyError,
             ) as exc:
                 logger.warning(
                     "worker_resolve_failed",

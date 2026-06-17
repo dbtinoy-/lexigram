@@ -1,113 +1,67 @@
 # Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
-# Full field reference: see the README Configuration section.
-# YAML key: ai:
-# Environment variable prefix: LEX_AI__
+#
+# Each AI subsystem reads its own top-level section (loaded via the provider's
+# config_key when the module is configured without an explicit config object).
+# Environment variable prefix: LEX_AI__ (top-level) or LEX_{SECTION}__ for
+# individual sections, e.g. LEX_AI_LLM__PROVIDER, LEX_AI_LLM__MODEL.
 
 ai:
-  # AI Governance & Policies
-  governance:
-    enabled: true
-    monthly_budget: 1000.0  # USD
-    max_tokens_per_request: 8000
-    enforce_budget: true
-    soft_limit_pct: 0.8  # Warn at 80% usage
-    
-    # Model allowlist/denylist
-    model_allowlist:
-      admin: ["gpt-4*", "claude-3-*"]
-      user: ["gpt-3.5-turbo", "claude-3-haiku"]
-    model_denylist:
-      user: ["gpt-4-turbo"]  # Expensive model blocked for regular users
-      
-  # LLM Configuration
-  llm:
-    default_provider: "openai"  # openai, anthropic, azure, local
-    cache_enabled: true
-    cache_ttl: 3600
-    
-    # OpenAI
-    openai:
-      api_key: "${OPENAI_API_KEY}"
-      organization_id: "${OPENAI_ORG_ID}"
-      base_url: "https://api.openai.com/v1"
-      timeout: 30
-      
-    # Anthropic
-    anthropic:
-      api_key: "${ANTHROPIC_API_KEY}"
-      timeout: 30
-      
-    # Azure OpenAI
-    azure_openai:
-      api_key: "${AZURE_OPENAI_API_KEY}"
-      endpoint: "${AZURE_OPENAI_ENDPOINT}"
-      deployment_id: "${AZURE_DEPLOYMENT_ID}"
-      api_version: "2024-02-15-preview"
-      
-    # Local LLM (e.g., Ollama)
-    local:
-      base_url: "http://localhost:11434"
-      model: "llama2"
-      
-    # Model Routing
-    routing:
-      enabled: true
-      strategy: "cost"  # cost, latency, quality, balanced
-      fallback_enabled: true
-      fallback_provider: "anthropic"
-      
-  # Vector Store Configuration
-  vector:
-    backend: "pinecone"  # pinecone, weaviate, milvus, chromadb, qdrant
-    
-    pinecone:
-      api_key: "${PINECONE_API_KEY}"
-      environment: "us-west1-gcp"
-      index_name: "lexigram"
-      dimension: 1536
-      metric: "cosine"
-      
-    weaviate:
-      url: "http://localhost:8080"
-      
-    chromadb:
-      path: "./data/chroma"
-      
-  # RAG (Retrieval-Augmented Generation)
-  rag:
-    enabled: true
-    
-    # Document Chunking
-    chunking:
-      strategy: "semantic"  # semantic, fixed_size, recursive
-      chunk_size: 512
-      chunk_overlap: 100
-      separator: "\n\n"
-      
-    # Retrieval Strategy
-    retrieval:
-      top_k: 5
-      similarity_threshold: 0.7
-      rerank_enabled: false
-      
-    # Indexing
-    indexing:
-      batch_size: 100
-      embedding_model: "text-embedding-3-small"
-      
-  # Observability & Monitoring
-  observability:
-    enabled: true
-    track_costs: true
-    track_latency: true
-    track_tokens: true
-    
-  # Agents & Tools
-  agents:
-    enabled: true
-    tools:
-      - "search"
-      - "calculator"
-      - "web_browse"
-    max_iterations: 10
-    timeout: 60
+  # Umbrella envelope (AIConfig). The per-subsystem knobs live in their own
+  # sections below — the nested `llm:` / `rag:` / `vector:` keys of older
+  # versions are not read.
+  enabled: true
+
+# LLM client (lexigram-ai-llm) — flat ClientConfig
+ai_llm:
+  enabled: true
+  provider: "ollama"        # openai, anthropic, groq, mistral, ollama, ...
+  model: "llama3.2"
+  api_base: "http://localhost:11434"   # local/self-hosted endpoints
+  # api_key: "${OPENAI_API_KEY}"       # required for hosted providers
+  temperature: 0.2
+
+# Vector store (lexigram-vector)
+vector:
+  backend: "memory"         # memory, pgvector, pinecone, qdrant, weaviate
+  default_dimension: 1536
+
+# RAG pipeline (lexigram-ai-rag) — flat fields
+ai_rag:
+  enabled: true
+  chunk_size: 512
+  chunk_overlap: 100
+  chunking_strategy: "recursive"   # fixed_size, recursive, semantic, sliding_window, token
+  top_k: 5
+  similarity_threshold: 0.7
+  embedding_model: "text-embedding-3-small"
+  use_hybrid_search: false
+
+# Governance (lexigram-ai-governance)
+ai_governance:
+  enabled: true
+  monthly_budget: 1000.0    # USD
+  max_tokens_per_request: 8000
+  enforce_budget: true
+  soft_limit_pct: 0.8       # warn at 80% usage
+  model_allowlist:
+    admin: ["gpt-4*", "claude-3-*"]
+    user: ["gpt-3.5-turbo", "claude-3-haiku"]
+  model_denylist:
+    user: ["gpt-4-turbo"]   # expensive model blocked for regular users
+
+# Observability (lexigram-ai-observability)
+ai_observability:
+  enabled: true
+  metrics_enabled: true
+  tracing_enabled: true
+  health_checks_enabled: true
+
+# Agents (lexigram-ai-agents)
+ai_agents:
+  enabled: true
+  max_iterations: 10
+  default_temperature: 0.7
+  default_max_tokens: 2048
+  tool_max_retries: 2
+  enable_tracing: true
+  enable_metrics: true

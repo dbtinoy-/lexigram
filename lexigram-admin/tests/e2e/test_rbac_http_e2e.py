@@ -60,11 +60,35 @@ class _DummyRenderer:
         return PlainTextResponse(str(content))
 
 
+def _make_user(
+    *, roles: list[str] | None = None, permissions: list[str] | None = None
+) -> MagicMock:
+    user = MagicMock()
+    user.user_id = "u-me"
+    user.name = "Me"
+    user.email = "me@example.com"
+    user.roles = roles or []
+    user.permissions = permissions or []
+    return user
+
+
+class _AuthStateMiddleware:
+    def __init__(self, app: Starlette, user: object) -> None:
+        self.app = app
+        self.user = user
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] == "http":
+            scope.setdefault("state", {})["user"] = self.user
+        await self.app(scope, receive, send)
+
+
 def create_app(
     *,
     csrf_valid: bool = True,
     delete_error: bool = False,
     inventory: object | None = None,
+    user: MagicMock | None = None,
 ) -> Starlette:
     role_service = _make_role_service()
     user_store = _make_user_store()
@@ -139,6 +163,9 @@ def create_app(
     app.add_middleware(SessionMiddleware, secret_key="test-secret-key-for-tests")
     app.state.user_store = user_store
     app.state.role_service = role_service
+    if user is None:
+        user = _make_user(roles=["superadmin"])
+    app.add_middleware(_AuthStateMiddleware, user=user)
     return app
 
 
@@ -415,3 +442,57 @@ async def test_roles_list_hides_delete_for_superadmin_role() -> None:
         # The superadmin role never appears in the mock; the admin role is
         # system (no delete form) while the custom viewer role keeps one.
         assert "/admin/roles/viewer/delete" in r.text
+
+
+@pytest.mark.asyncio
+async def test_roles_list_denied_without_permission() -> None:
+    app = create_app(user=_make_user(permissions=["users.list"]))
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as client:
+        r = await client.get("/admin/roles")
+        assert r.status_code == 403
+        assert "roles.list" in r.text
+
+
+@pytest.mark.asyncio
+async def test_roles_list_allows_list_permission() -> None:
+    app = create_app(user=_make_user(permissions=["roles.list"]))
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as client:
+        r = await client.get("/admin/roles")
+        assert r.status_code == 200
+        assert "admin" in r.text
+
+
+@pytest.mark.asyncio
+async def test_role_new_submit_denied_without_create_permission() -> None:
+    app = create_app(user=_make_user(permissions=["roles.list"]))
+    async with AsyncClient(
+        transport=ASGITransport(app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        r = await client.post(
+            "/admin/roles/new",
+            data={
+                "name": "editor",
+                "permissions": "roles.view",
+                "csrf_token": "csrf-test-token",
+            },
+        )
+        assert r.status_code == 403
+        svc = app.state.role_service
+        svc.create_role.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_users_list_denied_without_permission() -> None:
+    app = create_app(user=_make_user(permissions=["roles.list"]))
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as client:
+        r = await client.get("/admin/users")
+        assert r.status_code == 403
+        assert "users.list" in r.text

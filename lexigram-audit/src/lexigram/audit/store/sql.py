@@ -17,6 +17,16 @@ __all__ = ["SqlAuditStore"]
 logger = get_logger(__name__)
 
 
+def _as_utc_naive(dt: datetime) -> datetime:
+    """Return the timestamp as a naive **UTC** datetime for TIMESTAMP columns.
+
+    The audit table declares ``changed_at TIMESTAMP`` (no time zone), so
+    aware datetimes must be converted to UTC and stripped of tzinfo before
+    binding — asyncpg rejects aware values against TIMESTAMP columns.
+    """
+    return dt.replace(tzinfo=None) if dt.tzinfo is None else dt.astimezone(UTC).replace(tzinfo=None)
+
+
 class SqlAuditStore:
     """SQL-backed audit store implementing AuditStoreProtocol.
 
@@ -95,7 +105,7 @@ class SqlAuditStore:
             "old_values": json.dumps_str(entry.old_values or {}),
             "new_values": json.dumps_str(entry.new_values or {}),
             "changed_by": entry.actor_id,
-            "changed_at": entry.occurred_at.isoformat(),
+            "changed_at": _as_utc_naive(entry.occurred_at),
             "metadata": json.dumps_str(entry.metadata),
             "severity": str(entry.severity) if entry.severity else None,
             "source": entry.source or None,
@@ -241,10 +251,10 @@ class SqlAuditStore:
             params.append(query.tenant_id)
         if query.since is not None:
             conditions.append("changed_at >= ?")
-            params.append(query.since.isoformat())
+            params.append(_as_utc_naive(query.since))
         if query.until is not None:
             conditions.append("changed_at <= ?")
-            params.append(query.until.isoformat())
+            params.append(_as_utc_naive(query.until))
 
         return conditions, params
 

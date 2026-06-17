@@ -19,6 +19,7 @@ from lexigram.contracts.ai.llm import ChatMessage, Completion
 from lexigram.contracts.observability.tracing import SpanProtocol as Span
 from lexigram.contracts.observability.tracing import TracerProtocol as Tracer
 from lexigram.di.decorators import inject
+from lexigram.observability.core import NoOpTracer
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager as ContextManager
@@ -48,13 +49,14 @@ class AITracer(CallbackHandlerProtocol):
         ...     span.set_attribute("cost", response.cost)
     """
 
-    def __init__(self, tracer: Tracer) -> None:
+    def __init__(self, tracer: Tracer | None = None) -> None:
         """Initialize intelligence tracer.
 
         Args:
-            tracer: Tracer instance to use for tracing.
+            tracer: Tracer instance to use for tracing. Defaults to a
+                no-op tracer when ``None``.
         """
-        self.tracer = tracer
+        self.tracer = tracer if tracer is not None else NoOpTracer()
 
     def trace_llm_call(
         self,

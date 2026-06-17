@@ -62,6 +62,34 @@ class ResultStore(ABC):
     async def cleanup_expired(self) -> int:
         """Remove expired results. Returns count removed."""
 
+    async def get_completed(self, limit: int | None = None) -> list[JobResult]:
+        """Return recently completed job results, newest first.
+
+        Backends that can enumerate stored results should override this;
+        the default implementation returns an empty list.
+
+        Args:
+            limit: Maximum number of results to return; ``None`` for all.
+
+        Returns:
+            Completed job results, newest first.
+        """
+        return []
+
+    async def get_failed(self, limit: int | None = None) -> list[JobResult]:
+        """Return recently failed job results, newest first.
+
+        Backends that can enumerate stored results should override this;
+        the default implementation returns an empty list.
+
+        Args:
+            limit: Maximum number of results to return; ``None`` for all.
+
+        Returns:
+            Failed job results, newest first.
+        """
+        return []
+
 
 @dataclass
 class _ResultEntry:
@@ -168,3 +196,37 @@ class InMemoryResultStore(ResultStore):
             "total_stored": self._total_stored,
             "ttl": self._ttl,
         }
+
+    async def get_completed(self, limit: int | None = None) -> list[JobResult]:
+        """Return the most recently completed results, newest first.
+
+        Args:
+            limit: Maximum number of results to return; ``None`` for all.
+
+        Returns:
+            Successful stored results, newest first.
+        """
+        now = time.monotonic()
+        completed = [
+            entry.result
+            for entry in self._results.values()
+            if now - entry.stored_at <= entry.ttl and entry.result.success
+        ]
+        return completed[::-1][:limit]
+
+    async def get_failed(self, limit: int | None = None) -> list[JobResult]:
+        """Return the most recently failed results, newest first.
+
+        Args:
+            limit: Maximum number of results to return; ``None`` for all.
+
+        Returns:
+            Failed stored results, newest first.
+        """
+        now = time.monotonic()
+        failed = [
+            entry.result
+            for entry in self._results.values()
+            if now - entry.stored_at <= entry.ttl and not entry.result.success
+        ]
+        return failed[::-1][:limit]

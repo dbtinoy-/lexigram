@@ -87,7 +87,7 @@ class MetricCard(Component):
             "info": "text-info",
         }
 
-        card_classes = f"bg-card rounded-lg border-2 {variant_classes.get(self.variant, variant_classes['default'])} p-6 shadow-sm hover:shadow-md transition-shadow"
+        card_classes = f"bg-card rounded-xl border {variant_classes.get(self.variant, variant_classes['default'])} p-6 shadow-sm hover:shadow-md transition-shadow"
         value_classes = f"text-3xl font-bold {variant_text_classes.get(self.variant, variant_text_classes['default'])}"
 
         # Icon element

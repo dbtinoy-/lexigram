@@ -92,13 +92,12 @@ AudioMusicModule.configure(config=MusicConfig(backend="ace-step"))
 | Method | Description |
 |--------|-------------|
 | `AudioMusicModule.configure(config)` | Configure with explicit music config |
-| `AudioMusicModule.stub()` | No-op module for unit testing (uses `local-http`) |
+| `AudioMusicModule.stub()` | Real module pinned to the default `local-http` backend for tests |
 
 ## Key Features
 
 - **Four backends** — `local-http`, `stability-audio`, `ace-step`, `stable-audio-open`
 - **Reference servers** — `lexigram-music-ace-step-serve` and `lexigram-music-stable-audio-open-serve` console scripts run each local model server
-- **Secret-managed API keys** — provider keys resolved by name through the secrets backend
 - **Result-based** — `generate() -> Result[MediaAsset, MultimediaError]`; errors are domain values, not exceptions
 
 ## Testing

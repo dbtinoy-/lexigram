@@ -6,7 +6,7 @@ LLM client layer for the Lexigram Framework — OpenAI, Anthropic, Ollama, Coher
 
 ## Overview
 
-LLM client layer for the Lexigram Framework. Provides typed, async-first clients for 18 providers, multi-provider routing, thinking/reasoning control, structured extraction, streaming, embeddings, and model management — all wired through the DI container via `LLMModule`. Zero-config usage starts with sensible defaults.
+LLM client layer for the Lexigram Framework. Provides typed, async-first clients for 15 providers, multi-provider routing, thinking/reasoning control, structured extraction, streaming, embeddings, and model management — all wired through the DI container via `LLMModule`. `configure()` with no arguments uses the defaults but boots the client eagerly, so the provider's API key (e.g. `OPENAI_API_KEY`) must be available; `stub()` is the test-safe path.
 
 
 > Full documentation: [docs.lexigram.dev](https://docs.lexigram.dev)
@@ -35,14 +35,14 @@ from lexigram.ai.llm.config import ClientConfig
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration
 
-> **Zero-config usage:** Call `LLMModule.configure()` with no arguments to use defaults.
+> **Zero-config usage:** `LLMModule.configure()` with no arguments uses default settings (provider `openai`, model `gpt-4-turbo`), but the client is created eagerly at boot — set the provider's API key via config or the provider SDK env var first. For tests, use `LLMModule.stub()`.
 
 ### Option 1 — YAML file
 
@@ -102,7 +102,7 @@ LLMModule.configure(config)
 
 ## Key Features
 
-- **18 providers**: OpenAI, Anthropic, Google Gemini, Azure, Ollama, Groq, Mistral, Cohere, and more
+- **15 providers**: OpenAI, Anthropic, Google Gemini, Azure OpenAI, AWS Bedrock, Google Vertex AI, Ollama, Groq, Mistral, Cohere, DeepSeek, Fireworks, Together, Cloudflare Workers, OpenRouter
 - **Multi-provider routing**: Sequential, cost-optimized, and latency-optimized strategies
 - **Thinking/reasoning control**: Extended thinking with token budget and suppression
 - **Structured extraction**: JSON schema and Pydantic model extraction

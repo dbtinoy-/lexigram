@@ -59,7 +59,6 @@ if __name__ == "__main__":
 multimedia:
   upscale:
     backend: "hat"
-    default_scale_factor: 2
 ```
 
 ### Option 2 — Profiles + Environment Variables
@@ -67,7 +66,6 @@ multimedia:
 ```bash
 export LEX_PROFILE=production
 export LEX_MULTIMEDIA__UPSCALE__BACKEND=real-esrgan
-export LEX_MULTIMEDIA__UPSCALE__DEFAULT_SCALE_FACTOR=4
 ```
 
 ### Option 3 — Python
@@ -77,9 +75,11 @@ from lexigram.multimedia.upscale import UpscaleModule
 from lexigram.multimedia.upscale.config import UpscaleConfig
 
 UpscaleModule.configure(
-    config=UpscaleConfig(backend="hat", default_scale_factor=2)
+    config=UpscaleConfig(backend="hat")
 )
 ```
+
+> The upscale factor is a per-request parameter — `UpscaleRequest(asset=..., scale_factor=Literal[2, 4])`, default `4`. It is not part of `UpscaleConfig`.
 
 ### Config reference
 
@@ -88,7 +88,6 @@ UpscaleModule.configure(
 | `backend` | `"real-esrgan"` | `LEX_MULTIMEDIA__UPSCALE__BACKEND` | `real-esrgan`, `hat` |
 | `real_esrgan_base_url` | `"http://localhost:5400"` | `LEX_MULTIMEDIA__UPSCALE__REAL_ESRGAN_BASE_URL` | Real-ESRGAN server URL |
 | `hat_base_url` | `"http://localhost:5401"` | `LEX_MULTIMEDIA__UPSCALE__HAT_BASE_URL` | HAT server URL |
-| `default_scale_factor` | `4` | `LEX_MULTIMEDIA__UPSCALE__DEFAULT_SCALE_FACTOR` | Default upscale factor (2 or 4) |
 | `timeout` | `30.0` | `LEX_MULTIMEDIA__UPSCALE__TIMEOUT` | Request timeout in seconds |
 
 ## Module Factory Methods
@@ -96,7 +95,7 @@ UpscaleModule.configure(
 | Method | Description |
 |--------|-------------|
 | `UpscaleModule.configure(config)` | Configure with explicit upscale config |
-| `UpscaleModule.stub()` | No-op module for unit testing |
+| `UpscaleModule.stub()` | Real module pinned to the default `real-esrgan` backend for tests |
 
 ## Key Features
 

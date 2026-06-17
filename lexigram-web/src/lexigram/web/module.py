@@ -89,7 +89,7 @@ class WebModule(Module):
         Returns:
             A DynamicModule with in-memory web configuration.
         """
-        web_config = WebConfig(server=ServerConfig(host="127.0.0.1", port=0))
+        web_config = WebConfig(server=ServerConfig(host="127.0.0.1", port=8000))
         return DynamicModule(
             module=cls,
             providers=[WebProvider(web_config=web_config, controllers=[])],

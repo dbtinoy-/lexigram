@@ -394,7 +394,11 @@ class GraphQLProvider(Provider):
         recorder = None
         if container is not None and hasattr(container, "resolve"):
             with contextlib.suppress(
-                ImportError, AttributeError, RuntimeError, TypeError
+                ImportError,
+                AttributeError,
+                RuntimeError,
+                TypeError,
+                UnresolvableDependencyError,
             ):
                 from lexigram.contracts.observability.metrics import (
                     MetricsRecorderProtocol,
@@ -407,7 +411,11 @@ class GraphQLProvider(Provider):
         event_bus = None
         if container is not None and hasattr(container, "resolve"):
             with contextlib.suppress(
-                ImportError, AttributeError, RuntimeError, TypeError
+                ImportError,
+                AttributeError,
+                RuntimeError,
+                TypeError,
+                UnresolvableDependencyError,
             ):
                 from lexigram.contracts.events import EventBusProtocol
 

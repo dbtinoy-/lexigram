@@ -73,6 +73,7 @@ class AuthBundleProvider(Provider):
         **kwargs: Any,
     ) -> None:
         super().__init__(name="auth_bundle", priority=ProviderPriority.SECURITY)
+        self.config = config
         self._authn = AuthenticationProvider(config=config)
         self._token = TokenProvider(config=config)
         self._session = SessionProvider(config=config)

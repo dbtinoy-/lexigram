@@ -49,7 +49,7 @@ class PaginationLinks(Component):
     ) -> Any:
         url = f"{self.base_url}?page={p}&per_page={self.per_page}{self.extra_query}"
 
-        base_cls = "relative inline-flex items-center justify-center min-w-[40px] h-10 text-sm font-medium transition-colors focus:z-20 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1"
+        base_cls = "relative inline-flex items-center justify-center min-w-11 h-10 text-sm font-medium transition-colors focus:z-20 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1"
 
         if disabled:
             return el(
@@ -146,7 +146,7 @@ class PaginationLinks(Component):
                     el(
                         "span",
                         "...",
-                        class_="relative inline-flex items-center justify-center min-w-[40px] h-10 text-sm font-medium text-muted-foreground bg-card border-y border-border",
+                        class_="relative inline-flex items-center justify-center min-w-11 h-10 text-sm font-medium text-muted-foreground bg-card border-y border-border",
                     ),
                 )
             else:

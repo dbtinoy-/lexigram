@@ -320,6 +320,9 @@ class LifecycleManager:
         if provider.config_key is None:
             return
 
+        if provider.config is not None:
+            return
+
         if provider.config_model is None:
             raise ConfigurationError(
                 f"Provider {provider.name!r} declared config_key={provider.config_key!r} "

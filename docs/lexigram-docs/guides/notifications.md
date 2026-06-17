@@ -39,13 +39,12 @@ Each channel takes its own typed dataclass — `EmailMessage`, `SMSMessage`, `Pu
 
 ## 2. Configuration
 
-The package splits into three modules — `NotificationModule` (SMS + push), `MailerModule` (email), and `InboxModule` (per-user inbox storage). Wire only the ones you use.
+The package splits into two modules — `NotificationModule` (SMS + push) and `MailerModule` (email). Per-user inbox storage is a plain service (`InboxService`) with its own `inbox:` config section. Wire only the pieces you use.
 
 ```python
 from lexigram import Application
 from lexigram.notification import NotificationModule
 from lexigram.notification.mailer import MailerModule
-from lexigram.notification.inbox import InboxModule
 
 app = Application(name="my-app")
 app.add_module(MailerModule.configure())

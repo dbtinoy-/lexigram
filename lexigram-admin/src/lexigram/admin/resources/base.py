@@ -502,6 +502,9 @@ class Resource:
         if self.model is None:
             return Ok(coerced)
 
+        if not hasattr(self.model, "model_validate"):
+            return Ok(coerced)
+
         try:
             self.model.model_validate(coerced)
         except (ValueError, TypeError) as exc:

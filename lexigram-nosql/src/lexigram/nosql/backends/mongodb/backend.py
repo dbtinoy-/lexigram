@@ -75,14 +75,13 @@ class MongoDBDocumentStore(AbstractDocumentStore):
             "retryWrites": self._config.retry_writes,
             "retryReads": self._config.retry_reads,
         }
-        if codec_options is not None:
-            client_kwargs["codec_options"] = codec_options
-
         self._client = motor.AsyncIOMotorClient(
             self._config.uri,
             **client_kwargs,
         )
         self._db = self._client[self._database_name]
+        if codec_options is not None:
+            self._db = self._db.with_options(codec_options=codec_options)
 
         # Verify connectivity
         try:

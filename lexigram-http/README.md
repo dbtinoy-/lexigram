@@ -122,12 +122,11 @@ HTTPModule.configure(
 ## Testing
 
 ```python
-from lexigram.contracts.web import HTTPClientProtocol
-from lexigram.http.types import ResponseContext
+from lexigram.contracts.web import HTTPClientProtocol, HttpResponse
 
 class FakeHTTPClient(HTTPClientProtocol):
-    async def get(self, url: str, **kwargs) -> ResponseContext:
-        return ResponseContext(status=200, headers={}, body=b'{"id": 123}')
+    async def get(self, url: str, **kwargs) -> HttpResponse:
+        return HttpResponse(status=200, headers={}, body=b'{"id": 123}')
 
 # Inject into service under test
 service = UserService(http_client=FakeHTTPClient())

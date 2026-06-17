@@ -45,3 +45,33 @@ class TestBooleanFieldRendering:
         checkbox = form.index('type="checkbox" name="enabled"')
         hidden = form.index('type="hidden" name="enabled" value="false"')
         assert hidden > checkbox
+
+
+class TestTypedFieldRendering:
+    """Tests that typed nodes render the correct input widgets."""
+
+    def test_color_node_renders_color_input(self) -> None:
+        node = {
+            "name": "primary_color",
+            "label": "Primary",
+            "type": "color",
+            "default": "#6b7280",
+            "help_text": None,
+            "readonly": False,
+            "options": [],
+        }
+        html = render_to_string(ConfigDashboardUI().render_field(node, {}))
+        assert 'type="color" name="primary_color"' in html
+
+    def test_secret_node_renders_password_input(self) -> None:
+        node = {
+            "name": "api_key",
+            "label": "API Key",
+            "type": "secret",
+            "default": "sk-123",
+            "help_text": None,
+            "readonly": False,
+            "options": [],
+        }
+        html = render_to_string(ConfigDashboardUI().render_field(node, {}))
+        assert 'type="password" name="api_key"' in html

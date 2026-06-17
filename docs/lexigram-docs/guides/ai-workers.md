@@ -53,49 +53,55 @@ Three worker families are registered by `WorkersModule`:
 
 ### Batch Embedding
 
-`BatchEmbeddingWorker` processes embedding jobs in parallel. It accepts `BatchEmbeddingJob` items, calls the configured embedding provider, and stores results:
+`BatchEmbeddingWorker` processes embedding jobs in parallel. It takes chunk lists, calls the configured embedding provider, and stores results. `embed_batch()` returns a job id you can poll with `get_progress()`:
 
 ```python
-from lexigram.ai.workers import BatchEmbeddingWorker, BatchEmbeddingJob
-from lexigram.result import Result
+from lexigram.ai.workers import BatchEmbeddingWorker
 
 
 class EmbeddingOrchestrator:
     def __init__(self, worker: BatchEmbeddingWorker) -> None:
         self._worker = worker
 
-    async def embed_documents(
-        self, texts: list[str],
-    ) -> Result[list[str], str]:
-        job = BatchEmbeddingJob(texts=texts)
-        return await self._worker.execute(job)
+    async def embed_documents(self, chunks: list, collection_name: str) -> None:
+        job_id = await self._worker.embed_batch(
+            chunks=chunks,
+            collection_name=collection_name,
+            model_name="text-embedding-3-small",
+        )
+        progress = await self._worker.get_progress(job_id)
+        print(f"State: {progress.status}, done: {progress.texts_processed}/{progress.total_texts}")
 ```
 
 ### Document Ingestion
 
-`DocumentIngestionWorker` handles parsing, chunking, and storing documents. It tracks progress with `IngestionProgress` and returns `IngestionResult`:
+`DocumentIngestionWorker` handles parsing, chunking, and storing documents. `ingest_document()` returns a job id; progress is tracked per job:
 
 ```python
-from lexigram.ai.workers import DocumentIngestionWorker, DocumentIngestionJob
+from pathlib import Path
+from lexigram.ai.workers import DocumentIngestionWorker
 
 
 class DocumentProcessor:
     def __init__(self, worker: DocumentIngestionWorker) -> None:
         self._worker = worker
 
-    async def ingest(self, path: str) -> None:
-        job = DocumentIngestionJob(source=path)
-        result = await self._worker.execute(job)
-        if result.is_ok():
-            print(f"Ingested {result.unwrap().chunks_created} chunks")
+    async def ingest(self, document_id: str, path: Path) -> None:
+        job_id = await self._worker.ingest_document(
+            document_id=document_id,
+            file_path=path,
+            collection_name="knowledge_base",
+        )
+        progress = await self._worker.get_progress(job_id)
+        print(f"Ingestion state: {progress.status}")
 ```
 
 ### Maintenance Worker
 
-`MaintenanceWorker` runs periodic tasks like index optimization, cache cleanup, and health checks:
+`MaintenanceWorker` runs periodic tasks like index optimization, cache cleanup, and health checks. Register tasks with a handler callable, then trigger them manually with `run_task_now()`:
 
 ```python
-from lexigram.ai.workers import MaintenanceWorker, MaintenanceTask, MaintenanceTaskType
+from lexigram.ai.workers import MaintenanceWorker, MaintenanceTaskType
 
 
 class HealthMonitor:
@@ -103,14 +109,17 @@ class HealthMonitor:
         self._worker = worker
 
     async def run_checks(self) -> None:
-        task = MaintenanceTask(
+        self._worker.register_task(
             name="vector-optimize",
             task_type=MaintenanceTaskType.INDEX_OPTIMIZATION,
+            handler=self._optimize_indexes,
             interval_seconds=3600,
         )
-        result = await self._worker.run(task)
-        if result.is_ok():
-            print(f"Optimized {result.unwrap().items_processed} entries")
+        result = await self._worker.run_task_now("vector-optimize")
+        print(f"Optimized {result.items_processed} entries")
+
+    async def _optimize_indexes(self) -> None:
+        ...
 ```
 
 ---
@@ -120,8 +129,7 @@ class HealthMonitor:
 Failed jobs land in the DLQ for retry, archive, or notification. Configure the sweep interval in `WorkersConfig`:
 
 ```python
-from lexigram.ai.workers import DeadLetterQueueWorker, DLQItem, DLQStats
-from lexigram.ai.workers import DLQAction, FailureCategory
+from lexigram.ai.workers import DeadLetterQueueWorker, FailureCategory
 
 
 class DLQManager:
@@ -129,17 +137,13 @@ class DLQManager:
         self._dlq = dlq
 
     async def recover(self) -> None:
-        stats: DLQStats = await self._dlq.get_stats()
+        stats = await self._dlq.get_stats()
         if stats.total_items > 0:
-            for item in stats.by_category:
-                action = await self._dlq.process(
-                    DLQItem(
-                        job_id="...",
-                        failure_category=FailureCategory.TRANSIENT,
-                    )
-                )
-                if action == DLQAction.RETRY:
-                    print(f"Retrying job")
+            for item in await self._dlq.get_items(category=FailureCategory.TRANSIENT):
+                if await self._dlq.retry_item(item["job_id"]):
+                    print(f"Retrying job {item['job_id']}")
+                else:
+                    await self._dlq.archive_item(item["job_id"])
 ```
 
 Each `DLQItem` tracks failure count, category, backoff, and next retry time. The `calculate_backoff()` method uses exponential backoff capped at 3600 seconds.

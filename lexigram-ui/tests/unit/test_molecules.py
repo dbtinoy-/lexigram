@@ -13,7 +13,7 @@ class TestCurrentShadcnClasses:
 
     def test_card(self) -> None:
         html = str(Card("Title", "Body"))
-        assert "rounded-lg border bg-card text-card-foreground shadow-sm" in html
+        assert "bg-card text-card-foreground border border-border rounded-xl" in html
 
 
 class TestModal:

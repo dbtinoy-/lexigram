@@ -342,3 +342,73 @@ class TestProtocolCompliance:
         )
 
         assert HookRegistryProtocol is HookRegistryProtocolContract
+
+
+class TestAmbientHooks:
+    """Ambient hook registry mirrors the clock/identity ambient pattern."""
+
+    def test_current_returns_default_registry(self) -> None:
+        from lexigram.hooks.ambient import current
+
+        assert isinstance(current(), HookRegistry)
+
+    def test_use_overrides_registry_within_block(self) -> None:
+        from lexigram.hooks.ambient import current, use
+
+        replacement = HookRegistry("scoped")
+        with use(replacement):
+            assert current() is replacement
+        assert current() is not replacement
+
+    def test_install_sets_process_registry(self) -> None:
+        from lexigram.hooks.ambient import current, install
+
+        installed = HookRegistry("installed")
+        install(installed)
+        try:
+            assert current() is installed
+        finally:
+            install(HookRegistry("default"))
+
+    @pytest.mark.asyncio
+    async def test_fire_invokes_registered_action(self) -> None:
+        from lexigram.hooks.ambient import fire, use
+
+        registry = HookRegistry("ambient-fire")
+        handler = AsyncMock()
+        registry.register_action("ambient.test", handler)
+
+        with use(registry):
+            await fire("ambient.test", value=7)
+
+        handler.assert_awaited_once()
+        assert handler.call_args.kwargs["value"] == 7
+
+    @pytest.mark.asyncio
+    async def test_fire_without_handlers_is_noop(self) -> None:
+        from lexigram.hooks.ambient import fire, use
+
+        with use(HookRegistry("ambient-noop")):
+            await fire("ambient.none")
+
+    @pytest.mark.asyncio
+    async def test_fire_isolates_handler_errors(self) -> None:
+        from lexigram.hooks.ambient import fire, use
+
+        registry = HookRegistry("ambient-error")
+
+        async def bad(**kwargs: object) -> None:
+            raise RuntimeError("boom")
+
+        calls: list[str] = []
+
+        async def good(**kwargs: object) -> None:
+            calls.append("good")
+
+        registry.register_action("ambient.isolated", bad)
+        registry.register_action("ambient.isolated", good)
+
+        with use(registry):
+            await fire("ambient.isolated")
+
+        assert calls == ["good"]

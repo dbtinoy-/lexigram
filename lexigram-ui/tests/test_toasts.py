@@ -51,3 +51,23 @@ def test_legacy_toast_renderer_alias_emits_deprecation_warning():
         and "ServerToastChannel" in str(w.message)
         for w in caught
     ), "Expected DeprecationWarning pointing at ServerToastChannel"
+
+
+def test_close_toast_event_listener_rendered():
+    """The toast script should listen for the lexigram:close-toast event."""
+    from lexigram.ui import ServerToastChannel, ToastConfig
+
+    channel = ServerToastChannel(config=ToastConfig(listen_for_events=True))
+    html = channel.render_container([])
+    assert "lexigram:close-toast" in html
+    assert "dismissToast" in html
+    assert "evt.detail.id" in html
+
+
+def test_close_toast_event_absent_when_disabled():
+    """No toast script (and thus no event listener) when events are off."""
+    from lexigram.ui import ServerToastChannel, ToastConfig
+
+    channel = ServerToastChannel(config=ToastConfig(listen_for_events=False))
+    html = channel.render_container([])
+    assert "lexigram:close-toast" not in html

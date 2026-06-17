@@ -14,8 +14,10 @@ from lexigram.contracts.data import DocumentStoreProtocol
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.search.backends.base import SearchBackendBase
+from lexigram.search.backends.filters import render_mongodb
 from lexigram.search.config import MongoSearchConfig
 from lexigram.search.exceptions import SearchError
+from lexigram.search.filterset import merge_filters, rule_to_filters
 
 logger = get_logger(__name__)
 
@@ -192,6 +194,7 @@ class MongoSearchBackend(SearchBackendBase):
         filters: dict[str, Any] | None = None,
         limit: int = 20,
         offset: int = 0,
+        rule: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Search documents using MongoDB text search."""
@@ -218,8 +221,8 @@ class MongoSearchBackend(SearchBackendBase):
 
         pipeline: list[dict[str, Any]] = [search_query]
 
-        if filters:
-            filter_doc = self._build_filter_query(filters)
+        if filters or rule:
+            filter_doc = self._build_filter_query(merge_filters(filters, rule_to_filters(rule)))
             pipeline.append({"$match": filter_doc})
 
         pipeline.append({"$project": {"document": 1, "score": project, "_id": 1}})
@@ -340,21 +343,8 @@ class MongoSearchBackend(SearchBackendBase):
         return " ".join(parts)
 
     def _build_filter_query(self, filters: dict[str, Any]) -> dict[str, Any]:
-        """Build MongoDB filter query from filters dict."""
-        query = {}
-
-        for key, value in filters.items():
-            if isinstance(value, dict):
-                query[key] = value
-            elif isinstance(value, (list, tuple)):
-                query[key] = {"$in": list(value)}
-            elif isinstance(value, str) and "*" in value:
-                regex_pattern = value.replace("*", ".*")
-                query[key] = {"$regex": regex_pattern, "$options": "i"}
-            else:
-                query[key] = value
-
-        return query
+        """Build MongoDB filter query from canonical filter dict."""
+        return render_mongodb(filters)
 
     async def _ensure_collection(self, index: str) -> None:
         """Ensure the collection and text index exist."""

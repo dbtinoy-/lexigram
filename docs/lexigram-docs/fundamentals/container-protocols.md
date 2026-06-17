@@ -29,7 +29,7 @@ graph TB
 |---------|--------|----------|
 | `ContainerRegistrarProtocol` | `singleton()`, `transient()`, `scoped()`, `has()` | Module registration code that only binds services |
 | `ContainerResolverProtocol` | `resolve()`, `resolve_optional()`, `resolve_all()`, `call()`, `create_scope()` | Code that only retrieves services |
-| `BootContainerProtocol` | Registrar + Resolver | Provider `boot()` methods that wire and re-register services |
+| `BootContainerProtocol` | Registrar + Resolver | Provider `boot()` methods that resolve and rebind services via `bind()` |
 | `ContainerValidationProtocol` | `validate()`, `validate_no_orphans()` | Development-time validators |
 | `ContainerProtocol` | Registrar + Resolver + Validation | Full container control; rarely needed directly |
 
@@ -52,15 +52,21 @@ class BillingProvider(Provider):
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Phase 1: Only registration. No service retrieval allowed."""
         container.singleton(PaymentGateway, StripeGateway)
+        container.singleton(PaymentService, PaymentService())
 
     async def boot(self, container: BootContainerProtocol) -> None:
-        """Phase 2: Resolve existing services, wire them, register new ones."""
+        """Phase 2: Resolve existing services, wire them, replace via bind()."""
         gateway = await container.resolve(PaymentGateway)
         db = await container.resolve(InvoiceRepository)
-        container.singleton(PaymentService, PaymentService(gateway, db))
+        # Replace an already-registered singleton with the wired instance
+        container.bind(PaymentService, PaymentService(gateway, db))
 ```
 
-**Key principle:** The `register()` phase is purely declarative — it says *what* services exist, not *how* they are initialized. The `boot()` phase is where initialization, wiring, and conditional re-registration happen.
+**Key principle:** The `register()` phase is purely declarative — it says *what* services exist, not *how* they are initialized. The `boot()` phase is where initialization and wiring happen.
+
+:::note
+The container is **frozen** before `boot()` runs — calling `singleton()`, `transient()`, or `scoped()` there raises `ContainerError` (LEX_ERR_DI_001). To replace an already-registered singleton during boot (e.g. wrapping a store with a decorator), use `container.bind(service_type, instance)`.
+:::
 
 ---
 
@@ -82,7 +88,7 @@ async def boot(self, container: BootContainerProtocol) -> None:
 |----------|---------|---------------------|
 | `ContainerRegistrarProtocol` | Declare bindings | `resolve()`, `resolve_optional()`, `call()` |
 | `ContainerResolverProtocol` | Retrieve services | `singleton()`, `transient()`, `scoped()` |
-| `BootContainerProtocol` | Wire services | None — full access |
+| `BootContainerProtocol` | Wire services | `singleton()`/`transient()`/`scoped()` post-freeze; use `bind()` to rebind |
 
 ---
 

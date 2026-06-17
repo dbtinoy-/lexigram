@@ -48,7 +48,13 @@ class PluginPlan:
 
 
 def discover_providers(disabled: set[str] | None = None) -> list[Provider]:
-    """Discover and instantiate providers from the ``lexigram.providers`` group.
+    """Discover and instantiate providers declared by plugin descriptors.
+
+    Only entry points referenced by an installed ``PluginDescriptor``
+    (:group:`EP_PLUGINS`) are considered — framework packages that happen
+    to register under ``EP_PROVIDERS`` (admin, auth, sql, web, ...) are
+    *not* plugins and are left out; they are composed explicitly by the
+    application's module graph instead.
 
     Args:
         disabled: Entry-point names to skip (e.g. from
@@ -56,15 +62,22 @@ def discover_providers(disabled: set[str] | None = None) -> list[Provider]:
 
     Returns:
         Instantiated ``Provider`` objects for every enabled, constructible
-        entry point. Entries that fail to load, aren't a ``Provider``
+        plugin entry point. Entries that fail to load, aren't a ``Provider``
         subclass, or require constructor arguments are skipped with a log.
     """
     from lexigram.di.provider import Provider
 
     disabled = disabled or set()
+    plugin_entry_points = {d.provider_entry_point for d in discover_plugins()}
     found: list[Provider] = []
 
     for ep in _entry_points(group=EP_PROVIDERS):
+        if ep.name not in plugin_entry_points:
+            logger.debug(
+                "plugins.discovery.not_plugin_managed",
+                name=ep.name,
+            )
+            continue
         if ep.name in disabled:
             logger.debug("plugins.discovery.skipped_disabled", name=ep.name)
             continue
@@ -158,9 +171,7 @@ def validate_plan(
         A PluginPlan with enabled/disabled/unknown sets and issues.
     """
     unique = unique_descriptors(descriptors)
-    by_entry: dict[str, PluginDescriptor] = {
-        d.provider_entry_point: d for d in unique
-    }
+    by_entry: dict[str, PluginDescriptor] = {d.provider_entry_point: d for d in unique}
 
     installed = set(by_entry)
     disabled_set = set(disabled)
@@ -172,15 +183,11 @@ def validate_plan(
     for entry, descriptor in by_entry.items():
         for required in descriptor.requires:
             if required not in enabled_names:
-                issues.append(
-                    f"{descriptor.name}: missing dependency {required!r}"
-                )
+                issues.append(f"{descriptor.name}: missing dependency {required!r}")
                 enabled.discard(entry)
         for conflict in descriptor.conflicts:
             if conflict in enabled_names:
-                issues.append(
-                    f"{descriptor.name}: conflicts with {conflict!r}"
-                )
+                issues.append(f"{descriptor.name}: conflicts with {conflict!r}")
                 enabled.discard(entry)
 
     return PluginPlan(

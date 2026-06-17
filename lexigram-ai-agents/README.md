@@ -24,17 +24,21 @@ from lexigram.di.module import Module, module
 
 from lexigram.ai.agents import AgentsModule
 from lexigram.ai.agents.config import AgentConfig
+from lexigram.ai.llm import LLMModule
 
 @module(imports=[
-    AgentsModule.configure(AgentConfig(max_iterations=10))
+    LLMModule.stub(),                       # provides LLMClientProtocol
+    AgentsModule.configure(AgentConfig(max_iterations=10)),
 ])
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
+
+> **Note:** `AgentsModule` requires an LLM client (`LLMClientProtocol`) in the container — provided by `LLMModule` (from `lexigram-ai-llm`). When using a real LLM provider, set `OPENAI_API_KEY` (or configure your provider in `ClientConfig`).
 
 ## Configuration
 
@@ -98,10 +102,14 @@ AgentsModule.configure(config)
 ## Testing
 
 ```python
-async with Application.boot(modules=[AgentsModule.stub()]) as app:
+from lexigram.ai.llm import LLMModule
+
+async with Application.boot(modules=[LLMModule.stub(), AgentsModule.stub()]) as app:
     # your test code
     ...
 ```
+
+> `AgentsModule.stub()` alone fails container validation without an `LLMClientProtocol` in the container — pair it with `LLMModule.stub()` as shown.
 
 ## Key Source Files
 

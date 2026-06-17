@@ -20,6 +20,9 @@ class _FakeRegistrar:
     def transient(self, *args: object, **kwargs: object) -> None:
         pass
 
+    def has(self, cls: type) -> bool:
+        return False
+
 
 class TestConfigAlignment:
     def test_provider_declares_config_key_and_model(self) -> None:

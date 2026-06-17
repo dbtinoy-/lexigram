@@ -14,8 +14,6 @@ AI-layer observability for the Lexigram Framework. Provides tracing, metrics, he
 
 ```bash
 uv add lexigram-ai-observability
-# Optional extras
-uv add "lexigram-ai-observability[opentelemetry]"
 ```
 
 ## Quick Start
@@ -40,9 +38,9 @@ from lexigram.ai.observability.config import ObservabilityConfig
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration
@@ -105,7 +103,7 @@ ObservabilityModule.configure(config)
 - **Health monitoring**: Background health checks for AI components
 - **Decorators**: `@trace_llm`, `@trace_rag`, `@track_llm_call` for automatic instrumentation
 - **Observable wrappers**: `ObservableLLMClient` and `ObservableVectorStore`
-- **OpenTelemetry support**: Optional OpenTelemetry integration
+- **No-op default**: Tracing uses the framework `TracerProtocol` interface with a no-op tracer by default, compatible with `lexigram-monitor`'s `Tracer`
 
 ## Testing
 

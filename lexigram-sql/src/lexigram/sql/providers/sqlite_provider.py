@@ -86,6 +86,12 @@ class SQLiteProvider(DatabaseDriver):
         conn = await aiosqlite.connect(path)
         # Enable row factory for dict-like access
         conn.row_factory = aiosqlite.Row
+        # WAL allows concurrent readers/writers without SQLITE_BUSY; the
+        # busy_timeout makes a writer wait instead of failing immediately
+        # when another connection holds the write lock momentarily.
+        if path != ":memory:":
+            await conn.execute("PRAGMA journal_mode=WAL")
+        await conn.execute("PRAGMA busy_timeout=5000")
         return conn
 
     async def _close_connection(self, connection: Any) -> None:

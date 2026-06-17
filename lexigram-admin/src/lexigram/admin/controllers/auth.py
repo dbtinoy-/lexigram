@@ -5,6 +5,7 @@ Provides login/logout endpoints with standalone UI (no admin shell).
 
 from __future__ import annotations
 
+import re
 import secrets
 from urllib.parse import quote_plus
 
@@ -37,6 +38,27 @@ from lexigram.contracts.core import TaskManagerProtocol
 from lexigram.contracts.web import get, post
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+
+_CACHE_CONTROL_NO_STORE = {"Cache-Control": "no-store"}
+
+_LEX_ERR_RE = re.compile(r"^\[LEX_ERR_[A-Z0-9_]+\]\s+")
+_SEE_DOCS_RE = re.compile(r"\n\s*→\s*See:.*$")
+
+
+def _humanize_error(message: str) -> str:
+    """Strip framework error prefixes from a message for user display.
+
+    Args:
+        message: Raw error message, possibly including a ``[LEX_ERR_*]``
+            prefix and a trailing ``→ See:`` documentation line.
+
+    Returns:
+        The message with the prefix and docs line removed, stripped.
+    """
+    if not message:
+        return ""
+    return _SEE_DOCS_RE.sub("", _LEX_ERR_RE.sub("", message)).strip()
+
 
 logger = get_logger(__name__)
 
@@ -126,12 +148,16 @@ class AuthController(AdminController):
         """
         next_url = request.query_params.get("next", "/admin/")
 
-        user = getattr(request.state, "user", None)
-        if user and user.user_id != "guest":
-            return RedirectResponse(url=next_url, status_code=302)
-
-        error = request.query_params.get("error", "")
+        error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
+        email_err = request.query_params.get("email_err", "")
+        password_err = request.query_params.get("password_err", "")
+
+        user = getattr(request.state, "user", None)
+        if user and user.user_id != "guest" and not error and not notice:
+            return RedirectResponse(
+                url=next_url, status_code=302, headers=_CACHE_CONTROL_NO_STORE
+            )
 
         csrf_session_id = secrets.token_urlsafe(16)
         request.session["csrf_session_id"] = csrf_session_id
@@ -142,8 +168,10 @@ class AuthController(AdminController):
             error=error,
             csrf_token=csrf_token,
             notice=notice,
+            email_err=email_err,
+            password_err=password_err,
         )
-        return HTMLResponse(content=html)
+        return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
     # ------------------------------------------------------------------
     # POST /login
@@ -187,8 +215,15 @@ class AuthController(AdminController):
 
         # ── Basic input guard ──────────────────────────────────────────
         if not email or not password:
+            email_err = "Email is required." if not email else ""
+            password_err = "Password is required." if not password else ""
+            params = [f"next={quote_plus(next_url)}"]
+            if email_err:
+                params.append(f"email_err={quote_plus(email_err)}")
+            if password_err:
+                params.append(f"password_err={quote_plus(password_err)}")
             return RedirectResponse(
-                url=f"/admin/login?error={quote_plus('Email and password are required.')}&next={quote_plus(next_url)}",
+                url=f"/admin/login?{'&'.join(params)}",
                 status_code=302,
             )
 
@@ -277,9 +312,13 @@ class AuthController(AdminController):
                 email=auth_result.email,
                 redirect=next_url,
             )
+            from lexigram.admin.state.context import AdminContextManager
+
+            async with AdminContextManager(request) as ctx:
+                ctx.add_flash("Signed in successfully.", "success")
             return RedirectResponse(url=next_url, status_code=302)
 
-        error_msg = str(result.unwrap_err())
+        error_msg = _humanize_error(str(result.unwrap_err()))
         self._metrics.record_login(status="failure")
         logger.warning("auth.login_failed", email=email, ip=ip, reason=error_msg)
         return RedirectResponse(
@@ -311,7 +350,11 @@ class AuthController(AdminController):
             logger.info("auth.logout", session_id=session_id)
 
         request.session.clear()
-        return RedirectResponse(url="/admin/login", status_code=302)
+        return RedirectResponse(
+            url="/admin/login?notice="
+            + quote_plus("You have been signed out."),
+            status_code=302,
+        )
 
     # ------------------------------------------------------------------
     # GET /login/2fa — challenge form
@@ -343,7 +386,7 @@ class AuthController(AdminController):
         email = request.session.get("mfa_pending_email", "")
         next_url = request.session.get("mfa_pending_next", "/admin/")
         factor = request.session.get("mfa_pending_factor", "totp")
-        error = request.query_params.get("error", "")
+        error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
         csrf_token = self._fresh_csrf(request)
 
@@ -355,7 +398,7 @@ class AuthController(AdminController):
             factor=factor,
             resend_notice=notice,
         )
-        return HTMLResponse(content=html)
+        return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
     # ------------------------------------------------------------------
     # POST /login/2fa — challenge submit
@@ -507,7 +550,7 @@ class AuthController(AdminController):
                 reason=str(result.unwrap_err()),
             )
             return RedirectResponse(
-                url=f"/admin/login/2fa?error={quote_plus(str(result.unwrap_err()))}",
+                url=f"/admin/login/2fa?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         return RedirectResponse(
@@ -539,7 +582,7 @@ class AuthController(AdminController):
 
         email = request.session.get("verify_pending_email", "")
         next_url = request.session.get("verify_pending_next", "/admin/")
-        error = request.query_params.get("error", "")
+        error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
         csrf_token = self._fresh_csrf(request)
 
@@ -550,7 +593,7 @@ class AuthController(AdminController):
             csrf_token=csrf_token,
             next_url=next_url,
         )
-        return HTMLResponse(content=html)
+        return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
     # ------------------------------------------------------------------
     # POST /verify-email/resend — request a fresh verification link
@@ -607,7 +650,7 @@ class AuthController(AdminController):
         )
         if result.is_err():
             return RedirectResponse(
-                url=f"/admin/verify-email?error={quote_plus(str(result.unwrap_err()))}",
+                url=f"/admin/verify-email?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         return RedirectResponse(
@@ -649,7 +692,7 @@ class AuthController(AdminController):
                 reason=str(result.unwrap_err()),
             )
             return HTMLResponse(
-                content=render_email_verified_page(error=str(result.unwrap_err()))
+                content=render_email_verified_page(error=_humanize_error(str(result.unwrap_err())))
             )
 
         for key in (
@@ -688,7 +731,7 @@ class AuthController(AdminController):
         if self._mfa_service is None:
             return RedirectResponse(url="/admin/", status_code=302)
 
-        error = request.query_params.get("error", "")
+        error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
         csrf_token = self._fresh_csrf(request)
         user_id = str(user.user_id)
@@ -702,17 +745,15 @@ class AuthController(AdminController):
         if await self._mfa_service.is_enabled(user_id):
             html = render_mfa_setup_page(
                 enabled=True,
-                error=error,
-                notice=notice,
                 csrf_token=csrf_token,
                 email_verified=email_verified,
             )
         else:
             result = await self._mfa_service.start_setup(user_id, str(user.email))
             if result.is_err():
+                error = _humanize_error(str(result.unwrap_err()))
                 html = render_mfa_setup_page(
                     enabled=False,
-                    error=str(result.unwrap_err()),
                     csrf_token=csrf_token,
                     email_verified=email_verified,
                 )
@@ -723,12 +764,29 @@ class AuthController(AdminController):
                     enabled=False,
                     qr_svg=svg,
                     secret=secret,
-                    error=error,
-                    notice=notice,
                     csrf_token=csrf_token,
                     email_verified=email_verified,
                 )
-        return HTMLResponse(content=html)
+
+        from lexigram.admin.state.context import AdminContextManager
+
+        async with AdminContextManager(request) as ctx:
+            if error:
+                ctx.add_flash(error, "error")
+            if notice:
+                ctx.add_flash(notice, "success")
+            response = await self.render_admin(
+                request,
+                html,
+                title="Two-Factor Authentication",
+                breadcrumbs=self.generate_breadcrumbs(
+                    ("Home", "/admin/"),
+                    ("Profile", "/admin/profile"),
+                    current="Two-Factor Authentication",
+                ),
+            )
+        response.headers.update(_CACHE_CONTROL_NO_STORE)
+        return response
 
     # ------------------------------------------------------------------
     # POST /profile/mfa/setup — enable 2FA
@@ -781,7 +839,7 @@ class AuthController(AdminController):
         result = await self._mfa_service.confirm_setup(str(user.user_id), secret, code)
         if result.is_err():
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus(str(result.unwrap_err()))}",
+                url=f"/admin/profile/mfa?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         return RedirectResponse(
@@ -840,7 +898,7 @@ class AuthController(AdminController):
         result = await self._mfa_service.disable(str(user.user_id), code)
         if result.is_err():
             return RedirectResponse(
-                url=f"/admin/profile/mfa?error={quote_plus(str(result.unwrap_err()))}",
+                url=f"/admin/profile/mfa?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                 status_code=302,
             )
         request.session.pop("mfa_pending_secret", None)
@@ -884,7 +942,7 @@ class AuthController(AdminController):
         html = render_password_reset_request_page(
             error=error, csrf_token=csrf_token, sent=sent
         )
-        return HTMLResponse(content=html)
+        return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
     # ------------------------------------------------------------------
     # POST /password-reset — request submit
@@ -931,7 +989,7 @@ class AuthController(AdminController):
             )
             if result.is_err():
                 return RedirectResponse(
-                    url=f"/admin/password-reset?error={quote_plus(str(result.unwrap_err()))}",
+                    url=f"/admin/password-reset?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
                     status_code=302,
                 )
         return RedirectResponse(url="/admin/password-reset?sent=1", status_code=302)
@@ -965,9 +1023,13 @@ class AuthController(AdminController):
         csrf_token = self._csrf_service.generate_token(csrf_session_id)
 
         html = render_password_reset_confirm_page(
-            token=token, error=error, csrf_token=csrf_token
+            token=token,
+            error=error,
+            csrf_token=csrf_token,
+            password_err=request.query_params.get("password_err", ""),
+            confirmation_err=request.query_params.get("confirmation_err", ""),
         )
-        return HTMLResponse(content=html)
+        return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
     # ------------------------------------------------------------------
     # POST /password-reset/{token} — confirm submit
@@ -1003,9 +1065,23 @@ class AuthController(AdminController):
                 status_code=302,
             )
 
-        if not password or password != password_confirmation:
+        if not password or not password_confirmation:
+            password_err = (
+                "New password is required." if not password else ""
+            )
+            confirmation_err = (
+                "Please confirm your password."
+                if not password_confirmation
+                else ""
+            )
             return RedirectResponse(
-                url=f"/admin/password-reset/{token}?error={quote_plus('Passwords do not match.')}",
+                url=f"/admin/password-reset/{token}?password_err={quote_plus(password_err)}&confirmation_err={quote_plus(confirmation_err)}",
+                status_code=302,
+            )
+
+        if password != password_confirmation:
+            return RedirectResponse(
+                url=f"/admin/password-reset/{token}?confirmation_err={quote_plus('Passwords do not match.')}",
                 status_code=302,
             )
 
@@ -1032,7 +1108,7 @@ class AuthController(AdminController):
             "admin.password_reset_confirm_failed", error=str(result.unwrap_err())
         )
         return RedirectResponse(
-            url=f"/admin/password-reset/{token}?error={quote_plus(str(result.unwrap_err()))}",
+            url=f"/admin/password-reset/{token}?error={quote_plus(_humanize_error(str(result.unwrap_err())))}",
             status_code=302,
         )
 
@@ -1063,12 +1139,14 @@ class AuthController(AdminController):
                 + quote_plus("Registration is not available."),
                 status_code=302,
             )
-        user = getattr(request.state, "user", None)
-        if user and user.user_id != "guest":
-            return RedirectResponse(url="/admin/", status_code=302)
-
-        error = request.query_params.get("error", "")
+        error = _humanize_error(request.query_params.get("error", ""))
         notice = request.query_params.get("notice", "")
+        user = getattr(request.state, "user", None)
+        if user and user.user_id != "guest" and not error and not notice:
+            return RedirectResponse(
+                url="/admin/", status_code=302, headers=_CACHE_CONTROL_NO_STORE
+            )
+
         name = request.query_params.get("name", "")
         email = request.query_params.get("email", "")
         csrf_token = self._fresh_csrf(request)
@@ -1079,8 +1157,12 @@ class AuthController(AdminController):
             csrf_token=csrf_token,
             name=name,
             email=email,
+            name_err=request.query_params.get("name_err", ""),
+            email_err=request.query_params.get("email_err", ""),
+            password_err=request.query_params.get("password_err", ""),
+            confirmation_err=request.query_params.get("confirmation_err", ""),
         )
-        return HTMLResponse(content=html)
+        return HTMLResponse(content=html, headers=_CACHE_CONTROL_NO_STORE)
 
     # ------------------------------------------------------------------
     # POST /register — create the account and sign in
@@ -1128,20 +1210,30 @@ class AuthController(AdminController):
             )
 
         if not name or not email or not password:
+            name_err = "Name is required." if not name else ""
+            email_err = "Email is required." if not email else ""
+            password_err = "Password is required." if not password else ""
+            params = [f"name={quote_plus(name)}", f"email={quote_plus(email)}"]
+            if name_err:
+                params.append(f"name_err={quote_plus(name_err)}")
+            if email_err:
+                params.append(f"email_err={quote_plus(email_err)}")
+            if password_err:
+                params.append(f"password_err={quote_plus(password_err)}")
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('Name, email, and password are required.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                url=f"/admin/register?{'&'.join(params)}",
                 status_code=302,
             )
 
         if len(password) < 8:
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('Password must be at least 8 characters.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                url=f"/admin/register?error={quote_plus('Password must be at least 8 characters.')}&name={quote_plus(name)}&email={quote_plus(email)}&password_err={quote_plus('Password must be at least 8 characters.')}",
                 status_code=302,
             )
 
         if password != password_confirmation:
             return RedirectResponse(
-                url=f"/admin/register?error={quote_plus('Passwords do not match.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                url=f"/admin/register?error={quote_plus('Passwords do not match.')}&name={quote_plus(name)}&email={quote_plus(email)}&confirmation_err={quote_plus('Passwords do not match.')}",
                 status_code=302,
             )
 
@@ -1152,6 +1244,18 @@ class AuthController(AdminController):
                     url=f"/admin/register?error={quote_plus('Registration is restricted to allowed email domains.')}&name={quote_plus(name)}&email={quote_plus(email)}",
                     status_code=302,
                 )
+
+        existing = await self._user_store.get_user_by_email(email)
+        if existing is not None:
+            logger.info(
+                "auth.register_duplicate_email",
+                email=email,
+                ip=self._get_client_ip(request),
+            )
+            return RedirectResponse(
+                url=f"/admin/register?error={quote_plus('An account with this email already exists. Please log in instead.')}&name={quote_plus(name)}&email={quote_plus(email)}",
+                status_code=302,
+            )
 
         ip = self._get_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
@@ -1185,11 +1289,12 @@ class AuthController(AdminController):
         user_id = str(getattr(created, "user_id", "") or getattr(created, "id", ""))
         logger.info("auth.register_success", email=email, user_id=user_id)
 
-        request.session["admin_user_id"] = user_id
-        request.session["admin_user_email"] = email
-        self._metrics.record_login(status="success")
         await self._audit_registration(request, ip, user_agent, email)
-        return RedirectResponse(url="/admin/", status_code=302)
+        return RedirectResponse(
+            url="/admin/login?notice="
+            + quote_plus("Account created successfully — please sign in."),
+            status_code=302,
+        )
 
     async def _audit_registration(
         self, request: Request, ip_address: str, user_agent: str, email: str

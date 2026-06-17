@@ -86,6 +86,23 @@ class AdminProvider(Provider):
         """Create provider from typed config."""
         return cls(config=config, **context)
 
+    @staticmethod
+    def rbac_resources_own_pages(resources: dict[str, Any]) -> bool:
+        """Return True when a ``users``/``roles`` resource is registered.
+
+        Such resources claim the exact paths the legacy ``RbacController``
+        serves (``/admin/users``, ``/admin/roles`` and their sub-paths), so
+        mounting the legacy controller alongside them would shadow the
+        resource CRUD UI — controllers register before resources.
+
+        Args:
+            resources: Mapping of resource name to resolved instance.
+
+        Returns:
+            True when a resource named ``users`` or ``roles`` is present.
+        """
+        return "users" in resources or "roles" in resources
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register admin and all sub-providers.
 
@@ -417,6 +434,38 @@ class AdminProvider(Provider):
             if self._config.strict_resource_resolution:
                 raise
 
+        # Resolve built-in ProfileController (profile page, password change)
+        try:
+            from lexigram.admin.controllers.profile import ProfileController
+
+            profile_controller = await admin_resolver.resolve(
+                ProfileController,
+                bypass_visibility=True,
+            )
+            controller_instances.append(profile_controller)
+            if admin_settings_service is not None:
+                profile_controller._settings_service = admin_settings_service
+            try:
+                from lexigram.admin.auth.store.protocols import (
+                    AdminUserStoreProtocol,
+                )
+
+                profile_controller._user_store = await admin_resolver.resolve(
+                    AdminUserStoreProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                profile_controller._user_store = None
+        except Exception as exc:
+            _log.error(
+                "admin.profile_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:ProfileController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Resolve built-in SetupController (first-run wizard)
         try:
             from lexigram.admin.controllers.setup import SetupController
@@ -438,15 +487,27 @@ class AdminProvider(Provider):
             if self._config.strict_resource_resolution:
                 raise
 
-        # Resolve built-in RbacController (roles and users pages)
-        try:
-            from lexigram.admin.controllers.rbac import RbacController
-
-            rbac_controller = await admin_resolver.resolve(
-                RbacController,
-                bypass_visibility=True,
+        # Resolve built-in RbacController (roles and users pages). Skipped
+        # when a "users"/"roles" resource is registered — the resource owns
+        # those exact URLs and renders the Resource (lexigram-ui) CRUD
+        # instead of the legacy hand-rolled pages, so mounting both would
+        # shadow the resource routes (controllers register before resources).
+        legacy_rbac_shadowed = self.rbac_resources_own_pages(resources_dict)
+        if legacy_rbac_shadowed:
+            _log.info(
+                "admin.rbac_controller_skipped",
+                reason="users/roles resources registered",
+                resources=",".join(sorted(resources_dict)),
             )
-            controller_instances.append(rbac_controller)
+        try:
+            if not legacy_rbac_shadowed:
+                from lexigram.admin.controllers.rbac import RbacController
+
+                rbac_controller = await admin_resolver.resolve(
+                    RbacController,
+                    bypass_visibility=True,
+                )
+                controller_instances.append(rbac_controller)
         except Exception as exc:
             _log.error(
                 "admin.rbac_controller_resolution_failed",

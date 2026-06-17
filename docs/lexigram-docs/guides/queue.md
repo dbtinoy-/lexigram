@@ -171,9 +171,9 @@ Messages that exhaust their retries are routed to the `DeadLetterQueue`:
 ```python
 from lexigram.queue import DeadLetterQueue
 
-dlq = DeadLetterQueue()
-dlq.store(message)
-failed = dlq.drain()
+dlq = DeadLetterQueue(max_size=1000)
+dlq.push(message)
+failed = dlq.drain()   # returns the drained messages
 ```
 
 :::caution
@@ -201,16 +201,19 @@ from lexigram.queue import MessagePipeline, MiddlewareBase
 
 
 class LoggingMiddleware(MiddlewareBase):
-    async def handle(self, message: BusMessage, next: callable) -> None:
+    async def process(self, message: BusMessage, next_handler: Any) -> None:
         logger.info("processing", topic=message.topic)
-        await next(message)
+        await next_handler(message)
         logger.info("completed", topic=message.topic)
 
 
+async def handle_order_placed(message: BusMessage) -> None:
+    ...
+
+
 pipeline = MessagePipeline()
-pipeline.use(LoggingMiddleware())
-pipeline.set_handler(my_handler)
-await pipeline.run(message)
+pipeline.add(LoggingMiddleware())
+await pipeline.execute(message, handle_order_placed)
 ```
 
 ---

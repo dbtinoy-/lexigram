@@ -33,6 +33,8 @@ _BYPASS_SUFFIXES: frozenset[str] = frozenset(
         "/verify-email/",
         "/password-reset",
         "/password-reset/",
+        "/register",
+        "/register/",
     }
 )
 

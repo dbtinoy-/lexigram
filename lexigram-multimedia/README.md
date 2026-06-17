@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
 ## Configuration
 
-> **Zero-config usage:** Call `MultimediaModule.configure()` with no arguments to use defaults. The default backend for every subsystem is a local HTTP reference server (`local-http`).
+> **Zero-config usage:** Call `MultimediaModule.configure()` with no arguments to use defaults. Default backends: `local-http` for TTS, music, video, and image; `librosa` for beat analysis; `rife` for frame interpolation; `real-esrgan` for upscaling.
 
 ### Option 1 — YAML file
 

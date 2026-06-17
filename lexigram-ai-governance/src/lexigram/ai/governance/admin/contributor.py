@@ -36,9 +36,16 @@ from lexigram.contracts.admin.types import (
     NavigationContribution,
     PageCategory,
     WidgetCategory,
+    WidgetKind,
     WidgetParams,
     WidgetSize,
     WidgetViewModel,
+)
+from lexigram.contracts.admin.widget_content import (
+    MessageContent,
+    Stat,
+    StatContent,
+    WidgetContent,
 )
 from lexigram.contracts.ai.governance import RelayUsageStoreProtocol
 from lexigram.contracts.core.health import HealthStatus
@@ -46,7 +53,6 @@ from lexigram.contracts.exceptions.container import ContainerError
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
-from lexigram.ui import Card, el, render_to_string
 
 if TYPE_CHECKING:
     from lexigram.contracts.admin.errors import AdminError
@@ -67,6 +73,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/ai-governance/widgets/current_spend",
         size=WidgetSize.MEDIUM,
         category=WidgetCategory.RESOURCES,
+        view_kind=WidgetKind.STAT,
         refresh_interval_seconds=60,
         permission=PERMISSION_READ,
         icon="dollar-sign",
@@ -79,6 +86,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/ai-governance/widgets/token_dimensions",
         size=WidgetSize.MEDIUM,
         category=WidgetCategory.RESOURCES,
+        view_kind=WidgetKind.STAT,
         refresh_interval_seconds=60,
         permission=PERMISSION_READ,
         icon="bar-chart",
@@ -91,6 +99,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/ai-governance/widgets/quota_pressure",
         size=WidgetSize.SMALL,
         category=WidgetCategory.RESOURCES,
+        view_kind=WidgetKind.STAT,
         refresh_interval_seconds=15,
         permission=PERMISSION_READ,
         icon="gauge",
@@ -103,6 +112,7 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         render_endpoint="/admin/ai-governance/widgets/settlement_failures",
         size=WidgetSize.SMALL,
         category=WidgetCategory.ACTIVITY,
+        view_kind=WidgetKind.STAT,
         refresh_interval_seconds=30,
         permission=PERMISSION_READ,
         icon="alert-triangle",
@@ -348,7 +358,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
         """Resolve the billing store and reservation manager from DI.
 
         Widgets that depend on a missing service render an explicit
-        "Unavailable" state (see ``_unavailable``) rather than failing
+        unavailable ``MessageContent`` state rather than failing
         the whole admin boot — but the resolution failure itself is
         always logged so it isn't silently invisible in production.
 
@@ -437,7 +447,7 @@ class GovernanceAdminContributor(BaseAdminContributor):
                 resolved at boot.
 
         Returns:
-            Ok(WidgetViewModel) with rendered HTML on success;
+            Ok(WidgetViewModel) with structured content on success;
             Err(WidgetNotFoundError) for unknown widget names.
         """
         renderers = {
@@ -453,8 +463,8 @@ class GovernanceAdminContributor(BaseAdminContributor):
                 Err(WidgetNotFoundError("ai-governance", widget_name)),
             )
             return not_found
-        html = await renderer(params)
-        return Ok(WidgetViewModel(body=html))
+        content = await renderer(params)
+        return Ok(WidgetViewModel(content=content))
 
     async def render_health_check(
         self,
@@ -500,79 +510,46 @@ class GovernanceAdminContributor(BaseAdminContributor):
             return None
         return RelayUsageReportService(self._store)
 
-    async def _render_current_spend(self, params: WidgetParams) -> str:
+    async def _render_current_spend(self, params: WidgetParams) -> WidgetContent:
         """Render the settled charge for the widget window."""
         reporter = await self._reporter()
         if reporter is None:
-            return render_to_string(
-                _unavailable("Billing store unavailable; spend not measured.")
-            )
+            return MessageContent(text="Billing store unavailable; spend not measured.")
         report = await self._report_window(reporter, params.time_window_minutes)
-        return render_to_string(
-            Card(
-                title="Current Spend",
-                content=render_to_string(
-                    el(
-                        "div",
-                        el(
-                            "p",
-                            f"{report.totals.total_charge:.4f}",
-                            class_="text-2xl font-bold text-[var(--foreground)]",
-                        ),
-                        el(
-                            "p",
-                            f"{report.total_rows} requests in the window",
-                            class_="text-sm text-[var(--muted-foreground)] mt-1",
-                        ),
-                    )
+        return StatContent(
+            stats=(
+                Stat(label="Current Spend", value=f"{report.totals.total_charge:.4f}"),
+                Stat(
+                    label="Request Volume",
+                    value=f"{report.total_rows} requests in the window",
                 ),
             )
         )
 
-    async def _render_token_dimensions(self, params: WidgetParams) -> str:
+    async def _render_token_dimensions(self, params: WidgetParams) -> WidgetContent:
         """Render prompt/completion/total tokens for the window."""
         reporter = await self._reporter()
         if reporter is None:
-            return render_to_string(
-                _unavailable("Billing reporting unavailable; no token data.")
-            )
+            return MessageContent(text="Billing reporting unavailable; no token data.")
         report = await self._report_window(reporter, params.time_window_minutes)
         totals = report.totals
-        return render_to_string(
-            Card(
-                title="Token Dimensions",
-                content=render_to_string(
-                    el(
-                        "div",
-                        el(
-                            "p",
-                            f"Prompt {totals.prompt_tokens:,}",
-                            class_="text-sm py-1",
-                        ),
-                        el(
-                            "p",
-                            f"Completion {totals.completion_tokens:,}",
-                            class_="text-sm py-1",
-                        ),
-                        el(
-                            "p",
-                            f"Total {totals.total_tokens:,}",
-                            class_="text-sm text-[var(--muted-foreground)] py-1",
-                        ),
-                    )
-                ),
+        return StatContent(
+            stats=(
+                Stat(label="Prompt Tokens", value=f"{totals.prompt_tokens:,}"),
+                Stat(label="Completion Tokens", value=f"{totals.completion_tokens:,}"),
+                Stat(label="Total Tokens", value=f"{totals.total_tokens:,}"),
             )
         )
 
-    async def _render_quota_pressure(self, params: WidgetParams) -> str:
+    async def _render_quota_pressure(self, params: WidgetParams) -> WidgetContent:
         """Render remaining capacity per configured dimension."""
         del params
         if self._manager is None:
-            return render_to_string(
-                _unavailable("Quota reporting requires the reservation manager.")
+            return MessageContent(
+                text="Quota reporting unavailable; reservation manager missing."
             )
         snapshot = await self._manager.quota_snapshot()
-        lines = []
+        stats: list[Stat] = []
         for entry in (
             snapshot.tenant,
             snapshot.account,
@@ -583,59 +560,36 @@ class GovernanceAdminContributor(BaseAdminContributor):
         ):
             if entry is None:
                 continue
-            lines.append(
-                el(
-                    "p",
-                    (
-                        f"{entry.dimension}: {entry.remaining_tokens():,} tokens · "
+            stats.append(
+                Stat(
+                    label=f"{entry.dimension}",
+                    value=(
+                        f"{entry.remaining_tokens():,} tokens · "
                         f"{entry.remaining_charge():.4f} charge"
                     ),
-                    class_="text-sm py-1",
                 )
             )
-        if not lines:
-            lines.append(
-                el(
-                    "p",
-                    "No quota limits configured.",
-                    class_="text-sm text-[var(--muted-foreground)] py-1",
-                )
-            )
-        return render_to_string(
-            Card(title="Quota Pressure", content=render_to_string(el("div", *lines)))
-        )
+        if not stats:
+            return MessageContent(text="No quota limits configured.")
+        return StatContent(stats=tuple(stats))
 
-    async def _render_settlement_failures(self, params: WidgetParams) -> str:
+    async def _render_settlement_failures(self, params: WidgetParams) -> WidgetContent:
         """Render failed settlement counts in the widget window."""
         reporter = await self._reporter()
         if reporter is None:
-            return render_to_string(
-                _unavailable("Billing reporting unavailable; no failure data.")
+            return MessageContent(
+                text="Billing reporting unavailable; no failure data."
             )
         report = await self._report_window(
             reporter, params.time_window_minutes, status="failed"
         )
         failed = sum(report.totals.status_counts.values())
-        return render_to_string(
-            Card(
-                title="Settlement Failures",
-                content=render_to_string(
-                    el(
-                        "div",
-                        el(
-                            "p",
-                            str(failed),
-                            class_="text-2xl font-bold text-[var(--foreground)]",
-                        ),
-                        el(
-                            "p",
-                            (
-                                f"{report.totals.total_charge:.4f} charge on failed "
-                                "settlements"
-                            ),
-                            class_="text-sm text-[var(--muted-foreground)] mt-1",
-                        ),
-                    )
+        return StatContent(
+            stats=(
+                Stat(label="Failed Settlements", value=str(failed)),
+                Stat(
+                    label="Failed Charge",
+                    value=f"{report.totals.total_charge:.4f} charge on failed settlements",
                 ),
             )
         )
@@ -666,17 +620,3 @@ class GovernanceAdminContributor(BaseAdminContributor):
             page_size=1,
             status=status,
         )
-
-
-def _unavailable(message: str) -> Any:
-    """Render an explicit unavailable dependency message."""
-    return Card(
-        title="Unavailable",
-        content=render_to_string(
-            el(
-                "p",
-                message,
-                class_="text-sm text-[var(--muted-foreground)] py-4",
-            )
-        ),
-    )

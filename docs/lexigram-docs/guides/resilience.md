@@ -190,7 +190,8 @@ Register `ResilienceModule` (or `ResilienceProvider` directly) and tune the `res
 from lexigram import Application
 from lexigram.resilience import ResilienceModule
 
-app = Application(modules=[ResilienceModule.configure()])
+app = Application(name="my-app")
+app.add_module(ResilienceModule.configure())
 ```
 
 ```yaml title="application.yaml"

@@ -62,7 +62,6 @@ if __name__ == "__main__":
 multimedia:
   interpolate:
     backend: "rife"
-    default_factor: 4
 ```
 
 ### Option 2 — Profiles + Environment Variables
@@ -70,7 +69,6 @@ multimedia:
 ```bash
 export LEX_PROFILE=production
 export LEX_MULTIMEDIA__INTERPOLATE__BACKEND=rife
-export LEX_MULTIMEDIA__INTERPOLATE__DEFAULT_FACTOR=4
 ```
 
 ### Option 3 — Python
@@ -80,9 +78,11 @@ from lexigram.multimedia.interpolate import InterpolationModule
 from lexigram.multimedia.interpolate.config import InterpolationConfig
 
 InterpolationModule.configure(
-    config=InterpolationConfig(default_factor=4)
+    config=InterpolationConfig()
 )
 ```
+
+> Interpolation is frame-pair based — `InterpolationRequest(frame_a=..., frame_b=...)`. There is no configurable factor; `InterpolationConfig` only carries `backend`, `rife_base_url`, and `timeout`.
 
 ### Config reference
 
@@ -90,7 +90,6 @@ InterpolationModule.configure(
 |-------|---------|---------|-------------|
 | `backend` | `"rife"` | `LEX_MULTIMEDIA__INTERPOLATE__BACKEND` | `rife` |
 | `rife_base_url` | `"http://localhost:5500"` | `LEX_MULTIMEDIA__INTERPOLATE__RIFE_BASE_URL` | RIFE server URL |
-| `default_factor` | `2` | `LEX_MULTIMEDIA__INTERPOLATE__DEFAULT_FACTOR` | Interpolation factor (2 or 4) |
 | `timeout` | `15.0` | `LEX_MULTIMEDIA__INTERPOLATE__TIMEOUT` | Request timeout in seconds |
 
 ## Module Factory Methods
@@ -98,7 +97,7 @@ InterpolationModule.configure(
 | Method | Description |
 |--------|-------------|
 | `InterpolationModule.configure(config)` | Configure with explicit interpolation config |
-| `InterpolationModule.stub()` | No-op module for unit testing |
+| `InterpolationModule.stub()` | Real module pinned to the default `rife` backend for tests |
 
 ## Key Features
 
@@ -129,4 +128,3 @@ async def test_boot():
 | `src/lexigram/multimedia/interpolate/servers/` | Reference-server entry point (`lexigram-interpolate-rife-serve`) |
 | `src/lexigram/multimedia/interpolate/video_interpolation_service.py` | `VideoInterpolationService` — frame-level video interpolation |
 | `src/lexigram/multimedia/interpolate/tasks.py` | Background interpolation task handlers |
-| `src/lexigram/multimedia/interpolate/exceptions.py` | `InterpolationTimeoutError` (extends `MultimediaError`) |

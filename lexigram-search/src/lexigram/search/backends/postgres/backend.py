@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 from lexigram import serialization as json
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
+from lexigram.search.backends.filters import render_postgres
+from lexigram.search.filterset import merge_filters, rule_to_filters
 from lexigram.search.types import SearchResponse
 
 if TYPE_CHECKING:
@@ -105,6 +107,7 @@ class PostgresDatabaseSearchBackend:
         limit: int = 20,
         offset: int = 0,
         sort: list[str] | None = None,
+        rule: str | None = None,
         **kwargs: Any,
     ) -> SearchResponse:
         """Full-text search using PostgreSQL ``websearch_to_tsquery``."""
@@ -118,9 +121,13 @@ class PostgresDatabaseSearchBackend:
         )
         params: list[Any] = [self.text_search_config, query]
 
-        if filters:
-            sql += " AND document @> $" + str(len(params) + 1)
-            params.append(json.dumps(filters))
+        if filters or rule:
+            clause, filter_params = render_postgres(
+                merge_filters(filters, rule_to_filters(rule)),
+                offset=len(params) + 1,
+            )
+            sql += " AND " + clause
+            params.extend(filter_params)
 
         sql += (
             " ORDER BY score DESC LIMIT $"

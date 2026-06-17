@@ -85,6 +85,7 @@ class StoreSubProvider:
         """Register stores into the DI container."""
         from typing import cast
 
+        from lexigram.contracts.events import EventStoreProtocol
         from lexigram.events.stores import (
             AbstractEventStore,
             AbstractSnapshotStore,
@@ -93,6 +94,9 @@ class StoreSubProvider:
 
         if self.event_store:
             container.singleton(cast("Any", AbstractEventStore), self.event_store)
+            container.singleton(
+                cast("Any", EventStoreProtocol), self.event_store
+            )
         if self.snapshot_store:
             container.singleton(cast("Any", AbstractSnapshotStore), self.snapshot_store)
         if self.snapshot_manager:

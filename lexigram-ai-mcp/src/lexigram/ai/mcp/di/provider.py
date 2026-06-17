@@ -175,7 +175,7 @@ class MCPProvider(Provider):
 
             skill_registry = await container.resolve(SkillRegistryProtocol)
             skill_executor = await container.resolve(SkillExecutorProtocol)
-        except (LookupError, RuntimeError, AttributeError, ImportError):
+        except (LookupError, RuntimeError, AttributeError, ImportError, UnresolvableDependencyError):
             logger.debug("mcp_skills_not_available")
             return
 

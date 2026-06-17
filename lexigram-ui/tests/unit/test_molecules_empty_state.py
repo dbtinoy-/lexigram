@@ -26,6 +26,19 @@ class TestEmptyState:
         result = str(e)
         assert "🔍" in result
 
+    def test_render_named_icon_resolves_to_svg(self) -> None:
+        e = EmptyState(icon="clock")
+        result = str(e)
+        assert "<svg" in result
+        assert ">clock<" not in result
+
+    def test_render_named_icon_preserves_wrapper(self) -> None:
+        e = EmptyState(icon="alert-triangle")
+        result = str(e)
+        assert 'class="text-6xl mb-4 opacity-50"' in result
+        assert "<svg" in result
+        assert 'class="w-16 h-16' in result
+
     def test_render_with_action(self) -> None:
         action = el("a", "Create New", href="/new")
         e = EmptyState(action=action)

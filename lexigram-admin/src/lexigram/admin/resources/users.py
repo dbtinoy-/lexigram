@@ -31,8 +31,11 @@ class UserResource(Resource):
     and last active date using DateRangeFilter.
     """
 
-    # Model configuration
     model = AdminUserEntity
+    name = "users"
+    label = "Users"
+    icon = "users"
+    category = "system"
     service = None  # Will be set by DI or registry
     # Secret/framework-managed columns must never render in generated forms
     form_exclude_fields = (

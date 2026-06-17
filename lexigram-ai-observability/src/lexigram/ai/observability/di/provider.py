@@ -13,6 +13,7 @@ from lexigram.contracts.ai.governance import AIAuditStoreProtocol
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.contracts.data.vector.protocols import VectorStoreProtocol
+from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 from lexigram.contracts.observability.ai import (
     AIHealthMonitorProtocol,
     AIMetricsProtocol,
@@ -112,7 +113,7 @@ class ObservabilityProvider(Provider):
 
         try:
             audit_store = await container.resolve(AIAuditStoreProtocol)
-        except (ValueError, KeyError, TypeError):
+        except (ValueError, KeyError, TypeError, UnresolvableDependencyError):
             pass  # audit store is optional
 
         # Wrap LLM client if registered
@@ -129,9 +130,9 @@ class ObservabilityProvider(Provider):
                     metrics=metrics,
                     audit_store=audit_store,
                 )
-                container.singleton(LLMClientProtocol, observable_llm)
+                container.bind(LLMClientProtocol, observable_llm)
                 logger.info("observability_llm_wrapped")
-            except (ValueError, KeyError, TypeError):
+            except (ValueError, KeyError, TypeError, UnresolvableDependencyError):
                 logger.debug("observability_no_llm_to_wrap")
 
             # Wrap vector store if registered
@@ -146,9 +147,9 @@ class ObservabilityProvider(Provider):
                     tracer=tracer,
                     metrics=metrics,
                 )
-                container.singleton(VectorStoreProtocol, observable_store)
+                container.bind(VectorStoreProtocol, observable_store)
                 logger.info("observability_vector_wrapped")
-            except (ValueError, KeyError, TypeError):
+            except (ValueError, KeyError, TypeError, UnresolvableDependencyError):
                 logger.debug("observability_no_vector_to_wrap")
 
         logger.debug("observability_booted")

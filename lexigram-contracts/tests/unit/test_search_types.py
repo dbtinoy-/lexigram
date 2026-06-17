@@ -9,6 +9,7 @@ import pytest
 from lexigram.contracts.search.types import (
     DocumentData,
     IndexSettings,
+    SearchableSpec,
     SearchFilters,
     SearchIndexResult,
 )
@@ -124,3 +125,26 @@ class TestSearchIndexResultIntegration:
         assert result_dict["id"] == "doc-1"
         assert result_dict["score"] == 0.85
         assert result_dict["highlights"] == {"body": "matched"}
+
+
+class TestSearchableSpec:
+    """Tests for SearchableSpec."""
+
+    def test_defaults(self) -> None:
+        spec = SearchableSpec()
+        assert spec.index_name is None
+        assert spec.fields == ()
+        assert spec.result_limit == 50
+
+    def test_configured(self) -> None:
+        spec = SearchableSpec(index_name="posts", fields=("title",), result_limit=10)
+        assert spec.index_name == "posts"
+        assert spec.fields == ("title",)
+        assert spec.result_limit == 10
+
+    def test_frozen_dataclass(self) -> None:
+        from dataclasses import FrozenInstanceError
+
+        spec = SearchableSpec()
+        with pytest.raises(FrozenInstanceError):
+            spec.index_name = "mutated"

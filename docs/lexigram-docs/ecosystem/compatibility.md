@@ -15,15 +15,17 @@ A small number of cross-extension dependencies exist where the functionality is 
 
 | Extension | Depends On | Reason |
 |-----------|------------|--------|
+| `lexigram-web` | `lexigram-ui` | Shared UI primitives for web responses |
+| `lexigram-admin` | `lexigram-ui`, `lexigram-auth`, `lexigram-cache`, `lexigram-features`, `lexigram-resilience` | Admin dashboard functionality |
 | `lexigram-events` | `lexigram-resilience` | Event buses use retry and circuit breaker |
 | `lexigram-tasks` | `lexigram-resilience` | Background jobs need retry and timeout policies |
-| `lexigram-ai-rag` | `lexigram-vector` | RAG requires vector storage |
-| `lexigram-ai-agents` | `lexigram-ai-llm` | Agents need an LLM client |
-| `lexigram-ai-memory` | `lexigram-ai-llm` | Memory summarization uses the LLM |
-| `lexigram-ai-mcp` | `lexigram-ai-llm`, `lexigram-ai-agents` | MCP exposes agents as tools |
+| `lexigram-ai` | `lexigram-ai-llm`, `lexigram-ai-rag`, `lexigram-ai-feedback`, `lexigram-ai-observability`, `lexigram-vector` | The orchestrator discovers and wires AI sub-packages via entry points |
+| `lexigram-testing` | any extension (optional) | Cross-package test utilities |
 
 :::note
 These exceptions are explicitly managed and documented. Adding a new cross-extension dependency requires a design review to ensure it doesn't create circular or tangled imports.
+
+**AI sub-packages** (`lexigram-ai-llm`, `lexigram-ai-rag`, `lexigram-ai-agents`, …) each depend **only** on `lexigram` and `lexigram-contracts` — they never import each other. Cross-AI-package communication goes through protocols resolved via the container.
 :::
 
 ## Python & Runtime
@@ -73,12 +75,12 @@ Install backend-specific dependencies via extras:
 | Package | Extras |
 |---------|--------|
 | `lexigram-sql` | `[postgres]`, `[mysql]`, `[sqlite]` |
-| `lexigram-cache` | `[redis]`, `[memcached]` |
-| `lexigram-queue` | `[redis]`, `[rabbitmq]`, `[kafka]`, `[sqs]` |
-| `lexigram-search` | `[meilisearch]`, `[elasticsearch]`, `[typesense]` |
-| `lexigram-storage` | `[s3]`, `[gcs]`, `[azure]`, `[r2]` |
-| `lexigram-vector` | `[pgvector]`, `[qdrant]`, `[pinecone]` |
-| `lexigram-ai-llm` | `[openai]`, `[anthropic]`, `[google]` |
+| `lexigram-cache` | `[redis]`, `[memcached]`, `[semantic]` |
+| `lexigram-queue` | `[redis]`, `[rabbitmq]`, `[kafka]`, `[sqs]`, `[azure]`, `[gcp]` |
+| `lexigram-search` | `[elasticsearch]`, `[meilisearch]`, `[algolia]` |
+| `lexigram-storage` | `[aws]`, `[gcp]`, `[azure]` |
+| `lexigram-vector` | `[pgvector]`, `[qdrant]`, `[pinecone]`, `[chroma]`, `[weaviate]` |
+| `lexigram-ai-llm` | `[openai]`, `[anthropic]`, `[ollama]`, `[groq]`, `[mistral]`, `[cohere]`, `[huggingface]` |
 
 ## Maturity
 

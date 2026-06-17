@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lexigram.contracts.notification.inbox import InboxMessage
+from lexigram.contracts.notification.inbox import INBOX_SENT_HOOK, InboxMessage
+from lexigram.hooks.ambient import fire as fire_hook
 from lexigram.logging import get_logger
 from lexigram.notification.inbox.memory import InMemoryInboxStore
 
@@ -76,6 +77,13 @@ class InboxService:
             message_id=message.id,
             user_id=user_id,
             title=title,
+        )
+        await fire_hook(
+            INBOX_SENT_HOOK,
+            message=message,
+            user_id=user_id,
+            title=title,
+            body=body,
         )
         return message
 

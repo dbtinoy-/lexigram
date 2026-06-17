@@ -243,8 +243,11 @@ class AuthenticationProvider(Provider):
                     HealthCheckRegistryProtocol,
                 )
 
-                registry = await container.resolve(HealthCheckRegistryProtocol)
-                registry.add("authentication", self.health_check)
+                registry = await container.resolve_optional(
+                    HealthCheckRegistryProtocol
+                )
+                if registry is not None:
+                    registry.add("authentication", self.health_check)
 
     async def shutdown(self) -> None:
         """Shutdown authentication provider."""

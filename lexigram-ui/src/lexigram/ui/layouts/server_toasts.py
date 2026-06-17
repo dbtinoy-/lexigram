@@ -250,6 +250,13 @@ class ServerToastChannel:
             if (toast) toast.remove();
         }}
 
+        // Close a toast by ID from any component via browser event:
+        // dispatch(new CustomEvent('lexigram:close-toast', {{ detail: {{ id: 'toast-...' }} }}))
+        document.addEventListener('lexigram:close-toast', function(evt) {{
+            const id = evt.detail && evt.detail.id;
+            if (id) dismissToast(id);
+        }});
+
         function escapeHtml(text) {{
             const div = document.createElement('div');
             div.textContent = text;

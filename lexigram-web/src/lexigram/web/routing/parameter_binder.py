@@ -82,7 +82,10 @@ class ParameterBinder:
 
             # B. Special Type: Request or ExecutionContextProtocol
             elif self._is_request_type(annotation, param_name, WebRequest):
-                value = request
+                # Wrap in the Lexigram request transport type when the
+                # handler asks for it explicitly; other request annotations
+                # (Starlette, untyped `request` params) keep the raw request.
+                value = WebRequest(request) if annotation is WebRequest else request
 
             elif annotation in (WebExecutionContext, ExecutionContextProtocol):
                 value = context

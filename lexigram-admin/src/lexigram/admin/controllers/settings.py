@@ -235,13 +235,16 @@ class SettingsController(AdminController):
             form = await request.form()
 
         nodes = spec.get_nodes()
+        multi = getattr(form, "multi_items", None)
+        raw_items = list(multi()) if multi else list(form.items())
         updates = {
             key: (
                 "true"
-                if isinstance(nodes[key], BooleanNode) and value == "on"
+                if isinstance(nodes[key], BooleanNode)
+                and any(_value == "on" for _key, _value in raw_items if _key == key)
                 else value
             )
-            for key, value in form.items()
+            for key, value in raw_items
             if not key.startswith("_") and key in nodes
         }
 

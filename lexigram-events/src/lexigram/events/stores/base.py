@@ -196,6 +196,34 @@ class AbstractEventStore(ABC, EventStoreProtocol, EventStreamMixin):
             updated_at=events[-1].occurred_at if events else None,
         )
 
+    async def read_all(
+        self,
+        position: int = 0,
+        count: int | None = None,
+    ) -> list[Event]:
+        """Read all events from the store in global order.
+
+        Default implementation streams from the store's ``stream_all``
+        primitive so every backend inherits a working ``read_all`` instead
+        of the no-op stub leaked by :class:`EventStoreProtocol`.
+
+        Args:
+            position: Starting global sequence number (inclusive).
+            count: Maximum number of events to return; ``None`` for all.
+
+        Returns:
+            List of events in global order, newest last.
+        """
+        events: list[Event] = []
+        async for event in self.stream_all(
+            from_position=position,
+            batch_size=count or 100,
+        ):
+            events.append(event)
+            if count is not None and len(events) >= count:
+                break
+        return events
+
     @abstractmethod
     def stream_all(
         self,

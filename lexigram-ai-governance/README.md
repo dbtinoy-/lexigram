@@ -37,9 +37,9 @@ from lexigram.ai.governance.config import GovernanceConfig
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
 
 ## Configuration

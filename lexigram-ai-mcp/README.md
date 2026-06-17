@@ -38,10 +38,15 @@ from lexigram.ai.mcp.config import MCPConfig
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
-if __name__ == "__main__":
-    app.run()
+async with Application.boot(modules=[AppModule]) as app:
+    # use app.container to resolve services
+    ...
 ```
+
+> **Note:** Full-module boot is currently limited — `MCPModule` registers handlers
+> during the boot phase, which the container freeze (LEX_ERR_DI_001) prevents.
+> Use `Application.boot` for other modules; for MCP, resolve controllers/services
+> directly from the container (`container.resolve(MyController)`) in tests.
 
 ## Configuration
 

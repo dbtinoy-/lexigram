@@ -19,6 +19,7 @@ from lexigram.admin.navigation.types import MenuItem
 
 __all__ = ["NavigationManager"]
 
+_MENU_PROFILE = MenuItem(label="Profile", href="/admin/profile", icon="user-circle")
 _MENU_SETTINGS = MenuItem(label="Settings", href="/admin/settings", icon="settings")
 _MENU_PLUGINS = MenuItem(label="Plugins", href="/admin/plugins", icon="plugins")
 
@@ -223,8 +224,8 @@ class NavigationManager:
     def user_menu_items(self, include_plugins: bool = True) -> list[dict[str, str | None]]:
         """Build the shell user-menu entries for this request.
 
-        Cluster centers (one entry per registered cluster) come first, then
-        Plugins and Settings.
+        The Profile entry comes first, then cluster centers (one entry per
+        registered cluster), then Plugins and Settings.
 
         Args:
             include_plugins: Include the Plugins landing entry (skipped by
@@ -233,14 +234,15 @@ class NavigationManager:
         Returns:
             Shell-compatible menu entry dicts (label, href, icon).
         """
-        entries: list[MenuItem] = [
+        entries: list[MenuItem] = [_MENU_PROFILE]
+        entries.extend(
             MenuItem(
                 label=cluster.label,
                 href=f"/admin/{cluster.slug}",
                 icon=cluster.icon or "box",
             )
             for cluster in self._cluster_registry.all()
-        ]
+        )
         if include_plugins:
             entries.append(_MENU_PLUGINS)
         entries.append(_MENU_SETTINGS)

@@ -6,7 +6,7 @@ SMS, push, and email notification delivery with Named DI multi-backend support f
 
 ## Overview
 
-`lexigram-notification` provides a unified notification delivery system with SMS (Twilio), push (FCM, APNS), email (SMTP, SendGrid), and per-user inbox storage. The package is organized into three subpackages: root (SMS/push), `mail` (email), and `inbox` (in-app notification storage) — each wired separately via its own module.
+`lexigram-notification` provides a unified notification delivery system with SMS (Twilio), push (FCM, APNS), email (SMTP, SendGrid), and per-user inbox storage. The package is organized into three subpackages: root (SMS/push), `mailer` (email), and `inbox` (in-app notification storage). Root and `mailer` each wire their own module; the inbox is wired by `InboxProvider` (not a module).
 
 ---
 
@@ -34,18 +34,15 @@ from lexigram.di.module import Module, module
 from lexigram.notification import NotificationModule
 from lexigram.notification.config import (
     FCMDriverConfig,
+    MailerConfig,
+    NamedMailerConfig,
     NamedPushConfig,
     NamedSMSConfig,
     NotificationConfig,
+    SMTPDriverConfig,
     TwilioDriverConfig,
 )
-from lexigram.notification.mail import MailerModule
-from lexigram.notification.mail.config import (
-    MailerConfig,
-    NamedMailerConfig,
-    SMTPDriverConfig,
-)
-from lexigram.notification.inbox import InboxConfig, InboxModule
+from lexigram.notification.mailer import MailerModule
 
 
 @module(
@@ -85,10 +82,9 @@ from lexigram.notification.inbox import InboxConfig, InboxModule
                         smtp=SMTPDriverConfig(host="smtp.example.com", port=587),
                     )
                 ]
-            )
-        ),
-        InboxModule.configure(InboxConfig(store_backend="memory")),
-    ]
+)
+    ),
+]
 )
 class AppModule(Module):
     pass
@@ -124,7 +120,6 @@ inbox:
 ### Option 2 — Profiles + Environment Variables *(recommended)*
 
 ```bash
-export LEX_NOTIFICATION__ENABLED=true
 export LEX_NOTIFICATION__INBOX__STORE_BACKEND=database
 ```
 
@@ -132,11 +127,13 @@ export LEX_NOTIFICATION__INBOX__STORE_BACKEND=database
 
 ```python
 from lexigram.notification import NotificationModule
-from lexigram.notification.config import NotificationConfig
-from lexigram.notification.mail import MailerModule
-from lexigram.notification.mail.config import MailerConfig, NamedMailerConfig, SMTPDriverConfig
-from lexigram.notification.inbox import InboxModule
-from lexigram.notification.inbox.config import InboxConfig
+from lexigram.notification.config import (
+    MailerConfig,
+    NamedMailerConfig,
+    NotificationConfig,
+    SMTPDriverConfig,
+)
+from lexigram.notification.mailer import MailerModule
 
 NotificationModule.configure(NotificationConfig())
 MailerModule.configure(
@@ -152,7 +149,6 @@ MailerModule.configure(
         ]
     )
 )
-InboxModule.configure(InboxConfig(store_backend="database"))
 ```
 
 ### Config reference
@@ -175,8 +171,25 @@ InboxModule.configure(InboxConfig(store_backend="database"))
 | `NotificationModule.stub()` | Empty config — no backends configured |
 | `MailerModule.configure(config)` | Register named mailer backends; exports `MailerProtocol` |
 | `MailerModule.stub(config=None)` | Empty or caller-supplied config for tests |
-| `InboxModule.configure(config)` | Register `InboxStoreProtocol` and `InboxService` |
-| `InboxModule.stub()` | In-memory inbox for tests |
+
+Inbox support ships as a service (`InboxService`) wired by `InboxProvider` (in `lexigram.notification.di`), not by `NotificationModule` — include `InboxProvider` in your module's `providers` list when you need the inbox.
+
+## Admin Inbox
+
+When running under `lexigram-admin`, the package registers a notification
+contributor (entry point `lexigram.admin.contributors`) that exposes:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /admin/notifications/inbox` | Current user's persisted inbox as JSON (`unread_count` + `notifications`, used by the topbar bell) |
+| `POST /admin/notifications/read/{message_id}` | Mark one message read |
+| `POST /admin/notifications/read-all` | Mark all of the user's messages read |
+| `GET /admin/notifications` | Inbox management page inside the admin shell |
+| `notifications.inbox` | Health check (`admin/health` fragments) |
+
+Real-time updates: `InboxService.send()` fires the `notification.inbox.sent`
+action hook (constant `INBOX_SENT_HOOK` in `lexigram-contracts`); the admin
+realtime sub-provider forwards it to the SSE hub so open bells update live.
 
 ## Key Features
 
@@ -185,19 +198,31 @@ InboxModule.configure(InboxConfig(store_backend="database"))
 - **Email delivery** — SMTP (blocking, runs in executor) and SendGrid REST API
 - **Retrying mailer** — wraps any `MailerProtocol` with exponential backoff and delivery-store tracking
 - **Per-user inbox** — SQL or in-memory backend with `InboxService` (send, get_inbox, mark_read, delete, count_unread)
-- **Named DI multi-backend** — multiple backends registered via `Annotated[QueueProtocol, Named("events")]`
+- **Multi-backend** — SMS and push backends registered by name from `NotificationConfig.sms_backends` / `push_backends`; the primary backend also receives the unnamed bindings
+
+## Testing
+
+```python
+async with Application.boot(
+    modules=[NotificationModule.stub(), MailerModule.stub()]
+) as app:
+    # your test code
+    ...
+```
 
 ## Key Source Files
 
 | File | What it contains |
 |------|----------------|
 | `src/lexigram/notification/module.py` | `NotificationModule.configure()`, `.stub()` |
-| `src/lexigram/notification/config.py` | `NotificationConfig`, `NamedSMSConfig`, `NamedPushConfig` |
+| `src/lexigram/notification/config.py` | `NotificationConfig`, `NamedSMSConfig`, `NamedPushConfig`, `MailerConfig`, `NamedMailerConfig`, `SMTPDriverConfig`, `InboxConfig` |
 | `src/lexigram/notification/di/provider.py` | `NotificationProvider` |
-| `src/lexigram/notification/mail/module.py` | `MailerModule.configure()`, `.stub()` |
-| `src/lexigram/notification/mail/config.py` | `MailerConfig`, `NamedMailerConfig`, `SMTPDriverConfig` |
-| `src/lexigram/notification/mail/di/provider.py` | `MailerProvider` |
-| `src/lexigram/notification/inbox/module.py` | `InboxModule.configure()`, `.stub()` |
-| `src/lexigram/notification/inbox/config.py` | `InboxConfig` |
-| `src/lexigram/notification/inbox/di/provider.py` | `InboxProvider` |
-| `src/lexigram/notification/inbox/service.py` | `InboxService` |
+| `src/lexigram/notification/di/inbox_provider.py` | `InboxProvider` — wires `InboxStoreProtocol` + `InboxService` |
+| `src/lexigram/notification/mailer/module.py` | `MailerModule.configure()`, `.stub()` |
+| `src/lexigram/notification/mailer/smtp_mailer.py` | SMTP mailer backend (blocking, executor-run) |
+| `src/lexigram/notification/mailer/sendgrid_mailer.py` | SendGrid REST API mailer backend |
+| `src/lexigram/notification/mailer/retrying_mailer.py` | `RetryingMailer` — exponential backoff + delivery tracking |
+| `src/lexigram/notification/mailer/mailable.py` | `Mailable` — message builder |
+| `src/lexigram/notification/inbox/service.py` | `InboxService` — send, get_inbox, mark_read, delete, count_unread |
+| `src/lexigram/notification/inbox/memory.py` | `InMemoryInboxStore` |
+| `src/lexigram/notification/inbox/database.py` | `DatabaseInboxStore` |

@@ -85,12 +85,13 @@ forbidden_modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-            lexigram.mapping
+    lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-        lexigram.queue
+    lexigram.plugins
+    lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security
@@ -136,12 +137,13 @@ forbidden_modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-            lexigram.mapping
+    lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-        lexigram.queue
+    lexigram.plugins
+    lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security
@@ -218,12 +220,13 @@ forbidden_modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-            lexigram.mapping
+    lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-        lexigram.queue
+    lexigram.plugins
+    lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security
@@ -274,12 +277,13 @@ modules =
     lexigram.graph
     lexigram.graphql
     lexigram.http
-            lexigram.mapping
+    lexigram.mapping
     lexigram.middleware
     lexigram.monitor
     lexigram.nosql
     lexigram.notification
-        lexigram.queue
+    lexigram.plugins
+    lexigram.queue
     lexigram.resilience
     lexigram.search
     lexigram.security

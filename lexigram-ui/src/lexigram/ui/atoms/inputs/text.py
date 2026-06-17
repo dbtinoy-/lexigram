@@ -67,14 +67,14 @@ class PasswordInput(TextInput):
     """Password input - TextInput with type='password'."""
 
     def __init__(self, name: str, **kwargs) -> None:
-        super().__init__(name=name, type="password", **kwargs)
+        super().__init__(name=name, input_type="password", **kwargs)
 
 
 class EmailInput(TextInput):
     """Email input - TextInput with type='email'."""
 
     def __init__(self, name: str, **kwargs) -> None:
-        super().__init__(name=name, type="email", **kwargs)
+        super().__init__(name=name, input_type="email", **kwargs)
 
 
 # Merge TextArea here instead of separate file

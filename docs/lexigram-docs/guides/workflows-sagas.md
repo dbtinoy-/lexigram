@@ -165,7 +165,7 @@ class DocumentApprovalFlow:
         b.add_edge("review", "approve")
         b.add_edge("approve", "publish")
         b.set_entry("start")
-        b.set_terminal("notify")
+        b.set_terminal("publish")
         b.set_terminal("reject")
         return b.build()
 
@@ -173,17 +173,24 @@ class DocumentApprovalFlow:
         return await self.build().execute(document)
 ```
 
-The engine supports checkpointing:
+The engine supports checkpointing — enable it via `GraphConfig` on the builder (settings are configured programmatically, not from YAML):
 
 ```python
-engine = WorkflowEngine(
-    workflow=my_workflow,
+from lexigram.workflow import WorkflowBuilder, GraphConfig
+
+builder = WorkflowBuilder()
+builder.configure(GraphConfig(
     checkpoint_enabled=True,
     max_iterations=50,
     node_timeout=120.0,
-)
+))
+# ... add nodes, gates, edges ...
+
+engine = builder.build()
 result = await engine.execute({"doc_id": "DOC-001"})
-result = await engine.resume(last_checkpoint, {"approved": True})
+
+# Resume from a checkpoint state with the human's decision:
+result = await engine.resume(checkpoint_state, "approved")
 ```
 
 ---
@@ -224,7 +231,8 @@ config = BulkOperationConfig(
     timeout=300.0, retry_attempts=3,
 )
 operation = BulkOperation(config=config)
-result = await operation.execute(items)
+async for batch in operation.execute(items):
+    print(batch)  # BulkBatchResult per batch
 ```
 
 ---
@@ -248,13 +256,11 @@ workflow:
   timeout: 300.0
   retry_attempts: 3
   pipeline_timeout: 600.0
-  graph:
-    enabled: true
-    max_iterations: 25
-    node_timeout: 120.0
-    checkpoint_enabled: true
-    parallel_branches: true
 ```
+
+:::note
+The `workflow:` section maps to `BulkOperationConfig`. The graph engine's settings (`checkpoint_enabled`, `max_iterations`, `node_timeout`, …) are not read from YAML — configure them per workflow via `WorkflowBuilder.configure(GraphConfig(...))`, as shown in section 3.
+:::
 
 ---
 

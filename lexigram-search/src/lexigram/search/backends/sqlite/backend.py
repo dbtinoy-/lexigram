@@ -8,8 +8,10 @@ from lexigram import serialization as json
 from lexigram.result import Err, Ok, Result
 from lexigram.search.backends.base import SearchBackendBase
 from lexigram.search.backends.base.database import AsyncDatabaseSearchBase
+from lexigram.search.backends.filters import render_sqlite
 from lexigram.search.config import SQLiteSearchConfig
 from lexigram.search.exceptions import SearchError
+from lexigram.search.filterset import merge_filters, rule_to_filters
 from lexigram.search.types import SearchResponse, SearchResult
 
 
@@ -80,6 +82,7 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
         filters: dict[str, Any] | None = None,
         limit: int = 20,
         offset: int = 0,
+        rule: str | None = None,
         **kwargs: Any,
     ) -> Result[SearchResponse, SearchError]:
         """Search documents using SQLite FTS5."""
@@ -96,6 +99,13 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
                 WHERE search_{safe_index}_fts MATCH ?
             """
             params = [query]
+
+            if filters or rule:
+                clause, filter_params = render_sqlite(
+                    merge_filters(filters, rule_to_filters(rule))
+                )
+                sql += " AND " + clause
+                params.extend(filter_params)
 
             sql += f" ORDER BY score LIMIT {limit} OFFSET {offset}"
 

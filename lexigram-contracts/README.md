@@ -44,8 +44,8 @@ name = result.match(ok=lambda u: u.name, err=lambda e: "unknown")
 ### Domain models
 
 ```python
-from lexigram.contracts.domain.base import Entity, ValueObject
-from lexigram.contracts.domain.aggregates import AggregateRoot
+from lexigram.domain.models import Entity, ValueObject
+from lexigram.domain import AggregateRoot
 from lexigram.contracts.domain.events import DomainEvent
 
 class UserCreated(DomainEvent):
@@ -59,7 +59,7 @@ class User(AggregateRoot):
 ### Protocols
 
 ```python
-from lexigram.contracts.cache import CacheBackend
+from lexigram.contracts.infra.cache import CacheBackendProtocol
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.contracts.security.secrets import SecretStoreProtocol
 ```
@@ -68,17 +68,18 @@ from lexigram.contracts.security.secrets import SecretStoreProtocol
 
 | Module | What it contains |
 |--------|-----------------|
-| `lexigram.result` | `Result[T, E]`, `Ok`, `Err`, `ok()`, `err()` |
-| `lexigram.contracts.core.container` | ContainerRegistrarImpl, ContainerResolverImpl |
-| `lexigram.contracts.core.provider` | Provider, ProviderPriority |
-| `lexigram.contracts.core.registry` | Registry for type-keyed dispatch |
-| `lexigram.contracts.domain.base` | Entity, ValueObject |
-| `lexigram.contracts.domain.aggregates` | AggregateRoot |
-| `lexigram.contracts.domain.events` | DomainEvent |
-| `lexigram.contracts.cache` | CacheBackend protocol |
-| `lexigram.contracts.data` | DatabaseProviderProtocol |
-| `lexigram.contracts.security.secrets` | SecretStoreProtocol |
-| `lexigram.contracts.exceptions` | LexigramError, full error hierarchy |
+| `lexigram.result` | `Result[T, E]`, `Ok`, `Err`, `as_result()`, `as_result_sync()`, `try_catch()`, `ResultPipeline` |
+| `lexigram.domain.models` | `DomainModel`, `Entity`, `ValueObject` (concrete domain models, in core `lexigram`) |
+| `lexigram.domain` | `AggregateRoot` (re-exported from `lexigram.domain.models.aggregate`) |
+| `lexigram.contracts.domain.base` | `DomainModelProtocol`, `ID` |
+| `lexigram.contracts.domain.events` | `DomainEvent` |
+| `lexigram.contracts.infra.cache` | `CacheBackendProtocol` |
+| `lexigram.contracts.data` | `DatabaseProviderProtocol` |
+| `lexigram.contracts.security.secrets` | `SecretStoreProtocol` |
+| `lexigram.contracts.core.di` | `ContainerRegistrarProtocol`, `ContainerResolverProtocol` |
+| `lexigram.contracts.core.provider` | `ProviderProtocol`, `ProviderPriority` |
+| `lexigram.contracts.core.registry` | `RegistryProtocol`, `StrategyRegistryProtocol`, `BackendRegistryProtocol` |
+| `lexigram.contracts.exceptions` | `LexigramError`, full error hierarchy |
 
 ## Key Source Files
 
@@ -86,7 +87,7 @@ from lexigram.contracts.security.secrets import SecretStoreProtocol
 |------|-----------------|
 | `src/lexigram/contracts/__init__.py` | Lazy-loading re-exports of all public types |
 | `src/lexigram/result/` | Result type and Ok/Err helpers |
-| `src/lexigram/contracts/domain/` | Entity, ValueObject, AggregateRoot, DomainEvent |
+| `src/lexigram/contracts/domain/` | `DomainModelProtocol`, `DomainEvent` |
 | `src/lexigram/contracts/core/` | Container, Provider, Registry protocols |
 | `src/lexigram/contracts/exceptions/` | LexigramError and domain error hierarchies |
 

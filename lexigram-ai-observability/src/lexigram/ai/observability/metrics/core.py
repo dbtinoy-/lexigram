@@ -280,3 +280,46 @@ class AIMetrics:
             The MetricsCollectorProtocol instance for advanced usage.
         """
         return self._collector
+
+    def record_completion(
+        self,
+        provider: str,
+        model: str,
+        tokens: int,
+        cost: float,
+    ) -> None:
+        """Record a successful LLM completion.
+
+        Args:
+            provider: Provider name.
+            model: Model identifier.
+            tokens: Total tokens consumed.
+            cost: Estimated dollar cost.
+        """
+        self.llm_requests_total.increment(
+            labels={"provider": provider, "model": model, "status": "success"},
+        )
+        self.llm_tokens_total.increment(
+            amount=tokens,
+            labels={"provider": provider, "model": model, "type": "completion"},
+        )
+        self.llm_cost_dollars.increment(
+            amount=cost,
+            labels={"provider": provider, "model": model},
+        )
+
+    def record_error(self, provider: str, error_type: str) -> None:
+        """Record an LLM or vector store error.
+
+        Args:
+            provider: Provider name.
+            error_type: Short error category string.
+        """
+        self.llm_requests_total.increment(
+            labels={
+                "provider": provider,
+                "model": "unknown",
+                "status": "error",
+                "error_type": error_type,
+            },
+        )

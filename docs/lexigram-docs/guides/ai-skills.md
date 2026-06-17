@@ -113,7 +113,7 @@ ai_skills:
     - current_datetime
     - math_calculate
     - web_search
-    - web_fetch
+    - http_request
 ```
 
 :::note
@@ -124,55 +124,24 @@ Built-in skills are registered automatically when `enable_builtin: true`. The `b
 
 ## 3. Defining Skills
 
-Use the `@skill` decorator to register a class as a skill:
+Use the `@skill` decorator with `@skill_param` annotations to register a skill:
 
 ```python
-from lexigram.ai.skills import skill
+from lexigram.ai.skills import skill, skill_param
 
 
 @skill(
     name="generate_summary",
     description="Generate a summary of the given text",
-    parameters={
-        "type": "object",
-        "properties": {
-            "text": {"type": "string", "description": "The text to summarize"},
-            "max_length": {"type": "integer", "description": "Max summary length"},
-        },
-        "required": ["text"],
-    },
 )
-class GenerateSummary:
-    async def execute(self, text: str, max_length: int = 100) -> str:
-        # Implementation
-        return text[:max_length] + "..."
-```
-
-For simple functions, use `FunctionSkill`:
-
-```python
-from lexigram.ai.skills import FunctionSkill
-
-
-async def web_search(query: str, max_results: int = 5) -> list[dict]:
+@skill_param(name="text", type="string", description="The text to summarize", required=True)
+@skill_param(name="max_length", type="integer", description="Max summary length")
+async def generate_summary(text: str, max_length: int = 100) -> str:
     # Implementation
-    return [{"title": "Result", "url": "https://example.com"}]
-
-
-search_skill = FunctionSkill(
-    name="web_search",
-    description="Search the web for information",
-    execute_fn=web_search,
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {"type": "string"},
-            "max_results": {"type": "integer"},
-        },
-        "required": ["query"],
-    },
-)
+    return text[:max_length] + "..."
 ```
+
+The decorator builds a JSON Schema from the collected `@skill_param` annotations and wraps the function in a `FunctionSkill`, which implements `SkillProtocol`.
 
 ---
 
@@ -219,7 +188,7 @@ The framework ships with several built-in skills:
 | `current_datetime` | Get the current date and time |
 | `math_calculate` | Evaluate mathematical expressions |
 | `web_search` | Search the web for information |
-| `web_fetch` | Fetch content from a URL |
+| `http_request` | Fetch content from a URL |
 | `text_summarize` | Summarize text content |
 | `text_translate` | Translate text between languages |
 | `code_execute` | Execute code in a sandbox |
@@ -230,18 +199,25 @@ Built-in skills are registered during boot when `enable_builtin: true` and their
 
 ## 6. Skill Composition
 
-Chain skills using `SkillPipeline`:
+Chain skills by enriching a shared context using `SkillPipeline`:
 
 ```python
 from lexigram.ai.skills import SkillPipeline
+from lexigram.contracts.ai.skills import SkillExecutorProtocol
 
 
 async def composed_workflow() -> None:
-    pipeline = SkillPipeline(steps=[
-        ("web_search", {"query": "{query}"}),
-        ("text_summarize", {"text": "{web_search.output}"}),
-    ])
-    result = await pipeline.execute(query="latest AI research")
+    async with Application.boot(
+        modules=[SkillsModule.configure(SkillsConfig(enable_builtin=True))]
+    ) as app:
+        executor = await app.container.resolve(SkillExecutorProtocol)
+
+        pipeline = SkillPipeline()
+        pipeline.add_stage("web_search", output_key="search_results")
+        pipeline.add_stage("text_summarize", output_key="summary")
+        result = await pipeline.execute(
+            executor, {"query": "latest AI research"}
+        )
 ```
 
 `ParallelSkills` runs skills concurrently; `SkillRouter` dispatches based on input.

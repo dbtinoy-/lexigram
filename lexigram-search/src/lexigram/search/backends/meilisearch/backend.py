@@ -8,7 +8,9 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.search.backends.base import SearchBackendBase
+from lexigram.search.backends.filters import render_filters
 from lexigram.search.exceptions import SearchError
+from lexigram.search.filterset import merge_filters, rule_to_filters
 from lexigram.search.types import SearchResponse, SearchResult
 
 logger = get_logger(__name__)
@@ -181,8 +183,23 @@ class MeiliSearchBackend(SearchBackendBase):
         limit: int = 20,
         offset: int = 0,
         sort: list[str] | None = None,
+        rule: str | None = None,
     ) -> Result[SearchResponse, SearchError]:
-        """Execute a search against the MeiliSearch index."""
+        """Execute a search against the MeiliSearch index.
+
+        Args:
+            index_name: Target index name.
+            query: Search query string.
+            filters: Canonical filter dict.
+            limit: Maximum results to return.
+            offset: Result offset for pagination.
+            sort: Keyword-sorted list of ``field:asc|desc`` terms.
+            rule: Query-builder block JSON string merged into *filters*
+                with AND semantics.
+
+        Returns:
+            Ok(SearchResponse) or Err(SearchError) on backend failure.
+        """
         try:
             await self._validate_search_params(index_name, query, filters, sort)
         except ValueError as e:
@@ -193,11 +210,9 @@ class MeiliSearchBackend(SearchBackendBase):
 
         search_params = {"q": query, "limit": limit, "offset": offset}
 
-        if filters:
-            filter_str = " AND ".join(
-                [f"{item[0]}={item[1]}" for item in filters.items()],
-            )
-            search_params["filter"] = filter_str
+        if filters or rule:
+            filters = merge_filters(filters, rule_to_filters(rule))
+            search_params["filter"] = render_filters("meilisearch", filters)
 
         if sort:
             search_params["sort"] = sort

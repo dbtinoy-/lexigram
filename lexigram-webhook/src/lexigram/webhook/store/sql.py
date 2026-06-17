@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
@@ -17,6 +17,14 @@ import lexigram.serialization as json
 __all__ = ["SqlWebhookDeliveryStore", "SqlWebhookSubscriptionStore"]
 
 logger = get_logger(__name__)
+
+
+def _naive_utc(dt: datetime | None) -> datetime | None:
+    """Normalize to a naive UTC datetime for TIMESTAMP columns."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is None else dt.astimezone(UTC).replace(tzinfo=None)
+
 
 _SUBSCRIPTION_DDL = """
 CREATE TABLE IF NOT EXISTS webhook_subscriptions (
@@ -102,7 +110,7 @@ class SqlWebhookSubscriptionStore:
             int(subscription.active),
             subscription.description,
             subscription.tenant_id,
-            subscription.created_at.isoformat(),
+            _naive_utc(subscription.created_at),
             json.dumps_str(subscription.metadata),
         ]
         await self._db.execute_query(sql, params)
@@ -282,10 +290,8 @@ class SqlWebhookDeliveryStore:
             attempt.status.value,
             attempt.status_code,
             attempt.attempt_number,
-            attempt.attempted_at.isoformat(),
-            attempt.next_retry_at.isoformat()
-            if attempt.next_retry_at is not None
-            else None,
+            _naive_utc(attempt.attempted_at),
+            _naive_utc(attempt.next_retry_at),
             attempt.error_message,
             attempt.duration_ms,
         ]
@@ -385,7 +391,7 @@ class SqlWebhookDeliveryStore:
             subscription_id,
             DeliveryStatus.FAILED.value,
             DeliveryStatus.DEAD_LETTER.value,
-            since.isoformat(),
+            _naive_utc(since),
         ]
         result = await self._db.execute_query(sql, params)
         if not result.success or not result.rows:

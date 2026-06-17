@@ -73,11 +73,23 @@ class CacheModule(Module):
         Returns:
             A DynamicModule backed by in-memory cache storage.
         """
+        from lexigram.cache.config import CacheBackendConfig, CacheConfig
         from lexigram.cache.di.provider import CacheProvider
+        from lexigram.cache.types import BackendType
 
+        if config is None:
+            config = CacheConfig(
+                backends=[
+                    CacheBackendConfig(
+                        name="default",
+                        type=BackendType.MEMORY,
+                        default=True,
+                    )
+                ]
+            )
         return DynamicModule(
             module=cls,
-            providers=[CacheProvider()],
+            providers=[CacheProvider(config=config)],
             exports=[CacheBackendProtocol],
         )
 

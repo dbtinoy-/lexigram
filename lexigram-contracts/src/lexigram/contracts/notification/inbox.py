@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from lexigram.contracts.core import HealthCheckResult
 import uuid
 
+INBOX_SENT_HOOK = "notification.inbox.sent"
+
 
 @dataclass(frozen=True)
 class InboxMessage:
@@ -163,4 +165,4 @@ class InboxStoreProtocol(Protocol):
         ...
 
 
-__all__ = ["InboxMessage", "InboxStoreProtocol"]
+__all__ = ["INBOX_SENT_HOOK", "InboxMessage", "InboxStoreProtocol"]

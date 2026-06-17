@@ -401,6 +401,15 @@ class MailerConfig(BaseConfig):
             "the unnamed MailerProtocol binding for backward compatibility."
         ),
     )
+    console_fallback: bool = Field(
+        default=True,
+        description=(
+            "When no backends are configured, bind a ConsoleMailer as the "
+            "default MailerProtocol so emails are logged to the application "
+            "console instead of being silently dropped. Set to False to "
+            "render email sending unavailable (MailerProtocol unbindable)."
+        ),
+    )
 
     @classmethod
     def from_named(cls, entry: NamedMailerConfig) -> MailerConfig:

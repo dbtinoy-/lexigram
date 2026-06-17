@@ -8,6 +8,7 @@ from typing import Any
 from lexigram import serialization as json
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.events.sagas.store import SagaStore
+from lexigram.primitives import clock
 from lexigram.events.sagas.types import (
     SagaRecord,
     SagaStatus,
@@ -47,16 +48,24 @@ def _step_to_dict(step: SagaStepRecord) -> dict[str, Any]:
     }
 
 
+def _naive_utc(dt: datetime | None) -> datetime | None:
+    """Normalize to a naive UTC datetime for TIMESTAMP columns."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is None else dt.astimezone(UTC).replace(tzinfo=None)
+
+
 def _dict_to_step(d: dict[str, Any]) -> SagaStepRecord:
+    def _dt(val: Any) -> datetime | None:
+        if val is None:
+            return None
+        return val if isinstance(val, datetime) else datetime.fromisoformat(val)
+
     return SagaStepRecord(
         step_name=d["step_name"],
         status=SagaStepStatus(d["status"]),
-        started_at=datetime.fromisoformat(d["started_at"])
-        if d.get("started_at")
-        else None,
-        completed_at=datetime.fromisoformat(d["completed_at"])
-        if d.get("completed_at")
-        else None,
+        started_at=_dt(d.get("started_at")),
+        completed_at=_dt(d.get("completed_at")),
         output=d.get("output", {}),
         error=d.get("error"),
         attempts=d.get("attempts", 0),
@@ -91,7 +100,7 @@ class SqlSagaStore(SagaStore):
         Args:
             record: The saga record to save.
         """
-        record.updated_at = datetime.now(UTC)
+        record.updated_at = clock.now()
         steps_json = json.dumps_str(
             {name: _step_to_dict(step) for name, step in record.steps.items()}
         )
@@ -108,8 +117,8 @@ class SqlSagaStore(SagaStore):
                 record.status.value,
                 data_json,
                 steps_json,
-                record.updated_at.isoformat(),
-                record.completed_at.isoformat() if record.completed_at else None,
+                _naive_utc(record.updated_at),
+                _naive_utc(record.completed_at),
                 record.error,
                 record.saga_id,
             ]
@@ -124,9 +133,9 @@ class SqlSagaStore(SagaStore):
                 record.status.value,
                 data_json,
                 steps_json,
-                record.created_at.isoformat(),
-                record.updated_at.isoformat(),
-                record.completed_at.isoformat() if record.completed_at else None,
+                _naive_utc(record.created_at),
+                _naive_utc(record.updated_at),
+                _naive_utc(record.completed_at),
                 record.error,
             ]
         await self._db.execute_query(sql, params)

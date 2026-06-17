@@ -88,12 +88,12 @@ class TestUserMenuItems:
             base.register(cluster)
         return request
 
-    def test_includes_default_cluster_plus_plugins_and_settings(self) -> None:
+    def test_includes_profile_cluster_plugins_and_settings(self) -> None:
         menu = NavigationManager(self._request_with_defaults()).user_menu_items()
         labels = [m["label"] for m in menu]
-        assert labels == ["Infrastructure", "Plugins", "Settings"]
-        assert menu[0]["href"] == "/admin/infrastructure"
-        assert menu[0]["icon"] == "server"
+        assert labels == ["Profile", "Infrastructure", "Plugins", "Settings"]
+        assert menu[0]["href"] == "/admin/profile"
+        assert menu[0]["icon"] == "user-circle"
 
     def test_includes_extra_clusters_in_order(self) -> None:
         request = self._request_with_defaults()
@@ -119,19 +119,20 @@ class TestUserMenuItems:
         )
         menu = NavigationManager(request).user_menu_items()
         assert [m["label"] for m in menu] == [
+            "Profile",
             "Other",
             "Infrastructure",
             "Content",
             "Plugins",
             "Settings",
         ]
-        assert menu[0]["href"] == "/admin/other"
+        assert menu[1]["href"] == "/admin/other"
 
     def test_include_plugins_false_drops_plugins(self) -> None:
         menu = NavigationManager(self._request_with_defaults()).user_menu_items(
             include_plugins=False
         )
-        assert [m["label"] for m in menu] == ["Infrastructure", "Settings"]
+        assert [m["label"] for m in menu] == ["Profile", "Infrastructure", "Settings"]
 
 
 @pytest.mark.parametrize(

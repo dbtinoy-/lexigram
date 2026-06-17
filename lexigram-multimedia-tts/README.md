@@ -112,7 +112,7 @@ AudioTTSModule.configure(
 | Method | Description |
 |--------|-------------|
 | `AudioTTSModule.configure(config)` | Configure with explicit TTS config |
-| `AudioTTSModule.stub()` | No-op module for unit testing (uses `local-http`) |
+| `AudioTTSModule.stub()` | Real module pinned to the default `local-http` backend for tests |
 
 ## Key Features
 

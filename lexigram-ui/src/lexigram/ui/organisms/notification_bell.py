@@ -8,14 +8,21 @@ from lexigram.ui import Component, el, get_icon, raw
 class NotificationBell(Component):
     """In-app notification bell with real-time updates via SSE.
 
-    Alpine.js-driven component that connects to the admin SSE endpoint,
-    displays an unread count badge on the bell icon, and shows a dropdown
-    of recent notifications with mark-as-read support.
+    Alpine.js-driven component that loads the persisted inbox from the
+    admin JSON endpoints, displays an unread count badge on the bell
+    icon, and shows a dropdown of recent notifications with
+    mark-as-read support (posting back to the inbox endpoints).
 
     Args:
         sse_url: SSE endpoint URL for real-time notification events.
         inbox_url: Link to the full notification inbox page. The
             "View all" footer is only rendered when a URL is set.
+        inbox_api_url: JSON endpoint returning the persisted inbox
+            (``{"unread_count": ..., "notifications": [...]}``).
+        mark_read_url: POST endpoint marking one message read; the
+            literal ``{message_id}`` placeholder is replaced with the
+            message ID.
+        mark_all_read_url: POST endpoint marking every message read.
         max_display: Maximum number of notifications shown in the dropdown.
         **props: Extra HTML attributes forwarded to the root element.
     """
@@ -24,12 +31,18 @@ class NotificationBell(Component):
         self,
         sse_url: str = "/admin/_sse/events",
         inbox_url: str | None = None,
+        inbox_api_url: str = "/admin/notifications/inbox",
+        mark_read_url: str = "/admin/notifications/read/{message_id}",
+        mark_all_read_url: str = "/admin/notifications/read-all",
         max_display: int = 10,
         **props: Any,
     ) -> None:
         super().__init__(**props)
         self.sse_url = sse_url
         self.inbox_url = inbox_url
+        self.inbox_api_url = inbox_api_url
+        self.mark_read_url = mark_read_url
+        self.mark_all_read_url = mark_all_read_url
         self.max_display = max_display
 
     def render(self) -> Any:
@@ -181,6 +194,7 @@ document.addEventListener('alpine:init', () => {{
         toggle() {{ this.open = !this.open; }},
         close() {{ this.open = false; }},
         init() {{
+            this.loadInbox();
             if (this.eventSource) return;
             this.eventSource = new EventSource('{self.sse_url}');
             this.eventSource.addEventListener('notification', (e) => {{
@@ -215,6 +229,24 @@ document.addEventListener('alpine:init', () => {{
             observer.observe(document.body, {{ childList: true, subtree: true }});
             this._observer = observer;
         }},
+        async loadInbox() {{
+            try {{
+                const res = await fetch('{self.inbox_api_url}', {{
+                    headers: {{'X-Requested-With': 'fetch'}}
+                }});
+                if (!res.ok) return;
+                const data = await res.json();
+                this.notifications = (data.notifications || []).map(n => ({{
+                    id: n.id,
+                    title: n.title || 'Notification',
+                    message: n.message || '',
+                    level: n.level || 'info',
+                    read: n.read === true,
+                    time: n.timestamp
+                }}));
+                this.unreadCount = data.unread_count || 0;
+            }} catch (e) {{}}
+        }},
         destroy() {{
             if (this._observer) {{
                 this._observer.disconnect();
@@ -222,16 +254,28 @@ document.addEventListener('alpine:init', () => {{
             }}
             if (this.eventSource) this.eventSource.close();
         }},
-        markAsRead(id) {{
+        async markAsRead(id) {{
             const notif = this.notifications.find(n => n.id === id);
             if (notif && !notif.read) {{
                 notif.read = true;
                 this.unreadCount = Math.max(0, this.unreadCount - 1);
             }}
+            try {{
+                await fetch('{self.mark_read_url}'.replace('{{message_id}}', id), {{
+                    method: 'POST',
+                    headers: {{'X-Requested-With': 'fetch'}}
+                }});
+            }} catch (e) {{}}
         }},
-        markAllRead() {{
+        async markAllRead() {{
             this.notifications.forEach(n => n.read = true);
             this.unreadCount = 0;
+            try {{
+                await fetch('{self.mark_all_read_url}', {{
+                    method: 'POST',
+                    headers: {{'X-Requested-With': 'fetch'}}
+                }});
+            }} catch (e) {{}}
         }}
     }}));
 }});

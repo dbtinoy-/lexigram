@@ -76,7 +76,8 @@ class AppModule(Module):
     pass
 
 
-app = Application(modules=[AppModule])
+app = Application(name="my-app")
+app.add_module(AppModule)
 ```
 
 ```yaml title="application.yaml"

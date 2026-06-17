@@ -126,6 +126,9 @@ class AlembicManager:
             self._provider,
             self.connection_string,
         )
+        # Re-entrancy guard: providers boot concurrently, and lazy boot
+        # triggers can double-invoke `upgrade("head")` during startup.
+        self._upgraded = False
 
     def _create_alembic_config(self) -> Config:
         """Create and configure Alembic Config object."""
@@ -183,10 +186,16 @@ class AlembicManager:
     async def upgrade(self, revision: str = "head", **kwargs) -> None:
         """Run database migrations up to the specified revision.
 
+        Concurrent invocations (e.g. providers booting in parallel) are
+        collapsed into a single migration run.
+
         Args:
             revision: Target revision. Defaults to "head" (latest).
             **kwargs: Additional arguments passed to Alembic upgrade.
         """
+        if self._upgraded:
+            return
+        self._upgraded = True
         await self.engine.upgrade(revision, **kwargs)
 
     async def downgrade(self, revision: str = "-1", **kwargs) -> None:
@@ -196,6 +205,7 @@ class AlembicManager:
             revision: Target revision. Defaults to "-1" (previous).
             **kwargs: Additional arguments passed to Alembic downgrade.
         """
+        self._upgraded = False
         await self.engine.downgrade(revision, **kwargs)
 
     async def upgrade_dry_run(self, revision: str = "head") -> list[str]:

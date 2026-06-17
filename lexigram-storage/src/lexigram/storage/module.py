@@ -81,7 +81,11 @@ class StorageModule(Module):
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
         """
+        from lexigram.storage.config import StorageConfig
         from lexigram.storage.di.provider import StorageProvider
+
+        if config is None:
+            config = StorageConfig(default_driver="memory")
 
         return DynamicModule(
             module=cls,

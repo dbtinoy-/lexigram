@@ -109,7 +109,7 @@ UIModule.configure(
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `default_theme` | `"default"` | `LEX_UI__DEFAULT_THEME` | CSS theme name passed to `shadcn_css()` |
+| `default_theme` | `"default"` | `LEX_UI__DEFAULT_THEME` | Default UI theme (`default`, `dark`, `light`, `system`) |
 | `auto_escape` | `true` | `LEX_UI__AUTO_ESCAPE` | HTML-escape user-supplied strings by default |
 | `htmx_version` | `"2.0.4"` | `LEX_UI__HTMX_VERSION` | HTMX asset version referenced in layout helpers |
 | `debug_components` | `false` | `LEX_UI__DEBUG_COMPONENTS` | Render `data-component` debug attributes (dev only) |
@@ -128,7 +128,7 @@ UIModule.configure(
 
 - **Core rendering primitives** — `Component`, `Element`, `RawHTML`, `el`, `raw`, `render_to_string`
 - **Polymorphic `asChild` pattern** — slot-based composition via `as_child` parameter on `Component`, `Button`, `Link`, `Card`
-- **ShadCN design tokens** — CSS variable system in oklch color space: `SHADCN_DEFAULT_COLORS`, `SHADCN_DARK_COLORS`, `shadcn_css()` generator, `SEMANTIC_UTILITY_CLASSES`
+- **ShadCN design tokens** — CSS variable system in oklch color space: `SHADCN_DEFAULT_COLORS`, `SHADCN_DARK_COLORS`, `shadcn_css()` generator, `SEMANTIC_CLASSES`
 - **Theme system** — `shadcn_css()` generates complete `:root` / `.dark` CSS blocks with overridable `primary`, `background`, `foreground`, `radius`, status colors
 - **Component CLI** — `lexigram-ui add <component>` scaffolds components into your project (12 components in registry: button, card, modal, input, select, tabs, toast, tooltip, skeleton, form, badge, pagination)
 - **HTMX helpers** — `hx_get`, `hx_post`, `hx_target`, `hx_swap`, and higher-level helpers
@@ -140,6 +140,14 @@ UIModule.configure(
 - **Performance** — `RenderCache`, `ResponseOptimizer`, `MetricsCollector`
 - **CSP requirements** — `UI_CSP_REQUIREMENTS` for Content Security Policy configuration
 
+## Testing
+
+```python
+async with Application.boot(modules=[UIModule.stub()]) as app:
+    # your test code
+    ...
+```
+
 ## Key Source Files
 
 | File | What it contains |
@@ -149,13 +157,13 @@ UIModule.configure(
 | `src/lexigram/ui/core/base.py` | `Component`, `Element`, `el`, `render_to_string` |
 | `src/lexigram/ui/core/slot.py` | `Slot` — pass-through renderer for `asChild` pattern |
 | `src/lexigram/ui/protocols.py` | `RenderableProtocol` |
-| `src/lexigram/ui/styles/design_tokens.py` | `SHADCN_DEFAULT_COLORS`, `SHADCN_DARK_COLORS`, `render_css_variables()`, `render_utility_classes()` |
+| `src/lexigram/ui/styles/design_tokens.py` | `SHADCN_DEFAULT_COLORS`, `SHADCN_DARK_COLORS`, `render_all_tokens()` |
 | `src/lexigram/ui/styles/theme.py` | `shadcn_css()` — complete CSS variable generation |
 | `src/lexigram/ui/styles/tokens.py` | Semantic class maps (button, alert, toast, icon colors) |
 | `src/lexigram/ui/atoms/__init__.py` | Button, TextInput, Badge, Icon |
 | `src/lexigram/ui/molecules/__init__.py` | Card, Modal, Tabs, Toast |
 | `src/lexigram/ui/organisms/__init__.py` | Form, SlideOver, Chart |
-| `src/lexigram/ui/htmx/htmx.py` | `hx_get`, `hx_post`, `hx_target`, `hx_swap` |
+| `src/lexigram/ui/htmx/attrs.py` | `hx_get`, `hx_post`, `hx_target`, `hx_swap` |
 | `src/lexigram/ui/htmx/sse.py` | `SSEMessage`, `SSEStream` |
 | `src/lexigram/ui/cli/registry.py` | `COMPONENT_REGISTRY`, `ComponentEntry` — 12 registerable components |
 | `src/lexigram/ui/cli/add.py` | `lexigram-ui add` CLI command (typer) |

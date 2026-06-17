@@ -408,15 +408,21 @@ class MonitorProvider(Provider):
                 alert_dispatcher=dispatcher,
                 suppression_window_seconds=slo_cfg.suppression_window_seconds,
             )
-            task_mgr = await container.resolve(BackgroundTaskManager)
-            worker = SLOEvaluationWorker(
-                task_manager=task_mgr,
-                monitor=monitor,
-                evaluation_interval=slo_cfg.evaluation_interval,
-                initial_delay_seconds=5.0,
-            )
-            await worker.start()
-            self._slo_worker = worker
+            task_mgr = await container.resolve_optional(BackgroundTaskManager)
+            if task_mgr is None:
+                logger.warning(
+                    "slo_worker_skipped",
+                    detail="BackgroundTaskManager not registered; SLO worker not started",
+                )
+            else:
+                worker = SLOEvaluationWorker(
+                    task_manager=task_mgr,
+                    monitor=monitor,
+                    evaluation_interval=slo_cfg.evaluation_interval,
+                    initial_delay_seconds=5.0,
+                )
+                await worker.start()
+                self._slo_worker = worker
 
         # Start the weekly-digest flush worker if a WeeklyDigestDispatcher
         # is registered in the container.  Without this worker the digest

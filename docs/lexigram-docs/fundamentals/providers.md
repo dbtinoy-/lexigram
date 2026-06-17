@@ -23,6 +23,7 @@ class DatabaseProvider(Provider):
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         # Bind the protocol to our specific implementation
         container.singleton(DatabaseProtocol, MySqlConnection)
+        container.singleton(DatabaseService, DatabaseService())
 ```
 
 ### Phase 2: `boot(container)`
@@ -35,10 +36,10 @@ from lexigram.contracts.core.di import BootContainerProtocol
 async def boot(self, container: BootContainerProtocol) -> None:
     db = await container.resolve(DatabaseProtocol)
     await db.connect()
-    container.singleton(DatabaseService, DatabaseService(db))
+    container.bind(DatabaseService, DatabaseService(db))
 ```
 
-> **Note:** `boot()` receives `BootContainerProtocol` (not `ContainerResolverProtocol`) because some providers need to register new services during boot after resolving existing ones.
+> **Note:** `boot()` receives `BootContainerProtocol`. The container is frozen during boot, so `singleton()`/`transient()`/`scoped()` raise `ContainerError` (LEX_ERR_DI_001). To replace an already-registered singleton (e.g. swapping in a configured `DatabaseService`), use `container.bind(service_type, instance)`.
 
 ---
 

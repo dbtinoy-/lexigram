@@ -104,7 +104,11 @@ class NoSQLModule(Module):
     def stub(cls, config: NoSQLConfig | None = None) -> DynamicModule:
         """Create a NoSQLModule suitable for unit and integration testing.
 
-        Uses in-memory or minimal backends with no external service dependencies.
+        Uses a minimal ``NoSQLConfig`` with the MongoDB driver.  A
+        reachable MongoDB instance is still required at boot — this
+        package ships no in-memory backend.  Point ``config`` at a test
+        MongoDB (``MongoDBConfig(uri=..., database=...)``) when the
+        defaults are unsuitable.
 
         Args:
             config: Optional :class:`~lexigram.nosql.config.NoSQLConfig` override.

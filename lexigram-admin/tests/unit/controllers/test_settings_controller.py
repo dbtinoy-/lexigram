@@ -321,6 +321,37 @@ class TestSettingsController:
         assert values["enabled"] is False
 
     @pytest.mark.asyncio
+    async def test_save_spec_checked_toggle_wins_over_hidden_false(
+        self, renderer: MagicMock
+    ) -> None:
+        """Toggle + hidden-false submit both; the 'on' value must win."""
+        from starlette.datastructures import FormData
+
+        audit = AsyncMock()
+        registry = ConfigRegistry.with_defaults()
+        controller = SettingsController(
+            renderer=renderer,
+            audit_service=audit,
+            registry=registry,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data=None,
+            user=_FakeUser(),
+        )
+        async def _form() -> FormData:
+            return FormData(
+                [("enabled", "on"), ("enabled", "false"), ("default_ttl", "120")]
+            )
+
+        req.form = _form
+        req.path_params = {"namespace": "admin.cache"}
+        await controller.save_spec(req)
+        values = await registry.get_values("admin.cache")
+        assert values["enabled"] is True
+        assert values["default_ttl"] == 120
+
+    @pytest.mark.asyncio
     async def test_save_spec_permission_denied(self, renderer: MagicMock) -> None:
         from starlette.responses import RedirectResponse
 

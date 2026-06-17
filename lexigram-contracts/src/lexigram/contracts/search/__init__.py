@@ -13,6 +13,7 @@ from lexigram.contracts.search.protocols import (
 from lexigram.contracts.search.types import (
     DocumentData,
     IndexSettings,
+    SearchableSpec,
     SearchFilters,
     SearchIndexResult,
 )
@@ -28,4 +29,5 @@ __all__ = [
     "SearchFilters",
     "SearchIndexResult",
     "SearchableProtocol",
+    "SearchableSpec",
 ]

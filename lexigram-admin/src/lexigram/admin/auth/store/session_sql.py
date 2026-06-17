@@ -8,6 +8,7 @@ on this class directly.
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.data import DatabaseProviderProtocol
@@ -166,6 +167,12 @@ class AdminSessionSqlRepository:
                 ip_address, user_agent, fingerprint, expires_at, …).
         """
         await self.ensure_schema()
+        payload = dict(payload)
+        fingerprint = payload.get("fingerprint")
+        if isinstance(fingerprint, dict):
+            db_type = (getattr(self._db, "database_type", "") or "").lower()
+            if db_type in ("sqlite", "sqlite3", "memory"):
+                payload["fingerprint"] = json.dumps(fingerprint)
         await self._db.execute_insert(self._TABLE, payload)
 
     async def find_active(self, session_id: str) -> dict[str, Any] | None:

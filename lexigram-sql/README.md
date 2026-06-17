@@ -103,7 +103,7 @@ DatabaseModule.configure(
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `backend.url` | `"sqlite:///piccolina.db"` | `LEX_SQL__BACKEND__URL` | Database connection URL |
+| `backend.url` | `"sqlite:///data.db"` | `LEX_SQL__BACKEND__URL` | Database connection URL |
 | `pool.min_size` | `1` | `LEX_SQL__POOL__MIN_SIZE` | Minimum pool connections |
 | `pool.max_size` | `10` | `LEX_SQL__POOL__MAX_SIZE` | Maximum pool connections |
 | `pool.timeout` | `30` | `LEX_SQL__POOL__TIMEOUT` | Pool acquire timeout (seconds) |
@@ -124,7 +124,7 @@ DatabaseModule.configure(
 - **Unit of work** — `AbstractUnitOfWork` tracks changes and publishes domain events on commit
 - **Multi-database** — `NamedDatabaseConfig` for multiple backends resolved via `Annotated[DatabaseProviderProtocol, Named("analytics")]`
 - **Connection pooling** — SQLAlchemy async pool with configurable min/max size
-- **Alembic migrations** — auto-run on boot in development; disabled by default in production
+- **Alembic migrations** — optional, run on boot only when `enable_migrations=True` (off by default)
 - **HMAC audit checksums** — optional signing of write operations for integrity verification
 - **Production security** — blocks default passwords (`:password@`, `:postgres@`, etc.) when `LEX_ENV=production`
 

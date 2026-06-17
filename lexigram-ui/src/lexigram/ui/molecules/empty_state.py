@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.ui.atoms.icons import get_icon
 from lexigram.ui.core.base import Component, el
 
 
@@ -11,7 +12,7 @@ class EmptyState(Component):
     Args:
         title: Main heading
         message: Descriptive message
-        icon: Optional emoji or icon
+        icon: Optional icon name (Lucide, resolved via ``get_icon``) or emoji
         action: Optional action button/link
     """
 
@@ -40,7 +41,7 @@ class EmptyState(Component):
             "div",
             el(
                 "div",
-                el("div", self.icon, class_="text-6xl mb-4 opacity-50"),
+                el("div", get_icon(self.icon, size="w-16 h-16"), class_="text-6xl mb-4 opacity-50"),
                 el(
                     "h3",
                     self.title,

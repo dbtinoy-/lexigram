@@ -21,7 +21,7 @@ Use `AuthModule.configure()` to register the auth bundle and protect routes with
 ```bash
 uv add lexigram-auth
 # Optional extras
-uv add "lexigram-auth[oauth2,saml,ldap]"
+uv add "lexigram-auth[oauth2,saml]"
 ```
 
 ## Quick Start
@@ -42,36 +42,44 @@ from lexigram.auth import AuthModule, AuthConfig, JWTConfig
 class AppModule(Module):
     pass
 
-app = Application(modules=[AppModule])
+
+async def main() -> None:
+    async with Application.boot(modules=[AppModule]) as app:
+        # app is running — resolve services from app.container
+        ...
+
+
 if __name__ == "__main__":
-    app.run()
+    import asyncio
+
+    asyncio.run(main())
 ```
 
 ## Configuration
 
-> **Zero-config usage:** Call `AuthModule.configure()` with no arguments to use defaults.
+> **Note:** `AuthConfig` requires both `secret_key` and `token.secret_key` — pass an explicit config via `AuthModule.configure()`.
 
 ### Option 1 — YAML file
 
 ```yaml
 # application.yaml
 auth:
-  jwt:
-    secret_key: "${JWT_SECRET_KEY}"
+  secret_key: "your-secret-key"
+  token:
+    secret_key: "your-jwt-secret"
     algorithm: "HS256"
-    expiration_hours: 24
+    access_token_expire: "30m"
   rbac:
     enabled: true
     default_role: "viewer"
-  session:
-    timeout_minutes: 60
 ```
 
 ### Option 2 — Profiles + Environment Variables *(recommended)*
 
 ```bash
-export LEX_AUTH__JWT__SECRET_KEY=your-secret
-export LEX_AUTH__JWT__ALGORITHM=HS256
+export LEX_AUTH__SECRET_KEY=your-secret-key
+export LEX_AUTH__TOKEN__SECRET_KEY=your-jwt-secret
+export LEX_AUTH__TOKEN__ALGORITHM=HS256
 export LEX_AUTH__RBAC__DEFAULT_ROLE=viewer
 ```
 
@@ -79,13 +87,14 @@ export LEX_AUTH__RBAC__DEFAULT_ROLE=viewer
 
 ```python
 from lexigram.auth import AuthModule, AuthConfig, JWTConfig
+from lexigram.contracts.core import Duration
 
 config = AuthConfig(
     secret_key="your-secret-key",
     token=JWTConfig(
         secret_key="your-jwt-secret",
         algorithm="HS256",
-        access_token_expire_minutes=30,
+        access_token_expire=Duration.minutes(30),
     ),
 )
 AuthModule.configure(config)
@@ -95,12 +104,12 @@ AuthModule.configure(config)
 
 | Field | Default | Env var | Description |
 |-------|---------|---------|-------------|
-| `jwt.secret_key` | — | `LEX_AUTH__JWT__SECRET_KEY` | JWT signing secret (**required**) |
-| `jwt.algorithm` | `HS256` | `LEX_AUTH__JWT__ALGORITHM` | JWT algorithm: HS256, RS256, ES256 |
-| `jwt.access_token_expire_minutes` | `30` | `LEX_AUTH__JWT__ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime |
+| `secret_key` | — | `LEX_AUTH__SECRET_KEY` | Top-level signing secret (**required**) |
+| `token.secret_key` | — | `LEX_AUTH__TOKEN__SECRET_KEY` | JWT signing secret (**required**) |
+| `token.algorithm` | `HS256` | `LEX_AUTH__TOKEN__ALGORITHM` | JWT algorithm: HS256, RS256, ES256 |
+| `token.access_token_expire` | `30m` | `LEX_AUTH__TOKEN__ACCESS_TOKEN_EXPIRE` | Access token lifetime (duration string, e.g. `30m`, `1h30m`) |
 | `rbac.enabled` | `True` | `LEX_AUTH__RBAC__ENABLED` | Enable RBAC |
 | `rbac.default_role` | `viewer` | `LEX_AUTH__RBAC__DEFAULT_ROLE` | Default role for new users |
-| `session.timeout_minutes` | `60` | `LEX_AUTH__SESSION__TIMEOUT_MINUTES` | Session inactivity timeout |
 
 ## Module Factory Methods
 
@@ -113,12 +122,12 @@ AuthModule.configure(config)
 
 - **JWT authentication** — HS256/RS256, key rotation, token blacklisting
 - **OAuth2 / OIDC** — authlib-backed: Google, GitHub, custom providers
-- **SAML 2.0** — Enterprise SSO via python3-saml
+- **SAML 2.0** — Enterprise SSO via pysaml2
 - **Passkeys (WebAuthn)** — FIDO2 device-based authentication
 - **MFA (TOTP)** — Time-based one-time passwords
 - **RBAC** — Role/permission inheritance with policy expressions
 - **Session management** — Device-aware sessions with concurrency limits
-- **Token binding** — MTLS / IP binding to prevent token theft
+- **Token binding** — IP address binding to prevent token theft
 
 ## Testing
 
@@ -127,6 +136,18 @@ async with Application.boot(modules=[AuthModule.stub()]) as app:
     # your test code
     ...
 ```
+
+## Key Source Files
+
+| File | What it contains |
+|------|-----------------|
+| `src/lexigram/auth/module.py` | AuthModule definition |
+| `src/lexigram/auth/config.py` | AuthConfig, JWTConfig (+ `allow_unverified_dev`), RBACConfig |
+| `src/lexigram/auth/di/bundle_provider.py` | AuthBundleProvider wiring |
+| `src/lexigram/auth/di/sub_providers/token_provider.py` | TokenProvider (boots policy) |
+| `src/lexigram/auth/authn/jwt.py` | JWTTokenManager implementation |
+| `src/lexigram/auth/authn/_jwt_lifecycle.py` | verify_token (enforces policy) |
+| `src/lexigram/auth/authz/service.py` | AuthorizationService |
 
 ## JWT verification policy
 
@@ -164,15 +185,3 @@ The `allow_unverified_dev` flag is **silently ignored** in `PRODUCTION` and `STA
 service always rejects the flag in those environments and raises if no real secret is
 configured. This prevents the Piccolina-style mistake of silently trusting unverified tokens
 in production when a secret env-var is missing.
-
-## Key Source Files
-
-| File | What it contains |
-|------|-----------------|
-| `src/lexigram/auth/module.py` | AuthModule definition |
-| `src/lexigram/auth/config.py` | AuthConfig, JWTConfig (+ `allow_unverified_dev`), RBACConfig |
-| `src/lexigram/auth/di/bundle_provider.py` | AuthBundleProvider wiring |
-| `src/lexigram/auth/di/sub_providers/token_provider.py` | TokenProvider (boots policy) |
-| `src/lexigram/auth/authn/jwt.py` | JWTTokenManager implementation |
-| `src/lexigram/auth/authn/_jwt_lifecycle.py` | verify_token (enforces policy) |
-| `src/lexigram/auth/authz/service.py` | AuthorizationService |

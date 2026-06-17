@@ -113,7 +113,7 @@ class Pagination(Component):
             "div",
             {
                 "id": "table-pagination",
-                "class": "flex items-center justify-between border-t border-border bg-background py-3 mt-4",
+                "class": "flex items-center justify-between border-t border-border bg-background px-4 py-3 mt-4",
             },
             # Mobile View
             el(

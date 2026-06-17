@@ -31,6 +31,7 @@ _PUBLIC_PATHS: tuple[str, ...] = (
     "/admin/login/2fa",
     "/admin/verify-email",
     "/admin/password-reset",
+    "/admin/register",
 )
 
 
