@@ -19,6 +19,13 @@ class MockResult:
         self.rows = rows or []
 
 
+class MockDeleteResult:
+    """Mock delete result."""
+    def __init__(self, success: bool = True, affected_rows: int = 0):
+        self.success = success
+        self.affected_rows = affected_rows
+
+
 class MockConfig:
     """Mock audit config."""
     def __init__(self, table_name: str = "audit_log", hmac_key: str | None = None):
@@ -33,12 +40,19 @@ class MockDb:
         self.should_fail = should_fail
         self.executed_queries = []
         self.rows = []
+        self.affected_rows = 0
 
     async def execute_query(self, sql: str, params: list = None):
         self.executed_queries.append((sql, params))
         if self.should_fail:
             return MockResult(success=False)
         return MockResult(success=True, rows=self.rows)
+
+    async def execute_delete(self, table: str, where_clause: str, where_params: list = None):
+        self.executed_queries.append((f"DELETE FROM {table} WHERE {where_clause}", where_params))
+        if self.should_fail:
+            return MockDeleteResult(success=False, affected_rows=0)
+        return MockDeleteResult(success=True, affected_rows=self.affected_rows)
 
 
 class TestSqlAuditStore:
@@ -161,6 +175,44 @@ class TestSqlAuditStore:
         from lexigram.contracts.audit import AuditQuery
         count = await store.count(AuditQuery(limit=10))
         assert count == 0
+
+    @pytest.mark.asyncio
+    async def test_delete_expired_issues_single_bulk_delete(self, mock_db: MockDb, mock_config: MockConfig) -> None:
+        mock_db.affected_rows = 3
+        store = SqlAuditStore(db=mock_db, config=mock_config)
+        cutoff = datetime.now(UTC)
+
+        deleted = await store.delete_expired(cutoff)
+
+        assert deleted == 3
+        assert len(mock_db.executed_queries) == 1
+        sql, params = mock_db.executed_queries[0]
+        assert sql.startswith("DELETE FROM audit_log WHERE ")
+        assert "json_extract(metadata, '$.__expires_at')" in sql
+        assert params == [cutoff.isoformat()]
+
+    @pytest.mark.asyncio
+    async def test_delete_expired_uses_jsonb_dialect_for_postgres(self, mock_config: MockConfig) -> None:
+        db = MockDb(url="postgresql://localhost/audit")
+        db.affected_rows = 2
+        store = SqlAuditStore(db=db, config=mock_config)
+
+        deleted = await store.delete_expired(datetime.now(UTC))
+
+        assert deleted == 2
+        sql, _ = db.executed_queries[0]
+        assert "metadata::jsonb->>'__expires_at'" in sql
+        assert "::timestamptz" in sql
+
+    @pytest.mark.asyncio
+    async def test_delete_expired_returns_zero_on_backend_failure(self, mock_config: MockConfig) -> None:
+        db = MockDb(should_fail=True)
+        db.affected_rows = 5
+        store = SqlAuditStore(db=db, config=mock_config)
+
+        deleted = await store.delete_expired(datetime.now(UTC))
+
+        assert deleted == 0
 
 
 class TestSqlAuditStoreBuildWhere:
