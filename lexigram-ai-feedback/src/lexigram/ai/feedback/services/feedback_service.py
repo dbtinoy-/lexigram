@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.ai.feedback.constants import MAX_CONTEXT_SIZE, MAX_FEEDBACK_TEXT_LENGTH
+from lexigram.ai.feedback.exceptions import FeedbackTooLargeError
 from lexigram.contracts.ai.feedback import (
     FeedbackItem,
     FeedbackStoreProtocol,
@@ -12,6 +14,7 @@ from lexigram.contracts.ai.feedback import (
 from lexigram.logging import (
     get_logger,
 )
+from lexigram.serialization import dumps_str
 
 __all__ = ["FeedbackService"]
 
@@ -47,14 +50,28 @@ class FeedbackService:
             score: Numeric feedback score (e.g. 0.0–1.0 or 1–5).
             comment: Optional free-text comment stored in metadata.
             metadata: Optional additional key-value metadata.
+
+        Raises:
+            FeedbackTooLargeError: If comment exceeds
+                MAX_FEEDBACK_TEXT_LENGTH characters or the serialized
+                metadata (including the folded comment) exceeds
+                MAX_CONTEXT_SIZE characters.
         """
+        meta: dict[str, Any] = dict(metadata or {})
+        if comment is not None:
+            if len(comment) > MAX_FEEDBACK_TEXT_LENGTH:
+                raise FeedbackTooLargeError(
+                    f"feedback text exceeds the {MAX_FEEDBACK_TEXT_LENGTH}-character limit"
+                )
+            meta["comment"] = comment
+        if len(dumps_str(meta, default=str)) > MAX_CONTEXT_SIZE:
+            raise FeedbackTooLargeError(
+                f"serialized metadata exceeds the {MAX_CONTEXT_SIZE}-character limit"
+            )
+
         if self._store is None:
             logger.debug("feedback_store_unavailable", trace_id=trace_id)
             return
-
-        meta: dict[str, Any] = dict(metadata or {})
-        if comment is not None:
-            meta["comment"] = comment
 
         item = FeedbackItem(
             feedback_type=FeedbackType.RATING,
