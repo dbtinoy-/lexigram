@@ -141,10 +141,10 @@ Tracing and metrics are exported through `lexigram-monitor`, which provides an `
 
 | Backend | Tracing | Metrics | Configuration |
 |---------|---------|---------|---------------|
-| Console | Yes | Yes | `LEX_MONITOR__EXPORTER=console` |
-| OpenTelemetry (OTLP) | Yes | Yes | `LEX_MONITOR__EXPORTER=otlp` |
+| Console | Yes | Yes | `LEX_MONITOR__TRACING_EXPORTERS__0__TYPE=console` |
+| OpenTelemetry (OTLP) | Yes | Yes | `LEX_MONITOR__TRACING_EXPORTERS__0__TYPE=otlp` and `LEX_MONITOR__TRACING_EXPORTERS__0__ENDPOINT=...` |
 | Datadog (via OTLP) | Yes | Yes | Datadog OTLP endpoint config |
-| Prometheus | No | Yes | `LEX_MONITOR__EXPORTER=prometheus` |
+| Prometheus | No | Yes | `LEX_MONITOR__OPENTELEMETRY__METRICS_EXPORTERS='[{"type":"prometheus"}]'` |
 | Custom | Yes | Yes | Implement `TracerProtocol` / `MetricsCollectorProtocol` |
 
 ---

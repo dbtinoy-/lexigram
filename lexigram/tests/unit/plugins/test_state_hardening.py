@@ -114,3 +114,25 @@ def test_concurrent_updates_do_not_lose_entries(tmp_path: Path) -> None:
         t.join(10)
     assert not errors
     assert load_disabled(path) == {"0", "1", "2", "3"}
+
+
+def test_load_rejects_unsupported_schema_version_and_preserves_file(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "plugins.json"
+    path.write_text(json.dumps({"version": 99, "disabled": ["future"]}))
+    assert load_disabled(path) == set()
+    backups = list(tmp_path.glob("plugins.json.corrupt-*"))
+    assert len(backups) == 1
+    assert json.loads(backups[0].read_text()) == {
+        "version": 99,
+        "disabled": ["future"],
+    }
+
+
+def test_load_rejects_non_integer_schema_version(tmp_path: Path) -> None:
+    path = tmp_path / "plugins.json"
+    path.write_text(json.dumps({"version": "v1", "disabled": ["x"]}))
+    assert load_disabled(path) == set()
+    backups = list(tmp_path.glob("plugins.json.corrupt-*"))
+    assert len(backups) == 1

@@ -70,7 +70,6 @@ Common fields shared across all backend types:
 | `default_backend` | `str` | `None` | `LEX_CACHE__SERVICE__DEFAULT_BACKEND` | Default backend name |
 | `circuit_breaker_enabled` | `bool` | `False` | `LEX_CACHE__SERVICE__CIRCUIT_BREAKER_ENABLED` | Circuit breaker |
 | `circuit_breaker_threshold` | `int` | `5` | `LEX_CACHE__SERVICE__CIRCUIT_BREAKER_THRESHOLD` | Failure threshold |
-| `allow_pickle` | `bool` | `False` | `LEX_CACHE__SERVICE__ALLOW_PICKLE` | Allow pickle serialization |
 | `default_serializer` | `str` | `"json"` | `LEX_CACHE__SERVICE__DEFAULT_SERIALIZER` | Serializer type |
 
 ## YAML Example

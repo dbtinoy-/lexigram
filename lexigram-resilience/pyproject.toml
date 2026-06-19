@@ -69,7 +69,9 @@ Documentation = "https://docs.lexigram.dev"
 Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
-# Auto-discovered by lexigram.plugins.discovery when installed.
+# Framework packages are composed explicitly by the app module graph; entry-point
+# plugin auto-discovery (lexigram.plugins) applies only to packages that register
+# a PluginDescriptor under the "lexigram.plugins" entry-point group.
 [project.entry-points."lexigram.providers"]
 resilience = "lexigram.resilience.di.provider:ResilienceProvider"
 idempotency = "lexigram.resilience.idempotency.provider:IdempotencyProvider"

@@ -24,8 +24,10 @@ class PluginDescriptor:
     ``lexigram.plugins.discovery.discover_providers``.
 
     ``requires``/``conflicts`` name other plugins' ``provider_entry_point``
-    values. They are advisory metadata for validation and UI badges —
-    the engine stays passive and never enforces them at boot.
+    values. They are advisory metadata: the boot engine evaluates them via
+    ``validate_plan`` and skips plugins whose dependencies are missing or
+    whose conflicts are enabled, logging non-fatal issues — boot is never
+    blocked.
     """
 
     name: str

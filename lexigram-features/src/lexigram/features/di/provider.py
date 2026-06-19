@@ -44,7 +44,7 @@ class FeatureFlagsProvider(Provider):
       :class:`~lexigram.features.backends.local.LocalProvider`.
     * ``FlagManager`` as a singleton wrapping a
       :class:`~lexigram.features.backends.local.LocalProvider` seeded from
-      :attr:`~lexigram.features.config.models.FeatureFlagsConfig.initial_flags`.
+      :attr:`~lexigram.features.config.FeatureFlagsConfig.initial_flags`.
     """
 
     name = "features"

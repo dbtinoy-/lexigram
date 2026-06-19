@@ -185,8 +185,8 @@ def create_development_config() -> SecurityConfig:
             enabled=True,
             directives={
                 "default-src": "'self'",
-                "script-src": "'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com",
-                "script-src-elem": "'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com",
+                "script-src": "'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://unpkg.com https://cdn.jsdelivr.net",
+                "script-src-elem": "'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://unpkg.com https://cdn.jsdelivr.net",
                 "style-src": "'self' 'unsafe-inline' http://localhost:* https://unpkg.com https://cdn.jsdelivr.net",
                 "img-src": "'self' data: http: https: blob:",
                 "font-src": "'self' data: http://localhost:* https://unpkg.com",

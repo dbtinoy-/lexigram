@@ -25,6 +25,10 @@ help:  ## Show this help message
 dev:  ## Install all workspace dependencies
 	$(UV) sync
 
+.PHONY: tailwind
+tailwind:  ## Rebuild the static Tailwind CSS bundle (admin static/css/tailwind.css)
+	TAILWIND_CACHE_DIR="$(CURDIR)/.cache/tailwindcss" ./tailwind/build.sh
+
 .PHONY: lint
 lint:  ## Run ruff check + format check (no writes)
 	$(RUFF) check .
@@ -278,6 +282,14 @@ audit-tests:
 audit-docs-links:
 	$(UV) run python -m scripts.cli audit run docs-links
 
+.PHONY: audit-docs-claims
+audit-docs-claims:
+	$(UV) run python -m scripts.cli audit run docs-claims
+
+.PHONY: audit-docs-imports
+audit-docs-imports:
+	$(UV) run python -m scripts.cli audit run docs-imports
+
 .PHONY: audit-optional-imports
 audit-optional-imports:
 	$(UV) run python -m scripts.cli audit run optional-imports
@@ -287,7 +299,7 @@ audit-package-dry:
 	$(UV) run python -m scripts.cli audit list
 
 .PHONY: audit-package
-audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links scripts-audit-index
+audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links audit-docs-imports audit-docs-claims scripts-audit-index
 	@echo "All AUDIT files generated in docs/lexigram-docs/audit"
 
 # All-packages audit targets (write to repo root)
@@ -327,8 +339,16 @@ audit-optional-imports-all:
 audit-docs-links-all:
 	$(UV) run python -m scripts.cli audit run docs-links --all
 
+.PHONY: audit-docs-claims-all
+audit-docs-claims-all:
+	$(UV) run python -m scripts.cli audit run docs-claims --all
+
+.PHONY: audit-docs-imports-all
+audit-docs-imports-all:
+	$(UV) run python -m scripts.cli audit run docs-imports --all
+
 .PHONY: audit-package-all
-audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all audit-optional-imports-all audit-docs-links-all scripts-audit-index-all
+audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all audit-optional-imports-all audit-docs-links-all audit-docs-imports-all audit-docs-claims-all scripts-audit-index-all
 	@echo "All AUDIT files generated at repo root"
 
 .PHONY: scripts-audit

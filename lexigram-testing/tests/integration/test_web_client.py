@@ -77,7 +77,6 @@ class MockRequest:
 # Mock lexigram.web
 # sys.modules["lexigram.web"] = create_mock_module("lexigram.web")
 # sys.modules["lexigram.web.transport"] = create_mock_module("lexigram.web.transport")
-# sys.modules["lexigram.web.transport.requests"] = create_mock_module("lexigram.web.transport.requests", Request=MockRequest)
 # sys.modules["lexigram.web.transport.responses"] = create_mock_module("lexigram.web.transport.responses", JSONResponse=lambda data: MockResponse(json_data=data))
 
 # Import bed module directly to get the real TestEnvironment class

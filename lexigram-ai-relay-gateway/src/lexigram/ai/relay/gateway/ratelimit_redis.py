@@ -9,13 +9,14 @@ windows are intentionally not supported, matching new-api.
 from __future__ import annotations
 
 from collections.abc import Awaitable
-from typing import cast
-
-import redis.asyncio as aioredis
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.ai.relay import (
     RelayRateLimitDecision,
 )
+
+if TYPE_CHECKING:
+    import redis.asyncio as aioredis
 
 __all__ = ["RedisRateLimitCounter"]
 

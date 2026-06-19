@@ -12,7 +12,7 @@ flowchart BT
     Atoms[Atoms<br/>Button · Input · Badge · Icon<br/>Spinner · Label · Link · Switch]
     Molecules[Molecules<br/>Card · Modal · Tabs · Toast · Alert<br/>Dropdown · Builder · Slot · FormField]
     Organisms[Organisms<br/>Form · Repeater · Chart · SlideOver]
-    Layouts[Layouts<br/>BaseLayout · HeadRenderer · FooterRenderer<br/>HTMLDocument]
+    Layouts[Layouts<br/>LayoutBase · HeadRenderer · FooterRenderer<br/>HTMLDocument]
 
     Layouts --> Organisms
     Organisms --> Molecules
@@ -161,7 +161,7 @@ css = shadcn_css(primary="oklch(0.6 0.2 280)")
 head = el("style", raw(css))
 ```
 
-The `BaseLayout` calls `get_theme_css_variables()` during rendering, which generates the CSS variable block and injects it into the page `<head>`. The `UIConfig.default_theme` field controls which theme name is passed to `shadcn_css()`.
+The `LayoutBase` calls `get_theme_css_variables()` during rendering, which generates the CSS variable block and injects it into the page `<head>`. The `UIConfig.default_theme` field controls which theme name is passed to `shadcn_css()`.
 
 ---
 

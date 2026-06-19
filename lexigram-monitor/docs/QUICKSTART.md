@@ -33,7 +33,7 @@ import asyncio
 
 from lexigram import Application, LexigramConfig
 from lexigram.monitor import MonitorProvider
-from lexigram.monitor.noop import NoOpMetricsBackend
+from lexigram.observability.core import NoOpMetricsBackend
 
 
 async def main():

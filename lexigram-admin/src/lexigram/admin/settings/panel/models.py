@@ -19,8 +19,8 @@ __all__ = [
 
 DEFAULT_CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com; "
-    "style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.tailwindcss.com; "
+    "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+    "style-src 'self' 'unsafe-inline' https://unpkg.com; "
     "img-src 'self' data:; "
     "font-src 'self'; "
     "connect-src 'self' https://unpkg.com; "

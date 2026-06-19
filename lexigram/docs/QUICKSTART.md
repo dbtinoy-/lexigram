@@ -66,8 +66,8 @@ asyncio.run(main())
 ```
 
 ```text
-App running: True
 Hello, Lexigram!
+App running: True
 ```
 
 ---

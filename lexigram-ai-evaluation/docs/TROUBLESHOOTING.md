@@ -23,10 +23,9 @@ from lexigram.ai.evaluation import EvaluationProvider
 Embedding provider not configured or API key missing.
 
 **Solution:**
-```python
-# Configure embedding provider
-export LEX_EMBEDDING__PROVIDER=openai
-export LEX_EMBEDDING__API_KEY=sk-...
+```bash
+# Configure embedding model
+export LEX_AI_EVALUATION__EMBEDDING_MODEL="text-embedding-3-small"
 ```
 
 ---

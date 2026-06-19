@@ -45,12 +45,14 @@ Env prefix: `LEX_NOSQL__`
 
 | Key | Type | Default | Env Variable | Description |
 |-----|------|---------|-------------|-------------|
-| `table_name` | `str` | `"lexigram"` | `LEX_NOSQL__DYNAMODB__TABLE_NAME` | Default table name |
-| `region` | `str` | `"us-east-1"` | `LEX_NOSQL__DYNAMODB__REGION` | AWS region |
-| `access_key` | `str \| None` | `null` | `LEX_NOSQL__DYNAMODB__ACCESS_KEY` | AWS access key ID |
-| `secret_key` | `str \| None` | `null` | `LEX_NOSQL__DYNAMODB__SECRET_KEY` | AWS secret access key |
-| `endpoint_url` | `str \| None` | `null` | `LEX_NOSQL__DYNAMODB__ENDPOINT_URL` | Custom endpoint (e.g., `http://localhost:8000`) |
-| `pk_field` | `str` | `"_id"` | `LEX_NOSQL__DYNAMODB__PK_FIELD` | Partition key attribute name |
+| `table_name` | `str` | `"lexigram"` | — | Default table name |
+| `region` | `str` | `"us-east-1"` | — | AWS region |
+| `access_key` | `str \| None` | `null` | — | AWS access key ID |
+| `secret_key` | `str \| None` | `null` | — | AWS secret access key |
+| `endpoint_url` | `str \| None` | `null` | — | Custom endpoint (e.g., `http://localhost:8000`) |
+| `pk_field` | `str` | `"_id"` | — | Partition key attribute name |
+
+`DynamoDBConfig` has no environment variable overrides — `NoSQLConfig` wires only Mongo and Firestore backends. Configure DynamoDB programmatically via `DynamoDBConfig(...)`.
 
 Named backends follow the same env pattern with an index: `LEX_NOSQL__BACKENDS__0__NAME`, `LEX_NOSQL__BACKENDS__0__DRIVER`, etc.
 

@@ -13,7 +13,6 @@ from markupsafe import Markup, escape
 
 from lexigram.admin.theme.tailwind import (
     DARK_BOOTSTRAP_SCRIPT,
-    TAILWIND_THEME_CONFIG,
     THEME_BRIDGE_SCRIPT,
 )
 from lexigram.admin.ui.layouts.components import (
@@ -129,9 +128,8 @@ class StandaloneLayout(LayoutBase):
                 f'<meta name="description" content="{escape(ctx.page_description)}">',
             )
 
-        # Tailwind CSS via CDN (utility classes for layout)
-        parts.append('<script src="https://cdn.tailwindcss.com"></script>')
-        parts.append(TAILWIND_THEME_CONFIG)
+        # Tailwind CSS via static build (utility classes for layout)
+        parts.append('<link rel="stylesheet" href="/admin/static/css/tailwind.css">')
         parts.append(DARK_BOOTSTRAP_SCRIPT)
         parts.append(THEME_BRIDGE_SCRIPT)
 

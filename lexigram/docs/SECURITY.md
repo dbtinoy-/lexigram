@@ -52,8 +52,7 @@ app.register_secrets({
 All configuration can be overridden via `LEX_` prefixed environment variables:
 
 ```bash
-export LEX_DB__HOST="db.example.com"
-export LEX_DB__PASSWORD="secret"
+export LEX_SQL__BACKEND__URL="postgresql://app:secret@db.example.com/app"
 ```
 
 ### Secrets Validation

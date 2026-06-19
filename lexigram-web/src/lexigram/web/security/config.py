@@ -151,22 +151,22 @@ _DEFAULT_DIRECTIVES: dict[str, str] = {
     # APIDocsConfig.SWAGGER_DOMAINS / REDOC_DOMAINS.
     "script-src": (
         "'self' 'unsafe-inline' 'unsafe-eval' "
-        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://unpkg.com https://cdn.jsdelivr.net "
         "https://cdn.redoc.ly https://cdn.plot.ly"
     ),
     "script-src-elem": (
         "'self' 'unsafe-inline' 'unsafe-eval' "
-        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://unpkg.com https://cdn.jsdelivr.net "
         "https://cdn.redoc.ly https://cdn.plot.ly"
     ),
     "style-src": (
         "'self' 'unsafe-inline' "
-        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://unpkg.com https://cdn.jsdelivr.net "
         "https://fonts.googleapis.com"
     ),
     "style-src-elem": (
         "'self' 'unsafe-inline' "
-        "https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com "
+        "https://unpkg.com https://cdn.jsdelivr.net "
         "https://fonts.googleapis.com"
     ),
     "img-src": "'self' data: https: blob:",

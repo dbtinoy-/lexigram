@@ -21,7 +21,8 @@ await app.start()
 ## Upload and Download Files
 
 ```python
-from lexigram.contracts import BlobStoreProtocol, FileInfo
+from lexigram.contracts import BlobStoreProtocol
+from lexigram.contracts.infra.storage.models import FileInfo
 
 
 class FileService:

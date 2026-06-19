@@ -18,6 +18,17 @@
             display: none !important;
         }
 
+        /* Native <details> disclosure markers are not suppressed reliably by
+           runtime-scanned utility classes (Tailwind CDN regenerates its
+           stylesheet only after htmx body swaps), so hide them statically. */
+        summary {
+            list-style: none;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
         /* Modern Scrollbar Styling */
         /* Webkit (Chrome, Edge, Safari) */
         ::-webkit-scrollbar {
@@ -91,48 +102,14 @@
     </style>
 
     <!-- Scripts -->
-    <script src="https://unpkg.com/htmx.org@2.0.7"></script>
-    <script src="https://unpkg.com/@alpinejs/focus@3.12.0/dist/cdn.min.js" defer></script>
-    <script src="https://unpkg.com/alpinejs@3.12.0" defer></script>
+    <script src="/admin/static/js/htmx.min.js"></script>
+    <script src="/admin/static/js/alpine-focus.min.js" defer></script>
+    <script src="/admin/static/js/alpine.min.js" defer></script>
     <script defer>var origToggle=Element.prototype._x_toggleAndCascadeWithTransitions;origToggle&&(Element.prototype._x_toggleAndCascadeWithTransitions=function(e,t,r,n){var o=origToggle.call(this,e,t,r,n);if(!t&&this._x_hidePromise)this._x_hidePromise.catch(function(a){});return o})</script>
     <script>window.addEventListener("unhandledrejection",function(e){e.promise&&e.promise.catch(function(){});if(!e.reason)return;var r=e.reason;if(r.isFromCancelledTransition||r instanceof TypeError){e.preventDefault();e.stopImmediatePropagation()}})</script>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/admin/static/css/tailwind.css">
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        background: 'var(--background)',
-                        foreground: 'var(--foreground)',
-                        card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
-                        popover: { DEFAULT: 'var(--popover)', foreground: 'var(--popover-foreground)' },
-                        primary: { DEFAULT: 'var(--primary)', foreground: 'var(--primary-foreground)' },
-                        secondary: { DEFAULT: 'var(--secondary)', foreground: 'var(--secondary-foreground)' },
-                        muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
-                        accent: { DEFAULT: 'var(--accent)', foreground: 'var(--accent-foreground)' },
-                        destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
-                        border: 'var(--border)',
-                        input: 'var(--input)',
-                        ring: 'var(--ring)',
-                        success: { DEFAULT: 'var(--color-success)', foreground: 'var(--color-success-foreground)' },
-                        warning: { DEFAULT: 'var(--color-warning)', foreground: 'var(--color-warning-foreground)' },
-                        info: { DEFAULT: 'var(--color-info)', foreground: 'var(--color-info-foreground)' },
-                        'chart-1': 'var(--chart-1)',
-                        'chart-2': 'var(--chart-2)',
-                        'chart-3': 'var(--chart-3)',
-                        'chart-4': 'var(--chart-4)',
-                        'chart-5': 'var(--chart-5)'
-                    },
-                    borderRadius: {
-                        lg: 'var(--radius)',
-                        md: 'calc(var(--radius) - 2px)',
-                        sm: 'calc(var(--radius) - 4px)'
-                    }
-                }
-            }
-        };
         (function () {
             var stored = localStorage.getItem('darkMode');
             var serverDefault = {{ dark_mode | default('') | tojson }};

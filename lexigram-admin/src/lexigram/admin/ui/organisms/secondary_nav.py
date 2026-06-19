@@ -35,7 +35,7 @@ class ClusterLayout(Component):
             "div",
             SecondaryNav(items=self.items).render(),
             el("div", self.content, class_="flex-1 min-w-0"),
-            class_="flex flex-col lg:flex-row gap-6",
+            class_="flex flex-col md:flex-row gap-6",
         )
 
 
@@ -62,7 +62,7 @@ class SecondaryNav(Component):
         return el(
             "nav",
             *groups,
-            class_="w-full lg:w-64 flex-shrink-0",
+            class_="w-full md:w-64 flex-shrink-0",
             aria_label=self.title or "Secondary navigation",
         )
 

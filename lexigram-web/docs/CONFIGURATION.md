@@ -116,11 +116,11 @@ web:
 
 | Key | Type | Default | Env Var | Description |
 |-----|------|---------|---------|-------------|
-| `allowed_origins` | `list[str]` | `["http://localhost:3000", "http://localhost:8001"]` | `LEX_WEB__CORS__ALLOWED_ORIGINS` | Allowed origins |
-| `allow_methods` | `list[str]` | `["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]` | `LEX_WEB__CORS__ALLOW_METHODS` | Allowed HTTP methods |
+| `allowed_origins` | `list[str]` | `["http://localhost:3000", "http://localhost:8001"]` | `LEX_WEB__SECURITY__CORS__ALLOWED_ORIGINS` | Allowed origins |
+| `allow_methods` | `list[str]` | `["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]` | `LEX_WEB__SECURITY__CORS__ALLOW_METHODS` | Allowed HTTP methods |
 
 :::warning
-In production, `LEX_WEB__CORS__ALLOWED_ORIGINS` must be set to specific origins — wildcard `*` is rejected with a validation error.
+In production, `LEX_WEB__SECURITY__CORS__ALLOWED_ORIGINS` must be set to specific origins — wildcard `*` is rejected with a validation error.
 :::
 
 ---
@@ -169,6 +169,6 @@ Environment override equivalent:
 ```bash
 export LEX_WEB__SERVER__HOST=0.0.0.0
 export LEX_WEB__SERVER__PORT=8080
-export LEX_WEB__CORS__ALLOWED_ORIGINS='["https://myapp.com"]'
+export LEX_WEB__SECURITY__CORS__ALLOWED_ORIGINS='["https://myapp.com"]'
 export LEX_WEB__RATE_LIMIT__DEFAULT_LIMIT=500
 ```

@@ -109,7 +109,7 @@ The primary backend gets an unnamed `SMSChannelProtocol` binding. All backends g
 ```python
 from typing import Annotated
 from lexigram.contracts.notification.protocols import SMSChannelProtocol
-from lexigram.di import Named
+from lexigram.di.markers import Named
 
 
 class AlertService:

@@ -81,12 +81,18 @@ class PluginsController(AdminController):
 
     @get("/")
     async def index(self, request: Request) -> Response:
+        # Sec-2026-08-16-L5: no per-page permission on the read-only listing.
+        # The global AdminAuthorizationMiddleware gates every non-public
+        # request; this page exposes only entry-point metadata + the disabled
+        # set; only POST /toggle requires superadmin / admin.settings.edit.
+        # Accepted posture — see
+        # docs/superpowers/specs/2026-08-16-security-plugins-design.md.
         """Render the plugin listing page."""
         toolbox = _load_toolbox()
         if toolbox is None:
             return await self.render_admin(
                 request,
-                self._render_empty("lexigram-plugins is not installed."),
+                self._render_empty("No plugin toolbox available."),
                 title="Plugins",
                 breadcrumbs=self.generate_breadcrumbs(
                     ("Home", "/admin/"),

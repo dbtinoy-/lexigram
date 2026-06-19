@@ -17,7 +17,8 @@ class PluginsModule(Module):
     Usage::
 
         # Option A — module auto-discovery in app config
-        #   lx.discovery.auto_discover = true  (scans ``lexigram.modules``)
+        #   discovery:
+        #     auto_discover: true      (scans ``lexigram.modules``)
         #
         # Option B — explicit
         from lexigram.plugins.module import PluginsModule

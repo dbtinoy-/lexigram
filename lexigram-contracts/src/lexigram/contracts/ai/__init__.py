@@ -34,7 +34,18 @@ from lexigram.contracts.ai.evaluation import (
     EvaluatorProtocol,
     RunReport,
 )
-from lexigram.contracts.ai.exceptions import RelayError, RelayErrorCode
+from lexigram.contracts.ai.exceptions import (
+    AIError,
+    AIMemoryError,
+    ExtractionError,
+    GuardError,
+    LLMError,
+    RAGError,
+    RelayError,
+    RelayErrorCode,
+    RetrieverError,
+    SkillError,
+)
 from lexigram.contracts.ai.governance import (
     AIAuditEvent,
     AIAuditStoreProtocol,
@@ -227,8 +238,10 @@ from lexigram.contracts.observability.ai import (
 __all__ = [
     "AIAuditEvent",
     "AIAuditStoreProtocol",
+    "AIError",
     "AIGovernanceProtocol",
     "AIHealthMonitorProtocol",
+    "AIMemoryError",
     "AIMetricsProtocol",
     "AIProviderProtocol",
     "AISubsystemProtocol",
@@ -275,6 +288,7 @@ __all__ = [
     "EvaluationSample",
     "EvaluationScoreType",
     "EvaluatorProtocol",
+    "ExtractionError",
     "FallbackChainProtocol",
     "FunctionCall",
     "GeminiContent",
@@ -282,6 +296,7 @@ __all__ = [
     "GeminiPart",
     "GeminiRequest",
     "GovernanceDecision",
+    "GuardError",
     "GuardPipelineProtocol",
     "GuardResultProtocol",
     "ImageBase64Part",
@@ -293,6 +308,7 @@ __all__ = [
     "JsonObject",
     "JsonValue",
     "LLMClientProtocol",
+    "LLMError",
     "LLMRouterProtocol",
     "LoaderError",
     "LoaderRegistryProtocol",
@@ -325,6 +341,7 @@ __all__ = [
     "QueryEngineProtocol",
     "QueryEngineResponse",
     "QuotaBackendProtocol",
+    "RAGError",
     "RAGPipelineProtocol",
     "RAGSearchResult",
     "RelayConversionContext",

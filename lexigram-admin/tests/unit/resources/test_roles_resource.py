@@ -21,10 +21,9 @@ from lexigram.admin.rbac.types import AdminRole
 from lexigram.admin.resources.form_renderer import FormRenderer
 from lexigram.admin.resources.roles import RolesResource
 from lexigram.admin.schema import BooleanField, MultiSelectField, TextField
-from lexigram.web.transport import Request as LexigramRequest
 
 
-def _create_request() -> LexigramRequest:
+def _create_request() -> StarletteRequest:
     scope: dict = {
         "type": "http",
         "method": "GET",
@@ -41,7 +40,7 @@ def _create_request() -> LexigramRequest:
         "app": None,
         "session": {},
     }
-    return LexigramRequest(StarletteRequest(scope))
+    return StarletteRequest(scope)
 
 
 class TestRolesResource:

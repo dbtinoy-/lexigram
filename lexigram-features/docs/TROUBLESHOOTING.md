@@ -65,19 +65,19 @@ class SafeProvider(AbstractFlagProvider):
 
 ## Environment variable flag prefix mismatch
 
-**Symptom:** Flags set via environment variables (e.g. `LEX_FEATURES__MY_FLAG=true`) are not picked up by `EnvProvider`.
+**Symptom:** Flags set via environment variables (e.g. `LEX_FLAG_MY_FLAG=true`) are not picked up by `EnvProvider`.
 
-**Cause:** `EnvProvider` uses `flag_env_prefix` (default: `LEX_FEATURE_FLAGS__`) to build environment variable keys. If your variables use a different prefix like `LEX_FEATURES__`, the provider won't find them.
+**Cause:** `EnvProvider` uses `flag_env_prefix` (default: `LEX_FLAG_`) to build environment variable keys. If your variables use a different prefix like `LEX_FEATURES__`, the provider won't find them.
 
 **Solution:** Either align the env vars with the default prefix or override it in config:
 
 ```yaml
 features:
-  flag_env_prefix: "LEX_FEATURES__"
+  flag_env_prefix: "LEX_FLAG_"
 ```
 
 ```bash
-export LEX_FEATURES__MY_FLAG=true
+export LEX_FLAG_MY_FLAG=true
 ```
 
 ## Initial flags not seeded from config

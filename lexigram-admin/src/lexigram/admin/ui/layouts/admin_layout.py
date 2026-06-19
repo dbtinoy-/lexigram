@@ -22,7 +22,6 @@ from markupsafe import Markup, escape
 
 from lexigram.admin.theme.tailwind import (
     DARK_BOOTSTRAP_SCRIPT,
-    TAILWIND_THEME_CONFIG,
     THEME_BRIDGE_SCRIPT,
 )
 from lexigram.admin.ui.layouts.components import (
@@ -268,9 +267,8 @@ class AdminLayout(LayoutBase):
         </style>
         """)
 
-        # Tailwind CSS (CDN)
-        parts.append('<script src="https://cdn.tailwindcss.com"></script>')
-        parts.append(TAILWIND_THEME_CONFIG)
+        # Tailwind CSS (static build)
+        parts.append('<link rel="stylesheet" href="/admin/static/css/tailwind.css">')
         parts.append(DARK_BOOTSTRAP_SCRIPT)
         parts.append(THEME_BRIDGE_SCRIPT)
 
@@ -284,11 +282,11 @@ class AdminLayout(LayoutBase):
 
         # Alpine.js plugins (loaded before Alpine core)
         parts.append(
-            '<script defer src="https://unpkg.com/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>',
+            '<script defer src="/admin/static/js/alpine-focus.min.js"></script>',
         )
         # Alpine.js for dropdowns, modals, slide-overs
         parts.append(
-            '<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>',
+            '<script defer src="/admin/static/js/alpine.min.js"></script>',
         )
         # Patch Alpine's transition handler to catch isFromCancelledTransition
         parts.append(

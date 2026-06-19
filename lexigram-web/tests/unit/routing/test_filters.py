@@ -2,7 +2,9 @@ import pytest
 from lexigram import serialization as json
 from typing import Any, TypeVar, cast
 from unittest.mock import MagicMock
-from lexigram.web import JSONResponse, Request, Response
+from starlette.requests import Request
+
+from lexigram.web import JSONResponse, Response
 
 from lexigram.contracts.web.protocols import ExceptionFilterProtocol
 from lexigram.web.filters.decorators import use_filters

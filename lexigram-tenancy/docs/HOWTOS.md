@@ -88,7 +88,7 @@ tenant_id = ctx.get(TENANT_ID)
 
 ```python
 from lexigram.tenancy import TenantGuard
-from lexigram.web.controllers import use_guards
+from lexigram.web.security import use_guards
 
 # Apply to a whole controller
 @use_guards(TenantGuard)

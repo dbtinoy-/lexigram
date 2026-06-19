@@ -1572,13 +1572,18 @@ middleware:
   default_retry_delay: 0.5
   correlation_header: X-Correlation-ID
 
-# ── Plugins (lexigram-plugins) ─────────────────────────────────────────────────
-# env_prefix: LEX_PLUGINS__
-plugins:
-  enabled_plugins: []                           # only these are activated; empty = all
-  disabled_plugins: []
-  plugin_dirs: []                               # extra filesystem directories to scan
-  auto_discover: true
+# ── Plugins (core: lexigram.plugins) ───────────────────────────────────────────
+# Entry-point plugin discovery ships inside the core lexigram package. It is
+# gated by the application discovery flag (same switch that auto-discovers
+# modules from the "lexigram.modules" entry-point group):
+#
+#   discovery:
+#     auto_discover: true
+#
+# (or LEX_DISCOVERY__AUTO_DISCOVER=true)
+#
+# Plugin enable/disable state is persisted per-process to .lexigram/plugins.json
+# (override: LEXIGRAM_PLUGINS_STATE_PATH). See lexigram/docs/plugins.md.
 
 # ── Workflow Engine (lexigram-workflow) ────────────────────────────────────────
 # env_prefix: LEX_WORKFLOW__

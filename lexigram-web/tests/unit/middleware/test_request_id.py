@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 from starlette.applications import Starlette
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
@@ -12,7 +13,6 @@ from lexigram.web.middleware.request_id import (
     RequestIDMiddleware,
     get_request_id_from_request,
 )
-from lexigram.web import Request
 
 
 def _make_client(header_name: str = "X-Request-ID") -> TestClient:

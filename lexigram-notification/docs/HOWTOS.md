@@ -118,7 +118,7 @@ app.add_provider(provider)
 from typing import Annotated
 from lexigram.contracts.notification.protocols import SMSChannelProtocol, PushChannelProtocol
 from lexigram.contracts.mailer.protocols import MailerProtocol
-from lexigram.di import Named
+from lexigram.di.markers import Named
 
 
 class NotificationService:

@@ -265,7 +265,12 @@ Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 #   from importlib.metadata import entry_points
 #   extensions = entry_points(group="lexigram.extensions")
 
-# (No entry points declared by core itself — core is not an extension)
+# PluginsModule ships with core so `discovery.auto_discover = true` picks up
+# entry-point plugin/provider discovery on every application boot. Explicit
+# apps can instead call `app.add_module(PluginsModule.configure())`.
+
+[project.entry-points."lexigram.modules"]
+PluginsModule = "lexigram.plugins.module:PluginsModule"
 
 # =============================================================================
 # Build Configuration

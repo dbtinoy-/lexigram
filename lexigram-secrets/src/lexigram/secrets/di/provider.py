@@ -105,9 +105,9 @@ class SecretsProvider(Provider):
 
     def _create_store(self, config: SecretsConfig) -> RotatableSecretStoreProtocol:
         if config.backend_type == "memory":
-            from lexigram.testing.fakes import FakeRotatableSecretStore
+            from lexigram.secrets.backends.memory import InMemoryRotatableSecretStore
 
-            return FakeRotatableSecretStore()
+            return InMemoryRotatableSecretStore()
         if config.backend_type == "vault":
             from lexigram.secrets.backends.vault import HashicorpVaultStore
 

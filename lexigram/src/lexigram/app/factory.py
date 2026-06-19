@@ -31,8 +31,8 @@ def create_app(
     to register providers.
 
     For entry-point-based auto-discovery, use
-    ``lexigram.plugins.discovery.discover_providers`` from the
-    ``lexigram-plugins`` package.
+    ``lexigram.plugins.discovery.discover_providers`` — the plugin system
+    ships inside the core ``lexigram`` package.
 
     Args:
         name: Human-readable application name used in log output.

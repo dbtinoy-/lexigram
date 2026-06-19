@@ -108,9 +108,8 @@ class IndexConfig:
 
 config = LexigramConfig.from_yaml("application.yaml")
 index_cfg = config.get_section("index", IndexConfig)
-# Reads from:
-#   YAML: index.host
-#   Env:  LEX_INDEX__HOST
+# Reads from YAML (index.host). Custom sections are YAML-only; env
+# overrides apply to built-in sections, e.g. LEX_LOGGING__LEVEL.
 ```
 
 ---

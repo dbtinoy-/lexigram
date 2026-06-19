@@ -207,8 +207,8 @@ class MyResource(Resource):
 
     @classmethod
     async def get_data_source(cls) -> IDataSource[MyModel]:
-        from lexigram.admin.di.container import admin_container
-        return await admin_container.resolve(IDataSource[MyModel])
+        from lexigram.admin.lib.di import resolve_admin_service
+        return await resolve_admin_service(IDataSource[MyModel])
 ```
 
 The framework provides a default resolution path:

@@ -6,18 +6,18 @@
 
 ## Summary
 
-- Total passed tests: 28025
+- Total passed tests: 0
 - Total failed tests: 0
-- Total skipped tests: 268
-- Total warnings: 274
-- Aggregate code coverage: 73.00%
+- Total skipped tests: 0
+- Total warnings: 0
+- Aggregate code coverage: 0.00%
 
 - Representative commands run: 54
-- Commands passing: 43
-- Commands failing: 11
+- Commands passing: 0
+- Commands failing: 54
 - Packages with tests: 54
-- Test files: 2717
-- Test functions: 28506
+- Test files: 2876
+- Test functions: 29837
 
 ### Exit Codes Reference
 
@@ -29,60 +29,60 @@
 
 | Label | Code Coverage | Pass/Total | Failed | Skipped | Warnings | Exit Code | Duration |
 |-------|---------------|------------|---------|----------|------|-----------|----------|
-| Lexigram framework core tests | 57.0% | 2884/2889 | 0 | 5 | 1 | 1 | 27367 ms |
-| Package tests: lexigram-contracts | 33.0% | 1679/1679 | 0 | 0 | 5 | 1 | 11276 ms |
-| Package tests: lexigram-admin | 67.0% | 3552/3594 | 0 | 42 | 14 | 0 | 62292 ms |
-| Package tests: lexigram-ai-agents | 84.0% | 379/379 | 0 | 0 | 4 | 0 | 6308 ms |
-| Package tests: lexigram-ai-evaluation | 99.0% | 136/136 | 0 | 0 | 4 | 0 | 2063 ms |
-| Package tests: lexigram-ai-feedback | 94.0% | 237/237 | 0 | 0 | 4 | 0 | 2503 ms |
-| Package tests: lexigram-ai-governance | 86.0% | 457/457 | 0 | 0 | 16 | 0 | 4130 ms |
-| Package tests: lexigram-ai-guard | 78.0% | 224/224 | 0 | 0 | 7 | 0 | 2536 ms |
-| Package tests: lexigram-ai-llm | 71.0% | 925/945 | 0 | 20 | 4 | 0 | 33454 ms |
-| Package tests: lexigram-ai-mcp | 48.0% | 359/359 | 0 | 0 | 4 | 0 | 3997 ms |
-| Package tests: lexigram-ai-memory | 76.0% | 222/222 | 0 | 0 | 4 | 0 | 2707 ms |
-| Package tests: lexigram-ai-observability | 86.0% | 232/232 | 0 | 0 | 4 | 0 | 2884 ms |
-| Package tests: lexigram-ai-prompt | 87.0% | 297/297 | 0 | 0 | 4 | 0 | 2880 ms |
-| Package tests: lexigram-ai-rag | 62.0% | 521/528 | 0 | 7 | 4 | 0 | 7907 ms |
-| Package tests: lexigram-ai-relay-gateway | 95.0% | 414/414 | 0 | 0 | 4 | 0 | 3895 ms |
-| Package tests: lexigram-ai-relay | 91.0% | 539/539 | 0 | 0 | 4 | 0 | 6790 ms |
-| Package tests: lexigram-ai-session | 90.0% | 207/207 | 0 | 0 | 4 | 0 | 2735 ms |
-| Package tests: lexigram-ai-skills | 78.0% | 263/263 | 0 | 0 | 6 | 0 | 2907 ms |
-| Package tests: lexigram-ai-workers | 87.0% | 318/318 | 0 | 0 | 4 | 0 | 4237 ms |
-| Package tests: lexigram-ai | 42.0% | 442/453 | 0 | 11 | 4 | 1 | 19521 ms |
-| Package tests: lexigram-audit | 72.0% | 242/242 | 0 | 0 | 4 | 1 | 2551 ms |
-| Package tests: lexigram-auth | 64.0% | 553/557 | 0 | 4 | 6 | 1 | 21589 ms |
-| Package tests: lexigram-cache | 69.0% | 741/754 | 0 | 13 | 6 | 1 | 10964 ms |
-| Package tests: lexigram-cli | 80.0% | 846/847 | 0 | 1 | 6 | 0 | 18015 ms |
-| Package tests: lexigram-events | 61.0% | 913/928 | 0 | 15 | 5 | 1 | 12453 ms |
-| Package tests: lexigram-features | 80.0% | 245/245 | 0 | 0 | 17 | 0 | 3716 ms |
-| Package tests: lexigram-graph | 72.0% | 252/253 | 0 | 1 | 4 | 0 | 2599 ms |
-| Package tests: lexigram-graphql | 72.0% | 502/506 | 0 | 4 | 4 | 0 | 5894 ms |
-| Package tests: lexigram-http | 73.0% | 433/433 | 0 | 0 | 4 | 0 | 2871 ms |
-| Package tests: lexigram-monitor | 81.0% | 310/315 | 0 | 5 | 4 | 0 | 8982 ms |
-| Package tests: lexigram-multimedia-beat | 69.0% | 12/12 | 0 | 0 | 4 | 0 | 2255 ms |
-| Package tests: lexigram-multimedia-image | 92.0% | 53/53 | 0 | 0 | 4 | 0 | 2452 ms |
-| Package tests: lexigram-multimedia-interpolate | 84.0% | 23/23 | 0 | 0 | 4 | 0 | 2197 ms |
-| Package tests: lexigram-multimedia-music | 79.0% | 37/37 | 0 | 0 | 4 | 0 | 2293 ms |
-| Package tests: lexigram-multimedia-tts | 70.0% | 53/53 | 0 | 0 | 4 | 0 | 2397 ms |
-| Package tests: lexigram-multimedia-upscale | 78.0% | 26/26 | 0 | 0 | 4 | 0 | 2214 ms |
-| Package tests: lexigram-multimedia-video | 84.0% | 139/139 | 0 | 0 | 4 | 0 | 5431 ms |
-| Package tests: lexigram-multimedia | 56.0% | 81/81 | 0 | 0 | 5 | 0 | 5333 ms |
-| Package tests: lexigram-nosql | 91.0% | 416/416 | 0 | 0 | 4 | 0 | 3473 ms |
-| Package tests: lexigram-notification | 83.0% | 239/239 | 0 | 0 | 4 | 0 | 4594 ms |
-| Package tests: lexigram-queue | 82.0% | 201/201 | 0 | 0 | 4 | 0 | 4175 ms |
-| Package tests: lexigram-resilience | 71.0% | 297/297 | 0 | 0 | 4 | 0 | 20797 ms |
-| Package tests: lexigram-search | 60.0% | 640/644 | 0 | 4 | 4 | 0 | 4121 ms |
-| Package tests: lexigram-secrets | 39.0% | 85/85 | 0 | 0 | 4 | 1 | 1796 ms |
-| Package tests: lexigram-sql (unit only, no external DB) | 55.0% | 1086/1176 | 0 | 90 | 6 | 1 | 11409 ms |
-| Package tests: lexigram-storage | 62.0% | 440/443 | 0 | 3 | 4 | 0 | 7194 ms |
-| Package tests: lexigram-tasks | 65.0% | 410/431 | 0 | 21 | 4 | 1 | 9259 ms |
-| Package tests: lexigram-tenancy | 83.0% | 345/345 | 0 | 0 | 4 | 0 | 3301 ms |
-| Package tests: lexigram-testing | 17.0% | 436/451 | 0 | 15 | 4 | 1 | 8730 ms |
-| Package tests: lexigram-ui | 74.0% | 960/960 | 0 | 0 | 12 | 0 | 5775 ms |
-| Package tests: lexigram-vector | 76.0% | 498/498 | 0 | 0 | 4 | 0 | 4822 ms |
-| Package tests: lexigram-web | 80.0% | 1344/1351 | 0 | 7 | 6 | 0 | 13209 ms |
-| Package tests: lexigram-webhook | 86.0% | 327/327 | 0 | 0 | 4 | 0 | 2815 ms |
-| Package tests: lexigram-workflow | 71.0% | 553/553 | 0 | 0 | 4 | 0 | 14142 ms |
+| Lexigram framework core tests | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 805 ms |
+| Package tests: lexigram-contracts | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 570 ms |
+| Package tests: lexigram-admin | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 614 ms |
+| Package tests: lexigram-ai-agents | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 690 ms |
+| Package tests: lexigram-ai-evaluation | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 797 ms |
+| Package tests: lexigram-ai-feedback | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 623 ms |
+| Package tests: lexigram-ai-governance | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 769 ms |
+| Package tests: lexigram-ai-guard | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 830 ms |
+| Package tests: lexigram-ai-llm | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 679 ms |
+| Package tests: lexigram-ai-mcp | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 833 ms |
+| Package tests: lexigram-ai-memory | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 840 ms |
+| Package tests: lexigram-ai-observability | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 829 ms |
+| Package tests: lexigram-ai-prompt | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 807 ms |
+| Package tests: lexigram-ai-rag | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 731 ms |
+| Package tests: lexigram-ai-relay-gateway | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 873 ms |
+| Package tests: lexigram-ai-relay | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 731 ms |
+| Package tests: lexigram-ai-session | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 834 ms |
+| Package tests: lexigram-ai-skills | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 734 ms |
+| Package tests: lexigram-ai-workers | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 834 ms |
+| Package tests: lexigram-ai | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 817 ms |
+| Package tests: lexigram-audit | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 841 ms |
+| Package tests: lexigram-auth | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 821 ms |
+| Package tests: lexigram-cache | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 836 ms |
+| Package tests: lexigram-cli | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 834 ms |
+| Package tests: lexigram-events | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 829 ms |
+| Package tests: lexigram-features | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 837 ms |
+| Package tests: lexigram-graph | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 612 ms |
+| Package tests: lexigram-graphql | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 828 ms |
+| Package tests: lexigram-http | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 778 ms |
+| Package tests: lexigram-monitor | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 876 ms |
+| Package tests: lexigram-multimedia-beat | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 694 ms |
+| Package tests: lexigram-multimedia-image | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 615 ms |
+| Package tests: lexigram-multimedia-interpolate | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 774 ms |
+| Package tests: lexigram-multimedia-music | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 837 ms |
+| Package tests: lexigram-multimedia-tts | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 722 ms |
+| Package tests: lexigram-multimedia-upscale | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 822 ms |
+| Package tests: lexigram-multimedia-video | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 805 ms |
+| Package tests: lexigram-multimedia | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 844 ms |
+| Package tests: lexigram-nosql | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 742 ms |
+| Package tests: lexigram-notification | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 871 ms |
+| Package tests: lexigram-queue | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 744 ms |
+| Package tests: lexigram-resilience | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 774 ms |
+| Package tests: lexigram-search | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 658 ms |
+| Package tests: lexigram-secrets | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 883 ms |
+| Package tests: lexigram-sql (unit only, no external DB) | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 787 ms |
+| Package tests: lexigram-storage | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 724 ms |
+| Package tests: lexigram-tasks | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 716 ms |
+| Package tests: lexigram-tenancy | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 787 ms |
+| Package tests: lexigram-testing | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 816 ms |
+| Package tests: lexigram-ui | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 841 ms |
+| Package tests: lexigram-vector | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 760 ms |
+| Package tests: lexigram-web | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 767 ms |
+| Package tests: lexigram-webhook | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 834 ms |
+| Package tests: lexigram-workflow | 0.0% | 0/0 | 0 | 0 | 0 | 1 | 749 ms |
 
 ### Execution Scope Notes
 
@@ -94,22 +94,24 @@
 - Command: `uv run pytest lexigram/tests -q -m not integration --cov=lexigram`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `27367 ms`
-- Parsed summary: `2884 passed, 5 skipped, 19 deselected, 1 warning in 24.27s`
-- Counters: passed=2884, total=2889, failed=0, skipped=5, warnings=1, coverage=57.0%
+- Duration: `805 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:16:47 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [  2%]
-........................................................................ [  4%]
-........................................................................ [  7%]
-........................................................................ [  9%]
-........................................................................ [ 12%]
-........................................................................ [ 14%]
-........................................................................ [ 17%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-contracts
@@ -118,422 +120,466 @@
 - Command: `uv run pytest lexigram-contracts/tests -q -m not integration --cov=lexigram.contracts`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `11276 ms`
-- Parsed summary: `1679 passed, 5 warnings in 9.48s`
-- Counters: passed=1679, total=1679, failed=0, skipped=0, warnings=5, coverage=33.0%
+- Duration: `570 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:17:15 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [  4%]
-........................................................................ [  8%]
-........................................................................ [ 12%]
-........................................................................ [ 17%]
-........................................................................ [ 21%]
-........................................................................ [ 25%]
-........................................................................ [ 30%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-admin
 
 - Scope: `lexigram-admin/tests`
 - Command: `uv run pytest lexigram-admin/tests -q -m not integration --cov=lexigram.admin`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `62292 ms`
-- Parsed summary: `3552 passed, 42 skipped, 25 deselected, 14 warnings in 59.55s`
-- Counters: passed=3552, total=3594, failed=0, skipped=42, warnings=14, coverage=67.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `614 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:17:26 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-ss....ss................................................................ [  2%]
-............................s...............................ss.......... [  4%]
-........................................................................ [  6%]
-........................................................................ [  8%]
-........................................................................ [ 10%]
-........................................................................ [ 12%]
-........................................................................ [ 14%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-agents
 
 - Scope: `lexigram-ai-agents/tests`
 - Command: `uv run pytest lexigram-ai-agents/tests -q -m not integration --cov=lexigram.ai.agents`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `6308 ms`
-- Parsed summary: `379 passed, 10 deselected, 4 warnings in 4.66s`
-- Counters: passed=379, total=379, failed=0, skipped=0, warnings=4, coverage=84.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `690 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:18:28 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 18%]
-........................................................................ [ 37%]
-........................................................................ [ 56%]
-........................................................................ [ 75%]
-........................................................................ [ 94%]
-...................                                                      [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/_
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-evaluation
 
 - Scope: `lexigram-ai-evaluation/tests`
 - Command: `uv run pytest lexigram-ai-evaluation/tests -q -m not integration --cov=lexigram.ai.evaluation`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2063 ms`
-- Parsed summary: `136 passed, 4 warnings in 0.60s`
-- Counters: passed=136, total=136, failed=0, skipped=0, warnings=4, coverage=99.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `797 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:18:35 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 52%]
-................................................................         [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-feedback
 
 - Scope: `lexigram-ai-feedback/tests`
 - Command: `uv run pytest lexigram-ai-feedback/tests -q -m not integration --cov=lexigram.ai.feedback`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2503 ms`
-- Parsed summary: `237 passed, 4 warnings in 0.95s`
-- Counters: passed=237, total=237, failed=0, skipped=0, warnings=4, coverage=94.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `623 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:18:37 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 30%]
-........................................................................ [ 60%]
-........................................................................ [ 91%]
-.....................                                                    [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-governance
 
 - Scope: `lexigram-ai-governance/tests`
 - Command: `uv run pytest lexigram-ai-governance/tests -q -m not integration --cov=lexigram.ai.governance`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `4130 ms`
-- Parsed summary: `457 passed, 7 deselected, 16 warnings in 2.56s`
-- Counters: passed=457, total=457, failed=0, skipped=0, warnings=16, coverage=86.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `769 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:18:39 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 15%]
-........................................................................ [ 31%]
-........................................................................ [ 47%]
-........................................................................ [ 63%]
-........................................................................ [ 78%]
-........................................................................ [ 94%]
-.........................                                                [100%]
-=============================== warnings summary ===
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-guard
 
 - Scope: `lexigram-ai-guard/tests`
 - Command: `uv run pytest lexigram-ai-guard/tests -q -m not integration --cov=lexigram.ai.guard`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2536 ms`
-- Parsed summary: `224 passed, 17 deselected, 7 warnings in 1.00s`
-- Counters: passed=224, total=224, failed=0, skipped=0, warnings=7, coverage=78.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `830 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:18:43 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 32%]
-........................................................................ [ 64%]
-........................................................................ [ 96%]
-........                                                                 [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-llm
 
 - Scope: `lexigram-ai-llm/tests`
 - Command: `uv run pytest lexigram-ai-llm/tests -q -m not integration --cov=lexigram.ai.llm`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `33454 ms`
-- Parsed summary: `925 passed, 20 skipped, 19 deselected, 4 warnings in 31.31s`
-- Counters: passed=925, total=945, failed=0, skipped=20, warnings=4, coverage=71.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `679 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:18:46 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-ssssssssssssssss........................................................ [  7%]
-........................................................................ [ 15%]
-........................................................................ [ 22%]
-..........................................ssss.......................... [ 30%]
-........................................................................ [ 38%]
-........................................................................ [ 45%]
-........................................................................ [ 53%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-mcp
 
 - Scope: `lexigram-ai-mcp/tests`
 - Command: `uv run pytest lexigram-ai-mcp/tests -q -m not integration --cov=lexigram.ai.mcp`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `3997 ms`
-- Parsed summary: `359 passed, 13 deselected, 4 warnings in 2.40s`
-- Counters: passed=359, total=359, failed=0, skipped=0, warnings=4, coverage=48.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `833 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:19 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 20%]
-........................................................................ [ 40%]
-........................................................................ [ 60%]
-........................................................................ [ 80%]
-.......................................................................  [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-memory
 
 - Scope: `lexigram-ai-memory/tests`
 - Command: `uv run pytest lexigram-ai-memory/tests -q -m not integration --cov=lexigram.ai.memory`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2707 ms`
-- Parsed summary: `222 passed, 16 deselected, 4 warnings in 1.22s`
-- Counters: passed=222, total=222, failed=0, skipped=0, warnings=4, coverage=76.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `840 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:23 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 32%]
-........................................................................ [ 64%]
-........................................................................ [ 97%]
-......                                                                   [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-observability
 
 - Scope: `lexigram-ai-observability/tests`
 - Command: `uv run pytest lexigram-ai-observability/tests -q -m not integration --cov=lexigram.ai.observability`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2884 ms`
-- Parsed summary: `232 passed, 10 deselected, 4 warnings in 1.37s`
-- Counters: passed=232, total=232, failed=0, skipped=0, warnings=4, coverage=86.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `829 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:26 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 31%]
-........................................................................ [ 62%]
-........................................................................ [ 93%]
-................                                                         [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-prompt
 
 - Scope: `lexigram-ai-prompt/tests`
 - Command: `uv run pytest lexigram-ai-prompt/tests -q -m not integration --cov=lexigram.ai.prompt`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2880 ms`
-- Parsed summary: `297 passed, 4 warnings in 1.35s`
-- Counters: passed=297, total=297, failed=0, skipped=0, warnings=4, coverage=87.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `807 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:29 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 24%]
-........................................................................ [ 48%]
-........................................................................ [ 72%]
-........................................................................ [ 96%]
-.........                                                                [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-rag
 
 - Scope: `lexigram-ai-rag/tests`
 - Command: `uv run pytest lexigram-ai-rag/tests -q -m not integration --cov=lexigram.ai.rag`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `7907 ms`
-- Parsed summary: `521 passed, 7 skipped, 8 deselected, 4 warnings in 6.22s`
-- Counters: passed=521, total=528, failed=0, skipped=7, warnings=4, coverage=62.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `731 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:32 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-...........................................................sss.......... [ 13%]
-.s..............ss...................................................... [ 27%]
-.........................................................s.............. [ 40%]
-........................................................................ [ 54%]
-........................................................................ [ 68%]
-........................................................................ [ 81%]
-........................................................................ [ 95%]
-........................                            
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-relay-gateway
 
 - Scope: `lexigram-ai-relay-gateway/tests`
 - Command: `uv run pytest lexigram-ai-relay-gateway/tests -q -m not integration --cov=lexigram.ai.relay.gateway`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `3895 ms`
-- Parsed summary: `414 passed, 4 warnings in 2.34s`
-- Counters: passed=414, total=414, failed=0, skipped=0, warnings=4, coverage=95.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `873 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:40 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 17%]
-........................................................................ [ 34%]
-........................................................................ [ 52%]
-........................................................................ [ 69%]
-........................................................................ [ 86%]
-......................................................                   [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/_
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-relay
 
 - Scope: `lexigram-ai-relay/tests`
 - Command: `uv run pytest lexigram-ai-relay/tests -q -m not integration --cov=lexigram.ai.relay`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `6790 ms`
-- Parsed summary: `539 passed, 4 warnings in 5.19s`
-- Counters: passed=539, total=539, failed=0, skipped=0, warnings=4, coverage=91.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `731 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:44 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-2026-08-09 20:19:44 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=RelayModule providers=0
-........................................................................ [ 13%]
-........................................................................ [ 26%]
-........................................................................ [ 40%]
-........................................................................ [ 53%]
-........................................................................ [ 66%]
-..........................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-session
 
 - Scope: `lexigram-ai-session/tests`
 - Command: `uv run pytest lexigram-ai-session/tests -q -m not integration --cov=lexigram.ai.session`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2735 ms`
-- Parsed summary: `207 passed, 4 warnings in 1.21s`
-- Counters: passed=207, total=207, failed=0, skipped=0, warnings=4, coverage=90.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `834 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:50 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 34%]
-........................................................................ [ 69%]
-...............................................................          [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtur
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-skills
 
 - Scope: `lexigram-ai-skills/tests`
 - Command: `uv run pytest lexigram-ai-skills/tests -q -m not integration --cov=lexigram.ai.skills`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2907 ms`
-- Parsed summary: `263 passed, 6 warnings in 1.42s`
-- Counters: passed=263, total=263, failed=0, skipped=0, warnings=6, coverage=78.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `734 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:53 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 27%]
-........................................................................ [ 54%]
-........................................................................ [ 82%]
-...............................................                          [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai-workers
 
 - Scope: `lexigram-ai-workers/tests`
 - Command: `uv run pytest lexigram-ai-workers/tests -q -m not integration --cov=lexigram.ai.workers`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `4237 ms`
-- Parsed summary: `318 passed, 7 deselected, 4 warnings in 2.69s`
-- Counters: passed=318, total=318, failed=0, skipped=0, warnings=4, coverage=87.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `834 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:19:56 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 22%]
-........................................................................ [ 45%]
-........................................................................ [ 67%]
-........................................................................ [ 90%]
-..............................                                           [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ai
@@ -542,23 +588,24 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest lexigram-ai/tests -q -m not integration --cov=lexigram.ai`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `19521 ms`
-- Parsed summary: `442 passed, 11 skipped, 15 deselected, 4 warnings in 17.47s`
-- Counters: passed=442, total=453, failed=0, skipped=11, warnings=4, coverage=42.0%
+- Duration: `817 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:20:00 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-...ss..s................................................................ [ 16%]
-........................................................................ [ 32%]
-...s.s.................................................................. [ 48%]
-........................................................................ [ 64%]
-........................................................................ [ 80%]
-........................................................................ [ 96%]
-...............
-ERROR: Coverage failure: total of 42 is less than fail-under=60
-                                                    
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-audit
@@ -567,23 +614,24 @@ ERROR: Coverage failure: total of 42 is less than fail-under=60
 - Command: `uv run pytest lexigram-audit/tests -q -m not integration --cov=lexigram.audit`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `2551 ms`
-- Parsed summary: `242 passed, 17 deselected, 4 warnings in 1.06s`
-- Counters: passed=242, total=242, failed=0, skipped=0, warnings=4, coverage=72.0%
+- Duration: `841 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:20:20 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 29%]
-........................................................................ [ 59%]
-........................................................................ [ 89%]
-..........................
-ERROR: Coverage failure: total of 72 is less than fail-under=80
-                                                                         [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexi
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-auth
@@ -592,22 +640,24 @@ ERROR: Coverage failure: total of 72 is less than fail-under=80
 - Command: `uv run pytest lexigram-auth/tests -q -m not integration --cov=lexigram.auth`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `21589 ms`
-- Parsed summary: `553 passed, 4 skipped, 2 deselected, 6 warnings in 19.93s`
-- Counters: passed=553, total=557, failed=0, skipped=4, warnings=6, coverage=64.0%
+- Duration: `821 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:20:22 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 12%]
-.......................ssss............................................. [ 25%]
-........................................................................ [ 38%]
-........................................................................ [ 51%]
-........................................................................ [ 64%]
-........................................................................ [ 77%]
-........................................................................ [ 90%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-cache
@@ -616,46 +666,50 @@ ERROR: Coverage failure: total of 72 is less than fail-under=80
 - Command: `uv run pytest lexigram-cache/tests -q -m not integration --cov=lexigram.cache`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `10964 ms`
-- Parsed summary: `741 passed, 13 skipped, 22 deselected, 6 warnings in 9.15s`
-- Counters: passed=741, total=754, failed=0, skipped=13, warnings=6, coverage=69.0%
+- Duration: `836 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:20:44 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [  9%]
-.................ss..................................................... [ 19%]
-........................................................................ [ 28%]
-...ssssssssss........................................................... [ 38%]
-........................................................................ [ 47%]
-........................................................................ [ 57%]
-........................................................................ [ 66%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-cli
 
 - Scope: `lexigram-cli/tests`
 - Command: `uv run pytest lexigram-cli/tests -q -m not integration --cov=lexigram.cli`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `18015 ms`
-- Parsed summary: `846 passed, 1 skipped, 7 deselected, 6 warnings in 16.00s`
-- Counters: passed=846, total=847, failed=0, skipped=1, warnings=6, coverage=80.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `834 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:20:55 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [  8%]
-........................................................................ [ 17%]
-........................................................................ [ 25%]
-........................................................................ [ 34%]
-........................................................................ [ 42%]
-........................................................................ [ 51%]
-........................................................................ [ 59%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-events
@@ -664,449 +718,492 @@ ERROR: Coverage failure: total of 72 is less than fail-under=80
 - Command: `uv run pytest lexigram-events/tests -q -m not integration --cov=lexigram.events`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `12453 ms`
-- Parsed summary: `913 passed, 15 skipped, 11 deselected, 5 warnings in 10.71s`
-- Counters: passed=913, total=928, failed=0, skipped=15, warnings=5, coverage=61.0%
+- Duration: `829 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:13 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-...s.................................................................... [  7%]
-........................................................................ [ 15%]
-........................................................................ [ 23%]
-........................................................................ [ 31%]
-........................................................................ [ 39%]
-........................................................................ [ 46%]
-........................................................................ [ 54%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-features
 
 - Scope: `lexigram-features/tests`
 - Command: `uv run pytest lexigram-features/tests -q -m not integration --cov=lexigram.features`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `3716 ms`
-- Parsed summary: `245 passed, 14 deselected, 17 warnings in 2.22s`
-- Counters: passed=245, total=245, failed=0, skipped=0, warnings=17, coverage=80.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `837 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:25 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 29%]
-........................................................................ [ 58%]
-........................................................................ [ 88%]
-.............................                                            [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-graph
 
 - Scope: `lexigram-graph/tests`
 - Command: `uv run pytest lexigram-graph/tests -q -m not integration --cov=lexigram.graph`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2599 ms`
-- Parsed summary: `252 passed, 1 skipped, 7 deselected, 4 warnings in 1.12s`
-- Counters: passed=252, total=253, failed=0, skipped=1, warnings=4, coverage=72.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `612 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:29 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 28%]
-..................s..................................................... [ 56%]
-........................................................................ [ 85%]
-.....................................                                    [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-graphql
 
 - Scope: `lexigram-graphql/tests`
 - Command: `uv run pytest lexigram-graphql/tests -q -m not integration --cov=lexigram.graphql`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `5894 ms`
-- Parsed summary: `502 passed, 4 skipped, 11 deselected, 4 warnings in 3.98s`
-- Counters: passed=502, total=506, failed=0, skipped=4, warnings=4, coverage=72.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `828 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:32 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-s....................................................................... [ 14%]
-........................................................................ [ 28%]
-................s....................................................... [ 42%]
-.......s.....s.......................................................... [ 56%]
-........................................................................ [ 71%]
-........................................................................ [ 85%]
-........................................................................ [ 99%]
-..                                                  
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-http
 
 - Scope: `lexigram-http/tests`
 - Command: `uv run pytest lexigram-http/tests -q -m not integration --cov=lexigram.http`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2871 ms`
-- Parsed summary: `433 passed, 9 deselected, 4 warnings in 1.34s`
-- Counters: passed=433, total=433, failed=0, skipped=0, warnings=4, coverage=73.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `778 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:38 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 16%]
-........................................................................ [ 33%]
-........................................................................ [ 49%]
-........................................................................ [ 66%]
-........................................................................ [ 83%]
-........................................................................ [ 99%]
-.                                                                        [100%]
-=============================== warnings summary ===
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-monitor
 
 - Scope: `lexigram-monitor/tests`
 - Command: `uv run pytest lexigram-monitor/tests -q -m not integration --cov=lexigram.monitor`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `8982 ms`
-- Parsed summary: `310 passed, 5 skipped, 4 deselected, 4 warnings in 7.38s`
-- Counters: passed=310, total=315, failed=0, skipped=5, warnings=4, coverage=81.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `876 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:40 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 22%]
-....................................................sss.s............... [ 45%]
-........................................................................ [ 68%]
-........................................................s............... [ 91%]
-...........................                                              [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia-beat
 
 - Scope: `lexigram-multimedia-beat/tests`
 - Command: `uv run pytest lexigram-multimedia-beat/tests -q -m not integration --cov=lexigram.multimedia.beat`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2255 ms`
-- Parsed summary: `12 passed, 2 deselected, 4 warnings in 0.57s`
-- Counters: passed=12, total=12, failed=0, skipped=0, warnings=4, coverage=69.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `694 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:49 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-............                                                             [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia-image
 
 - Scope: `lexigram-multimedia-image/tests`
 - Command: `uv run pytest lexigram-multimedia-image/tests -q -m not integration --cov=lexigram.multimedia.image`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2452 ms`
-- Parsed summary: `53 passed, 4 warnings in 0.80s`
-- Counters: passed=53, total=53, failed=0, skipped=0, warnings=4, coverage=92.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `615 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:52 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-.....................................................                    [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia-interpolate
 
 - Scope: `lexigram-multimedia-interpolate/tests`
 - Command: `uv run pytest lexigram-multimedia-interpolate/tests -q -m not integration --cov=lexigram.multimedia.interpolate`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2197 ms`
-- Parsed summary: `23 passed, 4 warnings in 0.49s`
-- Counters: passed=23, total=23, failed=0, skipped=0, warnings=4, coverage=84.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `774 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:54 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-.......................                                                  [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia-music
 
 - Scope: `lexigram-multimedia-music/tests`
 - Command: `uv run pytest lexigram-multimedia-music/tests -q -m not integration --cov=lexigram.multimedia.music`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2293 ms`
-- Parsed summary: `37 passed, 4 warnings in 0.56s`
-- Counters: passed=37, total=37, failed=0, skipped=0, warnings=4, coverage=79.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `837 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:56 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-.....................................                                    [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia-tts
 
 - Scope: `lexigram-multimedia-tts/tests`
 - Command: `uv run pytest lexigram-multimedia-tts/tests -q -m not integration --cov=lexigram.multimedia.tts`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2397 ms`
-- Parsed summary: `53 passed, 4 warnings in 0.73s`
-- Counters: passed=53, total=53, failed=0, skipped=0, warnings=4, coverage=70.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `722 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:21:59 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-.....................................................                    [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia-upscale
 
 - Scope: `lexigram-multimedia-upscale/tests`
 - Command: `uv run pytest lexigram-multimedia-upscale/tests -q -m not integration --cov=lexigram.multimedia.upscale`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2214 ms`
-- Parsed summary: `26 passed, 4 warnings in 0.53s`
-- Counters: passed=26, total=26, failed=0, skipped=0, warnings=4, coverage=78.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `822 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:01 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-..........................                                               [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia-video
 
 - Scope: `lexigram-multimedia-video/tests`
 - Command: `uv run pytest lexigram-multimedia-video/tests -q -m not integration --cov=lexigram.multimedia.video`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `5431 ms`
-- Parsed summary: `139 passed, 4 warnings in 3.76s`
-- Counters: passed=139, total=139, failed=0, skipped=0, warnings=4, coverage=84.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `805 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:03 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 51%]
-...................................................................      [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-multimedia
 
 - Scope: `lexigram-multimedia/tests`
 - Command: `uv run pytest lexigram-multimedia/tests -q -m not integration --cov=lexigram.multimedia`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `5333 ms`
-- Parsed summary: `81 passed, 5 warnings in 3.71s`
-- Counters: passed=81, total=81, failed=0, skipped=0, warnings=5, coverage=56.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `844 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:09 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 88%]
-.........                                                                [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
-    self.import_plugin(import_spec)
-
-.venv/lib/python3.13/site-packages/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-nosql
 
 - Scope: `lexigram-nosql/tests`
 - Command: `uv run pytest lexigram-nosql/tests -q -m not integration --cov=lexigram.nosql`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `3473 ms`
-- Parsed summary: `416 passed, 10 deselected, 4 warnings in 1.93s`
-- Counters: passed=416, total=416, failed=0, skipped=0, warnings=4, coverage=91.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `742 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:14 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 17%]
-........................................................................ [ 34%]
-........................................................................ [ 51%]
-........................................................................ [ 69%]
-........................................................................ [ 86%]
-........................................................                 [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/_
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-notification
 
 - Scope: `lexigram-notification/tests`
 - Command: `uv run pytest lexigram-notification/tests -q -m not integration --cov=lexigram.notification`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `4594 ms`
-- Parsed summary: `239 passed, 8 deselected, 4 warnings in 3.05s`
-- Counters: passed=239, total=239, failed=0, skipped=0, warnings=4, coverage=83.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `871 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:17 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 30%]
-........................................................................ [ 60%]
-........................................................................ [ 90%]
-.......................                                                  [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewrite
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-queue
 
 - Scope: `lexigram-queue/tests`
 - Command: `uv run pytest lexigram-queue/tests -q -m not integration --cov=lexigram.queue`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `4175 ms`
-- Parsed summary: `201 passed, 19 deselected, 4 warnings in 2.65s`
-- Counters: passed=201, total=201, failed=0, skipped=0, warnings=4, coverage=82.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `744 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:22 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 35%]
-........................................................................ [ 71%]
-.........................................................                [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtur
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-resilience
 
 - Scope: `lexigram-resilience/tests`
 - Command: `uv run pytest lexigram-resilience/tests -q -m not integration --cov=lexigram.resilience`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `20797 ms`
-- Parsed summary: `297 passed, 23 deselected, 4 warnings in 19.26s`
-- Counters: passed=297, total=297, failed=0, skipped=0, warnings=4, coverage=71.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `774 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:26 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 24%]
-........................................................................ [ 48%]
-........................................................................ [ 72%]
-........................................................................ [ 96%]
-.........                                                                [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-search
 
 - Scope: `lexigram-search/tests`
 - Command: `uv run pytest lexigram-search/tests -q -m not integration --cov=lexigram.search`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `4121 ms`
-- Parsed summary: `640 passed, 4 skipped, 15 deselected, 4 warnings in 2.54s`
-- Counters: passed=640, total=644, failed=0, skipped=4, warnings=4, coverage=60.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `658 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:47 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 11%]
-........................................................................ [ 22%]
-........................................................................ [ 33%]
-........................................................................ [ 45%]
-........................................................................ [ 56%]
-........................................................................ [ 67%]
-........................................................................ [ 78%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-secrets
@@ -1115,21 +1212,24 @@ s....................................................................... [ 14%]
 - Command: `uv run pytest lexigram-secrets/tests -q -m not integration --cov=lexigram.secrets`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `1796 ms`
-- Parsed summary: `85 passed, 4 warnings in 0.35s`
-- Counters: passed=85, total=85, failed=0, skipped=0, warnings=4, coverage=39.0%
+- Duration: `883 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:51 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 84%]
-.............
-ERROR: Coverage failure: total of 39 is less than fail-under=55
-                                                                         [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-sql (unit only, no external DB)
@@ -1138,46 +1238,50 @@ ERROR: Coverage failure: total of 39 is less than fail-under=55
 - Command: `uv run pytest lexigram-sql/tests/unit -q -m not integration --cov=lexigram.sql`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `11409 ms`
-- Parsed summary: `1086 passed, 90 skipped, 6 warnings in 9.38s`
-- Counters: passed=1086, total=1176, failed=0, skipped=90, warnings=6, coverage=55.0%
+- Duration: `787 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:22:53 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [  6%]
-........................................................................ [ 12%]
-..............................ss........................................ [ 18%]
-........................................................................ [ 24%]
-........................................................................ [ 30%]
-........................................................................ [ 36%]
-......s...............sssssss.....ss.................................... [ 42%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-storage
 
 - Scope: `lexigram-storage/tests`
 - Command: `uv run pytest lexigram-storage/tests -q -m not integration --cov=lexigram.storage`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `7194 ms`
-- Parsed summary: `440 passed, 3 skipped, 22 deselected, 4 warnings in 5.55s`
-- Counters: passed=440, total=443, failed=0, skipped=3, warnings=4, coverage=62.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `724 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:04 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 16%]
-........................................................................ [ 32%]
-............................s........................................... [ 48%]
-........................................................................ [ 65%]
-........................................................................ [ 81%]
-........................................................................ [ 97%]
-.........s                                                               [100%]
-=============================== warnings summary ===
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-tasks
@@ -1186,46 +1290,50 @@ ERROR: Coverage failure: total of 39 is less than fail-under=55
 - Command: `uv run pytest lexigram-tasks/tests -q -m not integration --cov=lexigram.tasks`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `9259 ms`
-- Parsed summary: `410 passed, 21 skipped, 9 deselected, 4 warnings in 7.55s`
-- Counters: passed=410, total=431, failed=0, skipped=21, warnings=4, coverage=65.0%
+- Duration: `716 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:12 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-.......................................................ssssss........... [ 16%]
-........................................................................ [ 33%]
-...........sssss........................................................ [ 50%]
-..........................................sssssssss..................... [ 66%]
-........................................................................ [ 83%]
-..........................s............................................
-ERROR: Coverage failure: total of 65 is less than fail-under=80
-                                                                         [10
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-tenancy
 
 - Scope: `lexigram-tenancy/tests`
 - Command: `uv run pytest lexigram-tenancy/tests -q -m not integration --cov=lexigram.tenancy`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `3301 ms`
-- Parsed summary: `345 passed, 4 deselected, 4 warnings in 1.76s`
-- Counters: passed=345, total=345, failed=0, skipped=0, warnings=4, coverage=83.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `787 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:21 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 20%]
-........................................................................ [ 41%]
-........................................................................ [ 62%]
-........................................................................ [ 83%]
-.........................................................                [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-testing
@@ -1234,142 +1342,153 @@ ERROR: Coverage failure: total of 65 is less than fail-under=80
 - Command: `uv run pytest lexigram-testing/tests -q -m not integration --cov=lexigram.testing`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `8730 ms`
-- Parsed summary: `436 passed, 15 skipped, 13 deselected, 4 warnings in 6.98s`
-- Counters: passed=436, total=451, failed=0, skipped=15, warnings=4, coverage=17.0%
+- Duration: `816 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:24 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-.................s...................................................... [ 15%]
-........................................................................ [ 31%]
-........................................................................ [ 47%]
-........................................................................ [ 63%]
-............ssssssssssssss.............................................. [ 79%]
-........................................................................ [ 95%]
-...................
-ERROR: Coverage failure: total of 17 is less than fail-under=80
-                                                
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-ui
 
 - Scope: `lexigram-ui/tests`
 - Command: `uv run pytest lexigram-ui/tests -q -m not integration --cov=lexigram.ui`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `5775 ms`
-- Parsed summary: `960 passed, 8 deselected, 12 warnings in 4.16s`
-- Counters: passed=960, total=960, failed=0, skipped=0, warnings=12, coverage=74.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `841 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:33 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [  7%]
-........................................................................ [ 15%]
-........................................................................ [ 22%]
-........................................................................ [ 30%]
-........................................................................ [ 37%]
-........................................................................ [ 45%]
-........................................................................ [ 52%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-vector
 
 - Scope: `lexigram-vector/tests`
 - Command: `uv run pytest lexigram-vector/tests -q -m not integration --cov=lexigram.vector`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `4822 ms`
-- Parsed summary: `498 passed, 20 deselected, 4 warnings in 3.18s`
-- Counters: passed=498, total=498, failed=0, skipped=0, warnings=4, coverage=76.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `760 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:39 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 14%]
-........................................................................ [ 28%]
-........................................................................ [ 43%]
-........................................................................ [ 57%]
-........................................................................ [ 72%]
-........................................................................ [ 86%]
-..................................................................       [100%]
-=============================== warnings summary ===
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-web
 
 - Scope: `lexigram-web/tests`
 - Command: `uv run pytest lexigram-web/tests -q -m not integration --cov=lexigram.web`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `13209 ms`
-- Parsed summary: `1344 passed, 7 skipped, 7 deselected, 6 warnings in 11.07s`
-- Counters: passed=1344, total=1351, failed=0, skipped=7, warnings=6, coverage=80.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `767 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:43 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-sss..................................................................... [  5%]
-........................................................................ [ 10%]
-........................................................................ [ 16%]
-........................................................................ [ 21%]
-.....................s.................................................. [ 26%]
-........................................................................ [ 32%]
-........................................s............................... [ 37%]
-....................................................
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-webhook
 
 - Scope: `lexigram-webhook/tests`
 - Command: `uv run pytest lexigram-webhook/tests -q -m not integration --cov=lexigram.webhook`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `2815 ms`
-- Parsed summary: `327 passed, 4 warnings in 1.22s`
-- Counters: passed=327, total=327, failed=0, skipped=0, warnings=4, coverage=86.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `834 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:57 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 22%]
-........................................................................ [ 44%]
-........................................................................ [ 66%]
-........................................................................ [ 88%]
-.......................................                                  [100%]
-=============================== warnings summary ===============================
-.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:858
-  /home/admin/Documents/AI/applications/framework/lexigram/.venv/
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 
 ### Package tests: lexigram-workflow
 
 - Scope: `lexigram-workflow/tests`
 - Command: `uv run pytest lexigram-workflow/tests -q -m not integration --cov=lexigram.workflow`
-- Status: **PASS**
-- Exit code: `0`
-- Duration: `14142 ms`
-- Parsed summary: `553 passed, 23 deselected, 4 warnings in 12.60s`
-- Counters: passed=553, total=553, failed=0, skipped=0, warnings=4, coverage=71.0%
+- Status: **FAIL**
+- Exit code: `1`
+- Duration: `749 ms`
+- Parsed summary: `summary unavailable`
+- Counters: passed=0, total=0, failed=0, skipped=0, warnings=0, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-09 20:23:59 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 13%]
-........................................................................ [ 26%]
-........................................................................ [ 39%]
-........................................................................ [ 52%]
-........................................................................ [ 65%]
-........................................................................ [ 78%]
-........................................................................ [ 91%]
-.................................................   
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+  × No solution found when resolving dependencies for split (markers:
+  │ python_full_version >= '3.15' and sys_platform == 'win32'):
+  ╰─▶ Because lexigram-multimedia-music[ace-step-server] depends on ace-step
+      and ace-step==0.1.0 depends on gradio==5.23.3, we can conclude that
+      lexigram-multimedia-music[ace-step-server] depends on gradio==5.23.3.
+      And because gradio==5.23.3 depends on pillow>=8.0,<12.0 and
+      lexigram-workspace:dev depends on pillow>=12.1.1, we can conclude that
+      lexigram-workspace:dev and lexigram-multimedia-music[ace-step-server]
+      are incompatible.
+      And because your wo
 ```
 

@@ -124,7 +124,7 @@ _LAZY_IMPORTS: dict[str, str] = {
     "require_flag": "lexigram.features.decorators",
     "require_flag_sync": "lexigram.features.decorators",
     # config
-    "FeatureFlagsConfig": "lexigram.features.config.models",
+    "FeatureFlagsConfig": "lexigram.features.config",
     # integration
     "FeatureFlagsProvider": "lexigram.features.di.provider",
     # Hooks

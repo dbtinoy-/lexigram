@@ -127,8 +127,7 @@ Use a container in `testing_mode` to swap implementations after freeze:
 ```python
 from __future__ import annotations
 
-from lexigram import Application, Container
-from lexigram.config.di.provider import ConfigProvider
+from lexigram import Container
 
 
 async def test_with_override() -> None:
@@ -142,13 +141,23 @@ async def test_with_override() -> None:
     assert isinstance(db, FakeDatabase)
 ```
 
-Or use `Application.boot()` with provider overrides:
+Or use the `TestEnvironment` test bed from `lexigram-testing`, which wires the
+overrides before the application boots:
 
 ```python
-async with Application.boot(providers=[ConfigProvider(), TestProvider()]) as app:
-    # app.container is a testing container
-    app.container.override(DatabaseProtocol, FakeDatabase())
+from lexigram.testing import TestEnvironment
+
+
+async def test_with_test_environment() -> None:
+    env = TestEnvironment("my-test").override(DatabaseProtocol, FakeDatabase())
+    async with env.run():
+        db = await env.container.resolve(DatabaseProtocol)
+        assert isinstance(db, FakeDatabase)
 ```
+
+> **Note:** `app.container` is a plain `Container()`, not a testing container —
+> `override()` on it raises `ContainerError`. Testing overrides require a
+> `Container(testing_mode=True)` or a `TestEnvironment`.
 
 ---
 

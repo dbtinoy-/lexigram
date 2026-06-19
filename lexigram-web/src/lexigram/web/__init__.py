@@ -70,7 +70,6 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "websocket": ("lexigram.web.routing.decorators", "websocket"),
     "websocket_handler": ("lexigram.web.websocket.decorators", "websocket_handler"),
     # Transport
-    "Request": ("lexigram.web.transport.requests", "Request"),
     "Response": ("lexigram.web.transport.responses", "Response"),
     "FastJSONResponse": ("lexigram.web.transport.responses", "FastJSONResponse"),
     "HTMXResponse": ("lexigram.web.transport.responses", "HTMXResponse"),

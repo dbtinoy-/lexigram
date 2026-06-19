@@ -37,8 +37,6 @@ def web_test_client() -> Any:
 @pytest.fixture
 def mock_web_request() -> Any:
     """Fixture for mock request."""
-    from lexigram.web import Request
-
     mock_starlette_request = Mock()
     mock_starlette_request.method = "GET"
     mock_starlette_request.url = "http://testserver/test"
@@ -47,7 +45,7 @@ def mock_web_request() -> Any:
     mock_starlette_request.path_params = {}
     mock_starlette_request.state = Mock()
 
-    return Request(mock_starlette_request)
+    return mock_starlette_request
 
 
 @pytest.fixture

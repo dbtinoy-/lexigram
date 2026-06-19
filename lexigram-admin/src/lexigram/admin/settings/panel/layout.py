@@ -61,7 +61,7 @@ class ConfigLayout(Component):
                 "div",
                 self._render_sidebar(),
                 self._render_main(),
-                class_="flex flex-col lg:flex-row gap-6",
+                class_="flex flex-col md:flex-row gap-6",
             ),
         )
 
@@ -134,7 +134,7 @@ class ConfigLayout(Component):
         return el(
             "nav",
             *groups,
-            class_="w-full lg:w-64 flex-shrink-0",
+            class_="w-full md:w-64 flex-shrink-0",
             aria_label="Configuration categories",
         )
 
