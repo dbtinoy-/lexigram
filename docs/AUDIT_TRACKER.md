@@ -4,11 +4,10 @@
 **Source:** `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md`
 **Process:** verify → spec → plan → execute → two-pass review
 
-Status of all 10 security remediation areas from Round 1-2 of the audit.
-Each plan is a multi-task, verification-gated workstream; nothing has been
-executed yet (all plans Not started). Round 3 (§6 below) added 5 more
-findings areas but is findings-only — no spec or plan has been authorized
-for it yet.
+Status of all 15 security remediation areas across audit Rounds 1-3.
+Round 3 (§6 below) added 5 more areas; specs + plans for those were
+written 2026-08-16, none executed yet. Round 1-2: nothing executed except
+Plugins (in progress).
 
 ---
 
@@ -59,6 +58,11 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 - [ ] **Deserialization D-A…D-D** — SkillLoader fail-closed sandbox (recommended) vs disable `enable_skill_sources`; pickle deletion vs restriction; `@cacheable` registry-only tagged lookup; MySQL backup `--result-file` + stdin restore (recommended) vs `--execute=source` rejection.
 - [ ] **SSRF** — fail-closed contract primitive defaults; webhook default-deny posture.
 - [ ] **Plugins** — integrity: HMAC skipped, acceptance documented (decided, no sign-off needed); per-page GET permission skipped, documented (decided).
+- [ ] **AI-guard** — wire mid-loop guard hooks (tool observations checked before entering context at `react.py:301-308`, `function_calling.py:413-418/465-469`, `plan_execute_executor.py:215-222`); make streaming guard path fail-closed (currently wide-`except` allow); auto-wire pipeline from DI at `AgentsProvider.boot()` (`di/provider.py:289`); make `@guarded` real; decide LLM-detector fail-open posture (recommended: fail-closed on infra errors).
+- [ ] **GraphQL** — wire `DepthLimitExtension`/`AliasLimitExtension`/new `ComplexityLimitExtension` into `SchemaBuilderProtocol.build()`; fail-closed production model-validator `_auto_disable_introspection_in_production` + `IntrospectionGuardExtension` (effective-flag semantics, registered first); honest `IntrospectionConfig` docstring; repo-level resolver-authz boundary (framework safety net vs documented app responsibility).
+- [ ] **Media-upload** — caps (file size, duration, mime allowlist) in contracts `multimedia/security.py`; SSRF primitive consumption at 4 fetch sites with `allow_redirects=False`; ffmpeg filter-field validation at dataclass level; `client_max_size` on all 13 servers; `scale_factor` runtime validation — **Task 0 gates on SSRF D1 merge**.
+- [ ] **Notification/webhook** — contracts mailer validation (subject/to/cc/headers CRLF rejection); SMTP `send()` catches `HeaderParseError`/`HeaderWriteError` (`smtp_mailer.py:120-127`); `escape_html` helper for Mailable; Slack mrkdwn escaping (gated); envelope-recipient validation.
+- [ ] **Rate-limit** — middleware-enforced rule semantics via `get_rule` with default-limit fallback (not scaffolded `check_rate_limit`); chunked-body enforcement via streaming byte counter (413 mid-stream); keep `enabled=True` default but make it mean real enforcement; wire `storage_backend`/`whitelist_ips`; decorator path keeps warn-and-skip contract; GraphQL `UnifiedRateLimiter` fail-open deferred to GraphQL spec.
 
 ---
 
@@ -159,6 +163,48 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 - [x] Task 6 — distribution plumbing: `lexigram-plugins` removed from both `pyproject.toml` files; `PluginsModule` entry points + core `__init__` exports; `lexigram-plugins/` directory deleted; docstring/example-yaml/README/CHANGELOG updated
 - [ ] Task 7 — full verification: lint, typecheck, test suite, boot smoke (blocked on `uv lock` resolution of a pre-existing `lexigram-multimedia-music[ace-step-server]` ↔ `pillow` conflict on non-3.13 Python ranges; re-lock scoped to the .venv interpreter)
 
+### 3.11 AI guard / prompt-injection — `plans/2026-08-16-security-ai-guard.md` (s)
+
+- [ ] Task 1 (F2) — auto-wire `GuardPipeline` from DI in `AgentsProvider.boot()`; export `GuardPipelineProtocol` from GuardModule; executor reads `agent.guard_pipeline` (currently dead-ends at constructor `safety` only, `executor.py:140`)
+- [ ] Task 2 (F1) — mid-loop guard hooks: check tool observations before entering context (`react.py:301-308`, `function_calling.py:413-418/465-469`, `plan_execute_executor.py:215-222`)
+- [ ] Task 3 (F3) — make `@guarded` real: resolve the pipeline from the container, invoke check_input/check_output (currently `return await func(...)` only, `decorators.py:46-53`); replace the mock-only "decorator" tests
+- [ ] Task 4 (F4) — LLM-detector error posture: fail-closed on infrastructure errors, keep fail-open only for detection-verdict errors (`llm_injection.py:172-197`)
+- [ ] Task 5 (F1) — streaming path fail-closed: `streaming.py:250-252, 280-282` catch broad `Exception` → allow; make it escalate
+- [ ] Task 6 — full verification (incl. diff cross-check vs SSRF plan)
+
+### 3.12 GraphQL security — `plans/2026-08-16-security-graphql.md` (s)
+
+- [ ] Task 1 — failing through-executor security tests (prove depth/alias/complexity gating is dead; complexity analyzer orphan)
+- [ ] Task 2 — wire `DepthLimitExtension`/`AliasLimitExtension`/new `ComplexityLimitExtension` in `SchemaBuilderProtocol.build()`; complete `SchemaValidator` with complexity
+- [ ] Task 3 — failing tests: introspection stays ON for default production config today
+- [ ] Task 4 — fail-closed: production model-validator `_auto_disable_introspection_in_production` + `IntrospectionGuardExtension` (effective-flag semantics, registered first) + honest `IntrospectionConfig` docstring
+- [ ] Task 5 — ruff/mypy/full suite/end-to-end gate proof + two-pass review
+
+### 3.13 Media upload / processing safety — `plans/2026-08-16-security-media-upload.md` (s)
+
+- [ ] Task 0 — **gate: SSRF D1 contracts primitive merged** (`lexigram.contracts.security.url_safety.is_safe_url_for_request`, DNS-aware, fail-closed)
+- [ ] Task 1 (F1) — consume the contracts primitive at all 4 fetch sites with `allow_redirects=False`: `_asset_io.py:13-17`, `librosa.py:37-41`, `media_io.py:34-43`, `f5_tts_server.py:44-51`
+- [ ] Task 2 (F2) — caps (size, duration, mime allowlist) in contracts `multimedia/security.py`; pre-decode guards at `librosa.py:59`, `madmom_server.py:34-41`
+- [ ] Task 3 (F3) — ffmpeg filter-field validation at dataclass level (`argv.py` color/font_size/codec/resolution/bitrate; reachable via `video/tasks.py:147-244`)
+- [ ] Task 4 (F4) — `client_max_size` on all 13 servers; runtime `scale_factor` validation (`hat_server.py:42-43`, `real_esrgan_server.py:41-42`)
+- [ ] Task 5 — full verification
+
+### 3.14 Notification / webhook injection — `plans/2026-08-16-security-notification-webhook.md` (s)
+
+- [ ] Task 1 (D1) — contracts mailer validation: CRLF rejection on subject/to/cc/headers + envelope recipients (new `test_mailer_validation.py`)
+- [ ] Task 2 (D2) — `SMTPMailer.send()` catches `HeaderParseError`/`HeaderWriteError` → Result error (new `test_smtp_header_injection.py`)
+- [ ] Task 3 (D3) — `escape_html` helper for Mailable html_body (extend `test_mailable.py`)
+- [ ] Task 4 (D4) — Slack mrkdwn escaping (gated; extend `test_slack.py`)
+- [ ] Task 5 — full verification (zero `lexigram-webhook` edits; webhook SSRF owned by SSRF plan Task 3)
+
+### 3.15 Rate-limiting / DoS — `plans/2026-08-16-security-rate-limit.md` (s)
+
+- [ ] Task 1 (CRIT) — middleware actually enforces rules: resolve rule via `get_rule` with default-limit fallback; keep `enabled=True` but make it mean enforcement
+- [ ] Task 2 (CRIT) — honest config: `RateLimitConfig` docstring; wire dead fields `whitelist_ips`/`storage_backend` (or documented decision)
+- [ ] Task 3 (MED) — chunked-body enforcement: streaming byte counter over `receive` (413 mid-stream) in `body_limit.py`
+- [ ] Task 4 (LOW) — concurrency-bound decision: bulkhead evaluation in `lexigram-queue` backends
+- [ ] Task 5 — full verification
+
 ---
 
 ## 4. Audit-Correction Register
@@ -176,22 +222,31 @@ not regress. Full details in each spec §2.
 | Architecture | `lexigram.result` already converges on contracts (F1b is a one-line import fix); audit missed `lexigram-ai-llm` call sites + `lexigram-search` calls a nonexistent `ambient_hashing.digest` API (latent `AttributeError`); live importlinter failure is `*.admin.pages.* → lexigram.ui` (not `lexigram.admin → lexigram.ui`); six DB drivers consume the retry shim, not four |
 | SQLi | F3/F4 callers corrected to current live callers; F6 admin `SqlQueryBuilder` confirmed dead |
 | Deserialization | Pickle defaults re-settled as Medium (not as severe as headline); all claims re-grepped to real file:line refs; no fabricated CVEs |
+| AI-guard | Output-check line ref corrected (`executor.py:375-408`, not `:312-332`); audit's "Positive" fail-closed guard integration is only true of `run()` — **streaming path fails open** (`streaming.py:250-252, 280-282` catch broad `Exception`, return allow); even explicit `.with_guard_pipeline(...)` dead-ends — executor never reads `agent.guard_pipeline`; GuardModule exports no `GuardPipelineProtocol`; "default" pipeline requires mounting `GuardModule` (not part of standard module set) |
+| Media upload | F1 spans **4 fetch sites not 2** (audit missed `video/processing/media_io.py:34-43` and `tts/servers/f5_tts_server.py:44-51`); F2 decode-bomb has a twin server-side (`madmom_server.py:34-41`); `file://` passthroughs exist at `media_io.py:28-32` / `f5_tts_server.py:37-38`; all servers bind `0.0.0.0`; F4 "none of six" → **none of 13 servers** set `client_max_size`, and aiohttp implicit default is ~1 MiB (defect is the implicit mis-sized cap, not literal unboundedness); ffmpeg filter-string reachability confirmed at framework level (`video/tasks.py:147-244`); `probe_duration`/`probe_fps` run ffprobe with no timeout |
+| Notification | SMTP header injection **re-rated High → Medium**: compat32 `__setitem__` accepts CRLF, but `as_string()` raises `email.errors.HeaderParseError` (verified on 3.11/3.12/3.13) — "silently BCCs attacker" does not occur; real defect is the uncaught `HeaderParseError` leaking from the executor thread (Result-contract violation, admin `EmailSender` crash risk) + zero boundary validation + unvalidated envelope recipients; CRLF-bearing header **names** raise `HeaderWriteError` (same leak); `reply_to` ignored by SMTP + SendGrid backends |
+| Rate-limit | "Nothing calls per-route enforcement" accurate only for REST middleware — 3 live `check_rate_limit` callers exist elsewhere (GraphQL `UnifiedRateLimiter` opt-in + fail-open → deferred to separate spec, debug routes, WebSocket limiter); two more dead config fields beyond `rules`: `whitelist_ips` and `storage_backend` (never read in `src/`); `body_limit.py:34-37` docstring references a TODO that doesn't exist |
 
 ---
 
-## 6. Round 3 — Findings Only (No Spec/Plan Yet)
+## 6. Round 3 — Spec + Plan (No Execution Authorized)
 
-Round 3 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§13-17), produced via direct sequential grep/read investigation (the background research agents failed on an account-level spend limit before producing output). Per standing instruction, this round is **findings only** — no spec, plan, or remediation code has been authorized or written for any of these. Do not fabricate spec/plan filenames for these rows until the user explicitly asks for them.
+Round 3 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§13-17). Specs and plans for all five were produced 2026-08-16, following the same verify → spec → plan → two-pass-review process. None of these plans may be executed until separately authorized.
 
 | # | Area | Doc section | Severity mix | Spec | Plan | Status |
 |---|------|--------------|------|------|------|--------|
-| 11 | **AI guard / prompt-injection** | §13 | Critical ×2, High ×2, Med ×1 | — not authorized | — not authorized | Findings only |
-| 12 | **GraphQL security** | §14 | Critical ×2, High ×1, Med ×1 | — not authorized | — not authorized | Findings only |
-| 13 | **Media upload / processing safety** | §15 | High ×2, Med ×2 | — not authorized | — not authorized | Findings only |
-| 14 | **Notification / webhook injection** | §16 | High ×1, Med ×1, Low ×1 | — not authorized | — not authorized | Findings only |
-| 15 | **Rate-limiting / DoS resilience** | §17 | Critical ×1, Med ×1, Low ×1 | — not authorized | — not authorized | Findings only |
+| 11 | **AI guard / prompt-injection** | §13 | Critical ×2, High ×2, Med ×1 | `specs/2026-08-16-security-ai-guard-design.md` | `plans/2026-08-16-security-ai-guard.md` | Not started (s) |
+| 12 | **GraphQL security** | §14 | Critical ×2, High ×1, Med ×1 | `specs/2026-08-16-security-graphql-design.md` | `plans/2026-08-16-security-graphql.md` | Not started (s) |
+| 13 | **Media upload / processing safety** | §15 | High ×2, Med ×2 | `specs/2026-08-16-security-media-upload-design.md` | `plans/2026-08-16-security-media-upload.md` | Not started (s) |
+| 14 | **Notification / webhook injection** | §16 | High ×1, Med ×2, Low ×1 | `specs/2026-08-16-security-notification-webhook-design.md` | `plans/2026-08-16-security-notification-webhook.md` | Not started (s) |
+| 15 | **Rate-limiting / DoS resilience** | §17 | Critical ×1, Med ×1, Low ×1 | `specs/2026-08-16-security-rate-limit-design.md` | `plans/2026-08-16-security-rate-limit.md` | Not started (s) |
 
-**Recurring shape (per master doc §1):** three of these five (AI guard's `@guarded` decorator, GraphQL's depth/complexity/introspection layer, web's rate-limit `rules` config) are the "orphaned correct implementation" pattern — a well-built implementation exists and nothing calls it, not even a competing weaker path. This is the same root-cause family as Round 1-2's Pattern A, one step more extreme.
+**Recurring shape (per master doc §1):** three of these five (AI guard's `@guarded` decorator, GraphQL's depth/complexity/introspection layer, web's rate-limit `rules` config) are the "orphaned correct implementation" pattern — a well-built implementation exists and nothing calls it, not even a competing weaker path. This is the same root-cause family as Round 1-2's Pattern A, one step more extreme. Round 3 specs follow the same remediation patterns: wire the existing implementation at the correct boundary, fail-closed at boot on missing security config.
+
+**Cross-plan dependencies (Round 3):**
+- Media-upload **Task 0** gates on SSRF plan **D1** (contracts `is_safe_url_for_request` primitive must be merged first); media consumes the primitive at 4 fetch sites with `allow_redirects=False`, does not re-invent URL safety.
+- AI-guard F1 closes the loop on SSRF §12 (web_fetch/RAG content); plans are complementary, no shared files — AI-guard plan includes a diff cross-check asserting no SSRF files are touched.
+- Notification-webhook deliberately excludes webhook URL SSRF — owned by SSRF plan Task 3 (D3 default-deny); plan makes **zero** `lexigram-webhook` edits.
 
 ---
 
