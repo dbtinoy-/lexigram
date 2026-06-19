@@ -37,11 +37,40 @@ class TestWebhookSubscriptionService:
         assert sub.active is True
 
     @pytest.mark.asyncio
-    async def test_create_http_url_allowed(
+    async def test_create_http_url_allowed_when_opt_in(
+        self, store: InMemoryWebhookStore
+    ) -> None:
+        """create() allows loopback http:// only when allow_private_urls=True."""
+        service = WebhookSubscriptionService(
+            store=store,
+            config=WebhookConfig(allow_private_urls=True),
+        )
+        result = await service.create("http://localhost:8080/hook")
+        assert result.is_ok()
+
+    @pytest.mark.asyncio
+    async def test_create_blocks_loopback_by_default(
         self, service: WebhookSubscriptionService
     ) -> None:
-        """create() allows http:// (for local dev)."""
-        result = await service.create("http://localhost:8080/hook")
+        """create() rejects loopback URLs by default (fail-closed)."""
+        result = await service.create("http://127.0.0.1:8080/hook")
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), InvalidWebhookURLError)
+
+    @pytest.mark.asyncio
+    async def test_create_blocks_private_ip_by_default(
+        self, service: WebhookSubscriptionService
+    ) -> None:
+        """create() rejects RFC1918 URLs by default."""
+        result = await service.create("http://192.168.1.10/hook")
+        assert result.is_err()
+
+    @pytest.mark.asyncio
+    async def test_create_allows_public_hostname(
+        self, service: WebhookSubscriptionService
+    ) -> None:
+        """create() allows public hostnames (resolved via fake DNS)."""
+        result = await service.create("https://example.com/hook")
         assert result.is_ok()
 
     @pytest.mark.asyncio

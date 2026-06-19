@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import httpx
@@ -63,6 +64,29 @@ class WebhookSender:
         Returns:
             DeliveryAttempt with outcome details.
         """
+        from lexigram.contracts.security import is_safe_url_for_request
+
+        if not self._config.allow_private_urls:
+            safe = await asyncio.to_thread(is_safe_url_for_request, subscription.url)
+            if not safe:
+                logger.warning(
+                    "webhook.blocked_unsafe_url",
+                    url=subscription.url,
+                    subscription_id=subscription.subscription_id,
+                )
+                return DeliveryAttempt(
+                    attempt_id=str(uuid.uuid4()),
+                    subscription_id=subscription.subscription_id,
+                    event_id=event.event_id,
+                    event_type=event.event_type,
+                    status=DeliveryStatus.FAILED,
+                    status_code=None,
+                    attempt_number=attempt_number,
+                    attempted_at=ambient_clock.now(),
+                    error_message="blocked_unsafe_url",
+                    duration_ms=0,
+                )
+
         attempt_id = str(uuid.uuid4())
         payload_bytes = json.dumps(event.payload)
         signature = self._verifier.compute_signature(payload_bytes, subscription.secret)
@@ -88,6 +112,7 @@ class WebhookSender:
                     content=payload_bytes,
                     headers=headers,
                     timeout=self._config.delivery_timeout_seconds,
+                    follow_redirects=False,
                 )
                 status_code = response.status_code
                 if 200 <= response.status_code < 300:

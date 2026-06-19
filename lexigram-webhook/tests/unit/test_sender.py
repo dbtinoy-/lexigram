@@ -95,3 +95,24 @@ async def test_webhook_sender_connection_error(
         assert attempt.status == DeliveryStatus.FAILED
         assert attempt.status_code is None
         assert "Connection failed" in attempt.error_message
+
+
+@pytest.mark.asyncio
+async def test_send_blocks_private_url_without_posting(
+    event: WebhookEvent,
+) -> None:
+    """send() never POSTs a private URL; returns a FAILED attempt."""
+    subscription = WebhookSubscription(
+        subscription_id="sub-blocked",
+        url="http://127.0.0.1/hook",
+        secret="test-secret",
+    )
+    sender = WebhookSender(config=WebhookConfig())
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        attempt = await sender.send(event, subscription)
+        mock_post.assert_not_called()
+
+    assert attempt.status == DeliveryStatus.FAILED
+    assert attempt.status_code is None
+    assert attempt.error_message == "blocked_unsafe_url"
