@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Any
+import urllib.parse
 
 from lexigram.ai.rag.chunking.types import Chunk
 from lexigram.ai.rag.types import RAGError
+from lexigram.contracts.security import is_safe_url_for_request
 from lexigram.logging import (
     get_logger,
 )
@@ -69,6 +71,8 @@ class WebScraperLoader:
                 raise ImportError(msg) from e
 
             url = str(source)
+            if not await asyncio.to_thread(is_safe_url_for_request, url):
+                raise RAGError(f"Source URL is not publicly reachable: {url!r}")
             headers = {"User-Agent": self.user_agent}
 
             async def _fetch_and_parse(page_url: str) -> tuple[str, list[str]]:
@@ -81,8 +85,29 @@ class WebScraperLoader:
                 async with aiohttp.ClientSession(
                     timeout=aiohttp.ClientTimeout(total=self.timeout),
                 ) as _session:
-                    async with _session.get(page_url, headers=headers) as _resp:
-                        html = await _resp.text()
+                    current_url = page_url
+                    for _hop in range(6):
+                        async with _session.get(
+                            current_url, headers=headers, allow_redirects=False
+                        ) as _resp:
+                            if _resp.status in (301, 302, 303, 307, 308):
+                                location = _resp.headers.get("Location", "")
+                                if not location:
+                                    raise aiohttp.ClientError(
+                                        "Redirect response without Location header"
+                                    )
+                                current_url = urllib.parse.urljoin(
+                                    current_url, location
+                                )
+                                if not await asyncio.to_thread(
+                                    is_safe_url_for_request, current_url
+                                ):
+                                    raise RAGError(
+                                        f"Redirect target is not publicly reachable: {current_url!r}"
+                                    )
+                                continue
+                            html = await _resp.text()
+                            break
 
                 def _parse() -> Any:
                     soup = BeautifulSoup(html, "html.parser")
@@ -112,6 +137,13 @@ class WebScraperLoader:
 
             if self.follow_links:
                 for link_idx, link_url in enumerate(links, start=1):
+                    if not await asyncio.to_thread(is_safe_url_for_request, link_url):
+                        logger.warning(
+                            "link_blocked_unsafe_url",
+                            url=link_url,
+                            parent=url,
+                        )
+                        continue
                     try:
                         link_text, _ = await _fetch_and_parse(link_url)
                         chunks.append(

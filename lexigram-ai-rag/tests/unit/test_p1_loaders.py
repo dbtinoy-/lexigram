@@ -82,6 +82,8 @@ class _FakeSoup:
 class _FakeResponse:
     def __init__(self, html: str) -> None:
         self._html = html
+        self.status = 200
+        self.headers: dict[str, str] = {}
 
     async def text(self) -> str:
         return self._html
@@ -113,7 +115,7 @@ class _FakeHTTPClient:
     ) -> bool:
         return False
 
-    def get(self, url: str, headers: dict[str, str] | None = None) -> _FakeResponse:  # noqa: ARG002
+    def get(self, url: str, **kwargs: object) -> _FakeResponse:  # noqa: ARG002
         if url not in self._pages:
             raise RuntimeError(f"URL not found: {url}")
         return _FakeResponse(self._pages[url])
@@ -380,6 +382,19 @@ class TestWebScraperLoader:
             ),
         )
 
+    @pytest.fixture(autouse=True)
+    def _fake_public_dns(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Resolve every hostname to a single public IP — no live DNS."""
+        import ipaddress
+
+        from lexigram.contracts.security import url_safety as contracts_url_safety
+
+        monkeypatch.setattr(
+            contracts_url_safety,
+            "resolve_hostname",
+            lambda _: [ipaddress.ip_address("93.184.216.34")],
+        )
+
     @pytest.mark.asyncio
     async def test_load_web_single_page(self) -> None:
         _FAKE_WEB_PAGES.clear()
@@ -427,3 +442,25 @@ class TestWebScraperLoader:
         # root + one successful child; missing link is ignored by design
         assert len(chunks) == 2
         assert chunks[0].source == "https://root.example"
+
+    @pytest.mark.asyncio
+    async def test_load_rejects_private_seed(self) -> None:
+        loader = WebScraperLoader(follow_links=False)
+        with pytest.raises(RAGError, match="publicly reachable"):
+            await loader.load("http://169.254.169.254/latest/meta-data/")
+
+    @pytest.mark.asyncio
+    async def test_load_skips_unsafe_followed_link(self) -> None:
+        _FAKE_WEB_PAGES.clear()
+        _FAKE_WEB_PAGES["https://root.example"] = (
+            '<html><body>Root <a href="http://10.0.0.5/x">internal</a>'
+            '<a href="https://good.example/p">good</a></body></html>'
+        )
+        _FAKE_WEB_PAGES["https://good.example/p"] = "<html><body>Public</body></html>"
+        _FAKE_WEB_PAGES["http://10.0.0.5/x"] = "<html><body>Secret</body></html>"
+
+        loader = WebScraperLoader(follow_links=True, max_links=5)
+        chunks = await loader.load("https://root.example")
+
+        assert len(chunks) == 2  # root + only the safe followed link
+        assert chunks[1].source == "https://good.example/p"
