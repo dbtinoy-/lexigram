@@ -32,6 +32,11 @@ from lexigram.contracts.security.secrets import (
     SecretStoreProtocol,
 )
 from lexigram.contracts.security.stores import AsyncSecretStoreProtocol
+from lexigram.contracts.security.url_safety import (
+    HostResolver,
+    is_safe_url_for_request,
+    resolve_hostname,
+)
 
 __all__ = [
     "AsyncSecretStoreProtocol",
@@ -43,6 +48,7 @@ __all__ = [
     "GuardChainProtocol",
     "GuardDeniedError",
     "HasherProtocol",
+    "HostResolver",
     "InputSanitizationError",
     "InputSanitizerProtocol",
     "KeyDerivationProtocol",
@@ -52,4 +58,6 @@ __all__ = [
     "SecretStoreProtocol",
     "SecurityError",
     "SecurityHeadersProtocol",
+    "is_safe_url_for_request",
+    "resolve_hostname",
 ]
