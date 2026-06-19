@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import base64
 import secrets
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.primitives import clock as ambient_clock
 
@@ -285,7 +285,7 @@ class PasskeyService:
 
         # Real `User` objects are dataclasses in the app. For lightweight
         # tests or stubs the user may be a plain object; handle both.
-        if dataclasses.is_dataclass(user):
+        if dataclasses.is_dataclass(cast("object", user)):
             updated = dataclasses.replace(user, profile=profile)
             await self.user_store.update_user(updated)
         else:
@@ -392,7 +392,7 @@ class PasskeyService:
 
             import dataclasses
 
-            if dataclasses.is_dataclass(user):
+            if dataclasses.is_dataclass(cast("object", user)):
                 updated = dataclasses.replace(user, profile=profile)
                 await self.user_store.update_user(updated)
             else:

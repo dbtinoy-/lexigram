@@ -17,7 +17,7 @@ class StatCard(Component):
         icon: str | None = None,
         sparkline_data: list[float] | None = None,
         sparkline_color: str = "indigo",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             label=label,

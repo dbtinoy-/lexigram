@@ -13,7 +13,7 @@ class Breadcrumbs(Component):
         items: List of dicts with 'label' and 'url'
     """
 
-    def __init__(self, items: list[dict[str, str]], **props) -> None:
+    def __init__(self, items: list[dict[str, str]], **props: Any) -> None:
         super().__init__(**props)
         self.items = items
 

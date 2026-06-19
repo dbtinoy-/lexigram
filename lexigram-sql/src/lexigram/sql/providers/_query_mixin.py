@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from lexigram.contracts.data.sql.database import (
     DeleteResult,
@@ -49,7 +49,9 @@ class _QueryMixin:
 
         name = getattr(self.config, "name", "database")  # type: ignore[attr-defined]
 
-        async def _record_metrics(p_name, duration_ms, error=False) -> Any:
+        async def _record_metrics(
+            p_name: str, duration_ms: float, error: bool = False
+        ) -> None:
             metrics = getattr(self, "metrics", None)
             if not metrics:
                 return
@@ -167,7 +169,10 @@ class _QueryMixin:
         if not self.db_provider:  # type: ignore[attr-defined]
             await self.boot()  # type: ignore[attr-defined]
         try:
-            return await self.db_provider.execute_insert(table, data)  # type: ignore[attr-defined]
+            return cast(
+            "InsertResult",
+            await self.db_provider.execute_insert(table, data),  # type: ignore[attr-defined]
+        )
         except (QueryError, DatabaseError) as exc:
             if isinstance(
                 exc,
@@ -198,7 +203,10 @@ class _QueryMixin:
         if not self.db_provider:  # type: ignore[attr-defined]
             await self.boot()  # type: ignore[attr-defined]
         try:
-            return await self.db_provider.execute_update(table, data, where, params)  # type: ignore[attr-defined]
+            return cast(
+            "UpdateResult",
+            await self.db_provider.execute_update(table, data, where, params),  # type: ignore[attr-defined]
+        )
         except (QueryError, DatabaseError) as exc:
             if isinstance(exc, (DatabaseConnectionError, DatabaseTimeoutError)):
                 raise
@@ -216,7 +224,10 @@ class _QueryMixin:
         if not self.db_provider:  # type: ignore[attr-defined]
             await self.boot()  # type: ignore[attr-defined]
         try:
-            return await self.db_provider.execute_delete(table, where, params)  # type: ignore[attr-defined]
+            return cast(
+            "DeleteResult",
+            await self.db_provider.execute_delete(table, where, params),  # type: ignore[attr-defined]
+        )
         except (QueryError, DatabaseError) as exc:
             if isinstance(exc, (DatabaseConnectionError, DatabaseTimeoutError)):
                 raise

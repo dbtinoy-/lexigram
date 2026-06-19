@@ -36,7 +36,7 @@ class SlideOver(Component):
         size: str = "lg",
         variant: str = "default",
         subtitle: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             title=title,

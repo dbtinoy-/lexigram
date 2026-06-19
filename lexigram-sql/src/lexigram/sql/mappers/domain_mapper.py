@@ -10,7 +10,7 @@ from dataclasses import MISSING
 from dataclasses import fields as dataclass_fields
 from datetime import date, datetime, time
 import types
-from typing import Any, Union, cast, get_type_hints
+from typing import Any, Union, get_type_hints
 from uuid import UUID
 
 from lexigram.serialization import dumps_str, loads
@@ -43,7 +43,7 @@ class DomainDataMapper(DataMapper[TEntity, dict[str, Any]]):
                 "Use DomainModel or any dataclass type.",
             )
 
-        super().__init__(cast("type[TEntity]", entity_type))
+        super().__init__(entity_type)
         self.auto_map = auto_map
         self.column_prefix = column_prefix
         self.column_suffix = column_suffix

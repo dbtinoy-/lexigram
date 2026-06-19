@@ -116,7 +116,7 @@ class CommandTestClient:
         self,
         command_type: type[Command],
         expected_count: int = 1,
-        **filters,
+        **filters: Any,
     ) -> list[Command]:
         """Assert that commands of a type were sent.
 

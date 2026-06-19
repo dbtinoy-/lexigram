@@ -116,7 +116,7 @@ class QueryTestClient:
         self,
         query_type: type[Query],
         expected_count: int = 1,
-        **filters,
+        **filters: Any,
     ) -> list[Query]:
         """Assert that queries of a type were executed.
 

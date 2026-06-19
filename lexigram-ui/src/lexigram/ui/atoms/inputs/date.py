@@ -15,7 +15,7 @@ class DateInput(AbstractInput):
         min_value: str | None = None,
         max_value: str | None = None,
         input_type: str = "date",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.type = input_type

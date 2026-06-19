@@ -145,7 +145,7 @@ def get_icon(
     name: str | Any,
     class_name: str = "",
     size: str = "w-5 h-5",
-    **attrs,
+    **attrs: Any,
 ) -> Any:
     """
     Render a Lucide icon by name.

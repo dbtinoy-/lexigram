@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.ui import Component, el, get_icon, raw
+from lexigram.ui import Component, el, raw
+from lexigram.ui.atoms.icons import get_icon
 
 
 class NotificationBell(Component):

@@ -17,7 +17,7 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from lexigram import serialization as json
 from lexigram.logging import get_logger
@@ -103,11 +103,11 @@ class CachedRepository:
         get_result = await self._cache.get(cache_key)
         cached = get_result.unwrap_or(None)
         if cached is not None:
-            return cached
+            return cast("list[Any]", cached)
 
         results = await self._inner.find_many(**kwargs)
         await self._cache.set(cache_key, results, ttl=self._ttl)
-        return results
+        return cast("list[Any]", results)
 
     async def count(self, **kwargs: Any) -> int:
         """Count with cache."""
@@ -117,11 +117,11 @@ class CachedRepository:
         get_result = await self._cache.get(cache_key)
         cached = get_result.unwrap_or(None)
         if cached is not None:
-            return cached
+            return cast("int", cached)
 
         result = await self._inner.count(**kwargs)
         await self._cache.set(cache_key, result, ttl=self._ttl)
-        return result
+        return cast("int", result)
 
     # Write-through operations (invalidate cache)
 
@@ -144,7 +144,7 @@ class CachedRepository:
         cache_key = await self._cache_key(f"id:{key}")
         await self._cache.delete(cache_key)
         await self._invalidate_all()
-        return result
+        return cast("bool", result)
 
     async def _invalidate_all(self) -> None:
         """Invalidate all cached queries for this entity."""

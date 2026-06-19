@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
+from importlib import import_module
+from typing import Any, cast
 
 """Cleanup utilities for integration test teardown."""
 
@@ -43,9 +44,8 @@ async def delete_kafka_topic(bootstrap: str, topic: str) -> None:
         topic: Topic name to delete.
     """
     try:
-        from aiokafka.admin import AIOKafkaAdminClient
-
-        admin = AIOKafkaAdminClient(bootstrap_servers=bootstrap)
+        aiokafka_admin = cast("Any", import_module("aiokafka.admin"))
+        admin = aiokafka_admin.AIOKafkaAdminClient(bootstrap_servers=bootstrap)
         await admin.start()
         try:
             await admin.delete_topics([topic])

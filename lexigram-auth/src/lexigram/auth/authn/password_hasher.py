@@ -8,7 +8,7 @@ This module provides:
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.contracts.auth import PasswordHasherProtocol
 from lexigram.contracts.security.protocols import KeyDerivationProtocol
@@ -52,7 +52,7 @@ class Argon2idKeyDerivation(KeyDerivationProtocol):
         """Derive a key from a secret using Argon2id."""
 
         def _derive_sync() -> str:
-            return self._ph.hash(secret)
+            return cast("str", self._ph.hash(secret))
 
         return await asyncio.to_thread(_derive_sync)
 

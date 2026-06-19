@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Self, TypeVar
+from typing import Any, Self, TypeVar, cast
 
 try:
     from starlette.testclient import TestClient as StarletteTestClient
@@ -25,7 +25,7 @@ class TestResponse:
     @property
     def status_code(self) -> int:
         """Get the HTTP status code."""
-        return self._response.status_code
+        return cast("int", self._response.status_code)
 
     @property
     def json(self) -> Any:
@@ -35,7 +35,7 @@ class TestResponse:
     @property
     def text(self) -> str:
         """Get the response body as text."""
-        return self._response.text
+        return cast("str", self._response.text)
 
     @property
     def headers(self) -> dict[str, str]:

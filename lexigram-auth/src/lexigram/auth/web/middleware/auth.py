@@ -104,18 +104,18 @@ class AuthMiddleware:
                 "AuthMiddleware.authenticate_request: Token cache HIT for token_hash=%s",
                 token_hash[:10],
             )
-            return cached_user
+            return cast("User | None", cached_user)
 
         # Try API key authentication
         user = await self.api_key_authenticator.authenticate(token, request)
         if user:
             await self.token_cache.set(token, user)
-            return user
+            return cast("User | None", user)
 
         # Try session authentication
         user = await self.session_authenticator.authenticate(request)
         if user:
-            return user
+            return cast("User | None", user)
 
         # Try JWT authentication — the authenticator now extracts the token
         # from the request internally (signature changed in an earlier refactor).
@@ -132,7 +132,7 @@ class AuthMiddleware:
                 extra={"client_ip": client_ip},
             )
 
-        return user
+        return cast("User | None", user)
 
     def check_authorization(self, user: User) -> bool:
         """Check if user is authorized based on roles/permissions"""
@@ -201,7 +201,7 @@ class AuthMiddleware:
             # We can just delegate to our app if allowed.
 
             # Re-usable wrapper to continue if not throttled
-            async def next_app(s, r, sn) -> Any:
+            async def next_app(s: dict[str, Any], r: Any, sn: Any) -> Any:
                 await self.app(s, r, sn)
 
             # Temporarily set app and call

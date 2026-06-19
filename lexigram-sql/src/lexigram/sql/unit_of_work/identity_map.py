@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 
 @dataclass
@@ -67,7 +67,7 @@ class EntitySnapshot:
     def _extract_state(entity: Any) -> dict[str, Any]:
         """Extract serializable state from an entity."""
         if hasattr(entity, "to_dict"):
-            return entity.to_dict()
+            return cast("dict[str, Any]", entity.to_dict())
         if hasattr(entity, "__dict__"):
             return {k: v for k, v in entity.__dict__.items() if not k.startswith("_")}
         return {}

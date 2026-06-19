@@ -29,14 +29,14 @@ class Section(Component):
 
     def __init__(
         self,
-        *children,
+        *children: Any,
         title: str,
         description: str | None = None,
         icon: str | None = None,
         collapsible: bool = False,
         collapsed: bool = False,
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         """
         Initialize section component.
 

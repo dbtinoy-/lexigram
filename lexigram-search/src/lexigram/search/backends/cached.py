@@ -24,7 +24,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.logging import get_logger
 from lexigram.result import Ok, Result
@@ -150,7 +150,10 @@ class CachedSearchBackend:
         self, index: str, documents: list[dict[str, Any]], **kwargs: Any
     ) -> dict[str, Any]:
         """Bulk-index documents."""
-        return await self._inner.index_many(index, documents, **kwargs)  # type: ignore[attr-defined]
+        return cast(
+            "dict[str, Any]",
+            await self._inner.index_many(index, documents, **kwargs),  # type: ignore[attr-defined]
+        )
 
     async def delete_document(
         self, index: str, document_id: str, **kwargs: Any

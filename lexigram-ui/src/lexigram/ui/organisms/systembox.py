@@ -17,7 +17,7 @@ class SystemBox(Component):
         system_menu_items: list[dict] | None = None,
         direction: str = "up",
         user: Any | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             system_menu_items=system_menu_items,

@@ -10,7 +10,7 @@ class Toggle(AbstractInput):
     """Simple checkbox toggle (use Switch from forms.py for premium toggle)."""
 
     def __init__(
-        self, name: str, value: Any = None, checked: bool | None = None, **kwargs
+        self, name: str, value: Any = None, checked: bool | None = None, **kwargs: Any
     ) -> None:
         # Support legacy 'checked' prop passed as kwarg
         if checked is None and "checked" in kwargs:

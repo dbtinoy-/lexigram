@@ -25,7 +25,7 @@ class Select(AbstractInput):
         name: str,
         choices: list[tuple[str, str]] | None = None,
         multiple: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.choices = choices or []
@@ -84,7 +84,7 @@ class Select(AbstractInput):
 class NativeMultiSelect(Select):
     """Native browser multiple select dropdown."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         kwargs["multiple"] = True
         super().__init__(*args, **kwargs)
 
@@ -98,7 +98,7 @@ class LazySelect(Select):
         lazy_url: str,
         choices: list[tuple[str, str]] | None = None,
         page: int = 1,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name, choices=choices, **kwargs)
         self.lazy_url = lazy_url

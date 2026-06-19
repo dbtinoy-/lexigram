@@ -16,7 +16,7 @@ class FilterDropdown(Component):
         label: str,
         options: list[tuple[str, str]],
         multi: bool = False,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(name=name, label=label, options=options, multi=multi, **props)
         self.name = name

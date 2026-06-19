@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 from collections import OrderedDict
 import random
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from lexigram.cache.config import CacheOperationConfig, default_cache_config
 from lexigram.cache.service.invalidation import InvalidationMixin
@@ -103,7 +103,7 @@ class CacheService(PipelineMixin, InvalidationMixin, PatternsMixin):
         if self._backend is not None:
             return self._backend
         if self.provider is not None:
-            return self.provider.get_backend(name)
+            return cast("CacheBackendProtocol", self.provider.get_backend(name))
         raise RuntimeError(
             "No backend or provider available for CacheService. "
             "Initialize with either a provider or a direct backend.",
@@ -184,14 +184,14 @@ class CacheService(PipelineMixin, InvalidationMixin, PatternsMixin):
         try:
             namespaced_key = self._get_namespaced_key(key, request_scoped)
             backend_instance = self._get_backend(backend)
-            value = await backend_instance.get(namespaced_key)
+            value = cast("Any", await backend_instance.get(namespaced_key))
 
             # Backend implementations (e.g. RedisCacheBackend) return
             # Result[T | None, CacheError] rather than a raw value.
             # Unwrap so consumers always receive the plain Python value.
             if hasattr(value, "is_ok"):
                 if value.is_ok():
-                    value = value.unwrap()  # type: ignore[assignment]
+                    value = value.unwrap()
                 else:
                     # Backend signalled an error via Result — treat as miss.
                     async with self._metrics_lock:

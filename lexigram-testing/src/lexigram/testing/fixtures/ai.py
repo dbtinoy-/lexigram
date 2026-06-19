@@ -2,7 +2,8 @@ from __future__ import annotations
 
 """Pytest fixtures for AI/ML testing."""
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -13,13 +14,13 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
 # Prefer pytest-asyncio's async fixtures when available; fall back to pytest.fixture.
-_async_fixture: Any = pytest.fixture
+_async_fixture: Callable[..., Any] = pytest.fixture
 try:
     import pytest_asyncio
-
-    _async_fixture = pytest_asyncio.fixture
 except ImportError:
-    _async_fixture = pytest.fixture
+    pass
+else:
+    _async_fixture = pytest_asyncio.fixture
 
 
 @pytest.fixture
@@ -31,7 +32,10 @@ def intelligence_test_bed() -> AITestBed:
 @pytest.fixture
 def intelligence_test_client(intelligence_test_bed: AITestBed) -> AITestClient:
     """Create an intelligence test client."""
-    return intelligence_test_bed.create_test_client()  # type: ignore[attr-defined]
+    return cast(
+        "AITestClient",
+        intelligence_test_bed.create_test_client(),  # type: ignore[attr-defined]
+    )
 
 
 @pytest.fixture

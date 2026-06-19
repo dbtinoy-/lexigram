@@ -33,7 +33,7 @@ class MeiliSearchBackend(SearchBackendBase):
         """Lazy initialization of MeiliSearch client."""
         if self._client is None:
             try:
-                import meilisearch
+                import meilisearch  # type: ignore[import-not-found]
 
                 self._client = meilisearch.Client(self.url, self.api_key)
             except ImportError as e:

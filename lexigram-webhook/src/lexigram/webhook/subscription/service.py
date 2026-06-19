@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import uuid
 
 from lexigram.contracts.webhook.types import WebhookSubscription
-from lexigram.logging import get_logger
+from lexigram.logging.factory import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.webhook.config import WebhookConfig
 from lexigram.webhook.exceptions import (

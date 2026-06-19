@@ -13,6 +13,9 @@ All methods are ``staticmethod`` — no instantiation needed::
 
 from __future__ import annotations
 
+from importlib import import_module
+from typing import Any, cast
+
 from lexigram.logging import get_logger
 
 __all__ = ["ServiceProbe"]
@@ -44,7 +47,7 @@ class ServiceProbe:
             import redis.asyncio as redis
 
             client = redis.from_url(url, socket_connect_timeout=1)
-            await client.ping()  # type: ignore[misc]
+            await client.ping()
             await client.close()
             return True
         except Exception as e:  # noqa: BLE001
@@ -57,7 +60,7 @@ class ServiceProbe:
     ) -> bool:
         """Return ``True`` if a PostgreSQL server is reachable at *dsn*."""
         try:
-            import asyncpg
+            asyncpg = cast("Any", import_module("asyncpg"))
 
             conn = await asyncpg.connect(dsn, timeout=2)
             await conn.close()
@@ -85,7 +88,7 @@ class ServiceProbe:
     ) -> bool:
         """Return ``True`` if a RabbitMQ AMQP broker is reachable."""
         try:
-            import aio_pika
+            aio_pika = cast("Any", import_module("aio_pika"))
 
             connection = await aio_pika.connect_robust(url, timeout=2)
             await connection.close()

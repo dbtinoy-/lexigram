@@ -173,9 +173,7 @@ class SearchProvider(Provider):
                 db_provider = await container.resolve(DatabaseProviderProtocol)
 
             backend_type = sub_provider._db_backend_type or (
-                sub_provider._config.backend_type
-                if sub_provider._config
-                else None
+                sub_provider._config.backend_type if sub_provider._config else None
             )
 
             if backend_type == BackendType.POSTGRES:
@@ -183,11 +181,15 @@ class SearchProvider(Provider):
                     PostgresDatabaseSearchBackend,
                 )
 
-                db_backend = cast("SearchEngine", PostgresDatabaseSearchBackend(provider=db_provider))
+                db_backend = cast(
+                    "SearchEngine", PostgresDatabaseSearchBackend(provider=db_provider)
+                )
             elif backend_type == BackendType.MYSQL:
                 from lexigram.search.backends.mysql import MySQLDatabaseSearchBackend
 
-                db_backend = cast("SearchEngine", MySQLDatabaseSearchBackend(provider=db_provider))
+                db_backend = cast(
+                    "SearchEngine", MySQLDatabaseSearchBackend(provider=db_provider)
+                )
             else:
                 raise RuntimeError(
                     f"Unsupported DB-backed search backend: {backend_type}"
@@ -256,15 +258,18 @@ class SearchProvider(Provider):
                     PostgresDatabaseSearchBackend,
                 )
 
-                db_backend = cast("SearchEngine", PostgresDatabaseSearchBackend(provider=db_provider))
+                db_backend = cast(
+                    "SearchEngine", PostgresDatabaseSearchBackend(provider=db_provider)
+                )
             elif backend_type == BackendType.MYSQL:
                 from lexigram.search.backends.mysql import MySQLDatabaseSearchBackend
 
-                db_backend = cast("SearchEngine", MySQLDatabaseSearchBackend(provider=db_provider))
+                db_backend = cast(
+                    "SearchEngine", MySQLDatabaseSearchBackend(provider=db_provider)
+                )
             else:
                 raise RuntimeError(
-                    f"Unsupported DB-backed search backend: "
-                    f"{backend_type}"
+                    f"Unsupported DB-backed search backend: {backend_type}"
                 )
 
             self.backend = db_backend
@@ -341,26 +346,17 @@ class SearchProvider(Provider):
         try:
             res = await self.backend.health_check()
             latency_ms = (time.time() - start_time) * 1000
-            if isinstance(res, HealthCheckResult):
-                if res.duration_ms == 0.0:
-                    return HealthCheckResult(
-                        component=res.component,
-                        status=res.status,
-                        message=res.message,
-                        error=res.error,
-                        duration_ms=latency_ms,
-                        details=res.details,
-                        checked_at=res.checked_at,
-                    )
-                return res
-            return HealthCheckResult(
-                component="search",
-                status=HealthStatus.HEALTHY
-                if res.get("status") == "healthy"
-                else HealthStatus.UNHEALTHY,
-                details=res,
-                duration_ms=latency_ms,
-            )
+            if res.duration_ms == 0.0:
+                return HealthCheckResult(
+                    component=res.component,
+                    status=res.status,
+                    message=res.message,
+                    error=res.error,
+                    duration_ms=latency_ms,
+                    details=res.details,
+                    checked_at=res.checked_at,
+                )
+            return res
         except (OSError, ConnectionError, RuntimeError, ValueError) as e:
             latency_ms = (time.time() - start_time) * 1000
             return HealthCheckResult(

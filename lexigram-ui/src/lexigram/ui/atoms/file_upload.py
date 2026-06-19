@@ -36,8 +36,8 @@ class FileUpload(Component):
         disabled: bool = False,
         error: str | None = None,
         help_text: str | None = None,
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         """
         Initialize file upload component.
 

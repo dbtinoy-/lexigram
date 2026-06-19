@@ -19,7 +19,7 @@ class SimpleAlert(Component):
         message: str,
         alert_type: str = "info",
         title: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(message=message, type=alert_type, title=title, **props)
         self.message = message

@@ -20,7 +20,7 @@ class InputGroup(Component):
         placeholder: str | None = None,
         value: str = "",
         error: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             label=label,

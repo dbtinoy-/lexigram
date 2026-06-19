@@ -7,7 +7,7 @@ vector similarity matching (Tier 2), and cache miss fallback (Tier 3).
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from lexigram.cache.semantic.protocols import VectorIndexProtocol
@@ -88,11 +88,11 @@ class SemanticCacheStore:
         """
         # Tier 1: Exact hash match
         hash_key = self._hash_query(query)
-        cached_response = await self._cache_backend.get(hash_key)
+        cached_response = cast("str | None", await self._cache_backend.get(hash_key))
 
         if cached_response is not None:
             logger.debug("semantic_cache_hit_tier1", query_hash=hash_key)
-            return cached_response  # type: ignore[return-value]
+            return cached_response
 
         # Tier 2: Vector similarity match
         try:
@@ -103,7 +103,9 @@ class SemanticCacheStore:
             if results:
                 similar_hash_key, similarity = results[0]
                 if similarity >= self._similarity_threshold:
-                    cached_response = await self._cache_backend.get(similar_hash_key)
+                    cached_response = cast(
+                        "str | None", await self._cache_backend.get(similar_hash_key)
+                    )
                     if cached_response is not None:
                         logger.debug(
                             "semantic_cache_hit_tier2",

@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 import html
 import importlib
-from typing import Any, Self
+from types import TracebackType
+from typing import Any, Self, cast
 
 from lexigram.logging import get_logger
 
@@ -67,7 +68,12 @@ class Element:
         _context_stack.append(self)
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         if _context_stack and _context_stack[-1] is self:
             _context_stack.pop()
 
@@ -154,7 +160,7 @@ class NoContext:
         self.old = _no_context
         _no_context = True
 
-    def __exit__(self, *args) -> Any:
+    def __exit__(self, *args: object) -> Any:
         global _no_context
         _no_context = self.old
 
@@ -222,7 +228,12 @@ class Component:
         _context_stack.append(self)
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         # Pop self from the stack if it's the active context
         if _context_stack and _context_stack[-1] is self:
             _context_stack.pop()
@@ -303,7 +314,7 @@ def render_to_string(value: str | Any) -> str:
     if _is_htpy_element(value):
         try:
             # Prefer the explicit HTML representation if available
-            return value.__html__()
+            return cast("str", value.__html__())
         except (AttributeError, TypeError):
             from lexigram.logging import get_logger
 

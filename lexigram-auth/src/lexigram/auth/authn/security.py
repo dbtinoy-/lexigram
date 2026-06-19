@@ -139,7 +139,7 @@ class PasswordHasher(PasswordHasherProtocol):
         return await asyncio.to_thread(_hash_sync, password_bytes)
 
     @staticmethod
-    async def verify(password: str, hashed_password: str) -> bool:
+    async def verify(password: str, hashed_password: str | bytes) -> bool:
         """Verify a password against its hash asynchronously."""
         if not bcrypt_available:
             raise RuntimeError("bcrypt library is not available")

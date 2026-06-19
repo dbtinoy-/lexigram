@@ -27,6 +27,8 @@ Available fixtures:
 """
 
 from collections.abc import AsyncGenerator
+from importlib import import_module
+from typing import Any, cast
 import uuid
 
 import pytest
@@ -91,7 +93,7 @@ async def postgres_pool(
         pytest.skip("PostgreSQL not available")
 
     try:
-        import asyncpg
+        asyncpg = cast("Any", import_module("asyncpg"))
     except ImportError:
         pytest.skip("asyncpg not installed")
 
@@ -175,11 +177,13 @@ async def kafka_producer(
         pytest.skip("Kafka not available")
 
     try:
-        from aiokafka import AIOKafkaProducer
+        aiokafka = cast("Any", import_module("aiokafka"))
     except ImportError:
         pytest.skip("aiokafka not installed")
 
-    producer = AIOKafkaProducer(bootstrap_servers=integration_config.kafka_bootstrap)
+    producer = aiokafka.AIOKafkaProducer(
+        bootstrap_servers=integration_config.kafka_bootstrap
+    )
     await producer.start()
     try:
         yield producer
@@ -254,13 +258,13 @@ async def mongodb_client(
         pytest.skip("MongoDB not available")
 
     try:
-        from motor.motor_asyncio import (  # type: ignore[import-not-found]
+        from motor.motor_asyncio import (
             AsyncIOMotorClient,
         )
     except ImportError:
         pytest.skip("motor not installed")
 
-    client = AsyncIOMotorClient(integration_config.mongodb_dsn)
+    client: Any = AsyncIOMotorClient(integration_config.mongodb_dsn)
     try:
         yield client
     finally:
@@ -341,11 +345,11 @@ async def qdrant_client(
         pytest.skip("Qdrant not available")
 
     try:
-        from qdrant_client import AsyncQdrantClient
+        qdrant_client = cast("Any", import_module("qdrant_client"))
     except ImportError:
         pytest.skip("qdrant-client not installed")
 
-    client = AsyncQdrantClient(url=integration_config.qdrant_url)
+    client = qdrant_client.AsyncQdrantClient(url=integration_config.qdrant_url)
     try:
         yield client
     finally:

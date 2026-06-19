@@ -19,7 +19,7 @@ class Toggle(Component):
         checked: bool = False,
         label: str | None = None,
         size: str = "md",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(name=name, checked=checked, label=label, size=size, **props)
         self.name = name
@@ -96,7 +96,7 @@ class ToggleIcon(Component):
         state_var: str = "darkMode",
         aria_label: str = "Toggle",
         size: str = "sm",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             icon_on=icon_on,

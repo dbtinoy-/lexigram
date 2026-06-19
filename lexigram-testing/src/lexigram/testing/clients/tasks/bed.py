@@ -39,14 +39,14 @@ class TaskTestBed(TestEnvironment):
         ```
     """
 
-    mock_queue: MockTaskQueue
-    mock_executor: MockTaskExecutor
+    mock_queue: MockTaskQueue | None
+    mock_executor: MockTaskExecutor | None
 
     def __init__(self, config: Any = None) -> None:
         super().__init__()
         # Attributes are set during setup(); declare type hints here only.
-        self.mock_queue: MockTaskQueue | None = None  # type: ignore[assignment]
-        self.mock_executor: MockTaskExecutor | None = None  # type: ignore[assignment]
+        self.mock_queue = None
+        self.mock_executor = None
 
     async def setup(self) -> None:  # type: ignore[override]
         """Initialise mock components and pre-populate the queue.
@@ -80,8 +80,8 @@ class TaskTestBed(TestEnvironment):
         """
         if self.mock_queue is not None:
             await self.mock_queue.clear_queue()
-        self.mock_queue = None  # type: ignore[assignment]
-        self.mock_executor = None  # type: ignore[assignment]
+        self.mock_queue = None
+        self.mock_executor = None
 
     def get_enqueued_tasks(self) -> list[Any]:
         """Return all tasks currently waiting in the mock queue.

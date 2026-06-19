@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from lexigram.contracts.core import HealthCheckResult
@@ -207,10 +207,13 @@ class AsyncDatabaseSearchBase(DatabaseSearchBase):
         conn = await self._acquire_connection()
         try:
             if hasattr(conn, "fetch"):
-                return await conn.fetch(query, *(params or []))
+                return cast(
+                    "list[Any]",
+                    await conn.fetch(query, *(params or [])),
+                )
             if hasattr(conn, "execute"):
                 result = await conn.execute(query, *(params or []))
-                return result
+                return cast("list[Any]", result)
             raise ValueError("Connection does not support query execution")
         finally:
             await self._release_connection(conn)

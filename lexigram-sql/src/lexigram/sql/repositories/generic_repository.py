@@ -54,7 +54,7 @@ class GenericRepository(SQLRepository[TEntity, TKey], Generic[TEntity, TKey]):
 
         if isinstance(entity, DomainModel):
             # DomainModel (dataclass-based)
-            return cast("dict[str, Any]", entity.model_dump())
+            return entity.model_dump()
         if hasattr(entity, "__dict__"):
             return entity.__dict__.copy()
         if isinstance(entity, dict):
@@ -161,4 +161,4 @@ class GenericRepository(SQLRepository[TEntity, TKey], Generic[TEntity, TKey]):
 
         Convenience alias for ``find_by_id()``.
         """
-        return await self.find_by_id(key)
+        return cast("TEntity | None", await self.find_by_id(key))

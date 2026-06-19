@@ -37,8 +37,8 @@ class TextInput(AbstractInput):
         value: str | None = None,
         input_type: str = "text",
         placeholder: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(name=name, value=value, **kwargs)
         self.type = input_type
         self.placeholder = placeholder
@@ -66,14 +66,14 @@ Input = TextInput
 class PasswordInput(TextInput):
     """Password input - TextInput with type='password'."""
 
-    def __init__(self, name: str, **kwargs) -> None:
+    def __init__(self, name: str, **kwargs: Any) -> None:
         super().__init__(name=name, input_type="password", **kwargs)
 
 
 class EmailInput(TextInput):
     """Email input - TextInput with type='email'."""
 
-    def __init__(self, name: str, **kwargs) -> None:
+    def __init__(self, name: str, **kwargs: Any) -> None:
         super().__init__(name=name, input_type="email", **kwargs)
 
 
@@ -97,8 +97,8 @@ class TextArea(AbstractInput):
         value: str | None = None,
         rows: int = 3,
         placeholder: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(name=name, value=value, **kwargs)
         self.rows = rows
         self.placeholder = placeholder

@@ -6,6 +6,8 @@ The base AsyncStringSerializerProtocol protocol is defined in lexigram.contracts
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.contracts.core.serialization import AsyncStringSerializerProtocol
 from lexigram.serialization import SerializationError
 
@@ -29,7 +31,7 @@ class CacheSerializationError(SerializationError):
     def __init__(
         self,
         message: str = "Cache serialization failed",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Initialize cache serialization error.
 

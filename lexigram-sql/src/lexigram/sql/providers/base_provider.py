@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from contextlib import AbstractAsyncContextManager
-from typing import Any
+from typing import Any, cast
 
 from lexigram.contracts import HealthCheckResult, ProviderPriority
 from lexigram.logging import get_logger
@@ -129,7 +129,10 @@ class DatabaseDriver(DatabaseProviderProtocol, ABC):
                 sql: str,
                 params: list[Any] | None = None,
             ) -> list[dict[str, Any]]:
-                return await self.provider._execute_query_raw(connection, sql, params)
+                return cast(
+                    "list[dict[str, Any]]",
+                    await self.provider._execute_query_raw(connection, sql, params),
+                )
 
             async def _execute_modify_raw(
                 self,
@@ -137,7 +140,10 @@ class DatabaseDriver(DatabaseProviderProtocol, ABC):
                 sql: str,
                 params: list[Any] | None = None,
             ) -> int:
-                return await self.provider._execute_modify_raw(connection, sql, params)
+                return cast(
+                    "int",
+                    await self.provider._execute_modify_raw(connection, sql, params),
+                )
 
         return ConcreteQueryExecutor(self, query_logger)
 

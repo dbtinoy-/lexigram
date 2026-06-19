@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 
 class ElasticsearchIndexManager:
@@ -96,35 +96,50 @@ class ElasticsearchIndexManager:
         """Create an index with mappings and settings."""
         full_name = self.get_index_name(index)
 
-        return await client.indices.create(
-            index=full_name,
-            mappings=self.get_create_index_mappings(),
-            settings=self.get_create_index_settings(),
+        return cast(
+            "dict[Any, Any]",
+            await client.indices.create(
+                index=full_name,
+                mappings=self.get_create_index_mappings(),
+                settings=self.get_create_index_settings(),
+            ),
         )
 
     async def delete_index(self, client: Any, index: str) -> dict:
         """Delete an index."""
         full_name = self.get_index_name(index)
 
-        return await client.indices.delete(index=full_name)
+        return cast(
+            "dict[Any, Any]",
+            await client.indices.delete(index=full_name),
+        )
 
     async def index_exists(self, client: Any, index: str) -> bool:
         """Check if an index exists."""
         full_name = self.get_index_name(index)
 
-        return await client.indices.exists(index=full_name)
+        return cast(
+            "bool",
+            await client.indices.exists(index=full_name),
+        )
 
     async def get_index_stats(self, client: Any, index: str) -> dict:
         """Get index statistics."""
         full_name = self.get_index_name(index)
 
-        return await client.indices.stats(index=full_name)
+        return cast(
+            "dict[Any, Any]",
+            await client.indices.stats(index=full_name),
+        )
 
     async def refresh_index(self, client: Any, index: str) -> dict:
         """Refresh an index to make all operations searchable."""
         full_name = self.get_index_name(index)
 
-        return await client.indices.refresh(index=full_name)
+        return cast(
+            "dict[Any, Any]",
+            await client.indices.refresh(index=full_name),
+        )
 
     async def forcemerge_index(
         self, client: Any, index: str, max_num_segments: int = 1
@@ -132,9 +147,12 @@ class ElasticsearchIndexManager:
         """Force merge an index to optimize for search."""
         full_name = self.get_index_name(index)
 
-        return await client.indices.forcemerge(
-            index=full_name,
-            max_num_segments=max_num_segments,
+        return cast(
+            "dict[Any, Any]",
+            await client.indices.forcemerge(
+                index=full_name,
+                max_num_segments=max_num_segments,
+            ),
         )
 
 

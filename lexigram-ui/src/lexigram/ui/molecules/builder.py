@@ -28,7 +28,7 @@ class Builder(Component):
         name: str,
         value: list[dict] | str | None = None,
         label: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(blocks=blocks, name=name, label=label, **props)
         self.blocks = blocks

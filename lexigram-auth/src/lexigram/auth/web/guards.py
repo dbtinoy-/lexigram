@@ -70,9 +70,12 @@ class _GuardBase(ABC):
                 "ResponseFactoryProtocol not available — ensure the DI container is configured",
             ) from exc
 
-        return response_factory.json(
-            {"error": "forbidden", "message": "Access denied"},
-            status_code=403,
+        return cast(
+            "ResponseProtocol",
+            response_factory.json(
+                {"error": "forbidden", "message": "Access denied"},
+                status_code=403,
+            ),
         )
 
 
@@ -95,9 +98,12 @@ class AuthGuard(_GuardBase):
                 "ResponseFactoryProtocol not available — ensure the DI container is configured",
             ) from exc
 
-        return response_factory.json(
-            {"error": "unauthorized", "message": "Authentication required"},
-            status_code=401,
+        return cast(
+            "ResponseProtocol",
+            response_factory.json(
+                {"error": "unauthorized", "message": "Authentication required"},
+                status_code=401,
+            ),
         )
 
 

@@ -26,7 +26,7 @@ all state into the URL upfront. This is more reliable and easier to debug.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlencode
 
 from lexigram.ui import Zone, Zones
@@ -193,7 +193,7 @@ class HTMXAttrs:
         state: TableState,
         resource_prefix: str,
         push_url: bool = True,
-        **extra_params,
+        **extra_params: Any,
     ) -> dict[str, str]:
         """
         Generate HTMX attributes for a full table refresh.
@@ -222,7 +222,7 @@ class HTMXAttrs:
         state: TableState,
         resource_prefix: str,
         push_url: bool = True,
-        **extra_params,
+        **extra_params: Any,
     ) -> dict[str, str]:
         """
         Generate HTMX attributes for a data zone refresh.

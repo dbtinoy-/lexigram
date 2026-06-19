@@ -15,7 +15,7 @@ class FileUpload(AbstractInput):
         self,
         name: str,
         accept: str = "*",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.accept = accept
@@ -103,7 +103,7 @@ class MultiFileUpload(AbstractInput):
         self,
         name: str,
         accept: str = "*",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.accept = accept

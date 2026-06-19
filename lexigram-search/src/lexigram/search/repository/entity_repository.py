@@ -9,7 +9,7 @@ interchangeably with database-backed repositories.
 from __future__ import annotations
 
 import abc
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from lexigram.contracts.domain.specification import SpecificationProtocol
 from lexigram.contracts.exceptions.domain import NotFoundError
@@ -239,7 +239,10 @@ class SearchEntityRepository(AbstractRepository[T, str], Generic[T]):
         Returns:
             ``True`` if deleted, ``False`` if it did not exist.
         """
-        return await self._engine.delete_document(self._index_name, str(entity_id))  # type: ignore[attr-defined]
+        return cast(
+            "bool",
+            await self._engine.delete_document(self._index_name, str(entity_id)),  # type: ignore[attr-defined]
+        )
 
     # ------------------------------------------------------------------
     # Search-specific extension

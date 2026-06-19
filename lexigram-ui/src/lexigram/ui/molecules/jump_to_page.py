@@ -22,7 +22,7 @@ class JumpToPage(Component):
         hx_swap: str = "innerHTML",
         hx_push_url: str = "true",
         state: Any | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(**props)
         self.page = page

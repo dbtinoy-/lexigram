@@ -8,7 +8,7 @@ Consistent with the Column system's builder pattern.
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from lexigram.ui import Zones
 
@@ -195,7 +195,7 @@ class Action:
         """Check if action should be visible."""
         # 1. Check callback if set
         if self._visible_callback:
-            return self._visible_callback(record or {})
+            return cast("bool", self._visible_callback(record or {}))
 
         # 2. Check PermissionService if user, resource_name, and service are provided
         if user and resource_name and permission_service is not None:
@@ -214,13 +214,13 @@ class Action:
     def is_disabled(self, record: dict | None = None) -> bool:
         """Check if action should be disabled."""
         if self._disabled_callback:
-            return self._disabled_callback(record or {})
+            return cast("bool", self._disabled_callback(record or {}))
         return self._disabled
 
     def get_url(self, record: dict | None = None) -> str | None:
         """Resolve URL if it's a callable."""
         if callable(self._url):
-            return self._url(record or {})
+            return cast("str | None", self._url(record or {}))
         return self._url
 
     def get_hx_get(self) -> str | None:

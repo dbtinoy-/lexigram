@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from lexigram import serialization as json
 
@@ -41,7 +41,7 @@ class ListValueParser:
         return isinstance(val, list)
 
     def parse(self, val: Any) -> list[str]:
-        return val
+        return cast("list[str]", val)
 
 
 class NoneValueParser:

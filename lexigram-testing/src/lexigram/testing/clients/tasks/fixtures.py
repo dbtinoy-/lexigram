@@ -7,8 +7,8 @@ execution, scheduling, and worker management.
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
-from typing import Any
+from collections.abc import AsyncGenerator, Callable
+from typing import Any, cast
 
 import pytest
 
@@ -27,7 +27,9 @@ except ImportError:
     pytest_asyncio = None
 
 # Make decorator variable explicitly typed to avoid mypy 'untyped decorator' warnings
-_fixture = pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture  # type: Any
+_fixture: Callable[..., Any] = (
+    pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+)
 
 
 @_fixture
@@ -101,7 +103,10 @@ def sample_scheduled_jobs() -> list[dict[str, Any]]:
 @pytest.fixture
 def sample_worker_configs() -> list[dict[str, Any]]:
     """Create sample worker configurations for testing."""
-    return TaskTestData.sample_worker_configs()  # type: ignore[attr-defined]
+    return cast(
+        "list[dict[str, Any]]",
+        TaskTestData.sample_worker_configs(),  # type: ignore[attr-defined]
+    )
 
 
 @pytest.fixture

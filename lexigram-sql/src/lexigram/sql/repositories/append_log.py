@@ -8,7 +8,7 @@ storage operations.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from lexigram import serialization as json
 from lexigram.contracts import DatabaseProviderProtocol
@@ -191,11 +191,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
         if not result:
             return 0
         row = result[0]
-        return (
-            row[0]
-            if isinstance(row, (tuple, list))
-            else row.get("coalesce", row.get("max", 0))
-        )
+        return cast("int", row.get("coalesce", row.get("max", 0)))
 
     async def delete_stream(self, stream_id: str) -> bool:
         """Delete all events in a stream."""
@@ -222,7 +218,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
         if not result:
             return 0
         row = result[0]
-        return row[0] if isinstance(row, (tuple, list)) else row.get("count", 0)
+        return cast("int", row.get("count", 0))
 
 
 __all__ = ["DatabaseProviderAppendLog"]

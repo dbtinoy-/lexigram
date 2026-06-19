@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from lexigram.sql.migrations.manager import AlembicManager
 
@@ -87,7 +87,10 @@ async def rollback_dry_run(
     steps: int = 1,
 ) -> list[dict[str, Any]]:
     manager = AlembicManager(connection_string, migrations_path)
-    return await manager.rollback_dry_run(steps)  # type: ignore[attr-defined]
+    return cast(
+        "list[dict[str, Any]]",
+        await manager.rollback_dry_run(steps),  # type: ignore[attr-defined]
+    )
 
 
 async def get_migration_branches(

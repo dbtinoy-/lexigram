@@ -11,7 +11,7 @@ Key schema:
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import jwt
 
@@ -91,10 +91,7 @@ class JWTBlacklist:
             return Ok(None)
 
         try:
-            unverified_payload = cast(
-                "dict[str, Any]",
-                jwt.decode(token, options={"verify_signature": False}),
-            )
+            unverified_payload = jwt.decode(token, options={"verify_signature": False})
             exp = unverified_payload.get("exp", 0)
             now = int(ambient_clock.timestamp())
             ttl = max(0, exp - now)
@@ -201,10 +198,7 @@ class JWTBlacklist:
             if await cache.exists(f"jwt:blacklist:{token_hash}"):
                 return True
 
-            unverified_payload = cast(
-                "dict[str, Any]",
-                jwt.decode(token, options={"verify_signature": False}),
-            )
+            unverified_payload = jwt.decode(token, options={"verify_signature": False})
             user_id = unverified_payload.get("sub")
             return bool(user_id and await cache.exists(f"jwt:blacklist:user:{user_id}"))
 

@@ -22,7 +22,7 @@ class EmptyState(Component):
         message: str = "There's nothing to display yet.",
         icon: str = "📭",
         action: Any = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             title=title,
@@ -41,7 +41,11 @@ class EmptyState(Component):
             "div",
             el(
                 "div",
-                el("div", get_icon(self.icon, size="w-16 h-16"), class_="text-6xl mb-4 opacity-50"),
+                el(
+                    "div",
+                    get_icon(self.icon, size="w-16 h-16"),
+                    class_="text-6xl mb-4 opacity-50",
+                ),
                 el(
                     "h3",
                     self.title,

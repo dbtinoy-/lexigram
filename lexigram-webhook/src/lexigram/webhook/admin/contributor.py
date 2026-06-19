@@ -12,7 +12,7 @@ from lexigram.contracts.admin.types import (
     PageCategory,
 )
 from lexigram.contracts.core.di import ContainerResolverProtocol
-from lexigram.logging import get_logger
+from lexigram.logging.factory import get_logger
 
 if TYPE_CHECKING:
     from lexigram.contracts.webhook.protocols import (

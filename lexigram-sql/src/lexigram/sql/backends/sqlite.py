@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 import sqlite3
-from typing import Any
+from typing import Any, cast
 
 from lexigram.concurrency.task_utils import create_tracked_task
 from lexigram.logging import get_logger
@@ -381,7 +381,7 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
 
     @property
     def connection_timeout(self) -> float:
-        return self.pool_kwargs.get("timeout", 5.0)
+        return cast("float", self.pool_kwargs.get("timeout", 5.0))
 
     async def initialize(self) -> None:
         """Initialize the connection with retry logic"""

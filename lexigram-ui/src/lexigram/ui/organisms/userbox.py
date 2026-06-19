@@ -19,7 +19,7 @@ class UserBox(Component):
         roles: list[str] | None = None,
         user_menu_items: list[dict] | None = None,
         user: Any | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             username=username,

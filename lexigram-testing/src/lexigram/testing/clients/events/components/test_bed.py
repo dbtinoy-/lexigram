@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ class EventTestBed(TestEnvironment):
         ...     # Use clients for testing
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize the event test bed."""
         super().__init__(**kwargs)
         self._event_bus: EventBusProtocol | None = None
@@ -46,22 +47,15 @@ class EventTestBed(TestEnvironment):
         # Create event bus
         self._event_bus = EventBusProtocol()  # type: ignore[misc]
         assert self.container is not None
-        self.container.singleton(
-            EventBusProtocol, lambda: cast("EventBusProtocol", self._event_bus)
-        )
+        self.container.singleton(EventBusProtocol, lambda: self._event_bus)
 
         # Create command bus
         self._command_bus = CommandBusProtocol()  # type: ignore[misc]
-        self.container.singleton(
-            CommandBusProtocol,
-            lambda: cast("CommandBusProtocol", self._command_bus),
-        )
+        self.container.singleton(CommandBusProtocol, lambda: self._command_bus)
 
         # Create query bus
         self._query_bus = QueryBusProtocol()  # type: ignore[misc]
-        self.container.singleton(
-            QueryBusProtocol, lambda: cast("QueryBusProtocol", self._query_bus)
-        )
+        self.container.singleton(QueryBusProtocol, lambda: self._query_bus)
 
     async def teardown_event_providers(self) -> None:
         """Clean up event-related providers."""
@@ -104,6 +98,11 @@ class EventTestBed(TestEnvironment):
         await self.setup()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> Any:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Any:
         """Async context manager exit."""
         await self.teardown()  # type: ignore[misc,func-returns-value]

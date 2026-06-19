@@ -22,7 +22,7 @@ class FormField(Component):
         required: bool = False,
         hidden: bool = False,
         visible_condition: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             input_component=input_component,

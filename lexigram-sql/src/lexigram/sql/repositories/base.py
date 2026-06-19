@@ -7,7 +7,7 @@ Provides :class:`SQLRepository`, a concrete SQL-backed implementation of
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from lexigram.contracts.data.identifiers import Column, Table
 from lexigram.logging import get_logger
@@ -130,7 +130,7 @@ class SQLRepository(  # type: ignore[misc]
         Returns:
             The entity or ``None``.
         """
-        return await self.find_by_id(entity_id)
+        return cast("TEntity | None", await self.find_by_id(entity_id))
 
     async def _fetch_many(
         self,
@@ -202,8 +202,8 @@ class SQLRepository(  # type: ignore[misc]
             else getattr(entity, self.key_field, None)
         )
         if key_value is None:
-            return await self.create(entity)
-        return await self.update(entity)
+            return cast("TEntity", await self.create(entity))
+        return cast("TEntity", await self.update(entity))
 
     async def _delete(self, entity_id: Any) -> bool:
         """Delete entity by primary key (delegates to delete_by_id).

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.contracts.data.identifiers import Column, Table
 from lexigram.logging import get_logger
@@ -22,6 +22,9 @@ from lexigram.sql.exceptions import (
 )
 
 logger = get_logger(__name__)
+
+if TYPE_CHECKING:
+    import types
 
 
 @dataclass
@@ -57,7 +60,12 @@ class DatabaseOperationContext:
         self.conn = await self.conn_cm.__aenter__()
         return self.conn
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         self.execution_time = ambient_clock.monotonic() - self.start_time
         success = exc_type is None
         error_message = str(exc_val) if exc_val else None
@@ -207,7 +215,10 @@ class CrudOperations(ABC):
     ) -> QueryResult:
         """Execute a SELECT query"""
         async with self.connection_manager.get_connection() as conn:
-            return await self.query_executor.execute_query(conn, sql, params)
+            return cast(
+                "QueryResult",
+                await self.query_executor.execute_query(conn, sql, params),
+            )
 
     async def execute_modify(
         self,
@@ -216,7 +227,9 @@ class CrudOperations(ABC):
     ) -> int:
         """Execute a non-SELECT query and return affected rows"""
         async with self.connection_manager.get_connection() as conn:
-            return await self.query_executor.execute_modify(conn, sql, params)
+            return cast(
+                "int", await self.query_executor.execute_modify(conn, sql, params)
+            )
 
     async def execute(self, sql: str, params: Any = None) -> QueryResult:
         """Generic execute method that dispatches to query or modify based on content."""

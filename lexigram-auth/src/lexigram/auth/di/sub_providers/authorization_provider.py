@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.contracts import (
@@ -43,7 +43,7 @@ class AuthorizationProvider(Provider):
 
     @property
     def auth_config(self) -> AuthConfig | None:
-        return self._config
+        return cast("AuthConfig | None", self._config)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register authorization services with the container."""

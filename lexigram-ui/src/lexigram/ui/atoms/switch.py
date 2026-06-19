@@ -17,7 +17,7 @@ class Switch(Component):
         value: bool = False,
         description: str | None = None,
         error: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             label=label,

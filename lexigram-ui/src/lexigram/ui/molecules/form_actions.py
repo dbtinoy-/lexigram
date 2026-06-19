@@ -32,8 +32,8 @@ class FormActions(Component):
         primary_disabled: bool = False,
         cancel_url: str | None = None,
         align: str = "right",  # left, center, right
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         """
         Initialize form actions.
 

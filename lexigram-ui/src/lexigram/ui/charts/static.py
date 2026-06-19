@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from lexigram.ui.charts.config import bg_class, hex_color, text_class
 from lexigram.ui.charts.types import ChartConfig, ChartDataPoint
@@ -320,7 +320,8 @@ class LineChart(Component):
                 y = (
                     padding
                     + chart_h
-                    - ((point.secondary_value - min_val) / value_range) * chart_h
+                    - ((cast("float", point.secondary_value) - min_val) / value_range)
+                    * chart_h
                 )
                 sec_points.append(f"{x:.1f},{y:.1f}")
             children.append(

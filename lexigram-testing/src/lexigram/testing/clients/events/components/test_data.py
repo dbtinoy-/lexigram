@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID, uuid4
 
 from lexigram.events import AggregateRoot, Command, Event, Query
@@ -87,7 +88,7 @@ class EventTestData:
             user_id: UUID
             amount: float
 
-        def _make_event(event_cls: type[Event], **kwargs) -> Event:
+        def _make_event(event_cls: type[Event], **kwargs: Any) -> Event:
             from uuid import uuid4
 
             data = {

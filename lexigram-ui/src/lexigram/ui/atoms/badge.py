@@ -27,7 +27,9 @@ BadgeVariant = Literal[
 class Badge(Component):
     """Badge component for status indicators."""
 
-    def __init__(self, text: str, variant: BadgeVariant = "default", **props) -> None:
+    def __init__(
+        self, text: str, variant: BadgeVariant = "default", **props: Any
+    ) -> None:
         super().__init__(text=text, variant=variant, **props)
         self.text = text
         self.variant = variant

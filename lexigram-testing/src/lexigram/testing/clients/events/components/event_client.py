@@ -116,7 +116,7 @@ class EventTestClient:
         self,
         event_type: type[Event],
         expected_count: int = 1,
-        **filters,
+        **filters: Any,
     ) -> list[Event]:
         """Assert that events of a type were published.
 

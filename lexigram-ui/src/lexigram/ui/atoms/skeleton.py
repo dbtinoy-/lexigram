@@ -21,7 +21,7 @@ class Skeleton(Component):
         width: str = "100%",
         height: str | None = None,
         count: int = 1,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             variant=variant,

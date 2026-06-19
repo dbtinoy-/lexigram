@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.auth.authn.security import PasswordHasher, PasswordPolicy
 from lexigram.auth.events import PasswordChanged
@@ -97,7 +97,7 @@ class UserService:
 
     async def get_user(self, user_id: str) -> User | None:
         """Get user by ID."""
-        return await self.user_store.get_user_by_id(user_id)
+        return cast("User | None", await self.user_store.get_user_by_id(user_id))
 
     async def update_user(
         self, user: User
@@ -301,11 +301,11 @@ class UserService:
 
     async def list_users(self, skip: int = 0, limit: int = 100) -> list[User]:
         """List users with pagination."""
-        return await self.user_store.list_users(skip, limit)
+        return cast("list[User]", await self.user_store.list_users(skip, limit))
 
     async def count_users(self) -> int:
         """Count total users."""
-        return await self.user_store.count_users()
+        return cast("int", await self.user_store.count_users())
 
     def __repr__(self) -> str:
         """Return a string representation of this service."""

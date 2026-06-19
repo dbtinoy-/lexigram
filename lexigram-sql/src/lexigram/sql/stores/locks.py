@@ -16,7 +16,7 @@ Schema (apply via migrations)::
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.primitives import clock as ambient_clock
 
@@ -91,18 +91,23 @@ class DatabaseLockStore:
 
             # Attempt an optimistic insert.  ON CONFLICT DO NOTHING lets us check
             # the result tag to determine whether we won the race.
-            result = await conn.execute(
-                f"""
+            # The driver connection returns a command tag (e.g. ``INSERT 0 1``)
+            # for DML; the contracts typing models it as ``QueryResult``.
+            cmd_tag: str = cast(
+                "str",
+                await conn.execute(
+                    f"""
                 INSERT INTO {self._table_name} (lock_name, owner, expires_at)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (lock_name) DO NOTHING
                 """,
-                lock_name,
-                owner,
-                expires_at,
+                    lock_name,
+                    owner,
+                    expires_at,
+                ),
             )
 
-            if result == "INSERT 0 1":
+            if cmd_tag == "INSERT 0 1":
                 return True
 
             # Lock exists — check whether it has expired.
@@ -113,17 +118,20 @@ class DatabaseLockStore:
 
             if row and row["expires_at"] < self._now:
                 # Expired — attempt to claim it atomically.
-                result = await conn.execute(
-                    f"""
+                cmd_tag = cast(
+                    "str",
+                    await conn.execute(
+                        f"""
                     UPDATE {self._table_name}
                     SET owner = $2, expires_at = $3
                     WHERE lock_name = $1 AND expires_at < NOW()
                     """,
-                    lock_name,
-                    owner,
-                    expires_at,
+                        lock_name,
+                        owner,
+                        expires_at,
+                    ),
                 )
-                return result != "UPDATE 0"
+                return cmd_tag != "UPDATE 0"
 
             return False
         finally:
@@ -138,15 +146,18 @@ class DatabaseLockStore:
         await self._ensure_table()
         conn = await self._db.acquire()
         try:
-            result = await conn.execute(
-                f"""
+            cmd_tag = cast(
+                "str",
+                await conn.execute(
+                    f"""
                 DELETE FROM {self._table_name}
                 WHERE lock_name = $1 AND owner = $2
                 """,
-                lock_name,
-                owner,
+                    lock_name,
+                    owner,
+                ),
             )
-            return result != "DELETE 0"
+            return cmd_tag != "DELETE 0"
         finally:
             await self._db.release(conn)
 
@@ -165,17 +176,20 @@ class DatabaseLockStore:
         conn = await self._db.acquire()
         try:
             new_expires_at = self._now + timedelta(seconds=ttl)
-            result = await conn.execute(
-                f"""
+            cmd_tag = cast(
+                "str",
+                await conn.execute(
+                    f"""
                 UPDATE {self._table_name}
                 SET expires_at = $3
                 WHERE lock_name = $1 AND owner = $2
                 """,
-                lock_name,
-                owner,
-                new_expires_at,
+                    lock_name,
+                    owner,
+                    new_expires_at,
+                ),
             )
-            return result != "UPDATE 0"
+            return cmd_tag != "UPDATE 0"
         finally:
             await self._db.release(conn)
 

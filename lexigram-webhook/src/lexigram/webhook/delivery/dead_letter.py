@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lexigram.contracts.webhook.types import DeliveryAttempt
-from lexigram.logging import get_logger
+from lexigram.logging.factory import get_logger
 
 if TYPE_CHECKING:
     from lexigram.contracts.webhook.protocols import WebhookDeliveryStoreProtocol

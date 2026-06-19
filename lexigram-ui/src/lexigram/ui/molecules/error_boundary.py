@@ -18,7 +18,7 @@ class ErrorBoundary(Component):
     preventing the entire page from breaking.
     """
 
-    def __init__(self, fallback: Any | None = None, **props) -> None:
+    def __init__(self, fallback: Any | None = None, **props: Any) -> None:
         super().__init__(**props)
         self.fallback = fallback
 

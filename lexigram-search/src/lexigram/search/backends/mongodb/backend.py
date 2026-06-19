@@ -8,7 +8,7 @@ the ``CollectionProtocol`` does not yet cover.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from lexigram.contracts.data import DocumentStoreProtocol
 from lexigram.logging import get_logger
@@ -61,7 +61,7 @@ class MongoSearchBackend(SearchBackendBase):
 
         # Fallback: create own motor client (backwards compatibility)
         if self._client is None:
-            from motor.motor_asyncio import (  # type: ignore[import-not-found]
+            from motor.motor_asyncio import (
                 AsyncIOMotorClient,
             )
 
@@ -222,7 +222,9 @@ class MongoSearchBackend(SearchBackendBase):
         pipeline: list[dict[str, Any]] = [search_query]
 
         if filters or rule:
-            filter_doc = self._build_filter_query(merge_filters(filters, rule_to_filters(rule)))
+            filter_doc = self._build_filter_query(
+                merge_filters(filters, rule_to_filters(rule))
+            )
             pipeline.append({"$match": filter_doc})
 
         pipeline.append({"$project": {"document": 1, "score": project, "_id": 1}})
@@ -270,7 +272,7 @@ class MongoSearchBackend(SearchBackendBase):
 
         collection = self._db[index]
         result = await collection.delete_one({"_id": doc_id})
-        return result.deleted_count > 0
+        return cast("bool", result.deleted_count > 0)
 
     async def index_many(
         self,
@@ -296,7 +298,7 @@ class MongoSearchBackend(SearchBackendBase):
         if raw_col is None:
             raise RuntimeError("No collection available for bulk write")
 
-        from pymongo import ReplaceOne  # type: ignore[import-not-found]
+        from pymongo import ReplaceOne
 
         ops = [
             ReplaceOne(

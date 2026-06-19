@@ -54,7 +54,7 @@ class MsgPackSerializer:
             ImportError: If the ``msgpack`` package is not installed.
         """
         try:
-            import msgpack  # noqa: F401 — verified importable
+            import msgpack  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "MsgPackSerializer requires the 'msgpack' package. "

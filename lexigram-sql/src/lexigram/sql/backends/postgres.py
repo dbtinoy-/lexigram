@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from lexigram.concurrency.task_utils import create_tracked_task
 from lexigram.contracts import ConnectionPoolProtocol, RetryConfig
@@ -130,7 +130,7 @@ class PostgresConnectionPool(ConnectionPoolProtocol):
 
     @property
     def connection_timeout(self) -> float:
-        return self.pool_kwargs.get("timeout", 10.0)
+        return cast("float", self.pool_kwargs.get("timeout", 10.0))
 
     async def initialize(self) -> None:
         """Initialize the connection pool with SSL and retry logic"""

@@ -22,7 +22,7 @@ class RichEditor(Component):
         required: bool = False,
         min_height: int = 300,
         toolbar: str | None = None,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             name=name,
@@ -123,7 +123,7 @@ class MarkdownEditor(Component):
         disabled: bool = False,
         preview: bool = True,
         min_height: int = 300,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             name=name,

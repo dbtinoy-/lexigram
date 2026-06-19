@@ -20,8 +20,8 @@ class VirtualScroll(Component):
         chunk_size: int = 50,
         target_id: str | None = None,
         placeholder: Any | None = None,
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         super().__init__(**props)
         self.url = url
         self.total_items = total_items
@@ -79,8 +79,8 @@ class InfiniteScrollTrigger(Component):
         target: str | None = None,
         swap: str = "afterend",
         select: str | None = None,
-        **props,
-    ):
+        **props: Any,
+    ) -> None:
         super().__init__(**props)
         self.url = url
         self.trigger = trigger

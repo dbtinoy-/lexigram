@@ -15,7 +15,7 @@ class Popover(Component):
         trigger: str | Any,
         position: str = "bottom",
         width: str = "md",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(trigger=trigger, position=position, width=width, **props)
         self.trigger = trigger

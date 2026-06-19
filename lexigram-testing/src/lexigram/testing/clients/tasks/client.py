@@ -60,10 +60,11 @@ class TaskTestClient:
         Returns:
             The newly created :class:`MockTasksProvider`.
         """
-        provider = MockTasksProvider(
-            queue=self.test_bed.mock_queue,
-            executor=self.test_bed.mock_executor,
-        )
+        queue = self.test_bed.mock_queue
+        executor = self.test_bed.mock_executor
+        assert queue is not None
+        assert executor is not None
+        provider = MockTasksProvider(queue=queue, executor=executor)
         self.provider = provider
         return provider
 
@@ -89,6 +90,8 @@ class TaskTestClient:
         from lexigram.tasks import JobProtocol, Priority
 
         task_ids: list[str] = []
+        queue = self.test_bed.mock_queue
+        assert queue is not None
         for task_dict in TaskTestData.sample_tasks():
             task = JobProtocol(
                 id=str(uuid.uuid4()),
@@ -97,7 +100,7 @@ class TaskTestClient:
                 kwargs=task_dict.get("kwargs", {}),
                 priority=int(Priority.NORMAL),
             )
-            enqueue_result = await self.test_bed.mock_queue.enqueue(task)
+            enqueue_result = await queue.enqueue(task)
             if enqueue_result.is_err():
                 raise RuntimeError(
                     f"Failed to enqueue task '{task_dict['name']}': {enqueue_result.unwrap_err()}"
@@ -118,7 +121,9 @@ class TaskTestClient:
         Returns:
             A :class:`MockTaskResult` describing the outcome.
         """
-        return await self.test_bed.mock_executor.execute_task(task)
+        executor = self.test_bed.mock_executor
+        assert executor is not None
+        return await executor.execute_task(task)
 
     @asynccontextmanager
     async def task_context(self) -> AsyncGenerator[MockTasksProvider, None]:

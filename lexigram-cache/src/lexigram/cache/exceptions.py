@@ -66,7 +66,7 @@ class CacheTimeoutError(CacheError):
         key: str | None = None,
         backend: str | None = None,
         timeout_seconds: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         details = kwargs.get("details", {})
         if timeout_seconds is not None:
@@ -91,7 +91,7 @@ class CacheConfigurationError(CacheError):
         message: str = const.ERROR_MSG_CACHE_CONFIGURATION,
         setting: str | None = None,
         value: Any | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         details = kwargs.get("details", {})
         if setting is not None:
@@ -112,7 +112,7 @@ class CacheStampedeError(CacheError):
         self,
         message: str = const.ERROR_MSG_CACHE_STAMPEDE,
         lock_holder: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         details = kwargs.get("details", {})
         if lock_holder is not None:
@@ -132,7 +132,7 @@ class CacheInvalidationError(CacheError):
         keys: list[str] | None = None,
         tag: str | None = None,
         pattern: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         details = kwargs.get("details", {})
         if keys is not None:

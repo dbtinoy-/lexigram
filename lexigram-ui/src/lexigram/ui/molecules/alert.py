@@ -18,7 +18,7 @@ class Alert(Component):
         message: str,
         variant: AlertVariant = "info",
         dismissible: bool = False,
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(
             message=message,

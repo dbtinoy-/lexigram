@@ -24,7 +24,7 @@ Example::
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
@@ -112,8 +112,8 @@ class JWTKeyStore:
         """Return the raw signing key string for the current key ID."""
         val = self.keys[self.current_key_id]
         if isinstance(val, dict):
-            return val["private"].get_secret_value()
-        return val.get_secret_value()
+            return cast("str", val["private"].get_secret_value())
+        return cast("str", val.get_secret_value())
 
     def get_verification_key(self, kid: str) -> str | None:
         """Return the raw verification key string for *kid*, or ``None``."""
@@ -122,8 +122,10 @@ class JWTKeyStore:
             return None
         if isinstance(val, dict):
             key_entry = val.get("public") or val.get("private")
-            return key_entry.get_secret_value() if key_entry else None
-        return val.get_secret_value()
+            return cast(
+                "str | None", key_entry.get_secret_value() if key_entry else None
+            )
+        return cast("str", val.get_secret_value())
 
     def list_keys(self) -> dict[str, dict[str, Any]]:
         """Return a copy of the key metadata dict (for inspection/auditing)."""

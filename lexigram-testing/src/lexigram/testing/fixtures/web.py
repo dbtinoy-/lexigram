@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Pytest fixtures for Lexigram Web testing."""
 
+from collections.abc import Callable
 from typing import Any
 from unittest.mock import Mock
 
@@ -10,13 +11,13 @@ import pytest
 from lexigram.testing.clients.web import WebTestBed, WebTestClient
 
 # Prefer pytest-asyncio's async fixtures when available; fall back to pytest.fixture.
-_async_fixture: Any = pytest.fixture
+_async_fixture: Callable[..., Any] = pytest.fixture
 try:
     import pytest_asyncio
-
-    _async_fixture = pytest_asyncio.fixture
 except ImportError:
-    _async_fixture = pytest.fixture
+    pass
+else:
+    _async_fixture = pytest_asyncio.fixture
 
 
 @_async_fixture

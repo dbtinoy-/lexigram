@@ -17,7 +17,7 @@ class Divider(Component):
         self,
         orientation: str = "horizontal",
         class_name: str = "",
-        **props,
+        **props: Any,
     ) -> None:
         super().__init__(**props)
         self.orientation = orientation
