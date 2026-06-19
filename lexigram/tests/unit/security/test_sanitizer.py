@@ -219,6 +219,28 @@ class TestInputSanitizerSanitizeMethod:
         sanitizer = InputSanitizer()
         assert sanitizer.is_safe_url_for_request("http://192.168.1.1/api") is False
 
-    def test_is_safe_url_allows_public(self) -> None:
+    def test_is_safe_url_allows_public(self, monkeypatch) -> None:
+        import ipaddress
+
+        from lexigram.contracts.security import url_safety as contracts_url_safety
+
+        monkeypatch.setattr(
+            contracts_url_safety,
+            "resolve_hostname",
+            lambda _: [ipaddress.ip_address("93.184.216.34")],
+        )
         sanitizer = InputSanitizer()
         assert sanitizer.is_safe_url_for_request("https://example.com") is True
+
+    def test_is_safe_url_blocks_private_via_dns(self, monkeypatch) -> None:
+        import ipaddress
+
+        from lexigram.contracts.security import url_safety as contracts_url_safety
+
+        monkeypatch.setattr(
+            contracts_url_safety,
+            "resolve_hostname",
+            lambda _: [ipaddress.ip_address("10.0.0.9")],
+        )
+        sanitizer = InputSanitizer()
+        assert sanitizer.is_safe_url_for_request("https://evil.example") is False

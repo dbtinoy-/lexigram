@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-import ipaddress
 import re
-import urllib.parse
 
+from lexigram.contracts.security import (
+    HostResolver,
+)
+from lexigram.contracts.security import (
+    is_safe_url_for_request as _is_safe_url_for_request,
+)
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -19,19 +23,6 @@ class UrlSanitizer:
         {"javascript", "vbscript", "data", "file"}
     )
     _PATH_TRAVERSAL_RE = re.compile(r"\.{2,}[/\\]|[/\\]\.{2,}|^\.{2,}$")
-    _PRIVATE_IPV4_NETWORKS: tuple[ipaddress.IPv4Network, ...] = (
-        ipaddress.IPv4Network("10.0.0.0/8"),
-        ipaddress.IPv4Network("172.16.0.0/12"),
-        ipaddress.IPv4Network("192.168.0.0/16"),
-        ipaddress.IPv4Network("127.0.0.0/8"),
-        ipaddress.IPv4Network("169.254.0.0/16"),
-        ipaddress.IPv4Network("100.64.0.0/10"),
-    )
-    _PRIVATE_IPV6_NETWORKS: tuple[ipaddress.IPv6Network, ...] = (
-        ipaddress.IPv6Network("::1/128"),
-        ipaddress.IPv6Network("fc00::/7"),
-        ipaddress.IPv6Network("fe80::/10"),
-    )
 
     def sanitize_url(self, url: str) -> str:
         """Return an empty string when the URL uses a dangerous scheme."""
@@ -67,33 +58,25 @@ class UrlSanitizer:
 
         return sanitized
 
-    def is_safe_url_for_request(self, url: str) -> bool:
-        """Return False if the URL resolves to a private or reserved IP."""
-        if not url:
-            return False
+    def is_safe_url_for_request(
+        self,
+        url: str,
+        *,
+        resolver: HostResolver | None = None,
+    ) -> bool:
+        """Return False if the URL resolves to a private or reserved IP.
 
-        try:
-            parsed = urllib.parse.urlparse(url)
-        except ValueError:
-            return False
+        Delegates to the single shared primitive in ``lexigram.contracts``
+        (DNS-aware and fail-closed).
 
-        if parsed.scheme.lower() not in {"http", "https"}:
-            return False
+        Args:
+            url: URL to evaluate.
+            resolver: Optional injectable hostname resolver (for tests).
 
-        hostname = parsed.hostname
-        if not hostname:
-            return False
-
-        hostname = hostname.strip("[]")
-        try:
-            addr = ipaddress.ip_address(hostname)
-        except ValueError:
-            return True
-
-        if isinstance(addr, ipaddress.IPv4Address):
-            return not any(addr in network for network in self._PRIVATE_IPV4_NETWORKS)
-
-        return not any(addr in network for network in self._PRIVATE_IPV6_NETWORKS)
+        Returns:
+            True only when a request to ``url`` cannot reach a private target.
+        """
+        return _is_safe_url_for_request(url, resolver=resolver)
 
 
 __all__ = ["UrlSanitizer"]
