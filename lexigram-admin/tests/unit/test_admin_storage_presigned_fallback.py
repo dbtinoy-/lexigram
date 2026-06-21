@@ -88,3 +88,11 @@ class TestFileUploadServiceFallsBack:
         kwargs = storage.upload.await_args.kwargs  # type: ignore[attr-defined]
         assert "options" in kwargs
         assert isinstance(kwargs["options"], UploadOptions)
+
+    @pytest.mark.asyncio
+    async def test_get_url_falls_back_to_public(self) -> None:
+        storage = UnsupportedPresignStore()
+        svc = FileUploadService(storage=storage)  # type: ignore[arg-type]
+        url = await svc.get_url("uploads/a.txt")
+        assert url == "https://public.example/uploads/a.txt"
+        assert storage.presigned_calls == [("uploads/a.txt", "GET")]
