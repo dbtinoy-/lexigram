@@ -81,14 +81,14 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 
 ### 3.2 SQL injection — `plans/2026-08-16-security-sql-injection.md` `[~]`
 
-- [ ] Task 1 (P0) — SQLConnector structured filters: replace free-text `WHERE` + deny-list (`_has_dangerous_sql` removed); `test_mcp_sql_connector_safety.py`
-- [ ] Task 2 (P0) — postgres `faceted_search` facet guard (never build quoted literals)
-- [ ] Task 3 (P0) — `AsyncQueryBuilder` identifier wrap through `Column()`/`Table()` at set-time; **plan checkpoint**
-- [ ] Task 4 (P1) — Cypher compiler identifier guard (`lexigram-graph`)
-- [ ] Task 5 (P1) — repository sort whitelist verification + regression coverage
-- [ ] Task 6 (P2) — callback-filter removal verification (already delisted — grep gate + note)
-- [ ] Task 7 (P2) — specification `Field*` identifier wrap; document `where_raw`/`order_by_raw` escape hatches
-- [ ] Task 8 (Low) — AdminSession repository `_TABLE` → `Table()`
+- [x] Task 1 (P0) — SQLConnector structured filters: replace free-text `WHERE` + deny-list (`_has_dangerous_sql` removed); `test_mcp_sql_connector_safety.py`
+- [x] Task 2 (P0) — postgres `faceted_search` facet guard (never build quoted literals)
+- [x] Task 3 (P0) — `AsyncQueryBuilder` identifier wrap through `Column()`/`Table()` at set-time; **plan checkpoint**
+- [x] Task 4 (P1) — Cypher compiler identifier guard (`lexigram-graph`)
+- [x] Task 5 (P1) — repository sort whitelist verification + regression coverage
+- [x] Task 6 (P2) — callback-filter removal verification (already delisted — grep gate + note)
+- [x] Task 7 (P2) — specification `Field*` identifier wrap; document `where_raw`/`order_by_raw` escape hatches
+- [x] Task 8 (Low) — AdminSession repository `_TABLE` → `Table()`
 
 ### 3.3 Tenancy isolation — `plans/2026-08-16-security-tenancy.md` (s)
 
@@ -101,12 +101,12 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 
 ### 3.4 XSS / output rendering — `plans/2026-08-16-security-xss-render.md` `[~]`
 
-- [ ] Task 1 (F1) — escape-by-default at the `el()` primitive (`lexigram-ui`)
-- [ ] Task 2 (F2) — close delete-confirm path + dashboard widgets (`lexigram-admin`); extend existing `test_content_renderer.py`
-- [ ] Task 3 (F3/F5/F7) — allowlist sanitizer wired into rich text render path
-- [ ] Task 4 (F6) — replace hand-rolled toast f-string with escaping renderer
-- [ ] Task 5 (F4/F8) — move trusted-HTML boundary to the renderer (`admin_shell.html` autoescape)
-- [ ] Task 6 — full verification
+- [x] Task 1 (F1) — escape-by-default at the `el()` primitive (`lexigram-ui`)
+- [x] Task 2 (F2) — close delete-confirm path + dashboard widgets (`lexigram-admin`); extend existing `test_content_renderer.py`
+- [x] Task 3 (F3/F5/F7) — allowlist sanitizer wired into rich text render path
+- [x] Task 4 (F6) — replace hand-rolled toast f-string with escaping renderer
+- [x] Task 5 (F4/F8) — move trusted-HTML boundary to the renderer (`admin_shell.html` autoescape)
+- [x] Task 6 — full verification
 
 ### 3.5 Auth / hashers — `plans/2026-08-16-security-auth-hashers.md` (s)
 
