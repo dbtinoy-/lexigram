@@ -46,7 +46,7 @@ def _route(method: str, path: str, **kwargs: Any) -> Callable[..., Any]:
     return decorator
 
 
-def get(path: str, **kwargs: Any) -> Any:
+def get(path: str, **kwargs: Any) -> Callable[..., Any]:
     """Declare a GET route handler.
 
     Args:
@@ -59,7 +59,7 @@ def get(path: str, **kwargs: Any) -> Any:
     return _route("GET", path, **kwargs)
 
 
-def post(path: str, **kwargs: Any) -> Any:
+def post(path: str, **kwargs: Any) -> Callable[..., Any]:
     """Declare a POST route handler.
 
     Args:
@@ -72,7 +72,7 @@ def post(path: str, **kwargs: Any) -> Any:
     return _route("POST", path, **kwargs)
 
 
-def put(path: str, **kwargs: Any) -> Any:
+def put(path: str, **kwargs: Any) -> Callable[..., Any]:
     """Declare a PUT route handler.
 
     Args:
@@ -85,7 +85,7 @@ def put(path: str, **kwargs: Any) -> Any:
     return _route("PUT", path, **kwargs)
 
 
-def delete(path: str, **kwargs: Any) -> Any:
+def delete(path: str, **kwargs: Any) -> Callable[..., Any]:
     """Declare a DELETE route handler.
 
     Args:
@@ -98,7 +98,7 @@ def delete(path: str, **kwargs: Any) -> Any:
     return _route("DELETE", path, **kwargs)
 
 
-def patch(path: str, **kwargs: Any) -> Any:
+def patch(path: str, **kwargs: Any) -> Callable[..., Any]:
     """Declare a PATCH route handler.
 
     Args:

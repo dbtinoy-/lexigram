@@ -135,13 +135,14 @@ class VectorProvider(Provider):
         def _factory() -> VectorStoreProtocol:
             for n, s in self._store_services:
                 if n == name:
-                    if s is None:
+                    store: VectorStoreProtocol | None = s
+                    if store is None:
                         raise RuntimeError(
                             f"Vector store '{name}' is not yet initialized. "
                             "Ensure VectorProvider.boot() has completed before "
                             "resolving named vector stores."
                         )
-                    return s
+                    return store
             raise RuntimeError(f"Named vector store '{name}' not found in provider.")
 
         return _factory

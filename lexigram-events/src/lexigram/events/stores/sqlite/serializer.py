@@ -44,7 +44,7 @@ class SqliteEventSerializer:
             return cast("dict[str, Any]", self.event_serializer.serialize(event))
 
         if hasattr(event, "model_dump"):
-            data = event.model_dump(mode="json")
+            data: dict[str, Any] = event.model_dump(mode="json")
             # Convert nested pydantic models (like metadata) to dicts
             if "metadata" in data and hasattr(data["metadata"], "model_dump"):
                 data["metadata"] = data["metadata"].model_dump(mode="json")

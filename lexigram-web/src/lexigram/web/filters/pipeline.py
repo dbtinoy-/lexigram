@@ -102,17 +102,23 @@ class FilterPipeline:
         # Try exact type match first
         exc_type = type(exc)
         if exc_type in self._type_index:
-            return await cast("Any", self._type_index[exc_type]).handle(exc, request)
+            return cast(
+                "Response",
+                await cast("Any", self._type_index[exc_type]).handle(exc, request),
+            )
 
         # Walk MRO for subclass matching
         for klass in exc_type.__mro__:
             if klass in self._type_index:
-                return await cast("Any", self._type_index[klass]).handle(exc, request)
+                return cast(
+                    "Response",
+                    await cast("Any", self._type_index[klass]).handle(exc, request),
+                )
 
         # Try filter-level matching (last added runs first)
         for f in reversed(self._filters):
             if f.can_handle(exc):
-                return await cast("Any", f).handle(exc, request)
+                return cast("Response", await cast("Any", f).handle(exc, request))
 
         # Default: structured 500 response (HTML in debug mode for browsers)
         logger.exception(

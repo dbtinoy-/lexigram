@@ -7,14 +7,22 @@ for managing users with date range filtering capabilities.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-from lexigram.admin.actions import CreateAction, DeleteAction, EditAction
+from lexigram.admin.actions import (
+    CreateAction,
+    DeleteAction,
+    EditAction,
+    PermissionsAction,
+)
 from lexigram.admin.auth.entity import AdminUserEntity
 from lexigram.admin.resources.base import Resource
 from lexigram.admin.schema import BooleanField, DateField, SelectField, TextField
 from lexigram.admin.ui.filters import SelectFilter, ToggleFilter
 from lexigram.ui import BadgeColumn, DateColumn, TextColumn
+
+if TYPE_CHECKING:
+    from lexigram.admin.rbac.inventory import PermissionInventoryService
 
 
 class UserResource(Resource):
@@ -25,12 +33,15 @@ class UserResource(Resource):
     and last active date using DateRangeFilter.
     """
 
-    model = AdminUserEntity
+    model = cast("Any", AdminUserEntity)
     name = "users"
     label = "Users"
     icon = "users"
     category = "system"
     service = None  # Will be set by DI or registry
+    permission_inventory: PermissionInventoryService | None = None
+    """Grouped RBAC permission inventory; wired at mount time for the
+    per-user permission editor."""
     # Secret/framework-managed columns must never render in generated forms
     form_exclude_fields = (
         "id",
@@ -92,7 +103,7 @@ class UserResource(Resource):
                 "suspended": "orange",
             },
         ),
-        DateColumn("created_at", label="Registration Date").datetime().sortable(),  # type: ignore[operator]
+        DateColumn("created_at", label="Registration Date").datetime().sortable(),
         DateColumn("last_active").datetime().sortable(),
     ]
 
@@ -119,6 +130,7 @@ class UserResource(Resource):
     actions: list[Any] = [
         EditAction(),
         DeleteAction(),
+        PermissionsAction(),
     ]
 
     # Header actions

@@ -19,12 +19,13 @@ Example:
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar, cast
 
-from lexigram.web.routing.types import RoutableProtocol
+F = TypeVar("F", bound=Callable[..., Any])
 
 
-def route(method: str, path: str, **kwargs: Any) -> Any:
+def route(method: str, path: str, **kwargs: Any) -> Callable[[F], F]:
     """Create a route decorator for the specified HTTP method.
 
     Args:
@@ -36,17 +37,17 @@ def route(method: str, path: str, **kwargs: Any) -> Any:
         A decorator function that configures the route handler.
     """
 
-    def decorator(func: RoutableProtocol) -> RoutableProtocol:
+    def decorator(func: F) -> F:
         # Use setattr to avoid ruff auto-converting to direct attribute access
         # which fails because RoutableProtocol is a Callable and ruff/mypy don't like
         # dynamic attributes on it without setattr.
-        func._route_config = {"method": method, "path": path, **kwargs}
+        cast("Any", func)._route_config = {"method": method, "path": path, **kwargs}
         return func
 
     return decorator
 
 
-def get(path: str, **kwargs: Any) -> Any:
+def get(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a GET route handler.
 
     Args:
@@ -64,7 +65,7 @@ def get(path: str, **kwargs: Any) -> Any:
     return route("GET", path, **kwargs)
 
 
-def post(path: str, **kwargs: Any) -> Any:
+def post(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a POST route handler.
 
     Parameters annotated with a Pydantic ``BaseModel`` or ``DomainModel``
@@ -88,7 +89,7 @@ def post(path: str, **kwargs: Any) -> Any:
     return route("POST", path, **kwargs)
 
 
-def put(path: str, **kwargs: Any) -> Any:
+def put(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a PUT route handler.
 
     Args:
@@ -101,7 +102,7 @@ def put(path: str, **kwargs: Any) -> Any:
     return route("PUT", path, **kwargs)
 
 
-def delete(path: str, **kwargs: Any) -> Any:
+def delete(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a DELETE route handler.
 
     Args:
@@ -114,7 +115,7 @@ def delete(path: str, **kwargs: Any) -> Any:
     return route("DELETE", path, **kwargs)
 
 
-def patch(path: str, **kwargs: Any) -> Any:
+def patch(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a PATCH route handler.
 
     Args:
@@ -127,7 +128,7 @@ def patch(path: str, **kwargs: Any) -> Any:
     return route("PATCH", path, **kwargs)
 
 
-def head(path: str, **kwargs: Any) -> Any:
+def head(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a HEAD route handler.
 
     Args:
@@ -140,7 +141,7 @@ def head(path: str, **kwargs: Any) -> Any:
     return route("HEAD", path, **kwargs)
 
 
-def options(path: str, **kwargs: Any) -> Any:
+def options(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register an OPTIONS route handler.
 
     Args:
@@ -153,7 +154,7 @@ def options(path: str, **kwargs: Any) -> Any:
     return route("OPTIONS", path, **kwargs)
 
 
-def trace(path: str, **kwargs: Any) -> Any:
+def trace(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a TRACE route handler.
 
     Args:
@@ -166,7 +167,7 @@ def trace(path: str, **kwargs: Any) -> Any:
     return route("TRACE", path, **kwargs)
 
 
-def websocket(path: str, **kwargs: Any) -> Any:
+def websocket(path: str, **kwargs: Any) -> Callable[[F], F]:
     """Register a WebSocket route handler.
 
     Args:

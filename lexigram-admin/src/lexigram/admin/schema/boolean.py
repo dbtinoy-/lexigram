@@ -18,7 +18,7 @@ class BooleanField(SchemaField[bool]):
 
         return InfolistEntry(
             name=self.name,
-            label=self.label or self.name.replace('_', ' ').title(),
+            label=self.label or self.name.replace("_", " ").title(),
             value=value,
             type=InfolistEntryType.BOOLEAN,
         )

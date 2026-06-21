@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 import time
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from lexigram.contracts.exceptions import LexigramError
 
@@ -99,7 +99,7 @@ class BulkOperationMetrics:
         """Record the end of the operation."""
         self.end_time = time.monotonic()
 
-    def record_batch_result(self, result: BulkBatchResult) -> None:
+    def record_batch_result(self, result: BulkBatchResult[Any, Any]) -> None:
         """Update metrics with result from a processed batch."""
         self.processed_items += len(result.items)
         self.successful_items += result.success_count

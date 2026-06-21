@@ -39,7 +39,7 @@ class DynamicForm(Component):
 
     def render(self) -> Any:
         # We wrap the content in a list of htpy nodes
-        form_content = []
+        form_content: list[Any] = []
 
         # Render each field via its schema render_form
         for field in self.schema.fields:

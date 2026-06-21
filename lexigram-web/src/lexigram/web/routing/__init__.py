@@ -10,6 +10,17 @@ from lexigram.web.routing.controller_registry import (
 )
 from lexigram.web.routing.controllers import Controller
 from lexigram.web.routing.cqrs import CQRSController
+from lexigram.web.routing.decorators import (
+    delete,
+    get,
+    head,
+    options,
+    patch,
+    post,
+    put,
+    trace,
+    websocket,
+)
 from lexigram.web.routing.discovery import discover_controllers
 
 
@@ -47,20 +58,6 @@ from lexigram.web.routing.versioning import (
 
 
 def __getattr__(name: str) -> Any:
-    if name in (
-        "delete",
-        "get",
-        "head",
-        "options",
-        "patch",
-        "post",
-        "put",
-        "trace",
-        "websocket",
-    ):
-        from lexigram.web.routing import decorators
-
-        return getattr(decorators, name)
     if name == "VersioningConfig":
         from lexigram.web.routing.versioning import VersioningConfig
 

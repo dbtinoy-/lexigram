@@ -49,7 +49,7 @@ class ProblemDetail:
         exc: Exception,
         status: int = 500,
         debug: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> ProblemDetail:
         """Create a ProblemDetail from an exception.
 

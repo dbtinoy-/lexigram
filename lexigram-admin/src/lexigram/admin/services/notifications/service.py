@@ -56,8 +56,10 @@ class AdminNotificationService:
         self.config = config or AdminNotificationConfig()
 
         # Initialize components
-        app_name = getattr(self.config, "app_name", None) or getattr(
-            self.config, "email_from_name", "Admin"
+        app_name: str = (
+            getattr(self.config, "app_name", None)
+            or getattr(self.config, "email_from_name", "Admin")
+            or "Admin"
         )
         self.template_renderer = TemplateRenderer(app_name)
         self.email_sender = EmailSender(

@@ -127,7 +127,9 @@ def get_negotiator(context: Any | None = None) -> ContentNegotiator:
 
     resolver = get_resolver(context)
     if resolver:
-        return cast("Any", resolver).resolve_sync(ContentNegotiator)
+        return cast(
+            "ContentNegotiator", cast("Any", resolver).resolve_sync(ContentNegotiator)
+        )
 
     global _default_negotiator
     if _default_negotiator is None:

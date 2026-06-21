@@ -9,20 +9,20 @@ from lexigram.contracts.exceptions.domain import DomainError
 from lexigram.contracts.web.protocols import CRUDServiceProtocol
 from lexigram.logging import get_logger
 from lexigram.result import Ok, Result
-from lexigram.web import (
+from lexigram.web.exceptions import (
+    NotFoundError,
+)
+from lexigram.web.routing.controllers import Controller
+from lexigram.web.routing.decorators import (
     delete,
     get,
     head,
-    json_response,
     options,
     patch,
     post,
     put,
 )
-from lexigram.web.exceptions import (
-    NotFoundError,
-)
-from lexigram.web.routing.controllers import Controller
+from lexigram.web.transport.responses import json_response
 
 T = TypeVar("T")
 R = TypeVar("R", bound=Callable[..., Any])

@@ -75,7 +75,7 @@ class RedisDLQBackend:
         Returns:
             List of DLQ entry dicts, most recent first.
         """
-        raw = await self._redis.lrange(self._key, 0, limit - 1)  # type: ignore[misc]
+        raw = await self._redis.lrange(self._key, 0, limit - 1)
         return [loads_str(entry) for entry in raw]
 
     async def size(self) -> int:
@@ -84,4 +84,5 @@ class RedisDLQBackend:
         Returns:
             Integer count of DLQ entries.
         """
-        return await self._redis.llen(self._key)  # type: ignore[misc]
+        count: int = await self._redis.llen(self._key)
+        return count

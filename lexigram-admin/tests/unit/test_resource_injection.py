@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
 from lexigram.admin.core.registry import AdminRegistry
 from lexigram.admin.di.bundle_provider import AdminProvider
 from lexigram.contracts.exceptions import UnresolvableDependencyError
@@ -80,7 +81,13 @@ async def test_provider_boot_runs_without_errors() -> None:
     provider = AdminProvider()
 
     container = MagicMock()
-    container.resolve = AsyncMock(side_effect=UnresolvableDependencyError("missing"))
+
+    async def _resolve(spec, /, *args, **kwargs):
+        if spec is AdminCsrfServiceProtocol:
+            return AsyncMock()
+        raise UnresolvableDependencyError("missing")
+
+    container.resolve = AsyncMock(side_effect=_resolve)
     container.singleton = MagicMock()
 
     await provider.register(container)

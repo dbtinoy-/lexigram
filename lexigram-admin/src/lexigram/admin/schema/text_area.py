@@ -1,10 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import html as _html
 from typing import Any
 
 from lexigram.admin.schema.text import TextField
+from lexigram.security.sanitization.html import sanitize_html
 from lexigram.ui import Element, MarkdownEditor, RichEditor, TextArea, raw
+
+
+def _sanitize_rich_text(value: str) -> str:
+    """Sanitize rich-text HTML, escaping verbatim when nh3 is unavailable."""
+    try:
+        return sanitize_html(value)
+    except ImportError:
+        return _html.escape(value)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -151,4 +161,4 @@ class RichTextField(TextAreaField):
     def render_column(self, record: Any, value: str | None) -> Element:
         if value is None:
             return Element("span", "\u2014", class_="text-muted")
-        return Element("div", raw(value))
+        return Element("div", raw(_sanitize_rich_text(value)))

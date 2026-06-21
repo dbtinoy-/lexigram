@@ -344,7 +344,8 @@ class QueueProvider(Provider):
         Returns:
             HealthCheckResult from backend or error.
         """
-        return await backend.health_check(timeout=timeout)
+        health: HealthCheckResult = await backend.health_check(timeout=timeout)
+        return health
 
 
 __all__ = ["QueueProvider"]

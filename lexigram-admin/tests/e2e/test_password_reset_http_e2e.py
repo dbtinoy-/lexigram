@@ -225,4 +225,4 @@ async def test_post_confirm_password_mismatch_redirects_with_error() -> None:
             },
         )
         assert r.status_code == 302
-        assert "error=" in r.headers["location"]
+        assert "confirmation_err=" in r.headers["location"]

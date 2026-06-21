@@ -6,20 +6,23 @@ sub-modules in intelligence package.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypeVar
 
 from lexigram.contracts.ai.types import EmbeddingModel, ModelProvider, VectorProvider
 from lexigram.contracts.core import JSON, Metadata
 from lexigram.domain import DomainModel
 from lexigram.validation import ConfigDict, Field
 
-
 # Note: model_serializer not yet implemented in lexigram.contracts
 # Using a stub for now
-def model_serializer(mode) -> Any:
-    def decorator(func) -> Any:
+DecoratedMethod = TypeVar("DecoratedMethod", bound=Callable[..., Any])
+
+
+def model_serializer(mode: Any) -> Callable[[DecoratedMethod], DecoratedMethod]:
+    def decorator(func: DecoratedMethod) -> DecoratedMethod:
         return func
 
     return decorator
@@ -35,7 +38,7 @@ class AIBaseEvent(DomainModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_serializer(mode="wrap")
-    def serialize_model(self, handler) -> Any:
+    def serialize_model(self, handler: Callable[..., Any]) -> Any:
         """Custom serializer to handle datetime objects."""
         data = handler(self)
         # Convert datetime objects to ISO format strings

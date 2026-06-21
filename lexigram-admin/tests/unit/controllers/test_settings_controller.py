@@ -218,6 +218,16 @@ class TestSettingsController:
         resp = await controller.save_spec(req)
         assert isinstance(resp, HTMLResponse)
 
+    def test_render_toast_escapes_message(self) -> None:
+        controller = SettingsController(
+            renderer=MagicMock(), registry=ConfigRegistry.with_defaults()
+        )
+        html = controller._render_toast('<img src=x onerror="alert(1)">', "success")
+        assert 'class="toast toast-success"' in html
+        assert "<img" not in html
+        assert '<img src=x onerror="alert(1)">' not in html
+        assert '&lt;img src=x onerror="alert(1)"&gt;' in html
+
     @pytest.mark.asyncio
     async def test_audit_logged_on_save(self, renderer: MagicMock) -> None:
         audit = AsyncMock()
@@ -339,6 +349,7 @@ class TestSettingsController:
             form_data=None,
             user=_FakeUser(),
         )
+
         async def _form() -> FormData:
             return FormData(
                 [("enabled", "on"), ("enabled", "false"), ("default_ttl", "120")]

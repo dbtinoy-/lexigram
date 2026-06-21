@@ -8,7 +8,6 @@ from typing import Any
 from lexigram import serialization as json
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.events.sagas.store import SagaStore
-from lexigram.primitives import clock
 from lexigram.events.sagas.types import (
     SagaRecord,
     SagaStatus,
@@ -16,6 +15,7 @@ from lexigram.events.sagas.types import (
     SagaStepStatus,
 )
 from lexigram.logging import get_logger
+from lexigram.primitives import clock
 
 __all__ = ["SqlSagaStore"]
 

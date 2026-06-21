@@ -182,7 +182,7 @@ class StorageProvider(Provider):
     @property
     def config(self) -> StorageConfig | None:
         """Return the storage configuration."""
-        return self._config
+        return cast("StorageConfig | None", self._config)
 
     @config.setter
     def config(self, value: StorageConfig | None) -> None:

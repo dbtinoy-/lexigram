@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Self
 
+from lexigram.contracts.data.identifiers import Column
 from lexigram.contracts.data.identifiers import Table as SQLTable
 from lexigram.contracts.data.sql.sql_dialect import SQLDialect
 from lexigram.sql.query.operators import QueryOperatorRegistry
@@ -37,7 +38,7 @@ class _CoreMixin:
         self._table = SQLTable(table)
         self._dialect = dialect
         self._mode = "select"
-        self._selects: list[str] = ["*"]
+        self._selects: list[str | Column] = ["*"]
         self._wheres: list[Condition] = []
         self._or_wheres: list[OrCondition] = []
         self._joins: list[Join] = []
@@ -48,12 +49,12 @@ class _CoreMixin:
         self._data: dict[str, Any] = {}
         self._returning: list[str] = []
         # Phase 1 additions
-        self._group_by: list[str] = []
+        self._group_by: list[str | Column] = []
         self._havings: list[HavingClause] = []
         self._raw_selects: list[RawExpression] = []
         self._raw_wheres: list[RawExpression] = []
         self._distinct: bool = False
-        self._distinct_on: list[str] = []
+        self._distinct_on: list[str | Column] = []
         self._conflict_columns: list[str] = []
         self._conflict_action: ConflictAction | None = None
         self._conflict_update_columns: list[str] = []
@@ -80,7 +81,10 @@ class _CoreMixin:
             >>> builder.select()  # Selects all columns
         """
         self._mode = "select"
-        self._selects = list(columns) if columns else ["*"]
+        if columns:
+            self._selects = ["*" if c == "*" else Column(c) for c in columns]
+        else:
+            self._selects = ["*"]
         return self
 
     def insert(self, data: dict[str, Any]) -> Self:
@@ -96,7 +100,7 @@ class _CoreMixin:
             >>> builder.insert({"email": "user@example.com", "name": "John"})
         """
         self._mode = "insert"
-        self._data = data
+        self._data = {str(Column(col)): value for col, value in data.items()}
         return self
 
     def update(self, data: dict[str, Any]) -> Self:
@@ -112,7 +116,7 @@ class _CoreMixin:
             >>> builder.update({"status": "active"}).where("id", Operator.EQ, 1)
         """
         self._mode = "update"
-        self._data = data
+        self._data = {str(Column(col)): value for col, value in data.items()}
         return self
 
     def delete(self) -> Self:
@@ -139,7 +143,7 @@ class _CoreMixin:
         Example:
             >>> builder.insert(data).returning("id", "created_at")
         """
-        self._returning = list(columns)
+        self._returning = [str(Column(c)) for c in columns]
         return self
 
     def order_by(self, column: str, desc: bool = False) -> Self:
@@ -155,7 +159,7 @@ class _CoreMixin:
         Example:
             >>> builder.order_by("created_at", desc=True)
         """
-        self._orders.append(Order(column, desc))
+        self._orders.append(Order(Column(column), desc))
         return self
 
     def limit(self, n: int) -> Self:
@@ -197,7 +201,7 @@ class _CoreMixin:
         """
         self._distinct = True
         if columns:
-            self._distinct_on = list(columns)
+            self._distinct_on = [Column(c) for c in columns]
         return self
 
     def on_conflict(self, *conflict_columns: str) -> Self:
@@ -206,7 +210,7 @@ class _CoreMixin:
         Example:
             >>> builder.insert(data).on_conflict("email").do_update("name", "updated_at")
         """
-        self._conflict_columns = list(conflict_columns)
+        self._conflict_columns = [str(Column(c)) for c in conflict_columns]
         return self
 
     def do_update(self, *update_columns: str) -> Self:
@@ -216,7 +220,9 @@ class _CoreMixin:
             >>> builder.insert(data).on_conflict("email").do_update("name", "updated_at")
         """
         self._conflict_action = ConflictAction.DO_UPDATE
-        self._conflict_update_columns = list(update_columns) if update_columns else []
+        self._conflict_update_columns = (
+            [str(Column(c)) for c in update_columns] if update_columns else []
+        )
         return self
 
     def do_nothing(self) -> Self:

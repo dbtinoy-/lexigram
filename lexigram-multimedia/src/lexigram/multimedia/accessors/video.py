@@ -115,9 +115,12 @@ class VideoAccessor:
                     "registered."
                 )
             )
-        return await self._video_upscale_service.upscale_video(
-            asset, scale_factor=scale_factor
+        upscaled: Result[MediaAsset, MultimediaError] = (
+            await self._video_upscale_service.upscale_video(
+                asset, scale_factor=scale_factor
+            )
         )
+        return upscaled
 
     async def interpolate_video(
         self, asset: MediaAsset, *, factor: Literal[2, 4] = 2, fps: float
@@ -155,9 +158,12 @@ class VideoAccessor:
                     "subsystem registered."
                 )
             )
-        return await self._video_interpolation_service.interpolate_video(
-            asset, factor=factor, fps=fps
+        interpolated: Result[MediaAsset, MultimediaError] = (
+            await self._video_interpolation_service.interpolate_video(
+                asset, factor=factor, fps=fps
+            )
         )
+        return interpolated
 
 
 __all__ = ["VideoAccessor"]

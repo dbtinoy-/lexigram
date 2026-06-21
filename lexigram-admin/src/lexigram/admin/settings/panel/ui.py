@@ -164,7 +164,7 @@ class ConfigDashboardUI:
         return Card(
             title=spec.get("label", "Configuration"),
             children=[
-                Form(  # type: ignore[call-arg]
+                Form(
                     action_url="?ns=" + namespace,
                     method="POST",
                     hx_target="#config-card",
@@ -240,7 +240,7 @@ class ConfigDashboardUI:
             title=spec.get("label", "Configuration"),
             subtitle=spec.get("description", ""),
             children=[
-                Form(  # type: ignore[call-arg]
+                Form(
                     action_url=action,
                     method="POST",
                     hx_target="#config-card",

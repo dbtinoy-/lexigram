@@ -158,7 +158,7 @@ def use_guards(*guards: type[Any] | Any) -> Any:
         if inspect.iscoroutinefunction(target):
 
             @wraps(target)
-            async def wrapper(*args, **kwargs) -> Any:
+            async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 # Find request in kwargs first, then scan positional args
                 request = kwargs.get("request")
                 if request is None:

@@ -8,6 +8,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
+from lexigram.admin.auth.services._cookie_config import (
+    build_session_cookie_kwargs,
+)
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.controllers.command_palette import CommandPaletteController
 from lexigram.admin.controllers.search import SearchController
@@ -119,10 +122,9 @@ class AdminRouter:
         routes = self._build_routes()
         admin_app = Starlette(routes=routes)
 
-        secret_key = (
-            getattr(self._config, "secret_key", None)
-            or "dev-secret-key-change-in-production"
-        )
+        # Sign the admin session cookie from the validated auth config. The
+        # helper also derives https_only / same_site / max_age from env.
+        cookie_kwargs = build_session_cookie_kwargs(self._config.auth)
         # Add our middleware in reverse order so that the stack list order
         # (e.g. [Setup, Csrf, AuthGuard]) becomes the execution order.
         # Starlette's add_middleware inserts at position 0 (outermost), so
@@ -134,7 +136,7 @@ class AdminRouter:
         for middleware_class, options in reversed(self._middleware_stack):
             admin_app.add_middleware(middleware_class, **options)  # type: ignore[arg-type]
 
-        admin_app.add_middleware(SessionMiddleware, secret_key=secret_key)
+        admin_app.add_middleware(SessionMiddleware, **cookie_kwargs)
 
         admin_mount = Mount(
             self._config.prefix,
@@ -341,6 +343,14 @@ class AdminRouter:
                 ResourceHandler(self._config, name, "delete", resources=resources_dict),
                 name=f"admin_{name}_delete",
                 methods=["DELETE", "POST"],
+            ),
+            Route(
+                f"{prefix}/{{id}}/permissions",
+                ResourceHandler(
+                    self._config, name, "permissions", resources=resources_dict
+                ),
+                name=f"admin_{name}_permissions",
+                methods=["GET", "POST"],
             ),
         ]
 

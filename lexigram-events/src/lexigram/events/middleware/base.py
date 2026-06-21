@@ -131,7 +131,7 @@ class MiddlewareChain(Generic[TMessage, TResult]):
         if not self._middlewares:
             from typing import cast
 
-            return cast("TResult", await self._call_handler(final_handler, message))
+            return await self._call_handler(final_handler, message)
 
         # Build the chain from the end
         async def build_chain(index: int) -> Callable[[TMessage], Awaitable[TResult]]:
@@ -193,7 +193,7 @@ def middleware(func: Callable) -> AbstractMiddleware:
     """
 
     class FunctionMiddleware(AbstractMiddleware):
-        async def __call__(self, message, next_handler) -> Any:
+        async def __call__(self, message: Any, next_handler: Any) -> Any:
             return await func(message, next_handler)
 
     return FunctionMiddleware()

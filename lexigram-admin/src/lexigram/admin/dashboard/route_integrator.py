@@ -4,7 +4,7 @@ from collections.abc import Sequence
 import inspect
 import re
 import types
-from typing import TYPE_CHECKING, Any, get_args, get_origin, get_type_hints
+from typing import TYPE_CHECKING, Any, cast, get_args, get_origin, get_type_hints
 
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import HTMLResponse
@@ -306,11 +306,11 @@ class AdminPageHandler:
             user_menu_items=user_menu_items,
             breadcrumbs=breadcrumbs,
             theme_css=theme_css,
-            **{
+            **cast("Any", {
                 k: v
                 for k, v in branding.items()
                 if k in ("dark_mode", "site_name", "logo_url")
-            },
+            }),
         )
         shell_html = render_to_string(shell)
 

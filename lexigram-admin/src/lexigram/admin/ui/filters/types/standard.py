@@ -36,9 +36,9 @@ class RangeFilter(Filter):
         self._input_type = input_type
         if callable(default):
             self._default_callback = default
-            self.default = None  # type: ignore[method-assign, assignment]
+            self._default = None
         else:
-            self.default = default  # type: ignore[method-assign, assignment]
+            self._default = default
             self._default_callback = None
 
     def get_consumed_params(self) -> list[str]:
@@ -118,7 +118,7 @@ class RangeFilter(Filter):
 
         return TextInput(type=self._input_type, **common).render()
 
-    def render(self, current_value: Any = None, url: str | None = None) -> str:  # type: ignore[override]
+    def render(self, current_value: Any = None, url: str | None = None) -> str:
         from_value = ""
         to_value = ""
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.contracts.cli.contributions import (
     CommandContribution,
     HealthCheckContribution,
@@ -78,7 +80,7 @@ class WorkflowCliContributor:
             ),
         ]
 
-    def get_doctor_checks(self) -> list:
+    def get_doctor_checks(self) -> list[Any]:
         """Return no doctor check contributions."""
         return []
 
@@ -93,7 +95,7 @@ class WorkflowCliContributor:
             ),
         ]
 
-    def get_hooks(self) -> list:
+    def get_hooks(self) -> list[Any]:
         """Return no hook contributions."""
         return []
 

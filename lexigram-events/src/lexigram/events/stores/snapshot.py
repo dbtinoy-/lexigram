@@ -335,7 +335,10 @@ class SnapshotManager(Generic[TState]):
     ) -> int:
         """Clean up old snapshots for an aggregate."""
         count = keep_count or self._config.max_snapshots_per_aggregate
-        return await self._snapshot_store.delete_old_snapshots(aggregate_id, count)  # type: ignore[attr-defined]
+        count_deleted: int = await self._snapshot_store.delete_old_snapshots(  # type: ignore[attr-defined]
+            aggregate_id, count
+        )
+        return count_deleted
 
     def _is_valid_uuid(self, value: str) -> bool:
         """Check if a string is a valid UUID."""

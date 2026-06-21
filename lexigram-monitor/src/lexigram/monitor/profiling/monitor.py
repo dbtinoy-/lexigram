@@ -214,7 +214,8 @@ class PerformanceMonitor:
             import psutil
 
             proc = psutil.Process(os.getpid())
-            return proc.memory_info().rss
+            rss_memory: int = proc.memory_info().rss
+            return rss_memory
         return 0
 
     def _aggregate_metrics(self) -> None:

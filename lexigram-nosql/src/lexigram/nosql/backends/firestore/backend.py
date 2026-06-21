@@ -185,7 +185,7 @@ class FirestoreBackend(AbstractDocumentStore):
     async def _noop_session(self) -> AsyncIterator[None]:
         yield
 
-    def session(self) -> AbstractAsyncContextManager:
+    def session(self) -> AbstractAsyncContextManager[Any]:
         """Return an async context manager for a Firestore transaction.
 
         Note:

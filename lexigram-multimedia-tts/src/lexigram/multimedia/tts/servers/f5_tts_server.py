@@ -63,7 +63,7 @@ async def handle_generate(request: web.Request) -> web.Response:
 
     import io
 
-    import soundfile as sf  # type: ignore[import-untyped]
+    import soundfile as sf  # type: ignore[import-not-found]
 
     buf = io.BytesIO()
     sf.write(buf, wav, sr, format="WAV")

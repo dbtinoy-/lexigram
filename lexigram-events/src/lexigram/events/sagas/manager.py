@@ -207,7 +207,7 @@ class SagaManagerProtocol:
                 step_record.status = SagaStepStatus.COMPENSATING
 
             try:
-                compensation_result = await step.compensation(ctx)  # type: ignore[func-returns-value]
+                compensation_result: Any = await step.compensation(ctx)  # type: ignore[func-returns-value]
                 if step_record:
                     step_record.status = (
                         SagaStepStatus.COMPENSATED

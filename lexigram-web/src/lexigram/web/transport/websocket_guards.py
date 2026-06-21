@@ -83,7 +83,7 @@ class GuardedWebSocket:
         """Send binary message."""
         await self.websocket.send_bytes(data)
 
-    async def send_json(self, data) -> Any:
+    async def send_json(self, data: Any) -> Any:
         """Send JSON message."""
         await self.websocket.send_json(data)
 

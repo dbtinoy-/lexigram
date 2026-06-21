@@ -114,10 +114,60 @@ warn_unreachable = true
 strict_equality = true
 strict = true
 show_error_codes = true
-ignore_missing_imports = true
+ignore_missing_imports = false
 overrides = [
     { module = "tests.*", ignore_errors = true },
+    { module = [
+        "structlog.*",
+        "asyncpg.*",
+        "aioredis.*",
+        "aiomysql.*",
+        "qdrant_client.*",
+        "chromadb.*",
+        "anthropic.*",
+        "openai.*",
+        "cohere.*",
+        "groq.*",
+        "mistralai.*",
+        "ollama.*",
+        "pinecone.*",
+        "meilisearch.*",
+        "boto3.*",
+        "botocore.*",
+        "google.cloud.*",
+        "authlib.*",
+        "strawberry.*",
+        "mkdocs.*",
+        "aiohttp.*",
+        "aiofiles.*",
+        "alembic.*",
+        "sqlalchemy.*",
+        "pydantic.*",
+        "pydantic_settings.*",
+        "redis.*",
+        "celery.*",
+        "kafka.*",
+        "aiokafka.*",
+        "aio_pika.*",
+        "uvicorn.*",
+        "starlette.*",
+        "httpx.*",
+        "tenacity.*",
+        "cachetools.*",
+        "importlib_metadata.*",
+        "pkg_resources.*",
+        "cryptography.*",
+        "jwt.*",
+        "passlib.*",
+        "bcrypt.*",
+        "yaml.*",
+        "toml.*",
+        "dotenv.*",
+        "orjson.*",
+        "msgpack.*",
+    ], ignore_missing_imports = true },
 ]
+
 
 [tool.ruff]
 extend = "../pyproject.toml"

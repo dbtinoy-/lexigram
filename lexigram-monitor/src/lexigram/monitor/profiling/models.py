@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 import time
+from typing import Any
 
 from lexigram.domain import DomainModel
 from lexigram.monitor.exceptions import MonitorError
@@ -14,7 +15,9 @@ class PerformanceMonitorError(MonitorError):
 
     _code = "LEX_ERR_MONITOR_008"
 
-    def __init__(self, message: str = "Performance monitoring error", **kwargs) -> None:
+    def __init__(
+        self, message: str = "Performance monitoring error", **kwargs: Any
+    ) -> None:
         super().__init__(message, **kwargs)
 
 

@@ -143,7 +143,7 @@ class AzureServiceBusAdapter(MessageAdapter["Event"]):
             ConnectionError: If connection fails.
         """
         try:
-            from azure.servicebus.aio import (  # type: ignore[import-not-found]
+            from azure.servicebus.aio import (
                 ServiceBusClient,
             )
         except ImportError as e:
@@ -214,7 +214,7 @@ class AzureServiceBusAdapter(MessageAdapter["Event"]):
             raise RuntimeError("Not connected to Azure Service Bus")
 
         try:
-            from azure.servicebus import (  # type: ignore[import-not-found]
+            from azure.servicebus import (
                 ServiceBusMessage,
             )
         except ImportError as e:

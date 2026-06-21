@@ -35,10 +35,10 @@ from lexigram.logging import get_logger
 logger = get_logger(__name__)
 
 try:
-    from authlib.integrations.base_client import (  # type: ignore[import-untyped]
+    from authlib.integrations.base_client import (
         OAuthError,
     )
-    from authlib.integrations.httpx_client import (  # type: ignore[import-untyped]
+    from authlib.integrations.httpx_client import (
         AsyncOAuth2Client,
     )
 

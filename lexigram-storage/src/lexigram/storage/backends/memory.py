@@ -30,7 +30,7 @@ class MemoryDriver(AbstractDriver):
         self,
         path: str,
         data: Uploadable,
-        content_type: str | None = None,
+        content_type: UploadOptionsContract | str | None = None,
         **options: Any,
     ) -> FileInfo:
         """Upload data to memory storage"""

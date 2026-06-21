@@ -6,6 +6,7 @@ vulnerability), this connector:
 - Enforces an explicit table allowlist
 - Uses fully qualified identifier quoting for table names
 - Passes all user-supplied values via ``$N`` parameters (never f-string)
+- Restricts filters to allowlisted columns and a closed operator set
 - Restricts to SELECT only when ``read_only=True`` (the default)
 
 Tools exposed:
@@ -20,6 +21,7 @@ import re
 from typing import Any
 
 from lexigram.ai.mcp.types import MCPResource, MCPToolDefinition, MCPToolResult
+from lexigram.contracts.data.identifiers import Column
 from lexigram.contracts.exceptions import DatabaseError
 from lexigram.logging import (
     get_logger,
@@ -30,6 +32,18 @@ logger = get_logger(__name__)
 
 # Allowlist pattern: table names must be identifiers only (no operators/quotes)
 _SAFE_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+# Closed operator set for structured filters
+_FILTER_OPS: dict[str, str] = {
+    "eq": "=",
+    "ne": "!=",
+    "gt": ">",
+    "gte": ">=",
+    "lt": "<",
+    "lte": "<=",
+    "like": "LIKE",
+    "in": "IN",
+}
 
 
 class SQLConnector:
@@ -56,6 +70,7 @@ class SQLConnector:
         *,
         read_only: bool = True,
         max_rows: int = 500,
+        allowed_columns: dict[str, list[str]] | None = None,
     ) -> None:
         """Initialize the SQL connector.
 
@@ -64,6 +79,9 @@ class SQLConnector:
             allowed_tables: Explicit list of tables that may be queried.
             read_only: Restrict to SELECT statements only (default True).
             max_rows: Maximum rows to return per query (default 500).
+            allowed_columns: Static per-table column allowlists. When a table
+                has an entry it is authoritative; otherwise columns are
+                introspected once from ``information_schema.columns``.
 
         Raises:
             ValueError: If ``allowed_tables`` is empty.
@@ -80,6 +98,8 @@ class SQLConnector:
         self._allowed_tables = list(allowed_tables)
         self._read_only = read_only
         self._max_rows = max_rows
+        self._allowed_columns = allowed_columns or {}
+        self._column_cache: dict[str, list[str]] = {}
 
     # ------------------------------------------------------------------
     # MCPToolProviderProtocol interface
@@ -92,7 +112,7 @@ class SQLConnector:
                 name="sql_query",
                 description=(
                     "Execute a SELECT query against an allowed table. "
-                    "Use $1, $2, … for parameters."
+                    "Filters use allowlisted columns and a closed operator set."
                 ),
                 input_schema={
                     "type": "object",
@@ -101,15 +121,26 @@ class SQLConnector:
                             "type": "string",
                             "description": "Table name (must be in the allowlist)",
                         },
-                        "where": {
-                            "type": "string",
-                            "description": "Optional WHERE clause (no semicolons)",
-                            "default": "",
-                        },
-                        "params": {
+                        "filters": {
                             "type": "array",
-                            "items": {},
-                            "description": "Parameter values for $1, $2, …",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "field": {"type": "string"},
+                                    "op": {
+                                        "type": "string",
+                                        "description": (
+                                            "One of eq, ne, gt, gte, lt, lte, like, in"
+                                        ),
+                                    },
+                                    "value": {},
+                                },
+                                "required": ["field", "op", "value"],
+                            },
+                            "description": (
+                                "Structured filters. field must be a real "
+                                "column of the table."
+                            ),
                             "default": [],
                         },
                         "limit": {
@@ -202,8 +233,7 @@ class SQLConnector:
 
     async def _sql_query(self, arguments: dict[str, Any]) -> MCPToolResult:
         table = arguments.get("table", "")
-        where = arguments.get("where", "") or ""
-        params: list[Any] = list(arguments.get("params") or [])
+        filters = arguments.get("filters") or []
         limit = min(int(arguments.get("limit") or 50), self._max_rows)
 
         if not self._is_allowed_table(table):
@@ -212,16 +242,30 @@ class SQLConnector:
                 f"Allowed: {self._allowed_tables}"
             )
 
-        # Reject dangerous constructs in WHERE clause
-        if where and _has_dangerous_sql(where):
+        try:
+            columns = await self._columns_for(table)
+        except (
+            DatabaseError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            AttributeError,
+            LookupError,
+            OSError,
+        ) as exc:
+            logger.error("sql_query_load_columns_error", table=table, error=str(exc))
+            return MCPToolResult.error(f"Failed to load columns for '{table}': {exc}")
+
+        where_sql, where_params, allowed = self._apply_filters(table, filters, columns)
+        if not allowed:
             return MCPToolResult.error(
-                "WHERE clause contains disallowed SQL constructs"
+                "filters reference a field or operator that is not allowed"
             )
 
-        safe_table = _quote_identifier(table)
-        sql = f"SELECT * FROM {safe_table}"
-        if where:
-            sql += f" WHERE {where}"
+        params = list(where_params)
+        sql = f"SELECT * FROM {_quote_identifier(table)}"
+        if where_sql:
+            sql += f" WHERE {where_sql}"
         sql += f" LIMIT ${len(params) + 1}"
         params.append(limit)
 
@@ -299,17 +343,73 @@ class SQLConnector:
     def _is_allowed_table(self, table: str) -> bool:
         return table in self._allowed_tables
 
+    async def _columns_for(self, table: str) -> list[str]:
+        """Return the allowlisted columns for a table, static first.
+
+        Args:
+            table: The table name.
+
+        Returns:
+            The column allowlist (static config or introspected + cached).
+        """
+        static = self._allowed_columns.get(table)
+        if static is not None:
+            return static
+        if table in self._column_cache:
+            return self._column_cache[table]
+        sql = (
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = $1 ORDER BY ordinal_position"
+        )
+        async with self._db.scoped_context():
+            conn = await self._db.get_scoped_connection()
+            rows = await conn.fetch(sql, table)
+        columns = [r["column_name"] for r in rows]
+        self._column_cache[table] = columns
+        return columns
+
+    def _apply_filters(
+        self,
+        table: str,
+        filters: list[dict[str, Any]],
+        columns: list[str],
+    ) -> tuple[str, list[Any], bool]:
+        """Build a WHERE clause from allowlisted filters.
+
+        Args:
+            table: The target table.
+            filters: Structured filter objects.
+            columns: The allowlisted columns for the table.
+
+        Returns:
+            ``(where_sql, params, allowed)`` — ``allowed=False`` rejects
+            the filters without executing anything.
+        """
+        parts: list[str] = []
+        params: list[Any] = []
+        for flt in filters:
+            field = str(flt.get("field", ""))
+            op = str(flt.get("op", ""))
+            if field not in columns or op not in _FILTER_OPS:
+                return "", [], False
+            if op == "in":
+                values = list(flt.get("value") or [])
+                if not values:
+                    return "", [], False
+                placeholders = ", ".join(
+                    f"${len(params) + i + 1}" for i in range(len(values))
+                )
+                parts.append(f"{Column(field)} IN ({placeholders})")
+                params.extend(values)
+            else:
+                params.append(flt.get("value"))
+                parts.append(f"{Column(field)} {_FILTER_OPS[op]} ${len(params)}")
+        return " AND ".join(parts), params, True
+
 
 def _quote_identifier(name: str) -> str:
     """Quote a SQL identifier using ANSI double-quotes."""
     return '"' + name.replace('"', '""') + '"'
-
-
-def _has_dangerous_sql(clause: str) -> bool:
-    """Heuristic check for dangerous SQL constructs in a WHERE clause."""
-    normalized = clause.upper()
-    dangerous = [";", "--", "/*", "*/", "DROP", "DELETE", "UPDATE", "INSERT", "EXEC"]
-    return any(kw in normalized for kw in dangerous)
 
 
 __all__ = ["SQLConnector"]

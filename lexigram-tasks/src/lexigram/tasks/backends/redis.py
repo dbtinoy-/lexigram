@@ -144,7 +144,7 @@ class RedisTaskQueue(TaskQueueProtocol):
             Ok containing the enqueued task id, or Err containing a TaskError.
         """
         redis_conn = await self._get_redis()
-        task_data = dumps(task.to_dict())
+        task_data: Any = dumps(task.to_dict())
         if isinstance(task_data, bytes):
             task_data_str = task_data.decode()
         else:

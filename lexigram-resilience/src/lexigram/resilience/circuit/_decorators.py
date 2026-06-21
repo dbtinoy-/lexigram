@@ -57,7 +57,7 @@ def circuit_breaker_sync(
             import asyncio
 
             cb = asyncio.run(registry.get_or_create(name, config))
-            return cast("T", cb.execute_sync(func, *args, **kwargs))
+            return cb.execute_sync(func, *args, **kwargs)
 
         return wrapper
 

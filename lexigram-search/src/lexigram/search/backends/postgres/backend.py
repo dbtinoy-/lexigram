@@ -8,6 +8,7 @@ internals and belongs here alongside the other search backends.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 from lexigram import serialization as json
@@ -21,6 +22,11 @@ if TYPE_CHECKING:
     from lexigram.contracts.data import DatabaseProviderProtocol
 
 logger = get_logger(__name__)
+
+# Facet keys are JSONB document keys, not SQL identifiers: they sit inside a
+# single-quoted JSON path literal (document->>'...'), so they get a strict
+# JSON-key guard instead of SQL identifier quoting.
+_SAFE_JSON_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class PostgresDatabaseSearchBackend:
@@ -291,6 +297,9 @@ class PostgresDatabaseSearchBackend:
             Mapping with keys ``hits``, ``total``, ``facets``, ``limit``, ``offset``.
         """
         safe_index = self._sanitize_index_name(index)
+        for facet_field in facets:
+            if not _SAFE_JSON_KEY_RE.match(facet_field):
+                raise ValueError(f"Invalid facet field: {facet_field!r}")
         search_sql = (
             f"SELECT id, document, "
             f"ts_rank(search_vector, websearch_to_tsquery($1, $2)) AS score "

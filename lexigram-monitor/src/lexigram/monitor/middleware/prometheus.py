@@ -111,7 +111,7 @@ class PrometheusMiddleware:
 
         status_code = [200]
 
-        async def wrapped_send(message) -> Any:
+        async def wrapped_send(message: Any) -> Any:
             if message["type"] == "http.response.start":
                 status_code[0] = message["status"]
             await send(message)
@@ -204,7 +204,7 @@ class PrometheusMiddleware:
                     lines.append(f"{name}{labels_str} {value.value}")
         return "\n".join(lines) + "\n"
 
-    def _get_metric_type(self, metric) -> str:
+    def _get_metric_type(self, metric: Any) -> str:
         type_name = metric.__class__.__name__.lower()
         if "counter" in type_name:
             return "counter"

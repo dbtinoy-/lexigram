@@ -6,6 +6,7 @@ import asyncio
 import fnmatch
 from typing import TYPE_CHECKING, cast
 
+from lexigram.contracts.ai.governance.resource_unit import ResourceExhaustedError
 from lexigram.di.decorators import inject
 from lexigram.logging import (
     get_logger,
@@ -528,11 +529,9 @@ class AIGovernanceManager:
             )
         return await self._resource_tracker.usage(tenant_id, unit_name)
 
-    def _no_tracker_error(self, tenant_id, unit_name, amount):
-        from lexigram.contracts.ai.governance.resource_unit import (
-            ResourceExhaustedError,
-        )
-
+    def _no_tracker_error(
+        self, tenant_id: str, unit_name: str, amount: float
+    ) -> ResourceExhaustedError:
         return ResourceExhaustedError(
             tenant_id=tenant_id,
             unit_name=unit_name,

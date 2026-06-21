@@ -31,7 +31,8 @@ def _load_default_workflow() -> dict[str, Any]:
     template_path = importlib.resources.files(
         "lexigram.multimedia.image.workflows"
     ).joinpath("default_sdxl.json")
-    return loads(template_path.read_text())
+    workflow: dict[str, Any] = loads(template_path.read_text())
+    return workflow
 
 
 def _fill_workflow(
@@ -55,7 +56,8 @@ def _fill_workflow(
     raw = raw.replace('"__STEPS__"', str(steps))
     raw = raw.replace('"__CFG__"', str(cfg_scale))
     raw = raw.replace('"__SEED__"', str(seed))
-    return loads(raw)
+    filled: dict[str, Any] = loads(raw)
+    return filled
 
 
 class ComfyUiImageProvider:
@@ -86,7 +88,8 @@ class ComfyUiImageProvider:
     def _load_template(self) -> dict[str, Any]:
         if self._workflow_path is not None:
             with open(self._workflow_path) as f:
-                return loads(f.read())
+                template: dict[str, Any] = loads(f.read())
+                return template
         return _load_default_workflow()
 
     async def _submit(self, workflow: dict[str, Any]) -> tuple[int, bytes]:

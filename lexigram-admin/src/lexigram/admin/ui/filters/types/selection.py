@@ -95,7 +95,7 @@ class SelectFilter(Filter):
             return opts
         return self.options
 
-    def render(self, current_value: Any = None, url: str | None = None) -> str:  # type: ignore[override]
+    def render(self, current_value: Any = None, url: str | None = None) -> str:
         """Render as select dropdown using atomic Select component."""
         from lexigram.ui import Select
 
@@ -106,9 +106,9 @@ class SelectFilter(Filter):
         options = self.get_options()
 
         # Convert options dict to choices list format
-        placeholder = self.placeholder or f"Select {self.label}"  # type: ignore[truthy-function]
+        placeholder = self._placeholder or f"Select {self.label}"
         choices = [("", placeholder)]  # Add placeholder as first option
-        choices.extend([(kv[0], kv[1]) for kv in options.items()])  # type: ignore[misc]
+        choices.extend([(kv[0], kv[1]) for kv in options.items()])
 
         # Get state and resource prefix
         state = getattr(self, "_state", None)
@@ -149,7 +149,7 @@ class SelectFilter(Filter):
 
         select = Select(
             name=f"filter_{self.name}",
-            choices=choices,  # type: ignore[arg-type]
+            choices=choices,
             value=value,
             label=self.label,
             **comp_attrs,  # type: ignore[arg-type]
@@ -279,7 +279,7 @@ class MultiSelectFilter(Filter):
             return opts
         return self.options
 
-    def render(self, current_value: Any = None, url: str | None = None) -> str:  # type: ignore[override]
+    def render(self, current_value: Any = None, url: str | None = None) -> str:
         """Render as checkboxes using atomic components."""
         from lexigram.ui import Checkbox
         from lexigram.ui.core.base import el

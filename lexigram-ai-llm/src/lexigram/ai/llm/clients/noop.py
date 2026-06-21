@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.exceptions import LLMError
-from lexigram.ai.llm.types import Completion
-from lexigram.contracts.ai import ChatMessage, ToolCall
-from lexigram.contracts.ai.llm import StreamChunk
+from lexigram.ai.llm.types import ChatMessage, Completion, StreamChunk
+from lexigram.contracts.ai import ToolCall
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.result import Ok, Result
 
@@ -43,9 +42,11 @@ class NoOpLLMClient(AbstractLLMClient):
         messages: list[ChatMessage],
         **kwargs: Any,
     ) -> Result[AsyncIterator[StreamChunk], LLMError]:
+        # Generator function returning an empty async stream; the import
+        # guard above keeps this branch dead in normal operation.
         async def _empty() -> AsyncIterator[StreamChunk]:
-            if False:
-                yield
+            for _ in ():
+                yield cast("StreamChunk", None)
 
         return Ok(_empty())
 
@@ -58,7 +59,7 @@ class NoOpLLMClient(AbstractLLMClient):
         return await self._do_complete(messages, **kwargs)
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        return HealthCheckResult(status=HealthStatus.OK)
+        return HealthCheckResult(component="llm", status=HealthStatus.HEALTHY)
 
 
 __all__ = ["NoOpLLMClient"]

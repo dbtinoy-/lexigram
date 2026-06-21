@@ -144,7 +144,7 @@ class RedisIdempotencyStore:
             ``True`` if the key was freshly claimed; ``False`` if already held.
         """
         prefixed = self._prefixed(key)
-        existing = await self._cache.get(prefixed)
+        existing: Any = await self._cache.get(prefixed)
         if existing is not None:
             logger.debug("idempotency.redis.acquire", key=key, acquired=False)
             return False

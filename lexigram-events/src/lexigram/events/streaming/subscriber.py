@@ -211,6 +211,8 @@ class EventSubscriber:
                         partition=subscription.partition,
                         total_partitions=subscription.total_partitions,
                     ):
+                        # Subscription state may change while the
+                        # generator is suspended on each yield.
                         if (
                             not self._running
                             or subscription.state != SubscriptionState.ACTIVE

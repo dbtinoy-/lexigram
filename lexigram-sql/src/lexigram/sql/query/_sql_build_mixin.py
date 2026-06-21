@@ -52,21 +52,21 @@ class _BuildMixin:
             cte_prefix = f"{keyword} {', '.join(cte_parts)} "
 
         # Build SELECT clause
-        select_exprs: list[str] = list(self._selects)  # type: ignore[attr-defined]
+        select_exprs: list[str] = [str(c) for c in self._selects]  # type: ignore[attr-defined]
         for raw in self._raw_selects:  # type: ignore[attr-defined]
             select_exprs.append(raw.sql)
         # Remove default "*" if raw selects provided and selects is still default
         if self._raw_selects and self._selects == ["*"]:  # type: ignore[attr-defined]
             select_exprs = [raw.sql for raw in self._raw_selects]  # type: ignore[attr-defined]
             if self._selects != ["*"]:  # type: ignore[attr-defined]
-                select_exprs = list(self._selects) + select_exprs  # type: ignore[attr-defined]
+                select_exprs = [str(c) for c in self._selects] + select_exprs  # type: ignore[attr-defined]
 
         # Window functions
         for w in self._windows:  # type: ignore[attr-defined]
             over_parts = []
             if w.partition_by:
                 over_parts.append(
-                    f"PARTITION BY {', '.join(w.partition_by)}",
+                    f"PARTITION BY {', '.join(str(c) for c in w.partition_by)}",
                 )
             if w.order_by:
                 over_parts.append(f"ORDER BY {w.order_by}")
@@ -80,9 +80,7 @@ class _BuildMixin:
         # DISTINCT
         if self._distinct:  # type: ignore[attr-defined]
             if self._distinct_on and self._dialect == SQLDialect.POSTGRESQL:  # type: ignore[attr-defined]
-                select_clause = (
-                    f"DISTINCT ON ({', '.join(self._distinct_on)}) {select_clause}"  # type: ignore[attr-defined]
-                )
+                select_clause = f"DISTINCT ON ({', '.join(str(c) for c in self._distinct_on)}) {select_clause}"  # type: ignore[attr-defined]
             else:
                 select_clause = f"DISTINCT {select_clause}"
 
@@ -107,7 +105,7 @@ class _BuildMixin:
 
         # GROUP BY
         if self._group_by:  # type: ignore[attr-defined]
-            parts.append(f"GROUP BY {', '.join(self._group_by)}")  # type: ignore[attr-defined]
+            parts.append(f"GROUP BY {', '.join(str(c) for c in self._group_by)}")  # type: ignore[attr-defined]
 
         # HAVING
         if self._havings:  # type: ignore[attr-defined]

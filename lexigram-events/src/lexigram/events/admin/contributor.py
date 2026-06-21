@@ -128,7 +128,7 @@ class EventsAdminContributor(BaseAdminContributor):
         self._throughput_handler: WidgetHandlerProtocol | None = None
         self._dead_letter_handler: WidgetHandlerProtocol | None = None
 
-    async def on_admin_boot(self, container: ContainerResolverProtocol) -> None:
+    async def on_admin_boot(self, container: ContainerResolverProtocol | None) -> None:
         """Resolve event admin dependencies from the DI container.
 
         Args:

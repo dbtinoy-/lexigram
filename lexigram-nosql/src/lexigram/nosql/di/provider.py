@@ -56,7 +56,7 @@ class NoSQLProvider(Provider):
         self._store_services: list[tuple[str, Any]] = []
 
     @classmethod
-    def from_config(cls, config: NoSQLConfig, **context) -> NoSQLProvider:
+    def from_config(cls, config: NoSQLConfig, **context: Any) -> NoSQLProvider:
         """Factory method for DI container setup."""
         return cls(config)
 

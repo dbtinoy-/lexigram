@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import sqlite3
-from datetime import datetime
 from typing import Any
 
 from lexigram.ai.governance.relay_logs import (
@@ -18,6 +18,8 @@ from lexigram.contracts.ai.relay import (
     RelayUsageServiceProtocol,
 )
 from lexigram.contracts.data import DatabaseProviderProtocol, QueryResult
+from lexigram.primitives import clock
+from lexigram.testing.clock import FixedClock
 
 
 def make_entry(**overrides: Any) -> RelayRequestLogEntry:
@@ -118,7 +120,8 @@ async def test_daily_usage_aggregates_tokens_and_cost_per_day() -> None:
         )
     )
     service: RelayUsageServiceProtocol = RelayUsageService(db=db)
-    usage = await service.daily_usage(user_id="u1", days=7)
+    with clock.use(FixedClock(datetime(2026, 8, 10, 12, 0, 0, tzinfo=timezone.utc))):
+        usage = await service.daily_usage(user_id="u1", days=7)
     assert len(usage) == 2
     by_day = {u.day: u for u in usage}
     today = by_day["2026-08-10"]

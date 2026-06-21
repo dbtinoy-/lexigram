@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from lexigram.secrets.types import SecretVersion, VersionedSecret
 
@@ -37,7 +38,7 @@ class AWSSecretsManagerStore:
         self._version_map: dict[str, dict[int, str]] = {}
         self._next_version: dict[str, int] = {}
 
-    async def _get_client(self):
+    async def _get_client(self) -> Any:
         if self._session is None:
             import aioboto3  # type: ignore[import-not-found]
 
@@ -47,7 +48,8 @@ class AWSSecretsManagerStore:
                 aws_session_token=self._aws_session_token,
                 region_name=self._region_name,
             )
-        return await self._session.client("secretsmanager")
+        session: Any = self._session
+        return await session.client("secretsmanager")
 
     async def get(self, name: str) -> str | None:
         import botocore.exceptions
@@ -57,7 +59,8 @@ class AWSSecretsManagerStore:
             response = await client.get_secret_value(SecretId=name)
         except botocore.exceptions.ClientError:
             return None
-        return response.get("SecretString")
+        secret_value: str | None = response.get("SecretString")
+        return secret_value
 
     async def get_bulk(self, *names: str) -> dict[str, str]:
         result: dict[str, str] = {}
@@ -128,7 +131,8 @@ class AWSSecretsManagerStore:
             )
         except botocore.exceptions.ClientError:
             return None
-        return response.get("SecretString")
+        secret_value: str | None = response.get("SecretString")
+        return secret_value
 
     async def list_versions(self, key: str) -> list[SecretVersion]:
         import botocore.exceptions

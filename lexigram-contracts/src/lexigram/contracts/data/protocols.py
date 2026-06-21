@@ -18,6 +18,9 @@ from lexigram.contracts.data.types import (
     CursorPaginationSpec as CursorPaginationSpec,
 )
 from lexigram.contracts.data.types import (
+    FieldContains as FieldContains,
+)
+from lexigram.contracts.data.types import (
     FieldEq as FieldEq,
 )
 from lexigram.contracts.data.types import (
@@ -34,9 +37,6 @@ from lexigram.contracts.data.types import (
 )
 from lexigram.contracts.data.types import (
     FieldLte as FieldLte,
-)
-from lexigram.contracts.data.types import (
-    FieldContains as FieldContains,
 )
 from lexigram.contracts.data.types import (
     FieldNeq as FieldNeq,

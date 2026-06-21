@@ -21,6 +21,12 @@ class TestFilterObjectExports:
         assert hasattr(lexigram_sql, "F")
         assert hasattr(lexigram_sql, "field")
 
+    def test_filter_field_is_column_quoted(self) -> None:
+        """Filter field must render as a quoted Column, never raw."""
+        sql, params = (lexigram_sql.F("status") == "active").to_sql()
+        assert sql == '"status" = ?'
+        assert params == ["active"]
+
 
 class TestTypedRepositoryFilters:
     """Test typed filters in repository entry points."""

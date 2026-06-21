@@ -13,7 +13,7 @@
 | Package | Findings | Violations | Unused optional extras |
 |---|---|---|---|
 | lexigram | 14 | 0 | 1 |
-| lexigram-admin | 121 | 0 | 4 |
+| lexigram-admin | 120 | 0 | 4 |
 | lexigram-ai | 2 | 0 | 31 |
 | lexigram-ai-agents | 0 | 0 | 0 |
 | lexigram-ai-evaluation | 0 | 0 | 0 |
@@ -49,7 +49,7 @@
 | lexigram-multimedia-music | 5 | 0 | 3 |
 | lexigram-multimedia-tts | 11 | 0 | 7 |
 | lexigram-multimedia-upscale | 5 | 0 | 0 |
-| lexigram-multimedia-video | 11 | 0 | 4 |
+| lexigram-multimedia-video | 11 | 0 | 3 |
 | lexigram-nosql | 3 | 0 | 3 |
 | lexigram-notification | 4 | 0 | 5 |
 | lexigram-queue | 4 | 0 | 6 |
@@ -61,7 +61,7 @@
 | lexigram-tasks | 11 | 0 | 3 |
 | lexigram-tenancy | 1 | 0 | 0 |
 | lexigram-testing | 47 | 0 | 9 |
-| lexigram-ui | 11 | 0 | 2 |
+| lexigram-ui | 12 | 0 | 2 |
 | lexigram-vector | 7 | 0 | 3 |
 | lexigram-web | 88 | 0 | 9 |
 | lexigram-webhook | 4 | 0 | 0 |
@@ -123,8 +123,6 @@ Optional extras not imported by package sources: `uvicorn`
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/profile.py:16 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/progress.py:9 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/progress.py:10 |
-| `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/rbac.py:17 |
-| `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/rbac.py:18 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/resource.py:14 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/resource.py:15 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/controllers/search.py:12 |
@@ -196,6 +194,7 @@ Optional extras not imported by package sources: `uvicorn`
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/resources/handler.py:11 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/resources/handler.py:12 |
 | `starlette` | declared | module | lexigram-admin/src/lexigram/admin/resources/list_renderer.py:7 |
+| `starlette` | declared | module | lexigram-admin/src/lexigram/admin/resources/permissions_renderer.py:12 |
 | `openpyxl` | guarded | guard | lexigram-admin/src/lexigram/admin/services/export/adapters/excel.py:13 |
 | `openpyxl` | guarded | guard | lexigram-admin/src/lexigram/admin/services/export/adapters/excel.py:14 |
 | `reportlab` | guarded | guard | lexigram-admin/src/lexigram/admin/services/export/adapters/pdf.py:13 |
@@ -398,8 +397,8 @@ No third-party module-level imports.
 | `pymemcache` | guarded | guard | lexigram-cache/src/lexigram/cache/backends/memcached/backend.py:15 |
 | `pymemcache` | guarded | guard | lexigram-cache/src/lexigram/cache/backends/memcached/backend.py:16 |
 | `typer` | declared | module | lexigram-cache/src/lexigram/cache/cli/commands.py:5 |
-| `redis` | guarded | guard | lexigram-cache/src/lexigram/cache/stores/redis_lock.py:23 |
 | `redis` | guarded | guard | lexigram-cache/src/lexigram/cache/stores/redis_lock.py:24 |
+| `redis` | guarded | guard | lexigram-cache/src/lexigram/cache/stores/redis_lock.py:25 |
 | `redis` | guarded | guard | lexigram-cache/src/lexigram/cache/stores/redis_secrets.py:32 |
 | `redis` | guarded | guard | lexigram-cache/src/lexigram/cache/stores/redis_secrets.py:33 |
 | `redis` | guarded | guard | lexigram-cache/src/lexigram/cache/stores/redis_state.py:28 |
@@ -465,7 +464,7 @@ Optional extras not imported by package sources: `faiss-cpu`, `numpy`, `types-re
 | `typer` | declared | module | lexigram-events/src/lexigram/events/cli/commands.py:5 |
 | `jinja2` | declared | module | lexigram-events/src/lexigram/events/cli/generators/command_handler.py:5 |
 | `jinja2` | declared | module | lexigram-events/src/lexigram/events/cli/generators/query_handler.py:5 |
-| `motor` | guarded | type-only | lexigram-events/src/lexigram/events/stores/mongodb/snapshot_store.py:16 |
+| `motor` | guarded | type-only | lexigram-events/src/lexigram/events/stores/mongodb/snapshot_store.py:17 |
 
 Optional extras not imported by package sources: `aio-pika`, `aiokafka`, `aiosqlite`, `asyncpg`, `azure-servicebus`
 
@@ -640,7 +639,7 @@ Optional extras not imported by package sources: `chatterbox-tts`, `f5-tts`, `ko
 | `aiohttp` | declared | module | lexigram-multimedia-video/src/lexigram/multimedia/video/servers/svd_server.py:20 |
 | `aiohttp` | declared | module | lexigram-multimedia-video/src/lexigram/multimedia/video/servers/wan22_server.py:19 |
 
-Optional extras not imported by package sources: `diffusers`, `torch`, `transformers`, `wan`
+Optional extras not imported by package sources: `diffusers`, `torch`, `transformers`
 
 ## lexigram-nosql
 
@@ -763,12 +762,12 @@ Optional extras not imported by package sources: `pika`, `rq`, `types-croniter`
 | `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/auth/fixtures.py:19 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/clients/cache/fixtures.py:14 |
 | `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/cache/fixtures.py:27 |
-| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/clients/events/fixtures.py:16 |
-| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/events/fixtures.py:163 |
+| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/clients/events/fixtures.py:17 |
+| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/events/fixtures.py:164 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/clients/search/fixtures.py:12 |
 | `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/search/fixtures.py:15 |
-| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/clients/storage/fixtures.py:8 |
-| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/storage/fixtures.py:16 |
+| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/clients/storage/fixtures.py:9 |
+| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/storage/fixtures.py:17 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/clients/tasks/fixtures.py:13 |
 | `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/clients/tasks/fixtures.py:25 |
 | `starlette` | guarded | guard | lexigram-testing/src/lexigram/testing/clients/web/client.py:6 |
@@ -788,18 +787,18 @@ Optional extras not imported by package sources: `pika`, `rq`, `types-croniter`
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/compliance/task_queue.py:21 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/compliance/vector_store.py:9 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/compliance/webhook.py:24 |
-| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/fixtures/ai.py:8 |
-| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/fixtures/ai.py:18 |
+| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/fixtures/ai.py:9 |
+| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/fixtures/ai.py:19 |
 | `pytest` | declared | guard | lexigram-testing/src/lexigram/testing/fixtures/bed.py:72 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/fixtures/core.py:13 |
 | `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/fixtures/core.py:17 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/fixtures/db.py:9 |
 | `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/fixtures/db.py:13 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/fixtures/tasks.py:8 |
-| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/fixtures/web.py:8 |
-| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/fixtures/web.py:15 |
-| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/integration/fixtures.py:32 |
-| `pytest_asyncio` | declared | module | lexigram-testing/src/lexigram/testing/integration/fixtures.py:33 |
+| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/fixtures/web.py:9 |
+| `pytest_asyncio` | declared | guard | lexigram-testing/src/lexigram/testing/fixtures/web.py:16 |
+| `pytest` | declared | module | lexigram-testing/src/lexigram/testing/integration/fixtures.py:34 |
+| `pytest_asyncio` | declared | module | lexigram-testing/src/lexigram/testing/integration/fixtures.py:35 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/integration/markers.py:24 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/lib/snapshots.py:32 |
 | `pytest` | declared | module | lexigram-testing/src/lexigram/testing/plugin.py:5 |
@@ -814,6 +813,7 @@ Optional extras not imported by package sources: `aiokafka`, `aiosqlite`, `async
 | module | status | guard | location |
 |---|---|---|---|
 | `typer` | declared | module | lexigram-ui/src/lexigram/ui/cli/add.py:8 |
+| `markupsafe` | declared | module | lexigram-ui/src/lexigram/ui/core/base.py:9 |
 | `htpy` | declared | type-only | lexigram-ui/src/lexigram/ui/htmx/helpers.py:12 |
 | `starlette` | declared | module | lexigram-ui/src/lexigram/ui/htmx/sse.py:15 |
 | `markupsafe` | declared | module | lexigram-ui/src/lexigram/ui/layouts/base_layout.py:11 |
@@ -943,7 +943,7 @@ Optional extras not imported by package sources: `granian`, `httpx2`, `hypercorn
 | `starlette` | declared | module | lexigram-webhook/src/lexigram/webhook/admin/pages/dead_letter.py:5 |
 | `starlette` | declared | module | lexigram-webhook/src/lexigram/webhook/admin/pages/deliveries.py:5 |
 | `starlette` | declared | module | lexigram-webhook/src/lexigram/webhook/admin/pages/subscriptions.py:5 |
-| `httpx` | declared | module | lexigram-webhook/src/lexigram/webhook/delivery/sender.py:7 |
+| `httpx` | declared | module | lexigram-webhook/src/lexigram/webhook/delivery/sender.py:8 |
 
 ## lexigram-workflow
 

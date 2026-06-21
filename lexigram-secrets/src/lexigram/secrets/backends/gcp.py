@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from lexigram.secrets.types import SecretVersion, VersionedSecret
 
@@ -23,7 +24,7 @@ class GCPSecretManagerStore:
         self._project_id = project_id
         self._client: object = None
 
-    async def _get_client(self):
+    async def _get_client(self) -> Any:
         if self._client is None:
             from google.cloud import secretmanager
 
@@ -49,7 +50,8 @@ class GCPSecretManagerStore:
         payload = response.payload
         if payload is None:
             return None
-        return payload.data.decode("utf-8")
+        decoded: str = payload.data.decode("utf-8")
+        return decoded
 
     async def get_bulk(self, *names: str) -> dict[str, str]:
         result: dict[str, str] = {}
@@ -113,7 +115,8 @@ class GCPSecretManagerStore:
         payload = response.payload
         if payload is None:
             return None
-        return payload.data.decode("utf-8")
+        decoded: str = payload.data.decode("utf-8")
+        return decoded
 
     async def list_versions(self, key: str) -> list[SecretVersion]:
         from grpc import RpcError

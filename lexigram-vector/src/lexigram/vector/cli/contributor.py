@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.contracts.cli.contributions import (
     CommandContribution,
     DoctorCheckContribution,
@@ -72,11 +74,11 @@ class VectorCliContributor:
             ),
         ]
 
-    def get_shell_context(self) -> list:
+    def get_shell_context(self) -> list[Any]:
         """Return no shell context contributions."""
         return []
 
-    def get_hooks(self) -> list:
+    def get_hooks(self) -> list[Any]:
         """Return no hook contributions."""
         return []
 

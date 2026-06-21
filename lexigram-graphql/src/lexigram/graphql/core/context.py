@@ -546,7 +546,9 @@ class ContextFactory:
             if self._resolver is not None and hasattr(
                 self._resolver, "resolve_optional"
             ):
-                principal_resolver = await self._resolver.resolve_optional(
+                principal_resolver: (
+                    GraphQLPrincipalResolverProtocol | None
+                ) = await self._resolver.resolve_optional(
                     GraphQLPrincipalResolverProtocol
                 )
                 if principal_resolver:

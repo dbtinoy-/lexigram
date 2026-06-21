@@ -88,7 +88,8 @@ class RedisEventStore(AbstractEventStore):
     def _serialize_event(self, event: Event) -> dict[str, Any]:
         """Serialise an event to a JSON-safe dict."""
         if hasattr(event, "model_dump"):
-            return event.model_dump(mode="json")
+            data: dict[str, Any] = event.model_dump(mode="json")
+            return data
         return dataclasses.asdict(event)
 
     def _deserialize_event(self, data: dict[str, Any]) -> Event:
@@ -101,7 +102,7 @@ class RedisEventStore(AbstractEventStore):
         """
         from lexigram.events.messages.event import Event as _Event
 
-        return cast("_Event", _Event(**data))
+        return _Event(**data)
 
     # ------------------------------------------------------------------
     # Stream index helpers

@@ -88,7 +88,8 @@ class ResilienceProvider(Provider):
             )
 
         container.singleton(
-            ResiliencePipelineFactoryProtocol, factory=lambda: resilience_pipeline_factory
+            ResiliencePipelineFactoryProtocol,
+            factory=lambda: resilience_pipeline_factory,
         )
 
     async def boot(self, container: BootContainerProtocol) -> None:

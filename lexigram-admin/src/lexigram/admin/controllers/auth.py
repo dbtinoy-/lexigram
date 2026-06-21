@@ -168,6 +168,7 @@ class AuthController(AdminController):
             error=error,
             csrf_token=csrf_token,
             notice=notice,
+            registration_enabled=self._registration_enabled,
             email_err=email_err,
             password_err=password_err,
         )
@@ -243,7 +244,7 @@ class AuthController(AdminController):
                 # email factor the code is emailed right away.
                 factor = "totp"
                 if self._mfa_service is not None:
-                    factor = await self._mfa_service.get_factor()
+                    factor = self._mfa_service.get_factor()
                 request.session["mfa_pending_user_id"] = auth_result.user_id
                 request.session["mfa_pending_email"] = auth_result.email
                 request.session["mfa_pending_roles"] = auth_result.roles

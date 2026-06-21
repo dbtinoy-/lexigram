@@ -386,13 +386,15 @@ class GCSDriver(AbstractDriver):
         try:
             # gcloud-aio-storage >=9 exposes sign_download_url / sign_upload_url
             if method.upper() == "PUT" and hasattr(self._client, "sign_upload_url"):
-                return await self._client.sign_upload_url(
+                signed: str = await self._client.sign_upload_url(
                     self.bucket, key, expires=expires_seconds
                 )
+                return signed
             if hasattr(self._client, "sign_download_url"):
-                return await self._client.sign_download_url(
+                signed_url: str = await self._client.sign_download_url(
                     self.bucket, key, expires=expires_seconds
                 )
+                return signed_url
             # Fallback: unsigned public URL
             return f"https://storage.googleapis.com/{self.bucket}/{key}"
         except Exception as exc:

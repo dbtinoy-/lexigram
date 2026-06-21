@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from starlette.responses import JSONResponse
 
@@ -160,14 +160,14 @@ def _get_client_ip(request: Any) -> str | None:
     """Get client IP from request headers or connection info."""
     xff = request.headers.get("X-Forwarded-For")
     if xff:
-        return xff.split(",")[0].strip()
+        return cast("str", xff.split(",")[0].strip())
 
     xri = request.headers.get("X-Real-IP")
     if xri:
-        return xri.strip()
+        return cast("str", xri.strip())
 
     if hasattr(request, "client") and request.client:
-        return request.client.host
+        return cast("str", request.client.host)
 
     return None
 

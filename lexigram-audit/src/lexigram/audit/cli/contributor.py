@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.contracts.cli.contributions import (
     CommandContribution,
     DoctorCheckContribution,
@@ -19,7 +21,7 @@ class AuditCliContributor:
         """Return the contributor identifier."""
         return "audit"
 
-    def get_generators(self) -> list:
+    def get_generators(self) -> list[Any]:
         """Return no generator contributions."""
         return []
 

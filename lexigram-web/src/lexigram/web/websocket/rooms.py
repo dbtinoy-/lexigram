@@ -153,7 +153,7 @@ def get_room_manager(context: Any | None = None) -> RoomManager:
 
     resolver = get_resolver(context)
     if resolver:
-        return cast("Any", resolver).resolve_sync(RoomManager)
+        return cast("RoomManager", cast("Any", resolver).resolve_sync(RoomManager))
 
     global _room_manager
     if _room_manager is None:

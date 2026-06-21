@@ -29,7 +29,8 @@ class PrometheusBackendRegistry:
     def can_create(self, backend_type: Any) -> bool:
         from lexigram.monitor.config import BackendType
 
-        return backend_type == BackendType.PROMETHEUS
+        matched: bool = backend_type == BackendType.PROMETHEUS
+        return matched
 
     def create_backend(self, config: MonitorConfig) -> Any:
         prom_cfg = getattr(config, "prometheus", {}) or {}
@@ -46,7 +47,8 @@ class OpenTelemetryBackendRegistry:
     def can_create(self, backend_type: Any) -> bool:
         from lexigram.monitor.config import BackendType
 
-        return backend_type == BackendType.OPENTELEMETRY
+        matched: bool = backend_type == BackendType.OPENTELEMETRY
+        return matched
 
     def create_backend(self, config: MonitorConfig) -> Any:
         otel_cfg = getattr(config, "opentelemetry", {}) or {}
@@ -65,7 +67,8 @@ class MemoryBackendRegistry:
     def can_create(self, backend_type: Any) -> bool:
         from lexigram.monitor.config import BackendType
 
-        return backend_type == BackendType.MEMORY
+        matched: bool = backend_type == BackendType.MEMORY
+        return matched
 
     def create_backend(self, config: MonitorConfig) -> Any:
         return NoOpMetricsBackend()

@@ -316,7 +316,8 @@ class DynamoDBCollection:
         """Retrieve a single item by primary key using ``get_item``."""
         try:
             response = await self._table.get_item(Key={self._pk_field: pk_value})
-            return response.get("Item")
+            item: dict[str, Any] | None = response.get("Item")
+            return item
         except Exception as exc:  # noqa: BLE001
             raise NoSQLError(
                 f"find_one (get_item) failed on DynamoDB table {self._name!r}: {exc}"

@@ -93,7 +93,7 @@ class CSRFProtectionMiddleware:
         target = header_name.lower().encode()
         for name, value in scope.get("headers", []):
             if name.lower() == target:
-                return value.decode()
+                return cast("str", value.decode())
         return None
 
     async def __call__(

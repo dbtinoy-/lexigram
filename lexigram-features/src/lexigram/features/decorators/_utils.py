@@ -42,7 +42,8 @@ def _resolve_manager(manager: FlagManager | None) -> FlagManager:
             if hasattr(resolver, "resolve_sync"):
                 from lexigram.features.manager.flag_manager import FlagManager
 
-                return resolver.resolve_sync(FlagManager)
+                resolved: FlagManager = resolver.resolve_sync(FlagManager)
+                return resolved
 
     from lexigram.features.manager.flag_manager import FlagManager
 

@@ -179,4 +179,5 @@ class TenantLifecycleService:
             logger.info("tenant_suspended", tenant_id=tenant_id)
         return result
 
+
 __all__ = ["TenantLifecycleService"]

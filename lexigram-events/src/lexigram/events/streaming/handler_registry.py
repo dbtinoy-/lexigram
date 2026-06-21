@@ -126,6 +126,9 @@ def get_ws_message_handler_registry(
 
     resolver = get_resolver(context)
     if resolver:
-        return resolver.resolve_sync(WSMessageHandlerRegistry)  # type: ignore[attr-defined]
+        registry: WSMessageHandlerRegistry = resolver.resolve_sync(  # type: ignore[attr-defined]
+            WSMessageHandlerRegistry
+        )
+        return registry
 
     return _ws_message_handler_registry

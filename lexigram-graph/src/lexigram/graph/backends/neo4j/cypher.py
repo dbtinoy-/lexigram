@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.data.graph.enums import EdgeDirection, ReturnType
 from lexigram.contracts.data.graph.filters import (
     PropertyCondition,
-    PropertyConditionGroup,
     PropertyFilter,
     PropertyOperator,
 )
@@ -29,6 +29,8 @@ _OP_MAP: dict[PropertyOperator, str] = {
     PropertyOperator.LTE: "<=",
 }
 
+_SAFE_CYPHER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
 
 class CypherCompiler:
     """Compile traversal queries and property filters to Cypher."""
@@ -37,6 +39,24 @@ class CypherCompiler:
         self._param_counter = 0
         self._params: dict[str, Any] = {}
         self._where_start: str | None = None
+
+    def _validate_ident(self, name: str, role: str) -> str:
+        """Validate a Cypher identifier name.
+
+        Args:
+            name: Identifier to validate.
+            role: Human-readable role, used in the error message.
+
+        Returns:
+            The validated name, unchanged.
+
+        Raises:
+            CypherCompilationError: If *name* does not match a plain
+                identifier pattern.
+        """
+        if not _SAFE_CYPHER_RE.match(name):
+            raise CypherCompilationError(f"Invalid {role}: {name!r}")
+        return name
 
     def _next_param(self, value: Any) -> str:
         self._param_counter += 1
@@ -76,6 +96,7 @@ class CypherCompiler:
             if query.order_by:
                 order_parts = []
                 for field, desc in query.order_by:
+                    self._validate_ident(field, "order_by field")
                     direction = "DESC" if desc else "ASC"
                     order_parts.append(f"end_node.{field} {direction}")
                 parts.append(f"ORDER BY {', '.join(order_parts)}")
@@ -105,6 +126,8 @@ class CypherCompiler:
     def _compile_start(self, start: StartSpec) -> str:
         node = "(start_node"
         if start.labels:
+            for label in start.labels:
+                self._validate_ident(label, "label")
             label_str = ":".join(start.labels)
             node += f":{label_str}"
         if start.properties:
@@ -129,6 +152,8 @@ class CypherCompiler:
     def _compile_relationship(self, step: TraversalStep) -> str:
         types = ""
         if step.edge_types:
+            for edge_type in step.edge_types:
+                self._validate_ident(edge_type, "edge type")
             types = ":" + "|".join(step.edge_types)
         depth = ""
         if step.min_depth != 1 or step.max_depth != 1:
@@ -148,6 +173,8 @@ class CypherCompiler:
         labels = step.node_labels or query.result_labels
         label_str = ""
         if labels:
+            for label in labels:
+                self._validate_ident(label, "label")
             label_str = ":" + ":".join(labels)
         return f"(end_node{label_str})"
 
@@ -164,13 +191,12 @@ class CypherCompiler:
     def _compile_filter(self, filter: PropertyFilter, alias: str) -> str:
         if isinstance(filter, PropertyCondition):
             return self._compile_condition(filter, alias)
-        if isinstance(filter, PropertyConditionGroup):
-            parts = [self._compile_filter(c, alias) for c in filter.conditions]
-            joiner = f" {filter.logical_operator.value} "
-            return f"({''.join(joiner.join(parts))})"
-        return ""
+        parts = [self._compile_filter(c, alias) for c in filter.conditions]
+        joiner = f" {filter.logical_operator.value} "
+        return f"({''.join(joiner.join(parts))})"
 
     def _compile_condition(self, cond: PropertyCondition, alias: str) -> str:
+        self._validate_ident(cond.field, "property field")
         if cond.operator == PropertyOperator.EXISTS:
             if cond.value:
                 return f"exists({alias}.{cond.field})"

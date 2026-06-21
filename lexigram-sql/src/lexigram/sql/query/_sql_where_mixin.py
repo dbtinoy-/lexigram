@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Self
 
+from lexigram.contracts.data.identifiers import Column
 from lexigram.sql.query.operators import Operator
 from lexigram.sql.query.sql_types import (
     Condition,
@@ -40,7 +41,7 @@ class _WhereMixin:
             elif op == Operator.NE:
                 op = Operator.IS_NOT_NULL
 
-        self._wheres.append(Condition(column, op, value))  # type: ignore[attr-defined]
+        self._wheres.append(Condition(Column(column), op, value))  # type: ignore[attr-defined]
         return self
 
     def where_raw(self, expression: str, params: list[Any] | None = None) -> Self:
@@ -48,6 +49,11 @@ class _WhereMixin:
 
         Example:
             >>> builder.where_raw("age > $1 AND age < $2", [18, 65])
+
+        Note:
+            Escape hatch: ``expression`` is passed through verbatim. Never
+            interpolate user input into it — always use parameter
+            placeholders with ``params``.
         """
         self._raw_wheres.append(RawExpression(expression, params))  # type: ignore[attr-defined]
         return self
@@ -60,7 +66,7 @@ class _WhereMixin:
         """
         if isinstance(op, str):
             op = Operator(op)
-        self._or_wheres.append(OrCondition(column, op, value))  # type: ignore[attr-defined]
+        self._or_wheres.append(OrCondition(Column(column), op, value))  # type: ignore[attr-defined]
         return self
 
     def where_between(self, column: str, low: Any, high: Any) -> Self:
@@ -69,12 +75,14 @@ class _WhereMixin:
         Example:
             >>> builder.where_between("age", 18, 65)
         """
-        self._wheres.append(Condition(column, Operator.BETWEEN, (low, high)))  # type: ignore[attr-defined]
+        self._wheres.append(Condition(Column(column), Operator.BETWEEN, (low, high)))  # type: ignore[attr-defined]
         return self
 
     def where_not_between(self, column: str, low: Any, high: Any) -> Self:
         """Add a NOT BETWEEN condition."""
-        self._wheres.append(Condition(column, Operator.NOT_BETWEEN, (low, high)))  # type: ignore[attr-defined]
+        self._wheres.append(  # type: ignore[attr-defined]
+            Condition(Column(column), Operator.NOT_BETWEEN, (low, high))
+        )
         return self
 
     def where_if(
@@ -104,7 +112,7 @@ class _WhereMixin:
             ...     [True],
             ... )
         """
-        sql = f"{column} IN ({subquery})"
+        sql = f"{Column(column)} IN ({subquery})"
         self._subquery_wheres.append(RawExpression(sql, params))  # type: ignore[attr-defined]
         return self
 
@@ -115,7 +123,7 @@ class _WhereMixin:
         params: list[Any] | None = None,
     ) -> Self:
         """Add WHERE column NOT IN (subquery)."""
-        sql = f"{column} NOT IN ({subquery})"
+        sql = f"{Column(column)} NOT IN ({subquery})"
         self._subquery_wheres.append(RawExpression(sql, params))  # type: ignore[attr-defined]
         return self
 

@@ -34,7 +34,7 @@ async def handle_generate(request: web.Request) -> web.Response:
     import io
 
     import numpy as np
-    import soundfile as sf  # type: ignore[import-untyped]
+    import soundfile as sf  # type: ignore[import-not-found]
 
     audio = np.concatenate(audio_chunks)
     buf = io.BytesIO()

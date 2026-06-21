@@ -84,7 +84,7 @@ class PluginEngineProvider(Provider):
         excluded = plan.disabled | (installed - plan.enabled)
         for issue in plan.issues:
             logger.warning("plugins.engine.plan_issue", issue=issue)
-        for provider in discover_providers(disabled=excluded):
+        for provider in discover_providers(disabled=set(excluded)):
             try:
                 await provider.register(container)
             except Exception as exc:  # noqa: BLE001 — third-party provider can raise anything

@@ -31,7 +31,7 @@ class _StarletteMiddlewareAdapter:
         return isinstance(middleware, StarletteMiddleware)
 
     def adapt(self, middleware: Any) -> StarletteMiddleware:
-        return middleware
+        return cast("StarletteMiddleware", middleware)
 
 
 class _TupleMiddlewareAdapter:

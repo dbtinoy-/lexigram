@@ -75,6 +75,7 @@ class AdminProvider(Provider):
         self._nav_item_builder: Any | None = None
         self._admin_resolver: Any | None = None
         self._mount_failures: dict[str, str] = {}
+        self._csrf_service: Any | None = None
 
     @property  # type: ignore[misc]
     def config(self) -> AdminConfig:
@@ -85,23 +86,6 @@ class AdminProvider(Provider):
     def from_config(cls, config: AdminConfig, **context: Any) -> Self:
         """Create provider from typed config."""
         return cls(config=config, **context)
-
-    @staticmethod
-    def rbac_resources_own_pages(resources: dict[str, Any]) -> bool:
-        """Return True when a ``users``/``roles`` resource is registered.
-
-        Such resources claim the exact paths the legacy ``RbacController``
-        serves (``/admin/users``, ``/admin/roles`` and their sub-paths), so
-        mounting the legacy controller alongside them would shadow the
-        resource CRUD UI — controllers register before resources.
-
-        Args:
-            resources: Mapping of resource name to resolved instance.
-
-        Returns:
-            True when a resource named ``users`` or ``roles`` is present.
-        """
-        return "users" in resources or "roles" in resources
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register admin and all sub-providers.
@@ -294,8 +278,8 @@ class AdminProvider(Provider):
         except Exception:
             try:
                 admin_settings_service = AdminSettingsService()
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — fallback is best-effort
+                _log.warning("admin.settings_service_fallback_failed", reason=str(exc))
 
         for controller_cls in self._controllers:
             try:
@@ -323,7 +307,6 @@ class AdminProvider(Provider):
         try:
             from lexigram.admin.auth.protocols import (
                 AdminAuditLogServiceProtocol,
-                AdminCsrfServiceProtocol,
             )
             from lexigram.admin.controllers.widgets import WidgetController
 
@@ -347,14 +330,8 @@ class AdminProvider(Provider):
                 widget_controller, "_audit_service"
             ):
                 widget_controller._audit_service = audit_service
-            try:
-                csrf_service = await admin_resolver.resolve(
-                    AdminCsrfServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception:
-                csrf_service = None
-            if csrf_service is not None and hasattr(widget_controller, "_csrf_service"):
+            csrf_service = await self._get_csrf_service(admin_resolver)
+            if hasattr(widget_controller, "_csrf_service"):
                 widget_controller._csrf_service = csrf_service
         except Exception as exc:
             _log.error(
@@ -420,9 +397,7 @@ class AdminProvider(Provider):
                 str(registration.default_role) if registration else "admin"
             )
             auth_controller._registration_domains = (
-                list(registration.allowed_email_domains)
-                if registration
-                else []
+                list(registration.allowed_email_domains) if registration else []
             )
         except Exception as exc:
             _log.error(
@@ -484,37 +459,6 @@ class AdminProvider(Provider):
                 strict=self._config.strict_resource_resolution,
             )
             self._mount_failures["controller:SetupController"] = str(exc)
-            if self._config.strict_resource_resolution:
-                raise
-
-        # Resolve built-in RbacController (roles and users pages). Skipped
-        # when a "users"/"roles" resource is registered — the resource owns
-        # those exact URLs and renders the Resource (lexigram-ui) CRUD
-        # instead of the legacy hand-rolled pages, so mounting both would
-        # shadow the resource routes (controllers register before resources).
-        legacy_rbac_shadowed = self.rbac_resources_own_pages(resources_dict)
-        if legacy_rbac_shadowed:
-            _log.info(
-                "admin.rbac_controller_skipped",
-                reason="users/roles resources registered",
-                resources=",".join(sorted(resources_dict)),
-            )
-        try:
-            if not legacy_rbac_shadowed:
-                from lexigram.admin.controllers.rbac import RbacController
-
-                rbac_controller = await admin_resolver.resolve(
-                    RbacController,
-                    bypass_visibility=True,
-                )
-                controller_instances.append(rbac_controller)
-        except Exception as exc:
-            _log.error(
-                "admin.rbac_controller_resolution_failed",
-                error=str(exc),
-                strict=self._config.strict_resource_resolution,
-            )
-            self._mount_failures["controller:RbacController"] = str(exc)
             if self._config.strict_resource_resolution:
                 raise
 
@@ -597,38 +541,30 @@ class AdminProvider(Provider):
         try:
             from lexigram.admin.auth.protocols import (
                 AdminAuditLogServiceProtocol,
-                AdminCsrfServiceProtocol,
             )
             from lexigram.admin.controllers.settings import SettingsController
             from lexigram.admin.engine.renderer import AdminRenderer
             from lexigram.admin.settings.panel.registry import ConfigRegistry
 
-            csrf_service: AdminCsrfServiceProtocol | None = None
-            try:
-                csrf_service = await admin_resolver.resolve(
-                    AdminCsrfServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception:
-                pass
+            settings_csrf = await self._get_csrf_service(admin_resolver)
 
-            registry: ConfigRegistry | None = None
+            settings_registry: ConfigRegistry | None = None
             try:
-                registry = await admin_resolver.resolve(
+                settings_registry = await admin_resolver.resolve(
                     ConfigRegistry,
                     bypass_visibility=True,
                 )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — settings registry is optional
+                _log.warning("admin.config_registry_unavailable", reason=str(exc))
 
-            audit_service: AdminAuditLogServiceProtocol | None = None
+            settings_audit: AdminAuditLogServiceProtocol | None = None
             try:
-                audit_service = await admin_resolver.resolve(
+                settings_audit = await admin_resolver.resolve(
                     AdminAuditLogServiceProtocol,
                     bypass_visibility=True,
                 )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — audit service is optional
+                _log.warning("admin.audit_service_unavailable", reason=str(exc))
 
             renderer = await admin_resolver.resolve(
                 AdminRenderer,
@@ -637,9 +573,9 @@ class AdminProvider(Provider):
             settings_controller = SettingsController(
                 renderer=renderer,
                 settings_service=admin_settings_service,
-                csrf_service=csrf_service,
-                audit_service=audit_service,
-                registry=registry,
+                csrf_service=settings_csrf,
+                audit_service=settings_audit,
+                registry=settings_registry,
             )
             controller_instances.append(settings_controller)
         except Exception as exc:
@@ -698,19 +634,11 @@ class AdminProvider(Provider):
         try:
             from lexigram.admin.auth.protocols import (
                 AdminAuditLogServiceProtocol,
-                AdminCsrfServiceProtocol,
             )
             from lexigram.admin.controllers.plugins import PluginsController
             from lexigram.admin.engine.renderer import AdminRenderer
 
-            plugins_csrf_service: AdminCsrfServiceProtocol | None = None
-            try:
-                plugins_csrf_service = await admin_resolver.resolve(
-                    AdminCsrfServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception:
-                pass
+            plugins_csrf_service = await self._get_csrf_service(admin_resolver)
 
             plugins_audit_service: AdminAuditLogServiceProtocol | None = None
             try:
@@ -718,8 +646,8 @@ class AdminProvider(Provider):
                     AdminAuditLogServiceProtocol,
                     bypass_visibility=True,
                 )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — audit service is optional
+                _log.warning("admin.audit_service_unavailable", reason=str(exc))
 
             plugins_renderer = await admin_resolver.resolve(
                 AdminRenderer,
@@ -768,38 +696,34 @@ class AdminProvider(Provider):
                 reason=str(exc),
             )
 
-        # Wire AdminCsrfMiddleware when the CSRF service is available.
+        # Wire AdminCsrfMiddleware — REQUIRED. The service is resolved at
+        # boot() (see boot()), so a missing binding fails startup, never
+        # silently disables CSRF.
+        from lexigram.admin.middleware.csrf import AdminCsrfMiddleware
+
+        csrf_service = await self._get_csrf_service(admin_resolver)
+        csrf_audit_service = None
         try:
             from lexigram.admin.auth.protocols import (
                 AdminAuditLogServiceProtocol,
-                AdminCsrfServiceProtocol,
             )
-            from lexigram.admin.middleware.csrf import AdminCsrfMiddleware
 
-            csrf_service = await admin_resolver.resolve(
-                AdminCsrfServiceProtocol,
+            csrf_audit_service = await admin_resolver.resolve(
+                AdminAuditLogServiceProtocol,
                 bypass_visibility=True,
             )
-            csrf_audit_service = None
-            try:
-                csrf_audit_service = await admin_resolver.resolve(
-                    AdminAuditLogServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception:  # noqa: BLE001 — CSRF audit is optional
-                pass
-            middleware_stack.append(
-                (
-                    AdminCsrfMiddleware,
-                    {
-                        "csrf_service": csrf_service,
-                        "audit_service": csrf_audit_service,
-                    },
-                )
+        except Exception as exc:  # noqa: BLE001 — CSRF audit is optional
+            _log.warning("admin.csrf_audit_service_unavailable", reason=str(exc))
+        middleware_stack.append(
+            (
+                AdminCsrfMiddleware,
+                {
+                    "csrf_service": csrf_service,
+                    "audit_service": csrf_audit_service,
+                },
             )
-            _log.debug("admin.csrf_middleware_wired")
-        except Exception as exc:  # noqa: BLE001 — CSRF middleware is optional
-            _log.warning("admin.csrf_middleware_skipped", reason=str(exc))
+        )
+        _log.debug("admin.csrf_middleware_wired")
 
         # Wire session-based auth guard — redirects unauthenticated requests to login.
         if self._config.require_auth:
@@ -929,11 +853,13 @@ class AdminProvider(Provider):
 
         contributors: list = []
         try:
-            registry = await admin_resolver.resolve(
+            contributor_registry = await admin_resolver.resolve(
                 ContributorRegistry,
                 bypass_visibility=True,
             )
-            contributors = list(registry.get_all())
+            if contributor_registry is None:
+                raise ValueError("Contributor registry unavailable")
+            contributors = list(contributor_registry.get_all())
         except Exception as exc:
             _log.warning("admin.contributors_discovery_failed", exc_info=True)
             self._mount_failures["contributor_discovery"] = str(exc)
@@ -967,7 +893,36 @@ class AdminProvider(Provider):
                         )
 
             # Wire data sources to resolved resources that declare _data_source_class
+            user_permission_inventory: Any = None
+            user_resource_cls: Any = None
+            try:
+                from lexigram.admin.rbac.inventory import PermissionInventoryService
+                from lexigram.admin.resources.users import UserResource
+
+                user_permission_inventory = await admin_resolver.resolve(
+                    PermissionInventoryService,
+                    bypass_visibility=True,
+                )
+                user_resource_cls = UserResource
+            except Exception:  # noqa: BLE001 — best-effort wiring
+                _log.debug("admin.user_permission_inventory_unavailable")
+
             for name, resource in list(resources_dict.items()):
+                if (
+                    user_permission_inventory is not None
+                    and user_resource_cls is not None
+                    and isinstance(resource, user_resource_cls)
+                ):
+                    try:
+                        resource.permission_inventory = user_permission_inventory
+                        _log.debug(
+                            "admin.user_permission_inventory_wired", resource=name
+                        )
+                    except Exception:  # noqa: BLE001 — best-effort wiring
+                        _log.debug(
+                            "admin.user_permission_inventory_wiring_failed",
+                            resource=name,
+                        )
                 dsc = getattr(type(resource), "_data_source_class", None)
                 if dsc is not None and hasattr(resource, "set_data_source"):
                     try:
@@ -1133,10 +1088,38 @@ class AdminProvider(Provider):
         _log.info("admin.mounted", prefix=self._config.prefix)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Boot all sub-providers in order."""
+        """Boot all sub-providers in order.
+
+        Raises:
+            RuntimeError: If the CSRF service cannot be resolved — admin
+                must not boot without CSRF enforcement (fail-closed).
+        """
         self._admin_resolver = container
         for sp in self._sub_providers:
             await sp.boot(container)
+
+        # CSRF is mandatory. Resolve here, not in mount_to_app(): boot
+        # failures propagate through the orchestrator and fail application
+        # startup, whereas mount_to_app() exceptions are caught by the web
+        # provider's RouteSetup and logged, silently skipping the admin mount.
+        from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+
+        try:
+            self._csrf_service = await container.resolve(
+                AdminCsrfServiceProtocol,
+                bypass_visibility=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
+            _log.error(
+                "admin.csrf_service_resolution_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            raise RuntimeError(
+                "CSRF service could not be resolved; refusing to boot admin "
+                "without CSRF enforcement"
+            ) from exc
+
         # Wire the container resolver into WidgetController so contributor
         # render_widget() implementations can resolve their service dependencies.
         try:
@@ -1146,6 +1129,30 @@ class AdminProvider(Provider):
             wc._resolver = container
         except Exception:
             _log.warning("admin.widget_controller_resolver_wire_failed", exc_info=True)
+
+    async def _get_csrf_service(self, admin_resolver: Any) -> Any:
+        """Return the boot-resolved CSRF service, resolving lazily if needed.
+
+        Mount can be invoked directly (tests / factory paths) without a prior
+        boot(); in that case resolve here. Failures are never swallowed.
+
+        Raises:
+            RuntimeError: If the CSRF service cannot be resolved.
+        """
+        if self._csrf_service is not None:
+            return self._csrf_service
+        from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+
+        try:
+            self._csrf_service = await admin_resolver.resolve(
+                AdminCsrfServiceProtocol,
+                bypass_visibility=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
+            raise RuntimeError(
+                "CSRF service could not be resolved during admin mount"
+            ) from exc
+        return self._csrf_service
 
     async def shutdown(self) -> None:
         """Shut down sub-providers in reverse order."""

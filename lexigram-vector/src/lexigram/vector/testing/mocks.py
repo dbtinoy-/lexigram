@@ -116,9 +116,9 @@ class MockVectorStore:
         query: list[float] | str | None = None,
         k: int | None = None,
         top_k: int | None = None,
-        filter: dict | None = None,
+        filter: dict[str, Any] | None = None,
         filters: dict[str, Any] | None = None,
-        filter_: dict | None = None,
+        filter_: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> Result[list[SearchResult], VectorStoreError]:
         """Search for similar documents.
@@ -329,7 +329,8 @@ class MockVectorStoreWithSimilarity(MockVectorStore):
         if magnitude1 == 0 or magnitude2 == 0:
             return 0.0
 
-        return dot_product / (magnitude1 * magnitude2)
+        score: float = dot_product / (magnitude1 * magnitude2)
+        return score
 
     async def search(
         self,
@@ -337,9 +338,9 @@ class MockVectorStoreWithSimilarity(MockVectorStore):
         query: list[float] | str | None = None,
         k: int | None = None,
         top_k: int | None = None,
-        filter: dict | None = None,
+        filter: dict[str, Any] | None = None,
         filters: dict[str, Any] | None = None,
-        filter_: dict | None = None,
+        filter_: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> Result[list[SearchResult], VectorStoreError]:
         """Search with actual similarity calculation.
@@ -456,9 +457,9 @@ class MockVectorStoreWithErrors(MockVectorStore):
         query: list[float] | str | None = None,
         k: int | None = None,
         top_k: int | None = None,
-        filter: dict | None = None,
+        filter: dict[str, Any] | None = None,
         filters: dict[str, Any] | None = None,
-        filter_: dict | None = None,
+        filter_: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> Result[list[SearchResult], VectorStoreError]:
         """Search with possible error."""

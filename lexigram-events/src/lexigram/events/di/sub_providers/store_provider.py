@@ -34,13 +34,7 @@ class StoreSubProvider:
         from lexigram.events.stores import InMemorySnapshotStore, SnapshotManager
         from lexigram.events.types import EventStoreBackend
 
-        store_type = self._config.event_store_backend
-        if isinstance(store_type, EventStoreBackend):
-            backend_key = store_type.value
-        elif isinstance(store_type, str):
-            backend_key = store_type
-        else:
-            backend_key = str(store_type)
+        backend_key = self._config.event_store_backend.value
 
         try:
             self.event_store = self._registry.create(
@@ -94,9 +88,7 @@ class StoreSubProvider:
 
         if self.event_store:
             container.singleton(cast("Any", AbstractEventStore), self.event_store)
-            container.singleton(
-                cast("Any", EventStoreProtocol), self.event_store
-            )
+            container.singleton(cast("Any", EventStoreProtocol), self.event_store)
         if self.snapshot_store:
             container.singleton(cast("Any", AbstractSnapshotStore), self.snapshot_store)
         if self.snapshot_manager:

@@ -49,7 +49,7 @@ def test_cluster_layout_renders_sidebar_next_to_content() -> None:
     html = render_to_string(
         ClusterLayout(items=secondary, content=el("div", "page-body"))
     )
-    assert 'class="flex flex-col lg:flex-row gap-6"' in html
+    assert 'class="flex flex-col md:flex-row gap-6"' in html
     assert "flex-1 min-w-0" in html
     assert "page-body" in html
     assert "/admin/web" in html

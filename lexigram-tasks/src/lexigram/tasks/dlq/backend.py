@@ -159,7 +159,8 @@ class StateStoreDLQBackend:
         raw = await self._store.get(_DLQ_INDEX_KEY)
         if raw is None:
             return []
-        return json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+        parsed: list[str] = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+        return parsed
 
     async def _save_index(self, index: list[str]) -> None:
         await self._store.set(_DLQ_INDEX_KEY, json.dumps(index), self._ttl)
@@ -179,7 +180,10 @@ class StateStoreDLQBackend:
         raw = await self._store.get(self._record_key(record_id))
         if raw is None:
             return None
-        return json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+        parsed: dict[str, Any] | None = (
+            json.loads(raw) if isinstance(raw, (str, bytes)) else raw
+        )
+        return parsed
 
     async def list_all(self) -> list[dict[str, Any]]:
         """Return all stored failure records in insertion order."""

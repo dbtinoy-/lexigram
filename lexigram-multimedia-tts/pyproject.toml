@@ -84,7 +84,7 @@ python_version = "3.11"
 namespace_packages = true
 explicit_package_bases = true
 mypy_path = ["src"]
-ignore_missing_imports = true
+ignore_missing_imports = false
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -98,7 +98,59 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 show_error_codes = true
-overrides = [{ module = "tests.*", ignore_errors = true }]
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = [
+        "structlog.*",
+        "asyncpg.*",
+        "aioredis.*",
+        "aiomysql.*",
+        "qdrant_client.*",
+        "chromadb.*",
+        "anthropic.*",
+        "openai.*",
+        "cohere.*",
+        "groq.*",
+        "mistralai.*",
+        "ollama.*",
+        "pinecone.*",
+        "meilisearch.*",
+        "boto3.*",
+        "botocore.*",
+        "google.cloud.*",
+        "authlib.*",
+        "strawberry.*",
+        "mkdocs.*",
+        "aiohttp.*",
+        "aiofiles.*",
+        "alembic.*",
+        "sqlalchemy.*",
+        "pydantic.*",
+        "pydantic_settings.*",
+        "redis.*",
+        "celery.*",
+        "kafka.*",
+        "aiokafka.*",
+        "aio_pika.*",
+        "uvicorn.*",
+        "starlette.*",
+        "httpx.*",
+        "tenacity.*",
+        "cachetools.*",
+        "importlib_metadata.*",
+        "pkg_resources.*",
+        "cryptography.*",
+        "jwt.*",
+        "passlib.*",
+        "bcrypt.*",
+        "yaml.*",
+        "toml.*",
+        "dotenv.*",
+        "orjson.*",
+        "msgpack.*",
+    ], ignore_missing_imports = true },
+]
+
 
 [tool.ruff]
 extend = "../pyproject.toml"

@@ -7,6 +7,7 @@ with SQLite backend using the generic database provider.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.data.identifiers import Table
@@ -325,6 +326,11 @@ class SqliteEventStore(AbstractEventStore):
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.close()

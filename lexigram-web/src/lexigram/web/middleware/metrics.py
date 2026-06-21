@@ -27,7 +27,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 import time
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from starlette.routing import Match
 
@@ -341,7 +341,7 @@ class MetricsMiddleware:
                 match, _ = route.matches(scope)
                 if match == Match.FULL and hasattr(route, "path"):
                     return str(route.path)
-        return scope.get("path", "/")
+        return cast("str", scope.get("path", "/"))
 
 
 __all__ = [

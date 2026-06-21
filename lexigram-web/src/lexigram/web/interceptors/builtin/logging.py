@@ -159,12 +159,12 @@ class LoggingInterceptor(WebInterceptorProtocol):
         # Check X-Forwarded-For header
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            return cast("str", forwarded.split(",")[0].strip())
 
         # Fall back to direct client
         client = getattr(request, "client", None)
         if client:
-            return client.host
+            return cast("str", client.host)
         return "unknown"
 
 

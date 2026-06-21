@@ -201,7 +201,7 @@ class OpenAICompatibleEmbeddingClient:
                     f"Embedding API returned empty results for {len(texts)} input(s)"
                 )
             if isinstance(raw[0], list):
-                vectors = raw
+                vectors: list[list[float]] = raw
             else:
                 vectors = [item["embedding"] for item in raw]
         else:

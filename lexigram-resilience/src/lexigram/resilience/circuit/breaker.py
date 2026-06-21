@@ -399,6 +399,9 @@ class CircuitBreaker:
             # counters (e.g. resetting consecutive_failures to 0) without any
             # corresponding state-machine benefit.
             async with self._lock:
+                # A concurrent coroutine may have opened the circuit between
+                # our state check above and the lock acquisition here; the
+                # narrowing below is therefore not reachable-proof at runtime.
                 if self._state != CircuitState.OPEN:
                     self._record_success(0.0)  # No response time for context manager
         except self.config.expected_exception as e:
@@ -424,7 +427,8 @@ class CircuitBreaker:
                 self._change_state(CircuitState.HALF_OPEN)
             else:
                 if self._fallback:
-                    return self._fallback(*args, **kwargs)
+                    fallback_fn: Callable[..., T] = self._fallback
+                    return fallback_fn(*args, **kwargs)
                 raise CircuitOpenError(f"Circuit '{self.config.name}' is OPEN")
 
         # 2. Execution

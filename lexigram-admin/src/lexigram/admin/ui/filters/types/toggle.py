@@ -42,7 +42,7 @@ class ToggleFilter(Filter):
         self._true_label = true_label
         self._false_label = false_label
 
-    def render(self, current_value: Any = None, url: str | None = None) -> str:  # type: ignore[override]
+    def render(self, current_value: Any = None, url: str | None = None) -> str:
         """Render as checkbox or radio buttons using atomic components."""
         from lexigram.ui import Select
 

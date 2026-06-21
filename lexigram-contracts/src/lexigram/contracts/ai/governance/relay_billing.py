@@ -280,7 +280,7 @@ class RelayBillingProtocol(Protocol):
     async def settle(
         self,
         reservation: RelayUsageReservation,
-        result: RelayConvertResult,
+        result: RelayConvertResult[RelayRequestPayload],
         *,
         status: Literal["completed", "failed", "cancelled", "truncated"],
     ) -> Result[RelayUsageRecord, RelayBillingError]:

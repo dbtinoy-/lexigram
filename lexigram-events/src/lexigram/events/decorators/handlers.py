@@ -89,7 +89,8 @@ def get_handler_info(handler: Callable) -> HandlerInfo | None:
 
     # Fallback to checking attached metadata (for backward compatibility)
     if hasattr(handler, "_handler_info"):
-        return handler._handler_info
+        handler_info: HandlerInfo | None = handler._handler_info
+        return handler_info
 
     return None
 

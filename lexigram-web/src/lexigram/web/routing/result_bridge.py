@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.contracts.exceptions.domain import (
     AuthenticationError,
@@ -73,7 +73,7 @@ def _get_status(error: Exception) -> int:
     """
     # Check for HTTPError.status_code attribute first (web framework errors)
     if hasattr(error, "status_code"):
-        return error.status_code
+        return cast("int", error.status_code)
 
     # Check registry for domain errors (contracts exceptions)
     for error_type, status in _ERROR_STATUS_REGISTRY:

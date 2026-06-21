@@ -93,6 +93,7 @@ EXPECTED_MODULE_EXPORTS: dict[str, list[str]] = {
         "IndexSettings",
         "SearchFilters",
         "SearchIndexResult",
+        "SearchableSpec",
     ],
 }
 

@@ -271,7 +271,7 @@ class StreamDispatcher:
 
         # Add type-specific handlers (including parent types)
         for registered_type, type_handlers in self._subscribers.items():
-            if issubclass(event_type, cast("type[Event]", registered_type)):
+            if issubclass(event_type, registered_type):
                 handlers.extend(type_handlers)
 
         return handlers

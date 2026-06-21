@@ -143,8 +143,6 @@ class WebAdminContributor(BaseAdminContributor):
         Args:
             container: The DI container resolver.
         """
-        if container is None:
-            return
         from lexigram.web.admin.handlers.active_connections import (
             ActiveConnectionsWidgetHandler,
         )

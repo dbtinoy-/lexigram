@@ -6,7 +6,7 @@ Import through ``lexigram.monitor.di`` — the public API is re-exported there.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from lexigram.monitor.config import MonitorConfig
@@ -49,7 +49,9 @@ def create_prometheus_provider(port: int = 8000) -> MonitorProvider:
     return MonitorProvider(backend)
 
 
-def create_provider_from_config(config: MonitorConfig) -> MonitorProvider:
+def create_provider_from_config(
+    config: MonitorConfig | dict[str, Any] | None,
+) -> MonitorProvider:
     """Create a MonitorProvider from a ``MonitorConfig`` object or mapping.
 
     Selects the appropriate monitoring backend and, when available,
@@ -73,12 +75,13 @@ def create_provider_from_config(config: MonitorConfig) -> MonitorProvider:
         raise ValueError("Monitor provider config is required")
 
     # Accept mapping/dict or already-constructed pydantic model.
-    if not isinstance(config, _MonitorCfg):
+    candidate: Any = config
+    if not isinstance(candidate, _MonitorCfg):
         try:
-            if isinstance(config, dict):
-                config = _MonitorCfg(**config)
+            if isinstance(candidate, dict):
+                config = _MonitorCfg(**candidate)
             else:
-                config = _MonitorCfg.parse_obj(config)
+                config = _MonitorCfg.model_validate(candidate)
         except (ValueError, TypeError):
             pass
 
@@ -93,7 +96,8 @@ def create_provider_from_config(config: MonitorConfig) -> MonitorProvider:
     from lexigram.monitor.backends.registry import MonitorBackendRegistryManager
 
     registry = MonitorBackendRegistryManager.with_defaults()
-    backend = registry.create_backend(backend_type, config)
+    monitor_config: MonitorConfig = cast("MonitorConfig", config)
+    backend = registry.create_backend(backend_type, monitor_config)
 
     exporter = None
     if backend_type == BackendType.PROMETHEUS:

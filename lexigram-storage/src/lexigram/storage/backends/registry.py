@@ -239,7 +239,8 @@ class DriverRegistry(_CoreBackendRegistry):
             raise ValueError(
                 f"Unknown storage driver: {driver_type!r}. Available: {', '.join(available)}",
             )
-        return factory(config)
+        driver: BlobStoreProtocol = factory(config)
+        return driver
 
     def available_drivers(self) -> list[str]:
         """Return a sorted list of all registered driver-type strings."""

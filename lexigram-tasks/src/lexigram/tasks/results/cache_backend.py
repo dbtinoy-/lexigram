@@ -119,14 +119,14 @@ class CacheBackendResultStore(ResultStore):
 
     async def get(self, job_id: str) -> JobResult | None:
         """Return the stored result, or ``None`` if absent or expired."""
-        raw = await self._cache.get(self._key(job_id))
+        raw: Any = await self._cache.get(self._key(job_id))
         if raw is None:
             return None
         return self._deserialize(raw)
 
     async def delete(self, job_id: str) -> bool:
         """Remove the result from the cache and return ``True`` if it existed."""
-        result = await self._cache.delete(self._key(job_id))
+        result: Any = await self._cache.delete(self._key(job_id))
         if isinstance(result, Result):
             return result.unwrap() if result.is_ok() else False
         if isinstance(result, bool):

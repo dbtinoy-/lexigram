@@ -19,7 +19,7 @@ class DateField(SchemaField[date]):
 
         return InfolistEntry(
             name=self.name,
-            label=self.label or self.name.replace('_', ' ').title(),
+            label=self.label or self.name.replace("_", " ").title(),
             value=value,
             type=InfolistEntryType.DATE,
         )
@@ -73,7 +73,7 @@ class DateTimeField(SchemaField[datetime]):
 
         return InfolistEntry(
             name=self.name,
-            label=self.label or self.name.replace('_', ' ').title(),
+            label=self.label or self.name.replace("_", " ").title(),
             value=value,
             type=InfolistEntryType.DATE,
         )

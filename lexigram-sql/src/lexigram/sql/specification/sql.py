@@ -27,6 +27,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
+from lexigram.contracts.data import Column
 from lexigram.sql.query.sql_builder import SQLDialect
 
 T = TypeVar("T")
@@ -125,7 +126,7 @@ class FieldEquals(SqlSpecification):
     """Matches when field equals value."""
 
     def __init__(self, field: str, value: Any) -> None:
-        self.field = field
+        self.field = str(Column(field))
         self.value = value
 
     def to_sql(
@@ -138,7 +139,7 @@ class FieldIn(SqlSpecification):
     """Matches when field is in a set of values."""
 
     def __init__(self, field: str, values: list[Any]) -> None:
-        self.field = field
+        self.field = str(Column(field))
         self.values = values
 
     def to_sql(
@@ -154,7 +155,7 @@ class FieldBetween(SqlSpecification):
     """Matches when field is between low and high."""
 
     def __init__(self, field: str, low: Any, high: Any) -> None:
-        self.field = field
+        self.field = str(Column(field))
         self.low = low
         self.high = high
 
@@ -168,7 +169,7 @@ class FieldLike(SqlSpecification):
     """Matches when field matches a LIKE pattern."""
 
     def __init__(self, field: str, pattern: str) -> None:
-        self.field = field
+        self.field = str(Column(field))
         self.pattern = pattern
 
     def to_sql(
@@ -181,7 +182,7 @@ class FieldIsNull(SqlSpecification):
     """Matches when field is NULL."""
 
     def __init__(self, field: str) -> None:
-        self.field = field
+        self.field = str(Column(field))
 
     def to_sql(
         self, dialect: SQLDialect = SQLDialect.POSTGRESQL
@@ -193,7 +194,7 @@ class FieldIsNotNull(SqlSpecification):
     """Matches when field is NOT NULL."""
 
     def __init__(self, field: str) -> None:
-        self.field = field
+        self.field = str(Column(field))
 
     def to_sql(
         self, dialect: SQLDialect = SQLDialect.POSTGRESQL
@@ -205,7 +206,7 @@ class FieldGreaterThan(SqlSpecification):
     """Matches when field > value."""
 
     def __init__(self, field: str, value: Any) -> None:
-        self.field = field
+        self.field = str(Column(field))
         self.value = value
 
     def to_sql(
@@ -218,7 +219,7 @@ class FieldLessThan(SqlSpecification):
     """Matches when field < value."""
 
     def __init__(self, field: str, value: Any) -> None:
-        self.field = field
+        self.field = str(Column(field))
         self.value = value
 
     def to_sql(
@@ -228,7 +229,13 @@ class FieldLessThan(SqlSpecification):
 
 
 class RawSpecification(SqlSpecification):
-    """A raw SQL specification for cases not covered by built-in specs."""
+    """A raw SQL specification for cases not covered by built-in specs.
+
+    Note:
+        Escape hatch: the SQL fragment is passed through verbatim. Callers
+        must never interpolate user input into ``sql`` — always use ``?``
+        placeholders with ``params``.
+    """
 
     def __init__(self, sql: str, params: list[Any] | None = None) -> None:
         self._sql = sql

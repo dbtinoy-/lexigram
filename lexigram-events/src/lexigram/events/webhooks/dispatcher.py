@@ -115,9 +115,7 @@ class WebhookDispatcher:
             event: Domain event to fan-out.
             endpoints: Registered endpoints to consider for delivery.
         """
-        payload = json.dumps(event.to_dict())
-        if isinstance(payload, str):
-            payload = payload.encode()
+        payload: bytes = json.dumps(event.to_dict())
         event_type = event.event_type or type(event).__name__
         for endpoint in endpoints:
             if not endpoint.accepts(event):

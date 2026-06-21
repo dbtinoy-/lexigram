@@ -46,12 +46,13 @@ class ControllerRegistry(Registry[str, type]):
         Returns:
             The registered controller class
         """
+        controller_class: type | None
         if isinstance(key, type):
             controller_class = key
             name = getattr(controller_class, "__name__", str(controller_class))
         else:
             name = key
-            controller_class = value  # type: ignore[assignment]
+            controller_class = value
 
         if controller_class is None:
             # Decorator usage: @registry.register("name")

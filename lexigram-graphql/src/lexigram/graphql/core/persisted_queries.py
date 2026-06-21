@@ -162,7 +162,8 @@ class CacheBackendPersistedQueryStore:
         """Get a query by its hash."""
         key = f"{self._prefix}{hash}"
         try:
-            return await self._cache.get(key)
+            cached: str | None = await self._cache.get(key)
+            return cached
         except (OSError, LookupError, RuntimeError) as e:
             logger.warning("cache_apq_get_failed", key=key, error=str(e))
             return None

@@ -82,9 +82,7 @@ class SchemaRegistry:
         # Register event class
         if schema.event_class:
             versions = self._event_classes.get(schema.event_type)
-            if versions is None:
-                versions = {}
-                self._event_classes.register(schema.event_type, versions)
+            self._event_classes.register(schema.event_type, versions)
             versions[schema.version] = schema.event_class
 
     async def get_schema(
@@ -129,8 +127,6 @@ class SchemaRegistry:
             The event class or None.
         """
         versions = self._event_classes.get(event_type)
-        if versions is None:
-            return None
 
         if version is None:
             if not versions:
@@ -207,7 +203,5 @@ class SchemaRegistry:
         """
         event_type = event_type or event_class.__name__
         versions = self._event_classes.get(event_type)
-        if versions is None:
-            versions = {}
-            self._event_classes.register(event_type, versions)
+        self._event_classes.register(event_type, versions)
         versions[version] = event_class

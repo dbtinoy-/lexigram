@@ -487,8 +487,7 @@ def create_reranker(
         raise NotImplementedError(
             "Cross-encoder reranking is not supported in the current version.",
         )
-    msg = f"Unknown reranking strategy: {strategy}"
-    raise ValueError(msg)
+    raise ValueError(f"Unknown reranking strategy: {strategy}")
 
 
 class RerankerPipeline:

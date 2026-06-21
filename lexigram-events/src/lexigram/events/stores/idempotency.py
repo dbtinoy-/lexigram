@@ -89,7 +89,8 @@ class SqlIdempotencyStore(AbstractIdempotencyStore):
                 (now,),
             )
             await self.connection.commit()
-            return cursor.rowcount
+            count: int = cursor.rowcount
+            return count
 
 
 class InMemoryIdempotencyStore(AbstractIdempotencyStore):

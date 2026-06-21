@@ -151,22 +151,15 @@ class Bus(ABC, Generic[TMessage, TResult]):
                 )
 
             middleware = self._middlewares[idx]
-            from typing import cast
-
-            mw = cast("MiddlewareFunc", middleware)
+            mw = middleware
 
             def _next(m: TMessage) -> Awaitable[TResult]:
                 return chain(idx + 1, m)
 
             res: Awaitable[TResult] = mw(msg, _next)
-            from typing import cast
+            return await res
 
-            # Cast through Any to prevent mypy from resolving complex generics
-            return cast("TResult", await res)
-
-        from typing import cast
-
-        return cast("TResult", await chain(0, message))
+        return await chain(0, message)
 
     async def _call_handler(self, handler: Any, message: TMessage) -> TResult:
         """Call handler with message.

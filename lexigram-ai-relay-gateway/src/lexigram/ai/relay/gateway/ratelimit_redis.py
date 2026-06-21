@@ -70,7 +70,9 @@ class RedisRateLimitCounter:
         """
         result = cast(
             "Awaitable[list[int]]",
-            self._client.eval(_FIXED_WINDOW_SCRIPT, 1, key, limit, window_seconds),
+            self._client.eval(
+                _FIXED_WINDOW_SCRIPT, 1, key, limit, window_seconds
+            ),
         )
         values = await result
         allowed, count, ttl = values

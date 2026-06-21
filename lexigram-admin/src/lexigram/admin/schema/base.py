@@ -50,7 +50,7 @@ class SchemaField(ABC, Generic[T]):
 
         return InfolistEntry(
             name=self.name,
-            label=self.label or self.name.replace('_', ' ').title(),
+            label=self.label or self.name.replace("_", " ").title(),
             value=value,
             type=InfolistEntryType.TEXT,
         )

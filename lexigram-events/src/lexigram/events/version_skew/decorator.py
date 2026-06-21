@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from lexigram.events.version_skew.registry import KnownEventSetRegistry
 
 
-def known_events(consumer_id: str):
+def known_events(consumer_id: str) -> Callable[[type], type]:
     """Class decorator that registers a known event set.
 
     Reads ``KNOWN: list[EventTypeVersion]`` from the decorated class.

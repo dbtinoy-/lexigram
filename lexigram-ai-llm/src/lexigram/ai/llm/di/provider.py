@@ -161,11 +161,12 @@ class LLMProvider(Provider):
         container.singleton(ParserRegistry, parser_registry)
         logger.info("Registered ParserRegistry with default parsers")
 
+        llm_client: LLMClientProtocol
         try:
             if self.stub_mode:
                 from lexigram.ai.llm.clients.noop import NoOpLLMClient
 
-                llm_client = NoOpLLMClient(self.config)
+                llm_client = cast("LLMClientProtocol", NoOpLLMClient(self.config))
             else:
                 llm_client = await create_llm_client(self.config, registry)
         except ImportError as exc:

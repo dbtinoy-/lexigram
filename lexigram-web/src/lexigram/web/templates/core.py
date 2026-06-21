@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from markupsafe import Markup
 from starlette.responses import HTMLResponse
@@ -88,8 +88,8 @@ class Jinja2Templates:
         self._add_default_filters()
         self._add_default_globals()
 
-    def _add_default_filters(self) -> Any:
-        def tojson(obj) -> Any:
+    def _add_default_filters(self) -> None:
+        def tojson(obj: Any) -> Markup | str:
             try:
                 json_str = json.dumps(obj, default=str, ensure_ascii=False)
                 return Markup(json_str)
@@ -97,7 +97,7 @@ class Jinja2Templates:
                 logger.debug("tojson filter failed, falling back to str(): %s", e)
                 return str(obj)
 
-        def format_datetime(value, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
+        def format_datetime(value: Any, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
             if value is None:
                 return ""
             if isinstance(value, (int, float)):
@@ -107,7 +107,7 @@ class Jinja2Templates:
                     logger.debug("format_datetime timestamp conversion failed: %s", e)
                     return str(value)
             try:
-                return value.strftime(fmt)
+                return cast("str", value.strftime(fmt))
             except (AttributeError, TypeError) as e:
                 logger.debug("format_datetime failed to format value: %s", e)
                 return str(value)
@@ -115,7 +115,7 @@ class Jinja2Templates:
         self.env.filters["tojson"] = tojson
         self.env.filters["format_datetime"] = format_datetime
 
-    def _add_default_globals(self) -> Any:
+    def _add_default_globals(self) -> None:
         self.env.globals["now"] = lambda: datetime.now(UTC)
         self.env.globals["static_url"] = lambda path: f"/static/{str(path).lstrip('/')}"
 
@@ -126,7 +126,7 @@ class Jinja2Templates:
         self,
         name: str,
         context: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Render a template to a string.
 
@@ -145,7 +145,7 @@ class Jinja2Templates:
         for processor in self.context_processors:
             context = processor(context)
 
-        return template.render(**context)
+        return cast("str", template.render(**context))
 
     def render_response(
         self,
@@ -153,7 +153,7 @@ class Jinja2Templates:
         context: dict[str, Any] | None = None,
         status_code: int = 200,
         headers: dict[str, str] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> HTMLResponse:
         """Render a template and return an :class:`~starlette.responses.HTMLResponse`.
 
@@ -181,8 +181,8 @@ class TemplateResponse(HTMLResponse):
         context: dict[str, Any] | None = None,
         status_code: int = 200,
         headers: dict[str, str] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         content = template.render_template(name, context, **kwargs)
         super().__init__(content=content, status_code=status_code, headers=headers)
 
@@ -191,7 +191,7 @@ def render_template(
     name: str,
     context: dict[str, Any] | None = None,
     templates: Jinja2Templates | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> str:
     if templates is None:
         templates = Jinja2Templates()
@@ -204,7 +204,7 @@ def template_response(
     templates: Jinja2Templates | None = None,
     status_code: int = 200,
     headers: dict[str, str] | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> TemplateResponse:
     if templates is None:
         templates = Jinja2Templates()

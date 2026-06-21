@@ -466,6 +466,25 @@ class DeleteActionHandler:
         from lexigram.admin.resources.base import Resource as AdminResource
 
         if isinstance(resource, AdminResource) and resource._data_source:
+            item = await resource._data_source.find_one(item_id)
+            if item is None:
+                return HTMLResponse("Not found", status_code=404)
+
+            can_delete = getattr(resource, "can_delete", None)
+            if can_delete and not can_delete(item):
+                is_htmx = request.headers.get("HX-Request") == "true"
+                if is_htmx:
+                    response = HTMLResponse("")
+                    response.headers["HX-Trigger"] = (
+                        '{"show-toast":{"message":"This record cannot be deleted","type":"error"}}'
+                    )
+                    return response
+                return HTMLResponse(
+                    '<html><head><meta http-equiv="refresh" content="0;url=/admin/"></head>'
+                    "<body>This record cannot be deleted</body></html>",
+                    status_code=409,
+                )
+
             success = await resource._data_source.delete(item_id)
             if not success:
                 return HTMLResponse("Not found", status_code=404)
@@ -490,6 +509,132 @@ class DeleteActionHandler:
             )
 
         return HTMLResponse("Delete not supported", status_code=400)
+
+
+class UserPermissionsActionHandler:
+    """Handler for the per-user direct permission editing page (users only)."""
+
+    def __init__(self, config: AdminConfig) -> None:
+        """Initialize the handler.
+
+        Args:
+            config: Admin configuration (used for the CSRF secret).
+        """
+        self._config = config
+
+    def can_handle(self, action: str) -> bool:
+        """Whether this handler serves the given route action."""
+        return action == "permissions"
+
+    async def handle(
+        self, request: StarletteRequest, resource: Any, **kwargs: Any
+    ) -> Any:
+        """Serve GET (form) and POST (save) for user permissions.
+
+        Only :class:`~lexigram.admin.resources.users.UserResource`
+        instances support the page; other resources get a 404.
+        """
+        from lexigram.admin.resources.users import UserResource
+
+        if not isinstance(resource, UserResource):
+            return HTMLResponse(
+                "<h1>Permissions not supported for this resource</h1>",
+                status_code=404,
+            )
+        item_id = request.path_params.get("id", "?")
+        data_source = getattr(resource, "_data_source", None)
+        if data_source is None:
+            return HTMLResponse("Permissions not available", status_code=400)
+
+        if request.method == "POST":
+            return await self._handle_submit(request, resource, data_source, item_id)
+        return await self._handle_form(request, resource, data_source, item_id)
+
+    async def _handle_form(
+        self,
+        request: StarletteRequest,
+        resource: Any,
+        data_source: Any,
+        item_id: str,
+    ) -> Any:
+        """Render the permission checkboxes for one user."""
+        user = await data_source.find_one(item_id)
+        if user is None:
+            return HTMLResponse("<h1>User not found</h1>", status_code=404)
+
+        self._ensure_csrf_token(request)
+        prefix = request.scope.get("admin_resource_prefix", resource.name or "")
+
+        from lexigram.admin.resources.permissions_renderer import (
+            UserPermissionsRenderer,
+        )
+
+        renderer = UserPermissionsRenderer(resource_name=resource.name or "")
+        return renderer.render_form(
+            request=request,
+            user=user,
+            inventory=self._permission_inventory(resource),
+            item_id=item_id,
+            prefix=prefix,
+        )
+
+    async def _handle_submit(
+        self,
+        request: StarletteRequest,
+        resource: Any,
+        data_source: Any,
+        item_id: str,
+    ) -> Any:
+        """Persist the submitted direct permissions for one user."""
+        form = request.scope.get("admin_form_data") or await request.form()
+        permissions = sorted(
+            {str(v).strip() for v in form.getlist("permissions") if str(v).strip()}
+        )
+
+        user = await data_source.find_one(item_id)
+        prefix = request.scope.get("admin_resource_prefix", resource.name or "")
+        if user is None:
+            return RedirectResponse(
+                url=f"/admin/{prefix}?error=User not found.", status_code=302
+            )
+        await data_source.update(item_id, {"permissions": permissions})
+        return RedirectResponse(
+            url=f"/admin/{prefix}?notice=User permissions updated.",
+            status_code=302,
+        )
+
+    def _permission_inventory(self, resource: Any) -> Any:
+        """Return the grouped permission inventory for the form.
+
+        Uses the inventory wired onto the resource at mount time; falls
+        back to a local inventory scoped to the resource's own name.
+        """
+        inventory = getattr(resource, "permission_inventory", None)
+        if inventory is not None:
+            return inventory
+        from lexigram.admin.rbac.inventory import PermissionInventoryService
+
+        logger.debug(
+            "admin.user_permissions_inventory_fallback",
+            resource=resource.name,
+        )
+        fallback = PermissionInventoryService()
+        fallback.register_resources([resource.name or "users"])
+        return fallback
+
+    def _ensure_csrf_token(self, request: StarletteRequest) -> None:
+        """Ensure ``request.state.csrf_token`` exists for the form embed."""
+        if getattr(getattr(request, "state", None), "csrf_token", None):
+            return
+        from lexigram.admin.auth.services.csrf_service import AdminCsrfService
+
+        session = getattr(request, "session", {})
+        session_id = session.get("csrf_session_id") or session.get(
+            "admin_user_id", "anonymous"
+        )
+        request.state.csrf_token = AdminCsrfService(
+            secret=self._config.auth.session_secret
+        ).generate_token(session_id)
 
 
 class BulkActionHandler:
@@ -628,6 +773,7 @@ class ActionHandlerRegistry:
             PurgeActionHandler(),
             DeleteActionHandler(),
             ImportActionHandler(),
+            UserPermissionsActionHandler(self._config),
             BulkActionHandler(),
             DefaultActionHandler(),
         ]

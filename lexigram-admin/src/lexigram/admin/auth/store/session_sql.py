@@ -8,10 +8,10 @@ on this class directly.
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING, Any
 
-from lexigram.contracts.data import DatabaseProviderProtocol
+from lexigram.contracts.data import DatabaseProviderProtocol, Table
+from lexigram.serialization import dumps_str, loads_str
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -35,7 +35,7 @@ class AdminSessionSqlRepository:
     Implements the ``SessionRepositoryProtocol`` protocol (structural subtyping).
     """
 
-    _TABLE = "admin_sessions"
+    _TABLE = Table("admin_sessions")
 
     def __init__(self, db_provider: DatabaseProviderProtocol) -> None:
         """Initialise with a resolved database provider.
@@ -83,7 +83,7 @@ class AdminSessionSqlRepository:
                 "SELECT EXISTS ("
                 "  SELECT FROM information_schema.tables"
                 "  WHERE table_schema = 'public'"
-                f"  AND table_name = '{self._TABLE}'"
+                f"  AND table_name = '{self._TABLE.name}'"
                 ")"
             )
             result = await self._db.execute_query(sql, [])
@@ -96,7 +96,7 @@ class AdminSessionSqlRepository:
         # SQLite fallback
         sql = (
             "SELECT name FROM sqlite_master "
-            f"WHERE type='table' AND name='{self._TABLE}'"
+            f"WHERE type='table' AND name='{self._TABLE.name}'"
         )
         result = await self._db.execute_query(sql, [])
         if hasattr(result, "rows"):
@@ -143,10 +143,10 @@ class AdminSessionSqlRepository:
 
     async def _create_indexes(self) -> None:
         indexes = [
-            f"CREATE INDEX ix_{self._TABLE}_admin_id ON {self._TABLE}(admin_id)",
-            f"CREATE INDEX ix_{self._TABLE}_device_id ON {self._TABLE}(device_id)",
-            f"CREATE INDEX ix_{self._TABLE}_is_active ON {self._TABLE}(is_active)",
-            f"CREATE INDEX ix_{self._TABLE}_expires_at ON {self._TABLE}(expires_at)",
+            f"CREATE INDEX ix_{self._TABLE.name}_admin_id ON {self._TABLE}(admin_id)",
+            f"CREATE INDEX ix_{self._TABLE.name}_device_id ON {self._TABLE}(device_id)",
+            f"CREATE INDEX ix_{self._TABLE.name}_is_active ON {self._TABLE}(is_active)",
+            f"CREATE INDEX ix_{self._TABLE.name}_expires_at ON {self._TABLE}(expires_at)",
         ]
         for sql in indexes:
             try:
@@ -172,8 +172,8 @@ class AdminSessionSqlRepository:
         if isinstance(fingerprint, dict):
             db_type = (getattr(self._db, "database_type", "") or "").lower()
             if db_type in ("sqlite", "sqlite3", "memory"):
-                payload["fingerprint"] = json.dumps(fingerprint)
-        await self._db.execute_insert(self._TABLE, payload)
+                payload["fingerprint"] = dumps_str(fingerprint)
+        await self._db.execute_insert(self._TABLE.name, payload)
 
     async def find_active(self, session_id: str) -> dict[str, Any] | None:
         """Return the row for an active session, or ``None`` if absent/inactive.
@@ -189,7 +189,9 @@ class AdminSessionSqlRepository:
         result = await self._db.execute_query(sql, [session_id])
 
         rows = self._extract_rows(result)
-        return dict(rows[0]) if rows else None
+        if not rows:
+            return None
+        return self._decode_fingerprint(dict(rows[0]))
 
     async def find_active_by_user(
         self,
@@ -212,7 +214,7 @@ class AdminSessionSqlRepository:
             "ORDER BY last_active_at DESC"
         )
         result = await self._db.execute_query(sql, [user_id, cutoff])
-        return [dict(r) for r in self._extract_rows(result)]
+        return [self._decode_fingerprint(dict(r)) for r in self._extract_rows(result)]
 
     async def revoke(self, session_id: str) -> None:
         """Deactivate a single session.
@@ -261,3 +263,14 @@ class AdminSessionSqlRepository:
         if isinstance(result, list):
             return result
         return []
+
+    @staticmethod
+    def _decode_fingerprint(row: dict[str, Any]) -> dict[str, Any]:
+        """Deserialize a string-stored fingerprint back into a dict for SQLite."""
+        fingerprint = row.get("fingerprint")
+        if isinstance(fingerprint, str):
+            try:
+                row["fingerprint"] = loads_str(fingerprint)
+            except ValueError:
+                pass
+        return row
