@@ -20,7 +20,11 @@ from lexigram.contracts.infra.storage import FileInfo, Uploadable
 from lexigram.contracts.infra.storage import UploadOptions as UploadOptionsContract
 from lexigram.logging import get_logger
 from lexigram.storage.backends.base import AbstractDriver
-from lexigram.storage.exceptions import StorageError, StorageFileNotFoundError
+from lexigram.storage.exceptions import (
+    StorageError,
+    StorageFileNotFoundError,
+    StorageUnsupportedOperationError,
+)
 from lexigram.storage.lib.content_type import get_content_type
 from lexigram.storage.lib.paths import normalize_path
 
@@ -340,8 +344,14 @@ class LocalDriver(AbstractDriver):
         expires_in: timedelta = timedelta(hours=1),
         method: str = "GET",
     ) -> str:
-        """Get pre-signed URL for local file (same as public URL)."""
-        return await self.get_url(path)
+        """Get a pre-signed URL for local file.
+
+        Local driver does not support presigned URLs; callers
+        must fall back to the public URL via :meth:`get_url`.
+        """
+        raise StorageUnsupportedOperationError(
+            "Local storage does not support presigned URLs"
+        )
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Perform health check on local storage"""

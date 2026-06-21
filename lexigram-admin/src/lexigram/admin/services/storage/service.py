@@ -20,7 +20,11 @@ from lexigram.admin.services.storage.types import (
 from lexigram.admin.services.storage.utils import get_content_type
 from lexigram.contracts.infra.storage import BlobStoreProtocol, FileInfo
 from lexigram.di.decorators import inject
+from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
+from lexigram.storage.exceptions import StorageUnsupportedOperationError
+
+logger = get_logger(__name__)
 
 
 @inject
@@ -249,11 +253,18 @@ class AdminStorageService:
         from datetime import timedelta
 
         expires_seconds = expires_in or self.config.presigned_url_expiry
-        return await self._store.get_presigned_url(
-            path,
-            expires_in=timedelta(seconds=expires_seconds),
-            method="GET",
-        )
+        try:
+            return await self._store.get_presigned_url(
+                path,
+                expires_in=timedelta(seconds=expires_seconds),
+                method="GET",
+            )
+        except StorageUnsupportedOperationError:
+            logger.warning(
+                "storage.presigned_fallback_to_public",
+                method="GET",
+            )
+            return await self._store.get_url(path)
 
     async def get_upload_url(
         self,
@@ -287,10 +298,17 @@ class AdminStorageService:
             base_path=self.config.base_path,
         )
 
-        url = await self._store.get_presigned_url(
-            path,
-            expires_in=timedelta(seconds=expires_seconds),
-            method="PUT",
-        )
+        try:
+            url = await self._store.get_presigned_url(
+                path,
+                expires_in=timedelta(seconds=expires_seconds),
+                method="PUT",
+            )
+        except StorageUnsupportedOperationError:
+            logger.warning(
+                "storage.presigned_fallback_to_public",
+                method="PUT",
+            )
+            url = await self._store.get_url(path)
 
         return url, path

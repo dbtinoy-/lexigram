@@ -19,6 +19,10 @@ import uuid
 
 from lexigram.contracts.infra.storage import BlobStoreProtocol, FileInfo, UploadOptions
 from lexigram.di.decorators import inject
+from lexigram.logging import get_logger
+from lexigram.storage.exceptions import StorageUnsupportedOperationError
+
+logger = get_logger(__name__)
 
 
 class StorageBackend(StrEnum):
@@ -175,10 +179,19 @@ class FileUploadService:
             else:
                 from datetime import timedelta
 
-                url = await self.storage.get_presigned_url(
-                    path=storage_path,
-                    expires_in=timedelta(hours=1),
-                )
+                try:
+                    url = await self.storage.get_presigned_url(
+                        path=storage_path,
+                        expires_in=timedelta(hours=1),
+                    )
+                except StorageUnsupportedOperationError:
+                    from lexigram.logging import get_logger
+
+                    logger = get_logger(__name__)
+                    logger.warning(
+                        "storage.presigned_fallback_to_public", method="PUT"
+                    )
+                    url = await self.storage.get_url(storage_path)
 
             return (
                 UploadedFile(
