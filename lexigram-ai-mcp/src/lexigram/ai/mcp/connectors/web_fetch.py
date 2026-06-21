@@ -11,9 +11,12 @@ returned with a notice.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
+import urllib.parse
 
 from lexigram.ai.mcp.types import MCPToolDefinition, MCPToolResult
+from lexigram.contracts.security import is_safe_url_for_request
 from lexigram.logging import (
     get_logger,
 )
@@ -112,6 +115,9 @@ class WebFetchConnector:
         if not url.startswith(("http://", "https://")):
             return MCPToolResult.error("Only http:// and https:// URLs are supported")
 
+        if not await asyncio.to_thread(is_safe_url_for_request, url):
+            return MCPToolResult.error("URL is not publicly reachable from this server")
+
         try:
             import aiohttp
         except ImportError:
@@ -122,26 +128,49 @@ class WebFetchConnector:
 
         headers = {"User-Agent": self._user_agent}
         try:
+            MAX_REDIRECTS = 5
+            current_url = url
+            request_timeout = aiohttp.ClientTimeout(total=timeout)
             async with aiohttp.ClientSession(headers=headers) as session:
-                async with session.get(
-                    url, timeout=aiohttp.ClientTimeout(total=timeout)
-                ) as response:
-                    content_type = response.headers.get("Content-Type", "")
-                    if response.status >= 400:
+                for _hop in range(MAX_REDIRECTS + 1):
+                    if not await asyncio.to_thread(
+                        is_safe_url_for_request, current_url
+                    ):
                         return MCPToolResult.error(
-                            f"HTTP {response.status}: {response.reason}"
+                            "Redirect target is not publicly reachable from this server"
                         )
-                    raw = await response.read()
-                    if len(raw) > self._max_bytes:
-                        raw = raw[: self._max_bytes]
-                        truncated = True
-                    else:
-                        truncated = False
+                    async with session.get(
+                        current_url,
+                        timeout=request_timeout,
+                        allow_redirects=False,
+                    ) as response:
+                        if response.status in (301, 302, 303, 307, 308):
+                            location = response.headers.get("Location", "")
+                            if not location:
+                                return MCPToolResult.error(
+                                    "Redirect response missing Location header"
+                                )
+                            current_url = urllib.parse.urljoin(current_url, location)
+                            continue
+                        content_type = response.headers.get("Content-Type", "")
+                        if response.status >= 400:
+                            return MCPToolResult.error(
+                                f"HTTP {response.status}: {response.reason}"
+                            )
+                        raw = await response.read()
+                        if len(raw) > self._max_bytes:
+                            raw = raw[: self._max_bytes]
+                            truncated = True
+                        else:
+                            truncated = False
 
-                    text = _decode_content(raw, content_type)
-                    if truncated:
-                        text += f"\n\n[Content truncated at {self._max_bytes} bytes]"
-                    return MCPToolResult.text(text)
+                        text = _decode_content(raw, content_type)
+                        if truncated:
+                            text += (
+                                f"\n\n[Content truncated at {self._max_bytes} bytes]"
+                            )
+                        return MCPToolResult.text(text)
+                return MCPToolResult.error("Too many redirects")
         except aiohttp.ClientError as exc:
             logger.warning("web_fetch_error", url=url, error=str(exc))
             return MCPToolResult.error(f"Fetch failed: {exc}")
