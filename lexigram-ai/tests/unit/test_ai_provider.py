@@ -163,40 +163,28 @@ class TestAIProviderRegister:
         assert AIConfig in registered_types
 
     @pytest.mark.asyncio
-    async def test_register_governance_uses_database_persistence(
+    async def test_register_does_not_register_governance_services(
         self, mock_container
     ):
-        """Governance registration uses the package persistence surface for DB storage."""
+        """Governance registration is owned by GovernanceProvider, not AIProvider."""
+        from unittest.mock import patch
+
+        from lexigram.ai.governance.audit import AIAuditStore
         from lexigram.ai.governance.services.manager import AIGovernanceManager
 
         provider = AIProvider()
         provider.config = AIConfig(governance=GovernanceConfig(enabled=True))
-        provider._database_provider = MagicMock()
 
-        await provider.register(mock_container)
+        # Suppress entry-point discovery so only AIProvider's own code runs.
+        with patch("importlib.metadata.entry_points", return_value=[]):
+            await provider.register(mock_container)
 
         registered_types = [
             call.args[0] if call.args else None
             for call in mock_container.singleton.call_args_list
         ]
-        assert AIGovernanceManager in registered_types
-
-    @pytest.mark.asyncio
-    async def test_register_governance_uses_cache_persistence(self, mock_container):
-        """Governance registration uses the package persistence surface for cache storage."""
-        from lexigram.ai.governance.services.manager import AIGovernanceManager
-
-        provider = AIProvider()
-        provider.config = AIConfig(governance=GovernanceConfig(enabled=True))
-        provider._cache_backend = MagicMock()
-
-        await provider.register(mock_container)
-
-        registered_types = [
-            call.args[0] if call.args else None
-            for call in mock_container.singleton.call_args_list
-        ]
-        assert AIGovernanceManager in registered_types
+        assert AIGovernanceManager not in registered_types
+        assert AIAuditStore not in registered_types
 
 
 class TestAIProviderBoot:

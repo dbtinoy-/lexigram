@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lexigram.ai.config import AIConfig, GovernanceConfig
+from lexigram.ai.config import AIConfig
 from lexigram.contracts import (
     CacheBackendProtocol,
     HealthCheckResult,
@@ -119,9 +119,10 @@ class AIProvider(Provider, AIProviderProtocol):
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register services with the DI container.
 
-        Registers monitoring, governance, and config singletons directly.
-        Delegates LLM, Vector, and RAG service registration to the
-        respective sub-providers.
+        Registers monitoring and config singletons directly; governance is
+        registered by the GovernanceProvider discovered via the
+        "lexigram.ai.subsystems" entry point. Delegates LLM, Vector, and
+        RAG service registration to the respective sub-providers.
 
         Args:
             container: The Lexigram DI container
@@ -139,11 +140,6 @@ class AIProvider(Provider, AIProviderProtocol):
 
         # Register config first so sub-services can inject it
         container.singleton(AIConfig, lambda: intelligence_config)
-        if GovernanceConfig is not None:
-            container.singleton(
-                GovernanceConfig,
-                lambda: intelligence_config.governance,
-            )
 
         # Monitoring — always registered; AIProvider is the observability orchestrator
         from lexigram.ai.observability.callbacks.manager import CallbackManagerImpl
@@ -159,45 +155,6 @@ class AIProvider(Provider, AIProviderProtocol):
         container.singleton("ai_tracer", AITracer)
         container.singleton(CallbackManagerProtocol, CallbackManagerImpl)
         container.singleton("callback_manager", CallbackManagerImpl)
-
-        # Governance
-        if intelligence_config.governance and intelligence_config.governance.enabled:
-            from lexigram.ai.governance.audit import (
-                AIAuditStore,
-                InMemoryAuditStore,
-            )
-            from lexigram.ai.governance.services.manager import AIGovernanceManager
-
-            # Audit store — always registered so other services can inject it
-            audit_store: AIAuditStore = InMemoryAuditStore()
-            container.singleton(AIAuditStore, audit_store)
-            container.singleton("ai_audit_store", audit_store)
-
-            gov_config = intelligence_config.governance
-
-            # Resolve persistence backend: DB > Redis > InMemory
-            gov_persistence: Any = None
-            if self._database_provider is not None:
-                from lexigram.ai.governance.persistence import (
-                    DatabaseGovernancePersistence,
-                )
-
-                gov_persistence = DatabaseGovernancePersistence(self._database_provider)
-            elif self._cache_backend is not None:
-                from lexigram.ai.governance.persistence import (
-                    RedisGovernancePersistence,
-                )
-
-                gov_persistence = RedisGovernancePersistence(self._cache_backend)
-
-            container.singleton(
-                AIGovernanceManager,
-                factory=lambda: AIGovernanceManager(
-                    gov_config,
-                    persistence=gov_persistence,
-                    audit_store=audit_store,
-                ),
-            )
 
         # LLM — delegate to LLMProvider
         if intelligence_config.llm:
