@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
-
 from lexigram.web.security.config import (
     CORSConfig,
     SecurityConfig,
@@ -133,17 +131,34 @@ class TestSecurityPackageExports:
     def test_http_security_surface_is_reexported(self) -> None:
         """Top-level package should expose the absorbed HTTP security surface."""
         from lexigram.web import security as web_security
+        from lexigram.web.middleware.security import (
+            SecurityHeadersMiddleware as CanonicalSecurityHeadersMiddleware,
+        )
         from lexigram.web.security.config import (
             CORSConfig as CanonicalCORSConfig,
-            CSPConfig as CanonicalCSPConfig,
-            CSRFConfig as CanonicalCSRFConfig,
+        )
+        from lexigram.web.security.config import (
             CrossOriginConfig as CanonicalCrossOriginConfig,
+        )
+        from lexigram.web.security.config import (
+            CSPConfig as CanonicalCSPConfig,
+        )
+        from lexigram.web.security.config import (
+            CSRFConfig as CanonicalCSRFConfig,
+        )
+        from lexigram.web.security.config import (
             HSTSConfig as CanonicalHSTSConfig,
+        )
+        from lexigram.web.security.config import (
             SecurityConfig as CanonicalSecurityConfig,
+        )
+        from lexigram.web.security.config import (
             SecurityHeadersConfig as CanonicalSecurityHeadersConfig,
         )
         from lexigram.web.security.cors.middleware import (
             CORSMiddleware as CanonicalCORSMiddleware,
+        )
+        from lexigram.web.security.cors.middleware import (
             CORSMiddlewareFactory as CanonicalCORSMiddlewareFactory,
         )
         from lexigram.web.security.csp.builder import CSPPolicy as CanonicalCSPPolicy
@@ -152,9 +167,6 @@ class TestSecurityPackageExports:
         )
         from lexigram.web.security.csrf.protection import (
             CSRFProtection as CanonicalCSRFProtection,
-        )
-        from lexigram.web.security.headers.middleware import (
-            SecurityHeadersMiddleware as CanonicalSecurityHeadersMiddleware,
         )
 
         assert web_security.CORSConfig is CanonicalCORSConfig

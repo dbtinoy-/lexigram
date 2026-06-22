@@ -5,8 +5,9 @@ Supports two patterns:
 2. Synchronizer Token (stateful, requires CacheBackendProtocol) — validates against
    a server-side token stored in cache.
 
-Also issues the CSRF cookie on safe methods (GET/HEAD/OPTIONS) when not present,
-and skips validation entirely for paths in ``CSRFConfig.excluded_paths``.
+Also issues the CSRF cookie on safe methods (GET/HEAD/OPTIONS) when not present.
+Paths in ``CSRFConfig.excluded_paths`` are skipped for cookie-less requests;
+cookie-bearing requests on those paths are still validated.
 """
 
 from __future__ import annotations
@@ -37,7 +38,9 @@ class CSRFProtectionMiddleware:
 
     Cookie issuance happens automatically on safe methods (GET/HEAD/OPTIONS)
     so that clients receive a token before submitting state-changing requests.
-    Paths listed in ``CSRFConfig.excluded_paths`` are skipped entirely.
+    Paths listed in ``CSRFConfig.excluded_paths`` are skipped entirely for
+    cookie-less requests; cookie-bearing requests on those paths are still
+    validated, so cookie-authenticated form posts cannot bypass CSRF.
 
     Example::
 
@@ -114,11 +117,12 @@ class CSRFProtectionMiddleware:
             return
 
         path = scope.get("path", "")
-        if self._is_excluded(path):
-            await self._app(scope, receive, send)
-            return
-
         method = scope.get("method", "").upper()
+
+        if self._is_excluded(path):
+            if method in _SAFE_METHODS or not self._parse_cookies(scope):
+                await self._app(scope, receive, send)
+                return
 
         if method in _SAFE_METHODS:
             await self._handle_safe_method(scope, receive, send)

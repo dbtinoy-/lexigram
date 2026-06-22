@@ -12,6 +12,7 @@ from lexigram.logging import get_logger
 from lexigram.web.security.config import (
     CrossOriginConfig,
     CSPConfig,
+    CSRFConfig,
     HSTSConfig,
     SecurityConfig,
 )
@@ -201,7 +202,7 @@ def create_development_config() -> SecurityConfig:
 def create_production_config() -> SecurityConfig:
     """Create security headers config optimized for production.
 
-    More restrictive CSP and enables HSTS.
+    More restrictive CSP, enables HSTS and CSRF.
     """
     return SecurityConfig(
         hsts=HSTSConfig(
@@ -227,6 +228,7 @@ def create_production_config() -> SecurityConfig:
             },
         ),
         cross_origin=CrossOriginConfig(enabled=True),
+        csrf=CSRFConfig(enabled=True),
     )
 
 

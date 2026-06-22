@@ -33,6 +33,16 @@ class TestCsrfConfig:
         assert web_cfg.security.csrf.enabled is True
         assert len(web_cfg.security.csrf.excluded_paths) > 0
 
+    def test_web_config_default_excluded_paths_cover_api(self) -> None:
+        """F-W2: cookie-authenticated /api/* mutations must be CSRF-protected,
+        so '/api/' is not exempt by default."""
+        from lexigram.web.config import WebConfig
+
+        web_cfg = WebConfig()
+        assert "/api/" not in web_cfg.security.csrf.excluded_paths
+        assert "/health" in web_cfg.security.csrf.excluded_paths
+        assert "/metrics" in web_cfg.security.csrf.excluded_paths
+
     def test_web_security_config_has_csrf_field(self) -> None:
         """SecurityConfig must expose a `csrf` attribute of type CSRFConfig."""
         sec = SecurityConfig()
@@ -174,3 +184,58 @@ class TestCsrfMiddlewareWiringEnabled:
         await web._setup_middleware(fake_app, fake_container)
 
         assert CSRFProtectionMiddleware in added_middleware
+
+    @pytest.mark.asyncio
+    async def test_csrf_middleware_not_added_when_enable_csrf_disabled(
+        self, test_bed
+    ) -> None:
+        """The enable_csrf convenience flag must gate middleware wiring."""
+        from unittest.mock import MagicMock
+
+        from lexigram.web.di.provider import WebProvider
+        from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware
+
+        web = await test_bed.resolve(WebProvider)
+
+        web.web_config.security.enable_csrf = False
+
+        added_middleware: list[type] = []
+
+        def capture_add_middleware(cls: type, **_kwargs: object) -> None:
+            added_middleware.append(cls)
+
+        fake_app = MagicMock()
+        fake_app.add_middleware = capture_add_middleware
+        fake_container = MagicMock()
+
+        await web._setup_middleware(fake_app, fake_container)
+
+        assert CSRFProtectionMiddleware not in added_middleware
+
+
+class TestProductionCsrfDefaults:
+    """Production security templates and validation must keep CSRF on."""
+
+    def test_create_production_config_enables_csrf(self) -> None:
+        """create_production_config() must enable CSRF (secure by default)."""
+        from lexigram.web.middleware.security import create_production_config
+
+        cfg = create_production_config()
+        assert cfg.csrf.enabled is True
+
+    def test_web_config_production_defaults_keep_csrf_enabled(self) -> None:
+        """WebConfig(env="production") keeps CSRF enabled by default."""
+        from lexigram.web.config import WebConfig
+
+        web_cfg = WebConfig(env="production")
+        assert web_cfg.security.csrf.enabled is True
+
+    def test_web_config_production_rejects_csrf_disabled(self) -> None:
+        """WebConfig blocks CSRF-disabled configs in production."""
+        from lexigram.web.config import WebConfig
+
+        with pytest.raises(ValueError, match="CSRF"):
+            WebConfig(
+                env="production",
+                security=SecurityConfig(csrf=CSRFConfig(enabled=False)),
+            )

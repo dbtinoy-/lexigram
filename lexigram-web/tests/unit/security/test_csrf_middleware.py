@@ -14,7 +14,6 @@ import pytest
 from lexigram.web.security.config import CSRFConfig
 from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -106,6 +105,98 @@ async def test_non_excluded_post_without_token_returns_403() -> None:
     messages = await _run(middleware, scope)
     start = next(m for m in messages if m.get("type") == "http.response.start")
     assert start["status"] == 403
+
+
+# ---------------------------------------------------------------------------
+# Cookie-aware excluded paths (F-W2)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_excluded_path_with_cookie_still_validates() -> None:
+    """Excluded-path bypass applies to cookie-less clients; cookie-bearing
+    requests on excluded paths are validated."""
+    config = CSRFConfig(
+        excluded_paths=["/api/"],
+        cookie_name="csrf_token",
+        header_name="X-CSRF-Token",
+    )
+    app = _make_app()
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(
+        method="POST",
+        path="/api/data",
+        headers=[_cookie_header({"csrf_token": "tok"})],
+    )
+    messages = await _run(middleware, scope)
+    start = next(m for m in messages if m.get("type") == "http.response.start")
+    assert start["status"] == 403
+
+
+@pytest.mark.asyncio
+async def test_excluded_path_with_cookie_and_matching_token_passes() -> None:
+    """Cookie-bearing excluded-path requests pass when tokens match."""
+    config = CSRFConfig(
+        excluded_paths=["/api/"],
+        cookie_name="csrf_token",
+        header_name="X-CSRF-Token",
+    )
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    token = "tok-123"
+    scope = _make_scope(
+        method="POST",
+        path="/api/data",
+        headers=[
+            _cookie_header({"csrf_token": token}),
+            (b"x-csrf-token", token.encode()),
+        ],
+    )
+    await _run(middleware, scope)
+    assert inner_called
+
+
+@pytest.mark.asyncio
+async def test_excluded_path_with_cookie_json_content_type_passes() -> None:
+    """JSON clients keep their bypass on excluded paths even with cookies."""
+    config = CSRFConfig(
+        excluded_paths=["/api/"],
+        exclude_content_types=["application/json"],
+    )
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(
+        method="POST",
+        path="/api/data",
+        headers=[
+            _cookie_header({"csrf_token": "tok"}),
+            (b"content-type", b"application/json"),
+        ],
+    )
+    await _run(middleware, scope)
+    assert inner_called
+
+
+@pytest.mark.asyncio
+async def test_excluded_safe_method_with_cookie_passes() -> None:
+    """Safe methods on excluded paths pass through regardless of cookies."""
+    config = CSRFConfig(excluded_paths=["/api/"], cookie_name="csrf_token")
+    inner_called: list[bool] = []
+    app = _make_app(called=inner_called)
+    middleware = CSRFProtectionMiddleware(app, config=config)
+
+    scope = _make_scope(
+        method="GET",
+        path="/api/data",
+        headers=[_cookie_header({"csrf_token": "tok"})],
+    )
+    await _run(middleware, scope)
+    assert inner_called
 
 
 # ---------------------------------------------------------------------------

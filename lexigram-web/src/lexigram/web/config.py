@@ -308,7 +308,7 @@ class WebConfig(BaseConfig):
         default_factory=lambda: SecurityConfig(
             csrf=CSRFConfig(
                 enabled=True,
-                excluded_paths=["/api/", "/health", "/metrics"],
+                excluded_paths=["/health", "/metrics"],
             ),
         ),
         description="Security configuration (HSTS, CSP, cross-origin, CSRF, headers)",
@@ -408,6 +408,11 @@ class WebConfig(BaseConfig):
                 raise ValueError(
                     "CRITICAL SECURITY ERROR: Wildcard CORS origin '*' not allowed in PRODUCTION.\n"
                     "You MUST set specific origins via LEX_WEB__CORS__ALLOWED_ORIGINS.",
+                )
+            if not self.security.csrf.enabled:
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: CSRF protection is disabled in PRODUCTION.\n"
+                    "You MUST enable it via LEX_WEB__SECURITY__CSRF__ENABLED.",
                 )
         return self
 
