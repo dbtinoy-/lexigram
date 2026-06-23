@@ -18,6 +18,20 @@ from lexigram.sql.admin.handlers.pool_utilization import PoolUtilizationWidgetHa
 from lexigram.sql.admin.handlers.query_stats import QueryStatsWidgetHandler
 
 
+class _FakeMigrations:
+    """Fake migration manager for widget tests."""
+
+    def __init__(self, applied: list[str], pending: list[str]) -> None:
+        self._applied = applied
+        self._pending = pending
+
+    async def get_applied_migrations(self) -> list[str]:
+        return self._applied
+
+    async def get_pending_migrations(self) -> list[str]:
+        return self._pending
+
+
 class TestSqlAdminContributor:
     """Tests for SqlAdminContributor widget rendering."""
 
@@ -167,7 +181,7 @@ class TestSqlWidgetHandlers:
         assert result.is_ok()
         content = result.unwrap()
         assert isinstance(content, StatContent)
-        assert len(content.stats) == 2
+        assert content.stats[0].value == "Unavailable"
 
     @pytest.mark.asyncio
     async def test_query_stats_handler(self) -> None:
@@ -177,17 +191,17 @@ class TestSqlWidgetHandlers:
         assert result.is_ok()
         content = result.unwrap()
         assert isinstance(content, StatContent)
-        assert len(content.stats) == 4
+        assert content.stats[0].value == "Unavailable"
 
     @pytest.mark.asyncio
     async def test_migration_status_handler(self) -> None:
-        """Test migration_status handler returns HealthCheckPayload."""
+        """Test migration_status handler returns StatContent."""
         handler = MigrationStatusWidgetHandler(
-            migration_manager=None  # type: ignore[arg-type]
+            migration_manager=_FakeMigrations(["a", "b"], [])
         )
         result = await handler.get_data(WidgetParams())
         assert result.is_ok()
         content = result.unwrap()
-        assert isinstance(content, HealthCheckPayload)
-        assert content.status is HealthStatus.HEALTHY
-        assert content.component == "sql.migrations"
+        assert isinstance(content, StatContent)
+        assert content.stats[0].value == "2 applied"
+        assert content.stats[1].value == "0 pending"
