@@ -173,7 +173,14 @@ class RateLimitConfig(BaseConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
-    enabled: bool = Field(default=True, description="Enable rate limiting")
+    enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable rate limiting. When true, RateLimitMiddleware enforces "
+            "the matched per-path rule or the default_limit/default_window "
+            "on every HTTP request."
+        ),
+    )
     default_limit: int = Field(
         default=const.DEFAULT_RATE_LIMIT_REQUESTS, description="Max requests per window"
     )
@@ -189,10 +196,10 @@ class RateLimitConfig(BaseConfig):
         description="Storage backend (memory/redis)",
     )
 
-    # Per-path rules (new)
+    # Per-path rules — enforced by RateLimitMiddleware via get_rule()
     rules: dict[str, RateLimitRuleConfig] = Field(
         default_factory=dict,
-        description="Per-path rate limit rules",
+        description="Per-path rate limit rules; longest-prefix match wins",
     )
 
     @model_validator(mode="after")

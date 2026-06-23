@@ -28,6 +28,27 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+def _rate_limit_429_response(exc: Exception) -> JSONResponse:
+    """Build the standard 429 response for a rate-limit breach.
+
+    Args:
+        exc: The :class:`~lexigram.contracts.exceptions.RateLimitError`.
+
+    Returns:
+        A 429 ``JSONResponse`` with a ``Retry-After`` header when the
+        error carries a ``retry_after`` detail.
+    """
+    from starlette.responses import JSONResponse
+
+    details = getattr(exc, "details", {}) or {}
+    retry_after = details.get("retry_after")
+    return JSONResponse(
+        {"error": "rate_limit_exceeded", "message": str(exc)},
+        status_code=429,
+        headers={"Retry-After": str(retry_after)} if retry_after else {},
+    )
+
+
 class MemoryLimiter:
     """In-memory sliding window rate limiter for request tracking.
 
@@ -470,15 +491,21 @@ class RateLimitMiddleware:
         app: ASGIApp,
         *,
         rate_limiter: RateLimiter | None = None,
+        config: Any | None = None,
     ) -> None:
         """Initialize middleware.
 
         Args:
             app: ASGI application.
             rate_limiter: Rate limiter instance (optional).
+            config: ``RateLimitConfig`` driving per-path rules and defaults.
+                When ``enabled`` and a limiter is present, ``__call__``
+                enforces the matched rule (or the default limit) instead of
+                only stamping headers.
         """
         self.app = app
         self.rate_limiter = rate_limiter
+        self.config = config
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Process request and add rate limit headers.
@@ -491,6 +518,35 @@ class RateLimitMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+
+        # ── Enforce before forwarding ─────────────────────────────────────
+        # The existing check_rate_limit() algorithm (Redis Lua / cache /
+        # in-memory) is the single enforcement engine. A breached request
+        # gets the standard 429 + Retry-After response (RateLimitError is
+        # caught here because middleware raises bypass Starlette's inner
+        # ExceptionMiddleware on supported versions and would surface as 500).
+        if self.rate_limiter is not None and self.config is not None and self.config.enabled:
+            request = Request(scope, receive)
+            if self.config.whitelist_ips and request.client and request.client.host in self.config.whitelist_ips:
+                pass  # whitelisted — skip enforcement (D2)
+            else:
+                rule = self.config.get_rule(request.url.path)
+                if rule is not None:
+                    max_requests, window_seconds = rule.requests, rule.window
+                else:
+                    max_requests = self.config.default_limit
+                    window_seconds = self.config.default_window
+                try:
+                    await self.rate_limiter.check_rate_limit(
+                        request,
+                        max_requests=max_requests,
+                        window_seconds=window_seconds,
+                        scope="user",
+                    )
+                except RateLimitError as exc:
+                    response = _rate_limit_429_response(exc)
+                    await response(scope, receive, send)
+                    return
 
         async def send_with_headers(message: Any) -> None:
             if message["type"] == "http.response.start":

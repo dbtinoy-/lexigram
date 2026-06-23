@@ -34,9 +34,18 @@ class RateLimitIntegration:
         try:
             # Try to resolve by protocol
             rate_limiter = await container.resolve(cast("Any", WebRateLimiterProtocol))
-        except Exception as err:  # noqa: BLE001 — optional service; any resolution failure falls back to in-memory
-            logger.info("Using in-memory RateLimiter fallback: %r", err)
-            rate_limiter = RateLimiter()
+        except Exception as err:  # noqa: BLE001 — optional service; falls back per storage_backend
+            logger.info("RateLimiter not in container (%r); building from config", err)
+            redis_client = None
+            if getattr(web_config.rate_limit, "storage_backend", "memory") == "redis":
+                try:
+                    redis_client = await container.resolve("redis_client")
+                except Exception as redis_err:  # noqa: BLE001 — degrade to memory
+                    logger.warning("redis_client unresolvable; using in-memory: %r", redis_err)
+            # Storage honesty: "memory" (or failed redis) constructs
+            # RateLimiter() which logs the explicit multi-worker warning
+            # (middleware/rate_limit.py) and then enforces in-memory.
+            rate_limiter = RateLimiter(redis_client)
 
         if rate_limiter:
             app.add_exception_handler(
@@ -44,19 +53,15 @@ class RateLimitIntegration:
                 RateLimitIntegration._rate_limit_handler,
             )
             app.add_middleware(
-                RateLimitMiddleware, rate_limiter=cast("Any", rate_limiter)
+                RateLimitMiddleware,
+                rate_limiter=cast("Any", rate_limiter),
+                config=cast("Any", web_config.rate_limit),
             )
             logger.info("Rate limiting middleware configured")
 
     @staticmethod
     async def _rate_limit_handler(_request: Any, exc: Exception) -> Any:
         """Standard rate limit exceeded handler."""
-        from starlette.responses import JSONResponse
+        from lexigram.web.middleware.rate_limit import _rate_limit_429_response
 
-        details = getattr(exc, "details", {}) or {}
-        retry_after = details.get("retry_after")
-        return JSONResponse(
-            {"error": "rate_limit_exceeded", "message": str(exc)},
-            status_code=429,
-            headers={"Retry-After": str(retry_after)} if retry_after else {},
-        )
+        return _rate_limit_429_response(exc)
