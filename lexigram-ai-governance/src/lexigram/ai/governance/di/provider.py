@@ -93,7 +93,12 @@ class GovernanceProvider(Provider):
             logger.info("governance_disabled", reason="GovernanceConfig.enabled=False")
             return
 
-        manager = AIGovernanceManager(self._config)
+        from lexigram.ai.governance.audit import AIAuditStore, InMemoryAuditStore
+
+        audit_store: AIAuditStore = InMemoryAuditStore()
+        container.singleton(AIAuditStore, audit_store)
+
+        manager = AIGovernanceManager(self._config, audit_store=audit_store)
         container.singleton(AIGovernanceManager, manager)
         container.singleton(AIGovernanceProtocol, manager)
 
