@@ -15,6 +15,7 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any, Literal
 
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from lexigram.contracts.exceptions import RateLimitError
@@ -38,7 +39,6 @@ def _rate_limit_429_response(exc: Exception) -> JSONResponse:
         A 429 ``JSONResponse`` with a ``Retry-After`` header when the
         error carries a ``retry_after`` detail.
     """
-    from starlette.responses import JSONResponse
 
     details = getattr(exc, "details", {}) or {}
     retry_after = details.get("retry_after")
