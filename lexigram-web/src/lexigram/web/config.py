@@ -241,7 +241,9 @@ class RoleGuardRuleConfig(BaseConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
-    path: str = Field(default="", description="Path to guard ('/**' suffix matches the prefix)")
+    path: str = Field(
+        default="", description="Path to guard ('/**' suffix matches the prefix)"
+    )
     roles: list[str] = Field(
         default_factory=list,
         description="Role identifiers allowed to pass",

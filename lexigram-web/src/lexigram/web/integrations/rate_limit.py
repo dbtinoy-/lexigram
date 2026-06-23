@@ -41,7 +41,9 @@ class RateLimitIntegration:
                 try:
                     redis_client = await container.resolve("redis_client")
                 except Exception as redis_err:  # noqa: BLE001 — degrade to memory
-                    logger.warning("redis_client unresolvable; using in-memory: %r", redis_err)
+                    logger.warning(
+                        "redis_client unresolvable; using in-memory: %r", redis_err
+                    )
             # Storage honesty: "memory" (or failed redis) constructs
             # RateLimiter() which logs the explicit multi-worker warning
             # (middleware/rate_limit.py) and then enforces in-memory.
