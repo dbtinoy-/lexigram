@@ -24,6 +24,24 @@ logger = get_logger(__name__)
 
 _DEFAULT_TIMEOUT = 30
 
+_MRKDWN_ESCAPES = str.maketrans({"<": "&lt;", ">": "&gt;", "&": "&amp;"})
+
+
+def _escape_mrkdwn(text: str) -> str:
+    """Escape Slack mrkdwn-special characters in user-supplied text.
+
+    Slack interprets ``<url|label>`` link markup and ``&`` entities in the
+    ``text`` field. Apply before sending untrusted content so it renders as
+    literal text instead of a spoofable link.
+
+    Args:
+        text: Message text.
+
+    Returns:
+        Text with ``<``, ``>``, and ``&`` escaped.
+    """
+    return text.translate(_MRKDWN_ESCAPES)
+
 
 class SlackNotificationError(NotificationError):
     """Slack notification delivery failure."""
@@ -186,7 +204,7 @@ class SlackNotifier:
                 "Install with: pip install lexigram-notification[slack]"
             ) from exc
 
-        payload: dict[str, Any] = {"text": message.text}
+        payload: dict[str, Any] = {"text": _escape_mrkdwn(message.text)}
         if message.blocks:
             payload["blocks"] = message.blocks
 
@@ -274,7 +292,7 @@ class SlackNotifier:
         client = AsyncWebClient(token=self._bot_token)
         post_kwargs: dict[str, Any] = {
             "channel": channel,
-            "text": message.text,
+            "text": _escape_mrkdwn(message.text),
         }
         if message.blocks:
             post_kwargs["blocks"] = message.blocks
