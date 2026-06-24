@@ -64,6 +64,7 @@ class TestGovernanceProviderLifecycle:
         """Verify boot() method has correct async signature."""
         prov = GovernanceProvider()
         container = MagicMock()
+        container.resolve = AsyncMock()
         container.resolve_optional = AsyncMock(return_value=None)
 
         # Should complete without error
@@ -124,3 +125,96 @@ class TestGovernanceProviderRegisterWiring:
         assert AIGovernanceManager not in registered_types
         assert AIGovernanceProtocol not in registered_types
         assert AIAuditStore not in registered_types
+
+
+class TestGovernanceProviderBootPersistence:
+    """Test GovernanceProvider.boot() persistence wiring via binding."""
+
+    @pytest.mark.asyncio
+    async def test_boot_no_persistence_keeps_inmemory_manager(self) -> None:
+        from lexigram.ai.governance.services.manager import AIGovernanceManager
+
+        provider = GovernanceProvider(GovernanceConfig(enabled=True))
+        manager = AIGovernanceManager(provider._config)
+        container = MagicMock()
+        container.resolve = AsyncMock(return_value=manager)
+        container.resolve_optional = AsyncMock(return_value=None)
+
+        await provider.register(container)
+        await provider.boot(container)
+
+        container.bind.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_boot_with_database_resolves_database_persistence(self) -> None:
+        from lexigram.ai.governance.persistence import (
+            DatabaseGovernancePersistence,
+        )
+        from lexigram.ai.governance.services.manager import AIGovernanceManager
+        from lexigram.contracts import DatabaseProviderProtocol
+        from lexigram.contracts.ai.governance import AIGovernanceProtocol
+
+        db = MagicMock(spec=DatabaseProviderProtocol)
+        provider = GovernanceProvider(GovernanceConfig(enabled=True))
+        manager = AIGovernanceManager(provider._config)
+        container = MagicMock()
+        container.resolve = AsyncMock(return_value=manager)
+
+        async def resolve_optional(protocol: object) -> object:
+            if protocol is DatabaseProviderProtocol:
+                return db
+            return None
+
+        container.resolve_optional = AsyncMock(side_effect=resolve_optional)
+
+        await provider.register(container)
+        await provider.boot(container)
+
+        bound_types = {call.args[0] for call in container.bind.call_args_list}
+        assert AIGovernanceManager in bound_types
+        assert AIGovernanceProtocol in bound_types
+        bound_manager = next(
+            call.args[1]
+            for call in container.bind.call_args_list
+            if call.args[0] is AIGovernanceManager
+        )
+        assert isinstance(bound_manager, AIGovernanceManager)
+        assert isinstance(
+            bound_manager._persistence, DatabaseGovernancePersistence
+        )
+
+    @pytest.mark.asyncio
+    async def test_boot_with_cache_only_resolves_redis_persistence(self) -> None:
+        from lexigram.ai.governance.persistence import (
+            RedisGovernancePersistence,
+        )
+        from lexigram.ai.governance.services.manager import AIGovernanceManager
+        from lexigram.contracts import CacheBackendProtocol
+        from lexigram.contracts.ai.governance import AIGovernanceProtocol
+
+        cache = MagicMock(spec=CacheBackendProtocol)
+        provider = GovernanceProvider(GovernanceConfig(enabled=True))
+        manager = AIGovernanceManager(provider._config)
+        container = MagicMock()
+        container.resolve = AsyncMock(return_value=manager)
+
+        async def resolve_optional(protocol: object) -> object:
+            if protocol is CacheBackendProtocol:
+                return cache
+            return None
+
+        container.resolve_optional = AsyncMock(side_effect=resolve_optional)
+
+        await provider.register(container)
+        await provider.boot(container)
+
+        bound_types = {call.args[0] for call in container.bind.call_args_list}
+        assert AIGovernanceManager in bound_types
+        assert AIGovernanceProtocol in bound_types
+        bound_manager = next(
+            call.args[1]
+            for call in container.bind.call_args_list
+            if call.args[0] is AIGovernanceManager
+        )
+        assert isinstance(bound_manager, AIGovernanceManager)
+        assert isinstance(bound_manager._persistence, RedisGovernancePersistence)
