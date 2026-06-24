@@ -52,6 +52,14 @@ def test_secret_value_masks_repr() -> None:
     assert "masked" in repr(secret)
 
 
+def test_secret_value_masks_f_string_and_format() -> None:
+    secret = SecretValue("super-secret-value")
+    assert f"{secret}" != "super-secret-value"
+    assert format(secret) != "super-secret-value"
+    assert "super-secret-value" not in f"{secret}"
+    assert str(secret) == "super-secret-value"
+
+
 # ---------------------------------------------------------------------------
 # InMemorySecretStore
 # ---------------------------------------------------------------------------

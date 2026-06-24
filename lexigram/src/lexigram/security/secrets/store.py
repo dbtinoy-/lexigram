@@ -24,6 +24,9 @@ class SecretValue(str):
     def __repr__(self) -> str:
         return "SecretValue(***masked***)"
 
+    def __format__(self, format_spec: str) -> str:
+        return "SecretValue(***masked***)"
+
 
 class InMemorySecretStore:
     """In-memory secret store for testing and local development.
