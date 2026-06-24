@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import stat
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
+
+
+def _stat_600() -> os.stat_result:
+    return os.stat_result((0o100600, 1, 1, 1, 0, 0, 0, 0, 0, 0))
 
 import pytest
 
@@ -81,17 +87,19 @@ class TestDotenvSecretBackend:
     def test_load_existing_file(self) -> None:
         content = "KEY1=val1\nKEY2=val2\n"
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", mock_open(read_data=content)):
-                backend = DotenvSecretBackend(".env")
-                assert backend.get("KEY1") == "val1"
-                assert backend.get("KEY2") == "val2"
+            with patch("pathlib.Path.stat", return_value=_stat_600()):
+                with patch("builtins.open", mock_open(read_data=content)):
+                    backend = DotenvSecretBackend(".env")
+                    assert backend.get("KEY1") == "val1"
+                    assert backend.get("KEY2") == "val2"
 
     def test_load_skips_comments(self) -> None:
         content = "# comment\nKEY=val\n"
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", mock_open(read_data=content)):
-                backend = DotenvSecretBackend(".env")
-                assert backend.get("KEY") == "val"
+            with patch("pathlib.Path.stat", return_value=_stat_600()):
+                with patch("builtins.open", mock_open(read_data=content)):
+                    backend = DotenvSecretBackend(".env")
+                    assert backend.get("KEY") == "val"
 
     def test_load_file_not_exists(self) -> None:
         with patch("pathlib.Path.exists", return_value=False):
@@ -239,3 +247,28 @@ class TestGenerateJwtSecret:
     def test_default_length(self) -> None:
         secret = generate_jwt_secret()
         assert len(secret) == 64
+
+
+class TestDotenvSecretBackendPermissions:
+    def test_save_sets_owner_only_permissions(self, tmp_path) -> None:
+        env_file = tmp_path / ".env"
+        backend = DotenvSecretBackend(str(env_file))
+        backend.set("api_key", "s3cret")
+        mode = stat.S_IMODE(env_file.stat().st_mode)
+        assert mode & 0o077 == 0
+
+    def test_load_rejects_group_readable_file(self, tmp_path) -> None:
+        from lexigram.security.secrets.store import SecretAccessError
+
+        env_file = tmp_path / ".env"
+        env_file.write_text("api_key=s3cret\n")
+        env_file.chmod(0o644)
+        with pytest.raises(SecretAccessError):
+            DotenvSecretBackend(str(env_file))
+
+    def test_load_accepts_owner_only_file(self, tmp_path) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("api_key=s3cret\n")
+        env_file.chmod(0o600)
+        backend = DotenvSecretBackend(str(env_file))
+        assert backend.get("api_key") == "s3cret"
