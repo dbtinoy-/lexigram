@@ -300,6 +300,20 @@ Partially executed 2026-08-16 (`75568cd`), completed 2026-08-18. **Deviations fr
 
 ---
 
+### 3.16 Audit retention purge no-op (Round 11, Lane 7) — `plans/2026-08-18-security-audit-purge-noop.md` `[ ]`
+
+**EXECUTED 2026-08-18 (Lane 7, Area 1; §2 sign-off pending).** Finding §67: `purge_expired()` counted expired entries but never deleted — now real + dry-run mode. All 5 tasks done, 5 commits:
+
+- [x] Task 1 (contracts) — `AuditStoreProtocol.delete_expired(cutoff) -> int` + conforming fakes — `a6cba27d`
+- [x] Task 2 (SQL) — `SqlAuditStore.delete_expired` single bulk `DELETE` on `__expires_at` stamp (sqlite `json_extract` / postgres `::jsonb`+`::timestamptz`), 0 + warn on backend failure — `d2884e28`
+- [x] Task 3 (in-memory + fake) — `InMemoryAuditStore.delete_expired` (stamp-filtered rebuild) + `FakeAuditLogger.delete_expired` — `50d49f17`
+- [x] Task 4 (driver) — `purge_expired(dry_run=False)` issues one `delete_expired(now)` when not dry-run and purged>0; meta-audit gains `dry_run` — `bd638616`
+- [x] Task 5 (docs + verification) — audit-trail guide dry-run/first-run guidance — `534a2913`
+
+Verified: lexigram-audit 274 unit tests green, contracts protocol tests 12 green, ruff clean on all touched trees, mypy clean (audit 46 files, testing 151 files; the plan's combined mypy command hits a pre-existing duplicate-module limitation — two `lexigram/` roots in one invocation — run per-tree instead). Spec cross-check: §3.1/§4.2 store-state tests, §3.2 single-delete test, §6 untouched (`verification/`, `retention/policy.py`, `cli/commands.py`).
+
+---
+
 ## 4. Audit-Correction Register
 
 Agents re-verified every finding against live code; corrections below must
