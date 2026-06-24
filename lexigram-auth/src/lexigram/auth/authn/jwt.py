@@ -151,7 +151,7 @@ class JWTTokenManager(_JWTCreationMixin, _JWTLifecycleMixin):
 
         # Defensive GuardProtocol: Ensure secret is not a known weak default in production
         env = os.getenv("LEX_ENV", "development").lower()
-        if env == "production":
+        if env in ("production", "staging"):
             weak_secrets = ["change-me-in-production", "secret", "password", "123456"]
             for key_val in _resolved_keys.values():
                 if isinstance(key_val, dict):

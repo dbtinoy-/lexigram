@@ -194,9 +194,10 @@ class JWTConfig(BaseConfig):
                     f"{env.value.upper()}.\n"
                     "You MUST set a secure secret key via LEX_AUTH__TOKEN__SECRET_KEY.",
                 )
-            if self.algorithm == "HS256" and len(self.secret_key) < 32:
+            if self.algorithm.startswith("HS") and len(self.secret_key) < 32:
                 raise ValueError(
-                    f"SECURITY ERROR: HS256 requires a secret of at least 32 bytes in {env.value}.\n"
+                    f"SECURITY ERROR: {self.algorithm} requires a secret of at "
+                    f"least 32 bytes in {env.value}.\n"
                     "Either provide a strong secret (e.g. secrets.token_hex(32)) "
                     "or switch to RS256 for asymmetric key security.",
                 )
