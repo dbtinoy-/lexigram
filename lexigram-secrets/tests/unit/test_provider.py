@@ -26,6 +26,23 @@ async def test_provider_registers_store() -> None:
 
 
 @pytest.mark.asyncio
+async def test_provider_memory_backend_is_real_store_not_test_fake() -> None:
+    """The memory backend is the runtime store, never the testing fake."""
+    from lexigram.secrets.backends.memory import InMemoryRotatableSecretStore
+
+    config = SecretsConfig(backend_type="memory")
+    provider = SecretsProvider(config=config)
+    container = Container()
+
+    await provider.register(container)
+    container.freeze()
+
+    store = await container.resolve(RotatableSecretStoreProtocol)
+    assert isinstance(store, InMemoryRotatableSecretStore)
+    assert type(store).__module__ != "lexigram.testing.fakes"
+
+
+@pytest.mark.asyncio
 async def test_provider_boot_creates_decorator() -> None:
     config = SecretsConfig(backend_type="memory")
     provider = SecretsProvider(config=config)

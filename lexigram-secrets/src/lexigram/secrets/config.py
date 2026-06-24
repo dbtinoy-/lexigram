@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from typing import ClassVar, cast
 
 from lexigram.config import BaseConfig
+from lexigram.contracts.core.config import Environment
 from lexigram.secrets import constants as const
-from lexigram.validation import ConfigDict, Field
+from lexigram.validation import ConfigDict, Field, model_validator
 
 __all__ = ["SecretsConfig"]
 
@@ -64,12 +65,39 @@ class SecretsConfig(BaseConfig):
 
     @property
     def is_production(self) -> bool:
-        return False
+        """Whether the active environment is production."""
+        return self.environment == Environment.PRODUCTION
 
     @property
     def is_development(self) -> bool:
-        return True
+        """Whether the active environment is development."""
+        return self.environment == Environment.DEVELOPMENT
 
     @property
     def is_test(self) -> bool:
-        return True
+        """Whether the active environment is test."""
+        return self.environment == Environment.TEST
+
+    @model_validator(mode="after")
+    def validate_backend_environment(self) -> SecretsConfig:
+        """Reject the in-memory backend in production-like environments.
+
+        The in-memory store is plaintext and process-local; it must not
+        silently become the default in production or staging.
+
+        Raises:
+            ValueError: If ``backend_type`` is ``"memory"`` while the
+                environment is production or staging.
+        """
+        if self.backend_type == "memory" and self.environment in (
+            Environment.PRODUCTION,
+            Environment.STAGING,
+        ):
+            raise ValueError(
+                "SecretsConfig: backend_type='memory' (in-memory plaintext "
+                "store) is not permitted in "
+                f"{self.environment.value}; set LEX_SECRETS__BACKEND_TYPE to "
+                "a persistent backend (vault, aws, gcp, azure) before "
+                "deploying to production/staging."
+            )
+        return self
