@@ -3,7 +3,29 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from lexigram.secrets.exceptions import SecretBackendUnavailableError
 from lexigram.secrets.types import SecretVersion, VersionedSecret
+
+
+def _rpc_status(exc: Exception) -> Any | None:
+    code = getattr(exc, "code", None)
+    if not callable(code):
+        return None
+    return code()
+
+def _is_not_found(exc: Exception) -> bool:
+    try:
+        from grpc import StatusCode  # type: ignore[import-untyped]
+    except ImportError:  # pragma: no cover - grpc is a lazy dependency
+        return False
+    return _rpc_status(exc) == StatusCode.NOT_FOUND
+
+def _is_already_exists(exc: Exception) -> bool:
+    try:
+        from grpc import StatusCode  # type: ignore[import-untyped]
+    except ImportError:  # pragma: no cover - grpc is a lazy dependency
+        return False
+    return _rpc_status(exc) == StatusCode.ALREADY_EXISTS
 
 
 class GCPSecretManagerStore:
@@ -45,8 +67,12 @@ class GCPSecretManagerStore:
             response = await client.access_secret_version(
                 request={"name": self._version_path(name)}
             )
-        except RpcError:
-            return None
+        except RpcError as exc:
+            if _is_not_found(exc):
+                return None
+            raise SecretBackendUnavailableError(
+                f"GCP access_secret_version failed for {name!r}: {exc}"
+            ) from exc
         payload = response.payload
         if payload is None:
             return None
@@ -75,8 +101,11 @@ class GCPSecretManagerStore:
                     "secret": {"replication": {"automatic": {}}},
                 }
             )
-        except RpcError:
-            pass
+        except RpcError as exc:
+            if not _is_already_exists(exc):
+                raise SecretBackendUnavailableError(
+                    f"GCP create_secret failed for {name!r}: {exc}"
+                ) from exc
         await client.add_secret_version(
             request={
                 "parent": self._secret_path(name),
@@ -90,8 +119,11 @@ class GCPSecretManagerStore:
         client = await self._get_client()
         try:
             await client.delete_secret(request={"name": self._secret_path(name)})
-        except RpcError:
-            pass
+        except RpcError as exc:
+            if not _is_not_found(exc):
+                raise SecretBackendUnavailableError(
+                    f"GCP delete_secret failed for {name!r}: {exc}"
+                ) from exc
 
     async def rotate(self, key: str) -> VersionedSecret:
         import secrets as stdlib_secrets
@@ -110,8 +142,12 @@ class GCPSecretManagerStore:
             response = await client.access_secret_version(
                 request={"name": self._version_path(key, str(version))}
             )
-        except RpcError:
-            return None
+        except RpcError as exc:
+            if _is_not_found(exc):
+                return None
+            raise SecretBackendUnavailableError(
+                f"GCP access_secret_version failed for {key!r} v{version}: {exc}"
+            ) from exc
         payload = response.payload
         if payload is None:
             return None
@@ -126,8 +162,12 @@ class GCPSecretManagerStore:
             response = await client.list_secret_versions(
                 request={"parent": self._secret_path(key)}
             )
-        except RpcError:
-            return []
+        except RpcError as exc:
+            if _is_not_found(exc):
+                return []
+            raise SecretBackendUnavailableError(
+                f"GCP list_secret_versions failed for {key!r}: {exc}"
+            ) from exc
         versions: list[SecretVersion] = []
         async for version in response:
             created_at = (
@@ -152,8 +192,12 @@ class GCPSecretManagerStore:
                 request={"name": self._version_path(key)}
             )
         except RpcError as exc:
-            msg = f"Secret '{key}' not found"
-            raise KeyError(msg) from exc
+            if _is_not_found(exc):
+                msg = f"Secret '{key}' not found"
+                raise KeyError(msg) from exc
+            raise SecretBackendUnavailableError(
+                f"GCP access_secret_version failed for {key!r}: {exc}"
+            ) from exc
         payload = response.payload
         if payload is None:
             msg = f"Secret '{key}' not found"

@@ -3,7 +3,17 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from lexigram.secrets.exceptions import SecretBackendUnavailableError
 from lexigram.secrets.types import SecretVersion, VersionedSecret
+
+
+def _is_not_found(exc: Exception) -> bool:
+    code = exc.response.get("Error", {}).get("Code", "")
+    return code in {"ResourceNotFoundException", "NotFoundException"}
+
+
+def _client_error_message(op: str, name: str, exc: Exception) -> str:
+    return f"AWS {op} failed for {name!r}: {exc}"
 
 
 class AWSSecretsManagerStore:
@@ -57,8 +67,12 @@ class AWSSecretsManagerStore:
         client = await self._get_client()
         try:
             response = await client.get_secret_value(SecretId=name)
-        except botocore.exceptions.ClientError:
-            return None
+        except botocore.exceptions.ClientError as exc:
+            if _is_not_found(exc):
+                return None
+            raise SecretBackendUnavailableError(
+                _client_error_message("get_secret_value", name, exc)
+            ) from exc
         secret_value: str | None = response.get("SecretString")
         return secret_value
 
@@ -95,8 +109,11 @@ class AWSSecretsManagerStore:
         client = await self._get_client()
         try:
             await client.delete_secret(SecretId=name, ForceDeleteWithoutRecovery=True)
-        except botocore.exceptions.ClientError:
-            pass
+        except botocore.exceptions.ClientError as exc:
+            if not _is_not_found(exc):
+                raise SecretBackendUnavailableError(
+                    _client_error_message("delete_secret", name, exc)
+                ) from exc
         self._version_map.pop(name, None)
         self._next_version.pop(name, None)
 
@@ -129,8 +146,12 @@ class AWSSecretsManagerStore:
                 SecretId=key,
                 VersionId=aws_version_id,
             )
-        except botocore.exceptions.ClientError:
-            return None
+        except botocore.exceptions.ClientError as exc:
+            if _is_not_found(exc):
+                return None
+            raise SecretBackendUnavailableError(
+                _client_error_message("get_secret_value", key, exc)
+            ) from exc
         secret_value: str | None = response.get("SecretString")
         return secret_value
 
@@ -140,8 +161,12 @@ class AWSSecretsManagerStore:
         client = await self._get_client()
         try:
             response = await client.list_secret_version_ids(SecretId=key)
-        except botocore.exceptions.ClientError:
-            return []
+        except botocore.exceptions.ClientError as exc:
+            if _is_not_found(exc):
+                return []
+            raise SecretBackendUnavailableError(
+                _client_error_message("list_secret_version_ids", key, exc)
+            ) from exc
         # Build a lookup: aws_version_id -> created_date
         aws_entries: dict[str, datetime] = {}
         for entry in response.get("Versions", []):
@@ -167,8 +192,12 @@ class AWSSecretsManagerStore:
         try:
             response = await client.get_secret_value(SecretId=key)
         except botocore.exceptions.ClientError as exc:
-            msg = f"Secret '{key}' not found"
-            raise KeyError(msg) from exc
+            if _is_not_found(exc):
+                msg = f"Secret '{key}' not found"
+                raise KeyError(msg) from exc
+            raise SecretBackendUnavailableError(
+                _client_error_message("get_secret_value", key, exc)
+            ) from exc
         secret_string = response.get("SecretString", "")
         aws_version_id = response.get("VersionId", "")
         created = response.get("CreatedDate")
