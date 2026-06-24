@@ -123,14 +123,17 @@ class AuditVerifierProtocol(Protocol):
         """
         ...
 
-    async def verify_entry(self, entry_id: str) -> bool:
+    async def verify_entry(self, entry: AuditEntry) -> AuditMismatch | None:
         """Verify checksum for a single entry.
 
         Args:
-            entry_id: ID of the entry to verify.
+            entry: The audit entry to verify.
 
         Returns:
-            True if checksum is valid, False if tampered.
+            None when the entry verifies clean; an AuditMismatch whose
+            reason is ``checksum_mismatch`` when tampered or
+            ``no_checksum_present`` when the entry carries no stored
+            checksum (a pre-checksum row) and cannot be verified.
         """
         ...
 

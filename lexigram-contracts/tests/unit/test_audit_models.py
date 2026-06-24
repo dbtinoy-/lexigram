@@ -9,6 +9,7 @@ from lexigram.contracts.audit import (
     AuditEntry,
     AuditEventSeverity,
     AuditMismatch,
+    AuditMismatchReason,
     AuditQuery,
     RetentionDecision,
     RetentionPolicy,
@@ -86,6 +87,14 @@ class TestAuditEntry:
         entry = AuditEntry(action="test", actor_id="actor")
         assert entry.old_values is None
 
+    def test_checksum_defaults_to_none(self) -> None:
+        entry = AuditEntry(action="test", actor_id="actor")
+        assert entry.checksum is None
+
+    def test_checksum_is_settable(self) -> None:
+        entry = AuditEntry(action="test", actor_id="actor", checksum="abc123")
+        assert entry.checksum == "abc123"
+
 
 class TestAuditQuery:
     """Tests for AuditQuery dataclass."""
@@ -131,6 +140,22 @@ class TestAuditMismatch:
         )
         assert mismatch.entry_id == "entry-1"
         assert mismatch.expected_checksum != mismatch.actual_checksum
+
+    def test_reason_defaults_to_checksum_mismatch(self) -> None:
+        mismatch = AuditMismatch(
+            entry_id="entry-1",
+            expected_checksum="abc123",
+            actual_checksum="def456",
+        )
+        assert mismatch.reason == AuditMismatchReason.CHECKSUM_MISMATCH
+
+
+class TestAuditMismatchReason:
+    """Tests for AuditMismatchReason enum."""
+
+    def test_values(self) -> None:
+        assert AuditMismatchReason.CHECKSUM_MISMATCH == "checksum_mismatch"
+        assert AuditMismatchReason.NO_CHECKSUM_PRESENT == "no_checksum_present"
 
 
 class TestRetentionPolicy:
