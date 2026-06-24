@@ -266,7 +266,7 @@ class AdminAuthConfig(DomainModel):
         description="Deployment environment for cookie security defaults",
     )
     session_secret: SecretStr = Field(
-        default="change-me-in-production",
+        default=SecretStr("change-me-in-production"),
         description="Session secret for signing",
     )
     login_url: str = Field(default="/admin/login")

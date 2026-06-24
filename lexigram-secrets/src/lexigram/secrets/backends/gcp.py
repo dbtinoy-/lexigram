@@ -13,6 +13,7 @@ def _rpc_status(exc: Exception) -> Any | None:
         return None
     return code()
 
+
 def _is_not_found(exc: Exception) -> bool:
     try:
         from grpc import StatusCode  # type: ignore[import-untyped]
@@ -20,9 +21,10 @@ def _is_not_found(exc: Exception) -> bool:
         return False
     return _rpc_status(exc) == StatusCode.NOT_FOUND
 
+
 def _is_already_exists(exc: Exception) -> bool:
     try:
-        from grpc import StatusCode  # type: ignore[import-untyped]
+        from grpc import StatusCode
     except ImportError:  # pragma: no cover - grpc is a lazy dependency
         return False
     return _rpc_status(exc) == StatusCode.ALREADY_EXISTS
@@ -60,7 +62,7 @@ class GCPSecretManagerStore:
         return f"{self._secret_path(name)}/versions/{version}"
 
     async def get(self, name: str) -> str | None:
-        from grpc import RpcError  # type: ignore[import-untyped]
+        from grpc import RpcError
 
         client = await self._get_client()
         try:

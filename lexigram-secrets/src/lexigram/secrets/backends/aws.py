@@ -8,8 +8,13 @@ from lexigram.secrets.types import SecretVersion, VersionedSecret
 
 
 def _is_not_found(exc: Exception) -> bool:
-    code = exc.response.get("Error", {}).get("Code", "")
-    return code in {"ResourceNotFoundException", "NotFoundException"}
+    response = getattr(exc, "response", None)
+    if not isinstance(response, dict):
+        return False
+    return response.get("Error", {}).get("Code", "") in {
+        "ResourceNotFoundException",
+        "NotFoundException",
+    }
 
 
 def _client_error_message(op: str, name: str, exc: Exception) -> str:

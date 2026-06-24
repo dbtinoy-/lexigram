@@ -56,7 +56,7 @@ class RotationDecorator:
 
     def _evict_oldest(self) -> None:
         while len(self._rotated_old) > _MAX_GRACE_ENTRIES:
-            oldest = min(self._rotated_at, key=self._rotated_at.get)
+            oldest = min(self._rotated_at, key=self._rotated_at.__getitem__)
             self._rotated_at.pop(oldest, None)
             self._rotated_old.pop(oldest, None)
 
