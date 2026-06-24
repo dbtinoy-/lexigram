@@ -38,8 +38,16 @@ def test_production_warns_when_strict_resource_resolution_disabled() -> None:
         AdminProvider(config=config)
 
     assert any(
-        "strict_resource_resolution=False in production"
-        in str(log.get("message", ""))
+        "strict_resource_resolution=False in production" in str(log.get("message", ""))
         for log in captured
         if log.get("event") == "admin.strict_resource_resolution_disabled_in_production"
     )
+
+
+def test_session_secret_repr_is_masked() -> None:
+    from lexigram.admin.config import AdminAuthConfig
+
+    cfg = AdminAuthConfig(env="development", session_secret="x" * 64)
+    secret_attr = cfg.session_secret
+    assert secret_attr.get_secret_value() == "x" * 64
+    assert "x" * 64 not in repr(secret_attr)

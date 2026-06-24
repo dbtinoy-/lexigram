@@ -188,7 +188,7 @@ class AuthenticationProvider(Provider):
             and getattr(config, "token", None) is not None
         ):
             token_manager = _build_token_manager(
-                secret_key=config.token.secret_key,
+                secret_key=config.token.secret_key.get_secret_value(),
                 jwt_algorithm=config.token.algorithm,
                 cache_service=cache_service,
                 required_audience=config.token.required_audience,

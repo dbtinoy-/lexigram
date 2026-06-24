@@ -9,7 +9,7 @@ from lexigram.admin.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
 from lexigram.admin.resources.config import ResourceConfig, TableConfiguration
 from lexigram.config import BaseConfig
 from lexigram.domain import DomainModel
-from lexigram.validation import ConfigDict, Field, model_validator
+from lexigram.validation import ConfigDict, Field, SecretStr, model_validator
 
 
 @dataclass(init=False)
@@ -265,7 +265,7 @@ class AdminAuthConfig(DomainModel):
         default="development",
         description="Deployment environment for cookie security defaults",
     )
-    session_secret: str = Field(
+    session_secret: SecretStr = Field(
         default="change-me-in-production",
         description="Session secret for signing",
     )
@@ -309,6 +309,8 @@ class AdminAuthConfig(DomainModel):
     @model_validator(mode="after")
     def validate_security(self) -> AdminAuthConfig:
         """Ensure secure settings in production."""
+        if not isinstance(self.session_secret, SecretStr):
+            self.session_secret = SecretStr(self.session_secret)
         insecure_defaults = (
             "change-me",
             "your-secret-key",
@@ -319,7 +321,7 @@ class AdminAuthConfig(DomainModel):
 
         if (
             self.env == "production"
-            and self.session_secret.lower() in insecure_defaults
+            and self.session_secret.get_secret_value().lower() in insecure_defaults
         ):
             raise ValueError(
                 "CRITICAL SECURITY ERROR: Default admin session_secret detected in PRODUCTION.\n"

@@ -34,7 +34,7 @@ class FormRenderer:
         self.resource_name = resource_name
         self._renderer = renderer
         self._permission_service = permission_service
-        self._csrf_service = AdminCsrfService(secret=config.auth.session_secret)
+        self._csrf_service = AdminCsrfService(secret=config.auth.session_secret.get_secret_value())
 
     async def render_create(
         self,

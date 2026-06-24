@@ -22,7 +22,7 @@ from lexigram.auth import constants as const
 from lexigram.config import BaseConfig
 from lexigram.contracts.core.config import Environment
 from lexigram.logging import get_logger
-from lexigram.validation import ConfigDict, Field, model_validator
+from lexigram.validation import ConfigDict, Field, SecretStr, model_validator
 
 _logger = get_logger(__name__)
 
@@ -125,7 +125,7 @@ class JWTConfig(BaseConfig):
 
     from lexigram.contracts.core import Duration
 
-    secret_key: str = Field(..., description="Secret key for signing tokens")
+    secret_key: SecretStr = Field(..., description="Secret key for signing tokens")
     algorithm: str = Field(
         default=const.DEFAULT_TOKEN_ALGORITHM, description="Algorithm"
     )
@@ -173,6 +173,8 @@ class JWTConfig(BaseConfig):
     @model_validator(mode="after")
     def validate_jwt_security(self) -> JWTConfig:
         """Enforce verified-only JWT policy based on deployment environment."""
+        if not isinstance(self.secret_key, SecretStr):
+            self.secret_key = SecretStr(self.secret_key)
         env = self.environment
         _STRICT_ENVS = {Environment.PRODUCTION, Environment.STAGING}
 
@@ -188,13 +190,15 @@ class JWTConfig(BaseConfig):
                     "flag silently overridden to False",
                 )
             # Validate secret quality in strict environments.
-            if self.secret_key in ("change-me", "your-secret-key"):
+            if self.secret_key.get_secret_value() in ("change-me", "your-secret-key"):
                 raise ValueError(
                     "CRITICAL SECURITY ERROR: Default JWT secret_key detected in "
                     f"{env.value.upper()}.\n"
                     "You MUST set a secure secret key via LEX_AUTH__TOKEN__SECRET_KEY.",
                 )
-            if self.algorithm.startswith("HS") and len(self.secret_key) < 32:
+            if self.algorithm.startswith("HS") and len(
+                self.secret_key.get_secret_value()
+            ) < 32:
                 raise ValueError(
                     f"SECURITY ERROR: {self.algorithm} requires a secret of at "
                     f"least 32 bytes in {env.value}.\n"

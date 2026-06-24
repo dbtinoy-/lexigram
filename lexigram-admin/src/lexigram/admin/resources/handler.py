@@ -633,7 +633,7 @@ class UserPermissionsActionHandler:
             "admin_user_id", "anonymous"
         )
         request.state.csrf_token = AdminCsrfService(
-            secret=self._config.auth.session_secret
+            secret=self._config.auth.session_secret.get_secret_value()
         ).generate_token(session_id)
 
 

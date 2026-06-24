@@ -25,6 +25,7 @@ from lexigram.admin.services.notifications import AdminNotificationService
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
+from lexigram.validation import SecretStr
 
 if TYPE_CHECKING:
     from lexigram.admin.config import AdminConfig
@@ -241,6 +242,8 @@ class AdminAuthSubProvider:
         _session_secret: str = getattr(
             _auth_cfg, "session_secret", "change-me-in-production"
         )
+        if isinstance(_session_secret, SecretStr):
+            _session_secret = _session_secret.get_secret_value()
         # Token lifetime aligns with session idle TTL (AUTH-08)
         _csrf_lifetime: int = getattr(_auth_cfg, "idle_timeout", 3600)
         container.singleton(
@@ -257,6 +260,8 @@ class AdminAuthSubProvider:
         _fingerprint_secret: str = getattr(
             _auth_cfg, "session_secret", "change-me-in-production"
         )
+        if isinstance(_fingerprint_secret, SecretStr):
+            _fingerprint_secret = _fingerprint_secret.get_secret_value()
 
         @inject
         class _AdminSessionServiceConfigured(AdminSessionService):

@@ -51,7 +51,9 @@ def _make_unsigned_token(payload: dict[str, Any] | None = None) -> str:
     import base64
     import json
 
-    header = base64.urlsafe_b64encode(b'{"alg":"none","typ":"JWT"}').rstrip(b"=").decode()
+    header = (
+        base64.urlsafe_b64encode(b'{"alg":"none","typ":"JWT"}').rstrip(b"=").decode()
+    )
     claims: dict[str, Any] = {
         "sub": "user-123",
         "email": "test@example.com",
@@ -60,9 +62,7 @@ def _make_unsigned_token(payload: dict[str, Any] | None = None) -> str:
     }
     if payload:
         claims.update(payload)
-    body = (
-        base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
-    )
+    body = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
     return f"{header}.{body}."
 
 
@@ -92,7 +92,7 @@ class TestJWTConfigVerificationPolicy:
     def test_allows_valid_secret_in_staging(self) -> None:
         with patch.dict(os.environ, {"LEX_ENV": "staging"}):
             cfg = JWTConfig(secret_key=_GOOD_SECRET)
-            assert cfg.secret_key == _GOOD_SECRET
+            assert cfg.secret_key.get_secret_value() == _GOOD_SECRET
 
     def test_rejects_default_secret_in_production(self) -> None:
         with patch.dict(os.environ, {"LEX_ENV": "production"}):
@@ -132,13 +132,15 @@ class TestJWTConfigVerificationPolicy:
 class TestTokenProviderBootPolicy:
     """TokenProvider enforces the JWT verification policy at __init__ time."""
 
-    def _provider_with_env(self, env: str, secret: str | None, allow_unverified: bool = False) -> TokenProvider:
+    def _provider_with_env(
+        self, env: str, secret: str | None, allow_unverified: bool = False
+    ) -> TokenProvider:
         """Build a minimal mock config and TokenProvider in the given env."""
         from unittest.mock import MagicMock
 
         if secret is not None:
             token_cfg = MagicMock()
-            token_cfg.secret_key = secret
+            token_cfg.secret_key = SecretStr(secret)
             token_cfg.algorithm = "HS256"
             token_cfg.allow_unverified_dev = allow_unverified
             token_cfg.access_expiration_hours = 1
@@ -367,5 +369,7 @@ class TestJWTTokenManagerVerifiedPath:
         result = await manager.verify_token(token)
         assert result.is_err(), "Expected Err for token signed with wrong secret"
 
-    def test_verified_only_manager_has_flag_false(self, manager: JWTTokenManager) -> None:
+    def test_verified_only_manager_has_flag_false(
+        self, manager: JWTTokenManager
+    ) -> None:
         assert manager._allow_unverified_dev is False
