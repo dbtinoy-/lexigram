@@ -149,18 +149,24 @@ class GovernanceProvider(Provider):
         if database is not None:
             from lexigram.ai.governance.persistence import (
                 DatabaseGovernancePersistence,
+                GovernancePersistence,
             )
 
-            persistence = DatabaseGovernancePersistence(database)
+            persistence = cast(
+                "GovernancePersistence", DatabaseGovernancePersistence(database)
+            )
             manager_with_persistence = AIGovernanceManager(
                 self._config, persistence=persistence, audit_store=audit_store
             )
         elif cache is not None:
             from lexigram.ai.governance.persistence import (
+                GovernancePersistence,
                 RedisGovernancePersistence,
             )
 
-            persistence = RedisGovernancePersistence(cache)
+            persistence = cast(
+                "GovernancePersistence", RedisGovernancePersistence(cache)
+            )
             manager_with_persistence = AIGovernanceManager(
                 self._config, persistence=persistence, audit_store=audit_store
             )
@@ -173,8 +179,9 @@ class GovernanceProvider(Provider):
             manager_with_persistence = manager
 
         if manager_with_persistence is not manager:
-            container.bind(AIGovernanceManager, manager_with_persistence)
-            container.bind(AIGovernanceProtocol, manager_with_persistence)
+            boot_container = cast("BootContainerProtocol", container)
+            boot_container.bind(AIGovernanceManager, manager_with_persistence)
+            boot_container.bind(AIGovernanceProtocol, manager_with_persistence)
 
             # Keep the resource-unit tracker/registry routing through the
             # same backend as the rebound manager (see register()).
@@ -189,10 +196,10 @@ class GovernanceProvider(Provider):
                     ResourceUnitTracker,
                 )
 
-                container.bind(
+                boot_container.bind(
                     ResourceUnitRegistry, manager_with_persistence._resource_registry
                 )
-                container.bind(
+                boot_container.bind(
                     ResourceUnitTracker, manager_with_persistence.resource_tracker
                 )
 
