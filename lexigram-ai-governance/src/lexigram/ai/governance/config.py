@@ -94,6 +94,18 @@ class GovernanceConfig(BaseConfig):
             "Per-tenant limits are configured via TenantConfigService overrides."
         ),
     )
+    fail_open_on_persistence_error: bool = Field(
+        default=False,
+        description=(
+            "Allow requests when the persistence backend is unavailable. "
+            "When False (default, fail-closed), a persistence failure (e.g. Redis "
+            "down) denies the request: the budget check treats spend as unknown "
+            "and denies, the RPM check denies, and cost recording is skipped; "
+            "every failure is logged. When True (fail-open), the same failure "
+            "allows the request and skips cost recording, trading spend/rate "
+            "enforcement for availability during infrastructure outages."
+        ),
+    )
 
     def validate_for_environment(
         self, env: Environment | None = None
