@@ -32,10 +32,14 @@ CREATE TABLE IF NOT EXISTS ai_feedback (
     context     TEXT    NOT NULL DEFAULT '{}',
     metadata    TEXT    NOT NULL DEFAULT '{}',
     session_id  TEXT,
+    owner_id    TEXT    NOT NULL,
     created_at  TEXT    NOT NULL
 )
 """
 
+_CREATE_IDX_OWNER = (
+    "CREATE INDEX IF NOT EXISTS idx_ai_feedback_owner ON ai_feedback (owner_id)"
+)
 _CREATE_IDX_SESSION = (
     "CREATE INDEX IF NOT EXISTS idx_ai_feedback_session ON ai_feedback (session_id)"
 )
@@ -48,8 +52,8 @@ _CREATE_IDX_CREATED = (
 
 _INSERT = (
     "INSERT OR IGNORE INTO ai_feedback "
-    "(id, type, value, context, metadata, session_id, created_at) "
-    "VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "(id, type, value, context, metadata, session_id, owner_id, created_at) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -76,6 +80,7 @@ class DatabaseFeedbackStore:
         if self._initialised:
             return
         await self._db.execute(_CREATE_TABLE)
+        await self._db.execute(_CREATE_IDX_OWNER)
         await self._db.execute(_CREATE_IDX_SESSION)
         await self._db.execute(_CREATE_IDX_TYPE)
         await self._db.execute(_CREATE_IDX_CREATED)
@@ -106,6 +111,7 @@ class DatabaseFeedbackStore:
                     dumps_str(feedback.context),
                     dumps_str(feedback.metadata),
                     session_id,
+                    feedback.owner_id,
                     feedback.created_at.isoformat(),
                 ],
             )
@@ -116,19 +122,23 @@ class DatabaseFeedbackStore:
             )
             return Err(FeedbackError(f"Failed to save feedback {feedback.id}: {exc}"))
 
-    async def find_by_session(self, session_id: str) -> list[FeedbackItem]:
-        """Return all items collected during *session_id*, newest first.
+    async def find_by_session(
+        self, session_id: str, *, owner_id: str
+    ) -> list[FeedbackItem]:
+        """Return all items collected during *session_id* for *owner_id*, newest first.
 
         Args:
             session_id: Session identifier to filter by.
+            owner_id: Owner scope; only this owner's items are returned.
 
         Returns:
             Matching feedback items ordered by creation time descending.
         """
         await self._ensure_table()
         result = await self._db.execute_query(
-            "SELECT * FROM ai_feedback WHERE session_id = ? ORDER BY created_at DESC",
-            [session_id],
+            "SELECT * FROM ai_feedback WHERE session_id = ? AND owner_id = ? "
+            "ORDER BY created_at DESC",
+            [session_id, owner_id],
         )
         return [self._row_to_item(row) for row in result.rows]
 
@@ -136,12 +146,14 @@ class DatabaseFeedbackStore:
         self,
         feedback_type: FeedbackType,
         *,
+        owner_id: str,
         limit: int = 100,
     ) -> list[FeedbackItem]:
-        """Return feedback items of *feedback_type*, newest first.
+        """Return feedback items of *feedback_type* for *owner_id*, newest first.
 
         Args:
             feedback_type: Type to filter by.
+            owner_id: Owner scope; only this owner's items are returned.
             limit: Maximum number of results (default: 100).
 
         Returns:
@@ -149,15 +161,19 @@ class DatabaseFeedbackStore:
         """
         await self._ensure_table()
         result = await self._db.execute_query(
-            "SELECT * FROM ai_feedback WHERE type = ? ORDER BY created_at DESC LIMIT ?",
-            [feedback_type.value, limit],
+            "SELECT * FROM ai_feedback WHERE type = ? AND owner_id = ? "
+            "ORDER BY created_at DESC LIMIT ?",
+            [feedback_type.value, owner_id, limit],
         )
         return [self._row_to_item(row) for row in result.rows]
 
-    async def aggregate(self, *, window_hours: int = 24) -> FeedbackSummary:
-        """Compute summary statistics for items in the last *window_hours* hours.
+    async def aggregate(
+        self, *, owner_id: str, window_hours: int = 24
+    ) -> FeedbackSummary:
+        """Compute summary statistics for *owner_id* in the last *window_hours* hours.
 
         Args:
+            owner_id: Owner scope; only this owner's items are aggregated.
             window_hours: Look-back window in hours (default: 24).
 
         Returns:
@@ -168,16 +184,17 @@ class DatabaseFeedbackStore:
 
         # Total count
         count_result = await self._db.execute_query(
-            "SELECT COUNT(*) AS cnt FROM ai_feedback WHERE created_at >= ?",
-            [since],
+            "SELECT COUNT(*) AS cnt FROM ai_feedback "
+            "WHERE created_at >= ? AND owner_id = ?",
+            [since, owner_id],
         )
         total = int((count_result.rows[0] or {}).get("cnt", 0))
 
         # Average rating
         avg_result = await self._db.execute_query(
             "SELECT AVG(CAST(value AS REAL)) AS avg_rating "
-            "FROM ai_feedback WHERE type = ? AND created_at >= ?",
-            [FeedbackType.RATING.value, since],
+            "FROM ai_feedback WHERE type = ? AND created_at >= ? AND owner_id = ?",
+            [FeedbackType.RATING.value, since, owner_id],
         )
         raw_avg = (avg_result.rows[0] or {}).get("avg_rating")
         average_rating = float(raw_avg) if raw_avg is not None else None
@@ -185,8 +202,8 @@ class DatabaseFeedbackStore:
         # Count by type
         type_result = await self._db.execute_query(
             "SELECT type, COUNT(*) AS cnt FROM ai_feedback "
-            "WHERE created_at >= ? GROUP BY type",
-            [since],
+            "WHERE created_at >= ? AND owner_id = ? GROUP BY type",
+            [since, owner_id],
         )
         count_by_type = {row["type"]: int(row["cnt"]) for row in type_result.rows}
 
@@ -228,6 +245,7 @@ class DatabaseFeedbackStore:
         return FeedbackItem(
             feedback_type=FeedbackType(row["type"]),
             value=value,
+            owner_id=str(row["owner_id"]),
             context=context,
             metadata=metadata,
             id=row["id"],
