@@ -25,6 +25,7 @@ from lexigram.auth.exceptions import (
     PasswordPolicyError,
 )
 from lexigram.auth.models.user import User, UserCredentials
+from lexigram.auth.services.activity_tracker import AuthActivityTracker
 from lexigram.contracts.auth.protocols import (
     LoginAttemptTrackerProtocol,
     PasswordHasherProtocol,
@@ -229,6 +230,7 @@ class AuthenticationService:
         tracker: LoginAttemptTracker | None = None,
         hooks: HookRegistryProtocol | None = None,
         password_hasher: PasswordHasherProtocol | None = None,
+        activity_tracker: AuthActivityTracker | None = None,
     ) -> None:
         self.password_policy = password_policy
         self.user_store = user_store
@@ -248,6 +250,9 @@ class AuthenticationService:
         self._password_hasher: PasswordHasherProtocol = (
             password_hasher or PasswordHasher()
         )
+        # Tracks dashboard auth activity when bound by the DI container;
+        # ``None`` disables recording (e.g. tests or bare constructions).
+        self._activity_tracker = activity_tracker
         # Background tasks kept alive to prevent GC before completion
         self._background_tasks: set[asyncio.Task[object]] = set()
 
@@ -310,6 +315,8 @@ class AuthenticationService:
                 self._emit(UserLockedOut(user_id=locked_user.user_id, email=email))
             else:
                 self._emit(UserLoginFailed(email=email, reason="Account locked"))
+            if self._activity_tracker is not None:
+                self._activity_tracker.record_failed_login()
             return Err(AccountLockedError(email))
 
         user = await self.user_store.get_user_by_email(email)
@@ -343,6 +350,8 @@ class AuthenticationService:
         # Record the failure
         await self._tracker.record_failure(email)
         self._emit(UserLoginFailed(email=email, reason="Invalid credentials"))
+        if self._activity_tracker is not None:
+            self._activity_tracker.record_failed_login()
         return Err(InvalidCredentialsError())
 
     async def _rehash_password_if_needed(
@@ -436,6 +445,8 @@ class AuthenticationService:
 
         try:
             token = await self.token_manager.refresh_access_token(refresh_token)
+            if self._activity_tracker is not None:
+                self._activity_tracker.record_refresh()
             return Ok(token)
         except _TokenError as e:
             return Err(e)

@@ -43,7 +43,9 @@ class AuthAdminProvider(Provider):
         from lexigram.auth.admin.handlers.token_refresh_rate import (
             TokenRefreshRateWidgetHandler,
         )
+        from lexigram.auth.services.activity_tracker import AuthActivityTracker
 
+        container.singleton(AuthActivityTracker, AuthActivityTracker)
         container.transient(
             ActiveSessionsWidgetHandler,
             ActiveSessionsWidgetHandler,
