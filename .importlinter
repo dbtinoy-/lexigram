@@ -301,6 +301,16 @@ ignore_imports =
     # directly.  Refactor target: route through lexigram.contracts.
     # Filed as tech-debt: replace with a contracts-based interface boundary.
     lexigram.web.** -> lexigram.security.**
+    # Owned by 2026-08-15-admin-contributor-refactor.md Phase 2 (WidgetContent),
+    # executed before Step 6 of 2026-08-17-architecture-admin-auth-rbac-boundaries-design.md;
+    # these entries are REMOVED by that plan's final task — do not remove here.
+    lexigram.auth.** -> lexigram.ui
+    lexigram.cache.** -> lexigram.ui
+    lexigram.events.** -> lexigram.ui
+    lexigram.queue.** -> lexigram.ui
+    lexigram.sql.** -> lexigram.ui
+    lexigram.tasks.** -> lexigram.ui
+    lexigram.web.** -> lexigram.ui
     # Tracked violation: events/middleware/tasks use lexigram.resilience for
     # retry and rate-limiting utilities.  These were moved from lexigram.primitives
     # to lexigram.resilience (cc-p1).  Refactor target: promote retry and
