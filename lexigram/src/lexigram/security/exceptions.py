@@ -21,13 +21,7 @@ class SecurityError(LexigramError):
 class SecretError(SecurityError):
     """Base exception for secret store errors."""
 
-    _code: str = "LEX_ERR_SEC_011"
-
-
-class SecretNotFoundError(SecretError):
-    """Raised when a requested secret does not exist."""
-
-    _code: str = "LEX_ERR_SEC_007"
+    _code = "LEX_ERR_SEC_011"
 
 
 class SecretAccessError(SecretError):
@@ -54,6 +48,5 @@ __all__ = [
     "MiddlewareGuardError",
     "SecretAccessError",
     "SecretError",
-    "SecretNotFoundError",
     "SecurityError",
 ]

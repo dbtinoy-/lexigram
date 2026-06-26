@@ -10,11 +10,11 @@ from datetime import UTC, datetime, timedelta
 import pickle
 from typing import Any, cast
 
+from lexigram import hashing as ambient_hashing  # type: ignore[attr-defined]
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
 from lexigram.search.exceptions import CacheError
 from lexigram.search.types import SearchResponse
-from lexigram.security.hashing import ambient as ambient_hashing
 from lexigram.serialization import dumps, loads
 
 logger = get_logger(__name__)
@@ -107,7 +107,7 @@ class SearchCache:
         key_string = dumps(key_data, sort_keys=True, default=str)
 
         # Hash for fixed length (dumps returns bytes in our json helper)
-        return cast("str", ambient_hashing.digest(key_string))  # type: ignore[attr-defined]
+        return cast("str", ambient_hashing.digest(key_string))
 
     async def get(self, key: str) -> Any | None:
         """Get value from cache"""
@@ -351,7 +351,7 @@ def cached(cache: SearchCache, ttl_seconds: int | None = None) -> Any:
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Generate cache key from function call
             key_data = {"func": func.__name__, "args": args, "kwargs": kwargs}
-            key = ambient_hashing.digest(  # type: ignore[attr-defined]
+            key = ambient_hashing.digest(
                 dumps(key_data, sort_keys=True, default=str),
             )
 

@@ -9,6 +9,9 @@ lives in ``lexigram-web`` at ``lexigram.web.security``.
 
 from __future__ import annotations
 
+# -- Exceptions (Task 1) -----------------------------------------------------
+from lexigram.contracts.security import SecretNotFoundError as SecretNotFoundError
+
 # -- Hashing (Task 3) --------------------------------------------------------
 from lexigram.security.config import HashingConfig as HashingConfig
 from lexigram.security.config import SecurityConfig as SecurityConfig
@@ -26,14 +29,11 @@ from lexigram.security.events import (
 
 # -- Domain events (Task 2) --------------------------------------------------
 from lexigram.security.events import ThreatDetectedEvent as ThreatDetectedEvent
-
-# -- Exceptions (Task 1) -----------------------------------------------------
 from lexigram.security.exceptions import DecryptionError as DecryptionError
 from lexigram.security.exceptions import EncryptionError as EncryptionError
 from lexigram.security.exceptions import MiddlewareGuardError as MiddlewareGuardError
 from lexigram.security.exceptions import SecretAccessError as SecretAccessError
 from lexigram.security.exceptions import SecretError as SecretError
-from lexigram.security.exceptions import SecretNotFoundError as SecretNotFoundError
 from lexigram.security.exceptions import SecurityError as SecurityError
 
 # -- Guards (Task 2) ---------------------------------------------------------

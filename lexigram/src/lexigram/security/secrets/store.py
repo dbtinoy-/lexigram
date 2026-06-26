@@ -10,8 +10,9 @@ import os
 from pathlib import Path
 import stat
 
+from lexigram.contracts.security import SecretNotFoundError
 from lexigram.logging import get_logger
-from lexigram.security.exceptions import SecretAccessError, SecretNotFoundError
+from lexigram.security.exceptions import SecretAccessError
 
 logger = get_logger(__name__)
 

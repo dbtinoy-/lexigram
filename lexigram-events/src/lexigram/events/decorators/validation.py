@@ -31,9 +31,9 @@ from typing import (
     cast,
 )
 
+from lexigram import hashing  # type: ignore[attr-defined]
 from lexigram.contracts.exceptions.domain import ValidationError
 from lexigram.events.exceptions import ValidationError as CQRSValidationError
-from lexigram.security.hashing import ambient as hashing
 
 if TYPE_CHECKING:
     from collections.abc import Callable
