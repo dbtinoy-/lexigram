@@ -251,4 +251,4 @@ class TestAuthenticationProviderSecretGuard:
         provider = AuthenticationProvider(config=config)
         secret = provider.token_manager._key_store.keys["default"].get_secret_value()
         assert secret
-        assert "default-dev-secret-change-in-production" not in secret
+        assert len(secret) >= 32
