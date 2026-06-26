@@ -249,7 +249,9 @@ class AdminRegistrationConfig(DomainModel):
     """
 
     enabled: bool = Field(default=False, description="Allow self-service registration")
-    default_role: str = Field(default="admin", description="Role granted to new accounts")
+    default_role: str = Field(
+        default="admin", description="Role granted to new accounts"
+    )
     allowed_email_domains: list[str] = Field(
         default_factory=list,
         description="Restrict registration to these email domains (empty = any)",
