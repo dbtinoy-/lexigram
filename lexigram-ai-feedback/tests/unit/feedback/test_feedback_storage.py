@@ -279,7 +279,7 @@ class TestCachedFeedbackStore:
         cache = _cache_mock()
         cstore = CachedFeedbackStore(store=backing, cache=cache)
         await cstore.save(item)
-        cache.delete.assert_any_await("feedback:session:s-99")
+        cache.delete.assert_any_await("feedback:session:owner-1:s-99")
 
     @pytest.mark.asyncio
     async def test_save_invalidates_type_cache_on_success(self) -> None:
@@ -291,7 +291,7 @@ class TestCachedFeedbackStore:
         cache = _cache_mock()
         cstore = CachedFeedbackStore(store=backing, cache=cache)
         await cstore.save(item)
-        cache.delete.assert_any_await("feedback:type:text")
+        cache.delete.assert_any_await("feedback:type:owner-1:text")
 
     @pytest.mark.asyncio
     async def test_save_does_not_invalidate_cache_on_err(self) -> None:
@@ -308,11 +308,11 @@ class TestCachedFeedbackStore:
 
     @pytest.mark.asyncio
     async def test_find_by_session_returns_cache_hit(self) -> None:
-        items = [_item(), _item()]
+        items = [_item(owner_id="owner-1"), _item(owner_id="owner-1")]
         cache = _cache_mock(cached_value=items)
         backing = _store_mock()
         cstore = CachedFeedbackStore(store=backing, cache=cache)
-        results = await cstore.find_by_session("s-1")
+        results = await cstore.find_by_session("s-1", owner_id="owner-1")
         assert results is items
         backing.find_by_session.assert_not_awaited()
 
@@ -322,20 +322,20 @@ class TestCachedFeedbackStore:
         cache = _cache_mock(cached_value=None)
         backing = _store_mock(session_items=items)
         cstore = CachedFeedbackStore(store=backing, cache=cache)
-        results = await cstore.find_by_session("s-2")
+        results = await cstore.find_by_session("s-2", owner_id="owner-1")
         assert results == items
-        backing.find_by_session.assert_awaited_once_with("s-2")
+        backing.find_by_session.assert_awaited_once_with("s-2", owner_id="owner-1")
         cache.set.assert_awaited_once()
         key_used = cache.set.await_args[0][0]
-        assert "s-2" in key_used
+        assert "owner-1:s-2" in key_used
 
     @pytest.mark.asyncio
     async def test_find_by_type_returns_cache_hit(self) -> None:
-        items = [_item(FeedbackType.RATING)] * 5
+        items = [_item(FeedbackType.RATING, owner_id="owner-1")] * 5
         cache = _cache_mock(cached_value=items)
         backing = _store_mock()
         cstore = CachedFeedbackStore(store=backing, cache=cache)
-        results = await cstore.find_by_type(FeedbackType.RATING, limit=3)
+        results = await cstore.find_by_type(FeedbackType.RATING, owner_id="owner-1", limit=3)
         # Limited to 3 from cached 5
         assert len(results) == 3
         backing.find_by_type.assert_not_awaited()
@@ -346,7 +346,7 @@ class TestCachedFeedbackStore:
         cache = _cache_mock(cached_value=None)
         backing = _store_mock(type_items=items)
         cstore = CachedFeedbackStore(store=backing, cache=cache)
-        results = await cstore.find_by_type(FeedbackType.TEXT)
+        results = await cstore.find_by_type(FeedbackType.TEXT, owner_id="owner-1")
         assert results == items
         backing.find_by_type.assert_awaited_once()
         cache.set.assert_awaited_once()
@@ -359,9 +359,9 @@ class TestCachedFeedbackStore:
         backing = _store_mock(summary=summary)
         cache = _cache_mock()
         cstore = CachedFeedbackStore(store=backing, cache=cache)
-        result = await cstore.aggregate(window_hours=12)
+        result = await cstore.aggregate(owner_id="owner-1", window_hours=12)
         assert result is summary
-        backing.aggregate.assert_awaited_once_with(window_hours=12)
+        backing.aggregate.assert_awaited_once_with(owner_id="owner-1", window_hours=12)
         cache.get.assert_not_awaited()
 
 

@@ -12,8 +12,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.ai.feedback.storage.cache import CachedFeedbackStore
 from lexigram.ai.feedback.storage.database import DatabaseFeedbackStore
 from lexigram.ai.feedback.types import FeedbackItem, FeedbackType
+from lexigram.result import Ok
 
 OWNER_A = "tenant-a"
 OWNER_B = "tenant-b"
@@ -129,3 +131,72 @@ class TestDatabaseFeedbackStoreIsolation:
         item = store._row_to_item(row)
 
         assert item.owner_id == OWNER_A
+
+
+def _cache_mock(cached_value: Any = None) -> MagicMock:
+    cache = MagicMock()
+    cache.get = AsyncMock(return_value=cached_value)
+    cache.set = AsyncMock()
+    cache.delete = AsyncMock()
+    return cache
+
+
+class TestCachedFeedbackStoreIsolation:
+    @pytest.mark.asyncio
+    async def test_find_by_session_key_is_owner_namespaced(self) -> None:
+        cache = _cache_mock()
+        backing = MagicMock()
+        backing.find_by_session = AsyncMock(return_value=[])
+        store = CachedFeedbackStore(store=backing, cache=cache)
+
+        await store.find_by_session("session-1", owner_id=OWNER_A)
+
+        get_key = cache.get.await_args.args[0]
+        assert get_key == f"feedback:session:{OWNER_A}:session-1"
+        backing.find_by_session.assert_awaited_once_with("session-1", owner_id=OWNER_A)
+        assert cache.set.await_args.args[0] == f"feedback:session:{OWNER_A}:session-1"
+
+    @pytest.mark.asyncio
+    async def test_find_by_type_key_is_owner_namespaced(self) -> None:
+        cache = _cache_mock()
+        backing = MagicMock()
+        backing.find_by_type = AsyncMock(return_value=[])
+        store = CachedFeedbackStore(store=backing, cache=cache)
+
+        await store.find_by_type(FeedbackType.RATING, owner_id=OWNER_B, limit=10)
+
+        get_key = cache.get.await_args.args[0]
+        assert get_key == f"feedback:type:{OWNER_B}:rating"
+        backing.find_by_type.assert_awaited_once_with(
+            FeedbackType.RATING, owner_id=OWNER_B, limit=10
+        )
+
+    @pytest.mark.asyncio
+    async def test_owner_b_never_reads_owner_a_cache_entry(self) -> None:
+        """A cache entry written for owner A is not readable by owner B."""
+        cache = _cache_mock()
+        cache.get = AsyncMock(
+            side_effect=lambda key: [_item(OWNER_A)] if OWNER_A in key else None
+        )
+        backing = MagicMock()
+        backing.find_by_session = AsyncMock(return_value=[])
+        store = CachedFeedbackStore(store=backing, cache=cache)
+
+        items = await store.find_by_session("session-1", owner_id=OWNER_B)
+
+        assert items == []
+        backing.find_by_session.assert_awaited_once()
+        assert cache.get.await_args.args[0] == (f"feedback:session:{OWNER_B}:session-1")
+
+    @pytest.mark.asyncio
+    async def test_save_invalidates_owner_namespaced_keys(self) -> None:
+        cache = _cache_mock()
+        backing = MagicMock()
+        backing.save = AsyncMock(return_value=Ok("fb-1"))
+        store = CachedFeedbackStore(store=backing, cache=cache)
+
+        await store.save(_item(OWNER_A))
+
+        deleted_keys = [call.args[0] for call in cache.delete.await_args_list]
+        assert f"feedback:session:{OWNER_A}:session-1" in deleted_keys
+        assert f"feedback:type:{OWNER_A}:rating" in deleted_keys
