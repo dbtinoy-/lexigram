@@ -8,14 +8,13 @@ content-addressed checkpointing where stage outputs are keyed by
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 import hashlib
+import json as _stdlib_json
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-import lexigram.serialization as json
 
 __all__ = [
     "ContentCheckpointEntry",
@@ -25,7 +24,22 @@ __all__ = [
 
 
 def _canonical_json_bytes(obj: Any) -> bytes:
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    """Serialize *obj* to canonical JSON bytes for content addressing."""
+
+    def _default(value: Any) -> Any:
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        raise TypeError(
+            f"Object of type {type(value).__name__} is not JSON serializable"
+        )
+
+    return _stdlib_json.dumps(
+        obj,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        default=_default,
+    ).encode("utf-8")
 
 
 @dataclass(frozen=True)

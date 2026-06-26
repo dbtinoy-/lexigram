@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any, Protocol
 
 from lexigram.contracts.ai.exceptions import EvaluationError
-from lexigram.result import Result
+from lexigram.contracts.core.result import Result
 
 
 class EvaluationScoreType(str, Enum):
