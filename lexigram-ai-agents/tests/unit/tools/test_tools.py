@@ -523,7 +523,7 @@ class TestToolRegistryVisibilityAndErrors:
         assert error.details["arguments"] == {"attempt": 1}
 
     @pytest.mark.asyncio
-    async def test_visibility_check_fails_open_when_graph_lookup_raises(self) -> None:
+    async def test_visibility_check_denies_access_when_graph_lookup_raises(self) -> None:
         class CallerModule:
             pass
 
@@ -541,8 +541,12 @@ class TestToolRegistryVisibilityAndErrors:
 
         result = await registry.execute("unstable_graph_tool")
 
-        assert result.is_ok()
-        assert result.unwrap() == "ok"
+        assert result.is_err()
+        error = result.unwrap_err()
+        assert isinstance(error, ToolAccessDeniedError)
+        assert error.details["tool"] == "unstable_graph_tool"
+        assert error.details["agent_module"] == "CallerModule"
+        assert error.details["tool_module"] == "ToolModule"
 
     def test_repr_shows_visible_count_and_clear_resets_registry(self) -> None:
         class CallerModule:
