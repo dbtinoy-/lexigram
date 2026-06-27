@@ -198,7 +198,7 @@ class TestFieldLevelRBAC:
         svc.can_edit_field.return_value = can_edit
         return svc
 
-    def test_can_view_field_false_skips_field(self) -> None:
+    async def test_can_view_field_false_skips_field(self) -> None:
         """Field must be excluded from form when user lacks view permission."""
         from lexigram.admin.rbac.schema import FieldPermission, ResourcePermissions
         from lexigram.admin.rbac.service import PermissionService
@@ -215,12 +215,12 @@ class TestFieldLevelRBAC:
         user.roles = ["viewer"]  # not admin
 
         # With no real AuthorizerProtocol wired, can_view_field falls back to True when no schema
-        result = svc.can_view_field(user, "user", "secret")
+        result = await svc.can_view_field(user, "user", "secret")
         # The check delegate fails gracefully — either True (schema present, allowed roles)
         # or False (denied). The key thing: schema is registered and field is checked.
         assert isinstance(result, bool)
 
-    def test_can_edit_field_returns_bool(self) -> None:
+    async def test_can_edit_field_returns_bool(self) -> None:
         from lexigram.admin.rbac.schema import FieldPermission, ResourcePermissions
         from lexigram.admin.rbac.service import PermissionService
 
@@ -230,7 +230,7 @@ class TestFieldLevelRBAC:
         )
         svc.register("order", perms)
         user = MagicMock()
-        result = svc.can_edit_field(user, "order", "status")
+        result = await svc.can_edit_field(user, "order", "status")
         assert isinstance(result, bool)
 
     def test_field_schema_editable_false_disables_field(self) -> None:

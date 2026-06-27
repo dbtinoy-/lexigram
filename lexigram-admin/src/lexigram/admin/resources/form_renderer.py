@@ -618,12 +618,12 @@ class FormRenderer:
                         if self._permission_service is not None:
                             _perm_svc = self._permission_service
                             # Hide field if user lacks view permission
-                            if not _perm_svc.can_view_field(
+                            if not await _perm_svc.can_view_field(
                                 user, self.resource_name, field_schema.name
                             ):
                                 continue
                             # Mark field non-editable if user lacks edit permission
-                            if mode == "edit" and not _perm_svc.can_edit_field(
+                            if mode == "edit" and not await _perm_svc.can_edit_field(
                                 user, self.resource_name, field_schema.name
                             ):
                                 field_schema = dc_replace(

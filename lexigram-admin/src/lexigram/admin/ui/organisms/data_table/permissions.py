@@ -18,7 +18,7 @@ class PermissionManager:
         self.resource_name = resource_name
         self._permission_service = permission_service
 
-    def check_permissions(self) -> dict[str, bool]:
+    async def check_permissions(self) -> dict[str, bool]:
         """Check CRUD permissions for the resource."""
         if not self.user or not self.resource_name or self._permission_service is None:
             return {
@@ -30,8 +30,8 @@ class PermissionManager:
 
         _perm_svc = self._permission_service
         return {
-            "can_view": _perm_svc.can_view(self.user, self.resource_name),
-            "can_create": _perm_svc.can_create(self.user, self.resource_name),
-            "can_update": _perm_svc.can_edit(self.user, self.resource_name),
-            "can_delete": _perm_svc.can_delete(self.user, self.resource_name),
+            "can_view": await _perm_svc.can_view(self.user, self.resource_name),
+            "can_create": await _perm_svc.can_create(self.user, self.resource_name),
+            "can_update": await _perm_svc.can_edit(self.user, self.resource_name),
+            "can_delete": await _perm_svc.can_delete(self.user, self.resource_name),
         }

@@ -54,36 +54,36 @@ class PermissionService:
 
     # --- CRUD Operations ---
 
-    def can_list(self, user: Any, resource_name: str) -> bool:
+    async def can_list(self, user: Any, resource_name: str) -> bool:
         schema = self.get_schema(resource_name)
         return (
-            self._check_access(user, schema.can_list, resource_name, "list")
+            await self._check_access(user, schema.can_list, resource_name, "list")
             if schema
             else True
         )
 
-    def can_view(self, user: Any, resource_name: str) -> bool:
+    async def can_view(self, user: Any, resource_name: str) -> bool:
         schema = self.get_schema(resource_name)
         return (
-            self._check_access(user, schema.can_view, resource_name, "view")
+            await self._check_access(user, schema.can_view, resource_name, "view")
             if schema
             else True
         )
 
-    def can_create(self, user: Any, resource_name: str) -> bool:
+    async def can_create(self, user: Any, resource_name: str) -> bool:
         schema = self.get_schema(resource_name)
         return (
-            self._check_access(user, schema.can_create, resource_name, "create")
+            await self._check_access(user, schema.can_create, resource_name, "create")
             if schema
             else True
         )
 
-    def can_edit(self, user: Any, resource_name: str, record: Any = None) -> bool:
+    async def can_edit(self, user: Any, resource_name: str, record: Any = None) -> bool:
         schema = self.get_schema(resource_name)
         if not schema:
             return True
 
-        if not self._check_access(user, schema.can_edit, resource_name, "edit"):
+        if not await self._check_access(user, schema.can_edit, resource_name, "edit"):
             return False
 
         # Apply RLS policy if record is provided
@@ -95,12 +95,12 @@ class PermissionService:
 
         return True
 
-    def can_delete(self, user: Any, resource_name: str, record: Any = None) -> bool:
+    async def can_delete(self, user: Any, resource_name: str, record: Any = None) -> bool:
         schema = self.get_schema(resource_name)
         if not schema:
             return True
 
-        if not self._check_access(user, schema.can_delete, resource_name, "delete"):
+        if not await self._check_access(user, schema.can_delete, resource_name, "delete"):
             return False
 
         if schema.rls_policy and record:
@@ -113,27 +113,27 @@ class PermissionService:
 
     # --- Field Level ---
 
-    def can_view_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def can_view_field(self, user: Any, resource_name: str, field_name: str) -> bool:
         schema = self.get_schema(resource_name)
         if not schema or field_name not in schema.fields:
             return True
-        return self._check_access(user, schema.fields[field_name].view_roles)
+        return await self._check_access(user, schema.fields[field_name].view_roles)
 
-    def can_edit_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def can_edit_field(self, user: Any, resource_name: str, field_name: str) -> bool:
         schema = self.get_schema(resource_name)
         if not schema or field_name not in schema.fields:
             return True
-        return self._check_access(user, schema.fields[field_name].edit_roles)
+        return await self._check_access(user, schema.fields[field_name].edit_roles)
 
-    def should_mask_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def should_mask_field(self, user: Any, resource_name: str, field_name: str) -> bool:
         schema = self.get_schema(resource_name)
         if not schema or field_name not in schema.fields:
             return False
-        return self._check_access(user, schema.fields[field_name].mask_for)
+        return await self._check_access(user, schema.fields[field_name].mask_for)
 
     # --- Actions ---
 
-    def can_perform_action(
+    async def can_perform_action(
         self,
         user: Any,
         resource_name: str,
@@ -142,7 +142,7 @@ class PermissionService:
         schema = self.get_schema(resource_name)
         if not schema or action_name not in schema.actions:
             return True
-        return self._check_access(
+        return await self._check_access(
             user,
             schema.actions[action_name].allowed_roles,
             resource_name,
@@ -151,16 +151,16 @@ class PermissionService:
 
     # --- Internal Helpers ---
 
-    def _check_access(
+    async def _check_access(
         self,
         user: Any,
         allowed_roles: set[str],
         resource: str | None = None,
         action: str | None = None,
     ) -> bool:
-        """Delegate to AuthorizationService."""
+        """Delegate to the unified authorizer."""
         if self.authorization_service:
-            return self.authorization_service.check_access(  # type: ignore[return-value]
+            return await self.authorization_service.check_access(
                 user,
                 allowed_roles,
                 resource,

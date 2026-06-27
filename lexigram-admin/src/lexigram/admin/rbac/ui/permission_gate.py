@@ -9,7 +9,7 @@ class PermissionCheckProtocol(Protocol):
     """Protocol for permission check logic."""
 
     def can_handle(self, action: str) -> bool: ...
-    def check_permission(
+    async def check_permission(
         self,
         service: Any,
         user: Any,
@@ -22,70 +22,70 @@ class ViewPermissionChecker:
     def can_handle(self, action: str) -> bool:
         return action in ("read", "view", "list")
 
-    def check_permission(
+    async def check_permission(
         self,
         service: Any,
         user: Any,
         resource: str,
         action: str,
     ) -> bool:
-        return service.can_view(user, resource)
+        return await service.can_view(user, resource)
 
 
 class CreatePermissionChecker:
     def can_handle(self, action: str) -> bool:
         return action == "create"
 
-    def check_permission(
+    async def check_permission(
         self,
         service: Any,
         user: Any,
         resource: str,
         action: str,
     ) -> bool:
-        return service.can_create(user, resource)
+        return await service.can_create(user, resource)
 
 
 class EditPermissionChecker:
     def can_handle(self, action: str) -> bool:
         return action == "edit"
 
-    def check_permission(
+    async def check_permission(
         self,
         service: Any,
         user: Any,
         resource: str,
         action: str,
     ) -> bool:
-        return service.can_edit(user, resource)
+        return await service.can_edit(user, resource)
 
 
 class DeletePermissionChecker:
     def can_handle(self, action: str) -> bool:
         return action == "delete"
 
-    def check_permission(
+    async def check_permission(
         self,
         service: Any,
         user: Any,
         resource: str,
         action: str,
     ) -> bool:
-        return service.can_delete(user, resource)
+        return await service.can_delete(user, resource)
 
 
 class DefaultPermissionChecker:
     def can_handle(self, action: str) -> bool:
         return True
 
-    def check_permission(
+    async def check_permission(
         self,
         service: Any,
         user: Any,
         resource: str,
         action: str,
     ) -> bool:
-        return service.can_perform_action(user, resource, action)
+        return await service.can_perform_action(user, resource, action)
 
 
 class PermissionCheckRegistry:
@@ -131,6 +131,7 @@ class PermissionGate(Component):
         children: list[Component] | None = None,
         fallback: Component | None = None,
         permission_service: Any = None,
+        allowed: bool | None = None,
         **props: Any,
     ):
         super().__init__(**props)
@@ -140,20 +141,18 @@ class PermissionGate(Component):
         self.children = children or []
         self.fallback = fallback
         self._permission_service = permission_service
+        self._allowed = allowed
 
     def render(self) -> Any:
+        if self._allowed is not None:
+            if self._allowed:
+                return self.children
+            return self.fallback or ""
+
         if self._permission_service is None:
             return self.children
 
-        checker = _permission_check_registry.get_checker(self.action)
-        has_permission = checker.check_permission(
-            self._permission_service,
-            self.user,
-            self.resource,
-            self.action,
+        raise RuntimeError(
+            "PermissionGate: permission checks are async; hoist the check to "
+            "the async caller and pass resolved `allowed`"
         )
-
-        if has_permission:
-            return self.children
-
-        return self.fallback or ""

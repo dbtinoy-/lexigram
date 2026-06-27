@@ -61,7 +61,7 @@ class FormSchema:
                 return f
         return None
 
-    def filter_for_user(
+    async def filter_for_user(
         self,
         user: Any,
         resource_name: str,
@@ -83,10 +83,10 @@ class FormSchema:
             return self
         fields: list[SchemaField] = []
         for f in self.fields:
-            if not permission_service.can_view_field(user, resource_name, f.name):
+            if not await permission_service.can_view_field(user, resource_name, f.name):
                 continue
             schema_field = f
-            if not permission_service.can_edit_field(user, resource_name, f.name):
+            if not await permission_service.can_edit_field(user, resource_name, f.name):
                 schema_field = dataclasses.replace(f, readonly=True)
             fields.append(schema_field)
         return dataclasses.replace(self, fields=fields)

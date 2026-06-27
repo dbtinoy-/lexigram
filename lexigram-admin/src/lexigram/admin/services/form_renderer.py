@@ -31,7 +31,7 @@ class FormRenderer:
         self.generator = generator
         self.permission_service = permission_service
 
-    def render_form(
+    async def render_form(
         self,
         model: type | None = None,
         schema: FormSchema | None = None,
@@ -77,7 +77,7 @@ class FormRenderer:
 
         # 2. Apply RBAC filtering if user is provided
         if user:
-            form_schema = base_schema.filter_for_user(
+            form_schema = await base_schema.filter_for_user(
                 user,
                 resource_name,
                 self.permission_service,

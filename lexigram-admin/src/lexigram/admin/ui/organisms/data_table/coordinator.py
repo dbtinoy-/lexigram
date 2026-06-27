@@ -6,7 +6,6 @@ from typing import Any
 
 from lexigram.admin.config import TableConfiguration
 from lexigram.admin.ui.organisms.data_table.actions import ActionManager
-from lexigram.admin.ui.organisms.data_table.permissions import PermissionManager
 from lexigram.admin.ui.organisms.data_table.rendering import DataTableRenderer
 from lexigram.ui import Component, TableState
 
@@ -85,12 +84,18 @@ class DataTable(Component):
         self.summary = summary
         self.props = props
 
-        # Initialize permission manager
-        self.permission_manager = PermissionManager(
-            self.user,
-            self.config.resource_name,
+        # Permission state: no permission service is bound at construction
+        # time in the framework; async callers may hoist checks via
+        # PermissionManager and inject the resulting dict here.
+        self.permissions = (
+            props.get("permissions")
+            or {
+                "can_view": True,
+                "can_create": True,
+                "can_update": True,
+                "can_delete": True,
+            }
         )
-        self.permissions = self.permission_manager.check_permissions()
 
         # Configure actions
         self.action_manager = ActionManager(self.config, self.permissions)

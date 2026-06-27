@@ -20,10 +20,10 @@ class _FakePermissionService(PermissionService):
         self._viewable = viewable
         self._editable = editable
 
-    def can_view_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def can_view_field(self, user: Any, resource_name: str, field_name: str) -> bool:
         return self._viewable is None or field_name in self._viewable
 
-    def can_edit_field(self, user: Any, resource_name: str, field_name: str) -> bool:
+    async def can_edit_field(self, user: Any, resource_name: str, field_name: str) -> bool:
         return self._editable is None or field_name in self._editable
 
 
@@ -36,29 +36,29 @@ class TestFormRendererService:
             ]
         )
 
-    def test_render_form_with_schema_returns_dynamic_form(self) -> None:
+    async def test_render_form_with_schema_returns_dynamic_form(self) -> None:
         renderer = FormRenderer(generator=FormSchemaGenerator())
-        form = renderer.render_form(schema=self._schema(), action="/submit")
+        form = await renderer.render_form(schema=self._schema(), action="/submit")
         assert isinstance(form, DynamicForm)
 
-    def test_render_form_generates_schema_from_model(self) -> None:
+    async def test_render_form_generates_schema_from_model(self) -> None:
         from pydantic import BaseModel
 
         class Widget(BaseModel):
             name: str = "demo"
 
         renderer = FormRenderer(generator=FormSchemaGenerator())
-        form = renderer.render_form(model=Widget, action="/submit")
+        form = await renderer.render_form(model=Widget, action="/submit")
         html = str(form.render())
         assert 'name="name"' in html
         assert 'value="demo"' in html
 
-    def test_render_form_filters_fields_user_cannot_view(self) -> None:
+    async def test_render_form_filters_fields_user_cannot_view(self) -> None:
         renderer = FormRenderer(
             generator=FormSchemaGenerator(),
             permission_service=_FakePermissionService(viewable={"name"}),
         )
-        form = renderer.render_form(
+        form = await renderer.render_form(
             schema=self._schema(),
             user=SimpleNamespace(id="u1"),
             resource_name="widgets",
@@ -67,7 +67,7 @@ class TestFormRendererService:
         assert 'name="name"' in html
         assert "secret" not in html
 
-    def test_render_form_marks_non_editable_fields_readonly(self) -> None:
+    async def test_render_form_marks_non_editable_fields_readonly(self) -> None:
         renderer = FormRenderer(
             generator=FormSchemaGenerator(),
             permission_service=_FakePermissionService(
@@ -75,7 +75,7 @@ class TestFormRendererService:
                 editable={"name"},
             ),
         )
-        form = renderer.render_form(
+        form = await renderer.render_form(
             schema=self._schema(),
             user=SimpleNamespace(id="u1"),
             resource_name="widgets",
@@ -84,16 +84,16 @@ class TestFormRendererService:
         assert 'name="name"' in html
         assert 'disabled="disabled"' in html or "disabled" in html
 
-    def test_render_form_without_user_keeps_all_fields(self) -> None:
+    async def test_render_form_without_user_keeps_all_fields(self) -> None:
         renderer = FormRenderer(generator=FormSchemaGenerator())
-        form = renderer.render_form(schema=self._schema(), action="/submit")
+        form = await renderer.render_form(schema=self._schema(), action="/submit")
         html = str(form.render())
         assert 'name="name"' in html
         assert 'name="secret"' in html
 
-    def test_render_form_applies_initial_data_as_defaults(self) -> None:
+    async def test_render_form_applies_initial_data_as_defaults(self) -> None:
         renderer = FormRenderer(generator=FormSchemaGenerator())
-        form = renderer.render_form(
+        form = await renderer.render_form(
             schema=self._schema(),
             initial_data={"name": "Ada"},
         )
