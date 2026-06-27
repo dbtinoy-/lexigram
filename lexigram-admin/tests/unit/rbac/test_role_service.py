@@ -215,3 +215,15 @@ async def test_no_authorizer_or_audit_skips_gracefully() -> None:
 
     assert result.is_ok()
     assert store.roles["editor"].name == "editor"
+
+
+def test_role_service_types_authorizer_via_protocol() -> None:
+    import inspect
+
+    from lexigram.admin.rbac.role_service import AdminRoleService
+    from lexigram.contracts.auth import AuthorizerProtocol
+
+    sig = inspect.signature(AdminRoleService.__init__)
+    annotation = sig.parameters["authorization_service"].annotation
+    assert "AuthorizationService" not in str(annotation)
+    assert AuthorizerProtocol.__name__ in str(annotation)
