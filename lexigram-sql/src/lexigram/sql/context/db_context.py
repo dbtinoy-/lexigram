@@ -97,6 +97,43 @@ class DbContext:
         """Restore the previous value of *key* using a token from ``set``."""
         self._registry.reset_typed(key, token)
 
+    # -- DatabaseContextProtocol implementation (tenant bridge) --------------
+
+    def set_tenant_from_scope(
+        self, scope: dict[str, Any]
+    ) -> contextvars.Token[str | None] | None:
+        """Set the tenant from the bridge payload or a full ASGI scope.
+
+        Accepts the current bridge payload ``{"tenant_id": "..."}``, or a
+        full ASGI scope carrying ``scope["state"]["tenant"]`` (a
+        ``TenantInfo``-like object).  Returns ``None`` when no tenant is
+        present; otherwise writes ``TENANT_ID`` and returns the reset token.
+
+        Args:
+            scope: Bridge payload dict or ASGI scope dict.
+
+        Returns:
+            A ``contextvars.Token`` for ``reset_tenant``, or ``None``.
+        """
+        tenant_id: Any = scope.get("tenant_id")
+        if tenant_id is None:
+            state = scope.get("state", {}) if isinstance(scope, dict) else {}
+            tenant = state.get("tenant")
+            if tenant is not None:
+                tenant_id = getattr(tenant, "tenant_id", None)
+        if tenant_id is None:
+            return None
+        return self.set(TENANT_ID, tenant_id)
+
+    def reset_tenant(self, token: contextvars.Token[str | None] | None) -> None:
+        """Reset the tenant context using a token from ``set_tenant_from_scope``.
+
+        Args:
+            token: Token returned by ``set_tenant_from_scope``.
+        """
+        if token is not None:
+            self.reset(TENANT_ID, token)
+
     # -- convenience read-only properties -------------------------------------
 
     @property

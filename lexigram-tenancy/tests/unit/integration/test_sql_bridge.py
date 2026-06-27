@@ -85,3 +85,35 @@ def test_bridge_importable_with_sql() -> None:
         assert TenantSQLContextBridge is not None
     except ImportError:
         pytest.skip("lexigram-sql not installed")
+
+
+@pytest.mark.asyncio
+async def test_bridge_propagates_tenant_to_real_db_context() -> None:
+    """Bridge sets tenant_id on a real DbContext during the request and resets it after."""
+    try:
+        from lexigram.sql.context import create_db_context
+        from lexigram.tenancy.integration.sql_bridge import TenantSQLContextBridge
+    except ImportError:
+        pytest.skip("lexigram-sql not installed")
+
+    ctx = make_context()
+    db_ctx = create_db_context()
+    observed: list[str | None] = []
+
+    async def app(scope: object, receive: object, send: object) -> None:
+        observed.append(db_ctx.tenant_id)
+
+    ctx.set(TENANT_ID, "tenant-abc")
+    assert db_ctx.tenant_id is None
+
+    bridge = TenantSQLContextBridge(app=app, ctx=ctx)  # type: ignore[arg-type]
+    scope: dict = {
+        "type": "http",
+        "path": "/",
+        "headers": [],
+        "state": {"db_ctx": db_ctx},
+    }
+    await bridge(scope, AsyncMock(), AsyncMock())
+
+    assert observed == ["tenant-abc"]
+    assert db_ctx.tenant_id is None
