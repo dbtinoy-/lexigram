@@ -34,6 +34,17 @@ if TYPE_CHECKING:
         ContainerResolverProtocol,
     )
 
+
+async def _resolve_admin_authorizer(container: Any) -> Any:
+    """Return the lexigram-auth AuthorizationService, constructing on demand."""
+    from lexigram.auth.authz.service import AuthorizationService
+
+    try:
+        return await container.resolve(AuthorizationService, bypass_visibility=True)
+    except Exception:  # noqa: BLE001 — auth provider not bound: default engine
+        return AuthorizationService()
+
+
 logger = get_logger(__name__)
 
 
@@ -93,42 +104,21 @@ class AdminAuthSubProvider:
         container.singleton(AdminSecurityHeaders, AdminSecurityHeaders)
         container.singleton(PermissionService, PermissionService)
 
-        # ── AdminAuthorizerProtocol — request-entry RBAC (AUTH-09, AUTH-18) ────
-        # Default deny-all policy (fail-closed).  App authors override this
-        # binding with a concrete policy (e.g. PiccolinaAdminAuthPolicy) in
-        # their contributor's on_admin_boot hook.
-        from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
+        # ── AuthorizerProtocol — single PDP instance (spec §2.2) ────────────
+        # The one authorization engine: lexigram-auth's AuthorizationService.
+        # Every consumer (ResourceManager, ActionExecutor, PermissionService,
+        # AdminRoleService) resolves the SAME object from the container.
+        # ── RequestAuthorizerProtocol — request-entry RBAC (AUTH-09, AUTH-18) ─
+        # Default: authenticated users pass (fail-closed on identity).
+        # App authors override either binding in their on_admin_boot hook.
+        from lexigram.admin.middleware.authorization import (
+            DefaultRequestAuthorizer,
+            RequestAuthorizerProtocol,
+        )
+        from lexigram.contracts.auth import AuthorizerProtocol
 
-        class _DefaultAuthorizer:
-            """Default admin authorizer — allows all authenticated users."""
-
-            async def authorize_request(self, user: object, request: object) -> bool:
-                return getattr(user, "user_id", None) is not None
-
-            async def can_view(
-                self, user: object, resource: str, record: object = None
-            ) -> bool:  # noqa: ARG002
-                return getattr(user, "user_id", None) is not None
-
-            async def can_create(self, user: object, resource: str) -> bool:  # noqa: ARG002
-                return False
-
-            async def can_update(
-                self, user: object, resource: str, record: object = None
-            ) -> bool:  # noqa: ARG002
-                return False
-
-            async def can_delete(
-                self, user: object, resource: str, record: object = None
-            ) -> bool:  # noqa: ARG002
-                return False
-
-            async def can_execute_action(
-                self, user: object, resource: str, action: str, record: object = None
-            ) -> bool:  # noqa: ARG002
-                return False
-
-        container.singleton(AdminAuthorizerProtocol, _DefaultAuthorizer)
+        container.singleton(AuthorizerProtocol, factory=_resolve_admin_authorizer)
+        container.singleton(RequestAuthorizerProtocol, DefaultRequestAuthorizer)
 
         # ------------------------------------------------------------------
         # New admin auth services

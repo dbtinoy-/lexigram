@@ -27,8 +27,11 @@ class FakeRegistrar:
     def __init__(self):
         self.registrations: dict = {}
 
-    def singleton(self, key, value):
-        self.registrations[key] = value
+    def singleton(self, key, value=None, **kwargs):
+        if "factory" in kwargs and kwargs["factory"] is not None:
+            self.registrations[key] = kwargs["factory"]
+        else:
+            self.registrations[key] = value
 
     def transient(self, key, value):
         self.registrations[key] = value

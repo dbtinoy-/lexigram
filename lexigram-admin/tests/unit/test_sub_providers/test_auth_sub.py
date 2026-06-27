@@ -22,8 +22,11 @@ class TestAdminAuthSubProvider:
         registrations = {}
 
         class FakeContainer:
-            def singleton(self, key, value):
-                registrations[key] = value
+            def singleton(self, key, value=None, **kwargs):
+                if "factory" in kwargs and kwargs["factory"] is not None:
+                    registrations[key] = kwargs["factory"]
+                else:
+                    registrations[key] = value
 
         await sub_provider.register(FakeContainer())
         from lexigram.admin.auth.guard_chain import AdminGuardChain
@@ -35,8 +38,11 @@ class TestAdminAuthSubProvider:
         registrations = {}
 
         class FakeContainer:
-            def singleton(self, key, value):
-                registrations[key] = value
+            def singleton(self, key, value=None, **kwargs):
+                if "factory" in kwargs and kwargs["factory"] is not None:
+                    registrations[key] = kwargs["factory"]
+                else:
+                    registrations[key] = value
 
         await sub_provider.register(FakeContainer())
         from lexigram.admin.auth.session_manager import AdminSessionManager
@@ -49,8 +55,11 @@ class TestAdminAuthSubProvider:
         registrations = {}
 
         class FakeContainer:
-            def singleton(self, key, value):
-                registrations[key] = value
+            def singleton(self, key, value=None, **kwargs):
+                if "factory" in kwargs and kwargs["factory"] is not None:
+                    registrations[key] = kwargs["factory"]
+                else:
+                    registrations[key] = value
 
         await sub_provider.register(FakeContainer())
         from lexigram.admin.middleware.input_sanitizer import AdminInputSanitizer

@@ -23,7 +23,7 @@ from lexigram.admin.services.action_registry import (
     ActionType,
 )
 from lexigram.contracts.admin.action_hooks import ActionHookProtocol
-from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
+from lexigram.contracts.auth import AuthorizerProtocol
 from lexigram.di.decorators import inject
 from lexigram.result import Err, Ok, Result
 
@@ -65,7 +65,7 @@ class ActionExecutor:
     def __init__(
         self,
         registry: ActionRegistry,
-        authorizer: AdminAuthorizerProtocol | None = None,
+        authorizer: AuthorizerProtocol | None = None,
         task_scheduler: TaskScheduler | None = None,
         event_hub: Any | None = None,
         resource_resolver: Any | None = None,

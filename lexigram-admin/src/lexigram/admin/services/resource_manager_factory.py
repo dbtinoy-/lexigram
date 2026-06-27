@@ -11,7 +11,7 @@ from lexigram.admin.services.resource_manager import (
     ResourceManager,
     Validator,
 )
-from lexigram.contracts.admin.authorizer import AdminAuthorizerProtocol
+from lexigram.contracts.auth import AuthorizerProtocol
 from lexigram.di.decorators import inject
 
 T = TypeVar("T")
@@ -36,7 +36,7 @@ class ResourceManagerFactory:
 
     def __init__(
         self,
-        default_authorizer: AdminAuthorizerProtocol | None = None,
+        default_authorizer: AuthorizerProtocol | None = None,
         default_validator: Validator | None = None,
     ):
         """Initialize the factory.
@@ -55,7 +55,7 @@ class ResourceManagerFactory:
         data_source: ResourceDataSourceProtocol[T],
         *,
         validator: Validator | None = None,
-        authorizer: AdminAuthorizerProtocol | None = None,
+        authorizer: AuthorizerProtocol | None = None,
     ) -> ResourceManager[T]:
         """Create a ResourceManager instance.
 
@@ -90,7 +90,6 @@ class ResourceManagerFactory:
 
 
 __all__ = [
-    "AdminAuthorizerProtocol",
     "DefaultAuthorizer",
     "DefaultValidator",
     "ResourceDataSourceProtocol",

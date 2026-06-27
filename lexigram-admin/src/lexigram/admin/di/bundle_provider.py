@@ -774,13 +774,11 @@ class AdminProvider(Provider):
         try:
             from lexigram.admin.middleware.authorization import (
                 AdminAuthorizationMiddleware,
-            )
-            from lexigram.contracts.admin.authorizer import (
-                AdminAuthorizerProtocol,
+                RequestAuthorizerProtocol,
             )
 
             authorizer = await admin_resolver.resolve(
-                AdminAuthorizerProtocol,
+                RequestAuthorizerProtocol,
                 bypass_visibility=True,
             )
             middleware_stack.append(
