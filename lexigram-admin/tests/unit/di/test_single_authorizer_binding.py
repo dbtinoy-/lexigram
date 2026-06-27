@@ -10,6 +10,7 @@ from lexigram.admin.di.bundle_provider import AdminProvider
 from lexigram.admin.rbac.protocols import (
     AdminRoleStoreProtocol,
 )
+from lexigram.admin.rbac.role_service import AdminRoleService
 from lexigram.admin.rbac.service import PermissionService
 from lexigram.admin.services.action_executor import ActionExecutor
 from lexigram.admin.services.action_registry import ActionRegistry
@@ -58,6 +59,9 @@ async def test_all_consumers_share_one_authorizer_instance() -> None:
 
     perms = await container.resolve(PermissionService)
     assert perms.authorization_service is bound
+
+    roles = await container.resolve(AdminRoleService)
+    assert roles._authorization_service is bound
 
     rm = ResourceManager("notes", _FakeDataSource(), authorizer=bound)
     ex = ActionExecutor(ActionRegistry(), authorizer=bound)

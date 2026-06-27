@@ -18,7 +18,7 @@ from lexigram.admin.rbac.errors import (
 )
 from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
 from lexigram.admin.rbac.types import AdminRole
-from lexigram.auth.authz.service import AuthorizationService
+from lexigram.contracts.auth import AuthorizerProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
@@ -40,7 +40,7 @@ class AdminRoleService:
     def __init__(
         self,
         role_store: AdminRoleStoreProtocol,
-        authorization_service: AuthorizationService | None = None,
+        authorization_service: AuthorizerProtocol | None = None,
         audit_service: AdminAuditLogServiceProtocol | None = None,
     ) -> None:
         self._role_store = role_store
@@ -132,10 +132,7 @@ class AdminRoleService:
         """Push a role into the in-memory authorizer if available."""
         if self._authorization_service is None:
             return
-        register = getattr(self._authorization_service, "register_role", None)
-        if register is None:
-            return
-        register(
+        self._authorization_service.register_role(
             role.name,
             {
                 "description": role.description,
@@ -148,9 +145,7 @@ class AdminRoleService:
         """Remove a role from the in-memory authorizer if available."""
         if self._authorization_service is None:
             return
-        remove = getattr(self._authorization_service, "remove_role", None)
-        if remove is not None:
-            remove(name)
+        self._authorization_service.remove_role(name)
 
     async def _audit(self, event_type: AdminSecurityEventType, metadata: dict) -> None:
         """Fire an audit event when an audit service is bound."""
