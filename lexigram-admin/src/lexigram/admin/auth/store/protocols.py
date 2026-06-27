@@ -35,6 +35,14 @@ class AdminUserStoreProtocol(Protocol):
         """
         ...
 
+    async def ensure_schema(self) -> None:
+        """Create the admin_users table if it does not exist (idempotent).
+
+        Failures are logged and swallowed, never raised — matching the boot
+        loop's swallow-and-log behavior.
+        """
+        ...
+
     async def list_users(self) -> list[Any]:
         """Return all admin users ordered by creation time."""
         ...

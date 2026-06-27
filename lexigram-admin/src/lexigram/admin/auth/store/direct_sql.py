@@ -78,7 +78,7 @@ class DirectSQLAdminUserStore:
         self.db_provider = db_provider
         self._initialized = False
 
-    async def _ensure_table_exists(self) -> None:
+    async def ensure_schema(self) -> None:
         """Ensure admin_users table exists (create if needed)."""
         if self._initialized:
             return
@@ -150,6 +150,10 @@ class DirectSQLAdminUserStore:
             logger.exception("Failed to ensure admin_users table exists")
             raise
 
+    async def _ensure_table_exists(self) -> None:
+        """Deprecated alias — use :meth:`ensure_schema` (spec Step 3)."""
+        await self.ensure_schema()
+
     async def list_users(self) -> list[Any]:
         """Return all admin users ordered by creation time.
 
@@ -172,7 +176,7 @@ class DirectSQLAdminUserStore:
 
     async def get_admin_count(self) -> int:
         """Count total admin users."""
-        await self._ensure_table_exists()
+        await self.ensure_schema()
         sql = "SELECT COUNT(*) as count FROM admin_users"
         result = await self.db_provider.execute_query(sql, [])
 
@@ -194,7 +198,7 @@ class DirectSQLAdminUserStore:
         permissions: list[str] | None = None,
         **kwargs,  # Accept and ignore extra parameters like 'profile'
     ) -> Any:
-        await self._ensure_table_exists()
+        await self.ensure_schema()
         admin_id = str(uuid.uuid4())
         # SQLite cannot bind Python lists — store roles/permissions as JSON text.
         serialize_lists = not is_postgres(self.db_provider)
@@ -380,7 +384,7 @@ class DirectSQLAdminUserStore:
 
     # Also need helper for email lookup if we use it in logic
     async def get_user_by_email(self, email: str) -> Any | None:
-        await self._ensure_table_exists()
+        await self.ensure_schema()
         from lexigram.logging import get_logger
 
         logger = get_logger(__name__)
@@ -419,7 +423,7 @@ class DirectSQLAdminUserStore:
         return _row_to_user(row)
 
     async def get_user_by_id(self, user_id: str) -> Any | None:
-        await self._ensure_table_exists()
+        await self.ensure_schema()
         from lexigram.logging import get_logger
 
         logger = get_logger(__name__)
@@ -449,7 +453,7 @@ class DirectSQLAdminUserStore:
         return _row_to_user(row)
 
     async def update_user(self, user: Any) -> None:
-        await self._ensure_table_exists()
+        await self.ensure_schema()
         # SQLite cannot bind Python lists — store roles/permissions as JSON text.
         serialize_lists = not is_postgres(self.db_provider)
         payload = {
@@ -507,7 +511,7 @@ class DirectSQLAdminUserStore:
         return None
 
     async def delete_user(self, user_id: str) -> None:
-        await self._ensure_table_exists()
+        await self.ensure_schema()
         await self.db_provider.execute_delete("admin_users", "id = ?", [user_id])
 
     async def get_by_id(self, admin_id: str) -> Any | None:

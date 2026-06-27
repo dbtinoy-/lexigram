@@ -86,6 +86,10 @@ class MemoryAdminUserStore(AbstractAdminUserStore):
             if username:
                 self._users_by_username[username.lower()] = user
 
+    async def ensure_schema(self) -> None:
+        """No-op — the in-memory store has no table to create."""
+        return
+
     async def get_by_id(self, user_id: str) -> AuthenticatedUserProtocol | None:
         """Get user by ID.
 
