@@ -5,7 +5,24 @@ from __future__ import annotations
 import pytest
 
 from lexigram.contracts.admin import StatContent, Tone, WidgetParams
+from lexigram.result import Ok
 from lexigram.tasks.admin.handlers.avg_duration import AvgDurationWidgetHandler
+
+
+class _FakePool:
+    """Implements WorkerPool.get_pool_stats."""
+
+    def get_pool_stats(self) -> dict:
+        return {"average_processing_time": 0.0125}  # seconds
+
+
+@pytest.mark.asyncio
+async def test_avg_duration_reports_real_pool_stats() -> None:
+    handler = AvgDurationWidgetHandler(pool_provider=_FakePool())
+    result = await handler.get_data(WidgetParams(time_window_minutes=60))
+    assert isinstance(result, Ok)
+    values = [s.value for s in result.unwrap().stats]
+    assert any("12.5" in v for v in values)  # 0.0125s -> 12.5ms
 
 
 @pytest.mark.asyncio
