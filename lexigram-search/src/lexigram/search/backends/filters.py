@@ -170,12 +170,19 @@ def render_opensearch(filters: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _meili_value(value: Any) -> str:
-    """Format a scalar as a Meilisearch filter literal."""
+    """Format a scalar as a Meilisearch filter literal.
+
+    String literals are ``"``-delimited with embedded backslashes and
+    double quotes backslash-escaped (backslash first), so caller-supplied
+    values can never terminate the literal. Booleans and numbers stay
+    unquoted.
+    """
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return str(value)
-    return f'"{value}"'
+    escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def _meili_expr(sub: dict[str, Any]) -> str:
@@ -260,10 +267,19 @@ def render_meilisearch(filters: dict[str, Any]) -> str:
 
 
 def _typesense_value(value: Any) -> str:
-    """Format a scalar as a Typesense filter literal."""
+    """Format a scalar as a Typesense filter literal.
+
+    String literals are ``"``-delimited with embedded backslashes and
+    double quotes backslash-escaped (backslash first), so caller-supplied
+    values can never terminate the literal. Booleans and numbers stay
+    unquoted.
+    """
     if isinstance(value, bool):
         return "true" if value else "false"
-    return str(value)
+    if isinstance(value, (int, float)):
+        return str(value)
+    escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def _typesense_expr(sub: dict[str, Any]) -> str:
@@ -326,7 +342,7 @@ def render_typesense(filters: dict[str, Any]) -> str:
         filters: Canonical filter dict.
 
     Returns:
-        A Typesense filter expression (``"status:active"``,
+        A Typesense filter expression (``'status:"active"'``,
         ``"score:>=80"``, ``"(a) && (b)"``, ...).
 
     Raises:

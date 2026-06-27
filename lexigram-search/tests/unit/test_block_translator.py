@@ -9,6 +9,7 @@ touching any external service or I/O.
 from __future__ import annotations
 
 import dataclasses
+import json
 
 import pytest
 from lexigram.contracts.data import (
@@ -23,6 +24,7 @@ from lexigram.contracts.data import (
     OrExpr,
 )
 
+from lexigram.search.backends.filters import render_meilisearch, render_typesense
 from lexigram.search.filterset import (
     BlockQueryTranslator,
     QueryGroup,
@@ -154,9 +156,7 @@ class TestBlockQueryTranslator:
     ) -> None:
         assert translator.translate({"logic": "AND", "rules": []}) is None
 
-    def test_single_rule_is_not_wrapped(
-        self, translator: BlockQueryTranslator
-    ) -> None:
+    def test_single_rule_is_not_wrapped(self, translator: BlockQueryTranslator) -> None:
         result = translator.translate(
             QueryGroup(rules=[QueryRule("status", "eq", "x")])
         )
@@ -172,9 +172,7 @@ class TestBlockQueryTranslator:
         )
         assert result == FieldEq("status", "active")
 
-    def test_neq_lowers_to_field_neq(
-        self, translator: BlockQueryTranslator
-    ) -> None:
+    def test_neq_lowers_to_field_neq(self, translator: BlockQueryTranslator) -> None:
         result = translator.translate(
             QueryGroup(rules=[QueryRule("status", "neq", "banned")])
         )
@@ -323,9 +321,7 @@ class TestBlockQueryTranslator:
         )
 
         compiled = get_query_operator_registry().compile(expression)
-        assert compiled == {
-            "$or": [{"status": "active"}, {"score": {"gte": 80}}]
-        }
+        assert compiled == {"$or": [{"status": "active"}, {"score": {"gte": 80}}]}
 
     def test_supported_operators_announced(
         self, translator: BlockQueryTranslator
@@ -348,9 +344,9 @@ class TestRuleToFilters:
         assert rule_to_filters('{"logic": "AND", "rules": []}') == {}
 
     def test_bare_rule_block(self) -> None:
-        assert rule_to_filters('{"logic": "AND", "rules": [{"field": "status", "operator": "eq", "value": "active"}]}') == {
-            "status": "active"
-        }
+        assert rule_to_filters(
+            '{"logic": "AND", "rules": [{"field": "status", "operator": "eq", "value": "active"}]}'
+        ) == {"status": "active"}
 
     def test_or_group_compiles_to_dollar_or(self) -> None:
         payload = (
@@ -408,3 +404,79 @@ class TestMergeFilters:
     def test_mixed_leaf_and_boolean_nested_under_dollar_and(self) -> None:
         merged = merge_filters({"status": "active"}, {"$or": [{"a": 1}]})
         assert merged == {"$and": [{"status": "active"}, {"$or": [{"a": 1}]}]}
+
+
+class TestBlockTranslatorValueSafety:
+    """Hostile QueryRule values never rewrite the rendered filter grammar.
+
+    The block-translator value passthrough (``_translate_rule``) is safe
+    by construction once the render-side helpers escape; hostile field
+    names still fail closed at ``_validate_field``.
+    """
+
+    MEILI_PAYLOAD = 'a" OR tenant_id != "" OR x="'
+    TYPESENSE_PAYLOAD = '");) || (tenant_id:!='
+
+    def test_hostile_eq_value_renders_safely_in_meili(self) -> None:
+        filters = rule_to_filters(
+            json.dumps(
+                {
+                    "logic": "AND",
+                    "rules": [
+                        {"field": "tenant_id", "operator": "eq", "value": self.MEILI_PAYLOAD}
+                    ],
+                }
+            )
+        )
+        assert render_meilisearch(filters) == (
+            'tenant_id = "a\\" OR tenant_id != \\"\\" OR x=\\""'
+        )
+
+    def test_hostile_eq_value_renders_safely_in_typesense(self) -> None:
+        filters = rule_to_filters(
+            json.dumps(
+                {
+                    "logic": "AND",
+                    "rules": [
+                        {"field": "tenant_id", "operator": "eq", "value": self.MEILI_PAYLOAD}
+                    ],
+                }
+            )
+        )
+        assert render_typesense(filters) == (
+            'tenant_id:"a\\" OR tenant_id != \\"\\" OR x=\\""'
+        )
+
+    def test_hostile_contains_value_renders_safely_in_typesense(self) -> None:
+        filters = rule_to_filters(
+            json.dumps(
+                {
+                    "logic": "AND",
+                    "rules": [
+                        {
+                            "field": "title",
+                            "operator": "contains",
+                            "value": self.TYPESENSE_PAYLOAD,
+                        }
+                    ],
+                }
+            )
+        )
+        assert render_typesense(filters) == 'title:contains("\\");) || (tenant_id:!=")'
+
+    def test_hostile_field_name_still_raises_value_error(self) -> None:
+        translator = BlockQueryTranslator()
+        group = QueryGroup(
+            rules=[QueryRule(field='x" OR y="1', operator="eq", value="v")]
+        )
+        with pytest.raises(ValueError, match="invalid field name"):
+            translator.translate(group)
+
+    def test_translate_path_accepts_hostile_value_unmodified(self) -> None:
+        translator = BlockQueryTranslator()
+        result = translator.translate(
+            QueryGroup(
+                rules=[QueryRule(field="tenant_id", operator="eq", value=self.MEILI_PAYLOAD)]
+            )
+        )
+        assert result is not None
