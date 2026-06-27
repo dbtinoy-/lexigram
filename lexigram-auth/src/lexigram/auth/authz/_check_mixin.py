@@ -255,6 +255,28 @@ class _AuthCheckMixin:
         result = await self.authorize(user, action, resource)
         return result.unwrap_or(False)
 
+    async def can_view(self, user: Any, resource: str, record: Any = None) -> bool:
+        """Grant view when the user holds ``<resource>.view`` (record ignored for now)."""
+        return self.has_any_permission(user, [f"{resource}.view"])
+
+    async def can_create(self, user: Any, resource: str) -> bool:
+        """Grant create when the user holds ``<resource>.create``."""
+        return self.has_any_permission(user, [f"{resource}.create"])
+
+    async def can_update(self, user: Any, resource: str, record: Any = None) -> bool:
+        """Grant update when the user holds ``<resource>.update`` (record ignored for now)."""
+        return self.has_any_permission(user, [f"{resource}.update"])
+
+    async def can_delete(self, user: Any, resource: str, record: Any = None) -> bool:
+        """Grant delete when the user holds ``<resource>.delete`` (record ignored for now)."""
+        return self.has_any_permission(user, [f"{resource}.delete"])
+
+    async def can_execute_action(
+        self, user: Any, resource: str, action: str, record: Any | None = None
+    ) -> bool:
+        """Grant action execution when the user holds ``<resource>.<action>``."""
+        return self.has_any_permission(user, [f"{resource}.{action}"])
+
     async def authorize(
         self, user: Any, action: str, resource: Any
     ) -> Result[bool, AuthorizationError]:
