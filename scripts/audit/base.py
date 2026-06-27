@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 
 @dataclass
@@ -16,7 +14,7 @@ class AuditOptions:
 
     verbose: bool = False
     dry_run: bool = False
-    output_dir: Path = Path(".")
+    output_dir: Path = Path()
     parallel: bool = True
     max_workers: int = 4
     force: bool = False
@@ -220,30 +218,3 @@ class TestableAuditGenerator(FileAuditGenerator):
         # Simplified - just return placeholder
         # Full implementation would use subprocess
         return "See full report"
-
-
-class ShellAuditGenerator(FileAuditGenerator):
-    """Generator that runs shell commands to collect information."""
-
-    def _run_command(self, cmd: str, cwd: Path | None = None) -> tuple[int, str, str]:
-        """Run a shell command and return results.
-
-        Args:
-            cmd: Command to run.
-            cwd: Working directory.
-
-        Returns:
-            Tuple of (return_code, stdout, stderr).
-        """
-        import subprocess
-
-        cwd = cwd or self._get_workspace_root()
-        result = subprocess.run(
-            cmd,
-            shell=True,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        return result.returncode, result.stdout, result.stderr

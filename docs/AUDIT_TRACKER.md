@@ -4,27 +4,42 @@
 **Source:** `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md`
 **Process:** verify → spec → plan → execute → two-pass review
 
-Status of all 15 spec+plan security remediation areas across audit Rounds
-1-3, plus 21 further areas from Rounds 4-7 (20 with design specs written
-2026-08-16; Round 4 #20 Non-SQL has none; no plans or execution yet). Round 3 (§6 below)
+Status of all 47 spec'd security remediation areas across audit Rounds
+1-9 (spec + plan file locations in the per-round tables below; all specs
+written 2026-08-16, all plans written 2026-08-16 for Rounds 1-3 and
+2026-08-17 for Rounds 4-9). No Round 3-9 plan has been executed yet.
+Round 3 (§6 below)
 added 5 more areas; specs + plans for those were written 2026-08-16, none
 executed yet. Round 4 (§7 below) added 5 more areas; design specs written for
-four of five (all but #20 Non-SQL). Round 5 (§8 below) and Round 6 (§9 below)
-added 5 areas each; design specs written for all ten. Round 7 (§10 below)
+all five (#20 Non-SQL's spec was verified/updated 2026-08-17 to also cover
+the aggregation-pipeline injection surface); plans written 2026-08-17.
+Round 5 (§8 below) and Round 6 (§9 below)
+added 5 areas each; design specs written for all ten, plans written
+2026-08-17 (Round 5) / 2026-08-16 (Round 6). Round 7 (§10 below)
 added 6 more areas from a focused lexigram-admin pass (2026-08-16); design
-specs for all six written 2026-08-16, none executed yet. Round 8 (§11
+specs for all six written 2026-08-16, plans written 2026-08-17,
+none executed yet. Round 8 (§11
 below) added 6 more areas from a second focused lexigram-admin pass plus
 the lexigram-search filter backends (2026-08-16); findings + design specs
-for all six written 2026-08-16, none executed yet. Round 9 (§12 below)
+for all six written 2026-08-16, plans written 2026-08-17,
+none executed yet. Round 9 (§12 below)
 added 5 more areas from the first extension-package pass (AI subsystem,
 HTTP-facing, media/data/IO packages; 2026-08-16); design specs for all
-five written 2026-08-16; the pass also re-verified 8 prior spec'd areas
+five written 2026-08-16, plans written 2026-08-17; the pass also re-verified 8 prior spec'd areas
 and confirmed them still open (no new specs — they trace to §3 plans).
 Round 1-2 execution (2026-08-16): P0 session-secret
 (§3.1), SQL injection (§3.2), XSS (§3.4), and SSRF (§3.8) executed and
-verified complete; Plugins Tasks 1-6 executed, Task 7 blocked on `uv lock`
-(§3.10); Web CSRF (§3.6) partially executed (`75568cd`) with deviations
+verified complete; Plugins Tasks 1-7 executed and verified (Task 7
+completed 2026-08-17 — `uv lock` re-verified clean via `--check`, no
+lockfile changes; full verification green, §3.10); Web CSRF (§3.6)
+partially executed (`75568cd`) with deviations
 recorded in its plan; the remaining areas are not started.
+Architecture (§13 below): a separate, non-security spec —
+`2026-08-17-architecture-admin-auth-rbac-boundaries-design.md` and its 7
+`2026-08-17-rbac-step*.md` plans — is tracked here too, since its steps
+touch files several `(s)`-pending security plans also touch. Logged
+2026-08-17 after a readiness pass that re-verified its baseline claims and
+fixed one relay-gateway call-site undercount; no step authorized yet.
 
 ---
 
@@ -52,7 +67,7 @@ recorded in its plan; the remaining areas are not started.
 | 7 | **Secrets / credentials** | Critical ×1, High ×3, Med ×2, Low ×2 | `specs/2026-08-16-security-secrets-design.md` | `plans/2026-08-16-security-secrets.md` | Not started (s) |
 | 8 | **SSRF / outbound** | Critical ×2, High ×1, Med ×1 | `specs/2026-08-16-security-ssrf-design.md` | `plans/2026-08-16-security-ssrf.md` | Done |
 | 9 | **Deserialization / code-exec** | High ×1, Med ×2, Low ×2 | `specs/2026-08-16-security-deserialization-design.md` | `plans/2026-08-16-security-deserialization.md` | Not started (s) |
-| 10 | **Plugins** | Low ×5 | `specs/2026-08-16-security-plugins-design.md` | `plans/2026-08-16-security-plugins.md` | In progress (`[~]` §3.10 — Task 7 blocked) |
+| 10 | **Plugins** | Low ×5 | `specs/2026-08-16-security-plugins-design.md` | `plans/2026-08-16-security-plugins.md` | Done |
 
 **Recommended execution order (audit §0):** 1 (P0) → 2 (SQLi) → 8 (SSRF) → 4 (XSS) → 6 (Web CSRF) → 5 (Auth) → 7 (Secrets) → 3 (Tenancy) → 9 (Deserialization) → 10 (Plugins).
 
@@ -169,7 +184,7 @@ Partially executed 2026-08-16 (`75568cd`): production hard-fail when CSRF disabl
 - [ ] Task 2 (F2) — delete or restrict the three pickle deserializers (`lexigram-cache`, `lexigram-search`, `lexigram-cli`) — **D-B** (s)
 - [ ] Task 3 (F3) — `@cacheable` type-tag gadget: registered type registry, deny-by-default — **D-C** (s)
 - [ ] Task 4 (F4) — CLI MySQL backup/restore: drop `shell=True`, fix redirection — **D-D** (s)
-- [ ] Task 5 (F5) — delete the dormant shell-string runner (`scripts/audit/base.py:243`)
+- [x] Task 5 (F5) — delete the dormant shell-string runner (`scripts/audit/base.py:243`) — done 2026-08-17, class deleted; `shell=True` sweep clean (remaining hits: comment in lexigram-ai-rag/video.py, (s)-gated D4 docstrings)
 - [ ] Task 6 — full verification
 
 ### 3.10 Plugins — `plans/2026-08-16-security-plugins.md` `[~]`
@@ -180,7 +195,7 @@ Partially executed 2026-08-16 (`75568cd`): production hard-fail when CSRF disabl
 - [x] Task 4 (L3) — document the accepted no-tamper-evidence posture (no code change; HMAC skipped by decision) — `lexigram/docs/plugins.md` "File integrity"
 - [x] Task 5 (L5) — document the accepted per-page-GET posture (no code change; acceptance `Sec-2026-08-16-L5` comment on `plugins.py:index()`) — `lexigram/docs/plugins.md` "Per-page GET (admin)"
 - [x] Task 6 — distribution plumbing: `lexigram-plugins` removed from both `pyproject.toml` files; `PluginsModule` entry points + core `__init__` exports; `lexigram-plugins/` directory deleted; docstring/example-yaml/README/CHANGELOG updated
-- [ ] Task 7 — full verification: lint, typecheck, test suite, boot smoke (blocked on `uv lock` resolution of a pre-existing `lexigram-multimedia-music[ace-step-server]` ↔ `pillow` conflict on non-3.13 Python ranges; re-lock scoped to the .venv interpreter)
+- [x] Task 7 — full verification: lint, typecheck, test suite, boot smoke — **done 2026-08-17**: `uv lock --check`/`--dry-run` exit 0 with "No lockfile changes detected" (the pre-existing `lexigram-multimedia-music[ace-step-server]` ↔ `pillow` conflict on non-3.13 ranges no longer reproduces on current uv; no lockfile edit needed, so no diff to commit); ruff check + format green on `lexigram/src/lexigram/plugins`, contracts `plugins.py`, admin plugins controller (8 files formatted); plugin/engine suite 58 passed incl. `test_plugins_controller.py`; L4 fair-guard snippet verified (`version:99` → `set()` + `.corrupt-*` backup, legacy load OK); two-pass review gates all pass (single `discover_providers` impl in `discovery.py`, `_entry_points` only there; `validate_plan` advisory — engine logs `plan_issue`, never raises; `load_disabled` fail-open preserved, only raise is write-path `_write_atomic`; L3/L5 doc-only untouched; test_engine patches `lexigram.plugins.discovery._entry_points` only). No review fixes → no commit.
 
 ### 3.11 AI guard / prompt-injection — `plans/2026-08-16-security-ai-guard.md` (s)
 
@@ -259,8 +274,9 @@ the boot path; SSRF D1 is the contracts primitive that gates Media Task 0.
 **Wave B — parallel agents:** SQL injection (§3.2), XSS / output
 rendering (§3.4) — well-specified plans with independent file sets.
 
-**Parked:** Plugins Task 7 (uv lock conflict on `lexigram-multimedia-music`
-↔ `pillow`), and all `(s)` areas (3, 5, 7, 9, 11–15) pending §2 sign-off.
+**Parked:** all `(s)` areas (3, 5, 7, 9, 11–15) pending §2 sign-off.
+(Plugins Task 7 was unparked 2026-08-17 — `uv lock` confirmed clean, task
+verified, §3.10.)
 
 Agent constraint: agents do not edit this tracker or commit; coordinator
 updates checkboxes centrally from agent reports.
@@ -269,7 +285,8 @@ updates checkboxes centrally from agent reports.
 (7/7 tasks) executed and verified; Wave B — SQLi (adopted via `f5161644`,
 closed `52dd9043`) and XSS (verified + closed `52dd9043`); the frontend pass
 additionally executed part of Web CSRF (`75568cd`) — partial scope with
-recorded deviations, §3.6; Plugins Task 7 remains parked (uv lock).
+recorded deviations, §3.6. Plugins Tasks 1-7 fully verified 2026-08-17
+(`uv lock` clean, suite green — see §3.10 Task 7).
 
 ---
 
@@ -294,72 +311,73 @@ Round 3 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 
 ---
 
-## 7. Round 4 — Findings + Specs (No Plans/Execution Yet)
+## 7. Round 4 — Findings + Specs + Plans (No Execution Yet)
 
-Round 4 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§18-22), per user request to "cover more areas" while Round 1-3 remediation proceeds in parallel. Design specs written 2026-08-16 for four of the five — **#20 Non-SQL query injection has no spec yet** — and no plan or code change written for any of these.
+Round 4 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§18-22), per user request to "cover more areas" while Round 1-3 remediation proceeds in parallel. Design specs written 2026-08-16 for all five, including #20 Non-SQL query injection (`2026-08-16-security-nosql-operator-injection-design.md`, re-verified and extended 2026-08-17 to cover the previously-missed aggregation-pipeline injection surface); implementation plans written 2026-08-17 for all five — no code change written for any of these yet.
 
-| # | Area | Doc section | Severity mix |
-|---|------|--------------|------|
-| 16 | **AI memory / session data isolation** | §18 | Critical ×1, High ×2 |
-| 17 | **Logging & observability data leakage** | §19 | Critical ×1 |
-| 18 | **AI relay / worker / MCP trust boundary** | §20 | High ×1, Med ×1 |
-| 19 | **Outbound HTTP client & resilience hardening** | §21 | High ×1, Med ×1 |
-| 20 | **Non-SQL query injection** (`lexigram-nosql`/`lexigram-graph`/`lexigram-vector`) | §22 | High ×1 |
+| # | Area | Doc section | Severity mix | Spec | Plan |
+|---|------|--------------|------|------|------|
+| 16 | **AI memory / session data isolation** | §18 | Critical ×1, High ×2 | `specs/2026-08-16-security-ai-memory-design.md` | `plans/2026-08-16-security-ai-memory.md` |
+| 17 | **Logging & observability data leakage** | §19 | Critical ×1 | `specs/2026-08-16-security-logging-leakage-design.md` | `plans/2026-08-16-security-logging-leakage.md` |
+| 18 | **AI relay / worker / MCP trust boundary** | §20 | High ×1, Med ×1 | `specs/2026-08-16-security-ai-relay-trust-design.md` | `plans/2026-08-16-security-ai-relay-trust.md` |
+| 19 | **Outbound HTTP client & resilience hardening** | §21 | High ×1, Med ×1 | `specs/2026-08-16-security-http-client-resilience-design.md` | `plans/2026-08-16-security-http-client-resilience.md` |
+| 20 | **Non-SQL query injection** (`lexigram-nosql`/`lexigram-graph`/`lexigram-vector`) | §22 | High ×1 | `specs/2026-08-16-security-nosql-operator-injection-design.md` | `plans/2026-08-16-security-nosql-operator-injection.md` |
 
 **Recurring shapes (per master doc §24):** §19 (logging redaction) and §21.1 (HTTP URL validation) are the same "orphaned correct implementation" pattern as Rounds 1-3 — a real hook/utility exists and is genuinely wired at one point, but nothing installs/calls the real implementation at the point that matters. §20.1 (relay-gateway auth) is a new variant: the mechanism is correctly and consistently wired everywhere, but its own default config value (`require_auth: bool = False`) disables it — a one-line default fix rather than a wiring fix. §18 (AI memory) and §22 (non-SQL injection) are a third variant, first seen in Round 2's tenancy findings: a correct isolation/validation primitive exists in one package (`lexigram-ai-session`'s scoped queries; `lexigram-graph`'s Cypher identifier validation; `lexigram-search`'s field-name allowlist) but the analogous sibling package solving an adjacent problem (`lexigram-ai-memory`; `lexigram-nosql`'s MongoDB filter compiler) has no equivalent.
 
 ---
 
-## 8. Round 5 — Findings + Specs (No Plans/Execution Yet)
+## 8. Round 5 — Findings + Specs + Plans (No Execution Yet)
 
-Round 5 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§23-27), per user request to "continue with round 5 more areas." Design specs written 2026-08-16 for all five — no plan or code change written for any of these yet.
+Round 5 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§23-27), per user request to "continue with round 5 more areas." Design specs written 2026-08-16; implementation plans written 2026-08-17 for all five — no code change written for any of these yet.
 
-| # | Area | Doc section | Severity mix |
-|---|------|--------------|------|
-| 21 | **RBAC super-admin role configurability** | §23 | High ×1, Med ×1 |
-| 22 | **Password reset / email verification token lifecycle consistency** | §24 | Med ×1, Low ×1 |
-| 23 | **CORS & cross-origin configuration** | §25 | Med ×1 |
-| 24 | **MFA / TOTP second-factor handling** | §26 | High ×1, Med ×1 |
-| 25 | **User impersonation feature** | §27 | Med ×1 |
+| # | Area | Doc section | Severity mix | Spec | Plan |
+|---|------|--------------|------|------|------|
+| 21 | **RBAC super-admin role configurability** | §23 | High ×1, Med ×1 | `specs/2026-08-16-security-rbac-superadmin-design.md` | `plans/2026-08-16-security-rbac-superadmin.md` |
+| 22 | **Password reset / email verification token lifecycle consistency** | §24 | Med ×1, Low ×1 | `specs/2026-08-16-security-password-reset-lifecycle-design.md` | `plans/2026-08-16-security-password-reset-lifecycle.md` |
+| 23 | **CORS & cross-origin configuration** | §25 | Med ×1 | `specs/2026-08-16-security-cors-config-design.md` | `plans/2026-08-16-security-cors-config.md` |
+| 24 | **MFA / TOTP second-factor handling** | §26 | High ×1, Med ×1 | `specs/2026-08-16-security-mfa-totp-design.md` | `plans/2026-08-16-security-mfa-totp.md` |
+| 25 | **User impersonation feature** | §27 | Med ×1 | `specs/2026-08-16-security-impersonation-design.md` | `plans/2026-08-16-security-impersonation.md` |
 
 **Recurring shapes (per master doc §29):** §23.1 (RBAC) and §26.1 (MFA) are a narrower, single-path cousin of the "hook wired but nothing installs a real implementation" pattern — a real enforcement primitive exists and is correctly wired for one code path (login password checks call `check_account_lockout`; `AdminConfig`'s env-backed settings resolve correctly) but a closely related second path (MFA code checks; `RolesResource`'s super-admin-role comparison) never calls it, silently. §27 (impersonation) is a fourth pattern variant not seen in prior rounds — a fully-implemented, well-designed service exists with no HTTP route reaching it at all; a current-risk *positive* (unreachable code can't be exploited today) that flags latent design gaps needing attention before the feature is wired up. §24 (password-reset/email-verification) and §25 (CORS) are dual-implementation variants: two code paths solving the same problem exist side by side, one correct (email verification's atomic consume; the wired `CORSConfig`) and one weaker or orphaned (password reset's TOCTOU gap; the dead `WebProviderConfig` CORS fields).
 
 ---
 
-## 9. Round 6 — Findings + Specs (No Plans/Execution Yet)
+## 9. Round 6 — Findings + Specs + Plans (No Execution Yet)
 
-Round 6 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§28-32), per user request to "continue with the next round for more areas." Design specs written 2026-08-16 for all five — no plan or code change written for any of these yet.
+Round 6 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§28-32), per user request to "continue with the next round for more areas." Design specs written 2026-08-16 for all five; implementation plans written 2026-08-16 for all five — no code change executed yet:
 
-| # | Area | Doc section | Severity mix |
-|---|------|--------------|------|
-| 26 | **First-run setup wizard race/takeover** | §28 | High ×1 |
-| 27 | **Admin session/authorization middleware boot-time fail-open** | §29 | Med ×1 |
-| 28 | **CSV export formula/DDE injection** | §30 | Med ×1 |
-| 29 | **Connection pool health/management endpoint authorization** | §31 | Med ×1 |
-| 30 | **Post-login/post-verification open redirect** | §32 | Med ×1 |
+| # | Area | Doc section | Severity mix | Spec | Plan |
+|---|------|--------------|------|------|------|
+| 26 | **First-run setup wizard race/takeover** | §28 | High ×1 | `specs/2026-08-16-security-setup-wizard-takeover-design.md` | `plans/2026-08-16-security-setup-wizard-takeover.md` |
+| 27 | **Admin session/authorization middleware boot-time fail-open** | §29 | Med ×1 | `specs/2026-08-16-security-session-authz-failopen-design.md` | `plans/2026-08-16-security-session-authz-failopen.md` |
+| 28 | **CSV export formula/DDE injection** | §30 | Med ×1 | `specs/2026-08-16-security-csv-export-injection-design.md` | `plans/2026-08-16-security-csv-export-injection.md` |
+| 29 | **Connection pool health/management endpoint authorization** | §31 | Med ×1 | `specs/2026-08-16-security-pool-health-authz-design.md` | `plans/2026-08-16-security-pool-health-authz.md` |
+| 30 | **Post-login/post-verification open redirect** | §32 | Med ×1 | `specs/2026-08-16-security-open-redirect-design.md` | `plans/2026-08-16-security-open-redirect.md` |
 
 **Recurring shapes (per master doc §34):** §29.1 (session/authz middleware) is a boot-time-consistency cousin of the "orphaned correct implementation" family — the real DB-backed session validation and RBAC enforcement are genuinely wired and effective, but their registration is wrapped in the same broad `except Exception: log.warning()`-and-continue pattern the CSRF middleware two sections above explicitly avoids by design, so a DI failure at boot silently degrades the whole auth/authz chain instead of refusing to start. §28.1 (setup-wizard takeover) is a fresh pattern shape, closest analogue is §1's hardcoded session-secret finding: a real security gate exists (`ADMIN_SETUP_TOKEN`) but ships opt-in/unset by default, and a second, independent mechanism (`SetupMiddleware` redirecting every anonymous visitor to `/setup`) actively advertises the resulting open window rather than staying quiet about it — distinguished from §1 by requiring an operator action (setting the env var) to close, not a code fix. §30 (CSV export) and §31 (pool health) are both "the generic safety mechanism used correctly elsewhere in the same package is simply never applied to this one surface" — CSV export has no analogue to sanitize cell content at all; pool health bypasses both the `ActionExecutor.can_execute_action` gate and `SettingsController`'s manual permission check, despite both patterns being established and available in the same codebase. §32 (open redirect) is a plain input-validation gap with no wiring/pattern cousin elsewhere in this document — the single `next_url` parameter is simply never validated at any of its five call sites.
 
 ---
 
-## 10. Round 7 — Findings + Specs (No Plans/Execution Yet)
+## 10. Round 7 — Findings + Specs + Plans (No Execution Yet)
 
 Round 7 added 6 more areas from a focused `lexigram-admin` security pass
 (2026-08-16). All six were verified against live code and confirmed absent
 from every existing spec/plan (repo-wide doc grep: no `data_source.py`,
 `tabular.py`, `controllers/search.py`, or `_BYPASS_SUFFIXES` matches anywhere
-in `docs/superpowers/`). Designs written 2026-08-16 — no plan or code
-change executed yet. Master-doc section numbers §33-§38 are reserved for
+in `docs/superpowers/`). Designs written 2026-08-16; implementation plans
+written 2026-08-17 — no code change executed yet. Master-doc section
+numbers §33-§38 are reserved for
 these areas once merged into the findings document.
 
-| # | Area | Severity mix | Spec |
-|---|------|--------------|------|
-| 31 | **Generic-repository SQL identifier injection** (`admin/data/data_source.py`) | Critical ×1, High ×1 | `specs/2026-08-16-security-admin-sql-identifiers-design.md` |
-| 32 | **Auth-guard path-suffix bypass** (`admin/middleware/auth_guard.py`) | High ×1 | `specs/2026-08-16-security-auth-guard-bypass-design.md` |
-| 33 | **Alpine JS-expression injection via record ids** (`admin/ui/organisms/table/views/tabular.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-alpine-js-expression-design.md` |
-| 34 | **Search partial unescaped record fields** (`admin/controllers/search.py`) | Med ×1 | `specs/2026-08-16-security-search-partial-escaping-design.md` |
-| 35 | **Legacy session fallback without TTL / revocation** (`admin/middleware/auth.py`) | Med ×1 | `specs/2026-08-16-security-session-fallback-ttl-design.md` |
-| 36 | **Admin login `roles` unbound local** (`admin/auth/services/auth_service.py`) | High ×1 (availability) | `specs/2026-08-16-security-admin-login-roles-unbound-design.md` |
+| # | Area | Severity mix | Spec | Plan |
+|---|------|--------------|------|------|
+| 31 | **Generic-repository SQL identifier injection** (`admin/data/data_source.py`) | Critical ×1, High ×1 | `specs/2026-08-16-security-admin-sql-identifiers-design.md` | `plans/2026-08-16-security-admin-sql-identifiers.md` |
+| 32 | **Auth-guard path-suffix bypass** (`admin/middleware/auth_guard.py`) | High ×1 | `specs/2026-08-16-security-auth-guard-bypass-design.md` | `plans/2026-08-16-security-auth-guard-bypass.md` |
+| 33 | **Alpine JS-expression injection via record ids** (`admin/ui/organisms/table/views/tabular.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-alpine-js-expression-design.md` | `plans/2026-08-16-security-alpine-js-expression.md` |
+| 34 | **Search partial unescaped record fields** (`admin/controllers/search.py`) | Med ×1 | `specs/2026-08-16-security-search-partial-escaping-design.md` | `plans/2026-08-16-security-search-partial-escaping.md` |
+| 35 | **Legacy session fallback without TTL / revocation** (`admin/middleware/auth.py`) | Med ×1 | `specs/2026-08-16-security-session-fallback-ttl-design.md` | `plans/2026-08-16-security-session-fallback-ttl.md` |
+| 36 | **Admin login `roles` unbound local** (`admin/auth/services/auth_service.py`) | High ×1 (availability) | `specs/2026-08-16-security-admin-login-roles-unbound-design.md` | `plans/2026-08-16-security-admin-login-roles-unbound.md` |
 
 **§33 — SQL identifier injection in the generic resource repository (Critical/High).**
 `data/data_source.py` parameterizes values but never identifiers: `find_many` interpolates
@@ -440,24 +458,25 @@ cousin — included because it bricks the default login flow.
 
 ---
 
-## 11. Round 8 — Findings + Specs (No Plans/Execution Yet)
+## 11. Round 8 — Findings + Specs + Plans (No Execution Yet)
 
 Round 8 added 6 more areas from a second focused `lexigram-admin` pass
 (2026-08-16), sweeping the previously unaudited relations, export-service,
 settings-config, and command-palette surfaces plus the `lexigram-search`
 filter backends. Master-doc section numbers §39-§44 are reserved for these
 areas once merged into the findings document. Findings verified against
-live code; designs written 2026-08-16 — no plan or code change executed
-yet.
+live code; designs written 2026-08-16 and implementation plans written
+2026-08-17 — no code change executed yet (exception: finding 40 / §42
+remediated 2026-08-17, full status below).
 
-| # | Area | Severity mix | Spec |
-|---|------|--------------|------|
-| 37 | **Relation panel raw-field rendering (stored + reflected XSS)** (`admin/relations/manager_ext.py`, `belongs_to_many.py`, `routes.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-relations-panel-xss-design.md` |
-| 38 | **Relation endpoint authorization / parent-IDOR** (`admin/relations/routes.py`, `manager_ext.py` predicates) | Med ×1 | `specs/2026-08-16-security-relations-routes-authz-design.md` |
-| 39 | **Excel export backend formula injection** (`admin/services/export/adapters/excel.py`) | Med ×1 | `specs/2026-08-16-security-export-excel-formula-design.md` |
-| 40 | **Meilisearch/Typesense filter-expression injection** (`lexigram-search/backends/filters.py`) | High ×1 | `specs/2026-08-16-security-search-filter-injection-design.md` |
-| 41 | **Settings config-read GETs bypass the edit-permission gate** (`admin/controllers/settings.py`, `widgets.py`) | Med ×1 | `specs/2026-08-16-security-settings-config-read-gate-design.md` |
-| 42 | **Command palette cross-resource search without per-resource rights** (`admin/controllers/command_palette.py`) | Med ×1 | `specs/2026-08-16-security-command-palette-permissions-design.md` |
+| # | Area | Severity mix | Spec | Plan |
+|---|------|--------------|------|------|
+| 37 | **Relation panel raw-field rendering (stored + reflected XSS)** (`admin/relations/manager_ext.py`, `belongs_to_many.py`, `routes.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-relations-panel-xss-design.md` | `plans/2026-08-16-security-relations-panel-xss.md` |
+| 38 | **Relation endpoint authorization / parent-IDOR** (`admin/relations/routes.py`, `manager_ext.py` predicates) | Med ×1 | `specs/2026-08-16-security-relations-routes-authz-design.md` | `plans/2026-08-16-security-relations-routes-authz.md` |
+| 39 | **Excel export backend formula injection** (`admin/services/export/adapters/excel.py`) | Med ×1 | `specs/2026-08-16-security-export-excel-formula-design.md` | `plans/2026-08-16-security-export-excel-formula.md` |
+| 40 | **Meilisearch/Typesense filter-expression injection** (`lexigram-search/backends/filters.py`) | High ×1 | `specs/2026-08-16-security-search-filter-injection-design.md` | `plans/2026-08-16-security-search-filter-injection.md` |
+| 41 | **Settings config-read GETs bypass the edit-permission gate** (`admin/controllers/settings.py`, `widgets.py`) | Med ×1 | `specs/2026-08-16-security-settings-config-read-gate-design.md` | `plans/2026-08-16-security-settings-config-read-gate.md` |
+| 42 | **Command palette cross-resource search without per-resource rights** (`admin/controllers/command_palette.py`) | Med ×1 | `specs/2026-08-16-security-command-palette-permissions-design.md` | `plans/2026-08-16-security-command-palette-permissions.md` |
 
 **§39 — Relation panel renders record fields raw (High/Med, stored + reflected XSS).**
 `relations/manager_ext.py` builds the inline-edit relation table with raw f-strings:
@@ -514,6 +533,16 @@ queries narrowed to a tenant/owner), data disclosure, or DoS. Admin's own
 `SearchService` does not construct these backends today; host apps wiring
 `lexigram-search` to Meilisearch/Typesense are the live users — same
 "data layer has no guard for direct callers" shape as Round 7 §33.
+**Status: FIXED 2026-08-17** — `_meili_value`/`_typesense_value` now escape
+`\` and `"` (backslash first) inside `"`-delimited string literals (Typesense
+gained quoting for strings; bools/numbers stay unquoted); field-name gate
+`_validate_filters` (`:65-68`) retained as the fail-closed boundary. Tests:
+`test_search_filter_literal_safety.py` (round-trip + benign no-change),
+`test_search_backend_filter_guards.py` (mocked engine asserts), value-safety
+class appended to `test_block_translator.py`; 5 Typesense string asserts in
+`test_filter_renderer.py` updated to quoted forms. Verification: 808 passed/
+4 skipped (full lexigram-search unit suite), ruff clean, mypy clean
+(`lexigram/src`: 294 files), two-pass review vs spec §3/§4 complete.
 
 **§43 — Settings config-read GETs bypass the edit-permission gate (Med).**
 `controllers/settings.py:168-205` (`spec_view`, GET `/admin/settings/{namespace}`)
@@ -551,7 +580,7 @@ gated, sibling GET not). §44 is the authorization-context gap shared with Round
 
 ---
 
-## 12. Round 9 — Findings + Specs (No Plans/Execution Yet)
+## 12. Round 9 — Findings + Specs + Plans (No Execution Yet)
 
 Round 9 (2026-08-16) swept the extension packages outside `lexigram-admin`
 for the first time — AI subsystem (`lexigram-ai-*`, `lexigram-vector`),
@@ -563,15 +592,16 @@ personally re-verified against live code. Five areas are genuinely new
 (§45-49, design specs written 2026-08-16); the remainder of the pass
 re-verified eight previously spec'd remediation areas and confirmed they
 are **still open** (no new specs — they trace to the existing Round 1-3
-plans listed in §3). No plans or execution written for any Round 9 item.
+plans listed in §3). Implementation plans written 2026-08-17 for all five
+new areas — no code change executed yet.
 
-| # | Area | Severity mix | Spec |
-|---|------|--------------|------|
-| 45 | **`lexigram-vector` pgvector metadata-field injection** | High ×1 | `specs/2026-08-16-security-vector-sql-field-injection-design.md` |
-| 46 | **`lexigram-storage` KV local namespace traversal** (arbitrary `rmtree`) | Med ×1 | `specs/2026-08-16-security-storage-kv-namespace-traversal-design.md` |
-| 47 | **`lexigram-ai-mcp` server: no initialize-handshake/authz enforcement** | Med ×1 | `specs/2026-08-16-security-mcp-server-initialize-authz-design.md` |
-| 48 | **`lexigram-ai-agents` tool-visibility check fails open** | Med ×1 | `specs/2026-08-16-security-agents-tool-visibility-failopen-design.md` |
-| 49 | **`lexigram-auth` OAuth2 email binding without `email_verified`** | Med ×1 | `specs/2026-08-16-security-oauth2-email-verified-binding-design.md` |
+| # | Area | Severity mix | Spec | Plan |
+|---|------|--------------|------|------|
+| 45 | **`lexigram-vector` pgvector metadata-field injection** | High ×1 | `specs/2026-08-16-security-vector-sql-field-injection-design.md` | `plans/2026-08-16-security-vector-sql-field-injection.md` |
+| 46 | **`lexigram-storage` KV local namespace traversal** (arbitrary `rmtree`) | Med ×1 | `specs/2026-08-16-security-storage-kv-namespace-traversal-design.md` | `plans/2026-08-16-security-storage-kv-namespace-traversal.md` |
+| 47 | **`lexigram-ai-mcp` server: no initialize-handshake/authz enforcement** | Med ×1 | `specs/2026-08-16-security-mcp-server-initialize-authz-design.md` | `plans/2026-08-16-security-mcp-server-initialize-authz.md` |
+| 48 | **`lexigram-ai-agents` tool-visibility check fails open** | Med ×1 | `specs/2026-08-16-security-agents-tool-visibility-failopen-design.md` | `plans/2026-08-16-security-agents-tool-visibility-failopen.md` |
+| 49 | **`lexigram-auth` OAuth2 email binding without `email_verified`** | Med ×1 | `specs/2026-08-16-security-oauth2-email-verified-binding-design.md` | `plans/2026-08-16-security-oauth2-email-verified-binding.md` |
 
 **§45 — pgvector metadata-filter field interpolation (High).**
 `lexigram-vector/src/lexigram/vector/backends/pgvector/filters.py:62-66,84` builds
@@ -610,7 +640,12 @@ requires `-32002` rejection pre-initialize; the flag is write-only.
 return True` — if the module-graph visibility lookup fails, the tool is
 treated as visible. Same manual-check fail-open family as Round 3 §29 /
 Round 8 §43: the check exists and is correct on its happy path; every
-failure mode silently grants access.
+failure mode silently grants access. **EXECUTED 2026-08-17 (Lane 3,
+commit `5b2de912`):** `except` path flipped to `return False`; graph-less
+guards with a caller module now fall through to the deny path (caller-less
+standalone mode preserved); regression tests added
+(`tests/unit/tools/test_tool_visibility_fail_closed.py`); suite 398 passed,
+aggregate green.
 
 **§49 — OAuth2 binds accounts by unverified email (Med, conditional).**
 `lexigram-auth/.../authn/oauth2.py:460-465` `_find_or_create_oauth_user`
@@ -632,6 +667,14 @@ severity depends on provider config.
 | AI guard wiring + fail-open (§3.11) | `ai-guard-design.md` | `streaming.py:250-252, 280-282` `except Exception → return True` (input+output); `@guarded` still `return await func(...)` (`decorators.py:46-53`); `AgentsProvider.boot()` (`di/provider.py:289`) still constructs `AgentSafetyInfra` with no guard pipeline | Open |
 | Secrets fail-closed backends (§3.7 Task 5) | `secrets-design.md` | `backends/vault.py:54-55, 86-87, 107-108, 122-123` bare `except Exception → return None`/`pass`; GCP/AWS identical | Open |
 | Skill sandbox / deserialization (§3.9 F1) | `deserialization-design.md` | `skill_loader.py:139-148` `exec(compiled, local_ns)` with `"os": os` in the namespace; `_get_env` (`:121-129`) passes **full** `os.environ` to subprocesses; `_is_safe_path` checks only `".."` in the resolved path string | Open |
+
+**Re-audited 2026-08-17 (Lane 3, research-only; all three areas still Open):**
+
+| Area | Re-audit verdict | Notes |
+|---|---|---|
+| AI guard (§3.11) | All baseline claims hold (19/20 exact; `function_calling.py` feed cites drifted to `:434-440`/`:483-489`; 1 premise already corrected in spec). Plan defects found: D4-as-written leaves the streaming **output** leg open (`streaming.py:150` return discarded); D3 guard exceptions have no exception→`Err` mapping (`executor.run()` would let them escape uncaught); `SupervisorStrategy` (`supervisor.py:335-345`) is a 4th unguarded OBSERVE feed (non-default). **Posture conflict at sign-off:** tracker/§3.11 recommend fail-closed-by-default; spec §4 Decision D + plan Task 4 implement fail-open-by-default (`llm_guard_fail_open=True`). | Open — §2 bullet :93 unchecked |
+| GraphQL (§3.12) | All 5 baseline claims hold exact (incl. mask-bypass `execution.py:287-300`, pinned by `test_graphql_execution.py:30-31,80`). **Interaction gap:** plan's post-wiring test assertions would fail — the 4 new security errors get masked to "Internal server error" under default `mask_errors=True` (only `RateLimitError` survives via `safe=True`, `exceptions.py:129`). Need `safe=True` on the new errors or `ErrorConfig(mask_errors=False)` in tests; mask-bypass itself is undispositioned (tracker detail landed after spec). Trivial: `Iterator` import is not yet in `complexity.py`. | Open — §2 bullet :94 unchecked |
+| Media upload (§3.13) | Every claim holds **exact** (4 fetch sites, `file://` passthrough, argv drawtext `:160-163`, 13× `0.0.0.0` app.run, no `multimedia/security.py`, no `client_max_size`, `scale_factor` unvalidated). **Task 0 gate SATISFIED** — `is_safe_url_for_request` lives at `lexigram.contracts.security.url_safety` (:64, fail-closed docstring); zero multimedia consumers (all 4 sites still unguarded). Only blocker is §2 sign-off. | Open — §2 bullet :95 unchecked |
 
 **Verified-clean surfaces (negatives):** webhook HMAC timing-safe compare +
 SSRF scheme allowlist landed (`webhook/verification/hmac.py:29-31`,
@@ -656,7 +699,73 @@ the Round 5 §24 token-lifecycle family's email-verification cousin.
 
 ---
 
-## 13. Commands (from AGENTS.md)
+## 13. Architecture — Admin/Auth/RBAC/Users Boundary Spec (Plans Ready, Not Yet Authorized)
+
+Distinct from the `2026-08-16-security-*` audit series — this is an
+**architectural placement** spec (`docs/superpowers/specs/2026-08-17-architecture-admin-auth-rbac-boundaries-design.md`,
+amended 2026-08-17), not a security-findings pass. Logged here anyway
+because its 7 migration steps touch the same files/packages several
+`(s)`-pending security plans do, and because it surfaces one of its own
+Critical findings (§2.2 below). Tracked here so neither series starts a
+step that collides with the other's uncommitted edits.
+
+**Pre-log readiness check (2026-08-17):** re-verified against live code
+before adding to this tracker. Import-linter baseline re-run: still
+**25** violations, matches Step 0's inventory. §2.2's hardcoded-deny
+`_DefaultAuthorizer` (`lexigram-admin/di/sub_providers/auth.py:101-129`)
+and D4's "8 of 9 stores have `ensure_schema()`, `DirectSQLAdminUserStore`
+is the holdout" are both confirmed exactly as described. **One gap found
+and fixed**: the relay-gateway authorizer call-site count was wrong in
+both the spec and the Step 1 plan — `service.py`'s two `.authorize()`
+calls (`:215`, `:448`) were dropped from the count (spec said "5
+relay-gateway sites" / "4 other sites"; actual is 6 check call sites
+total across `controls.py`×1, `job_passthrough.py`×2, `passthrough.py`×1,
+`service.py`×2). Corrected in the spec (§4.2 D1 amendment 2, §4.3) and in
+the Step 1 plan's Task 1.6 file list/expected-count, same shape as the
+"missed sibling call site" pattern this tracker's Round 4-9 specs kept
+finding.
+
+### 13.1 Steps summary
+
+| Step | Area | Plan | Gates / gated by | Status |
+|---|------|------|------|------|
+| 0 | Import-linter baseline repair (25→0 violations) | `plans/2026-08-17-rbac-step0-import-linter-baseline.md` | Gates Step 6. Its `→ lexigram.ui` cluster (7 violations) is owned by `2026-08-15-admin-contributor-refactor.md` Phase 2 (0/24 tasks done — unstarted); its `→ lexigram.security` cluster (7 violations) is owned by the security-plan series (mostly `(s)`, only P0/SQLi/XSS/SSRF/Plugins done) | **Done — green gate verified 2026-08-17 (0 violations)** |
+| 1 | Authorizer protocol unification + single bound instance (fixes §2.2 CRITICAL) | `plans/2026-08-17-rbac-step1-authorizer-unification.md` | Independent of Step 0; touches `lexigram-ai-relay-gateway` (5 files) — no known security-plan overlap there | **Done — green gate verified 2026-08-17** (7 commits, 0 violations; spec §6 Step 1 flipped) |
+| 2 | Role model unification (`RoleDefinition` → contracts) | `plans/2026-08-17-rbac-step2-role-model-unification.md` | Depends on Step 1 (consumes the unified protocol's role-bearing types) | Not started |
+| 3 | `AdminUserStoreProtocol.ensure_schema()` (one-file fix) | `plans/2026-08-17-rbac-step3-admin-user-store-ensure-schema.md` | Independent — smallest step, no plan dependency | Not started |
+| 4 | Auth delegation (admin MFA/OTP/password-policy → lexigram-auth) | `plans/2026-08-17-rbac-step4-auth-delegation.md` | **Live file collision risk**: touches `admin/auth/services/*` — `auth_service.py`, `email_verification_service.py`, `password_reset_service.py` are *currently* `M` in git status from other in-flight work (see §13.2) | Not started |
+| 5 | Admin principal bridge (`AdminPrincipalProviderProtocol`) | `plans/2026-08-17-rbac-step5-admin-principal-bridge.md` | Depends on Step 1 (needs the single bound authorizer instance to actually verify the §2.2 mutation-path fix) | Not started |
+| 6 | Boundary locking (import-linter contracts + private-access lint + CI) | `plans/2026-08-17-rbac-step6-boundary-locking.md` | **Blocked on Step 0** (needs the green baseline) | Not started |
+
+**Recommended order:** 0 → 1 → 3 → 2 → 4 → 5 → 6 (3 can run in parallel with 1/2 — no shared files; 4 should wait for a quiet window on `admin/auth/services/*`, see §13.2).
+
+### 13.2 Collision watch
+
+- `2026-08-15-admin-contributor-refactor.md` Phase 2 (0/24 tasks, unstarted) claims the same 7 `→ lexigram.ui` files Step 0 Task 0.5 defers to it. **Do not fix those 7 files from Step 0** — Step 0 only files the tracking entry.
+- The security-plan series was expected to own the 7 `→ lexigram.security` violations (Step 0 Task 0.2 mapping), but the mapping found **7/7 rows NO-OWNER or NO-PLAN** → Step 0 Task 0.6 fixed them in-lane (removed the duplicated `SecretNotFoundError`, rerouted 7 ambient hashing consumers to the documented core `from lexigram import hashing` ambient capability, deduped `Sha256Hasher` usage in sql via ambient `hash_hex`). Verified 2026-08-17: 0 violations, ruff+mypy clean, scoped suites 1,257 passed.
+- As of 2026-08-17, `git status` shows `admin/auth/services/{auth_service,email_verification_service,password_reset_service}.py`, `admin/controllers/{auth,profile,setup}.py`, and several other admin files as uncommitted (`M`) from work outside this spec's scope — this is exactly Step 4's target file set. The Step 0 plan's own caution note applies here too: a concurrent agent syncs/reverts uncommitted tracked-file edits in this area. Confirm a quiet window before starting Step 4.
+- Step 1 landed 2026-08-17 with 7 commits (`f4456271` → `caa7df95`). Pre-existing, unrelated: the 6 `tests/e2e/test_admin_email_verify_http_e2e.py` failures (unawaited `AsyncMock` coroutine from the committed login-MFA flow at `controllers/auth.py:246` — same failure reproduces from HEAD without Step 1; belongs to the email-verify feature owner, not RBAC). Note for Step 1.7's gate: combined multi-package mypy runs trip a pre-existing namespace-shim collision ("Duplicate module named lexigram") — run mypy per-package.
+- Step 6 adds two new `.importlinter` contracts (`admin-import-allowlist`, `auth ⊥ admin`) plus a new template-repo `.importlinter`. If any `(s)`-pending security plan also edits `.importlinter` ignore blocks before Step 6 lands, diff both against the Step 0 golden snapshot (`/tmp/lint_baseline.txt`) before merging.
+
+### 13.3 Per-step tasks
+
+**Step 0** (6 tasks): 0.1 lock baseline repro (confirm 25) · 0.2 map security-cluster violations to owning specs · 0.3 fix the 9 `lexigram.contracts → *` violations · 0.4 fix `monitor → tasks` and `di → serialization` · 0.5 file the ui-cluster tracking entry (deferred to contributor-refactor) · 0.6 close out (green gate + tracker)
+
+**Step 1** (7 tasks): 1.1 union protocol in contracts · 1.2 `AuthorizationService` implements the union (real enforcement, not hardcoded deny) · 1.3 one bound instance — admin DI binds it under the union protocol · 1.4 `PermissionService` honest async, protocol-typed (full async conversion: `_check_access` awaited, 9 public `can_*` methods async, sync UI render chain hoisted to precomputed dicts, 0 type-ignores) · 1.5 `AdminRoleService` same bound instance, no concrete class · 1.6 relay-gateway call-site audit (6 sites, corrected 2026-08-17 — all argument-safe, no change) · 1.7 sweep, no stale refs — all **Done 2026-08-17** |
+
+**Step 2** (5 tasks): 2.1 `RoleDefinition` in contracts (frozen dataclass, scope-forward) · 2.2 lexigram-auth re-exports it · 2.3 delete admin `Role`/`Permission`, update `rbac` internals · 2.4 template data sources follow the unified model · 2.5 full-repo sweep + spec flip
+
+**Step 3** (3 tasks): 3.1 protocol method + SQL store implementation · 3.2 template call site private→public · 3.3 sweep, no other private-store callers
+
+**Step 4** (5 tasks): 4.1 parity inventory (admin service ↔ lexigram-auth counterpart) · 4.2 `AdminMfaService` delegates TOTP math · 4.3 `AdminEmailOtpService` delegates code gen/verification · 4.4 `AdminPasswordPolicyService` delegates to a `PasswordPolicyProtocol` impl · 4.5 e2e gate + spec flip
+
+**Step 5** (4 tasks): 5.1 contracts — `AdminPrincipal` + `AdminPrincipalProviderProtocol` · 5.2 admin — config switch, adapter, DI binding · 5.3 template implements the provider, glue deleted · 5.4 framework regression + spec flip
+
+**Step 6** (5 tasks): 6.1 private-access lint tool (`tools/lint_private_access.py`) · 6.2 framework `.importlinter` — admin allowlist + auth⊥admin · 6.3 template-repo import-linter config · 6.4 CI wiring (`make ci`) · 6.5 spec flip + repo status sweep
+
+---
+
+## 14. Commands (from AGENTS.md)
 
 ```bash
 uv run ruff check . && uv run ruff format --check .   # lint
