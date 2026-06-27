@@ -429,6 +429,36 @@ class CursorError(DataError):
         super().__init__(message)
 
 
+# ── Tenant scoping ────────────────────────────────────────────────────
+
+
+class TenantScopingError(DatabaseError):
+    """Raised when a tenant-scoped operation runs without an active tenant.
+
+    Mirrors :class:`~lexigram.sql.row_level_security.NoSecurityPolicyError`:
+    a ``multi_tenant`` repository may only run when a tenant is active in
+    the db context, or inside an explicit
+    :meth:`SQLRepository.with_tenant_scope` block.  Holds the query context
+    for operator triage.
+
+    Attributes:
+        table: Table that was queried/scoped.
+        operation: SQL operation attempted (``SELECT``, ``INSERT``, ...).
+    """
+
+    _code: str = "LEX_ERR_SQL_038"
+
+    def __init__(self, table: str, operation: str = "SELECT") -> None:
+        super().__init__(
+            f"Tenant scoping violation: attempted {operation} on table "
+            f"'{table}' without an active tenant. Activate a tenant in the "
+            f"db context or use repository.with_tenant_scope(tenant_id) "
+            f"for an explicit scoped run."
+        )
+        self.table = table
+        self.operation = operation
+
+
 __all__ = [
     "CheckConstraintError",
     "ColumnNotFoundError",
@@ -461,6 +491,7 @@ __all__ = [
     "SchemaError",
     "SerializationError",
     "TableNotFoundError",
+    "TenantScopingError",
     "TransactionError",
     "TransactionRollbackError",
     "UnitOfWorkError",

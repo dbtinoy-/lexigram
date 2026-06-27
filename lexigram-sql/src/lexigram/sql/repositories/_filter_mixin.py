@@ -7,6 +7,7 @@ from typing import Any, ClassVar
 
 from lexigram.contracts.data.identifiers import Column
 from lexigram.logging import get_logger
+from lexigram.sql.exceptions import TenantScopingError
 from lexigram.sql.lib import parse_date_safely
 from lexigram.sql.repositories.filter_objects import normalize_filters
 from lexigram.sql.repositories.filters import FilterOperatorRegistry
@@ -108,9 +109,9 @@ class _FilterMixin:
                 where_parts.append("tenant_id = ?")
                 params.append(tenant_id)
             else:
-                logger.warning(
-                    "Query on multi-tenant table %s with no tenant_id in context",
-                    self.table_name,  # type: ignore[attr-defined]
+                raise TenantScopingError(
+                    table=self.table_name,  # type: ignore[attr-defined]
+                    operation="SELECT",
                 )
 
         if where_parts:
