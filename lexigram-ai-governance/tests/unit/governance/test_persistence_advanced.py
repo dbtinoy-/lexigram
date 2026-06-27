@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
-import pytest
-import time
 
+import pytest
+
+from lexigram.ai.governance.exceptions import GovernancePersistenceError
 from lexigram.ai.governance.persistence.persistence import (
-    RedisGovernancePersistence,
     DatabaseGovernancePersistence,
+    RedisGovernancePersistence,
 )
+from lexigram.contracts.infra.cache.exceptions import CacheError
+from lexigram.result import Err
 
 
 @pytest.mark.asyncio
@@ -57,21 +60,78 @@ class TestRedisGovernancePersistence:
         assert total == 2.0
         mock_cache.set.assert_called_with("ai:gov:spend:k1", "2.0", ttl=3600)
 
-    async def test_add_spend_fail_open(self, mock_cache) -> None:
+    async def test_add_spend_propagates_backend_failure(self, mock_cache) -> None:
+        """Infrastructure failures propagate instead of returning the amount."""
         mock_cache.get.side_effect = RuntimeError("redis down")
-        
+
         persistence = RedisGovernancePersistence(cache=mock_cache)
-        total = await persistence.add_spend("k1", 0.5, ttl=3600)
-        
-        assert total == 0.5 # returns the increment amount on failure
+        with pytest.raises(RuntimeError, match="redis down"):
+            await persistence.add_spend("k1", 0.5, ttl=3600)
+
+
+@pytest.mark.asyncio
+class TestRedisPersistenceFailClosed:
+    """All five enforcement methods propagate failures (fail-closed, §50)."""
+
+    @pytest.fixture
+    def err_cache(self) -> AsyncMock:
+        cache = AsyncMock()
+        cache._client = None
+        cache.client = None
+        cache.get.return_value = Err(CacheError("redis down"))
+        cache.set.return_value = Err(CacheError("redis down"))
+        return cache
+
+    @pytest.fixture
+    def raising_cache(self) -> AsyncMock:
+        cache = AsyncMock()
+        cache._client = None
+        cache.client = None
+        cache.get.side_effect = RuntimeError("redis down")
+        return cache
+
+    @pytest.mark.parametrize(
+        ("method", "args"),
+        [
+            ("incr_requests", ("u1", 60.0)),
+            ("add_spend", ("k1", 0.5, 3600)),
+            ("get_spend", ("k1",)),
+            ("read_gauge", ("k1",)),
+            ("incr_gauge", ("k1", 5.0, 3600)),
+        ],
+    )
+    async def test_err_result_raises_governance_persistence_error(
+        self, err_cache: AsyncMock, method: str, args: tuple
+    ) -> None:
+        """An Err result from a protocol-compliant backend raises, not 0/1/amount."""
+        persistence = RedisGovernancePersistence(cache=err_cache)
+        with pytest.raises(GovernancePersistenceError, match="redis down"):
+            await getattr(persistence, method)(*args)
+
+    @pytest.mark.parametrize(
+        ("method", "args"),
+        [
+            ("incr_requests", ("u1", 60.0)),
+            ("add_spend", ("k1", 0.5, 3600)),
+            ("get_spend", ("k1",)),
+            ("read_gauge", ("k1",)),
+            ("incr_gauge", ("k1", 5.0, 3600)),
+        ],
+    )
+    async def test_raised_backend_error_propagates(
+        self, raising_cache: AsyncMock, method: str, args: tuple
+    ) -> None:
+        """A raised backend error propagates unmodified (matches DatabaseGovernancePersistence)."""
+        persistence = RedisGovernancePersistence(cache=raising_cache)
+        with pytest.raises(RuntimeError, match="redis down"):
+            await getattr(persistence, method)(*args)
 
 
 @pytest.mark.asyncio
 class TestDatabaseGovernancePersistence:
     @pytest.fixture
     def mock_db(self) -> AsyncMock:
-        db = AsyncMock()
-        return db
+        return AsyncMock()
 
     async def test_ensure_tables_on_first_call(self, mock_db) -> None:
         persistence = DatabaseGovernancePersistence(db=mock_db)
