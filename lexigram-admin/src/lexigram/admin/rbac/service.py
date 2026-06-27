@@ -31,11 +31,17 @@ class PermissionService:
 
     def set_roles(self, roles: dict[str, Any]) -> None:
         """Delegate to unified service."""
-        self.authorization_service.set_roles(roles)  # type: ignore[union-attr]
+        if self.authorization_service is None:
+            logger.warning("PermissionService: No authorizer configured; skipping set_roles")
+            return
+        self.authorization_service.set_roles(roles)
 
     async def sync_from_db(self, container: ContainerResolverProtocol) -> None:
         """Delegate to unified service."""
-        await self.authorization_service.sync_from_db(container)  # type: ignore[union-attr]
+        if self.authorization_service is None:
+            logger.warning("PermissionService: No authorizer configured; skipping sync_from_db")
+            return
+        await self.authorization_service.sync_from_db(container)
 
     def register(self, resource_name: str, schema: ResourcePermissions) -> None:
         """Register permission schema for a resource."""
