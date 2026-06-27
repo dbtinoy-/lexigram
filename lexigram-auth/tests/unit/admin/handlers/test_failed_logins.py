@@ -2,14 +2,38 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
 from lexigram.auth.admin.handlers.failed_logins import FailedLoginsWidgetHandler
+from lexigram.auth.services.activity_tracker import AuthActivityTracker
 from lexigram.contracts.admin import StatContent, Tone, WidgetParams
+from lexigram.result import Ok
+
+
+async def test_failed_logins_reports_real_count() -> None:
+    tracker = AuthActivityTracker()
+    tracker.record_failed_login("10.0.0.1")
+    result = await FailedLoginsWidgetHandler(tracker=tracker).get_data(
+        WidgetParams(time_window_minutes=60)
+    )
+    assert isinstance(result, Ok)
+    values = [s.value for s in result.unwrap().stats]
+    assert "1" in values
+
+
+async def test_failed_logins_reports_unique_ips() -> None:
+    tracker = AuthActivityTracker()
+    tracker.record_failed_login("10.0.0.1")
+    tracker.record_failed_login("10.0.0.2")
+    tracker.record_failed_login("10.0.0.1")
+    result = await FailedLoginsWidgetHandler(tracker=tracker).get_data(
+        WidgetParams(time_window_minutes=60)
+    )
+    values = [s.value for s in result.unwrap().stats]
+    assert "3" in values
+    assert "2" in values
 
 
 async def test_failed_logins_handler_returns_stat_content() -> None:
-    result = await FailedLoginsWidgetHandler(session_manager=MagicMock()).get_data(
+    result = await FailedLoginsWidgetHandler(tracker=AuthActivityTracker()).get_data(
         WidgetParams()
     )
     content = result.unwrap()
@@ -17,7 +41,7 @@ async def test_failed_logins_handler_returns_stat_content() -> None:
 
 
 async def test_failed_logins_stats_mirror_template() -> None:
-    result = await FailedLoginsWidgetHandler(session_manager=MagicMock()).get_data(
+    result = await FailedLoginsWidgetHandler(tracker=AuthActivityTracker()).get_data(
         WidgetParams()
     )
     content = result.unwrap()
@@ -27,7 +51,7 @@ async def test_failed_logins_stats_mirror_template() -> None:
 
 
 async def test_failed_logins_no_unique_ips_stat_when_zero() -> None:
-    result = await FailedLoginsWidgetHandler(session_manager=MagicMock()).get_data(
+    result = await FailedLoginsWidgetHandler(tracker=AuthActivityTracker()).get_data(
         WidgetParams()
     )
     content = result.unwrap()
@@ -35,7 +59,7 @@ async def test_failed_logins_no_unique_ips_stat_when_zero() -> None:
 
 
 def test_failed_logins_tone_is_danger_when_elevated() -> None:
-    handler = FailedLoginsWidgetHandler(session_manager=MagicMock())
+    handler = FailedLoginsWidgetHandler(tracker=AuthActivityTracker())
     content = handler._build_content(3, 2, is_elevated=True)
     stat = content.stats[0]
     assert stat.tone is Tone.DANGER
@@ -43,7 +67,7 @@ def test_failed_logins_tone_is_danger_when_elevated() -> None:
 
 
 def test_failed_logins_tone_is_static_when_not_elevated() -> None:
-    handler = FailedLoginsWidgetHandler(session_manager=MagicMock())
+    handler = FailedLoginsWidgetHandler(tracker=AuthActivityTracker())
     content = handler._build_content(3, 2, is_elevated=False)
     stat = content.stats[0]
     assert stat.tone is Tone.DEFAULT
@@ -52,6 +76,8 @@ def test_failed_logins_tone_is_static_when_not_elevated() -> None:
 __all__ = [
     "test_failed_logins_handler_returns_stat_content",
     "test_failed_logins_no_unique_ips_stat_when_zero",
+    "test_failed_logins_reports_real_count",
+    "test_failed_logins_reports_unique_ips",
     "test_failed_logins_stats_mirror_template",
     "test_failed_logins_tone_is_danger_when_elevated",
     "test_failed_logins_tone_is_static_when_not_elevated",
