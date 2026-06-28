@@ -15,7 +15,9 @@ from lexigram.contracts.security import (
 PUBLIC_IP = ipaddress.ip_address("93.184.216.34")
 
 
-def _public_resolver(hostname: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+def _public_resolver(
+    hostname: str,
+) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
     return [PUBLIC_IP]
 
 
@@ -63,30 +65,46 @@ class TestLiteralIpBlocklist:
 
 class TestDnsResolution:
     def test_allows_hostname_resolving_to_public(self) -> None:
-        assert is_safe_url_for_request(
-            "https://example.com/hook", resolver=_public_resolver
-        ) is True
+        assert (
+            is_safe_url_for_request(
+                "https://example.com/hook", resolver=_public_resolver
+            )
+            is True
+        )
 
     def test_blocks_hostname_resolving_to_private(self) -> None:
         def resolver(hostname: str) -> list[ipaddress.IPv4Address]:
             return [ipaddress.ip_address("10.0.0.5")]
 
-        assert is_safe_url_for_request("https://evil.example/hook", resolver=resolver) is False
+        assert (
+            is_safe_url_for_request("https://evil.example/hook", resolver=resolver)
+            is False
+        )
 
     def test_blocks_hostname_with_any_private_addr(self) -> None:
-        def resolver(hostname: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+        def resolver(
+            hostname: str,
+        ) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
             return [PUBLIC_IP, ipaddress.ip_address("192.168.0.1")]
 
-        assert is_safe_url_for_request("https://split.example/", resolver=resolver) is False
+        assert (
+            is_safe_url_for_request("https://split.example/", resolver=resolver)
+            is False
+        )
 
     def test_fails_closed_when_resolution_raises(self) -> None:
         def resolver(hostname: str) -> list[ipaddress.ip_address]:
             raise OSError("NXDOMAIN")
 
-        assert is_safe_url_for_request("https://nope.example/", resolver=resolver) is False
+        assert (
+            is_safe_url_for_request("https://nope.example/", resolver=resolver) is False
+        )
 
     def test_fails_closed_when_resolution_returns_nothing(self) -> None:
-        assert is_safe_url_for_request("https://none.example/", resolver=lambda _: []) is False
+        assert (
+            is_safe_url_for_request("https://none.example/", resolver=lambda _: [])
+            is False
+        )
 
 
 class TestResolverShape:

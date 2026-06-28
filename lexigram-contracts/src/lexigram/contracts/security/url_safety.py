@@ -32,9 +32,7 @@ _PRIVATE_IPV6_NETWORKS: tuple[ipaddress.IPv6Network, ...] = (
     ipaddress.IPv6Network("fe80::/10"),
 )
 
-HostResolver = Callable[
-    [str], Sequence[ipaddress.IPv4Address | ipaddress.IPv6Address]
-]
+HostResolver = Callable[[str], Sequence[ipaddress.IPv4Address | ipaddress.IPv6Address]]
 
 
 def resolve_hostname(
@@ -105,11 +103,11 @@ def is_safe_url_for_request(
     return not _is_private(addr)
 
 
-def _hostname_is_public(
-    hostname: str, resolver: HostResolver | None
-) -> bool:
+def _hostname_is_public(hostname: str, resolver: HostResolver | None) -> bool:
     try:
-        addresses = resolve_hostname(hostname) if resolver is None else resolver(hostname)
+        addresses = (
+            resolve_hostname(hostname) if resolver is None else resolver(hostname)
+        )
     except OSError:
         return False
     if not addresses:

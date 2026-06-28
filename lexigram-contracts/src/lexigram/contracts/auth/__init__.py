@@ -27,6 +27,7 @@ from lexigram.contracts.auth.repositories import (
     APIKeyRepositoryProtocol,
     SessionRepositoryProtocol,
 )
+from lexigram.contracts.auth.roles import RoleDefinition
 from lexigram.contracts.auth.store import (
     UserReaderProtocol,
     UserStoreProtocol,
@@ -48,6 +49,7 @@ __all__ = [
     "PasswordHasherProtocol",
     "PasswordPolicyProtocol",
     "PolicyStoreProtocol",
+    "RoleDefinition",
     "SessionRepositoryProtocol",
     "TokenBlacklistProtocol",
     "TokenError",
