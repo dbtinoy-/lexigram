@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from lexigram.auth.models import AuthToken
 from lexigram.auth.models.user import User
+from lexigram.contracts.auth.roles import RoleDefinition
 from lexigram.domain import DomainModel
 from lexigram.validation import Field
 
@@ -92,18 +93,6 @@ class OAuth2UserInfo(DomainModel):
         """Populate ``name`` from ``username`` when ``name`` is not supplied."""
         if self.username and not self.name:
             self.name = self.username
-
-
-@dataclass(init=False)
-class RoleDefinition(DomainModel):
-    """Definition of a role with its permissions."""
-
-    name: str = Field(description="Role name")
-    description: str = Field(default="", description="Role description")
-    permissions: list[str] = Field(
-        default_factory=list, description="Included permissions"
-    )
-    inherits: list[str] = Field(default_factory=list, description="Parent roles")
 
 
 @dataclass(init=False)
