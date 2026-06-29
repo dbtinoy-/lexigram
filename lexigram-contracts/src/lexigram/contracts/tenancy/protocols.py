@@ -177,8 +177,7 @@ class TenantMembershipProtocol(Protocol):
     """
 
     async def user_belongs_to_tenant(self, user_id: str, tenant_id: str) -> bool:
-        """Return ``True`` when *user_id* may act under *tenant_id*.
-        """
+        """Return ``True`` when *user_id* may act under *tenant_id*."""
         ...
 
 

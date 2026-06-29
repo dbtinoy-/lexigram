@@ -22,11 +22,16 @@ logger = get_logger(__name__)
 class TenantContextMiddleware:
     """ASGI middleware that resolves the tenant for every HTTP/WebSocket request.
 
-    This middleware **never rejects** a request.  It resolves the tenant if
-    possible, sets ``TENANT_ID`` in the shared :class:`~lexigram.primitives.context.Context`,
-    and stores the :class:`~lexigram.contracts.tenancy.types.TenantInfo` in
+    This middleware **never rejects** a request; it refuses to *bind* a
+    tenant it cannot verify.  It resolves the tenant, authorizes the
+    binding against the caller's identity (server-verified resolvers bind
+    directly; client-influenced ones require a membership cross-check),
+    then sets ``TENANT_ID`` in the shared
+    :class:`~lexigram.primitives.context.Context` and stores the
+    :class:`~lexigram.contracts.tenancy.types.TenantInfo` in
     ``scope["state"]["tenant"]`` for downstream use by
-    :class:`~lexigram.tenancy.enforcement.guard.TenantGuard`.
+    :class:`~lexigram.tenancy.enforcement.guard.TenantGuard`.  The context
+    token is always reset on exit.
 
     Registration order: after ``RequestContextMiddleware`` and
     ``DIScopeMiddleware``, before application middleware.
@@ -57,6 +62,13 @@ class TenantContextMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Process a single ASGI event.
 
+        Resolves the tenant, verifies it may be **bound** to the caller
+        (:meth:`TenantValidator.authorize`), and sets ``TENANT_ID`` +
+        ``scope["state"]["tenant"]`` only when authorization succeeds.
+        The middleware never rejects the *request*; it refuses to *bind* a
+        tenant it cannot verify.  The context token is always reset on
+        exit.
+
         Args:
             scope: ASGI connection scope.
             receive: ASGI receive callable.
@@ -67,20 +79,32 @@ class TenantContextMiddleware:
             return
 
         resolution_ctx = self._build_resolution_context(scope)
-        tenant_id = await self._resolver.resolve(resolution_ctx)
+        resolved = await self._resolver.resolve_with_source(resolution_ctx)
 
-        if tenant_id:
+        token = None
+        if resolved is not None:
+            tenant_id = resolved[1]
             tenant_info = await self._validator.validate(tenant_id)
             if tenant_info:
-                self._ctx.set(TENANT_ID, tenant_id)
-                scope.setdefault("state", {})["tenant"] = tenant_info
-                logger.debug(
-                    "tenant_context_set",
+                user_id = scope.get("state", {}).get("user_id")
+                if await self._validator.authorize(
+                    resolver_name=resolved[0],
+                    user_id=user_id,
                     tenant_id=tenant_id,
-                    status=str(tenant_info.status),
-                )
+                ):
+                    token = self._ctx.set(TENANT_ID, tenant_id)
+                    scope.setdefault("state", {})["tenant"] = tenant_info
+                    logger.debug(
+                        "tenant_context_set",
+                        tenant_id=tenant_id,
+                        status=str(tenant_info.status),
+                    )
 
-        await self._app(scope, receive, send)
+        try:
+            await self._app(scope, receive, send)
+        finally:
+            if token is not None:
+                self._ctx.reset(TENANT_ID, token)
 
     @staticmethod
     def _build_resolution_context(scope: Scope) -> TenantResolutionContext:
