@@ -2,50 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
-
-
-@dataclass(frozen=True)
-class Permission:
-    """A single permission string with optional scope."""
-
-    resource: str  # e.g., "users"
-    action: str  # e.g., "read", "write", "delete"
-    scope: str | None = None  # e.g., "self", "team", "all"
-
-    def __str__(self) -> str:
-        if self.scope:
-            return f"{self.resource}.{self.action}:{self.scope}"
-        return f"{self.resource}.{self.action}"
-
-
-@dataclass
-class Role:
-    """A named collection of permissions."""
-
-    name: str
-    description: str = ""
-    permissions: list[Permission] = field(default_factory=list)
-    inherits: list[str] = field(default_factory=list)  # Parent role names
-
-
-@dataclass
-class AdminRole:
-    """A role as persisted and edited by the RBAC admin UI.
-
-    Uses string permissions (``"resource.action"``) for direct
-    compatibility with ``AuthorizationService`` and the
-    ``admin_users.roles`` column.  Distinct from :class:`Role` (which
-    wraps rbac :class:`Permission` objects) — the UI model is the
-    string form.
-    """
-
-    name: str
-    description: str = ""
-    permissions: list[str] = field(default_factory=list)
-    inherits: list[str] = field(default_factory=list)
-    is_system: bool = False
 
 
 @dataclass(frozen=True)

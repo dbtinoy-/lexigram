@@ -10,7 +10,7 @@ from lexigram.admin.rbac.errors import (
     RoleNotFoundError,
     SystemRoleError,
 )
-from lexigram.admin.rbac.types import AdminRole
+from lexigram.contracts.auth import RoleDefinition
 from lexigram.result import Result
 
 
@@ -21,19 +21,19 @@ class AdminRoleStoreProtocol(Protocol):
         """Create the roles table if it does not exist (idempotent)."""
         ...
 
-    async def list_roles(self) -> list[AdminRole]:
+    async def list_roles(self) -> list[RoleDefinition]:
         """Return all roles ordered by name."""
         ...
 
-    async def get_role(self, name: str) -> AdminRole | None:
+    async def get_role(self, name: str) -> RoleDefinition | None:
         """Return one role by name, or ``None`` when missing."""
         ...
 
-    async def create_role(self, role: AdminRole) -> None:
+    async def create_role(self, role: RoleDefinition) -> None:
         """Insert a new role. Raises on duplicate name."""
         ...
 
-    async def update_role(self, role: AdminRole) -> None:
+    async def update_role(self, role: RoleDefinition) -> None:
         """Update an existing role by name."""
         ...
 
@@ -45,7 +45,7 @@ class AdminRoleStoreProtocol(Protocol):
 class AdminRoleServiceProtocol(Protocol):
     """Role CRUD orchestration with authorization-sync and audit."""
 
-    async def list_roles(self) -> list[AdminRole]:
+    async def list_roles(self) -> list[RoleDefinition]:
         """Return all roles ordered by name."""
         ...
 
@@ -55,7 +55,7 @@ class AdminRoleServiceProtocol(Protocol):
         description: str,
         permissions: list[str],
         inherits: list[str],
-    ) -> Result[AdminRole, RoleDuplicateError | AdminRoleError]:
+    ) -> Result[RoleDefinition, RoleDuplicateError | AdminRoleError]:
         """Create a role and mirror it into the authorizer."""
         ...
 
@@ -65,7 +65,7 @@ class AdminRoleServiceProtocol(Protocol):
         description: str,
         permissions: list[str],
         inherits: list[str],
-    ) -> Result[AdminRole, RoleNotFoundError | SystemRoleError | AdminRoleError]:
+    ) -> Result[RoleDefinition, RoleNotFoundError | SystemRoleError | AdminRoleError]:
         """Update a role (system roles may not be renamed)."""
         ...
 

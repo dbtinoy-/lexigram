@@ -16,7 +16,7 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 
 from lexigram.admin.config import AdminConfig
-from lexigram.admin.rbac.types import AdminRole
+from lexigram.contracts.auth import RoleDefinition
 from lexigram.admin.resources.handler import ResourceHandler
 from lexigram.admin.resources.roles import RolesResource
 
@@ -25,20 +25,20 @@ class _RolesDataSource:
     """In-memory roles store (superadmin + system + custom role)."""
 
     def __init__(self) -> None:
-        self.roles: dict[str, AdminRole] = {
-            "superadmin": AdminRole(
+        self.roles: dict[str, RoleDefinition] = {
+            "superadmin": RoleDefinition(
                 name="superadmin",
                 description="Built-in super admin",
                 is_system=True,
             ),
-            "admin": AdminRole(name="admin", is_system=True),
-            "editor": AdminRole(
+            "admin": RoleDefinition(name="admin", is_system=True),
+            "editor": RoleDefinition(
                 name="editor",
                 permissions=["users.view", "users.update"],
             ),
         }
 
-    async def find_one(self, item_id: Any) -> AdminRole | None:
+    async def find_one(self, item_id: Any) -> RoleDefinition | None:
         """Fetch a role by name."""
         return self.roles.get(str(item_id))
 

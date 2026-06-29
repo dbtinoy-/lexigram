@@ -13,29 +13,29 @@ from lexigram.admin.rbac.errors import (
     SystemRoleError,
 )
 from lexigram.admin.rbac.role_service import AdminRoleService
-from lexigram.admin.rbac.types import AdminRole
+from lexigram.contracts.auth import RoleDefinition
 
 
 class FakeRoleStore:
     """In-memory AdminRoleStoreProtocol."""
 
-    def __init__(self, roles: list[AdminRole] | None = None) -> None:
+    def __init__(self, roles: list[RoleDefinition] | None = None) -> None:
         self.roles = {r.name: r for r in (roles or [])}
         self.schema_initialized = False
 
     async def ensure_schema(self) -> None:
         self.schema_initialized = True
 
-    async def list_roles(self) -> list[AdminRole]:
+    async def list_roles(self) -> list[RoleDefinition]:
         return sorted(self.roles.values(), key=lambda r: r.name)
 
-    async def get_role(self, name: str) -> AdminRole | None:
+    async def get_role(self, name: str) -> RoleDefinition | None:
         return self.roles.get(name)
 
-    async def create_role(self, role: AdminRole) -> None:
+    async def create_role(self, role: RoleDefinition) -> None:
         self.roles[role.name] = role
 
-    async def update_role(self, role: AdminRole) -> None:
+    async def update_role(self, role: RoleDefinition) -> None:
         self.roles[role.name] = role
 
     async def delete_role(self, name: str) -> bool:
@@ -58,7 +58,7 @@ class FakeAuthorizer:
 
 
 def _make_service(
-    roles: list[AdminRole] | None = None,
+    roles: list[RoleDefinition] | None = None,
     authorizer: FakeAuthorizer | None = None,
     audit: MagicMock | None = None,
 ) -> tuple[AdminRoleService, FakeRoleStore, FakeAuthorizer, MagicMock]:
@@ -78,7 +78,7 @@ def _make_service(
 @pytest.mark.asyncio
 async def test_list_roles_returns_sorted_roles() -> None:
     svc, _, _, _ = _make_service(
-        [AdminRole("viewer", "Viewers"), AdminRole("admin", "Admins")]
+        [RoleDefinition("viewer", "Viewers"), RoleDefinition("admin", "Admins")]
     )
 
     roles = await svc.list_roles()
@@ -106,7 +106,7 @@ async def test_create_role_persists_mirrors_and_audits() -> None:
 
 @pytest.mark.asyncio
 async def test_create_role_duplicate_returns_err() -> None:
-    svc, _, authz, audit = _make_service([AdminRole("editor", "Existing")])
+    svc, _, authz, audit = _make_service([RoleDefinition("editor", "Existing")])
 
     result = await svc.create_role("editor", "Again", [], [])
 
@@ -118,7 +118,7 @@ async def test_create_role_duplicate_returns_err() -> None:
 
 @pytest.mark.asyncio
 async def test_update_role_mirrors_and_audits() -> None:
-    svc, store, authz, audit = _make_service([AdminRole("editor", "Old")])
+    svc, store, authz, audit = _make_service([RoleDefinition("editor", "Old")])
 
     result = await svc.update_role("editor", "New", ["posts.view"], [])
 
@@ -144,7 +144,7 @@ async def test_update_role_missing_returns_not_found() -> None:
 
 @pytest.mark.asyncio
 async def test_update_role_preserves_stored_name() -> None:
-    svc, store, _, _ = _make_service([AdminRole("admin", "Admin", [], [], True)])
+    svc, store, _, _ = _make_service([RoleDefinition("admin", "Admin", [], [], True)])
 
     result = await svc.update_role("admin", "Super Admin", ["*"], [])
 
@@ -154,7 +154,7 @@ async def test_update_role_preserves_stored_name() -> None:
 
 @pytest.mark.asyncio
 async def test_system_role_permissions_can_be_updated() -> None:
-    svc, store, authz, _ = _make_service([AdminRole("admin", "Admin", [], [], True)])
+    svc, store, authz, _ = _make_service([RoleDefinition("admin", "Admin", [], [], True)])
 
     result = await svc.update_role("admin", "Admin", ["*"], [])
 
@@ -165,7 +165,7 @@ async def test_system_role_permissions_can_be_updated() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_role_removes_and_audits() -> None:
-    svc, store, authz, audit = _make_service([AdminRole("editor", "Editors")])
+    svc, store, authz, audit = _make_service([RoleDefinition("editor", "Editors")])
 
     result = await svc.delete_role("editor")
 
@@ -192,7 +192,7 @@ async def test_delete_role_missing_returns_not_found() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_system_role_returns_system_error() -> None:
-    svc, _, authz, audit = _make_service([AdminRole("admin", "Admin", [], [], True)])
+    svc, _, authz, audit = _make_service([RoleDefinition("admin", "Admin", [], [], True)])
 
     result = await svc.delete_role("admin")
 
@@ -227,3 +227,13 @@ def test_role_service_types_authorizer_via_protocol() -> None:
     annotation = sig.parameters["authorization_service"].annotation
     assert "AuthorizationService" not in str(annotation)
     assert AuthorizerProtocol.__name__ in str(annotation)
+
+
+def test_role_service_uses_contracts_role_definition() -> None:
+    import inspect
+
+    from lexigram.admin.rbac.role_service import AdminRoleService
+
+    for method in ("create_role", "update_role"):
+        sig = inspect.signature(getattr(AdminRoleService, method))
+        assert "RoleDefinition" in str(sig.return_annotation)

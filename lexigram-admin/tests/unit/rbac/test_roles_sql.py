@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from lexigram.admin.rbac.roles_sql import AdminRoleSqlStore
-from lexigram.admin.rbac.types import AdminRole
+from lexigram.contracts.auth import RoleDefinition
 
 
 class _Rows:
@@ -105,7 +105,7 @@ async def test_get_role_missing_returns_none() -> None:
 async def test_create_role_inserts_json_encoded_permissions() -> None:
     db = FakeDb()
     store = _store(db)
-    role = AdminRole("editor", "Editors", ["posts.view"], ["viewer"], False)
+    role = RoleDefinition("editor", "Editors", ["posts.view"], ["viewer"], False)
 
     await store.create_role(role)
 
@@ -120,7 +120,7 @@ async def test_create_role_inserts_json_encoded_permissions() -> None:
 async def test_update_role_updates_fields() -> None:
     db = FakeDb()
     store = _store(db)
-    role = AdminRole("editor", "Editors v2", ["posts.edit"], [], False)
+    role = RoleDefinition("editor", "Editors v2", ["posts.edit"], [], False)
 
     await store.update_role(role)
 

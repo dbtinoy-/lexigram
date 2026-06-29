@@ -17,8 +17,7 @@ from lexigram.admin.rbac.errors import (
     SystemRoleError,
 )
 from lexigram.admin.rbac.protocols import AdminRoleStoreProtocol
-from lexigram.admin.rbac.types import AdminRole
-from lexigram.contracts.auth import AuthorizerProtocol
+from lexigram.contracts.auth import AuthorizerProtocol, RoleDefinition
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
@@ -47,7 +46,7 @@ class AdminRoleService:
         self._authorization_service = authorization_service
         self._audit_service = audit_service
 
-    async def list_roles(self) -> list[AdminRole]:
+    async def list_roles(self) -> list[RoleDefinition]:
         """Return all roles ordered by name (see protocol docs)."""
         return await self._role_store.list_roles()
 
@@ -57,7 +56,7 @@ class AdminRoleService:
         description: str,
         permissions: list[str],
         inherits: list[str],
-    ) -> Result[AdminRole, RoleDuplicateError | AdminRoleError]:
+    ) -> Result[RoleDefinition, RoleDuplicateError | AdminRoleError]:
         """Create a role, mirror it, and audit (see protocol docs)."""
         name = name.strip()
         existing = await self._role_store.get_role(name)
@@ -66,7 +65,7 @@ class AdminRoleService:
         if not name:
             return Err(AdminRoleError("Role name is required."))
 
-        role = AdminRole(
+        role = RoleDefinition(
             name=name,
             description=description.strip(),
             permissions=sorted(set(permissions)),
@@ -85,7 +84,7 @@ class AdminRoleService:
         description: str,
         permissions: list[str],
         inherits: list[str],
-    ) -> Result[AdminRole, RoleNotFoundError | SystemRoleError | AdminRoleError]:
+    ) -> Result[RoleDefinition, RoleNotFoundError | SystemRoleError | AdminRoleError]:
         """Update a role; system roles keep their name (see protocol docs)."""
         name = name.strip()
         role = await self._role_store.get_role(name)
@@ -94,7 +93,7 @@ class AdminRoleService:
         if role.is_system and name != role.name:
             return Err(SystemRoleError("System role names cannot be changed."))
 
-        updated = AdminRole(
+        updated = RoleDefinition(
             name=role.name,
             description=description.strip(),
             permissions=sorted(set(permissions)),
@@ -128,7 +127,7 @@ class AdminRoleService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _mirror(self, role: AdminRole) -> None:
+    def _mirror(self, role: RoleDefinition) -> None:
         """Push a role into the in-memory authorizer if available."""
         if self._authorization_service is None:
             return
