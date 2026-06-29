@@ -6,6 +6,7 @@ import asyncio
 import fnmatch
 from typing import TYPE_CHECKING, cast
 
+from lexigram.ai.governance.exceptions import GovernancePersistenceError
 from lexigram.contracts.ai.governance.resource_unit import ResourceExhaustedError
 from lexigram.di.decorators import inject
 from lexigram.logging import (
@@ -29,6 +30,15 @@ if TYPE_CHECKING:
     from lexigram.contracts.infra.cache import CacheBackendProtocol
 
 logger = get_logger(__name__)
+
+_PERSISTENCE_FAILURE_EXCEPTIONS: tuple[type[Exception], ...] = (
+    GovernancePersistenceError,
+    OSError,
+    ConnectionError,
+    RuntimeError,
+    ValueError,
+    TypeError,
+)
 
 
 @inject
@@ -167,9 +177,14 @@ class AIGovernanceManager:
             return False
 
         if self._config.rpm_limit:
-            count = await self._persistence.incr_requests(
-                user_id or "global", window=60.0
-            )
+            try:
+                count = await self._persistence.incr_requests(
+                    user_id or "global", window=60.0
+                )
+            except _PERSISTENCE_FAILURE_EXCEPTIONS as exc:
+                return self._on_persistence_failure(
+                    "rpm_check", user_id or "global", exc
+                )
             if count > self._config.rpm_limit:
                 logger.warning(
                     "governance_rpm_exceeded",
@@ -260,7 +275,12 @@ class AIGovernanceManager:
         if self._config.monthly_budget is None:
             return True
 
-        current = await self._get_monthly_spend(user_id)
+        try:
+            current = await self._get_monthly_spend(user_id)
+        except _PERSISTENCE_FAILURE_EXCEPTIONS as exc:
+            return self._on_persistence_failure(
+                "budget_check", f"{user_id or 'global'}:{_current_month()}", exc
+            )
         budget = self._config.monthly_budget
 
         # Soft-limit warning (does not block)
@@ -394,7 +414,11 @@ class AIGovernanceManager:
         """
         key = user_id or "global"
         month_key = f"{key}:{_current_month()}"
-        await self._persistence.add_spend(month_key, cost, ttl=32 * 24 * 3600)
+        try:
+            await self._persistence.add_spend(month_key, cost, ttl=32 * 24 * 3600)
+        except _PERSISTENCE_FAILURE_EXCEPTIONS as exc:
+            self._on_persistence_failure("cost_track", month_key, exc)
+            return
         logger.debug("governance_cost_tracked", cost=cost, model=model, user_id=user_id)
 
     def reload_config(self, config: GovernanceConfig) -> None:
@@ -474,6 +498,42 @@ class AIGovernanceManager:
         task = loop.create_task(self._audit_store.record(event))
         self._background_tasks.add(task)
         task.add_done_callback(self._background_tasks.discard)
+
+    def _on_persistence_failure(
+        self,
+        operation: str,
+        bucket_key: str,
+        exception: BaseException,
+    ) -> bool:
+        """Apply the configured decision when the persistence backend fails.
+
+        Logs a warning with the bucket key, exception type, and resulting
+        decision, then returns whether the caller should allow the request
+        (fail-open) or deny it (fail-closed).  Infrastructure failures are
+        never re-raised here: agent-executor callers treat a raised
+        governance exception as allow-through, so raising would defeat the
+        fail-closed default.
+
+        Args:
+            operation: Name of the failing governance operation
+                (e.g. ``"rpm_check"``, ``"budget_check"``, ``"cost_track"``).
+            bucket_key: Bucket key the operation was reading or writing.
+            exception: The exception raised by the persistence backend.
+
+        Returns:
+            True when the request should be allowed (fail-open configured),
+            False when it must be denied (fail-closed default).
+        """
+        fail_open = self._config.fail_open_on_persistence_error
+        logger.warning(
+            "governance_persistence_unavailable",
+            operation=operation,
+            bucket_key=bucket_key,
+            error_type=type(exception).__name__,
+            decision="allowed" if fail_open else "denied",
+            fail_open=fail_open,
+        )
+        return fail_open
 
     async def _get_monthly_spend(self, user_id: str | None) -> float:
         key = user_id or "global"
