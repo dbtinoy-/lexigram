@@ -46,8 +46,8 @@ class _WriteMixin:
                 data["updated_at"] = now
 
             if self.multi_tenant:  # type: ignore[attr-defined]
-                active_tenant = (  # type: ignore[attr-defined]
-                    self._db_ctx.tenant_id if self._db_ctx is not None else None
+                active_tenant = (
+                    self._db_ctx.tenant_id if self._db_ctx is not None else None  # type: ignore[attr-defined]
                 )
                 supplied = data.get("tenant_id")
                 if active_tenant is None:
