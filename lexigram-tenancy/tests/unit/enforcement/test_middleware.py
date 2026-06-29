@@ -158,3 +158,24 @@ async def test_context_token_reset_after_request() -> None:
     await middleware(scope, AsyncMock(), AsyncMock())
 
     assert ctx.get(TENANT_ID) is None
+
+
+@pytest.mark.asyncio
+async def test_no_token_leak_when_not_bound() -> None:
+    """App is still called and no token is leaked when no tenant is bound."""
+    resolver = MagicMock()
+    resolver.resolve_with_source = AsyncMock(return_value=("header", "tenant-abc"))
+    validator = MagicMock()
+    validator.validate = AsyncMock(return_value=None)  # inactive/unknown tenant
+    validator.authorize = AsyncMock(return_value=False)
+    ctx = make_context()
+    app_called = []
+
+    async def app(scope: object, receive: object, send: object) -> None:
+        app_called.append(True)
+
+    middleware = TenantContextMiddleware(app=app, resolver=resolver, validator=validator, ctx=ctx)
+    await middleware(_make_scope(), AsyncMock(), AsyncMock())
+
+    assert app_called == [True]
+    assert ctx.get(TENANT_ID) is None
