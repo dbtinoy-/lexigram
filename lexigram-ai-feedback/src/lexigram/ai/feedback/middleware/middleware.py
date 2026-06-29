@@ -159,19 +159,22 @@ class FeedbackMiddleware:
             context_id: str,
             feedback_type: str,
             value: Any,
+            *,
+            owner_id: str,
             **kwargs,
         ) -> dict[str, str]:
             """Handle feedback submission.
 
             Args:
-                context_id: Context ID from original request
-                feedback_type: Type of feedback (rating, text, etc.)
-                value: Feedback value
+                context_id: Context ID from original request.
+                feedback_type: Type of feedback (rating, text, etc.).
+                value: Feedback value.
+                owner_id: Owner scope; the item is recorded under this owner.
                 **kwargs: Additional metadata (passed to the authorize
-                    callback as identity material)
+                    callback as identity material).
 
             Returns:
-                Response with feedback ID
+                Response with feedback ID.
 
             Raises:
                 FeedbackAuthorizationError: If the authorize callback is
@@ -196,6 +199,7 @@ class FeedbackMiddleware:
                 value,
                 context_dict,
                 self.collector,
+                owner_id=owner_id,
             )
 
             return {

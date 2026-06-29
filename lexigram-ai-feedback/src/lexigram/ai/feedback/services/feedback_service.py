@@ -40,6 +40,8 @@ class FeedbackService:
         self,
         trace_id: str,
         score: float,
+        *,
+        owner_id: str,
         comment: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
@@ -48,6 +50,7 @@ class FeedbackService:
         Args:
             trace_id: Identifier of the AI generation trace.
             score: Numeric feedback score (e.g. 0.0–1.0 or 1–5).
+            owner_id: Owner scope; the item is recorded under this owner.
             comment: Optional free-text comment stored in metadata.
             metadata: Optional additional key-value metadata.
 
@@ -76,13 +79,19 @@ class FeedbackService:
         item = FeedbackItem(
             feedback_type=FeedbackType.RATING,
             value=score,
+            owner_id=owner_id,
             context={"trace_id": trace_id},
             metadata=meta,
         )
 
         result = await self._store.save(item)
         if result.is_ok():
-            logger.info("feedback_submitted", trace_id=trace_id, score=score)
+            logger.info(
+                "feedback_submitted",
+                trace_id=trace_id,
+                score=score,
+                owner_id=owner_id,
+            )
         else:
             logger.error(
                 "feedback_submit_failed",
@@ -92,12 +101,15 @@ class FeedbackService:
 
     async def get_feedback_stats(
         self,
+        *,
+        owner_id: str,
         model: str | None = None,
         provider: str | None = None,
     ) -> dict[str, Any]:
-        """Get aggregate feedback statistics.
+        """Get aggregate feedback statistics for an owner.
 
         Args:
+            owner_id: Owner scope; only this owner's items are aggregated.
             model: Optional model name for context (currently informational).
             provider: Optional provider name for context (currently informational).
 
@@ -110,7 +122,7 @@ class FeedbackService:
             logger.debug("feedback_store_unavailable")
             return {"total_count": 0, "average_rating": None, "by_type": {}}
 
-        summary = await self._store.aggregate(window_hours=24)
+        summary = await self._store.aggregate(owner_id=owner_id, window_hours=24)
         stats: dict[str, Any] = {
             "total_count": summary.total_count,
             "average_rating": summary.average_rating,

@@ -35,7 +35,7 @@ class TestFeedbackProcessorRegistryAdvanced:
     @pytest.mark.asyncio
     async def test_with_defaults_has_all_processors(self, mock_collector: MagicMock) -> None:
         registry = FeedbackProcessorRegistry.with_defaults()
-        fb_id = await registry.process(FeedbackType.RATING, 5.0, {}, mock_collector)
+        fb_id = await registry.process(FeedbackType.RATING, 5.0, {}, mock_collector, owner_id="owner-1")
         assert fb_id == "fb_1"
 
     @pytest.mark.asyncio
@@ -45,40 +45,40 @@ class TestFeedbackProcessorRegistryAdvanced:
         custom = MagicMock()
         custom.process = AsyncMock(return_value="custom_id")
         registry.register("custom_type", custom)
-        fb_id = await registry.process("custom_type", "data", {}, mock_collector)
+        fb_id = await registry.process("custom_type", "data", {}, mock_collector, owner_id="owner-1")
         assert fb_id == "custom_id"
 
     @pytest.mark.asyncio
     async def test_process_unknown_type(self, registry: FeedbackProcessorRegistry) -> None:
         with pytest.raises(ValueError, match="No processor for feedback type"):
-            await registry.process("unknown", "data", {}, MagicMock())
+            await registry.process("unknown", "data", {}, MagicMock(), owner_id="owner-1")
 
     @pytest.mark.asyncio
     async def test_rating_processor_delegates(
         self, mock_collector: MagicMock,
     ) -> None:
         processor = RatingFeedbackProcessor()
-        await processor.process(5.0, {"source": "test"}, mock_collector)
-        mock_collector.collect_rating.assert_called_once_with(rating=5.0, context={"source": "test"})
+        await processor.process(5.0, {"source": "test"}, mock_collector, owner_id="owner-1")
+        mock_collector.collect_rating.assert_called_once_with(rating=5.0, owner_id="owner-1", context={"source": "test"})
 
     @pytest.mark.asyncio
     async def test_text_processor_delegates(self, mock_collector: MagicMock) -> None:
         processor = TextFeedbackProcessor()
-        await processor.process("nice!", {}, mock_collector)
-        mock_collector.collect_text.assert_called_once_with(text="nice!", context={})
+        await processor.process("nice!", {}, mock_collector, owner_id="owner-1")
+        mock_collector.collect_text.assert_called_once_with(text="nice!", owner_id="owner-1", context={})
 
     @pytest.mark.asyncio
     async def test_correction_processor_delegates(self, mock_collector: MagicMock) -> None:
         processor = CorrectionFeedbackProcessor()
-        await processor.process({"original": "bad", "corrected": "good"}, {}, mock_collector)
+        await processor.process({"original": "bad", "corrected": "good"}, {}, mock_collector, owner_id="owner-1")
         mock_collector.collect_correction.assert_called_once_with(
-            original="bad", corrected="good", context={},
+            original="bad", corrected="good", owner_id="owner-1", context={},
         )
 
     @pytest.mark.asyncio
     async def test_label_processor_delegates(self, mock_collector: MagicMock) -> None:
         processor = LabelFeedbackProcessor()
-        await processor.process({"label": "pos", "input": "text"}, {}, mock_collector)
+        await processor.process({"label": "pos", "input": "text"}, {}, mock_collector, owner_id="owner-1")
         mock_collector.collect_label.assert_called_once_with(
-            label="pos", input_data="text", context={},
+            label="pos", input_data="text", owner_id="owner-1", context={},
         )
