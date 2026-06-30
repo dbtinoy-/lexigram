@@ -301,18 +301,24 @@ class TestMonitorProvider:
 
     @pytest.mark.asyncio
     async def test_health_check_returns_unhealthy_on_backend_error(
-        self, provider: MonitorProvider
+        self, provider: MonitorProvider, mocker
     ) -> None:
         class BackendWithHealthCheck:
             async def health_check(self):
                 raise OSError("Connection failed")
 
+        from lexigram.monitor.di import provider as provider_module
+
+        warning_spy = mocker.patch.object(provider_module, "logger")
         provider.backend = BackendWithHealthCheck()
 
         result = await provider.health_check()
 
         assert result.status == HealthStatus.UNHEALTHY
-        assert "Connection failed" in result.error
+        assert result.error == "OSError: connection check failed"
+        assert "Connection failed" not in result.error
+        warning_spy.warning.assert_called_once()
+        assert warning_spy.warning.call_args.kwargs["error"] == "Connection failed"
 
     def test_record_request_increments_counter(
         self, provider: MonitorProvider
