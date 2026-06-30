@@ -9,6 +9,7 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.contracts.infra.cache import CacheBackendProtocol
 from lexigram.logging import get_logger
+from lexigram.monitor.health.sanitize import safe_error_message
 
 logger = get_logger(__name__)
 
@@ -128,13 +129,18 @@ class CachedHealthChecker:
                         duration_ms=latency_ms,
                     )
         except (RuntimeError, OSError, ConnectionError, TimeoutError, ValueError) as e:
+            logger.warning(
+                "database_health_check_failed",
+                component="database",
+                error=str(e),
+            )
             latency_ms = (datetime.now(UTC) - start).total_seconds() * 1000
             result = HealthCheckResult(
                 component="database",
                 status=HealthStatus.UNHEALTHY,
                 checked_at=datetime.now(UTC),
                 duration_ms=latency_ms,
-                message=str(e),
+                message=safe_error_message(e),
             )
 
         self._db_health = result
@@ -155,13 +161,18 @@ class CachedHealthChecker:
                 duration_ms=latency_ms,
             )
         except (RuntimeError, OSError, ConnectionError, TimeoutError, ValueError) as e:
+            logger.warning(
+                "redis_health_check_failed",
+                component="redis",
+                error=str(e),
+            )
             latency_ms = (datetime.now(UTC) - start).total_seconds() * 1000
             result = HealthCheckResult(
                 component="redis",
                 status=HealthStatus.UNHEALTHY,
                 checked_at=datetime.now(UTC),
                 duration_ms=latency_ms,
-                message=str(e),
+                message=safe_error_message(e),
             )
 
         self._redis_health = result
