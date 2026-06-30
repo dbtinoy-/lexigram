@@ -41,18 +41,23 @@ async def test_health_check_registry_liveness_readiness():
     assert status == HealthStatus.DEGRADED
 
 @pytest.mark.asyncio
-async def test_health_check_registry_exceptions():
+async def test_health_check_registry_exceptions(mocker):
     """Test handling of exceptions in checks."""
+    from lexigram.monitor.health import registry as registry_module
+
     registry = HealthCheckRegistry()
-    
+
     async def fail_check():
         raise RuntimeError("boom")
-    
+
+    exception_spy = mocker.patch.object(registry_module, "logger")
     registry.add("fail", fail_check, category="liveness")
-    
+
     status, res = await registry.run_liveness()
     assert status == HealthStatus.UNHEALTHY
-    assert "boom" in res["checks"][0]["message"]
+    assert res["checks"][0]["message"] == "RuntimeError: connection check failed"
+    assert "boom" not in res["checks"][0]["message"]
+    exception_spy.exception.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_health_check_registry_critical_failure():
