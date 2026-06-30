@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import (
+    MetricsReadbackProtocol,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
+
+_METRIC_GAUGE = "http_requests_in_progress"
 
 
 class ActiveConnectionsWidgetHandler:
     """Handler for the active_connections widget.
 
-    Fetches current and peak connection counts.
-    For now, returns reasonable defaults (TODO: integrate with actual connection tracking).
+    Args:
+        metrics: optional metrics readback source; when absent or lacking the
+            readback capability, the widget degrades to "Not measured".
     """
+
+    def __init__(self, metrics: MetricsReadbackProtocol | None = None) -> None:
+        self._metrics = metrics
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch active connections data.
@@ -23,13 +35,30 @@ class ActiveConnectionsWidgetHandler:
         Returns:
             Result containing StatContent with connection metrics.
         """
-        active, peak, max_allowed = 42, 128, 512
+        if not isinstance(self._metrics, MetricsReadbackProtocol):
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="Active",
+                            value="Not measured",
+                            tone=Tone.WARNING,
+                        ),
+                    )
+                )
+            )
+        metric = self._metrics.get_metric(_METRIC_GAUGE)
+        value = getattr(metric, "get_value", None) or getattr(
+            metric, "get_count", lambda: 0.0
+        )
         return Ok(
             StatContent(
                 stats=(
-                    Stat(label="Active", value=str(active), tone=Tone.PRIMARY),
-                    Stat(label="Peak", value=str(peak)),
-                    Stat(label="Max", value=str(max_allowed)),
+                    Stat(
+                        label="Active",
+                        value=str(int(float(value()))),
+                        tone=Tone.PRIMARY,
+                    ),
                 )
             )
         )
