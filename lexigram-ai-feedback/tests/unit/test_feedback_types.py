@@ -53,13 +53,14 @@ class TestFeedbackItem:
         item = FeedbackItem(
             feedback_type=FeedbackType.RATING,
             value=4.5,
+            owner_id="owner-1",
         )
         assert item.feedback_type == FeedbackType.RATING
         assert item.value == 4.5
 
     def test_feedback_item_default_context_and_metadata(self) -> None:
         """Verify default context and metadata are empty dicts."""
-        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="Great response!")
+        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="Great response!", owner_id="owner-1")
         assert item.context == {}
         assert item.metadata == {}
 
@@ -72,25 +73,26 @@ class TestFeedbackItem:
             value="helpful",
             context=context,
             metadata=metadata,
+            owner_id="owner-1",
         )
         assert item.context == context
         assert item.metadata == metadata
 
     def test_feedback_item_default_id(self) -> None:
         """Verify default ID is a valid UUID string."""
-        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test")
+        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test", owner_id="owner-1")
         uuid_obj = UUID(item.id)
         assert str(uuid_obj) == item.id
 
     def test_feedback_item_default_created_at(self) -> None:
         """Verify default created_at is a datetime with UTC timezone."""
-        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test")
+        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test", owner_id="owner-1")
         assert item.created_at.tzinfo is not None
         assert item.created_at.tzinfo == UTC
 
     def test_feedback_item_type_property(self) -> None:
         """Verify type property returns feedback_type."""
-        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=5.0)
+        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=5.0, owner_id="owner-1")
         assert item.type == item.feedback_type
         assert item.type == FeedbackType.RATING
 
@@ -104,6 +106,7 @@ class TestFeedbackItem:
             metadata={"prompt": "test"},
             id="test-id-123",
             created_at=known_time,
+            owner_id="owner-1",
         )
         result = item.to_dict()
         assert result["id"] == "test-id-123"
@@ -115,7 +118,7 @@ class TestFeedbackItem:
 
     def test_feedback_item_to_dict_isoformat(self) -> None:
         """Verify to_dict produces valid ISO format timestamp."""
-        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test")
+        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test", owner_id="owner-1")
         result = item.to_dict()
         parsed = datetime.fromisoformat(result["created_at"])
         assert parsed.tzinfo is not None
@@ -126,6 +129,7 @@ class TestFeedbackItem:
             feedback_type=FeedbackType.CORRECTION,
             value="fixed response",
             id="repr-id-456",
+            owner_id="owner-1",
         )
         repr_str = repr(item)
         assert "repr-id-456" in repr_str
@@ -135,7 +139,7 @@ class TestFeedbackItem:
     def test_feedback_item_all_types(self) -> None:
         """Verify FeedbackItem works with all FeedbackType values."""
         for fb_type in FeedbackType:
-            item = FeedbackItem(feedback_type=fb_type, value="test")
+            item = FeedbackItem(feedback_type=fb_type, value="test", owner_id="owner-1")
             assert item.feedback_type == fb_type
 
 

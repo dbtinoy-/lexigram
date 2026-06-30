@@ -31,31 +31,44 @@ class DummyFeedbackStore(FeedbackStoreProtocol):
         self.items.append(feedback)
         return Ok(feedback.id)
 
-    async def find_by_session(self, session_id: str) -> list[FeedbackItem]:
-        filtered = [item for item in self.items if item.context.get("session_id") == session_id]
+    async def find_by_session(
+        self, session_id: str, *, owner_id: str
+    ) -> list[FeedbackItem]:
+        filtered = [
+            item
+            for item in self.items
+            if item.context.get("session_id") == session_id
+            and item.owner_id == owner_id
+        ]
         return sorted(filtered, key=lambda item: item.created_at, reverse=True)
 
     async def find_by_type(
         self,
         feedback_type: FeedbackType,
         *,
+        owner_id: str,
         limit: int = 100,
     ) -> list[FeedbackItem]:
-        filtered = [item for item in self.items if item.feedback_type == feedback_type]
+        filtered = [
+            item
+            for item in self.items
+            if item.feedback_type == feedback_type and item.owner_id == owner_id
+        ]
         sorted_items = sorted(filtered, key=lambda item: item.created_at, reverse=True)
         return sorted_items[:limit]
 
-    async def aggregate(self, *, window_hours: int = 24) -> FeedbackSummary:
-        total = len(self.items)
+    async def aggregate(self, *, owner_id: str, window_hours: int = 24) -> FeedbackSummary:
+        scoped = [item for item in self.items if item.owner_id == owner_id]
+        total = len(scoped)
         ratings = [
-            item.value for item in self.items if item.feedback_type == FeedbackType.RATING
+            item.value for item in scoped if item.feedback_type == FeedbackType.RATING
         ]
         average_rating = sum(ratings) / len(ratings) if ratings else None
         count_by_type: dict[str, int] = {}
-        for item in self.items:
-            count_by_type[item.feedback_type.value] = count_by_type.get(
-                item.feedback_type.value, 0
-            ) + 1
+        for item in scoped:
+            count_by_type[item.feedback_type.value] = (
+                count_by_type.get(item.feedback_type.value, 0) + 1
+            )
         return FeedbackSummary(
             total_count=total,
             average_rating=average_rating,
@@ -79,7 +92,7 @@ class TestFeedbackType:
 
 class TestFeedbackItem:
     def test_creation(self) -> None:
-        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=5)
+        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=5, owner_id="owner-1")
         assert item.type == FeedbackType.RATING
         assert item.value == 5
         assert item.context == {}
@@ -90,6 +103,7 @@ class TestFeedbackItem:
         item = FeedbackItem(
             feedback_type=FeedbackType.TEXT,
             value="great answer",
+            owner_id="owner-1",
             context={"model": "gpt-4"},
             metadata={"session": "abc"},
         )
@@ -100,6 +114,7 @@ class TestFeedbackItem:
         item = FeedbackItem(
             feedback_type=FeedbackType.RATING,
             value=4,
+            owner_id="owner-1",
             id="custom-123",
         )
         assert item.id == "custom-123"
@@ -108,18 +123,21 @@ class TestFeedbackItem:
         item = FeedbackItem(
             feedback_type=FeedbackType.RATING,
             value=5,
+            owner_id="owner-1",
             id="test-id",
         )
         d = item.to_dict()
         assert d["id"] == "test-id"
         assert d["type"] == "rating"
         assert d["value"] == 5
+        assert d["owner_id"] == "owner-1"
         assert "created_at" in d
 
     def test_repr(self) -> None:
         item = FeedbackItem(
             feedback_type=FeedbackType.TEXT,
             value="good",
+            owner_id="owner-1",
             id="r1",
         )
         assert "r1" in repr(item)
@@ -136,57 +154,65 @@ class TestFeedbackCollector:
 
     @pytest.mark.asyncio
     async def test_collect_rating(self, collector: FeedbackCollector) -> None:
-        fid = await collector.collect_rating(rating=5, context={"model": "gpt-4"})
+        fid = await collector.collect_rating(
+            rating=5, context={"model": "gpt-4"}, owner_id="owner-1"
+        )
         assert fid
         assert len(collector) == 1
 
     @pytest.mark.asyncio
     async def test_collect_text(self, collector: FeedbackCollector) -> None:
-        fid = await collector.collect_text(text="amazing response")
+        fid = await collector.collect_text(text="amazing response", owner_id="owner-1")
         assert fid
-        items = await collector.get_feedback()
+        items = await collector.get_feedback(owner_id="owner-1")
         assert items[0].type == FeedbackType.TEXT
         assert items[0].value == "amazing response"
 
     @pytest.mark.asyncio
     async def test_collect_correction(self, collector: FeedbackCollector) -> None:
         fid = await collector.collect_correction(
-            original="wrong", corrected="right"
+            original="wrong", corrected="right", owner_id="owner-1"
         )
         assert fid
-        items = await collector.get_feedback()
+        items = await collector.get_feedback(owner_id="owner-1")
         assert items[0].value == {"original": "wrong", "corrected": "right"}
 
     @pytest.mark.asyncio
     async def test_collect_label(self, collector: FeedbackCollector) -> None:
-        fid = await collector.collect_label(label="positive", input_data="text")
+        fid = await collector.collect_label(
+            label="positive", input_data="text", owner_id="owner-1"
+        )
         assert fid
-        items = await collector.get_feedback()
+        items = await collector.get_feedback(owner_id="owner-1")
         assert items[0].value == {"label": "positive", "input": "text"}
 
     @pytest.mark.asyncio
     async def test_get_feedback_filter_by_type(
         self, collector: FeedbackCollector
     ) -> None:
-        await collector.collect_rating(rating=5)
-        await collector.collect_text(text="nice")
-        await collector.collect_rating(rating=3)
-        ratings = await collector.get_feedback(feedback_type=FeedbackType.RATING)
+        await collector.collect_rating(rating=5, owner_id="owner-1")
+        await collector.collect_text(text="nice", owner_id="owner-1")
+        await collector.collect_rating(rating=3, owner_id="owner-1")
+        ratings = await collector.get_feedback(
+            feedback_type=FeedbackType.RATING, owner_id="owner-1"
+        )
         assert len(ratings) == 2
-        texts = await collector.get_feedback(feedback_type=FeedbackType.TEXT)
+        texts = await collector.get_feedback(
+            feedback_type=FeedbackType.TEXT, owner_id="owner-1"
+        )
         assert len(texts) == 1
 
     @pytest.mark.asyncio
     async def test_get_feedback_limit(self, collector: FeedbackCollector) -> None:
         for i in range(5):
-            await collector.collect_rating(rating=i)
-        items = await collector.get_feedback(limit=2)
+            await collector.collect_rating(rating=i, owner_id="owner-1")
+        items = await collector.get_feedback(limit=2, owner_id="owner-1")
         assert len(items) == 2
 
     @pytest.mark.asyncio
     async def test_get_feedback_dict(self, collector: FeedbackCollector) -> None:
-        await collector.collect_rating(rating=4)
-        dicts = await collector.get_feedback_dict()
+        await collector.collect_rating(rating=4, owner_id="owner-1")
+        dicts = await collector.get_feedback_dict(owner_id="owner-1")
         assert len(dicts) == 1
         assert isinstance(dicts[0], dict)
         assert dicts[0]["type"] == "rating"
@@ -195,11 +221,11 @@ class TestFeedbackCollector:
     async def test_get_feedback_uses_storage(self) -> None:
         storage = DummyFeedbackStore()
         collector = FeedbackCollector(storage=storage)
-        await collector.collect_text(text="persistent")
-        items = await collector.get_feedback()
+        await collector.collect_text(text="persistent", owner_id="owner-1")
+        items = await collector.get_feedback(owner_id="owner-1")
         assert len(items) == 1
         assert items[0].value == "persistent"
-        dicts = await collector.get_feedback_dict()
+        dicts = await collector.get_feedback_dict(owner_id="owner-1")
         assert dicts[0]["value"] == "persistent"
 
     @pytest.mark.asyncio
@@ -207,13 +233,13 @@ class TestFeedbackCollector:
         storage = DummyFeedbackStore()
         collector = FeedbackCollector(storage=storage)
         for i in range(5):
-            await collector.collect_rating(rating=i)
-        items = await collector.get_feedback(limit=2)
+            await collector.collect_rating(rating=i, owner_id="owner-1")
+        items = await collector.get_feedback(limit=2, owner_id="owner-1")
         assert len(items) == 2
 
     @pytest.mark.asyncio
     async def test_clear(self, collector: FeedbackCollector) -> None:
-        await collector.collect_rating(rating=5)
+        await collector.collect_rating(rating=5, owner_id="owner-1")
         assert len(collector) == 1
         collector.clear()
         assert len(collector) == 0
@@ -309,7 +335,7 @@ class TestFeedbackProcessorRegistry:
         registry = FeedbackProcessorRegistry.with_defaults()
         collector = FeedbackCollector()
         fid = await registry.process(
-            FeedbackType.RATING, 5, {"ctx": "test"}, collector
+            FeedbackType.RATING, 5, {"ctx": "test"}, collector, owner_id="owner-1"
         )
         assert fid
         assert len(collector) == 1
@@ -319,7 +345,7 @@ class TestFeedbackProcessorRegistry:
         registry = FeedbackProcessorRegistry.with_defaults()
         collector = FeedbackCollector()
         fid = await registry.process(
-            FeedbackType.TEXT, "great", {"ctx": "test"}, collector
+            FeedbackType.TEXT, "great", {"ctx": "test"}, collector, owner_id="owner-1"
         )
         assert fid
 
@@ -327,4 +353,6 @@ class TestFeedbackProcessorRegistry:
     async def test_process_unknown_type_raises(self) -> None:
         registry = FeedbackProcessorRegistry()
         with pytest.raises(ValueError, match="No processor"):
-            await registry.process("unknown", "val", {}, FeedbackCollector())
+            await registry.process(
+                "unknown", "val", {}, FeedbackCollector(), owner_id="owner-1"
+            )

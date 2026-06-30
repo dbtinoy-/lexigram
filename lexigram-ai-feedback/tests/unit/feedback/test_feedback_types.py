@@ -30,7 +30,7 @@ class TestFeedbackItem:
 
     def test_feedback_item_creation_with_rating(self) -> None:
         """Test creating feedback item with rating."""
-        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=4.5)
+        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=4.5, owner_id="owner-1")
         assert item.type == FeedbackType.RATING
         assert item.value == 4.5
         assert item.context == {}
@@ -38,7 +38,7 @@ class TestFeedbackItem:
 
     def test_feedback_item_creation_with_text(self) -> None:
         """Test creating feedback item with text."""
-        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="Great response!")
+        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="Great response!", owner_id="owner-1")
         assert item.type == FeedbackType.TEXT
         assert item.value == "Great response!"
 
@@ -46,7 +46,7 @@ class TestFeedbackItem:
         """Test creating feedback item with context."""
         context = {"input": "test", "output": "result"}
         item = FeedbackItem(
-            feedback_type=FeedbackType.RATING, value=5.0, context=context
+            feedback_type=FeedbackType.RATING, value=5.0, context=context, owner_id="owner-1"
         )
         assert item.context == context
 
@@ -57,6 +57,7 @@ class TestFeedbackItem:
             feedback_type=FeedbackType.LABEL,
             value="helpful",
             metadata=metadata,
+            owner_id="owner-1",
         )
         assert item.metadata == metadata
 
@@ -67,19 +68,20 @@ class TestFeedbackItem:
             feedback_type=FeedbackType.TEXT,
             value="test",
             id=custom_id,
+            owner_id="owner-1",
         )
         assert item.id == custom_id
 
     def test_feedback_item_generates_uuid(self) -> None:
         """Test that feedback item generates UUID if not provided."""
-        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test")
+        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test", owner_id="owner-1")
         # UUID format: 8-4-4-4-12 hex digits
         assert len(item.id) == 36
         assert item.id.count("-") == 4
 
     def test_feedback_item_has_created_at(self) -> None:
         """Test that feedback item has created_at timestamp."""
-        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test")
+        item = FeedbackItem(feedback_type=FeedbackType.TEXT, value="test", owner_id="owner-1")
         assert item.created_at is not None
 
     def test_feedback_item_to_dict(self) -> None:
@@ -89,6 +91,7 @@ class TestFeedbackItem:
             value=4.0,
             context={"input": "test"},
             metadata={"user": "user1"},
+            owner_id="owner-1",
         )
         result = item.to_dict()
         assert isinstance(result, dict)
@@ -101,7 +104,7 @@ class TestFeedbackItem:
 
     def test_feedback_item_repr(self) -> None:
         """Test feedback item string representation."""
-        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=4.5)
+        item = FeedbackItem(feedback_type=FeedbackType.RATING, value=4.5, owner_id="owner-1")
         repr_str = repr(item)
         assert "FeedbackItem" in repr_str
         assert "rating" in repr_str
