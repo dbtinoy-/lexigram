@@ -11,11 +11,11 @@ if TYPE_CHECKING:
     from lexigram.contracts.core.di import ContainerRegistrarProtocol
 
 
-class _InjectableAutoProvider(Provider):
+class InjectableAutoProvider(Provider):
     """Synthetic provider that registers auto-discovered injectable classes.
 
-    Created internally by :meth:`Application.discover_providers` — not intended
-    for direct use.
+    Created internally by :meth:`Application.discover_providers` and by the
+    module scan mechanism (``@module(scan=[...])``).
     """
 
     def __init__(self, injectables: list[tuple[type, Any]]) -> None:
@@ -33,4 +33,4 @@ class _InjectableAutoProvider(Provider):
                 container.transient(cls, cls)
 
 
-__all__ = ["_InjectableAutoProvider"]
+__all__ = ["InjectableAutoProvider"]

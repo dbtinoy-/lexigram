@@ -267,9 +267,9 @@ class Application:
         # Auto-register @injectable / @singleton classes via a thin synthetic provider
         injectables = discover_injectables(list(packages))
         if injectables:
-            from lexigram.app._injectable_provider import _InjectableAutoProvider
+            from lexigram.app.injectable_provider import InjectableAutoProvider
 
-            self.add_provider(_InjectableAutoProvider(injectables))
+            self.add_provider(InjectableAutoProvider(injectables))
 
     # -- Module registration -----------------------------------------------
 

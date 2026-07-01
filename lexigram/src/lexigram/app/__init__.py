@@ -60,6 +60,7 @@ _LAZY_IMPORTS: dict[str, str] = {
     "AppShutdownError": "lexigram.app.exceptions",
     "AppStartupError": "lexigram.app.exceptions",
     "CoreProvider": "lexigram.app.di.provider",
+    "InjectableAutoProvider": "lexigram.app.injectable_provider",
     # pipeline
     "MiddlewarePipeline": "lexigram.app.pipeline",
 }
