@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import (
+    CacheStatsProtocol,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
@@ -25,7 +31,7 @@ class HitMissRatioWidgetHandler:
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch cache hit/miss stats.
 
-        Infrastructure failures propagate.
+        Degrades to "Unavailable" when the backend lacks the stats capability.
 
         Args:
             params: Widget parameters.
@@ -33,28 +39,27 @@ class HitMissRatioWidgetHandler:
         Returns:
             Result containing StatContent with hit-rate metrics.
         """
-        # Try to get stats via public method if available
-        hits = 0
-        misses = 0
-        if hasattr(self._cache, "get_stats") and callable(self._cache.get_stats):
-            stats = await self._cache.get_stats()
-            hits = getattr(stats, "hits", 0)
-            misses = getattr(stats, "misses", 0)
-
+        if not isinstance(self._cache, CacheStatsProtocol):
+            return Ok(
+                StatContent(
+                    stats=(Stat(label="Hit Rate", value="Unavailable"),)
+                )
+            )
+        stats = self._cache.get_stats() or {}
+        hits = float(stats.get("hits", 0))
+        misses = float(stats.get("misses", 0))
         total = hits + misses
-        hit_rate = hits / total * 100 if total > 0 else 0.0
-        hit_rate_pct = round(hit_rate, 1)
-        # Template statically styles the rate with text-success — mirror as SUCCESS.
+        ratio = round(hits / total * 100, 1) if total > 0 else 100.0
         return Ok(
             StatContent(
                 stats=(
                     Stat(
                         label=f"Hit Rate ({params.time_window_minutes}m)",
-                        value=f"{hit_rate_pct}%",
-                        tone=Tone.SUCCESS,
+                        value=f"{ratio}%",
+                        tone=Tone.SUCCESS if ratio >= 90 else Tone.WARNING,
                     ),
-                    Stat(label="Hits", value=str(hits)),
-                    Stat(label="Misses", value=str(misses)),
+                    Stat(label="Hits", value=str(int(hits))),
+                    Stat(label="Misses", value=str(int(misses))),
                 )
             )
         )
