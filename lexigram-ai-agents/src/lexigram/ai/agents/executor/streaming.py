@@ -120,6 +120,7 @@ async def astream(
             temperature=getattr(agent, "temperature", 0.7),
             tool_registry=kwargs.get("tool_registry"),
             memory=getattr(agent, "memory", None),
+            guard_pipeline=self._guard_pipeline,
             **kwargs,
         )
 

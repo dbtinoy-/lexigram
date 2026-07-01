@@ -158,6 +158,7 @@ class ReActStrategy(AbstractStrategy):
         """
         system_prompt: str = kwargs.get("system_prompt", "")
         memory = kwargs.get("memory")
+        guard_pipeline = kwargs.get("guard_pipeline")
 
         steps: list[ReasoningStep] = []
         tool_calls: list[ToolExecutionRecord] = []
@@ -283,6 +284,13 @@ class ReActStrategy(AbstractStrategy):
                 obs_text = str(tool_record.result)
             else:
                 obs_text = f"Error: {tool_record.error}"
+
+            # Guard before truncation so detectors see the full content
+            from lexigram.ai.agents.strategies.guard_hook import guard_observation
+
+            obs_text = await guard_observation(
+                guard_pipeline, obs_text, tool_name=tool_name
+            )
 
             # Truncate large outputs
             if len(obs_text) > self.observation_max_chars:

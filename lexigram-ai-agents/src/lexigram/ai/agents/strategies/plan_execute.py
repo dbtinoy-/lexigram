@@ -122,6 +122,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             full reasoning trace. ``Err(AgentError)`` on failure.
         """
         system_prompt: str = kwargs.get("system_prompt", "")
+        guard_pipeline = kwargs.get("guard_pipeline")
         steps: list[ReasoningStep] = []
         tool_calls: list[ToolExecutionRecord] = []
         usage = TokenAccumulator()
@@ -193,6 +194,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                     history,
                     system_prompt,
                     usage=usage,
+                    guard_pipeline=guard_pipeline,
                 )
                 if tool_record:
                     tool_calls.append(tool_record)
@@ -248,6 +250,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
                     history,
                     system_prompt,
                     usage=usage,
+                    guard_pipeline=guard_pipeline,
                 )
 
                 steps.append(
@@ -321,6 +324,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         history: list[dict[str, Any]],
         system_prompt: str,
         usage: TokenAccumulator | None = None,
+        guard_pipeline: Any = None,
     ) -> tuple[str, ToolExecutionRecord | None]:
         """Execute a tool-based plan step."""
         return await execute_tool_step(
@@ -335,6 +339,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             llm_timeout=self.llm_timeout,
             observation_max_chars=self.observation_max_chars,
             usage=usage,
+            guard_pipeline=guard_pipeline,
         )
 
     async def _execute_reasoning_step(
@@ -346,6 +351,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         history: list[dict[str, Any]],
         system_prompt: str,
         usage: TokenAccumulator | None = None,
+        guard_pipeline: Any = None,
     ) -> str:
         """Execute a reasoning-only plan step via LLM."""
         return await execute_reasoning_step(
@@ -358,6 +364,7 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             llm_timeout=self.llm_timeout,
             observation_max_chars=self.observation_max_chars,
             usage=usage,
+            guard_pipeline=guard_pipeline,
         )
 
     # ------------------------------------------------------------------

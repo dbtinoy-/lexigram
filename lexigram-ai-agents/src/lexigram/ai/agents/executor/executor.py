@@ -13,6 +13,10 @@ from typing import Any
 from lexigram.ai.agents.exceptions import BudgetExceededError
 from lexigram.ai.agents.executor.streaming import astream as _astream
 from lexigram.ai.agents.observability import AgentMetrics, AgentTracer
+from lexigram.ai.agents.strategies.guard_hook import (
+    ToolObservationBlockedError,
+    ToolObservationGuardError,
+)
 from lexigram.contracts.ai.agents import (
     AgentError,
     AgentExecutorProtocol,
@@ -345,6 +349,23 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                             span.set_attribute(
                                 "agent.tool_calls", response.tool_call_count
                             )
+
+        except (ToolObservationBlockedError, ToolObservationGuardError) as e:
+            logger.warning(
+                "agent.guard_blocked_observation",
+                agent=agent.name,
+                error=str(e),
+            )
+            self._metrics.record_error(agent.name, type(e).__name__)
+            await self._publish_event(
+                "AgentExecutionFailed",
+                {
+                    "agent_name": agent.name,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+            )
+            return Err(AgentError(f"Tool observation blocked by guards: {e}", cause=e))
 
         except (RuntimeError, OSError) as e:
             logger.exception("strategy_execution_failed", agent=agent.name)

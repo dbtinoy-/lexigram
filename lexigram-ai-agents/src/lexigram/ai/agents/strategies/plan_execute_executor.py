@@ -171,6 +171,7 @@ async def execute_tool_step(
     llm_timeout: float,
     observation_max_chars: int,
     usage: TokenAccumulator | None = None,
+    guard_pipeline: Any = None,
 ) -> tuple[str, ToolExecutionRecord | None]:
     """Execute a tool-based plan step.
 
@@ -213,12 +214,19 @@ async def execute_tool_step(
         record = await run_tool(tool_name, tool_args, tool_map, timeout=tool_timeout)
         if record.succeeded:
             result_text = str(record.result)
-            if len(result_text) > observation_max_chars:
-                result_text = result_text[:observation_max_chars] + "\n[TRUNCATED]"
             plan_step.status = PlanStepStatus.COMPLETED
         else:
             result_text = f"Error: {record.error}"
             plan_step.status = PlanStepStatus.FAILED
+
+        # Guard before truncation so detectors see the full content
+        from lexigram.ai.agents.strategies.guard_hook import guard_observation
+
+        result_text = await guard_observation(
+            guard_pipeline, result_text, tool_name=tool_name
+        )
+        if len(result_text) > observation_max_chars:
+            result_text = result_text[:observation_max_chars] + "\n[TRUNCATED]"
         return result_text, record
 
     return f"Tool '{tool_name}' not found", None
@@ -235,6 +243,7 @@ async def execute_reasoning_step(
     llm_timeout: float,
     observation_max_chars: int,
     usage: TokenAccumulator | None = None,
+    guard_pipeline: Any = None,
 ) -> str:
     """Execute a reasoning-only plan step via the LLM.
 
@@ -260,7 +269,17 @@ async def execute_reasoning_step(
         return "(LLM returned empty response)"
 
     result = extract_step_result(llm_text)
-    return result if result else llm_text[:observation_max_chars]
+    result_text = result if result else llm_text
+
+    # Guard before truncation so detectors see the full content
+    from lexigram.ai.agents.strategies.guard_hook import guard_observation
+
+    result_text = await guard_observation(
+        guard_pipeline, result_text, tool_name="reasoning"
+    )
+    if len(result_text) > observation_max_chars:
+        result_text = result_text[:observation_max_chars]
+    return result_text
 
 
 # ---------------------------------------------------------------------------
