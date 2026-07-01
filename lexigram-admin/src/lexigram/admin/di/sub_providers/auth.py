@@ -84,10 +84,18 @@ class AdminAuthSubProvider:
         from lexigram.admin.rbac.service import PermissionService
         from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 
-        # Bind the admin user store protocol to the SQL implementation.
-        # SetupMiddleware and any other service that needs to manage admin-panel
-        # accounts depend on AdminUserStoreProtocol — never on the concrete class.
-        container.singleton(AdminUserStoreProtocol, DirectSQLAdminUserStore)
+        # Bind the admin user store protocol to the SQL implementation, or to
+        # the app-principal adapter when configured (spec D3). SetupMiddleware
+        # and any other service that needs to manage admin-panel accounts
+        # depend on AdminUserStoreProtocol — never on the concrete class.
+        if getattr(self._config.auth, "principal_source", "internal") == "app":
+            from lexigram.admin.auth.store.app_principal import (
+                AppPrincipalUserStoreAdapter,
+            )
+
+            container.singleton(AdminUserStoreProtocol, AppPrincipalUserStoreAdapter)
+        else:
+            container.singleton(AdminUserStoreProtocol, DirectSQLAdminUserStore)
 
         # Register guard chain (container will instantiate via DI)
         container.singleton(AdminGuardChain, AdminGuardChain)

@@ -302,6 +302,10 @@ class AdminAuthConfig(DomainModel):
     users: list[Any] = Field(default_factory=list)
     roles: dict[str, Any] = Field(default_factory=dict)
 
+    # Identity bridge (spec D3): "internal" = framework admin_users table
+    # (default); "app" = AdminPrincipalProviderProtocol implemented by the app.
+    principal_source: Literal["internal", "app"] = Field(default="internal")
+
     # OAuth/SSO (optional)
     oauth_enabled: bool = Field(default=False)
     oauth_providers: list[str] = Field(default_factory=list)
