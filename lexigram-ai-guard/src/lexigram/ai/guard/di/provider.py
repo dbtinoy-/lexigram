@@ -14,6 +14,11 @@ from lexigram.ai.guard.input.topic import TopicRestrictor
 from lexigram.ai.guard.output.length import OutputLengthGuard
 from lexigram.ai.guard.output.pii_redactor import PIIRedactor
 from lexigram.ai.guard.pipeline.guard_pipeline import GuardPipeline
+from lexigram.contracts.ai.guards import (
+    GuardPipelineProtocol,
+    InputGuardProtocol,
+    OutputGuardProtocol,
+)
 from lexigram.contracts.ai.llm import LLMClientProtocol
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.core.provider import ProviderPriority
@@ -23,7 +28,6 @@ from lexigram.logging import (
 )
 
 if TYPE_CHECKING:
-    from lexigram.contracts.ai.guards import InputGuardProtocol, OutputGuardProtocol
     from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
@@ -79,11 +83,13 @@ class GuardProvider(Provider):
             pipeline = GuardPipeline()
             self._pipeline = pipeline
             container.singleton(GuardPipeline, pipeline)
+            container.singleton(GuardPipelineProtocol, pipeline)
             return
 
         pipeline = self._build_pipeline()
         self._pipeline = pipeline
         container.singleton(GuardPipeline, pipeline)
+        container.singleton(GuardPipelineProtocol, pipeline)
         logger.info(
             "guard_provider_registered",
             input_guards=len(pipeline._input_guards),

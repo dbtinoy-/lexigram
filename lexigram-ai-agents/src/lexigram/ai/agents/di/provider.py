@@ -145,6 +145,16 @@ class AgentsProvider(Provider):
         except (LookupError, RuntimeError, AttributeError, ModuleVisibilityError):
             logger.debug("agents_governance_not_available")
 
+        # Optional: guard pipeline (from lexigram-ai-guard)
+        guard_pipeline = None
+        try:
+            from lexigram.contracts.ai.guards import GuardPipelineProtocol
+
+            guard_pipeline = await resolver.resolve_optional(GuardPipelineProtocol)
+            logger.debug("agents_guard_pipeline_available")
+        except (LookupError, RuntimeError, AttributeError, ModuleVisibilityError):
+            logger.debug("agents_guard_pipeline_not_available")
+
         # Optional: memory
         memory = None
         try:
@@ -286,7 +296,10 @@ class AgentsProvider(Provider):
                 tracer=agent_tracer,
                 event_bus=event_bus,
             ),
-            safety=AgentSafetyInfra(governance=governance),
+            safety=AgentSafetyInfra(
+                governance=governance,
+                guard_pipeline=guard_pipeline,
+            ),
             working_memory=working_memory,
             session_manager=session_manager,
             skill_executor=skill_executor,
@@ -308,6 +321,7 @@ class AgentsProvider(Provider):
             session_manager=session_manager is not None,
             skill_executor=skill_executor is not None,
             skill_registry=skill_registry is not None,
+            guard_pipeline=guard_pipeline is not None,
         )
 
     async def _discover_strategies(self, container: ContainerRegistrarProtocol) -> None:

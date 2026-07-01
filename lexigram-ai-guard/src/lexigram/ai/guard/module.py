@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lexigram.contracts.ai.guards import InputGuardProtocol, OutputGuardProtocol
+from lexigram.contracts.ai.guards import (
+    GuardPipelineProtocol,
+    InputGuardProtocol,
+    OutputGuardProtocol,
+)
 from lexigram.di.module import DynamicModule, Module, module
 
 if TYPE_CHECKING:
@@ -74,6 +78,7 @@ class GuardModule(Module):
                 )
             ],
             exports=[
+                GuardPipelineProtocol,
                 InputGuardProtocol,
                 OutputGuardProtocol,
             ],
@@ -99,6 +104,7 @@ class GuardModule(Module):
             module=cls,
             providers=[GuardProvider(config=config, enable_audit_logging=False)],
             exports=[
+                GuardPipelineProtocol,
                 InputGuardProtocol,
                 OutputGuardProtocol,
             ],

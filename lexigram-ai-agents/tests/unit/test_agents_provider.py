@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -105,4 +107,50 @@ class TestAgentsProviderDITokens:
 
         assert registry_protocol.get("ping") is ping
         assert any(item.name == "ping" for item in registry_protocol.list_tools())
+
+
+class TestAgentsProviderGuardWiring:
+    """Guard pipeline wiring across the DI boundary (D2)."""
+
+    class _ResolveAll:
+        """Fake resolver: returns stubs; GuardPipelineProtocol resolves to a sentinel."""
+
+        def __init__(self, sentinel: object = None) -> None:
+            self._sentinel = sentinel
+
+        async def resolve_optional(self, token: object) -> object:
+            from lexigram.contracts.ai.guards import GuardPipelineProtocol
+
+            if token is GuardPipelineProtocol:
+                return self._sentinel
+            return None
+
+        def bind(self, token: object, impl: object) -> None:  # noqa: ARG002
+            self.bound = (token, impl)
+
+        async def resolve(self, token: object) -> object:
+            return SimpleNamespace()
+
+    @pytest.mark.asyncio
+    async def test_boot_injects_guard_pipeline_into_executor(self) -> None:
+        from lexigram.ai.agents.di.provider import AgentsProvider
+
+        sentinel = SimpleNamespace(is_guard_pipeline=True)
+        provider = AgentsProvider()
+        resolver = self._ResolveAll(sentinel)
+        await provider.boot(resolver)  # type: ignore[arg-type]
+
+        _, executor = resolver.bound
+        assert executor._guard_pipeline is sentinel
+
+    @pytest.mark.asyncio
+    async def test_boot_without_guard_module_sets_none(self) -> None:
+        from lexigram.ai.agents.di.provider import AgentsProvider
+
+        provider = AgentsProvider()
+        resolver = self._ResolveAll(None)
+        await provider.boot(resolver)  # type: ignore[arg-type]
+
+        _, executor = resolver.bound
+        assert executor._guard_pipeline is None
 

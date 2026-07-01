@@ -211,10 +211,14 @@ class AgentExecutorImpl(AgentExecutorProtocol):
             except (RuntimeError, OSError) as e:
                 logger.warning("governance_check_failed", error=str(e))
 
+        # Agent-level pipeline (AgentBuilder.with_guard_pipeline) wins over the
+        # DI-provided one; the DI pipeline remains the standard default.
+        guard_pipeline = getattr(agent, "guard_pipeline", None) or self._guard_pipeline
+
         # 1.5 Guard check for input
-        if self._guard_pipeline:
+        if guard_pipeline:
             try:
-                guard_res = await self._guard_pipeline.check_input(
+                guard_res = await guard_pipeline.check_input(
                     content=message,
                     metadata={"session_id": session_id, "user_id": user_id},
                 )
@@ -328,6 +332,7 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                     temperature=getattr(agent, "temperature", 0.7),
                     tool_registry=kwargs.get("tool_registry"),
                     memory=getattr(agent, "memory", None),
+                    guard_pipeline=guard_pipeline,
                     **kwargs,
                 )
 
@@ -373,9 +378,9 @@ class AgentExecutorImpl(AgentExecutorProtocol):
         response = result.unwrap()
 
         # 3.5 Guard check for output
-        if self._guard_pipeline:
+        if guard_pipeline:
             try:
-                out_guard_res = await self._guard_pipeline.check_output(
+                out_guard_res = await guard_pipeline.check_output(
                     content=response.message,
                     original_input=message,
                     metadata={"session_id": session_id, "user_id": user_id},
