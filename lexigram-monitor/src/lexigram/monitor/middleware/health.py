@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import time
 
+from lexigram.monitor.middleware.auth import is_authorized, send_unauthorized
 from lexigram.serialization import dumps
 
 
@@ -37,6 +38,9 @@ class HealthCheckProvider:
 
     Args:
         path: URL path for the health endpoint.  Defaults to ``"/health"``.
+        auth_token: Optional bearer token.  When set, requests must carry
+            ``Authorization: Bearer <auth_token>`` or receive ``401``.
+            Defaults to ``None`` (endpoint open).
 
     Example::
 
@@ -46,8 +50,9 @@ class HealthCheckProvider:
         # Mount *app* in your ASGI server / router.
     """
 
-    def __init__(self, path: str = "/health") -> None:
+    def __init__(self, path: str = "/health", auth_token: str | None = None) -> None:
         self.path = path
+        self.auth_token = auth_token
 
     async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
         """Handle an ASGI HTTP request.
@@ -62,6 +67,9 @@ class HealthCheckProvider:
             and scope["path"] == self.path
             and scope["method"] == "GET"
         ):
+            if not is_authorized(scope, self.auth_token):
+                await send_unauthorized(send)
+                return
             health_status = await self.check_health()
             status_code = _http_status_for(health_status.get("status", "unhealthy"))
             await send(
