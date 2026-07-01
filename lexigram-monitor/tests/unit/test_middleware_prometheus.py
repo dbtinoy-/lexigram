@@ -66,3 +66,62 @@ async def test_prometheus_middleware_non_http(mock_asgi_app):
     await middleware(scope, receive, send)
     
     # next_app should be called, but we don't have an easy way to verify unless we wrap it
+
+
+@pytest.mark.asyncio
+async def test_prometheus_middleware_rejects_missing_token():
+    """Metrics endpoint returns 401 when auth_token is configured but missing."""
+    middleware = PrometheusMiddleware(auth_token="s3cret")
+    scope = {"type": "http", "method": "GET", "path": "/metrics"}
+    send = AsyncMock()
+
+    await middleware(scope, AsyncMock(), send)
+
+    assert send.call_args_list[0][0][0]["status"] == 401
+
+
+@pytest.mark.asyncio
+async def test_prometheus_middleware_rejects_wrong_token():
+    """Metrics endpoint returns 401 for a mismatched bearer token."""
+    middleware = PrometheusMiddleware(auth_token="s3cret")
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/metrics",
+        "headers": [(b"authorization", b"Bearer wrong")],
+    }
+    send = AsyncMock()
+
+    await middleware(scope, AsyncMock(), send)
+
+    assert send.call_args_list[0][0][0]["status"] == 401
+
+
+@pytest.mark.asyncio
+async def test_prometheus_middleware_accepts_matching_token():
+    """Metrics endpoint serves 200 for the correct bearer token."""
+    middleware = PrometheusMiddleware(auth_token="s3cret")
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/metrics",
+        "headers": [(b"authorization", b"Bearer s3cret")],
+    }
+    send = AsyncMock()
+
+    await middleware(scope, AsyncMock(), send)
+
+    assert send.call_args_list[0][0][0]["status"] == 200
+
+
+@pytest.mark.asyncio
+async def test_prometheus_middleware_other_paths_pass_through_with_token(mock_asgi_app):
+    """Non-endpoint requests are unaffected by an configured auth_token."""
+    middleware = PrometheusMiddleware(auth_token="s3cret")
+    middleware.set_next_app(mock_asgi_app)
+    scope = {"type": "http", "method": "GET", "path": "/test"}
+    send = AsyncMock()
+
+    await middleware(scope, AsyncMock(), send)
+
+    assert send.call_count == 2
