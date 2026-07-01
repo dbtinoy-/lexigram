@@ -91,6 +91,20 @@ class GuardConfig(BaseConfig):
     llm_guard_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
     """Confidence threshold above which LLM guards trigger their action."""
 
+    llm_guard_fail_open: bool = Field(default=False)
+    """Fail open when the LLM-based guards cannot classify (two-tier).
+
+    ``False`` (default): on LLM client error or an error result the guards
+    return an error result and the pipeline treats them as a blocked check
+    (fail-closed on infrastructure failures, per the audit recommendation).
+    An unparseable detection verdict still passes content through with a
+    warning — heuristic nondeterminism is not evidence of attack, so the
+    verdict-ambiguity class stays fail-open (fail-open only for
+    detection-verdict errors). ``True``: all three classes pass content
+    through and log a warning (today's fully fail-open behavior, for
+    deployments that prefer availability during provider outages).
+    """
+
     sensitivity_level: str = Field(default="medium")
     """Guard sensitivity: ``"low"``, ``"medium"``, or ``"high"``.
 

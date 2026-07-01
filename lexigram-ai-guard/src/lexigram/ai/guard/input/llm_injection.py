@@ -5,9 +5,11 @@ judge that catches sophisticated, context-aware injection attempts that
 regex patterns miss.
 
 A small, fast model (e.g. ``claude-haiku`` or ``gpt-4o-mini``) is used
-as a classifier.  The guard degrades gracefully: when the LLM returns an
-unexpected response format, or when the client raises, the guard passes
-the content through (fails open) and logs a warning.
+as a classifier.  The guard degrades gracefully: an unparseable detection
+verdict passes content through with a warning (heuristic nondeterminism
+is not evidence of attack); by default an LLM client error or error
+result fails closed with ``Err(GuardError)`` — pass ``fail_open=True``
+to restore the legacy pass-through during provider outages.
 
 Example::
 
@@ -32,7 +34,7 @@ from lexigram.contracts.ai.guards import GuardResultProtocol
 from lexigram.logging import (
     get_logger,
 )
-from lexigram.result import Ok, Result
+from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.exceptions import GuardError
@@ -113,6 +115,8 @@ class LLMInjectionDetector(AbstractInputGuard):
         model: Model identifier to pass to the client (e.g. ``"gpt-4o-mini"``).
         threshold: Injection probability threshold triggering action (0–1).
         action: Action when injection is detected — ``"block"`` or ``"warn"``.
+        fail_open: When ``True``, infrastructure failures pass content
+            through (legacy); default ``False`` fails closed.
     """
 
     def __init__(
@@ -122,6 +126,7 @@ class LLMInjectionDetector(AbstractInputGuard):
         model: str = "gpt-4o-mini",
         threshold: float = 0.7,
         action: str = "block",
+        fail_open: bool = False,
     ) -> None:
         """Initialise the LLM injection detector.
 
@@ -130,11 +135,16 @@ class LLMInjectionDetector(AbstractInputGuard):
             model: Model to use for classification.
             threshold: Score above which action is triggered.
             action: ``"block"`` or ``"warn"``.
+            fail_open: When ``False`` (default), an LLM client error or
+                error result fails closed with ``Err(GuardError)``; when
+                ``True``, those infrastructure failures pass content
+                through with a warning (legacy behavior).
         """
         super().__init__(action=action)
         self._llm = llm
         self._model = model
         self._threshold = threshold
+        self._fail_open = fail_open
 
     async def check(
         self,
@@ -145,9 +155,11 @@ class LLMInjectionDetector(AbstractInputGuard):
     ) -> Result[GuardResultProtocol, GuardError]:
         """Evaluate *content* for prompt injection using an LLM judge.
 
-        The guard fails open when LLM classification is unavailable or
-        returns an unparseable response — logging a warning and passing
-        the content through to avoid blocking legitimate requests.
+        Fails closed on infrastructure failures under the default
+        ``fail_open=False`` (client error or error result → ``Err``), and
+        fails open only for detection-verdict ambiguity (unparseable
+        response — logged and passed through). ``fail_open=True`` restores
+        the fully fail-open behavior.
 
         Args:
             content: User-supplied text to check.
@@ -155,7 +167,7 @@ class LLMInjectionDetector(AbstractInputGuard):
             metadata: Optional request metadata (unused by this guard).
 
         Returns:
-            PASS, WARN, or BLOCK.
+            PASS, WARN, BLOCK, or an error result.
         """
         llm_messages = [
             _Msg(role="system", content=_SYSTEM_PROMPT),
@@ -175,20 +187,32 @@ class LLMInjectionDetector(AbstractInputGuard):
                 error=str(exc),
                 guard=self.name,
             )
+            if not self._fail_open:
+                from lexigram.contracts.ai.exceptions import GuardError
+
+                return Err(GuardError(f"LLM injection guard unavailable: {exc}"))
             return Ok(GuardCheckResult.allow(self.name, llm_unavailable=True))
 
         if llm_result.is_err():
+            error = llm_result.unwrap_err()
             logger.warning(
                 "llm_injection_guard_error",
-                error=str(llm_result.unwrap_err()),
+                error=str(error),
                 guard=self.name,
             )
+            if not self._fail_open:
+                from lexigram.contracts.ai.exceptions import GuardError
+
+                return Err(GuardError(f"LLM injection guard error: {error}"))
             return Ok(GuardCheckResult.allow(self.name, llm_error=True))
 
         response = llm_result.unwrap()
         score, category = _parse_score(response.content)
 
         if score is None:
+            # Two-tier carve-out: verdict ambiguity (unparseable response)
+            # stays fail-open in both settings — heuristic nondeterminism
+            # is not evidence of attack (spec §3.4 / Decision D).
             logger.warning(
                 "llm_injection_guard_parse_failed",
                 response_preview=response.content[:200],

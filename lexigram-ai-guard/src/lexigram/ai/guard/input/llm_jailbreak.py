@@ -11,8 +11,11 @@ The detector classifies across five jailbreak categories (per the plan):
 - ``encoding_bypass`` — using Base64, l33t-speak, or similar to hide intent
 - ``multi_turn_manipulation`` — gradual context poisoning across turns
 
-Fails open: if the LLM is unavailable or returns unparseable output the
-guard passes the content through and logs a warning.
+Fails closed on infrastructure failures under the default
+``fail_open=False`` (client error or error result → ``Err(GuardError)``),
+and fails open only for detection-verdict ambiguity (unparseable
+response — logged and passed through). ``fail_open=True`` restores the
+fully fail-open behavior.
 
 Example::
 
@@ -36,7 +39,7 @@ from lexigram.contracts.ai.guards import GuardResultProtocol
 from lexigram.logging import (
     get_logger,
 )
-from lexigram.result import Ok, Result
+from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.exceptions import GuardError
@@ -138,6 +141,8 @@ class LLMJailbreakDetector(AbstractInputGuard):
         model: Model identifier for classification (default: ``"gpt-4o-mini"``).
         threshold: Probability threshold above which the action is triggered.
         action: ``"block"`` (default) or ``"warn"``.
+        fail_open: When ``True``, infrastructure failures pass content
+            through (legacy); default ``False`` fails closed.
     """
 
     def __init__(
@@ -147,6 +152,7 @@ class LLMJailbreakDetector(AbstractInputGuard):
         model: str = "gpt-4o-mini",
         threshold: float = 0.7,
         action: str = "block",
+        fail_open: bool = False,
     ) -> None:
         """Initialise the LLM jailbreak detector.
 
@@ -155,11 +161,16 @@ class LLMJailbreakDetector(AbstractInputGuard):
             model: Model to use for classification.
             threshold: Score above which action is triggered.
             action: ``"block"`` or ``"warn"``.
+            fail_open: When ``False`` (default), an LLM client error or
+                error result fails closed with ``Err(GuardError)``; when
+                ``True``, those infrastructure failures pass content
+                through with a warning (legacy behavior).
         """
         super().__init__(action=action)
         self._llm = llm
         self._model = model
         self._threshold = threshold
+        self._fail_open = fail_open
 
     async def check(
         self,
@@ -170,9 +181,11 @@ class LLMJailbreakDetector(AbstractInputGuard):
     ) -> Result[GuardResultProtocol, GuardError]:
         """Evaluate *content* for jailbreak attempts using an LLM judge.
 
-        Fails open: when the LLM is unavailable or its response cannot
-        be parsed, the guard allows the content through and emits a
-        warning log.
+        Fails closed on infrastructure failures under the default
+        ``fail_open=False`` (client error or error result → ``Err``), and
+        fails open only for detection-verdict ambiguity (unparseable
+        response — logged and passed through). ``fail_open=True`` restores
+        the fully fail-open behavior.
 
         Args:
             content: User-supplied text to check.
@@ -180,7 +193,7 @@ class LLMJailbreakDetector(AbstractInputGuard):
             metadata: Optional request metadata.
 
         Returns:
-            PASS, WARN, or BLOCK.
+            PASS, WARN, BLOCK, or an error result.
         """
         # Include prior turns if available (for multi_turn_manipulation detection)
         llm_messages: list[Any] = [_Msg(role="system", content=_SYSTEM_PROMPT)]
@@ -206,20 +219,32 @@ class LLMJailbreakDetector(AbstractInputGuard):
                 error=str(exc),
                 guard=self.name,
             )
+            if not self._fail_open:
+                from lexigram.contracts.ai.exceptions import GuardError
+
+                return Err(GuardError(f"LLM jailbreak guard unavailable: {exc}"))
             return Ok(GuardCheckResult.allow(self.name, llm_unavailable=True))
 
         if llm_result.is_err():
+            error = llm_result.unwrap_err()
             logger.warning(
                 "llm_jailbreak_guard_error",
-                error=str(llm_result.unwrap_err()),
+                error=str(error),
                 guard=self.name,
             )
+            if not self._fail_open:
+                from lexigram.contracts.ai.exceptions import GuardError
+
+                return Err(GuardError(f"LLM jailbreak guard error: {error}"))
             return Ok(GuardCheckResult.allow(self.name, llm_error=True))
 
         response = llm_result.unwrap()
         score, categories = _parse_response(response.content)
 
         if score is None:
+            # Two-tier carve-out: verdict ambiguity (unparseable response)
+            # stays fail-open in both settings — heuristic nondeterminism
+            # is not evidence of attack (spec §3.4 / Decision D).
             logger.warning(
                 "llm_jailbreak_guard_parse_failed",
                 response_preview=response.content[:200],

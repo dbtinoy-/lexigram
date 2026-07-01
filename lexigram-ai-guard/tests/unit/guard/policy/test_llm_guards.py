@@ -38,10 +38,22 @@ class TestLLMInjectionDetector:
     """Tests for LLM-based prompt injection detector."""
 
     @pytest.mark.asyncio
-    async def test_llm_unavailable_fails_open(self) -> None:
-        """OSError should pass content through (fail open)."""
+    async def test_llm_unavailable_fails_closed_by_default(self) -> None:
+        """Client-unavailable fails closed under the default fail_open=False."""
+        from lexigram.contracts.ai.exceptions import GuardError
+
         mock_llm = MockLLMClient(OSError("connection refused"))
         guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7)
+        result = await guard.check("test content")
+
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), GuardError)
+
+    @pytest.mark.asyncio
+    async def test_llm_unavailable_fails_open_when_configured(self) -> None:
+        """fail_open=True restores today's legacy allow-through behavior."""
+        mock_llm = MockLLMClient(OSError("connection refused"))
+        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7, fail_open=True)
         result = await guard.check("test content")
 
         assert result.is_ok()
@@ -51,14 +63,14 @@ class TestLLMInjectionDetector:
 
     @pytest.mark.asyncio
     async def test_llm_returns_err_fails_open(self) -> None:
-        """LLM error Result should fail open."""
+        """LLM error Result should fail open when explicitly configured."""
         from lexigram.contracts.ai.llm import LLMError
         from lexigram.result import Err as LLMErr
 
         mock_llm = MagicMock()
         mock_llm.complete = AsyncMock(return_value=LLMErr(LLMError("rate limited")))
 
-        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7)
+        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7, fail_open=True)
         result = await guard.check("test content")
 
         assert result.is_ok()
@@ -136,9 +148,9 @@ class TestLLMInjectionDetector:
 
     @pytest.mark.asyncio
     async def test_connection_error_fails_open(self) -> None:
-        """ConnectionError should fail open."""
+        """ConnectionError should fail open when explicitly configured."""
         mock_llm = MockLLMClient(ConnectionError("network error"))
-        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7)
+        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7, fail_open=True)
         result = await guard.check("test")
 
         assert result.is_ok()
@@ -146,9 +158,9 @@ class TestLLMInjectionDetector:
 
     @pytest.mark.asyncio
     async def test_runtime_error_fails_open(self) -> None:
-        """RuntimeError should fail open."""
+        """RuntimeError should fail open when explicitly configured."""
         mock_llm = MockLLMClient(RuntimeError("internal error"))
-        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7)
+        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7, fail_open=True)
         result = await guard.check("test")
 
         assert result.is_ok()
@@ -156,9 +168,9 @@ class TestLLMInjectionDetector:
 
     @pytest.mark.asyncio
     async def test_value_error_fails_open(self) -> None:
-        """ValueError should fail open."""
+        """ValueError should fail open when explicitly configured."""
         mock_llm = MockLLMClient(ValueError("invalid input"))
-        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7)
+        guard = LLMInjectionDetector(llm=mock_llm, threshold=0.7, fail_open=True)
         result = await guard.check("test")
 
         assert result.is_ok()
@@ -183,3 +195,92 @@ class TestLLMInjectionDetector:
         mock_complete.assert_called_once()
         call_kwargs = mock_complete.call_args.kwargs
         assert call_kwargs.get("model") == "claude-3-opus"
+
+
+class TestLLMInjectionFailClosed:
+    """Two-tier posture: infra-class failures fail closed under the default."""
+
+    @pytest.mark.asyncio
+    async def test_fail_open_false_returns_err_on_client_error(self) -> None:
+        """Client raise is infra-class — fails closed under fail_open=False."""
+        from unittest.mock import AsyncMock
+
+        from lexigram.ai.guard.input.llm_injection import LLMInjectionDetector
+        from lexigram.contracts.ai.exceptions import GuardError
+
+        llm = AsyncMock()
+        llm.complete.side_effect = RuntimeError("provider down")
+
+        guard = LLMInjectionDetector(
+            llm=llm, fail_open=False,
+        )
+        result = await guard.check("hello")
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), GuardError)
+
+    @pytest.mark.asyncio
+    async def test_fail_open_false_returns_err_on_err_result(self) -> None:
+        """The Err-result site is infra-class too — fails closed."""
+        from unittest.mock import AsyncMock
+
+        from lexigram.ai.guard.input.llm_injection import LLMInjectionDetector
+        from lexigram.contracts.ai.exceptions import GuardError
+        from lexigram.result import Err
+
+        llm = AsyncMock()
+        llm.complete.return_value = Err(ValueError("provider down"))
+
+        guard = LLMInjectionDetector(llm=llm, fail_open=False)
+        result = await guard.check("hello")
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), GuardError)
+
+    @pytest.mark.asyncio
+    async def test_fail_open_false_keeps_verdict_ambiguity_open(self) -> None:
+        """Parse/verdict failure stays fail-open under False (two-tier)."""
+        from types import SimpleNamespace
+
+        from lexigram.ai.guard.input.llm_injection import LLMInjectionDetector
+
+        class _JunkClient:
+            async def complete(self, messages, **kwargs):
+                from lexigram.result import Ok
+
+                return Ok(SimpleNamespace(content="not json at all"))
+
+        guard = LLMInjectionDetector(llm=_JunkClient(), fail_open=False)
+        result = await guard.check("hello")
+        assert result.is_ok()
+
+
+class TestLLMJailbreakFailClosed:
+    """Jailbreak detector mirrors the injection detector's two-tier posture."""
+
+    @pytest.mark.asyncio
+    async def test_fail_open_false_returns_err_on_client_error(self) -> None:
+        from unittest.mock import AsyncMock
+
+        from lexigram.ai.guard.input.llm_jailbreak import LLMJailbreakDetector
+        from lexigram.contracts.ai.exceptions import GuardError
+
+        llm = AsyncMock()
+        llm.complete.side_effect = RuntimeError("provider down")
+
+        guard = LLMJailbreakDetector(llm=llm, fail_open=False)
+        result = await guard.check("hello")
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), GuardError)
+
+    @pytest.mark.asyncio
+    async def test_fail_open_true_keeps_legacy_allow_through(self) -> None:
+        from unittest.mock import AsyncMock
+
+        from lexigram.ai.guard.input.llm_jailbreak import LLMJailbreakDetector
+
+        llm = AsyncMock()
+        llm.complete.side_effect = RuntimeError("provider down")
+
+        guard = LLMJailbreakDetector(llm=llm, fail_open=True)
+        result = await guard.check("hello")
+        assert result.is_ok()
+        assert result.unwrap().passed is True
