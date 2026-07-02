@@ -19,20 +19,24 @@ class ServerSentEvent:
 
     def __init__(
         self,
-        data: Any,
+        data: Any = None,
         event: str | None = None,
         event_id: str | None = None,
         retry: int | None = None,
+        comment: str | None = None,
     ) -> None:
         self.data = data
         self.event = event
         self.event_id = event_id
         self.retry = retry
+        self.comment = comment
 
     def encode(self) -> str:
         """Encode the event as SSE format"""
         # Build header lines conditionally
         lines = []
+        if self.comment:
+            lines.append(f": {self.comment}")
         if self.event:
             lines.append(f"event: {self.event}")
         if self.event_id:
@@ -41,7 +45,9 @@ class ServerSentEvent:
             lines.append(f"retry: {self.retry}")
 
         # Handle data - split string by newlines or serialize object
-        if isinstance(self.data, str):
+        if self.data is None:
+            data_lines = []
+        elif isinstance(self.data, str):
             data_lines = self.data.split("\n")
         else:
             data_lines = [dumps(self.data).decode("utf-8")]
@@ -49,7 +55,7 @@ class ServerSentEvent:
         # Append data lines (using list comprehension)
         lines.extend(f"data: {line}" for line in data_lines)
         lines.append("")  # Empty line to end the event
-        return "\n".join(lines)
+        return "\n".join(lines) + "\n"
 
 
 class EventSourceResponse(StreamingResponse):
