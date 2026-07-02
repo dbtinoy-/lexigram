@@ -12,11 +12,14 @@ from lexigram.contracts.core.health import (
     HealthCheckResult,
     HealthStatus,
 )
+from lexigram.logging import get_logger
+from lexigram.monitor.health.sanitize import safe_error_message
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 _HEALTH_CHECK_ATTR = "_health_check_name"
+logger = get_logger(__name__)
 
 
 class HealthChecker:
@@ -157,10 +160,15 @@ class HealthChecker:
                     duration_ms=(asyncio.get_event_loop().time() - start_time) * 1000,
                 )
             except (RuntimeError, OSError, ConnectionError, ValueError, TypeError) as e:
+                logger.warning(
+                    "health_check_failed",
+                    component=name,
+                    error=str(e),
+                )
                 results[name] = HealthCheckResult(
                     component=name,
                     status=HealthStatus.UNHEALTHY,
-                    message=str(e),
+                    message=safe_error_message(e),
                     duration_ms=(asyncio.get_event_loop().time() - start_time) * 1000,
                 )
         return results
