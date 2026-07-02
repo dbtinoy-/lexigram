@@ -56,6 +56,32 @@ if __name__ == "__main__":
 | `slo.evaluation_interval` | `60` | `LEX_MONITOR__SLO__EVALUATION_INTERVAL` | Seconds between SLO evaluation cycles |
 | `slo.suppression_window_seconds` | `300` | `LEX_MONITOR__SLO__SUPPRESSION_WINDOW_SECONDS` | Min seconds between duplicate alerts |
 
+## Endpoint protection
+
+`HealthCheckProvider` and `PrometheusMiddleware` expose their endpoints
+(`/health` and `/metrics` by default) **without authentication** — the
+intentional default, because Kubernetes probes and Prometheus scrapers
+usually run inside a trusted network and cannot always carry credentials.
+
+If these endpoints are reachable from outside that boundary, pass an
+`auth_token` to require `Authorization: Bearer <token>` on every request:
+
+```python
+from lexigram.monitor.middleware import HealthCheckProvider, PrometheusMiddleware
+
+app = HealthCheckProvider(path="/health", auth_token=os.environ["HEALTH_TOKEN"])
+app = PrometheusMiddleware(app, path="/metrics", auth_token=os.environ["METRICS_TOKEN"])
+```
+
+Requests without the matching token receive `401` with
+`WWW-Authenticate: Bearer`. Configure the same token on the scraper side
+(e.g. Prometheus `scrape_configs` → `authorization.credentials`).
+
+Failed dependency checks never echo the raw driver message into the JSON
+health payload — the response carries only the exception type name
+(`"ConnectionError: connection check failed"`), while the full message is
+written to the application logs.
+
 ## Module Factory Methods
 
 | Method | Description |
