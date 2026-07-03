@@ -31,7 +31,8 @@ DEFAULT_CACHE_TTL: int = 300
 """Default TTL in seconds for cached flag evaluations (5 minutes)."""
 
 DEFAULT_ENABLED: bool = False
-"""Default evaluation result when a flag is not found in the provider."""
+"""Default evaluation result when a flag is not found, or when a rule is
+unconfigured (fail-closed)."""
 
 __all__ = [
     "DEFAULT_CACHE_TTL",
