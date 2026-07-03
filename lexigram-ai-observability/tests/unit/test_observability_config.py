@@ -1,9 +1,7 @@
 """Tests for ObservabilityConfig."""
 
-import pytest
-
 from lexigram.ai.observability.config import ObservabilityConfig
-from lexigram.contracts.core.config import ConfigIssue, Environment
+from lexigram.contracts.core.config import Environment
 
 
 class TestObservabilityConfigDefaults:
@@ -24,6 +22,14 @@ class TestObservabilityConfigDefaults:
     def test_health_checks_enabled_defaults_to_true(self):
         config = ObservabilityConfig()
         assert config.health_checks_enabled is True
+
+    def test_trace_redaction_enabled_defaults_to_false(self):
+        config = ObservabilityConfig()
+        assert config.trace_redaction_enabled is False
+
+    def test_trace_max_attribute_length_defaults_to_zero(self):
+        config = ObservabilityConfig()
+        assert config.trace_max_attribute_length == 0
 
 
 class TestObservabilityConfigEnvironmentOverrides:
@@ -46,6 +52,8 @@ class TestObservabilityConfigValidation:
             enabled=True,
             metrics_enabled=True,
             tracing_enabled=True,
+            health_checks_enabled=True,
+            trace_redaction_enabled=True,
         )
         issues = config.validate_for_environment(Environment.PRODUCTION)
         assert issues == []
@@ -66,11 +74,34 @@ class TestObservabilityConfigValidation:
             enabled=True,
             metrics_enabled=False,
             tracing_enabled=True,
+            trace_redaction_enabled=True,
         )
         issues = config.validate_for_environment(Environment.PRODUCTION)
         assert len(issues) == 1
         assert issues[0].field == "metrics_enabled"
         assert issues[0].severity == "warning"
+
+    def test_production_warns_when_trace_redaction_disabled(self):
+        config = ObservabilityConfig(
+            enabled=True,
+            metrics_enabled=True,
+            tracing_enabled=True,
+            trace_redaction_enabled=False,
+        )
+        issues = config.validate_for_environment(Environment.PRODUCTION)
+        assert len(issues) == 1
+        assert issues[0].field == "trace_redaction_enabled"
+        assert issues[0].severity == "warning"
+
+    def test_production_does_not_warn_when_tracing_disabled(self):
+        config = ObservabilityConfig(
+            enabled=True,
+            metrics_enabled=True,
+            tracing_enabled=False,
+            trace_redaction_enabled=False,
+        )
+        issues = config.validate_for_environment(Environment.PRODUCTION)
+        assert [i.field for i in issues] == ["tracing_enabled"]
 
     def test_production_warns_when_both_disabled(self):
         config = ObservabilityConfig(
