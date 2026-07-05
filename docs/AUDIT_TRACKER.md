@@ -343,6 +343,18 @@ Verified: lexigram-monitor 331 unit tests green (6 new/updated files), mypy clea
 
 ---
 
+### 3.19 Features empty `user_attributes` rule fails open (Round 11, Lane 7) — `plans/2026-08-18-security-features-empty-rule-failopen.md` `[ ]`
+
+**EXECUTED 2026-08-18 (Lane 7, Area 4; §2 sign-off pending).** Finding §55: `_evaluate_user_attribute()` returned `enabled=True` (`reason="user_attribute_empty_rule"`) for an empty `flag.user_attributes` — a misconfiguration granted everything. Now fail-closed via the package's `DEFAULT_ENABLED=False` with `reason="user_attribute_empty_rule_denied"`, plus a once-per-flag `logger.warning` debounced by a module-level set (spec §4.2 RECOMMENDED). 2 commits:
+
+- [x] Task 1 (fail-closed) — empty-rule branch returns `enabled=DEFAULT_ENABLED`; `DEFAULT_ENABLED` docstring broadened to cover unconfigured-rule use — `e0d65c2`
+- [x] Task 2 (warn-once) — module logger + `_warned_empty_user_attribute_rules` set; `logger.warning("user_attribute_empty_rule_denied", flag=...)` at most once per flag per process; autouse fixture clears the set for test independence — `6758708`
+- [x] Task 3 (verification) — full suite 256 passed / 6 skipped (redis compliance auto-skip), ruff + format clean, two-pass review clean (D1 only-branch change, D2 once-per-flag, no other evaluation strategy touched per spec §6)
+
+Deviations: same `_NamedLogger` read-only constraint as §3.18 — warning spy patches the module-level `logger` attribute; ruff `PT022` on the plan's `yield`-without-teardown fixture → plain function fixture; plan's note about isort ordering confirmed (ruff `--fix` sorted the import block).
+
+---
+
 ## 4. Audit-Correction Register
 
 Agents re-verified every finding against live code; corrections below must
