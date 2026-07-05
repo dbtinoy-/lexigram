@@ -9,12 +9,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from lexigram.result import Ok
 
+from lexigram.ai.workers.document_ingestion import UniversalDocumentParser
 from lexigram.ai.workers.document_ingestion.types import (
     IngestionProgress,
     IngestionResult,
     IngestionStatus,
 )
 from lexigram.ai.workers.document_ingestion.worker import DocumentIngestionWorker
+from lexigram.contracts.ai.exceptions import RAGError
 
 
 class TestDocumentIngestionWorker:
@@ -95,3 +97,40 @@ class TestDocumentIngestionWorker:
         assert stats["worker_id"] == "document-ingestion"
         assert stats["running"] is False
         assert stats["concurrency"] == 1
+
+    @pytest.mark.asyncio
+    async def test_worker_forwards_allowed_root_to_default_parser(
+        self, store: MagicMock, queue: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test allowed_root reaches the default parser and is enforced."""
+        root = tmp_path / "doc_root"
+        root.mkdir()
+        (root / "safe.txt").write_text("inside the root", encoding="utf-8")
+        secret = tmp_path / "secret.txt"
+        secret.write_text("secret", encoding="utf-8")
+        worker = DocumentIngestionWorker(
+            vector_store=store,
+            queue=queue,
+            allowed_root=root,
+        )
+
+        assert isinstance(worker.document_parser, UniversalDocumentParser)
+        assert worker.document_parser.allowed_root == root.resolve()
+
+        with pytest.raises(RAGError, match="outside the allowed root"):
+            await worker.document_parser.parse(secret)
+
+    @pytest.mark.asyncio
+    async def test_worker_uses_custom_parser_when_provided(
+        self, store: MagicMock, queue: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test a caller-supplied parser is used as-is; allowed_root is inert."""
+        custom = MagicMock(spec=UniversalDocumentParser)
+        worker = DocumentIngestionWorker(
+            vector_store=store,
+            queue=queue,
+            document_parser=custom,
+            allowed_root=tmp_path,
+        )
+
+        assert worker.document_parser is custom

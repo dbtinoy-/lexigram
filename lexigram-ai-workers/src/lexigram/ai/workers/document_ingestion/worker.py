@@ -53,6 +53,7 @@ class DocumentIngestionWorker:
         concurrency: int = 3,
         default_chunking_config: ChunkingConfigDict | None = None,
         document_parser: DocumentParser | None = None,
+        allowed_root: Path | None = None,
     ):
         """
         Initialize document ingestion worker.
@@ -63,14 +64,21 @@ class DocumentIngestionWorker:
             worker_id: Unique worker identifier
             concurrency: Number of concurrent document processing tasks
             default_chunking_config: Default chunking configuration
-            document_parser: Document parser to use (defaults to UniversalDocumentParser)
+            document_parser: Document parser to use (defaults to
+                UniversalDocumentParser)
+            allowed_root: Optional directory that every ingested source must
+                resolve inside of; forwarded to the default
+                ``UniversalDocumentParser``. Ignored when ``document_parser``
+                is supplied — custom parsers own their own path policy.
         """
         self.vector_store = vector_store
         self.queue = queue
         self.worker_id = worker_id
         self.concurrency = concurrency
         self.default_chunking_config = default_chunking_config or {}
-        self.document_parser = document_parser or UniversalDocumentParser()
+        self.document_parser = document_parser or UniversalDocumentParser(
+            allowed_root=allowed_root
+        )
 
         # Initialize components
         self.progress_tracker = ProgressTracker()
