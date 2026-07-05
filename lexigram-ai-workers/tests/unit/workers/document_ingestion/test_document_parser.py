@@ -9,6 +9,7 @@ import pytest
 
 from lexigram.ai.workers.document_ingestion.parser import UniversalDocumentParser
 from lexigram.ai.workers.document_ingestion.types import Document
+from lexigram.contracts.ai.exceptions import RAGError
 
 
 class TestUniversalDocumentParser:
@@ -156,3 +157,72 @@ class TestUniversalDocumentParser:
 
         assert "Hello" in doc.content
         assert "世界" in doc.content
+
+    @pytest.fixture
+    def doc_root(self, tmp_path: Path) -> Path:
+        """Create the allowed document root with one real file inside."""
+        root = tmp_path / "doc_root"
+        root.mkdir()
+        (root / "safe.txt").write_text("inside the root", encoding="utf-8")
+        return root
+
+    @pytest.mark.asyncio
+    async def test_parse_with_allowed_root_accepts_file_inside(
+        self, doc_root: Path
+    ) -> None:
+        """Test a file inside allowed_root parses unchanged."""
+        parser = UniversalDocumentParser(allowed_root=doc_root)
+
+        doc = await parser.parse(doc_root / "safe.txt")
+
+        assert doc.metadata["file_name"] == "safe.txt"
+
+    @pytest.mark.asyncio
+    async def test_parse_with_allowed_root_rejects_dotdot_escape(
+        self, doc_root: Path, tmp_path: Path
+    ) -> None:
+        """Test a dotdot-relative source outside allowed_root raises RAGError."""
+        secret = tmp_path / "secret.txt"
+        secret.write_text("secret", encoding="utf-8")
+        parser = UniversalDocumentParser(allowed_root=doc_root)
+
+        with pytest.raises(RAGError, match="outside the allowed root"):
+            await parser.parse(doc_root / ".." / "secret.txt")
+
+    @pytest.mark.asyncio
+    async def test_parse_with_allowed_root_rejects_absolute_escape(
+        self, doc_root: Path, tmp_path: Path
+    ) -> None:
+        """Test an absolute source outside allowed_root raises RAGError."""
+        secret = tmp_path / "secret.txt"
+        secret.write_text("secret", encoding="utf-8")
+        parser = UniversalDocumentParser(allowed_root=doc_root)
+
+        with pytest.raises(RAGError, match="outside the allowed root"):
+            await parser.parse(secret)
+
+    @pytest.mark.asyncio
+    async def test_parse_with_allowed_root_rejects_symlink_escape(
+        self, doc_root: Path, tmp_path: Path
+    ) -> None:
+        """Test a symlink pointing outside allowed_root raises RAGError."""
+        secret = tmp_path / "secret.txt"
+        secret.write_text("secret", encoding="utf-8")
+        link = doc_root / "link.txt"
+        link.symlink_to(secret)
+        parser = UniversalDocumentParser(allowed_root=doc_root)
+
+        with pytest.raises(RAGError, match="outside the allowed root"):
+            await parser.parse(link)
+
+    @pytest.mark.asyncio
+    async def test_extract_metadata_with_allowed_root_rejects_escape(
+        self, doc_root: Path, tmp_path: Path
+    ) -> None:
+        """Test extract_metadata enforces the same containment check."""
+        secret = tmp_path / "secret.txt"
+        secret.write_text("secret", encoding="utf-8")
+        parser = UniversalDocumentParser(allowed_root=doc_root)
+
+        with pytest.raises(RAGError, match="outside the allowed root"):
+            await parser.extract_metadata(doc_root / ".." / "secret.txt")
