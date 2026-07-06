@@ -231,9 +231,7 @@ class AdminAuthSubProvider:
                     require_lowercase=getattr(_pp_cfg, "require_lowercase", True),
                     require_digits=getattr(_pp_cfg, "require_digit", True),
                     require_special=getattr(_pp_cfg, "require_special", True),
-                    prevent_common=getattr(
-                        _pp_cfg, "reject_common_passwords", True
-                    ),
+                    prevent_common=getattr(_pp_cfg, "reject_common_passwords", True),
                 ),
                 reject_containing_email=getattr(
                     _pp_cfg, "reject_containing_email", True

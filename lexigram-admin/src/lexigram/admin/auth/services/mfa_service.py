@@ -89,9 +89,7 @@ class AdminMfaService:
                 )
             )
         secret = generate_totp_secret()
-        uri = get_provisioning_uri(
-            secret, username=email, issuer=self._config.issuer
-        )
+        uri = get_provisioning_uri(secret, username=email, issuer=self._config.issuer)
         svg = segno.make(uri).svg_inline(scale=4)
         return Ok((secret, uri, svg))
 
@@ -153,9 +151,7 @@ class AdminMfaService:
             )
         return Ok(verify_totp(secret, code, window=self._config.skew))
 
-    async def disable(
-        self, user_id: str, code: str
-    ) -> Result[bool, AdminAuthError]:
+    async def disable(self, user_id: str, code: str) -> Result[bool, AdminAuthError]:
         """Disable 2FA for a user (requires a valid current code).
 
         Args:
