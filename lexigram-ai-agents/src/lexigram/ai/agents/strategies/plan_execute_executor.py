@@ -247,9 +247,11 @@ async def execute_reasoning_step(
 ) -> str:
     """Execute a reasoning-only plan step via the LLM.
 
-    Returns the extracted ``STEP_RESULT:`` text, or the raw LLM response
-    truncated to ``observation_max_chars`` if no marker is found.  Args
-    are the same as :func:`execute_tool_step` plus ``usage``.
+    Returns:
+        The guarded observation text — the extracted ``STEP_RESULT:``
+        value, or the raw LLM response when no marker is found — truncated
+        to ``observation_max_chars``.  Args are the same as
+        :func:`execute_tool_step` plus ``usage``.
     """
     completed = format_completed_steps(plan)
     exec_prompt = EXECUTION_PROMPT.format(

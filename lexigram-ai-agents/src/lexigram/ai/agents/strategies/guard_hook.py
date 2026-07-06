@@ -80,4 +80,5 @@ async def guard_observation(
         reason = getattr(blocking, "reason", None) or "Tool output blocked by guards"
         raise ToolObservationBlockedError(reason)
 
-    return str(getattr(agg, "final_content", content) or content)
+    final = getattr(agg, "final_content", content)
+    return str(final if final is not None else content)

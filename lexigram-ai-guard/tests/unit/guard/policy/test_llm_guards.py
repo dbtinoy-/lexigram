@@ -272,6 +272,23 @@ class TestLLMJailbreakFailClosed:
         assert isinstance(result.unwrap_err(), GuardError)
 
     @pytest.mark.asyncio
+    async def test_fail_open_false_returns_err_on_err_result(self) -> None:
+        """The Err-result site is infra-class too — fails closed."""
+        from unittest.mock import AsyncMock
+
+        from lexigram.ai.guard.input.llm_jailbreak import LLMJailbreakDetector
+        from lexigram.contracts.ai.exceptions import GuardError
+        from lexigram.result import Err
+
+        llm = AsyncMock()
+        llm.complete.return_value = Err(ValueError("provider down"))
+
+        guard = LLMJailbreakDetector(llm=llm, fail_open=False)
+        result = await guard.check("hello")
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), GuardError)
+
+    @pytest.mark.asyncio
     async def test_fail_open_true_keeps_legacy_allow_through(self) -> None:
         from unittest.mock import AsyncMock
 

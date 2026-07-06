@@ -671,3 +671,62 @@ class TestAgentExecutorGuardPipeline:
         result = await executor.run(agent=agent, message="Hello")
         assert result.is_ok()
         assert CaptureStrategy.seen is pipeline
+
+    @pytest.mark.asyncio
+    async def test_strategy_guard_exception_maps_to_err(self):
+        """A raised guard-observation exception must surface as Err(AgentError)."""
+
+        from lexigram.ai.agents.strategies.guard_hook import (
+            ToolObservationBlockedError,
+        )
+
+        class RaisingStrategy:
+            async def execute(self, message, **kwargs):
+                raise ToolObservationBlockedError("guard blocked tool output")
+
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=MockGuardPipeline(input_action="allow")),
+            llm=MockLLM(),
+        )
+        agent = MockAgent(name="test")
+        agent.strategy = RaisingStrategy()
+
+        result = await executor.run(agent=agent, message="Hello")
+
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), AgentError)
+        assert "blocked by guards" in str(result.unwrap_err())
+
+    @pytest.mark.asyncio
+    async def test_agent_level_pipeline_wins_over_executor_pipeline(self):
+        """The agent-level override must take precedence over the DI pipeline."""
+
+        executor_pipeline = MockGuardPipeline(input_action="block")
+        agent_pipeline = MockGuardPipeline(input_action="allow")
+
+        class CaptureStrategy:
+            seen = None
+
+            async def execute(self, message, **kwargs):
+                type(self).seen = kwargs.get("guard_pipeline")
+                from lexigram.contracts.ai.agents import AgentResponse
+                from lexigram.result import Ok
+
+                return Ok(
+                    AgentResponse(message="done", total_tokens=0, tool_calls=[])
+                )
+
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=executor_pipeline),
+            llm=MockLLM(),
+        )
+        agent = MockAgent(name="test")
+        agent.strategy = CaptureStrategy()
+        agent.guard_pipeline = agent_pipeline
+
+        result = await executor.run(agent=agent, message="Hello")
+
+        assert result.is_ok()
+        assert CaptureStrategy.seen is agent_pipeline
+        assert agent_pipeline.input_called is True
+        assert executor_pipeline.input_called is False

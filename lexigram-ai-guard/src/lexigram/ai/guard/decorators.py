@@ -41,7 +41,10 @@ def _first_string_arg(args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
 def _final_content(check_result: Any) -> str | None:
     """Extract the possibly-redacted final content from an aggregate result."""
     try:
-        return str(getattr(check_result, "final_content", None) or "")
+        content = getattr(check_result, "final_content", None)
+        if content is None:
+            return None
+        return str(content)
     except (TypeError, ValueError):
         return None
 
@@ -102,13 +105,12 @@ def guarded(
                 agg = in_res.unwrap()
                 if bool(getattr(agg, "blocked", False)):
                     blocking = getattr(agg, "blocking_result", None)
-                    reason = (
-                        getattr(blocking, "reason", None)
-                        or "Input blocked by security guards"
+                    reason = getattr(blocking, "details", {}).get("reason", "")
+                    raise GuardPipelineError(
+                        f"Input blocked by security guards: {reason}"
                     )
-                    raise GuardPipelineError(reason)
                 redacted = _final_content(agg)
-                if redacted:
+                if redacted is not None:
                     args, kwargs = _replace_first_string(args, kwargs, redacted)
 
             result = await func(*args, **kwargs)
@@ -121,15 +123,14 @@ def guarded(
                 if out_res.is_err():
                     raise GuardPipelineError(
                         f"Output guard failed: {out_res.unwrap_err()}"
-                    )
+                    ) from out_res.unwrap_err()
                 out_agg = out_res.unwrap()
                 if bool(getattr(out_agg, "blocked", False)):
                     blocking = getattr(out_agg, "blocking_result", None)
-                    reason = (
-                        getattr(blocking, "reason", None)
-                        or "Output blocked by security guards"
+                    reason = getattr(blocking, "details", {}).get("reason", "")
+                    raise GuardPipelineError(
+                        f"Output blocked by security guards: {reason}"
                     )
-                    raise GuardPipelineError(reason)
                 final = _final_content(out_agg)
                 if final is not None:
                     result = final
