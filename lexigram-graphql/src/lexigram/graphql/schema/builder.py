@@ -223,6 +223,38 @@ class SchemaBuilderProtocol:
         if self._scalar_overrides:
             schema_kwargs["scalar_overrides"] = self._scalar_overrides
 
+        from lexigram.graphql.security.alias import AliasLimitExtension
+        from lexigram.graphql.security.complexity import ComplexityLimitExtension
+        from lexigram.graphql.security.depth import DepthLimitExtension
+
+        cfg = self._config
+        security_extensions: list[Any] = []
+        if cfg.depth_limit.enabled:
+            security_extensions.append(
+                DepthLimitExtension(
+                    max_depth=cfg.depth_limit.max_depth,
+                    ignore_introspection=cfg.depth_limit.ignore_introspection,
+                )
+            )
+        if cfg.complexity.enabled:
+            security_extensions.append(
+                ComplexityLimitExtension(
+                    max_complexity=cfg.complexity.max_complexity,
+                    default_field_cost=cfg.complexity.default_field_cost,
+                    default_list_cost=cfg.complexity.default_list_cost,
+                )
+            )
+        if cfg.alias_limit.enabled:
+            security_extensions.append(
+                AliasLimitExtension(max_aliases=cfg.alias_limit.max_aliases)
+            )
+
+        if security_extensions:
+            schema_kwargs["extensions"] = [
+                *security_extensions,
+                *self._extensions,
+            ]
+
         # Create schema
         schema = Schema(**schema_kwargs)
 
