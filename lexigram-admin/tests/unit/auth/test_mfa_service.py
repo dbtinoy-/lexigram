@@ -131,6 +131,21 @@ async def test_verify_code_accepts_live_code() -> None:
 
 
 @pytest.mark.asyncio
+async def test_verify_code_accepts_lexigram_auth_generated_code() -> None:
+    """Parity: codes produced by lexigram-auth's own TOTP engine verify."""
+    from lexigram.auth.authn.mfa import generate_totp_code, generate_totp_secret
+
+    secret = generate_totp_secret()
+    service, _, _ = _make_service(secret=secret)
+    code = generate_totp_code(secret)
+
+    result = await service.verify_code("user-001", code)
+
+    assert result.is_ok()
+    assert result.unwrap() is True
+
+
+@pytest.mark.asyncio
 async def test_verify_code_rejects_random_code() -> None:
     service, _, _ = _make_service(secret=pyotp.random_base32())
 

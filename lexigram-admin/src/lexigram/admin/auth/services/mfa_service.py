@@ -1,14 +1,15 @@
 """TOTP two-factor authentication service for the admin panel.
 
 Owns the 2FA lifecycle: secret generation, QR provisioning, code
-verification, and disable.  Depends only on the MFA store protocol and
-(optionally) the audit log service, so it is trivially testable without
-a database.
+verification, and disable.  TOTP math is delegated to lexigram-auth's
+``authn.mfa`` primitives (RFC 6238 single source of truth); this module
+keeps the admin store wiring and the QR SVG rendering.  Depends only on
+the MFA store protocol and (optionally) the audit log service, so it is
+trivially testable without a database.
 """
 
 from __future__ import annotations
 
-import pyotp
 import segno
 
 from lexigram.admin.auth.errors import (
@@ -22,6 +23,11 @@ from lexigram.admin.auth.protocols import (
 )
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminMfaConfig
+from lexigram.auth.authn.mfa import (
+    generate_totp_secret,
+    get_provisioning_uri,
+    verify_totp,
+)
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 
@@ -82,9 +88,9 @@ class AdminMfaService:
                     "Two-factor authentication is disabled for this panel."
                 )
             )
-        secret = pyotp.random_base32()
-        uri = pyotp.TOTP(secret).provisioning_uri(
-            name=email, issuer_name=self._config.issuer
+        secret = generate_totp_secret()
+        uri = get_provisioning_uri(
+            secret, username=email, issuer=self._config.issuer
         )
         svg = segno.make(uri).svg_inline(scale=4)
         return Ok((secret, uri, svg))
@@ -110,7 +116,7 @@ class AdminMfaService:
                     "Two-factor authentication is disabled for this panel."
                 )
             )
-        if not pyotp.TOTP(secret).verify(code, valid_window=self._config.skew):
+        if not verify_totp(secret, code, window=self._config.skew):
             return Err(MfaVerificationFailedError("Invalid verification code."))
         await self._store.save_secret(user_id, secret)
         if self._audit_service is not None:
@@ -145,7 +151,7 @@ class AdminMfaService:
                     "Two-factor authentication is not enabled for this account."
                 )
             )
-        return Ok(pyotp.TOTP(secret).verify(code, valid_window=self._config.skew))
+        return Ok(verify_totp(secret, code, window=self._config.skew))
 
     async def disable(
         self, user_id: str, code: str
