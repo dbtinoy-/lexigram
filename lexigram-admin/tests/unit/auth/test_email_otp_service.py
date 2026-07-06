@@ -115,12 +115,34 @@ async def test_send_otp_sends_and_persists_code() -> None:
     kwargs = notifier.notify_email_otp.await_args.kwargs
     assert kwargs["user_email"] == "admin@example.com"
     code = kwargs["code"]
-    assert code.isdigit() and len(code) == 6
+    assert code.isdigit()
+    assert len(code) == 6
     assert _hash(code) == code_hash
     audit.log_event.assert_awaited_once()
     audit_kwargs = audit.log_event.await_args.kwargs
     assert audit_kwargs["event_type"] == AdminSecurityEventType.EMAIL_OTP_SENT
     assert audit_kwargs["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_email_otp_parity_with_auth_primitives() -> None:
+    """Parity: issued code is lexigram-auth derived, 6-digit, digest-verified."""
+    from lexigram.auth.authn.mfa import generate_totp_code, generate_totp_secret
+
+    store = _make_store()
+    notifier = _make_notifier()
+    svc = _make_service(store=store, notifier=notifier)
+    secret = generate_totp_secret()
+    expected = generate_totp_code(secret, period=5 * 60)
+
+    result = await svc.send_otp("user-001", "admin@example.com", "Admin")
+
+    assert result.is_ok()
+    code = notifier.notify_email_otp.await_args.kwargs["code"]
+    assert code.isdigit()
+    assert len(code) == 6
+    assert _hash(code) == store.save.await_args.args[1]
+    assert code != expected  # issued codes vary per secret
 
 
 @pytest.mark.asyncio

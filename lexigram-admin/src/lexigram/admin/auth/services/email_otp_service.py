@@ -1,7 +1,9 @@
 """Admin email one-time-password (login factor) service.
 
 Handles issuing, delivering, and consuming emailed 6-digit codes used as
-the config-chosen second factor.  Depends only on
+the config-chosen second factor.  Code issuance delegates to
+lexigram-auth's RFC 6238 primitives (``authn.mfa``, period = code TTL);
+storage is a sha256 digest verified by atomic consume.  Depends only on
 ``AdminEmailOtpStoreProtocol`` from ``lexigram.admin.auth.protocols``.
 """
 
@@ -9,7 +11,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 import hashlib
-import secrets
 from typing import TYPE_CHECKING
 
 from lexigram.admin.auth.errors import (
@@ -19,6 +20,7 @@ from lexigram.admin.auth.errors import (
 )
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminEmailOtpConfig
+from lexigram.auth.authn.mfa import generate_totp_code, generate_totp_secret
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
@@ -96,7 +98,8 @@ class AdminEmailOtpService:
                     )
                 )
 
-        code = f"{secrets.randbelow(900000) + 100000}"
+        secret = generate_totp_secret()
+        code = generate_totp_code(secret, period=self._config.ttl_minutes * 60)
         code_hash = hashlib.sha256(code.encode()).hexdigest()
         expires_at = datetime.now(UTC) + timedelta(minutes=self._config.ttl_minutes)
         await self._store.save(user_id, code_hash, expires_at)
