@@ -355,6 +355,18 @@ Deviations: same `_NamedLogger` read-only constraint as §3.18 — warning spy p
 
 ---
 
+### 3.20 Workflow checkpoint `list_by_stage` SQL interpolation (Round 11, Lane 7) — `plans/2026-08-18-security-workflow-checkpoint-sql.md` `[ ]`
+
+**EXECUTED 2026-08-18 (Lane 7, Area 5; §2 sign-off pending).** Finding §79: `DatabaseContentCheckpointStore.list_by_stage()` hand-escaped single quotes for `stage_id`/`tenant_id` and interpolated them (plus `LIMIT`) into the SQL string via raw f-string — SQL injection surface contrasting with sibling `get()`/`set()`/`evict()` that parameterize. Now binds `stage_id` pattern, optional `tenant_id` pattern, and `limit` as positional `?` params via `execute_query`; `table_name` remains identifier-interpolated (allowlisted by `_TABLE_NAME_RE`, spec out of scope). 1 commit + docs:
+
+- [x] Task 1 (TDD) — 3 regression tests appended to `test_store_database.py` (exact bound-SQL shape with/without tenant; `'); DROP TABLE workflow_content_checkpoints; --` payload never in the SQL string — `sql.count("?") == 3`, no `'`/`DROP TABLE`, payload only in params) → red against old f-string code → `list_by_stage()` rewritten with `where_parts` + `params` — `1d45ce9d`
+- [x] Task 2 (reviewer approval) — human-approved
+- [x] Task 3 (verification) — full lexigram-workflow suite 579 passed / 4 warnings (576 baseline + 3 new), ruff + format clean on touched trees, mypy clean except pre-existing `unreachable` at store_database.py:70 (present on pristine HEAD)
+
+Deviations: (1) ruff format fallout on pre-existing lines in `test_store_database.py` (docstring blank line, `_query_result([...])` reflow, slice spacing) — accepted per Area 4 precedent, file was already unformatted per `ruff format --check`; (2) workspace `extend-exclude` skips `**/tests/**` so package-wide ruff (`rtk ruff check src` → `[]`) is the canonical gate; explicit-file runs surface only pre-existing `PT001` ×4 on untouched fixture decorators. Concurrent-lane caution: `lexigram-workflow/state/persistence.py` has foreign uncommitted edits — never staged (only `checkpoint/` files staged).
+
+---
+
 ## 4. Audit-Correction Register
 
 Agents re-verified every finding against live code; corrections below must
@@ -855,7 +867,7 @@ theoretical one — reflected in the severity below.
 
 | # | Area | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|
-| 50 | **`lexigram-ai-governance` Redis persistence silently fails open, disabling budget/RPM enforcement** | High ×1 | `docs/superpowers/specs/2026-08-18-security-ai-governance-redis-failopen-design.md` | Not yet written |
+| 50 | **`lexigram-ai-governance` Redis persistence silently fails open, disabling budget/RPM enforcement** | High ×1 | `docs/superpowers/specs/2026-08-18-security-ai-governance-redis-failopen-design.md` | **EXECUTED 2026-08-18 (Lane 6: `a0acc4a8`, `718285ef`, `5f1386f8`, `8f3995e8`; §2 sign-off pending) — see TRACKER.md Lane 6** |
 | 51 | **`lexigram-ai-governance` → `lexigram-tasks` cross-extension import** | Low ×1 | `docs/superpowers/specs/2026-08-18-architecture-ai-governance-tasks-import-design.md` | Not yet written |
 | 52 | **`lexigram-ai-observability` trace spans carry unredacted tool/agent/retriever payloads** | Med ×1 | `docs/superpowers/specs/2026-08-18-security-ai-observability-trace-redaction-design.md` | Not yet written |
 | 53 | **`lexigram-ai-workers` document-ingestion accepts unvalidated file paths (traversal / arbitrary read)** | High ×1 | `docs/superpowers/specs/2026-08-18-security-ai-workers-path-traversal-design.md` | Not yet written |
@@ -864,7 +876,7 @@ theoretical one — reflected in the severity below.
 | 56 | **`lexigram-monitor` `/health`+`/metrics` unauthenticated, and health checks may leak raw exception strings** | Med ×2 | `docs/superpowers/specs/2026-08-18-security-monitor-health-metrics-authz-design.md` | Not yet written |
 | 57 | **`lexigram-monitor` still hard-depends on `lexigram-tasks` at the packaging level** | Low ×1 | `docs/superpowers/specs/2026-08-18-architecture-monitor-tasks-dependency-design.md` | Not yet written |
 | 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 | `docs/superpowers/specs/2026-08-18-quality-resilience-throttle-dead-decorator-design.md` | Not yet written |
-| 59 | **`lexigram-resilience` idempotency fails open on store outage, and two `unwrap()`-without-guard sites can defeat even that fallback** | Med-High ×1 | `docs/superpowers/specs/2026-08-18-security-resilience-idempotency-failopen-unwrap-design.md` | Not yet written |
+| 59 | **`lexigram-resilience` idempotency fails open on store outage, and two `unwrap()`-without-guard sites can defeat even that fallback** | Med-High ×1 | `docs/superpowers/specs/2026-08-18-security-resilience-idempotency-failopen-unwrap-design.md` | **EXECUTED 2026-08-18 (Lane 6: `a962b604`, `b750454b`; §2 sign-off pending) — see TRACKER.md Lane 6** |
 | 60 | **`lexigram-resilience` database idempotency store's "dialect-aware" placeholder is hardcoded to `?`, breaking Postgres — deeper than reported (naive `.replace()` also can't produce sequential `$1,$2,...` for multi-param queries)** | Low ×1 | `docs/superpowers/specs/2026-08-18-quality-resilience-idempotency-placeholder-design.md` | Not yet written |
 
 **§50 — `RedisGovernancePersistence` fail-open on every error path (High).**
@@ -1123,7 +1135,7 @@ claim, only the most consequential ones.
 
 | § | Package | Finding | Severity | Spec |
 |---|---|---|---|---|
-| 61 | lexigram-ai | Governance DI register/boot-ordering bug — `gov_persistence` wiring built during `register()` always sees pre-boot `None` for `_database_provider`/`_cache_backend`; entry-point double-registration silently overwrites the correctly-wired instance | High | `docs/superpowers/specs/2026-08-18-security-ai-governance-di-ordering-design.md` |
+| 61 | lexigram-ai | Governance DI register/boot-ordering bug — `gov_persistence` wiring built during `register()` always sees pre-boot `None` for `_database_provider`/`_cache_backend`; entry-point double-registration silently overwrites the correctly-wired instance | High | `docs/superpowers/specs/2026-08-18-security-ai-governance-di-ordering-design.md` | **EXECUTED 2026-08-18 (Lane 6: `a332e78b`, `0407f154`, `55643200`, `beea2acc`; §2 sign-off pending) — see TRACKER.md Lane 6** |
 | 62 | lexigram-ai-evaluation | Fail-open scoring on empty reference set | Medium | `docs/superpowers/specs/2026-08-18-quality-ai-evaluation-empty-reference-design.md` |
 | 63 | lexigram-ai-feedback | No tenant/user scoping on feedback records | Medium | `docs/superpowers/specs/2026-08-18-security-ai-feedback-tenant-scoping-design.md` |
 | 64 | lexigram-ai-feedback | `FeedbackSystemWithResultPattern` is a fake-persistence stub — always returns `Ok(...)`, never stores, `get_feedback()` always returns `Ok([])`; publicly exported in `__all__` alongside the real service | High | `docs/superpowers/specs/2026-08-18-quality-ai-feedback-fake-persistence-design.md` |
@@ -1131,7 +1143,7 @@ claim, only the most consequential ones.
 | 66 | lexigram-audit | Tamper-verification is a permanent no-op — `verify_recent()` unconditionally returns `[]`, `verify_entry()` unconditionally returns `True`; admin UI's "verified" flag is therefore always green | Critical | `docs/superpowers/specs/2026-08-18-security-audit-verification-noop-design.md` | **EXECUTED 2026-08-18 (Lane 7, Area 2; §2 sign-off pending) — see §3.17** |
 | 67 | lexigram-audit | `purge_expired()` counts expired entries but never calls any store delete method — retention purge silently doesn't delete anything | High | `docs/superpowers/specs/2026-08-18-security-audit-purge-noop-design.md` | **EXECUTED 2026-08-18 (Lane 7, Area 1; §2 sign-off pending) — see §3.16** |
 | 68 | lexigram-audit | Blind `except` in log/query path | Medium | `docs/superpowers/specs/2026-08-18-quality-audit-blind-except-design.md` |
-| 69 | lexigram-events | WebSocket streaming endpoint gained an optional `authorize` callback (`21bdf478`) but still defaults to accepting every connection — default-open posture documented (`a54711ec`); `subscribe_all` still has no tenant/event filtering hook | Critical | `docs/superpowers/specs/2026-08-18-security-events-websocket-noauth-design.md` |
+| 69 | lexigram-events | WebSocket streaming endpoint gained an optional `authorize` callback (`21bdf478`) but still defaults to accepting every connection — default-open posture documented (`a54711ec`); `subscribe_all` still has no tenant/event filtering hook | Critical | `docs/superpowers/specs/2026-08-18-security-events-websocket-noauth-design.md` | **EXECUTED 2026-08-18 (Lane 6: `21bdf478`, `a54711ec`; §2 sign-off pending) — see TRACKER.md Lane 6; default-open posture remains: operator must supply `authorize`** |
 | 70 | lexigram-events | `subscribe()`'s `event_filter` parameter is silently discarded (`_ = event_filter`, explicit "not implemented" comment) — filtering was never built despite the parameter existing in the public API | High | `docs/superpowers/specs/2026-08-18-quality-events-filter-not-implemented-design.md` |
 | 71 | lexigram-events | Unbounded idempotent-decorator cache / unvalidated `table_name` | Medium | `docs/superpowers/specs/2026-08-18-quality-events-cache-tablename-design.md` |
 | 72 | lexigram-queue | Default driver (`InMemoryQueue`) has no backpressure/`max_in_flight` limit, unlike every other backend (Kafka/SQS/Azure/GCP) — unbounded task spawning under load | High | `docs/superpowers/specs/2026-08-18-resilience-queue-memory-backpressure-design.md` |
@@ -1152,6 +1164,7 @@ claim, only the most consequential ones.
 - `lexigram-queue`'s Kafka/SQS/Azure Service Bus/GCP Pub/Sub backends — all implement proper `max_in_flight`-based backpressure with per-message task isolation (contrast §72/§73, which are specific to the in-memory default and Redis backend).
 - `lexigram-workflow`'s dynamic-code-execution and checkpoint-deserialization surfaces — reviewed, clean (contrast §79, which is a narrower SQL-interpolation issue in one query method, not a deserialization/eval risk).
 - Fernet encryption usage and JSON-only serialization — confirmed consistent and correct across all 9 packages swept this round.
+- Dependency hygiene (2026-08-18): `python-jose`/`ecdsa` removed from the tree (CVE-2024-23342 Minerva timing attack, no upstream fix; pip-audit clean after removal). Only runtime call site was the diagnostic `get_unverified_header()` in `lexigram-admin/.../guards.py` — replaced with a stdlib base64url header decode; auth test token minting switched to `pyjwt` (already a dependency).
 
 ### Recurring shapes
 
