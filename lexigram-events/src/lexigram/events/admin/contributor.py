@@ -59,6 +59,19 @@ _WIDGETS: tuple[DashboardWidgetDefinition, ...] = (
         view_kind=WidgetKind.STAT,
         description="Number of events currently sitting in the dead-letter queue.",
     ),
+    DashboardWidgetDefinition(
+        name="live_events",
+        title="Live Events",
+        contributor="events",
+        render_endpoint="/admin/events/widgets/live_events",
+        size=WidgetSize.LARGE,
+        category=WidgetCategory.ACTIVITY,
+        view_kind=WidgetKind.TABLE,
+        refresh_interval_seconds=5,
+        order=70,
+        icon="radio",
+        description="Most recent domain events from the event store.",
+    ),
 )
 
 _NAV_ITEMS: tuple[NavigationContribution, ...] = (
@@ -127,6 +140,7 @@ class EventsAdminContributor(BaseAdminContributor):
     def __init__(self) -> None:
         self._throughput_handler: WidgetHandlerProtocol | None = None
         self._dead_letter_handler: WidgetHandlerProtocol | None = None
+        self._live_events_handler: WidgetHandlerProtocol | None = None
 
     async def on_admin_boot(self, container: ContainerResolverProtocol | None) -> None:
         """Resolve event admin dependencies from the DI container.
@@ -141,6 +155,9 @@ class EventsAdminContributor(BaseAdminContributor):
         )
         from lexigram.events.admin.handlers.events_throughput import (
             EventsThroughputWidgetHandler,
+        )
+        from lexigram.events.admin.handlers.live_events import (
+            LiveEventsWidgetHandler,
         )
 
         try:
@@ -162,6 +179,16 @@ class EventsAdminContributor(BaseAdminContributor):
                 "events_contributor.dead_letter_handler_unavailable", error=str(exc)
             )
             self._dead_letter_handler = None
+
+        try:
+            self._live_events_handler = await container.resolve(
+                LiveEventsWidgetHandler
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "events_contributor.live_events_handler_unavailable", error=str(exc)
+            )
+            self._live_events_handler = None
 
     def get_routes(self) -> Sequence[AdminRouteSpec]:
         return [
@@ -248,6 +275,8 @@ class EventsAdminContributor(BaseAdminContributor):
             handler = self._throughput_handler
         elif widget_name == "dead_letter_count":
             handler = self._dead_letter_handler
+        elif widget_name == "live_events":
+            handler = self._live_events_handler
         else:
             handler = None
 

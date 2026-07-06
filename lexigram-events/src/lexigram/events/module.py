@@ -58,6 +58,9 @@ class EventsModule(Module):
         from lexigram.events.admin.handlers.events_throughput import (
             EventsThroughputWidgetHandler,
         )
+        from lexigram.events.admin.handlers.live_events import (
+            LiveEventsWidgetHandler,
+        )
         from lexigram.events.di.provider import EventsProvider
 
         return DynamicModule(
@@ -70,6 +73,7 @@ class EventsModule(Module):
                 EventsAdminContributor,
                 EventsThroughputWidgetHandler,
                 DeadLetterCountWidgetHandler,
+                LiveEventsWidgetHandler,
             ],
         )
 
