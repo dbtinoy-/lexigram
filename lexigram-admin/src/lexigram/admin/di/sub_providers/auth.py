@@ -216,19 +216,24 @@ class AdminAuthSubProvider:
         container.singleton(AdminAuditLogServiceProtocol, AdminAuditLogService)
 
         # ── AdminPasswordPolicyService — pre-built from config ────────────
-        # No DI dependencies; all params come from config, so a pre-built
-        # instance is the cleanest registration approach.
+        # Rule evaluation delegates to lexigram-auth's PasswordPolicy;
+        # the admin service keeps only the email-containment rule + the
+        # admin violation/message contract.
+        from lexigram.auth import PasswordPolicy
+
         container.singleton(
             AdminPasswordPolicyServiceProtocol,
             AdminPasswordPolicyService(
-                min_length=getattr(_pp_cfg, "min_length", 12),
-                max_length=getattr(_pp_cfg, "max_length", 128),
-                require_uppercase=getattr(_pp_cfg, "require_uppercase", True),
-                require_lowercase=getattr(_pp_cfg, "require_lowercase", True),
-                require_digit=getattr(_pp_cfg, "require_digit", True),
-                require_special=getattr(_pp_cfg, "require_special", True),
-                reject_common_passwords=getattr(
-                    _pp_cfg, "reject_common_passwords", True
+                policy=PasswordPolicy(
+                    min_length=getattr(_pp_cfg, "min_length", 12),
+                    max_length=getattr(_pp_cfg, "max_length", 128),
+                    require_uppercase=getattr(_pp_cfg, "require_uppercase", True),
+                    require_lowercase=getattr(_pp_cfg, "require_lowercase", True),
+                    require_digits=getattr(_pp_cfg, "require_digit", True),
+                    require_special=getattr(_pp_cfg, "require_special", True),
+                    prevent_common=getattr(
+                        _pp_cfg, "reject_common_passwords", True
+                    ),
                 ),
                 reject_containing_email=getattr(
                     _pp_cfg, "reject_containing_email", True
