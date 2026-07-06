@@ -182,6 +182,7 @@ class DeadLetterQueueWorker:
         # DLQ storage
         self._items: dict[str, DLQItem] = {}
         self._items_lock = asyncio.Lock()
+        self.dead_letter_count = 0
 
         # Error classifier
         self._classifier = ErrorClassifier()
@@ -268,6 +269,7 @@ class DeadLetterQueueWorker:
                 )
 
                 self._items[job.id] = item
+                self.dead_letter_count += 1
 
             logger.info(
                 "Added job to DLQ",
@@ -515,6 +517,11 @@ class DeadLetterQueueWorker:
                 job_id=item.job_id,
                 error=str(enqueue_result.unwrap_err()),
             )
+            return
+
+        if not item.metadata.get("replayed"):
+            item.metadata["replayed"] = True
+            self.dead_letter_count -= 1
 
     async def _notify_permanent_failure(self, item: DLQItem) -> None:
         """Notify about permanent failure."""

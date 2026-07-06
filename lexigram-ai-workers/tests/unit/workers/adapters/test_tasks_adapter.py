@@ -239,3 +239,19 @@ class TestLexigramTasksAdapter:
         result = await adapter.count("test_queue", status=JobStatus.PENDING)
         assert result == 5
         mock_queue.count.assert_awaited_once_with("test_queue", status=JobStatus.PENDING)
+
+    @pytest.mark.asyncio
+    async def test_get_stats_reports_pending_from_task_count(self, adapter: LexigramTasksAdapter, mock_queue: MagicMock) -> None:
+        """Test get_stats reports pending from get_task_count."""
+        mock_queue.get_task_count = AsyncMock(return_value=4)
+        stats = await adapter.get_stats()
+        assert stats is not None
+        assert stats["pending"] == 4
+        assert stats["processing"] == 0
+        mock_queue.get_task_count.assert_awaited_once_with()
+
+    @pytest.mark.asyncio
+    async def test_get_stats_returns_none_without_task_count(self, adapter: LexigramTasksAdapter, mock_queue: MagicMock) -> None:
+        """Test get_stats returns None when the queue lacks get_task_count."""
+        mock_queue.get_task_count = None
+        assert await adapter.get_stats() is None

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import (
+    DlqStatsProtocol,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
@@ -12,21 +16,18 @@ from lexigram.result import Ok, Result
 class FailedMessagesWidgetHandler:
     """Fetches failed messages count.
 
+    Reads ``dead_letter_count`` from any injected store that implements
+    the ``DlqStatsProtocol`` capability; degrades gracefully otherwise.
+
     Args:
-        queue: Injected QueueProtocol.
+        queue: Capability object exposing ``get_stats()``, or ``None``.
     """
 
-    def __init__(
-        self, queue: Any
-    ) -> None:  # TODO: Replace Any with QueueProtocol when available
+    def __init__(self, queue: object | None = None) -> None:
         self._queue = queue
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch failed messages data.
-
-        Mirrors the widget template, which shows a count in danger styling
-        when non-zero and a success readout when the queue is clear.
-        Infrastructure failures propagate.
 
         Args:
             params: Widget parameters.
@@ -34,24 +35,25 @@ class FailedMessagesWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # Stub implementation — returns zero failed messages
-        # In production, would query DLQ or dead-letter storage
-        count = 0
-        oldest_age_minutes: int | None = None
-
-        stats: list[Stat] = []
+        if not isinstance(self._queue, DlqStatsProtocol):
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="Failed messages",
+                            value="Unavailable",
+                            tone=Tone.WARNING,
+                        ),
+                    )
+                )
+            )
+        stats = self._queue.get_stats() or {}
+        count = int(stats.get("dead_letter_count", 0))
         if count > 0:
-            stats.append(
-                Stat(label="Failed messages", value=str(count), tone=Tone.DANGER)
-            )
-            if oldest_age_minutes is not None:
-                stats.append(Stat(label="Oldest", value=f"{oldest_age_minutes}m ago"))
+            value, tone = str(count), Tone.DANGER
         else:
-            stats.append(
-                Stat(label="Failed messages", value="✓ No failures", tone=Tone.SUCCESS)
-            )
-
-        return Ok(StatContent(stats=tuple(stats)))
+            value, tone = "✓ No failures", Tone.SUCCESS
+        return Ok(StatContent(stats=(Stat(label="Failed messages", value=value, tone=tone),)))
 
 
 __all__ = ["FailedMessagesWidgetHandler"]

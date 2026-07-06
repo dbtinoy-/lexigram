@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import (
+    QueueStatsProtocol,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
@@ -12,21 +16,18 @@ from lexigram.result import Ok, Result
 class ConsumerLagWidgetHandler:
     """Fetches consumer lag metric.
 
+    Reads ``processing`` from any injected queue that implements the
+    ``QueueStatsProtocol`` capability; degrades gracefully otherwise.
+
     Args:
-        queue: Injected QueueProtocol.
+        queue: Capability object exposing ``get_stats()``, or ``None``.
     """
 
-    def __init__(
-        self, queue: Any
-    ) -> None:  # TODO: Replace Any with QueueProtocol when available
+    def __init__(self, queue: object | None = None) -> None:
         self._queue = queue
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch consumer lag data.
-
-        Mirrors the widget template's tone logic: a lag greater than 100
-        messages renders as a warning, otherwise it stays neutral.
-        Infrastructure failures propagate.
 
         Args:
             params: Widget parameters.
@@ -34,20 +35,28 @@ class ConsumerLagWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # Stub implementation — returns zero lag
-        # In production, would compute lag from queue backend state
-        lag_messages = 0
-        lag_seconds = 0.0
-
+        if not isinstance(self._queue, QueueStatsProtocol):
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="Consumer Lag",
+                            value="Unavailable",
+                            tone=Tone.WARNING,
+                        ),
+                    )
+                )
+            )
+        stats = self._queue.get_stats() or {}
+        processing = int(stats.get("processing", 0))
         return Ok(
             StatContent(
                 stats=(
                     Stat(
-                        label="Lag (messages)",
-                        value=str(lag_messages),
-                        tone=Tone.WARNING if lag_messages > 100 else Tone.DEFAULT,
+                        label="Consumer Lag",
+                        value=str(processing),
+                        tone=Tone.SUCCESS if processing < 100 else Tone.WARNING,
                     ),
-                    Stat(label="Lag (seconds)", value=f"~{lag_seconds}s"),
                 )
             )
         )

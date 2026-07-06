@@ -211,3 +211,20 @@ class LexigramTasksAdapter:
             Number of matching jobs.
         """
         return await self._queue.count(queue_name, status=status)
+
+    async def get_stats(self) -> dict[str, int | float | str] | None:
+        """Return queue statistics for admin dashboard widgets.
+
+        ``pending`` is delegated to the wrapped queue's ``get_task_count``
+        when available; ``processing`` is not observable through the task
+        queue protocol and is reported as zero.
+
+        Returns:
+            A dict with ``pending`` and ``processing`` counts, or ``None``
+            when the wrapped queue exposes no task-count API.
+        """
+        get_task_count = getattr(self._queue, "get_task_count", None)
+        if get_task_count is None:
+            return None
+        pending = await get_task_count()
+        return {"pending": pending, "processing": 0}
