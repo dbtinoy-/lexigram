@@ -201,11 +201,18 @@ class TestSearchCache:
         assert isinstance(result, (str, bytes))
 
     @pytest.mark.asyncio
-    async def test_serialize_pickle(self) -> None:
-        """Verify pickle serialization."""
+    async def test_serialize_pickle_rejected(self) -> None:
+        """Verify pickle serialization is no longer supported."""
         cache = SearchCache(config=CacheConfig(serializer="pickle"))
-        result = await cache._serialize({"a": 1})
-        assert isinstance(result, bytes)
+        with pytest.raises(CacheError, match="Unsupported serializer: pickle"):
+            await cache._serialize({"a": 1})
+
+    @pytest.mark.asyncio
+    async def test_deserialize_pickle_rejected(self) -> None:
+        """Verify pickle deserialization is no longer supported."""
+        cache = SearchCache(config=CacheConfig(serializer="pickle"))
+        with pytest.raises(CacheError, match="Unsupported serializer: pickle"):
+            await cache._deserialize(b"\x80\x04")
 
     @pytest.mark.asyncio
     async def test_serialize_unsupported(self, cache: SearchCache) -> None:

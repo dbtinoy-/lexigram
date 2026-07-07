@@ -7,8 +7,7 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-import pickle
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from lexigram import hashing as ambient_hashing  # type: ignore[attr-defined]
 from lexigram.logging import get_logger
@@ -28,7 +27,7 @@ class CacheConfig:
     max_size: int = 1000
     cleanup_interval: int = 60  # 1 minute
     enable_compression: bool = False
-    serializer: str = "json"  # json or pickle
+    serializer: Literal["json"] = "json"  # json only; pickle removed for security
 
 
 @dataclass
@@ -187,23 +186,16 @@ class SearchCache:
         }
 
     async def _serialize(self, value: Any) -> str | bytes:
-        """Serialize value for storage"""
-        if self.config.serializer == "json":
-            return dumps(value, default=str)
-        if self.config.serializer == "pickle":
-            return await asyncio.to_thread(pickle.dumps, value)
-        raise CacheError(f"Unsupported serializer: {self.config.serializer}")
+        """Serialize value for storage."""
+        if self.config.serializer != "json":
+            raise CacheError(f"Unsupported serializer: {self.config.serializer}")
+        return dumps(value, default=str)
 
-    async def _deserialize(self, value: str | bytes) -> Any:
-        """Deserialize value from storage"""
-        if self.config.serializer == "json":
-            return loads(value)
-        if self.config.serializer == "pickle":
-            # pickle.loads expects bytes; handle possible str input defensively
-            if isinstance(value, str):
-                value = value.encode("utf-8")
-            return await asyncio.to_thread(pickle.loads, value)
-        raise CacheError(f"Unsupported serializer: {self.config.serializer}")
+    async def _deserialize(self, value: str) -> Any:
+        """Deserialize value from storage."""
+        if self.config.serializer != "json":
+            raise CacheError(f"Unsupported serializer: {self.config.serializer}")
+        return loads(value)
 
     async def _evict_entries(self) -> None:
         """Evict entries using LRU strategy"""

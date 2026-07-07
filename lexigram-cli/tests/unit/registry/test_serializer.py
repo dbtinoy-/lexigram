@@ -12,7 +12,6 @@ from lexigram.cli.registry.serializer import (
     CompactJSONSerializer,
     JSONSerializer,
     MessagePackSerializer,
-    PickleSerializer,
     SerializerRegistry,
     TOMLSerializer,
     YAMLSerializer,
@@ -195,22 +194,6 @@ class TestTOMLSerializer:
             s = TOMLSerializer()
             with pytest.raises(ImportError):
                 s.deserialize("key = 1")
-
-
-class TestPickleSerializer:
-    def test_roundtrip(self) -> None:
-        s = PickleSerializer()
-        data = {"a": 1, "b": [1, 2, 3]}
-        serialized = s.serialize(data)
-        assert s.deserialize(serialized) == data
-
-    def test_deserialize_str(self) -> None:
-        import pickle
-        s = PickleSerializer()
-        data = {"key": "value"}
-        serialized = pickle.dumps(data)
-        result = s.deserialize(serialized)
-        assert result == data
 
 
 class TestSerializerRegistry:
