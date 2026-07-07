@@ -6,6 +6,7 @@ Integrates with lexigram-auth session management.
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
 from functools import wraps
 from typing import TYPE_CHECKING, Any
@@ -24,6 +25,7 @@ from lexigram.contracts.web import RequestProtocol, ResponseProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
+from lexigram.serialization.backends import json as json_backend
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -222,12 +224,14 @@ class AuthGuardMiddleware(BaseHTTPMiddleware):
                 ) as e:
                     # Provide richer diagnostic logging so we can see token header issues (e.g., unexpected 'alg')
                     try:
-                        from jose import jwt as jose_jwt  # type: ignore[import-untyped]
-
                         header = None
                         try:
-                            header = jose_jwt.get_unverified_header(token)
-                        except ValueError:
+                            segment = token.split(".", 1)[0]
+                            padded = segment + "=" * (-len(segment) % 4)
+                            header = json_backend.loads(
+                                base64.urlsafe_b64decode(padded)
+                            )
+                        except (ValueError, TypeError):
                             header = None
                         logger.warning(
                             "Token validation failed: %s - header=%s",
