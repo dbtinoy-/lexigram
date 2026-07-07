@@ -24,6 +24,11 @@ class SkillLoader:
     - Sandboxed execution with path validation
     - Timeout enforcement
     - Environment variable injection
+
+    Note:
+        Skill directories are **executable content** — only populate them
+        from trusted sources.  Script execution is gated by containment
+        against the configured root and by ``allowed_script_types``.
     """
 
     def __init__(
@@ -31,6 +36,8 @@ class SkillLoader:
         sandbox: bool = True,
         timeout_seconds: int = 30,
         max_file_size: int = 1024 * 1024,
+        skill_root: Path | None = None,
+        allowed_script_types: tuple[str, ...] | None = None,
     ) -> None:
         """Initialize the loader.
 
@@ -38,10 +45,22 @@ class SkillLoader:
             sandbox: Whether to enable sandboxing (default: True).
             timeout_seconds: Script execution timeout (default: 30s).
             max_file_size: Maximum file size for context loading (default: 1MB).
+            skill_root: Root directory that skill scripts must resolve
+                inside of.  ``None`` denies every path (fail-closed).
+            allowed_script_types: Script suffixes permitted for execution
+                (e.g. ``("py", "sh", "js")``, without leading dots).
+                ``None`` denies every script type (fail-closed).
         """
         self._sandbox = sandbox
         self._timeout = timeout_seconds
         self._max_file_size = max_file_size
+        self._skill_root = skill_root
+        self._allowed_script_types = allowed_script_types
+        if not sandbox:
+            logger.warning(
+                "skill_loader_sandbox_disabled",
+                hint="skill directories are executable content; only populate from trusted sources",
+            )
 
     async def load_bundled_file(self, path: Path) -> str | None:
         """Load a bundled context file with size limit."""
@@ -79,7 +98,14 @@ class SkillLoader:
     async def execute_script(
         self, script_path: Path, params: dict[str, Any]
     ) -> dict[str, Any]:
-        """Execute a skill script with parameters."""
+        """Execute a skill script with parameters.
+
+        Note:
+            Skill directories are **executable content** — only populate
+            them from trusted sources.  Script execution is gated by
+            containment against the configured root and by
+            ``allowed_script_types``.
+        """
         if not script_path.exists():
             return {
                 "status": "error",
@@ -94,6 +120,18 @@ class SkillLoader:
                 }
 
         script_type = script_path.suffix.lower()
+
+        if (
+            self._allowed_script_types is not None
+            and script_type.lstrip(".") not in self._allowed_script_types
+        ):
+            return {
+                "status": "error",
+                "error": (
+                    f"Script type not allowed: {script_type} "
+                    f"(allowed: {', '.join(self._allowed_script_types)})"
+                ),
+            }
 
         executors = {
             ".py": self._execute_python,
@@ -111,11 +149,20 @@ class SkillLoader:
         }
 
     def _is_safe_path(self, path: Path) -> bool:
-        """Path safety check for sandboxing."""
+        """Return True only if the resolved path is a regular file inside the configured root.
+
+        Note:
+            Skill directories are executable content. This check is a fail-closed
+            containment boundary: absolute paths outside the root, ``..`` escapes,
+            and symlinks resolving outside the root are all denied. A ``None``
+            root denies everything.
+        """
         try:
-            path.resolve()
-            return ".." not in str(path)
-        except Exception:  # noqa: BLE001  # path.resolve() can raise OSError or ValueError; any failure means unsafe
+            if self._skill_root is None:
+                return False
+            resolved = path.resolve()
+            return resolved.is_file() and resolved.is_relative_to(self._skill_root)
+        except (OSError, ValueError, RuntimeError):
             return False
 
     def _get_env(self, script_path: Path) -> dict[str, str]:

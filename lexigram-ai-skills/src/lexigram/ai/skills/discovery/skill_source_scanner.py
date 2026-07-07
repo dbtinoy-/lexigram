@@ -44,14 +44,23 @@ class SkillSourceScanner:
         self,
         loader: SkillLoader | None = None,
         max_depth: int | None = 5,
+        skill_root: Path | None = None,
+        allowed_script_types: tuple[str, ...] | None = None,
     ) -> None:
         """Initialize the scanner.
 
         Args:
             loader: Optional SkillLoader for executing scripts.
             max_depth: Maximum directory depth to scan (None for unlimited).
+            skill_root: Root directory that skill scripts must resolve
+                inside of (passed through to the default SkillLoader).
+            allowed_script_types: Script suffixes permitted for execution
+                (passed through to the default SkillLoader).
         """
-        self._loader = loader or SkillLoader()
+        self._loader = loader or SkillLoader(
+            skill_root=skill_root,
+            allowed_script_types=allowed_script_types,
+        )
         self._max_depth = max_depth
 
     async def scan(self, registry: SkillRegistry, root: str | Path) -> int:

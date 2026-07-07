@@ -164,17 +164,19 @@ class SkillsProvider(Provider):
                 SkillSourceScanner,
             )
 
-            loader = SkillLoader(
-                timeout_seconds=self._config.script_timeout_seconds,
-            )
-            source_scanner = SkillSourceScanner(loader=loader)
-
             # Scan all configured paths
             for path_str in self._config.skill_paths:
                 path = Path(path_str).expanduser()
                 if not path.exists():
                     logger.debug("skill_source_path_not_found", path=path_str)
                     continue
+
+                loader = SkillLoader(
+                    timeout_seconds=self._config.script_timeout_seconds,
+                    skill_root=path,
+                    allowed_script_types=tuple(self._config.allowed_script_types),
+                )
+                source_scanner = SkillSourceScanner(loader=loader)
 
                 try:
                     count = await source_scanner.scan(registry, str(path))
