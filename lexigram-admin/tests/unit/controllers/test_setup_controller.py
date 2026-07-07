@@ -8,6 +8,7 @@ import pytest
 from starlette.requests import Request
 
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.config import AdminConfig
 from lexigram.admin.controllers.setup import SetupController, _hash_password
 
 
@@ -86,8 +87,13 @@ class TestSetupController:
         return MagicMock()
 
     @pytest.fixture
+    def admin_config(self) -> AdminConfig:
+        return AdminConfig()
+
+    @pytest.fixture
     def controller(
         self,
+        admin_config: AdminConfig,
         user_store: AsyncMock,
         password_policy: MagicMock,
         audit_service: AsyncMock,
@@ -95,6 +101,7 @@ class TestSetupController:
         renderer: MagicMock,
     ) -> SetupController:
         return SetupController(
+            config=admin_config,
             user_store=user_store,
             password_policy_service=password_policy,
             audit_service=audit_service,
@@ -168,22 +175,114 @@ class TestSetupController:
 
     @pytest.mark.asyncio
     async def test_setup_submit_invalid_token(
-        self, controller: SetupController, audit_service: AsyncMock
+        self,
+        user_store: AsyncMock,
+        password_policy: MagicMock,
+        audit_service: AsyncMock,
+        csrf_service: MagicMock,
+        renderer: MagicMock,
     ) -> None:
-        with patch.dict("os.environ", {"ADMIN_SETUP_TOKEN": "secret123"}):
-            req = _mock_request(
-                method="POST",
-                form_data={
-                    "name": "Admin",
-                    "email": "admin@test.com",
-                    "password": "Str0ng!pass",
-                    "confirm_password": "Str0ng!pass",
-                    "setup_token": "wrong",
-                },
-            )
-            resp = await controller.setup_submit(req)
-            assert resp.status_code == 403
-            audit_service.log_event.assert_awaited_once()
+        controller = SetupController(
+            config=AdminConfig.from_dict(
+                {"auth": {"security": {"setup_token": "secret123"}}}
+            ),
+            user_store=user_store,
+            password_policy_service=password_policy,
+            audit_service=audit_service,
+            csrf_service=csrf_service,
+            renderer=renderer,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "name": "Admin",
+                "email": "admin@test.com",
+                "password": "Str0ng!pass",
+                "confirm_password": "Str0ng!pass",
+                "setup_token": "wrong",
+            },
+        )
+        resp = await controller.setup_submit(req)
+        assert resp.status_code == 403
+        audit_service.log_event.assert_awaited_once_with(
+            event_type=AdminSecurityEventType.SETUP_BLOCKED,
+            ip_address=ANY,
+            user_agent=ANY,
+            success=False,
+            metadata={"reason": "invalid_setup_token"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_setup_submit_accepts_config_token(
+        self,
+        user_store: AsyncMock,
+        password_policy: MagicMock,
+        audit_service: AsyncMock,
+        csrf_service: MagicMock,
+        renderer: MagicMock,
+    ) -> None:
+        controller = SetupController(
+            config=AdminConfig.from_dict(
+                {"auth": {"security": {"setup_token": "secret123"}}}
+            ),
+            user_store=user_store,
+            password_policy_service=password_policy,
+            audit_service=audit_service,
+            csrf_service=csrf_service,
+            renderer=renderer,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "name": "Admin",
+                "email": "admin@test.com",
+                "password": "Str0ng!pass",
+                "confirm_password": "Str0ng!pass",
+                "setup_token": "secret123",
+            },
+        )
+        resp = await controller.setup_submit(req)
+        assert resp.status_code == 302
+        user_store.create_user.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_setup_submit_token_from_env_var_backcompat(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        user_store: AsyncMock,
+        password_policy: MagicMock,
+        audit_service: AsyncMock,
+        csrf_service: MagicMock,
+        renderer: MagicMock,
+    ) -> None:
+        monkeypatch.setenv("ADMIN_SETUP_TOKEN", "secret123")
+        controller = SetupController(
+            config=AdminConfig(),
+            user_store=user_store,
+            password_policy_service=password_policy,
+            audit_service=audit_service,
+            csrf_service=csrf_service,
+            renderer=renderer,
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "name": "Admin",
+                "email": "admin@test.com",
+                "password": "Str0ng!pass",
+                "confirm_password": "Str0ng!pass",
+                "setup_token": "wrong",
+            },
+        )
+        resp = await controller.setup_submit(req)
+        assert resp.status_code == 403
+        audit_service.log_event.assert_awaited_once_with(
+            event_type=AdminSecurityEventType.SETUP_BLOCKED,
+            ip_address=ANY,
+            user_agent=ANY,
+            success=False,
+            metadata={"reason": "invalid_setup_token"},
+        )
 
     @pytest.mark.asyncio
     async def test_setup_submit_missing_fields(

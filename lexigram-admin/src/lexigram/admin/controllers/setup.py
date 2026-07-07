@@ -7,8 +7,8 @@ admin account has been created.
 
 from __future__ import annotations
 
-import os
 import secrets
+from urllib.parse import quote_plus
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
@@ -16,10 +16,12 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from lexigram.admin.auth.protocols import (
     AdminAuditLogServiceProtocol,
     AdminCsrfServiceProtocol,
+    AdminEmailVerificationServiceProtocol,
     AdminPasswordPolicyServiceProtocol,
 )
 from lexigram.admin.auth.store import AdminUserStoreProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.config import AdminConfig
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.engine.renderer import AdminRenderer
 from lexigram.admin.lib.template import render_setup_page
@@ -44,16 +46,21 @@ class SetupController(AdminController):
 
     def __init__(
         self,
+        config: AdminConfig,
         user_store: AdminUserStoreProtocol,
         password_policy_service: AdminPasswordPolicyServiceProtocol,
         audit_service: AdminAuditLogServiceProtocol,
         csrf_service: AdminCsrfServiceProtocol,
         renderer: AdminRenderer,
         task_manager: TaskManagerProtocol | None = None,
+        email_verification_service: AdminEmailVerificationServiceProtocol | None = None,
     ) -> None:
         """Initialise setup controller.
 
         Args:
+            config: Admin configuration; the optional setup token is read
+                from ``config.auth.security.setup_token`` (single enforcement
+                source, env var ``ADMIN_SETUP_TOKEN`` honored via alias).
             user_store: Store used to check and create admin accounts.
             password_policy_service: Validates passwords against all configured
                 policy rules; returns every violation, not just the first.
@@ -62,12 +69,18 @@ class SetupController(AdminController):
                 pre-session setup form (bypassed by the CSRF middleware).
             renderer: AdminRenderer required by AdminController base.
             task_manager: Optional; injected by container in production.
+            email_verification_service: Optional email verification
+                orchestrator; when present and the gate applies to the new
+                account, a verification email is sent and the user is
+                informed after creation.
         """
         super().__init__(renderer, task_manager)
+        self._config = config
         self._user_store = user_store
         self._password_policy_service = password_policy_service
         self._audit_service = audit_service
         self._csrf_service = csrf_service
+        self._email_verification_service = email_verification_service
 
     def _fresh_csrf(self, request: Request) -> str:
         """Generate a fresh session-scoped CSRF token for the setup form."""
@@ -92,6 +105,7 @@ class SetupController(AdminController):
         Returns:
             HTMLResponse with the rendered setup page.
         """
+        required_token = self._config.auth.security.setup_token
         try:
             count = await self._user_store.get_admin_count()
         except (RuntimeError, ValueError, OSError) as e:
@@ -99,7 +113,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Unable to verify setup status. Database may be unavailable.",
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
@@ -113,7 +127,7 @@ class SetupController(AdminController):
         html = render_setup_page(
             error=error,
             csrf_token=self._fresh_csrf(request),
-            setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+            setup_token_required=bool(required_token),
         )
         return HTMLResponse(content=html)
 
@@ -138,6 +152,7 @@ class SetupController(AdminController):
             an HTMLResponse re-rendering the setup form with error details on
             any validation or persistence failure.
         """
+        required_token = self._config.auth.security.setup_token
         try:
             count = await self._user_store.get_admin_count()
         except (RuntimeError, ValueError, OSError) as e:
@@ -145,7 +160,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Unable to verify setup status. Database may be unavailable.",
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=503)
         if count > 0:
@@ -175,12 +190,11 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Invalid or expired security token. Please reload the page and try again.",
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=422)
 
         # ── Optional setup-token guard ─────────────────────────────────
-        required_token = os.environ.get("ADMIN_SETUP_TOKEN", "")
         if required_token and setup_token_input != required_token:
             logger.warning("setup.token_mismatch", ip=ip)
             await self._audit_service.log_event(
@@ -193,7 +207,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Invalid setup token.",
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=403)
 
@@ -202,7 +216,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="All fields are required.",
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -210,7 +224,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error="Passwords do not match.",
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -223,7 +237,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error=violation_lines,
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -231,7 +245,7 @@ class SetupController(AdminController):
         hashed_password = _hash_password(password)
 
         try:
-            await self._user_store.create_user(
+            created = await self._user_store.create_user(
                 name=name,
                 email=email,
                 hashed_password=hashed_password,
@@ -244,7 +258,7 @@ class SetupController(AdminController):
             html = render_setup_page(
                 error=f"Failed to create account: {exc}",
                 csrf_token=self._fresh_csrf(request),
-                setup_token_required=bool(os.environ.get("ADMIN_SETUP_TOKEN")),
+                setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=422)
 
@@ -258,7 +272,41 @@ class SetupController(AdminController):
             metadata={"email": email},
         )
 
-        return RedirectResponse(url="/admin/login?next=/admin/", status_code=302)
+        notice = ""
+        user_id = str(getattr(created, "user_id", "") or getattr(created, "id", ""))
+        if (
+            self._email_verification_service is not None
+            and user_id
+            and await self._email_verification_service.is_required(user_id)
+        ):
+            send_result = await self._email_verification_service.send_verification(
+                user_id=user_id,
+                email=email,
+                user_name=name,
+                base_url=str(request.base_url),
+                ip_address=ip,
+            )
+            if send_result.is_ok():
+                notice = (
+                    f"Account created successfully — a verification email was "
+                    f"sent to {email}. Please verify your email before signing in."
+                )
+            else:
+                logger.error(
+                    "setup.verification_send_failed",
+                    email=email,
+                    error=str(send_result.unwrap_err()),
+                )
+                notice = (
+                    "Account created successfully — email verification is "
+                    "enabled, and you will be asked to verify your email "
+                    "before signing in."
+                )
+
+        url = "/admin/login?next=/admin/"
+        if notice:
+            url += "&notice=" + quote_plus(notice)
+        return RedirectResponse(url=url, status_code=302)
 
     # ------------------------------------------------------------------
     # Helpers

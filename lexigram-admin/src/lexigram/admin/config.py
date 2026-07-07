@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from typing import Any, ClassVar, Literal, cast
 
 from lexigram.admin.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
@@ -166,6 +167,42 @@ class AdminSecurityConfig(DomainModel):
         default=None,
         description="Optional ADMIN_SETUP_TOKEN — when set, must be provided during first-run setup.",
     )
+    setup_token_optin_unsafe: bool = Field(
+        default=False,
+        description=(
+            "Explicit escape hatch: boot without a setup token. Only for "
+            "local/ephemeral environments — leaves the first-run wizard open "
+            "to any visitor until an admin account is created."
+        ),
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_legacy_setup_token(cls, data: Any) -> Any:
+        """Map the legacy ``ADMIN_SETUP_TOKEN`` input key onto ``setup_token``.
+
+        Keeps existing deployments working unchanged: the token can be
+        provided as a config key (``admin.security.ADMIN_SETUP_TOKEN`` in
+        YAML/``from_dict`` input) or as the bare ``ADMIN_SETUP_TOKEN``
+        environment variable.  Explicit ``setup_token`` always wins.
+
+        Args:
+            data: Raw input dict (or already-built instance) before field
+                assignment.
+
+        Returns:
+            The input dict with the legacy key mapped onto ``setup_token``
+            when the latter is absent.
+        """
+        if not isinstance(data, dict):
+            return data
+        if "ADMIN_SETUP_TOKEN" in data and "setup_token" not in data:
+            return {**data, "setup_token": data["ADMIN_SETUP_TOKEN"]}
+        if "setup_token" not in data:
+            legacy = os.getenv("ADMIN_SETUP_TOKEN")
+            if legacy:
+                return {**data, "setup_token": legacy}
+        return data
 
     model_config = {"extra": "forbid"}
 
