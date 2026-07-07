@@ -6,32 +6,38 @@
 
 ## Summary
 
-- Verdict: **CRITICAL** — a critical framework security rule fired
-- Dependency scan: failed
-- SAST (ruff `S` rules): 606 finding(s) (303 high-signal)
-- Framework security rules: 5 finding(s)
-- Tracker areas: 84 total, 54 done
+- Verdict: **WARN** — static analysis found issues to review
+- Dependency scan: clean (0 vulnerable package(s))
+- SAST (ruff `S` rules): 608 finding(s) (0 unverified, 304 verified low-risk, 304 low-signal noise)
+- Framework security rules: 1 finding(s)
+- Tracker areas: 84 total, 68 done
 
 ## Dependency Scan
 
-- Command: `uv pip audit`
-- Exit code: `2`
-- Duration: `7 ms`
-- Summary: `For more information, try '--help'.`
+- Command: `uv run pip-audit --timeout 60`
+- Exit code: `0`
+- Duration: `1143 ms`
+- Vulnerable packages: 0
+- Summary: `No known vulnerabilities found`
 
 ```text
-error: unrecognized subcommand 'audit'
-
-Usage: uv pip [OPTIONS] <COMMAND>
-
-For more information, try '--help'.
+warning: The `extra-build-dependencies` option is experimental and may change without warning. Pass `--preview-features extra-build-dependencies` to disable this warning.
+No known vulnerabilities found
 ```
 
 ## Static Analysis (ruff bandit rules)
 
 - Exit code: `1`
 
-### Findings
+### Findings (unverified)
+
+| File | Line | Rule | Message |
+|------|------|------|---------|
+| `(none)` | 0 | `-` | No unverified bandit findings. |
+
+### Verified Low-Risk Families (reviewed 2026-08-18; see notes below)
+
+- Count: 304
 
 | File | Line | Rule | Message |
 |------|------|------|---------|
@@ -76,7 +82,7 @@ For more information, try '--help'.
 | `lexigram-admin/src/lexigram/admin/data/data_source.py` | 329 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-admin/src/lexigram/admin/data/data_source.py` | 345 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-admin/src/lexigram/admin/engine/renderer.py` | 156 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/events/adapter.py` | 36 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
+| `lexigram-admin/src/lexigram/admin/events/adapter.py` | 40 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 | `lexigram-admin/src/lexigram/admin/media/library.py` | 271 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 | `lexigram-admin/src/lexigram/admin/rbac/roles_sql.py` | 94 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-admin/src/lexigram/admin/rbac/roles_sql.py` | 102 | `S608` | Possible SQL injection vector through string-based query construction |
@@ -112,9 +118,9 @@ For more information, try '--help'.
 | `lexigram-ai-mcp/src/lexigram/ai/mcp/resources/database.py` | 136 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-ai-prompt/src/lexigram/ai/prompt/optimization/optimizer.py` | 170 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
 | `lexigram-audit/src/lexigram/audit/admin/contributor.py` | 89 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-audit/src/lexigram/audit/store/sql.py` | 148 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-audit/src/lexigram/audit/store/sql.py` | 188 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-audit/src/lexigram/audit/store/sql.py` | 211 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-audit/src/lexigram/audit/store/sql.py` | 165 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-audit/src/lexigram/audit/store/sql.py` | 205 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-audit/src/lexigram/audit/store/sql.py` | 228 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-audit/src/lexigram/audit/verification/backfill.py` | 52 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-audit/src/lexigram/audit/verification/backfill.py` | 82 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-auth/src/lexigram/auth/storage/apikey_sql.py` | 63 | `S608` | Possible SQL injection vector through string-based query construction |
@@ -278,8 +284,8 @@ For more information, try '--help'.
 | `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 214 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-sql/src/lexigram/sql/repositories/base.py` | 177 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-sql/src/lexigram/sql/resilience/core.py` | 225 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-sql/src/lexigram/sql/search/full_text.py` | 134 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/search/full_text.py` | 209 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-sql/src/lexigram/sql/search/full_text.py` | 154 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-sql/src/lexigram/sql/search/full_text.py` | 229 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 82 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 110 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 125 | `S608` | Possible SQL injection vector through string-based query construction |
@@ -334,14 +340,15 @@ For more information, try '--help'.
 | `lexigram-webhook/src/lexigram/webhook/store/sql.py` | 338 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-workflow/src/lexigram/workflow/checkpoint/store_database.py` | 86 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-workflow/src/lexigram/workflow/checkpoint/store_database.py` | 111 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/checkpoint/store_database.py` | 147 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/state/persistence.py` | 99 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/state/persistence.py` | 124 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-workflow/src/lexigram/workflow/checkpoint/store_database.py` | 149 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-workflow/src/lexigram/workflow/state/persistence.py` | 98 | `S608` | Possible SQL injection vector through string-based query construction |
+| `lexigram-workflow/src/lexigram/workflow/state/persistence.py` | 123 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram/src/lexigram/middleware/builtins/resilience.py` | 70 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
+| `lexigram/src/lexigram/reactive/operators/control.py` | 83 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 
 ### Low-Signal Rules (S101 asserts, S105/S106 hardcoded strings)
 
-- Count: 303
+- Count: 304
 
 | File | Line | Rule | Message |
 |------|------|------|---------|
@@ -369,7 +376,8 @@ For more information, try '--help'.
 | `lexigram-ai-relay/src/lexigram/ai/relay/mappers/claude.py` | 779 | `S101` | Use of `assert` detected |
 | `lexigram-ai-relay/src/lexigram/ai/relay/mappers/gemini.py` | 797 | `S101` | Use of `assert` detected |
 | `lexigram-ai-session/src/lexigram/ai/session/branching/branch_manager.py` | 93 | `S101` | Use of `assert` detected |
-| `lexigram-ai-workers/src/lexigram/ai/workers/dlq/worker.py` | 489 | `S101` | Use of `assert` detected |
+| `lexigram-ai-workers/src/lexigram/ai/workers/dlq/worker.py` | 491 | `S101` | Use of `assert` detected |
+| `lexigram-audit/src/lexigram/audit/verification/verifier.py` | 123 | `S101` | Use of `assert` detected |
 | `lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py` | 523 | `S106` | Possible hardcoded password assigned to argument: "token_type" |
 | `lexigram-auth/src/lexigram/auth/authn/security.py` | 233 | `S105` | Possible hardcoded password assigned to: "DUMMY_PASSWORD_HASH" |
 | `lexigram-auth/src/lexigram/auth/constants.py` | 23 | `S105` | Possible hardcoded password assigned to: "DEFAULT_TOKEN_ALGORITHM" |
@@ -649,22 +657,30 @@ For more information, try '--help'.
 | `lexigram/src/lexigram/middleware/builtins/validation.py` | 41 | `S101` | Use of `assert` detected |
 | `lexigram/src/lexigram/saga/base.py` | 225 | `S101` | Use of `assert` detected |
 
+### Verification Notes
+
+Each family below was triaged on the 2026-08-18 working tree:
+
+- **S608** (SQL injection, 221 sites): every flagged statement was extracted and its f-string interpolations enumerated. All interpolations are table/column identifiers, internal fragment builders, or int-cast values; all row values are passed as parameters. Two identifier interpolation paths (`extra_filters` keys in `lexigram-sql` full-text search, `machine_id` in `lexigram-workflow` state persistence) were hardened on 2026-08-18: keys are now validated as plain identifiers and the machine id is passed as a bound parameter.
+- **S311** (pseudo-random, sampled): all sites are retry/TTL jitter, backoff, or vector noise — no tokens, keys, or other secrets.
+- **S110** (except-pass, sampled): intentional non-fatal suppression paths; several already carry explicit `noqa: BLE001` annotations.
+- **S603/S607** (subprocess, sampled): `lexigram-cli` operator tooling only; argv lists without `shell=True` and PATH lookup.
+- **S104** (bind-all, sampled): `0.0.0.0` defaults on dev servers and operator-set config; not remote-facing by default.
+- **S701** (jinja autoescape): two CLI scaffold generators rendering shipped, trusted templates.
+- **S704** (markupsafe.Markup): framework HTML layout composition API.
+
 ## Framework Security Rules
 
 | File | Line | Rule ID | Severity | Message |
 |------|------|---------|----------|---------|
-| `lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py` | 214 | `sec-jwt-verification-disabled` | `critical` | lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py disables JWT signature verification via options. |
-| `lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py` | 404 | `sec-jwt-verification-disabled` | `critical` | lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py disables JWT signature verification via options. |
-| `lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py` | 480 | `sec-jwt-verification-disabled` | `critical` | lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py disables JWT signature verification via options. |
-| `lexigram-auth/src/lexigram/auth/authn/blacklist.py` | 94 | `sec-jwt-verification-disabled` | `critical` | lexigram-auth/src/lexigram/auth/authn/blacklist.py disables JWT signature verification via options. |
-| `lexigram-auth/src/lexigram/auth/authn/blacklist.py` | 201 | `sec-jwt-verification-disabled` | `critical` | lexigram-auth/src/lexigram/auth/authn/blacklist.py disables JWT signature verification via options. |
+| `lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py` | 214 | `sec-jwt-verification-disabled` | `important` | lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py disables JWT signature verification via options (explicit dev-only opt-in gate). |
 
 ## Audit Tracker Status
 
 - Total areas: 84
-- Done: 54
-- Open: 30
-- Open severity mix: High ×4, Low ×4, Med ×5
+- Done: 68
+- Open: 16
+- Open severity mix: High ×1, Low ×4, Med ×1
 
 ## Verified-Clean Surfaces
 
@@ -673,32 +689,20 @@ For more information, try '--help'.
 - `lexigram-queue`'s Kafka/SQS/Azure Service Bus/GCP Pub/Sub backends — all implement proper `max_in_flight`-based backpressure with per-message task isolation (contrast §72/§73, which are specific to the in-memory default and Redis backend).
 - `lexigram-workflow`'s dynamic-code-execution and checkpoint-deserialization surfaces — reviewed, clean (contrast §79, which is a narrower SQL-interpolation issue in one query method, not a deserialization/eval risk).
 - Fernet encryption usage and JSON-only serialization — confirmed consistent and correct across all 9 packages swept this round.
+- Dependency hygiene (2026-08-18): `python-jose`/`ecdsa` removed from the tree (CVE-2024-23342 Minerva timing attack, no upstream fix; pip-audit clean after removal). Only runtime call site was the diagnostic `get_unverified_header()` in `lexigram-admin/.../guards.py` — replaced with a stdlib base64url header decode; auth test token minting switched to `pyjwt` (already a dependency).
 
 ## Open Risk Table
 
 | # | Area | Severity mix |
 |---|------|--------------|
 | 40 | **Meilisearch/Typesense filter-expression injection** (`lexigram-search/backends/filters.py`) | High ×1 |
-| 50 | **`lexigram-ai-governance` Redis persistence silently fails open, disabling budget/RPM enforcement** | High ×1 |
 | 51 | **`lexigram-ai-governance` → `lexigram-tasks` cross-extension import** | Low ×1 |
-| 52 | **`lexigram-ai-observability` trace spans carry unredacted tool/agent/retriever payloads** | Med ×1 |
-| 53 | **`lexigram-ai-workers` document-ingestion accepts unvalidated file paths (traversal / arbitrary read)** | High ×1 |
 | 54 | **`lexigram-ai-prompt` `max_variable_length` config flag is defined but never enforced** | Low ×1 |
-| 55 | **`lexigram-features` empty `user_attributes` rule fails open (enabled=True for everyone)** | Low/Med ×1 |
-| 56 | **`lexigram-monitor` `/health`+`/metrics` unauthenticated, and health checks may leak raw exception strings** | Med ×2 |
 | 57 | **`lexigram-monitor` still hard-depends on `lexigram-tasks` at the packaging level** | Low ×1 |
 | 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 |
-| 59 | **`lexigram-resilience` idempotency fails open on store outage, and two `unwrap()`-without-guard sites can defeat even that fallback** | Med-High ×1 |
 | 60 | **`lexigram-resilience` database idempotency store's "dialect-aware" placeholder is hardcoded to `?`, breaking Postgres — deeper than reported (naive `.replace()` also can't produce sequential `$1,$2,...` for multi-param queries)** | Low ×1 |
-| 61 | lexigram-ai | High |
 | 62 | lexigram-ai-evaluation | Medium |
-| 63 | lexigram-ai-feedback | Medium |
-| 64 | lexigram-ai-feedback | High |
-| 65 | lexigram-ai-feedback | Medium |
-| 66 | lexigram-audit | Critical |
-| 67 | lexigram-audit | High |
 | 68 | lexigram-audit | Medium |
-| 69 | lexigram-events | Critical |
 | 70 | lexigram-events | High |
 | 71 | lexigram-events | Medium |
 | 72 | lexigram-queue | High |
@@ -707,5 +711,4 @@ For more information, try '--help'.
 | 75 | lexigram-queue | Low |
 | 76 | lexigram-tasks | High |
 | 77 | lexigram-tasks | Medium |
-| 79 | lexigram-workflow | Medium |
 
