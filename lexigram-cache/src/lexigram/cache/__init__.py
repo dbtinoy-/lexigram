@@ -54,6 +54,10 @@ if TYPE_CHECKING:
     )
     from lexigram.cache.serialization.compression import CompressingSerializer
     from lexigram.cache.serialization.json import JSONSerializer
+    from lexigram.cache.serialization.type_registry import (
+        DEFAULT_REGISTRY,
+        TypeRegistry,
+    )
     from lexigram.cache.service.core import CacheService
     from lexigram.cache.service.decorators import (
         CacheDecorator,
@@ -131,6 +135,7 @@ _LAZY_IMPORTS = {
     "DistributedLockInfo": "lexigram.cache.types",
     "CompressingSerializer": "lexigram.cache.serialization.compression",
     "CostAwareCacheDecision": "lexigram.cache.semantic.cost_decision",
+    "DEFAULT_REGISTRY": "lexigram.cache.serialization.type_registry",
     "EnvironmentConfigLoader": "lexigram.cache.config",
     "FaissVectorIndex": "lexigram.cache.semantic.vector_index",
     "HealthStatus": "lexigram.contracts.core",
@@ -139,12 +144,12 @@ _LAZY_IMPORTS = {
     "MemcachedCacheBackend": "lexigram.cache.backends.memcached.backend",
     "MemoryBackendConfig": "lexigram.cache.config",
     "MemoryCacheBackend": "lexigram.cache.backends.memory.backend",
-
     "RedisBackendConfig": "lexigram.cache.config",
     "RedisCacheBackend": "lexigram.cache.backends.redis.backend",
     "AsyncStringSerializerProtocol": "lexigram.contracts.cache",
     "SemanticCacheStore": "lexigram.cache.semantic.store",
     "TaggedCacheKey": "lexigram.cache.types",
+    "TypeRegistry": "lexigram.cache.serialization.type_registry",
     "cache": "lexigram.cache.service.decorators",
     "conditional_cache": "lexigram.cache.service.decorators",
     "invalidate_cache": "lexigram.cache.service.decorators",

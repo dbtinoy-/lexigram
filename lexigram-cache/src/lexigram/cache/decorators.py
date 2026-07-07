@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import functools
-import importlib
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from lexigram.logging import get_logger
@@ -18,8 +17,9 @@ logger = get_logger(__name__)
 F = TypeVar("F", bound=Callable[..., Any])
 
 # Cache envelope keys.  Stored alongside serialised domain objects so the
-# decorator can reconstruct the original Python types on retrieval without
-# any external type registry.
+# decorator can reconstruct the original Python types on retrieval — but
+# only for types registered in the type registry (deny-by-default: a cache
+# payload may originate from a shared, attacker-influenced store).
 _KEY_MODULE = "__lx_module__"
 _KEY_CLASS = "__lx_class__"
 _KEY_DATA = "__lx_data__"
@@ -79,25 +79,32 @@ def _serialize(value: Any) -> Any:
 def _deserialize(value: Any) -> Any:
     """Reconstruct *value* from a cache-retrieved payload.
 
-    Type-tagged envelopes written by :func:`_serialize` are detected and
-    converted back to their original domain model types via
-    ``model_validate``.  Lists are processed element-wise.
+    Type tags are resolved against the registered type registry — never
+    imported from cache data. An unregistered tag yields a warning and the
+    raw payload, matching the fail-closed policy for untrusted cache input.
 
     Args:
         value: A JSON-decoded cache payload.
 
     Returns:
-        The original value, with domain models reconstructed where possible.
+        The original value, with registered domain models reconstructed
+        where possible; unregistered envelopes degrade to their raw data.
     """
     if isinstance(value, dict) and _KEY_MODULE in value and _KEY_CLASS in value:
+        from lexigram.cache.serialization.type_registry import DEFAULT_REGISTRY
+
+        model_cls = DEFAULT_REGISTRY.get(value[_KEY_MODULE], value[_KEY_CLASS])
+        if model_cls is None:
+            logger.warning(
+                "cache_deserialize_unregistered_type",
+                module=value.get(_KEY_MODULE),
+                cls=value.get(_KEY_CLASS),
+                hint="register the model class in the type registry to enable reconstruction",
+            )
+            return value.get(_KEY_DATA, value)
         try:
-            mod = importlib.import_module(value[_KEY_MODULE])
-            # qualname may be "Outer.Inner" for nested classes.
-            cls: Any = mod
-            for part in value[_KEY_CLASS].split("."):
-                cls = getattr(cls, part)
-            return cls.model_validate(value[_KEY_DATA])
-        except (ImportError, AttributeError, KeyError, TypeError, ValueError) as exc:
+            return model_cls.model_validate(value[_KEY_DATA])
+        except (KeyError, TypeError, ValueError) as exc:
             logger.warning(
                 "cache_deserialize_failed",
                 module=value.get(_KEY_MODULE),
@@ -130,6 +137,10 @@ def cacheable(
     - Domain models are serialised to a type-tagged JSON envelope and
       reconstructed via ``model_validate`` on retrieval, preserving type
       identity across the JSON round-trip.
+    - Reconstruction is **deny-by-default**: type tags are only resolved
+      against the registered type registry
+      (:data:`~lexigram.cache.serialization.type_registry.DEFAULT_REGISTRY`);
+      a payload naming an unregistered type degrades to its raw data.
 
     Args:
         ttl: Time-to-live in seconds. ``None`` disables expiry.
@@ -141,6 +152,10 @@ def cacheable(
         Decorator that wraps an async method with cache-aside logic.
 
     Example::
+
+        from lexigram.cache.serialization.type_registry import DEFAULT_REGISTRY
+
+        DEFAULT_REGISTRY.register(User)
 
         class UserService:
             def __init__(self, cache: CacheBackendProtocol) -> None:

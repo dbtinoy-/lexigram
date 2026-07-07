@@ -373,7 +373,18 @@ class CacheProvider(Provider):
         )
 
     def _initialize_serializers(self) -> None:
-        """Initialize available serializers."""
+        """Initialize available serializers.
+
+        Note:
+            Domain-model reconstruction for ``@cacheable`` envelopes is
+            gated by ``DEFAULT_REGISTRY``
+            (``lexigram.cache.serialization.type_registry``): the
+            ``TypeRegistry.with_defaults()`` instance is the single
+            registration surface — deny-by-default. The cache package
+            defines no model types itself, so nothing is registered here;
+            consumers register their domain models at boot via
+            ``DEFAULT_REGISTRY.register(ModelClass)``.
+        """
         from lexigram.cache.serialization.factory import create_serializers
 
         self._serializers = create_serializers()

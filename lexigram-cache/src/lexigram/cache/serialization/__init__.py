@@ -15,12 +15,15 @@ from lexigram.cache.exceptions import CacheSerializationError
 from lexigram.cache.serialization.compression import CompressingSerializer
 from lexigram.cache.serialization.json import JSONSerializer
 from lexigram.cache.serialization.msgpack import MsgPackSerializer
+from lexigram.cache.serialization.type_registry import DEFAULT_REGISTRY, TypeRegistry
 from lexigram.contracts.core.serialization import AsyncStringSerializerProtocol
 
 __all__ = [
+    "DEFAULT_REGISTRY",
     "AsyncStringSerializerProtocol",
     "CacheSerializationError",
     "CompressingSerializer",
     "JSONSerializer",
     "MsgPackSerializer",
+    "TypeRegistry",
 ]
