@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections import deque
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
+from lexigram.admin.realtime import AdminEvent, SubjectAdminEventHub
 from lexigram.contracts.admin import (
     ChartContent,
     ChartPoint,
@@ -14,6 +17,8 @@ from lexigram.contracts.admin import (
     NamedHealthCheckProtocol,
     Stat,
     StatContent,
+    TableCell,
+    TableContent,
     Tone,
 )
 from lexigram.contracts.admin.contributor import BaseAdminContributor
@@ -73,10 +78,15 @@ class CoreAdminContributor(BaseAdminContributor):
         *,
         health: object | None = None,
         metrics: object | None = None,
+        hub: SubjectAdminEventHub | None = None,
     ) -> None:
         self._container: ContainerResolverProtocol | None = None
         self._health = health
         self._metrics = metrics
+        self._hub = hub
+        self._activity_cache: deque[AdminEvent] = deque(maxlen=50)
+        self._background_tasks: set[asyncio.Task[Any]] = set()
+        self._start_activity_tail()
 
     async def on_admin_boot(self, container: object) -> None:
         self._container = container  # type: ignore[assignment]
@@ -85,15 +95,51 @@ class CoreAdminContributor(BaseAdminContributor):
         typed_container = cast("ContainerResolverProtocol", container)
         try:
             if self._health is None:
-                self._health = await typed_container.resolve_optional(  # type: ignore[assignment]
+                self._health = await typed_container.resolve_optional(
                     HealthOverviewProtocol
                 )
             if self._metrics is None:
-                self._metrics = await typed_container.resolve_optional(  # type: ignore[assignment]
+                self._metrics = await typed_container.resolve_optional(
                     MetricsReadbackProtocol
                 )
+            if self._hub is None:
+                self._hub = await typed_container.resolve_optional(
+                    SubjectAdminEventHub
+                )
+                self._start_activity_tail()
         except Exception as exc:  # noqa: BLE001
             logger.warning("admin.core_sources_unavailable", error=str(exc))
+
+    async def on_admin_shutdown(self) -> None:
+        """Cancel the background activity tail, then mark the contributor down."""
+        for task in self._background_tasks:
+            task.cancel()
+        self._background_tasks.clear()
+
+    def _start_activity_tail(self) -> None:
+        """Tail broadcast admin events into a bounded cache for the activity widget.
+
+        Broadcast-only: ``subscribe()`` with no ``user_id`` sees only
+        events published without ``target_users``, so per-admin
+        notifications never leak into the shared dashboard. Requires a
+        running event loop; without one (sync construction) the tail
+        starts during ``on_admin_boot`` instead.
+        """
+        if self._hub is None:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        task = loop.create_task(self._drain_activity())
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
+    async def _drain_activity(self) -> None:
+        if self._hub is None:
+            return
+        async for event in self._hub.subscribe():
+            self._activity_cache.append(event)
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         """Return core dashboard widgets: health overview, recent activity, and metrics."""
@@ -118,7 +164,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 render_endpoint="/admin/core/widgets/activity",
                 size=WidgetSize.LARGE,
                 category=WidgetCategory.ACTIVITY,
-                view_kind=WidgetKind.EMPTY,
+                view_kind=WidgetKind.TABLE,
                 refresh_interval_seconds=15,
                 order=90,
                 icon="activity",
@@ -210,15 +256,34 @@ class CoreAdminContributor(BaseAdminContributor):
                 ),
             )
         if widget_name == "activity":
-            # TODO(admin): wire the activity widget to a real activity
-            # event source instead of the empty placeholder.
+            rows: list[tuple[TableCell, TableCell, TableCell]] = []
+            for event in list(self._activity_cache):
+                rows.append(
+                    (
+                        TableCell(text=str(event.event_type)),
+                        TableCell(text=str(event.resource_type or "")),
+                        TableCell(text=str(event.resource_id if event.resource_id is not None else "")),
+                    )
+                )
+            if not rows:
+                return cast(
+                    "Result[WidgetViewModel, AdminError]",
+                    Ok(
+                        WidgetViewModel(
+                            content=EmptyContent(
+                                title="Recent activity",
+                                message="No admin activity yet.",
+                            )
+                        )
+                    ),
+                )
             return cast(
                 "Result[WidgetViewModel, AdminError]",
                 Ok(
                     WidgetViewModel(
-                        content=EmptyContent(
-                            title="Recent activity",
-                            message="Not yet wired to a data source.",
+                        content=TableContent(
+                            columns=("Event", "Resource", "ID"),
+                            rows=tuple(rows),
                         )
                     )
                 ),
@@ -296,15 +361,15 @@ class CoreAdminContributor(BaseAdminContributor):
             Ok(HealthCheckPayload) with the core status, or
             Err(AdminError) when the check is unknown.
         """
-        if not isinstance(self._health, NamedHealthCheckProtocol):
-            return Ok(
-                HealthCheckPayload(
-                    status=HealthStatus.UNKNOWN,
-                    component="Admin Core",
-                    detail="No health registry registered.",
-                )
-            )
         if check_name == "admin_core":
+            if not isinstance(self._health, HealthOverviewProtocol):
+                return Ok(
+                    HealthCheckPayload(
+                        status=HealthStatus.UNKNOWN,
+                        component="Admin Core",
+                        detail="No health registry registered.",
+                    )
+                )
             payload, _details = await self._health.run_all()
             status = _status_from_value(getattr(payload, "value", "unknown"))
             return Ok(
@@ -316,6 +381,14 @@ class CoreAdminContributor(BaseAdminContributor):
                         if status == HealthStatus.HEALTHY
                         else "Admin Core degraded"
                     ),
+                )
+            )
+        if not isinstance(self._health, NamedHealthCheckProtocol):
+            return Ok(
+                HealthCheckPayload(
+                    status=HealthStatus.UNKNOWN,
+                    component="Admin Core",
+                    detail="No health registry registered.",
                 )
             )
         result = await self._health.run_check(check_name)
