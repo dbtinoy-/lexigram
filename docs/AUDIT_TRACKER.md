@@ -872,8 +872,8 @@ theoretical one — reflected in the severity below.
 | 52 | **`lexigram-ai-observability` trace spans carry unredacted tool/agent/retriever payloads** | Med ×1 | `docs/superpowers/specs/2026-08-18-security-ai-observability-trace-redaction-design.md` | Not yet written |
 | 53 | **`lexigram-ai-workers` document-ingestion accepts unvalidated file paths (traversal / arbitrary read)** | High ×1 | `docs/superpowers/specs/2026-08-18-security-ai-workers-path-traversal-design.md` | Not yet written |
 | 54 | **`lexigram-ai-prompt` `max_variable_length` config flag is defined but never enforced** | Low ×1 | `docs/superpowers/specs/2026-08-18-quality-ai-prompt-dead-config-flag-design.md` | Not yet written |
-| 55 | **`lexigram-features` empty `user_attributes` rule fails open (enabled=True for everyone)** | Low/Med ×1 | `docs/superpowers/specs/2026-08-18-security-features-empty-rule-failopen-design.md` | Not yet written |
-| 56 | **`lexigram-monitor` `/health`+`/metrics` unauthenticated, and health checks may leak raw exception strings** | Med ×2 | `docs/superpowers/specs/2026-08-18-security-monitor-health-metrics-authz-design.md` | Not yet written |
+| 55 | **`lexigram-features` empty `user_attributes` rule fails open (enabled=True for everyone)** | Low/Med ×1 | `docs/superpowers/specs/2026-08-18-security-features-empty-rule-failopen-design.md` | **EXECUTED 2026-08-18 (Lane 7, Area 4; §2 sign-off pending) — see §3.19** |
+| 56 | **`lexigram-monitor` `/health`+`/metrics` unauthenticated, and health checks may leak raw exception strings** | Med ×2 | `docs/superpowers/specs/2026-08-18-security-monitor-health-metrics-authz-design.md` | **EXECUTED 2026-08-18 (Lane 7, Area 3; §2 sign-off pending) — see §3.18** |
 | 57 | **`lexigram-monitor` still hard-depends on `lexigram-tasks` at the packaging level** | Low ×1 | `docs/superpowers/specs/2026-08-18-architecture-monitor-tasks-dependency-design.md` | Not yet written |
 | 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 | `docs/superpowers/specs/2026-08-18-quality-resilience-throttle-dead-decorator-design.md` | Not yet written |
 | 59 | **`lexigram-resilience` idempotency fails open on store outage, and two `unwrap()`-without-guard sites can defeat even that fallback** | Med-High ×1 | `docs/superpowers/specs/2026-08-18-security-resilience-idempotency-failopen-unwrap-design.md` | **EXECUTED 2026-08-18 (Lane 6: `a962b604`, `b750454b`; §2 sign-off pending) — see TRACKER.md Lane 6** |
@@ -1153,7 +1153,7 @@ claim, only the most consequential ones.
 | 76 | lexigram-tasks | `persistence.py` docstrings present `LockManager` as suitable for distributed/multi-instance leader election; `LockManager`'s own docstring explicitly states it is process-local only, with no cross-process or cross-host guarantees — direct contradiction | High | `docs/superpowers/specs/2026-08-18-quality-tasks-lockmanager-docs-design.md` |
 | 77 | lexigram-tasks | `IdempotencyManager.check_duplicate()` treats a storage-layer `Err` as a truthy "existing record" (no `is_ok()` guard), then does unguarded `existing["task_id"]` subscript access on the raw `Err` object — produces an unrelated `TypeError` instead of a typed error | Medium | `docs/superpowers/specs/2026-08-18-quality-tasks-idempotency-err-truthy-design.md` |
 | 78 | lexigram-tasks | `BackgroundTaskManager._register()` unconditionally registers `task.add_done_callback(self._names.pop)` while only conditionally inserting into `self._names` (`if name is not None`) — nameless tasks completing raises `KeyError` inside the done-callback | Medium | `docs/superpowers/specs/2026-08-18-quality-tasks-background-manager-keyerror-design.md` |
-| 79 | lexigram-workflow | `store_database.py`'s `list_by_stage()` escapes quotes for `stage_id`/`tenant_id` but interpolates them (and `LIMIT`) into the SQL string via raw f-string rather than parameterized `?` placeholders — contrasts with sibling methods (`evict()`) in the same file that correctly parameterize | Medium | `docs/superpowers/specs/2026-08-18-security-workflow-checkpoint-sql-design.md` |
+| 79 | lexigram-workflow | `store_database.py`'s `list_by_stage()` escapes quotes for `stage_id`/`tenant_id` but interpolates them (and `LIMIT`) into the SQL string via raw f-string rather than parameterized `?` placeholders — contrasts with sibling methods (`evict()`) in the same file that correctly parameterize | Medium | `docs/superpowers/specs/2026-08-18-security-workflow-checkpoint-sql-design.md` | **EXECUTED 2026-08-18 (Lane 7, Area 5; §2 sign-off pending) — see §3.20** |
 
 `lexigram-testing` produced no findings (see "Verified-clean surfaces" below).
 
@@ -1305,7 +1305,7 @@ executed — 0/15 tasks done.
 
 ---
 
-## 15. Architecture — Admin Dashboard Widgets, Real Data Wiring (Spec + Plan Fixed, Gaps Resolved, Not Yet Authorized)
+## 15. Architecture — Admin Dashboard Widgets, Real Data Wiring (Executed 11/11, 2026-08-18)
 
 Distinct from §13 and §14 — a fourth **architectural placement** spec,
 replacing eight framework packages' hardcoded/`EmptyContent` admin
@@ -1385,7 +1385,7 @@ initial review; both re-examined and closed:
   contracts change now, with no concrete consumer, would be speculative
   work rather than a fix.
 
-### 15.1 Tasks summary (0/11 done, none authorized)
+### 15.1 Tasks summary (11/11 done, executed 2026-08-18)
 
 | Task | Area |
 |---|---|
@@ -1400,6 +1400,15 @@ initial review; both re-examined and closed:
 | 8 | Queue stats capability implementers + widget handlers (`lexigram-queue`/`lexigram-ai-workers`) |
 | 9 | Named health check on the monitor registry (`lexigram-monitor`) |
 | 10 | Admin core widgets — health, chart metrics (`lexigram-admin`; `activity` intentionally excluded, see §14 Task 13) |
+
+**Execution (2026-08-18):** all 11 tasks landed. Commits: Task 0 `9d1fb7f`, Task 1 `370352c`, Task 2 `a6519a5`, Task 3 `fe8ff99`, Task 4 `dd5ede7`, Task 5 `79706be`, Task 6 `fe6a45d`, Task 7 `75205d4`, Task 8 `420edfd`, Task 9 `514adc1`, Task 10 `36408a3`.
+
+**Execution deviations from plan snippets (verified against live source, documented here):**
+- Task 8: `DeadLetterQueueWorker` already shipped `async get_stats() -> DLQStats` (used by `health_check()` and tests) — the plan's colliding sync dict `get_stats()` was dropped; a live `dead_letter_count` attribute was added instead (incremented on new dead letters, decremented once per successfully replayed item via a `metadata["replayed"]` guard, since `_dlq_loop` auto-retries repeatedly). `LexigramTasksAdapter.get_stats()` is async (the plan's sync `self._provider` shape didn't exist; `TaskQueueProtocol.get_task_count()` is async, `processing` has no source and reports 0). Queue DI still injects the raw backend, which lacks the capability — widgets degrade until an app binds a `QueueStatsProtocol`/`DlqStatsProtocol` object.
+- Task 9: registry test landed at `lexigram-monitor/tests/unit/test_registry_named_check.py` (flat layout; the plan's `tests/unit/health/` dir does not exist). `_check_liveness`/`_check_readiness` refactored onto the shared `_run_named` helper with behavior preserved (unknown names still skipped in loops).
+- Task 10: `run_all()` returns `(HealthStatus, {"liveness": ..., "readiness": ...})`, not `(payload, {"status": ..., "checks": ...})` — the health widget aggregates checks across both probe lists and reads status from the returned payload; `HealthStatus` values are lowercase, so the plan's `.upper()` mapping was replaced by a `_status_from_value` helper. `_empty()` helper added for placeholders; `activity` branch left untouched per the §14 collision. DI: the contributor resolves `HealthOverviewProtocol`/`MetricsReadbackProtocol` via `resolve_optional` in `on_admin_boot` (passing `None` when unbound — monitor currently binds neither key, so managed-mode degrade matches the plan's "pass None when absent").
+
+**Verification:** scoped suites green — auth 616, tasks 511, web 1419, cache 842, events 926, queue 539, monitor 331, admin full 4549 (CI-gated); `ruff check` clean on all touched files.
 
 ---
 
