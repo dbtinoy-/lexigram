@@ -75,3 +75,29 @@ class TestSecurityWiring:
         response = result.unwrap()
         assert response.errors, "complexity-100000 query must be rejected"
         assert "complexity" in response.errors[0].message.lower()
+
+    @pytest.mark.asyncio
+    async def test_disabled_config_does_not_enforce_limits(self) -> None:
+        cfg = GraphQLConfig(
+            depth_limit={"enabled": False},
+            complexity={"enabled": False},
+            alias_limit={"enabled": False},
+        )
+        schema = SchemaBuilderProtocol(config=cfg).query(Query).build()
+        executor = GraphQLExecutorProtocol(schema)
+
+        query = "{" + "nested {" * 11 + "hello" + "}" * 11 + "}"
+        result = await executor.execute(query)
+        assert result.is_ok()
+        assert not result.unwrap().errors, "depth limit must not enforce when disabled"
+
+        query = "{" + " ".join(f"a{i}: hello" for i in range(16)) + "}"
+        result = await executor.execute(query)
+        assert result.is_ok()
+        assert not result.unwrap().errors, "alias limit must not enforce when disabled"
+
+        result = await executor.execute("{ items(first: 100000) }")
+        assert result.is_ok()
+        assert not result.unwrap().errors, (
+            "complexity limit must not enforce when disabled"
+        )
