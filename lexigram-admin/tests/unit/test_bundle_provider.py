@@ -181,7 +181,11 @@ class TestAdminProvider:
             def mount(self, app: object) -> object:
                 return app
 
-        provider = AdminProvider()
+        provider = AdminProvider(
+            config=AdminConfig.from_dict(
+                {"auth": {"security": {"setup_token": "test-setup-token"}}}
+            )
+        )
         await provider.register(FakeRegistrar())
         await provider.boot(_AdminResolver())
         app = SimpleNamespace(state=SimpleNamespace())
@@ -270,6 +274,9 @@ class TestAdminProvider:
         provider = AdminProvider(
             resources=[DemoResource],
             controllers=[DemoController],
+            config=AdminConfig.from_dict(
+                {"auth": {"security": {"setup_token": "test-setup-token"}}}
+            ),
         )
         await provider.register(FakeRegistrar())
         await provider.boot(_Resolver())

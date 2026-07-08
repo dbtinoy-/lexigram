@@ -13,7 +13,9 @@ import pytest
 def config():
     from lexigram.admin.config import AdminConfig
 
-    return AdminConfig(prefix="/admin", title="Test Admin")
+    return AdminConfig.from_dict(
+        {"prefix": "/admin", "title": "Test Admin", "auth": {"security": {"setup_token": "test-setup-token"}}}
+    )
 
 
 @pytest.fixture

@@ -26,6 +26,7 @@ def test_registry_standalone_no_required_args() -> None:
 def test_registry_accepts_config() -> None:
     """AdminRegistry accepts an optional AdminConfig."""
     from lexigram.admin.config import AdminConfig
+
     config = AdminConfig(prefix="/admin")
     registry = AdminRegistry(config=config)
     assert registry._config is config
@@ -78,7 +79,13 @@ async def test_provider_register_runs_without_errors() -> None:
 @pytest.mark.asyncio
 async def test_provider_boot_runs_without_errors() -> None:
     """AdminProvider.boot() should not raise with a mock container."""
-    provider = AdminProvider()
+    from lexigram.admin.config import AdminConfig
+
+    provider = AdminProvider(
+        config=AdminConfig.from_dict(
+            {"auth": {"security": {"setup_token": "test-setup-token"}}}
+        )
+    )
 
     container = MagicMock()
 
