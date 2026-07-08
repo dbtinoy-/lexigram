@@ -21,8 +21,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.admin.auth.errors import SetupAlreadyCompletedError
 from lexigram.admin.auth.user import AdminUserRecord
 from lexigram.contracts.admin import AdminPrincipal, AdminPrincipalProviderProtocol
+from lexigram.result import Err, Ok, Result
 
 
 class AppPrincipalUserStoreAdapter:
@@ -65,6 +67,37 @@ class AppPrincipalUserStoreAdapter:
             if p.email == email:
                 return self._to_record(p)
         return None
+
+    async def claim_first_admin(
+        self,
+        name: str,
+        email: str,
+        hashed_password: str,
+        roles: list[str],
+    ) -> Result[Any, SetupAlreadyCompletedError]:
+        """Create the first admin principal when the app exposes none.
+
+        Atomicity is delegated to the app's principal provider — the app
+        owns principal creation semantics in app mode.
+
+        Args:
+            name: Display name.
+            email: Unique email address — used as the login identifier.
+            hashed_password: Pre-hashed credential (passed through as-is,
+                mirroring :meth:`create_user`).
+            roles: Role strings for the new account.
+
+        Returns:
+            Ok(record) when this call created the first admin principal;
+            ``Err(SetupAlreadyCompletedError)`` when the app already exposes
+            at least one principal and nothing was created.
+        """
+        if await self.get_admin_count() > 0:
+            return Err(SetupAlreadyCompletedError())
+        created = await self._provider.create_principal(
+            name, email, hashed_password, roles=roles
+        )
+        return Ok(self._to_record(created))
 
     async def get_user_by_id(self, user_id: str) -> Any | None:
         """Look up a principal by id (see protocol docs)."""

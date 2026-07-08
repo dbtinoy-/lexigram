@@ -4,11 +4,15 @@ In-memory admin user store implementation.
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
+import uuid
 
+from lexigram.admin.auth.errors import SetupAlreadyCompletedError
 from lexigram.admin.auth.store.base import AbstractAdminUserStore
 from lexigram.admin.auth.user import AdminUserRecord
 from lexigram.logging import get_logger
+from lexigram.result import Err, Ok, Result
 
 if TYPE_CHECKING:
     from lexigram.contracts import AuthenticatedUserProtocol
@@ -34,6 +38,7 @@ class MemoryAdminUserStore(AbstractAdminUserStore):
         self._users_by_id: dict[str, AdminUserRecord] = {}
         self._users_by_email: dict[str, AdminUserRecord] = {}
         self._users_by_username: dict[str, AdminUserRecord] = {}
+        self._claim_lock = asyncio.Lock()
 
         # Handle both legacy and modern Pydantic config
         users = getattr(config, "users", [])
@@ -165,3 +170,43 @@ class MemoryAdminUserStore(AbstractAdminUserStore):
             Number of users in store
         """
         return len(self._users_by_id)
+
+    async def claim_first_admin(
+        self,
+        name: str,
+        email: str,
+        hashed_password: str,
+        roles: list[str],
+    ) -> Result[Any, SetupAlreadyCompletedError]:
+        """Atomically insert the first admin account when the store is empty.
+
+        The emptiness check and insert run under an ``asyncio.Lock``, so
+        concurrent first-run submissions cannot both insert.
+
+        Args:
+            name: Display name.
+            email: Unique email address — used as the login identifier.
+            hashed_password: Pre-hashed credential.
+            roles: Role strings for the new account.
+
+        Returns:
+            Ok(AdminUserRecord) when this call inserted the first admin
+            account; ``Err(SetupAlreadyCompletedError)`` when the store
+            already holds an admin account and nothing was inserted.
+        """
+        async with self._claim_lock:
+            if self._users_by_id:
+                return Err(SetupAlreadyCompletedError())
+            user = AdminUserRecord(
+                user_id=str(uuid.uuid4()),
+                name=name,
+                email=email,
+                hashed_password=hashed_password,
+                roles=roles,
+                permissions=[],
+                is_active=True,
+            )
+            self._users_by_id[user.user_id] = user
+            self._users_by_email[email.lower()] = user
+            self._users_by_username[name.lower()] = user
+            return Ok(user)

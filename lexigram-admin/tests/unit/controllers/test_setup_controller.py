@@ -7,9 +7,20 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from starlette.requests import Request
 
+from lexigram.admin.auth.errors import SetupAlreadyCompletedError
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.controllers.setup import SetupController, _hash_password
+from lexigram.result import Err, Ok
+
+
+class _FakeCreatedUser:
+    """Minimal created-user shape returned by claim_first_admin."""
+
+    def __init__(self, user_id: str = "u-created", email: str = "admin@test.com") -> None:
+        self.user_id = user_id
+        self.name = "Admin"
+        self.email = email
 
 
 class _FakePolicyResult:  # noqa: N801
@@ -60,7 +71,7 @@ class TestSetupController:
     def user_store(self) -> AsyncMock:
         store = AsyncMock()
         store.get_admin_count = AsyncMock(return_value=0)
-        store.create_user = AsyncMock(return_value=None)
+        store.claim_first_admin = AsyncMock(return_value=Ok(_FakeCreatedUser()))
         return store
 
     @pytest.fixture
@@ -243,7 +254,7 @@ class TestSetupController:
         )
         resp = await controller.setup_submit(req)
         assert resp.status_code == 302
-        user_store.create_user.assert_awaited_once()
+        user_store.claim_first_admin.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_setup_submit_token_from_env_var_backcompat(
@@ -391,7 +402,7 @@ class TestSetupController:
         resp = await controller.setup_submit(req)
         assert resp.status_code == 302  # Redirect to login
         assert resp.headers["location"] == "/admin/login?next=/admin/"
-        user_store.create_user.assert_awaited_once()
+        user_store.claim_first_admin.assert_awaited_once()
         audit_service.log_event.assert_awaited_once_with(
             event_type=AdminSecurityEventType.SETUP_COMPLETED,
             ip_address=ANY,
@@ -404,7 +415,7 @@ class TestSetupController:
     async def test_setup_submit_create_user_fails(
         self, controller: SetupController, user_store: AsyncMock
     ) -> None:
-        user_store.create_user.side_effect = ValueError("Email exists")
+        user_store.claim_first_admin.side_effect = ValueError("Email exists")
         req = _mock_request(
             method="POST",
             form_data={
@@ -416,6 +427,30 @@ class TestSetupController:
         )
         resp = await controller.setup_submit(req)
         assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_setup_submit_locked_when_claim_loses_race(
+        self,
+        controller: SetupController,
+        user_store: AsyncMock,
+        audit_service: AsyncMock,
+    ) -> None:
+        user_store.claim_first_admin = AsyncMock(
+            return_value=Err(SetupAlreadyCompletedError())
+        )
+        req = _mock_request(
+            method="POST",
+            form_data={
+                "name": "Admin",
+                "email": "loser@test.com",
+                "password": "Str0ng!pass",
+                "confirm_password": "Str0ng!pass",
+            },
+        )
+        resp = await controller.setup_submit(req)
+        assert resp.status_code == 200
+        assert "already complete" in resp.body.decode().lower()
+        audit_service.log_event.assert_not_called()
 
     # -- _get_client_ip --
 

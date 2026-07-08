@@ -245,7 +245,7 @@ class SetupController(AdminController):
         hashed_password = _hash_password(password)
 
         try:
-            created = await self._user_store.create_user(
+            created_result = await self._user_store.claim_first_admin(
                 name=name,
                 email=email,
                 hashed_password=hashed_password,
@@ -261,6 +261,16 @@ class SetupController(AdminController):
                 setup_token_required=bool(required_token),
             )
             return HTMLResponse(content=html, status_code=422)
+
+        if created_result.is_err():
+            # Another submission created the first admin between the
+            # pre-flight count check and this insert — lock the wizard.
+            html = render_setup_page(
+                locked=True,
+                error="Setup is already complete. Please log in with your existing account.",
+            )
+            return HTMLResponse(content=html, status_code=200)
+        created = created_result.unwrap()
 
         logger.info("setup.first_admin_created", email=email)
 
