@@ -44,9 +44,7 @@ class DeadLetterCountWidgetHandler:
             try:
                 entries = await store.list_entries(limit=100)
             except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "events_dead_letter.store_unavailable", error=str(exc)
-                )
+                logger.warning("events_dead_letter.store_unavailable", error=str(exc))
                 entries = []
             count = len(entries)
         stats: list[Stat] = [

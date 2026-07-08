@@ -181,9 +181,7 @@ class EventsAdminContributor(BaseAdminContributor):
             self._dead_letter_handler = None
 
         try:
-            self._live_events_handler = await container.resolve(
-                LiveEventsWidgetHandler
-            )
+            self._live_events_handler = await container.resolve(LiveEventsWidgetHandler)
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "events_contributor.live_events_handler_unavailable", error=str(exc)
