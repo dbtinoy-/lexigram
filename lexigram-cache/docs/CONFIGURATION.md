@@ -34,7 +34,7 @@ Common fields shared across all backend types:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `max_size` | `int` | `None` | Max entries before eviction |
-| `cleanup_interval` | `int` | `300` | Cleanup interval in seconds |
+| `cleanup_interval` | `int` | `60` | Cleanup interval in seconds |
 | `enable_metrics` | `bool` | `True` | Enable metrics collection |
 
 ### Redis-specific Fields
@@ -101,7 +101,6 @@ cache:
     protection_lock_ttl: 30
     protection_max_wait: 10.0
     default_serializer: "json"
-    allow_pickle: false
 ```
 
 ## Environment Variables

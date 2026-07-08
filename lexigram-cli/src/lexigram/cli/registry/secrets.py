@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
+from pathlib import Path
 import secrets
 import stat
 import string
@@ -95,8 +96,6 @@ class DotenvSecretBackend(SecretBackend):
 
     def _load(self) -> None:
         try:
-            from pathlib import Path
-
             path = Path(self.env_file)
             if path.exists():
                 self._assert_restrictive_permissions(path)
@@ -114,8 +113,6 @@ class DotenvSecretBackend(SecretBackend):
 
     def _save(self) -> None:
         try:
-            from pathlib import Path
-
             path = Path(self.env_file)
             with open(path, "w") as f:
                 for key, value in self._secrets.items():

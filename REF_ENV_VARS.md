@@ -720,7 +720,6 @@
 | `LEX_CACHE__ENV` | str \| None | — | Environment (development/staging/production) | `lexigram-cache/src/lexigram/cache/config.py:CacheConfig.env` |
 | `LEX_CACHE__ENVIRONMENT` | str | — | Environment | `lexigram-cache/src/lexigram/cache/config.py:CacheConfig.environment` |
 | `LEX_CACHE__NAME` | str | — | Provider name | `lexigram-cache/src/lexigram/cache/config.py:CacheConfig.name` |
-| `LEX_CACHE__SERVICE__ALLOW_PICKLE` | bool | — | Allow insecure PickleSerializer (opt-in only) | `lexigram-cache/src/lexigram/cache/config.py:CacheConfig.service.allow_pickle` |
 | `LEX_CACHE__SERVICE__CIRCUIT_BREAKER_ENABLED` | bool | — | Enable circuit breaker | `lexigram-cache/src/lexigram/cache/config.py:CacheConfig.service.circuit_breaker_enabled` |
 | `LEX_CACHE__SERVICE__CIRCUIT_BREAKER_THRESHOLD` | int | — | Circuit breaker threshold | `lexigram-cache/src/lexigram/cache/config.py:CacheConfig.service.circuit_breaker_threshold` |
 | `LEX_CACHE__SERVICE__DEFAULT_BACKEND` | str \| None | — | Default backend name | `lexigram-cache/src/lexigram/cache/config.py:CacheConfig.service.default_backend` |
