@@ -33,6 +33,7 @@ from typing import (
 
 from lexigram import hashing  # type: ignore[attr-defined]
 from lexigram.contracts.exceptions.domain import ValidationError
+from lexigram.events.decorators.idempotency_cache import IdempotencyCache
 from lexigram.events.exceptions import ValidationError as CQRSValidationError
 
 if TYPE_CHECKING:
@@ -44,9 +45,15 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-# Module-level; modified at runtime by @idempotent wrappers.
-# Cleared via clear_idempotency_cache() for test teardown.
-_idempotency_cache: dict[str, Any] = {}
+# Registry of every cache used by @idempotent applications — one bounded
+# instance per decorated function unless a cache is injected.  Grows with
+# the number of decorated functions, never with idempotency keys (each
+# instance is bounded by MAX_IDEMPOTENCY_CACHE_SIZE).  Mirrors the
+# _handler_registry convention in decorators/handlers.py.
+_caches: list[IdempotencyCache] = []
+
+# Sentinel distinguishing a cache miss from a legitimately cached None.
+_MISS: object = object()
 
 
 def validate(func: Callable[P, Any]) -> Callable[P, Any]:
@@ -378,6 +385,7 @@ def idempotent(
     *,
     key_func: Callable[[Any], str] | None = None,
     ttl: int = 3600,
+    cache: IdempotencyCache | None = None,
 ) -> Callable[[Callable[P, Any]], Callable[P, Any]]:
     """Decorator to make command handlers idempotent.
 
@@ -386,7 +394,11 @@ def idempotent(
     Args:
         key_func: Function to extract idempotency key from command.
             If None, uses the command's idempotency_key attribute.
-        ttl: Time-to-live for cached results in seconds.
+        ttl: Time-to-live for cached results in seconds.  Entries are
+            evicted once this elapses; expired entries are treated as
+            cache misses and the handler re-executes.
+        cache: Optional injected IdempotencyCache instance.  When None,
+            each decorated function gets its own bounded cache.
 
     Returns:
         Decorator function.
@@ -402,6 +414,9 @@ def idempotent(
     """
 
     def decorator(func: Callable[P, Any]) -> Callable[P, Any]:
+        effective_cache = cache if cache is not None else IdempotencyCache()
+        _caches.append(effective_cache)
+
         @functools.wraps(func)
         async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
             # Find the command
@@ -440,13 +455,15 @@ def idempotent(
 
             cache_key = f"idempotent:{type(command).__name__}:{key}"
 
-            # Check cache
-            if cache_key in _idempotency_cache:
-                return _idempotency_cache[cache_key]
+            # Check cache; _MISS (not None) flags a miss so handlers that
+            # legitimately return None are still deduplicated.
+            cached = effective_cache.get(cache_key, _MISS)
+            if cached is not _MISS:
+                return cached
 
             # Execute and cache
             result = await cast("Any", func)(*args, **kwargs)
-            _idempotency_cache[cache_key] = result
+            effective_cache.set(cache_key, result, ttl=float(ttl))
 
             return result
 
@@ -484,11 +501,14 @@ def idempotent(
                     key = hashing.hash_hex(content)
             cache_key = f"idempotent:{type(command).__name__}:{key}"
 
-            if cache_key in _idempotency_cache:
-                return _idempotency_cache[cache_key]
+            # Check cache; _MISS (not None) flags a miss so handlers that
+            # legitimately return None are still deduplicated.
+            cached = effective_cache.get(cache_key, _MISS)
+            if cached is not _MISS:
+                return cached
 
             result = func(*args, **kwargs)
-            _idempotency_cache[cache_key] = result
+            effective_cache.set(cache_key, result, ttl=float(ttl))
 
             return result
 
@@ -502,8 +522,9 @@ def idempotent(
 
 
 def clear_idempotency_cache() -> None:
-    """Clear the idempotency cache.
+    """Clear every idempotency cache created by the :func:`idempotent` decorator.
 
-    Useful for testing or when cache needs to be reset.
+    Useful for testing or when caches need to be reset.
     """
-    _idempotency_cache.clear()
+    for cache in _caches:
+        cache.clear()

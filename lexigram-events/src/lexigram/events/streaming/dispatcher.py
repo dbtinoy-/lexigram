@@ -13,6 +13,7 @@ from uuid import uuid4
 
 # Event is used at runtime in cast() calls - import unconditionally
 from lexigram.events.messages.event import Event
+from lexigram.events.protocols import EventFilterProtocol
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -39,6 +40,7 @@ class StreamDispatcher:
     Supports:
     - Multiple subscribers per event type
     - Global subscribers (all events)
+    - Per-subscription event filtering
     - Async event delivery
     - Delivery guarantees
 
@@ -74,7 +76,9 @@ class StreamDispatcher:
         self._continue_on_error = continue_on_error
         self._subscribers: dict[type[Event], list[Callable]] = {}
         self._global_subscribers: list[Callable] = []
-        self._subscriptions: dict[str, tuple[type[Event] | str | None, Callable]] = {}
+        self._subscriptions: dict[
+            str, tuple[type[Event] | str | None, Callable, EventFilterProtocol | None]
+        ] = {}
         self._stats = DispatcherStats()
 
     @property
@@ -86,28 +90,46 @@ class StreamDispatcher:
         self,
         event_type: type[Event] | str,
         handler: Callable[[Event], Any],
-        event_filter: Any | None = None,
+        event_filter: EventFilterProtocol | None = None,
     ) -> str:
         """Subscribe to a specific event type or all events.
 
         Args:
             event_type: Event type to subscribe to, or "*" for all events
             handler: Handler function
-            event_filter: Optional EventFilter (currently unused in publisher)
+            event_filter: Optional predicate that gates delivery; the
+                handler is invoked only for published events where
+                ``event_filter.matches(event)`` is True. Accepts
+                ``EventFilter``, ``CompositeFilter``, ``NegatedFilter``,
+                or any other ``EventFilterProtocol`` implementation.
+                Defaults to None, delivering every event of the
+                subscribed type.
 
         Returns:
             Subscription ID
+
+        Example:
+            ```python
+            from lexigram.events.streaming import EventFilter
+
+            dispatcher = StreamDispatcher()
+            dispatcher.subscribe(
+                OrderCreatedEvent,
+                handle_order_created,
+                EventFilter(aggregate_id="order-123"),
+            )
+            ```
+
+        Note:
+            Subscriptions whose filter rejects an event are skipped and
+            do not count toward the value returned by ``publish()``.
         """
         subscription_id = str(uuid4())
-
-        # `event_filter` is accepted for API compatibility; reference it to
-        # avoid unused-argument lint errors until filtering is implemented.
-        _ = event_filter
 
         # Global subscription
         if event_type == "*":
             self._global_subscribers.append(handler)
-            self._subscriptions[subscription_id] = (None, handler)
+            self._subscriptions[subscription_id] = (None, handler, event_filter)
             self._stats.active_subscribers += 1
             return subscription_id
 
@@ -117,7 +139,7 @@ class StreamDispatcher:
             self._subscribers[etype] = []
 
         self._subscribers[etype].append(handler)
-        self._subscriptions[subscription_id] = (etype, handler)
+        self._subscriptions[subscription_id] = (etype, handler, event_filter)
         self._stats.active_subscribers += 1
 
         return subscription_id
@@ -134,8 +156,18 @@ class StreamDispatcher:
         self._global_subscribers.append(handler)
         self._stats.active_subscribers += 1
         subscription_id = str(uuid4())
-        self._subscriptions[subscription_id] = (None, handler)
+        self._subscriptions[subscription_id] = (None, handler, None)
         return subscription_id
+
+    def _drop_subscriptions(
+        self, event_type: type[Event] | None, handler: Callable
+    ) -> None:
+        """Remove subscription records matching an event type and handler."""
+        self._subscriptions = {
+            sub_id: entry
+            for sub_id, entry in self._subscriptions.items()
+            if not (entry[0] == event_type and entry[1] == handler)
+        }
 
     def unsubscribe(
         self,
@@ -157,7 +189,7 @@ class StreamDispatcher:
             entry = self._subscriptions.pop(subscription_id, None)
             if not entry:
                 return False
-            event_type, handler = entry
+            event_type, handler, _ = entry
             if event_type is None:
                 if handler in self._global_subscribers:
                     self._global_subscribers.remove(handler)
@@ -176,12 +208,14 @@ class StreamDispatcher:
         if event_type is None:
             if handler in self._global_subscribers:
                 self._global_subscribers.remove(handler)
+                self._drop_subscriptions(None, handler)
                 self._stats.active_subscribers -= 1
                 return True
         else:
             handlers = self._subscribers.get(cast("type[Event]", event_type), [])
             if handler in handlers:
                 handlers.remove(handler)
+                self._drop_subscriptions(cast("type[Event]", event_type), handler)
                 self._stats.active_subscribers -= 1
                 return True
 
@@ -197,8 +231,16 @@ class StreamDispatcher:
             Number of subscribers notified
         """
         event_type = type(event)
-        handlers = self._get_handlers(event_type)
+        subscriptions = self._get_subscriptions(event_type)
 
+        if not subscriptions:
+            return 0
+
+        handlers = [
+            handler
+            for handler, event_filter in subscriptions
+            if event_filter is None or event_filter.matches(event)
+        ]
         if not handlers:
             return 0
 
@@ -265,16 +307,22 @@ class StreamDispatcher:
 
         return live_sub_id
 
-    def _get_handlers(self, event_type: type[Event]) -> list[Callable]:
-        """Get all handlers for an event type."""
-        handlers = list(self._global_subscribers)
+    def _get_subscriptions(
+        self, event_type: type[Event]
+    ) -> list[tuple[Callable, EventFilterProtocol | None]]:
+        """Get matching (handler, filter) pairs for an event type.
 
-        # Add type-specific handlers (including parent types)
-        for registered_type, type_handlers in self._subscribers.items():
-            if issubclass(event_type, registered_type):
-                handlers.extend(type_handlers)
-
-        return handlers
+        Includes global subscriptions and type-specific subscriptions
+        where the published event type is a subclass of the registered
+        type.
+        """
+        subscriptions: list[tuple[Callable, EventFilterProtocol | None]] = []
+        for registered_type, handler, event_filter in self._subscriptions.values():
+            if registered_type is None or issubclass(
+                event_type, cast("type[Event]", registered_type)
+            ):
+                subscriptions.append((handler, event_filter))
+        return subscriptions
 
     async def _deliver_parallel(self, event: Event, handlers: list[Callable]) -> int:
         """Deliver to handlers in parallel."""

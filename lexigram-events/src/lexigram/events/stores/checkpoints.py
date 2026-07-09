@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.events.stores.base import AbstractCheckpointStore
+from lexigram.events.stores.identifiers import validate_table_name
 from lexigram.primitives import clock as ambient_clock
 
 
@@ -12,6 +13,8 @@ class SqlCheckpointStore(AbstractCheckpointStore):
     """SQL implementation of AbstractCheckpointStore for Postgres and SQLite."""
 
     def __init__(self, connection: Any, table_name: str = "event_checkpoints") -> None:
+        validate_table_name(table_name)
+        validate_table_name(f"{table_name}_locks")
         self.connection = connection
         self.table_name = table_name
 
