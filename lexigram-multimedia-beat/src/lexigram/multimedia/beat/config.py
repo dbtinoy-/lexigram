@@ -13,6 +13,8 @@ class BeatAnalysisConfig(BaseConfig):
     config_section: ClassVar[str] = "multimedia_beat"
     backend: Literal["librosa", "madmom"] = "librosa"
     librosa_sample_rate: int = 22050
+    max_asset_bytes: int = 25 * 1024 * 1024
+    max_analyze_samples: int = 60_000_000
     madmom_base_url: str = "http://localhost:5600"
     timeout: float = 30.0
 

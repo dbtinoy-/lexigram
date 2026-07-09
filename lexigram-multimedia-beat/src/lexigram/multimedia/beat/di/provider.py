@@ -64,7 +64,9 @@ class BeatAnalysisGenerationProvider(Provider):
             self._backend = cast(
                 "BeatAnalysisProvider",
                 LibrosaBeatAnalysisProvider(
-                    sample_rate=self._config.librosa_sample_rate
+                    sample_rate=self._config.librosa_sample_rate,
+                    max_asset_bytes=self._config.max_asset_bytes,
+                    max_analyze_samples=self._config.max_analyze_samples,
                 ),
             )
         elif self._config.backend == "madmom":
