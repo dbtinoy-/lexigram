@@ -14,12 +14,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from lexigram.ai.governance.resource import GovernanceScheduledWorker
 from lexigram.logging import get_logger
-from lexigram.tasks import ScheduledWorker
 
 if TYPE_CHECKING:
     from lexigram.ai.governance.resource.tracker import ResourceUnitTracker
-    from lexigram.tasks import BackgroundTaskManager
+    from lexigram.contracts.infra.tasks import TaskManagerProtocol
 
 logger = get_logger(__name__)
 
@@ -42,13 +42,18 @@ class GaugeReconciliationCallback(Protocol):
         ...
 
 
-class GaugeReconciliationWorker(ScheduledWorker):
+class GaugeReconciliationWorker(GovernanceScheduledWorker):
     """Periodically reconciles INSTANTANEOUS gauges against ground truth.
 
     Each cycle: for every ``(unit_name, callback)`` registered, list the
     tenants and call ``count_active`` to obtain the correct value; write
     it via :meth:`ResourceUnitTracker.reconcile`.  Per-tenant errors are
     logged and skipped — a single bad callback never poisons the cycle.
+
+    The concrete task manager (``BackgroundTaskManager`` from
+    ``lexigram.tasks``) is supplied by the application that wires both
+    packages together; this class only depends on
+    :class:`~lexigram.contracts.infra.tasks.TaskManagerProtocol`.
 
     Default cadence is 5 minutes; tunable per-instance.
     """
@@ -57,7 +62,7 @@ class GaugeReconciliationWorker(ScheduledWorker):
 
     def __init__(
         self,
-        task_manager: BackgroundTaskManager,
+        task_manager: TaskManagerProtocol,
         tracker: ResourceUnitTracker,
         callbacks: dict[str, GaugeReconciliationCallback] | None = None,
         *,

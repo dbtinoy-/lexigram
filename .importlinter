@@ -357,9 +357,14 @@ unmatched_ignore_imports_alerting = warn
 # The AI parent package (lexigram.ai) acts as the orchestrator/facade and
 # is intentionally excluded from this independence list — it IS allowed to
 # import from sub-packages to wire them together.
+#
+# lexigram.tasks is listed as a peer so AI sub-packages can never import
+# the tasks implementation directly — cross-extension communication goes
+# through lexigram.contracts.infra.tasks protocols (audit finding §51,
+# 2026-08-18-architecture-ai-governance-tasks-import-design.md).
 
 [importlinter:contract:ai-sub-independence]
-name = AI sub-packages do not import from each other
+name = AI sub-packages do not import from each other or from lexigram.tasks
 type = independence
 modules =
     lexigram.ai.agents
@@ -377,6 +382,7 @@ modules =
     lexigram.ai.skills
     lexigram.vector
     lexigram.ai.workers
+    lexigram.tasks
 
 # =============================================================================
 # Contract 5b — Multimedia sub-packages are independent of each other
