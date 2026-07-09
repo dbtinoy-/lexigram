@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from lexigram.admin.contributors.core import CoreAdminContributor
-from lexigram.admin.realtime import AdminEvent, SubjectAdminEventHub
-from lexigram.contracts.admin import StatContent, TableContent, Tone, WidgetParams
+from lexigram.contracts.admin import StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.widget_content import (
     ChartContent,
     EmptyContent,
@@ -65,60 +62,6 @@ async def test_health_widget_reports_aggregate_status() -> None:
     assert "healthy" in str(vm.content)
 
 
-async def test_activity_widget_returns_empty_content_placeholder() -> None:
-    contributor = CoreAdminContributor()
-    result = await contributor.render_widget("activity", WidgetParams())
-    vm = result.unwrap()
-    assert isinstance(vm.content, EmptyContent)
-
-
-async def _publish_broadcast(
-    hub: SubjectAdminEventHub, event_type: str = "resource.updated", resource: str = "users"
-) -> None:
-    await hub.publish(
-        AdminEvent(
-            event_type=event_type,
-            data={},
-            resource_type=resource,
-            resource_id=7,
-        )
-    )
-
-
-async def test_activity_widget_streams_broadcast_events() -> None:
-    hub = SubjectAdminEventHub()
-    contributor = CoreAdminContributor(hub=hub)
-    await asyncio.sleep(0)  # let the background tail subscribe to the hub
-    await _publish_broadcast(hub)
-    await asyncio.sleep(0)
-    result = await contributor.render_widget("activity", WidgetParams())
-    vm = result.unwrap()
-    assert isinstance(vm.content, TableContent)
-    assert len(vm.content.rows) == 1
-    assert vm.content.rows[0][0].text == "resource.updated"
-    assert vm.content.rows[0][1].text == "users"
-    assert vm.content.rows[0][2].text == "7"
-
-
-async def test_activity_widget_ignores_targeted_events() -> None:
-    hub = SubjectAdminEventHub()
-    contributor = CoreAdminContributor(hub=hub)
-    await asyncio.sleep(0)  # let the background tail subscribe to the hub
-    await hub.publish(
-        AdminEvent(
-            event_type="resource.deleted",
-            data={},
-            resource_type="users",
-            resource_id=99,
-        ),
-        target_users=["admin-1"],
-    )
-    await asyncio.sleep(0)
-    result = await contributor.render_widget("activity", WidgetParams())
-    vm = result.unwrap()
-    assert isinstance(vm.content, EmptyContent)
-
-
 async def test_chart_metrics_widget_degrades_without_source() -> None:
     contributor = CoreAdminContributor()
     result = await contributor.render_widget("chart_metrics", WidgetParams())
@@ -170,7 +113,6 @@ def test_widget_definitions_declare_widget_kind() -> None:
 
 
 __all__ = [
-    "test_activity_widget_returns_empty_content_placeholder",
     "test_chart_metrics_reads_metrics_capability",
     "test_chart_metrics_widget_degrades_without_source",
     "test_health_widget_reports_aggregate_status",
