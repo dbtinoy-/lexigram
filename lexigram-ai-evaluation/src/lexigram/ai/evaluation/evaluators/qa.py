@@ -19,7 +19,10 @@ class QAEvaluator(BaseEvaluator, EvaluatorProtocol):
 
     Evaluates whether the output correctly answers the question
     based on the reference answer. Uses keyword overlap and
-    semantic similarity.
+    semantic similarity. When the reference yields no extractable
+    keywords (numeric, short-word, or stopword-only answers), falls
+    back to a case-insensitive containment match of the stripped
+    reference text within the stripped output text.
     """
 
     def __init__(self) -> None:
@@ -39,7 +42,11 @@ class QAEvaluator(BaseEvaluator, EvaluatorProtocol):
         output_keywords = self._extract_keywords(output)
 
         if not reference_keywords:
-            score = 1.0 if output.strip() else 0.0
+            # No comparable keywords in the reference (numeric, short-word,
+            # stopword-only, or empty) — fall back to matching the raw text.
+            ref_text = reference.strip().lower()
+            output_text = output.strip().lower()
+            score = 1.0 if ref_text and ref_text in output_text else 0.0
         else:
             overlap = len(set(output_keywords) & set(reference_keywords))
             score = overlap / len(reference_keywords)
@@ -54,7 +61,13 @@ class QAEvaluator(BaseEvaluator, EvaluatorProtocol):
             "missing_keywords": str(list(missing)),
         }
 
-        feedback = f"Matched {len(common)}/{len(reference_keywords)} key concepts"
+        if not reference_keywords:
+            feedback = (
+                "Reference has no extractable keywords; "
+                "used case-insensitive containment match"
+            )
+        else:
+            feedback = f"Matched {len(common)}/{len(reference_keywords)} key concepts"
 
         return Ok(self._create_result(score, feedback, details))
 
