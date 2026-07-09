@@ -16,6 +16,7 @@ class VideoProcessingConfig(BaseConfig):
     max_concurrent_jobs: int = 2
     temp_dir: str | None = None
     timeout: float = 300.0
+    max_asset_bytes: int = 25 * 1024 * 1024
 
 
 class VideoConfig(BaseConfig):

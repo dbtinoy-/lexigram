@@ -69,7 +69,9 @@ class FFmpegVideoProcessor:
         async with self._semaphore:
             workdir = tempfile.mkdtemp(dir=self._config.temp_dir)
             try:
-                input_path = await materialize_asset(asset, temp_dir=workdir)
+                input_path = await materialize_asset(
+                    asset, temp_dir=workdir, max_bytes=self._config.max_asset_bytes
+                )
                 used_fps = fps
                 if used_fps is None:
                     used_fps = await probe_fps(
@@ -251,20 +253,39 @@ class FFmpegVideoProcessor:
     ) -> list[str]:
         match operation:
             case Concat(assets=assets):
-                return [await materialize_asset(a, temp_dir=workdir) for a in assets]
+                return [
+                    await materialize_asset(
+                        a, temp_dir=workdir, max_bytes=self._config.max_asset_bytes
+                    )
+                    for a in assets
+                ]
             case OverlayImage(asset=asset, image_asset=image_asset):
                 return [
-                    await materialize_asset(asset, temp_dir=workdir),
-                    await materialize_asset(image_asset, temp_dir=workdir),
+                    await materialize_asset(
+                        asset, temp_dir=workdir, max_bytes=self._config.max_asset_bytes
+                    ),
+                    await materialize_asset(
+                        image_asset,
+                        temp_dir=workdir,
+                        max_bytes=self._config.max_asset_bytes,
+                    ),
                 ]
             case MuxAudio(asset=asset, audio_asset=audio_asset):
                 return [
-                    await materialize_asset(asset, temp_dir=workdir),
-                    await materialize_asset(audio_asset, temp_dir=workdir),
+                    await materialize_asset(
+                        asset, temp_dir=workdir, max_bytes=self._config.max_asset_bytes
+                    ),
+                    await materialize_asset(
+                        audio_asset,
+                        temp_dir=workdir,
+                        max_bytes=self._config.max_asset_bytes,
+                    ),
                 ]
             case ComposeVideo(asset=asset, layers=layers, audio_layers=audio_layers):
                 return [
-                    await materialize_asset(a, temp_dir=workdir)
+                    await materialize_asset(
+                        a, temp_dir=workdir, max_bytes=self._config.max_asset_bytes
+                    )
                     for a in (
                         [asset]
                         + [layer.asset for layer in layers]
@@ -274,10 +295,18 @@ class FFmpegVideoProcessor:
             case _:
                 primary = getattr(operation, "asset", None)
                 if primary is not None:
-                    return [await materialize_asset(primary, temp_dir=workdir)]
+                    return [
+                        await materialize_asset(
+                            primary,
+                            temp_dir=workdir,
+                            max_bytes=self._config.max_asset_bytes,
+                        )
+                    ]
                 # RawFilter carries a list of assets directly.
                 return [
-                    await materialize_asset(a, temp_dir=workdir)
+                    await materialize_asset(
+                        a, temp_dir=workdir, max_bytes=self._config.max_asset_bytes
+                    )
                     for a in operation.assets  # type: ignore[union-attr]
                 ]
 
