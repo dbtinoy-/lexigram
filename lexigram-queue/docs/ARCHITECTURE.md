@@ -234,7 +234,7 @@ One leaf exception per backend (`RedisQueueError`, `RabbitMQQueueError`, `KafkaQ
 ## Core Infrastructure
 
 - **DeadLetterQueue** — stores failed `DeadLetterEntry` (message, error, timestamp, retry_count), bounded at 1000 entries (oldest evicted first).
-- **TransactionalOutbox** — stages messages via `stage(topic, message)`, publishes atomically on `flush()`, then `clear()`.
+- **BatchedPublisher** — in-memory publish batching: `stage(topic, message)` locally, publish all unpublished entries concurrently on `flush()`, `clear()` to reset. Entries do not survive a process restart; crash-safe delivery is provided by the durable SQL outbox (`OutboxStoreProtocol` + `SQLOutboxStore` + `OutboxPublisher`), unchanged.
 - **Hook payloads:** `MessagePublishedHook`, `MessageConsumedHook`, `QueueDrainedHook` — each carries `queue_name`.
 - **Domain events:** `MessageConsumedEvent`, `MessageDeadLetteredEvent`, `ConsumerRegisteredEvent` — extend `DomainEvent` from contracts.
 

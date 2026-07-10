@@ -158,6 +158,9 @@ class RedisQueue:
     async def subscribe(self, topic: str, handler: Any) -> None:
         """Subscribe a handler to a topic.
 
+        Each received message is processed in its own tracked task, so a
+        failing handler never kills the listener loop.
+
         Args:
             topic: Topic to subscribe to.
             handler: Async callable invoked per message.
@@ -170,55 +173,70 @@ class RedisQueue:
         pubsub = self._client.pubsub()
         await pubsub.subscribe(topic)
 
+        async def _handle_message(raw: dict[str, Any]) -> None:
+            from lexigram.contracts.queue.types import BusMessage as BusMsg
+
+            span = None
+            msg: BusMsg | None = None
+            try:
+                data = json.loads(raw["data"])
+                raw_id = data.get("id")
+                message_id = raw_id if isinstance(raw_id, str) else ""
+                record_headers: dict[str, str] = data.get("headers") or {}
+                msg = BusMsg(
+                    id=message_id,
+                    topic=data.get("topic", topic),
+                    payload=data.get("payload"),
+                    headers=record_headers,
+                )
+                context = (
+                    self._tracer.extract_context(record_headers)
+                    if self._tracer
+                    else None
+                )
+                span = (
+                    self._tracer.start_span(
+                        f"queue.receive {topic}",
+                        attributes={
+                            "messaging.destination": topic,
+                            "messaging.system": "redis",
+                        },
+                        context=context,
+                    )
+                    if self._tracer
+                    else None
+                )
+                with span if span is not None else _nullcontext():
+                    await handler(msg)
+
+                await self._emit_action(
+                    "message.consumed",
+                    MessageConsumedHook(
+                        queue_name=topic,
+                        message_type=self._message_type(msg),
+                    ),
+                )
+            except Exception as exc:
+                if span:
+                    span.record_exception(exc)
+                    span.set_status("error")
+                logger.error(
+                    "redis_queue_message_failed",
+                    topic=topic,
+                    message_id=msg.id if msg is not None else "",
+                    error=str(exc),
+                )
+
         async def _listen() -> None:
             async for raw in pubsub.listen():
                 if raw["type"] == "message":
-                    data = json.loads(raw["data"])
-                    from lexigram.contracts.queue.types import BusMessage as BusMsg
-
-                    record_headers: dict[str, str] = data.get("headers") or {}
-                    msg = BusMsg(
-                        topic=data.get("topic", topic),
-                        payload=data.get("payload"),
-                        headers=record_headers,
+                    create_tracked_task(
+                        _handle_message(raw),
+                        self._tasks,
+                        name=f"redis_queue_handle_{topic}",
                     )
-                    context = (
-                        self._tracer.extract_context(record_headers)
-                        if self._tracer
-                        else None
-                    )
-                    span = (
-                        self._tracer.start_span(
-                            f"queue.receive {topic}",
-                            attributes={
-                                "messaging.destination": topic,
-                                "messaging.system": "redis",
-                            },
-                            context=context,
-                        )
-                        if self._tracer
-                        else None
-                    )
-                    try:
-                        with span if span is not None else _nullcontext():
-                            await handler(msg)
 
-                        await self._emit_action(
-                            "message.consumed",
-                            MessageConsumedHook(
-                                queue_name=topic,
-                                message_type=self._message_type(msg),
-                            ),
-                        )
-                    except Exception as exc:
-                        if span:
-                            span.record_exception(exc)
-                            span.set_status("error")
-                        raise
-
-        task = create_tracked_task(
-            _listen(), self._tasks, name=f"redis_queue_msg_{topic}"
-        )
+        create_tracked_task(_listen(), self._tasks, name=f"redis_queue_msg_{topic}")
         logger.debug("redis_queue_subscribed", topic=topic)
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
