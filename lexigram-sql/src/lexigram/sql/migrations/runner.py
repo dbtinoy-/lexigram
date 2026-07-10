@@ -6,9 +6,11 @@ the container without depending on lexigram-sql's internal class hierarchy.
 
 from __future__ import annotations
 
-from lexigram.contracts.data.sql.migrations import MigrationRunnerProtocol  # noqa: TC002
-from lexigram.sql.migrations.manager import SimpleMigrationManager
+from lexigram.contracts.data.sql.migrations import (
+    MigrationRunnerProtocol,  # noqa: TC002
+)
 from lexigram.logging import get_logger
+from lexigram.sql.migrations.manager import SimpleMigrationManager
 
 logger = get_logger(__name__)
 
@@ -71,7 +73,16 @@ class MigrationRunnerAdapter:
         return successful[-1].version if successful else None
 
     async def get_pending_migrations(self) -> list[str]:
-        """Return version identifiers of not-yet-applied migrations found on disk."""
+        """Return version identifiers of not-yet-applied migrations found on disk.
+
+        Alembic-backed managers report pending revisions from their own
+        status introspection; file-based managers derive them from the
+        migrations directory.
+        """
+        introspector = getattr(self._manager, "introspector", None)
+        if introspector is not None:
+            status = await self._manager.get_status()
+            return [m.revision for m in status.pending_migrations]
         migrations_dir = self._manager.migrations_dir
         if not migrations_dir.exists():
             return []
