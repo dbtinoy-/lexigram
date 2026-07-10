@@ -16,9 +16,7 @@ def _base() -> MediaAsset:
 
 def _layer(start=1.0, end=None, fade_in=0.0, fade_out=0.0) -> ComposeLayer:
     return ComposeLayer(
-        asset=MediaAsset(
-            mime_type="video/quicktime", provider="test", uri="layer.mov"
-        ),
+        asset=MediaAsset(mime_type="video/quicktime", provider="test", uri="layer.mov"),
         start=start,
         end=end,
         fade_in=fade_in,
@@ -60,7 +58,9 @@ def test_single_layer_basic():
 
 
 def test_two_layers_windows():
-    op = ComposeVideo(asset=_base(), layers=[_layer(start=1.0), _layer(start=2.0, end=4.0)])
+    op = ComposeVideo(
+        asset=_base(), layers=[_layer(start=1.0), _layer(start=2.0, end=4.0)]
+    )
     argv = build_compose_argv(
         op, input_paths=["base.mp4", "l1.mov", "l2.mov"], output_path="out.mp4"
     )
@@ -182,7 +182,9 @@ def test_encode_tail():
                 asset=MediaAsset(mime_type="audio/wav", provider="test", uri="n.wav")
             )
         ],
-        encode=EncodeSpec(codec="libx265", bitrate="10M", resolution="1080x1920", fps=30),
+        encode=EncodeSpec(
+            codec="libx265", bitrate="10M", resolution="1080x1920", fps=30
+        ),
     )
     argv = build_compose_argv(
         op, input_paths=["base.mp4", "layer.mov", "n.wav"], output_path="out.mp4"

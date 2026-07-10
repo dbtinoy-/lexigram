@@ -63,7 +63,10 @@ def test_concat_with_mixed_cut_and_crossfade_only_blends_the_crossfade_pair():
         clip_durations=[3.0, 3.0, 3.0],
     )
     fc = argv[argv.index("-filter_complex") + 1]
-    assert "xfade=transition=fade:duration=0.03333333333333333:offset=2.966666666666667[v1]" in fc
+    assert (
+        "xfade=transition=fade:duration=0.03333333333333333:offset=2.966666666666667[v1]"
+        in fc
+    )
     assert "acrossfade=d=0.03333333333333333[a1]" in fc
     assert "xfade=transition=fade:duration=0.5:offset=5.466666666666667[v2]" in fc
     assert "acrossfade=d=0.5[a2]" in fc
@@ -94,9 +97,7 @@ def test_overlay_image_argv():
 
 
 def test_burn_subtitles_argv():
-    op = BurnSubtitles(
-        asset=ASSET, cues=[SubtitleCue(start=0.0, end=1.0, text="hi")]
-    )
+    op = BurnSubtitles(asset=ASSET, cues=[SubtitleCue(start=0.0, end=1.0, text="hi")])
     argv = build_argv(
         op, input_paths=["in.mp4"], output_path="out.mp4", subtitle_path="subs.srt"
     )
@@ -148,9 +149,7 @@ def test_mux_audio_mix_with_ducking_argv():
         music_volume=0.3,
         duck_under_existing=True,
     )
-    argv = build_argv(
-        op, input_paths=["video.mp4", "music.mp3"], output_path="out.mp4"
-    )
+    argv = build_argv(op, input_paths=["video.mp4", "music.mp3"], output_path="out.mp4")
     assert "-filter_complex" in argv
     fc = argv[argv.index("-filter_complex") + 1]
     # music (index 1) must be the signal being compressed, controlled by the
