@@ -76,6 +76,11 @@ class AdminProvider(Provider):
         self._admin_resolver: Any | None = None
         self._mount_failures: dict[str, str] = {}
         self._csrf_service: Any | None = None
+        # Middleware dependencies resolved in boot(); always assigned before
+        # mount_to_app() runs (boot failures fail application startup).
+        self._user_store: Any | None = None
+        self._session_service: Any | None = None
+        self._authorizer: Any | None = None
 
     @property  # type: ignore[misc]
     def config(self) -> AdminConfig:
@@ -735,58 +740,44 @@ class AdminProvider(Provider):
                 middleware_stack.append((AdminAuthGuardMiddleware, {}))
                 _log.debug("admin.auth_guard_middleware_wired")
             except Exception as exc:  # noqa: BLE001 — guard middleware is optional
-                _log.warning("admin.auth_guard_middleware_skipped", reason=str(exc))
+                # Degrade (non-fatal), but log at error: the operator
+                # explicitly required auth and the guard could not be added.
+                if self._config.require_auth:
+                    _log.error("admin.auth_guard_middleware_skipped", reason=str(exc))
+                else:
+                    _log.warning("admin.auth_guard_middleware_skipped", reason=str(exc))
         else:
             _log.debug("admin.auth_guard_middleware_skipped_require_auth_unset")
 
         # Wire auth middleware — loads user from session into request.state.user
         # so that downstream authorization middleware can enforce RBAC.
-        try:
-            from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
-            from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
-            from lexigram.admin.middleware.auth import AdminAuthMiddleware
+        # Dependencies resolved in boot(); a missing binding fails startup.
+        from lexigram.admin.middleware.auth import AdminAuthMiddleware
 
-            user_store = await admin_resolver.resolve(
-                AdminUserStoreProtocol,
-                bypass_visibility=True,
+        middleware_stack.append(
+            (
+                AdminAuthMiddleware,
+                {
+                    "user_store": self._user_store,
+                    "session_service": self._session_service,
+                    "require_auth": False,
+                },
             )
-            session_service = await admin_resolver.resolve(
-                AdminSessionServiceProtocol,
-                bypass_visibility=True,
-            )
-            middleware_stack.append(
-                (
-                    AdminAuthMiddleware,
-                    {
-                        "user_store": user_store,
-                        "session_service": session_service,
-                        "require_auth": False,
-                    },
-                )
-            )
-            _log.debug("admin.auth_middleware_wired")
-        except Exception as exc:  # noqa: BLE001 — auth middleware is optional
-            _log.warning("admin.auth_middleware_skipped", reason=str(exc))
+        )
+        _log.debug("admin.auth_middleware_wired")
 
         # Wire request-entry RBAC middleware — checks authorization before
         # dispatching to handlers (AUTH-09, AUTH-18).  Placed after the auth
-        # guard so request.state.user is populated.
-        try:
-            from lexigram.admin.middleware.authorization import (
-                AdminAuthorizationMiddleware,
-                RequestAuthorizerProtocol,
-            )
+        # guard so request.state.user is populated. The authorizer is
+        # resolved in boot(); a missing binding fails startup.
+        from lexigram.admin.middleware.authorization import (
+            AdminAuthorizationMiddleware,
+        )
 
-            authorizer = await admin_resolver.resolve(
-                RequestAuthorizerProtocol,
-                bypass_visibility=True,
-            )
-            middleware_stack.append(
-                (AdminAuthorizationMiddleware, {"authorizer": authorizer})
-            )
-            _log.debug("admin.authorization_middleware_wired")
-        except Exception as exc:  # noqa: BLE001 — authorization middleware is optional
-            _log.warning("admin.authorization_middleware_skipped", reason=str(exc))
+        middleware_stack.append(
+            (AdminAuthorizationMiddleware, {"authorizer": self._authorizer})
+        )
+        _log.debug("admin.authorization_middleware_wired")
 
         # Wire tenant middleware when tenancy is enabled (before auth guard
         # so request.state.tenant_id is available during auth checks).
@@ -1135,6 +1126,56 @@ class AdminProvider(Provider):
                 "out for local/ephemeral environments with "
                 "admin.auth.security.setup_token_optin_unsafe=true"
             )
+
+        # AdminAuthMiddleware's dependencies are mandatory — the middleware
+        # that actually enforces identity must not be silently dropped by a
+        # mount-time resolution failure (RouteSetup swallows mount exception
+        # and skips the admin mount entirely). Resolve at boot with the same
+        # fail-loud shape as the CSRF block above.
+        from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
+        from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
+
+        try:
+            self._user_store = await container.resolve(
+                AdminUserStoreProtocol,
+                bypass_visibility=True,
+            )
+            self._session_service = await container.resolve(
+                AdminSessionServiceProtocol,
+                bypass_visibility=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
+            _log.error(
+                "admin.auth_middleware_dependencies_resolution_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            raise RuntimeError(
+                "AdminAuthMiddleware dependencies could not be resolved; "
+                "refusing to boot admin without session validation"
+            ) from exc
+
+        # AdminAuthorizationMiddleware's authorizer is mandatory — RBAC
+        # enforcement must never silently degrade at startup.
+        from lexigram.admin.middleware.authorization import (
+            RequestAuthorizerProtocol,
+        )
+
+        try:
+            self._authorizer = await container.resolve(
+                RequestAuthorizerProtocol,
+                bypass_visibility=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
+            _log.error(
+                "admin.authorization_middleware_dependency_resolution_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            raise RuntimeError(
+                "AdminAuthorizationMiddleware's authorizer could not be "
+                "resolved; refusing to boot admin without RBAC enforcement"
+            ) from exc
 
         # Wire the container resolver into WidgetController so contributor
         # render_widget() implementations can resolve their service dependencies.
