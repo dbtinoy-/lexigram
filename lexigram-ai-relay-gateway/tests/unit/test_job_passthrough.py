@@ -354,6 +354,7 @@ class TestSubmit:
         assert record.channel_name == "a"
         assert record.upstream_job_id == UPSTREAM_JOB_ID
         assert record.endpoint_kind == KIND
+        assert record.submitted_by == TENANT_ID
         assert record.created_at == clock()
 
     async def test_submit_other_fields_verbatim_and_no_payload_mutation(self) -> None:
@@ -662,6 +663,39 @@ class TestStatus:
         assert err.status_code == 404
         assert err.request_id == REQUEST_ID
         assert upstream.captured == []
+        assert [call[0] for call in calls] == ["authorize"]
+
+    async def test_status_cross_tenant_is_same_not_found(self) -> None:
+        calls: list[tuple[Any, ...]] = []
+        upstream = RequestCapturingUpstream(calls)
+        service = make_service(
+            calls,
+            upstream=upstream,
+            authorizer=RecordingAuthorizer(calls),
+            billing=RecordingBilling(calls),
+        )
+        submitted = await service.submit(KIND, make_request())
+        assert submitted.is_ok()
+        gateway_job_id = str((submitted.unwrap().payload or {})["id"])
+        calls.clear()
+
+        other = RelayGatewayRequest(
+            request_id=REQUEST_ID,
+            tenant_id="tenant-2",
+            source=RelayFormat.OPENAI_CHAT,
+            model=MODEL,
+            stream=False,
+            payload={},
+            headers={},
+            channel=None,
+        )
+        result = await service.status(KIND, gateway_job_id, other)
+        assert result.is_err()
+        err = result.unwrap_err()
+        assert err.code == "MODEL_NOT_FOUND"
+        assert err.status_code == 404
+        assert err.request_id == REQUEST_ID
+        assert [r.method for r in upstream.captured] == ["POST"]
         assert [call[0] for call in calls] == ["authorize"]
 
     async def test_status_expired_job_is_model_not_found(self) -> None:

@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import MagicMock
 
+import pytest
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.web.routes import _resolve_verifier
-from lexigram.ai.relay.gateway.web.shared import auth_guard
+from lexigram.ai.relay.gateway.web.shared import (
+_REQUIRE_AUTH_MISCONFIGURED,
+    auth_guard,
+)
 from lexigram.contracts.ai.relay import (
     RelayAuthError,
     RelayAuthIdentity,
@@ -83,6 +88,21 @@ async def test_auth_guard_allows_when_no_verifier() -> None:
     assert response.status_code == 200
 
 
+async def test_auth_guard_fails_closed_when_required_but_unbound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from lexigram.ai.relay.gateway.web import shared
+
+    error_log = MagicMock()
+    fake_logger = MagicMock()
+    fake_logger.error = error_log
+    monkeypatch.setattr(shared, "logger", fake_logger)
+    response = await auth_guard(_make_request(), _REQUIRE_AUTH_MISCONFIGURED, handler)
+    assert response.status_code == 503
+    assert "AUTH_REQUIRED_BUT_UNBOUND" in response.body.decode()
+    error_log.assert_called_once_with("relay_auth_required_but_unbound")
+
+
 async def test_resolve_verifier_is_none_without_container() -> None:
     assert await _resolve_verifier(_make_request()) is None
 
@@ -95,16 +115,18 @@ async def test_resolve_verifier_is_none_when_config_unbound() -> None:
 
 async def test_resolve_verifier_is_none_when_auth_not_required() -> None:
     request = _make_request()
-    request.state.container = FakeContainer(config=RelayGatewayConfig())
+    request.state.container = FakeContainer(
+        config=RelayGatewayConfig(require_auth=False)
+    )
     assert await _resolve_verifier(request) is None
 
 
-async def test_resolve_verifier_is_none_when_verifier_unbound() -> None:
+async def test_resolve_verifier_is_misconfigured_sentinel_when_verifier_unbound() -> None:
     request = _make_request()
     request.state.container = FakeContainer(
         config=RelayGatewayConfig(require_auth=True), verifier=None
     )
-    assert await _resolve_verifier(request) is None
+    assert await _resolve_verifier(request) is _REQUIRE_AUTH_MISCONFIGURED
 
 
 async def test_resolve_verifier_returns_bound_verifier() -> None:

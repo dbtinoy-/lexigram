@@ -37,6 +37,8 @@ class RelayJobRecord:
             never exposed to the caller.
         endpoint_kind: The endpoint kind the job was submitted through
             (e.g. ``"video_generation"``).
+        submitted_by: Tenant id of the caller that submitted the job;
+            the status poller compares it against the polling caller.
         created_at: Monotonic timestamp of the record; the registry
             evicts records older than the configured TTL.
     """
@@ -44,6 +46,7 @@ class RelayJobRecord:
     channel_name: str
     upstream_job_id: str
     endpoint_kind: str
+    submitted_by: str
     created_at: float
 
 

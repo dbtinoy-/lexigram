@@ -24,6 +24,7 @@ def make_record(created_at: float = 0.0) -> RelayJobRecord:
         channel_name=CHANNEL_NAME,
         upstream_job_id=UPSTREAM_JOB_ID,
         endpoint_kind=ENDPOINT_KIND,
+        submitted_by="tenant-1",
         created_at=created_at,
     )
 

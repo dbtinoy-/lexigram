@@ -44,9 +44,11 @@ from lexigram.ai.relay.gateway.web.image_endpoints import (
     build_image_routes,
 )
 from lexigram.ai.relay.gateway.web.shared import (
+    _REQUIRE_AUTH_MISCONFIGURED,
     ResolvePassthrough,
     _error_response,
     _parse_body,
+    _RequireAuthMisconfigured,
     _safe_headers,
     _status_for,
     auth_guard,
@@ -142,15 +144,26 @@ RELAY_ROUTE_PATHS: tuple[str, ...] = tuple(
 """Inbound relay paths registered by ``build_routes``, in route order."""
 
 
-async def _resolve_verifier(request: Request) -> RelayAuthVerifierProtocol | None:
-    """Resolve the verifier when auth is required, else ``None``."""
+async def _resolve_verifier(
+    request: Request,
+) -> RelayAuthVerifierProtocol | _RequireAuthMisconfigured | None:
+    """Resolve the verifier when auth is required, else ``None``.
+
+    ``None`` means auth is explicitly off (no config, or
+    ``require_auth=False``).  When auth is required but no verifier is
+    bound, the ``_RequireAuthMisconfigured`` sentinel is returned so
+    ``auth_guard`` fails closed instead of passing through silently.
+    """
     container: Any = getattr(request.state, "container", None)
     if container is None:
         return None
     config = await container.resolve_optional(RelayGatewayConfig)
     if config is None or not config.require_auth:
         return None
-    return await container.resolve_optional(RelayAuthVerifierProtocol)
+    verifier = await container.resolve_optional(RelayAuthVerifierProtocol)
+    if verifier is None:
+        return _REQUIRE_AUTH_MISCONFIGURED
+    return verifier
 
 
 async def _resolve_limiter(request: Request) -> RelayRateLimiter | None:
@@ -223,8 +236,9 @@ def _with_auth_guard(
 ) -> Callable[..., Awaitable[Response]]:
     """Wrap a route handler so auth and rate limiting run first.
 
-    Preserves the open default: no bound verifier or no rate-limit rules
-    means the wrapped handler runs untouched.
+    Auth is on by default; pass-through only happens when auth is
+    explicitly opted out (``require_auth=False``) or no gateway config
+    is present.
     """
 
     async def guarded(request: Request) -> Response:
