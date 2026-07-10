@@ -6,9 +6,11 @@ Provides the :class:`SchedulerStore` protocol and two backends:
 * :class:`DatabaseSchedulerStore` — persists job definitions and next-run times to a
   relational database via :class:`~lexigram.contracts.data.DatabaseProviderProtocol`.
 
-Multi-instance / distributed deployments can combine ``DatabaseSchedulerStore`` with the
-existing :class:`~lexigram.tasks.concurrency.locking.LockManager` to elect a single leader
-that runs the scheduler loop, preventing duplicate job execution.
+The ``DatabaseSchedulerStore`` is safe to use across multiple instances, but
+it does not provide cross-process leader election: ``LockManager`` is
+process-local only. In multi-instance deployments, use a distributed lock
+(e.g. from ``lexigram-resilience``) to elect the single instance that drives
+the scheduler loop.
 """
 
 from __future__ import annotations
@@ -200,12 +202,16 @@ class DatabaseSchedulerStore:
     Persists scheduled job definitions (cron expression, template, next-run time)
     to a ``scheduled_jobs`` table created lazily on first access.
 
-    Combine with :class:`~lexigram.tasks.concurrency.locking.LockManager` for
-    distributed leader election so only one instance drives the scheduler loop::
+    Note:
+        ``LockManager`` is process-local only: a lock held by one instance
+        is invisible to other instances. Use it to guard the scheduler loop
+        within a single process, and pair with a distributed lock (e.g. from
+        ``lexigram-resilience``) when multiple instances must elect a single
+        leader::
 
-        lock_mgr = LockManager()
-        async with lock_mgr.acquire("scheduler:leader", timeout=120):
-            await scheduler.start_scheduler(queue.enqueue)
+            lock_mgr = LockManager()
+            async with lock_mgr.acquire("scheduler:leader", timeout=120):
+                await scheduler.start_scheduler(queue.enqueue)
 
     Args:
         db: Database provider resolved from the DI container.

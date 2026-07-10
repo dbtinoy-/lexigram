@@ -3,6 +3,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from lexigram.contracts.exceptions import IdempotencyError, IdempotencyStoreError
+from lexigram.result import Err, Ok
 from lexigram.tasks.execution.manager import (
     IdempotencyManager,
     IdempotentTaskManager,
@@ -216,3 +218,84 @@ class TestIdempotencyRaceCondition:
             f"Expected exactly 1 enqueue, got {enqueue_count} — "
             "idempotency TOCTOU race condition not fixed"
         )
+
+
+class TestIdempotencyStoreFailure:
+    """Storage failures must surface as IdempotencyStoreError — never as an
+    opaque TypeError from treating a truthy Err as a stored record."""
+
+    @pytest.mark.asyncio
+    async def test_check_duplicate_raises_idempotency_store_error_on_err(self):
+        """An Err from storage raises IdempotencyStoreError, not TypeError."""
+        storage = AsyncMock()
+        storage.get.return_value = Err(IdempotencyError("connection refused"))
+        manager = IdempotencyManager(storage)
+
+        with pytest.raises(IdempotencyStoreError) as excinfo:
+            await manager.check_duplicate("key_abc")
+
+        assert "key_abc" in str(excinfo.value)
+        assert isinstance(excinfo.value.__cause__, IdempotencyError)
+
+    @pytest.mark.asyncio
+    async def test_check_duplicate_ok_none_returns_none(self):
+        """Ok(None) from storage means no duplicate — returns None."""
+        storage = AsyncMock()
+        storage.get.return_value = Ok(None)
+        manager = IdempotencyManager(storage)
+
+        result = await manager.check_duplicate("key_abc")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_check_duplicate_ok_record_returns_idempotency_result(self):
+        """Ok(record) from storage is returned as an IdempotencyResult."""
+        storage = AsyncMock()
+        storage.get.return_value = Ok(
+            {
+                "task_id": "existing_123",
+                "idempotency_key": "key_abc",
+                "status": "submitted",
+                "created_at": "2024-01-01T00:00:00",
+                "result": None,
+            }
+        )
+        manager = IdempotencyManager(storage)
+
+        result = await manager.check_duplicate("key_abc")
+
+        assert result is not None
+        assert result.task_id == "existing_123"
+        assert result.status == "submitted"
+
+    @pytest.mark.asyncio
+    async def test_submit_task_fails_closed_on_store_err(self):
+        """A failed idempotency lookup aborts submission — it must never
+        proceed as if no duplicate exists (which risks duplicate execution)."""
+        storage = AsyncMock()
+        storage.get.return_value = Err(IdempotencyError("connection refused"))
+        queue = AsyncMock()
+        idempotency = IdempotencyManager(storage)
+        manager = IdempotentTaskManager(queue, idempotency)
+
+        with pytest.raises(IdempotencyStoreError):
+            await manager.submit_task(
+                "process_payment",
+                {"order_id": "123", "amount": 100},
+            )
+
+        queue.enqueue.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_record_completion_raises_on_store_err(self):
+        """An Err from storage raises IdempotencyStoreError and never
+        overwrites the stored record."""
+        storage = AsyncMock()
+        storage.get.return_value = Err(IdempotencyError("connection refused"))
+        manager = IdempotencyManager(storage)
+
+        with pytest.raises(IdempotencyStoreError):
+            await manager.record_completion("key_abc", {"charged": True})
+
+        storage.set.assert_not_called()

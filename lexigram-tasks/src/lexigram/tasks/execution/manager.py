@@ -13,6 +13,7 @@ from typing import Any
 import uuid
 
 from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
+from lexigram.contracts.exceptions import IdempotencyStoreError
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Result
@@ -98,6 +99,29 @@ class IdempotencyManager:
 
         return f"idempotency:{task_name}:{hash_digest[:16]}"
 
+    async def _get_existing(self, idempotency_key: str) -> Any:
+        """Fetch the stored record for a key, raising on storage failure.
+
+        Args:
+            idempotency_key: Idempotency key to look up.
+
+        Returns:
+            The stored record (any shape the store persists), or ``None``
+            when the key is not present or expired.
+
+        Raises:
+            IdempotencyStoreError: If the store reports a lookup failure —
+            a failed lookup is never treated as "no duplicate".
+        """
+        existing_result: Any = await self._storage.get(idempotency_key)
+        if isinstance(existing_result, Result):
+            if existing_result.is_err():
+                raise IdempotencyStoreError(
+                    f"Idempotency store lookup failed for key {idempotency_key!r}"
+                ) from existing_result.unwrap_err()
+            return existing_result.unwrap()
+        return existing_result
+
     async def check_duplicate(
         self,
         idempotency_key: str,
@@ -109,14 +133,12 @@ class IdempotencyManager:
 
         Returns:
             Previous task result if duplicate, None if new
+
+        Raises:
+            IdempotencyStoreError: If the idempotency store lookup fails.
         """
         # Check storage for existing task
-        existing_result = await self._storage.get(idempotency_key)
-        existing: Any = (
-            existing_result.unwrap()
-            if isinstance(existing_result, Result) and existing_result.is_ok()
-            else existing_result
-        )
+        existing = await self._get_existing(idempotency_key)
 
         if existing:
             logger.info(
@@ -177,14 +199,12 @@ class IdempotencyManager:
         Args:
             idempotency_key: Idempotency key
             result: Task result
+
+        Raises:
+            IdempotencyStoreError: If the idempotency store lookup fails.
         """
         # Update existing record
-        existing_result = await self._storage.get(idempotency_key)
-        existing: Any = (
-            existing_result.unwrap()
-            if isinstance(existing_result, Result) and existing_result.is_ok()
-            else existing_result
-        )
+        existing = await self._get_existing(idempotency_key)
 
         if existing:
             existing["status"] = "completed"
