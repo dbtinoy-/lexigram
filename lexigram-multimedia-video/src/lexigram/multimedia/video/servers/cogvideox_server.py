@@ -15,6 +15,8 @@ from typing import Any
 
 from aiohttp import web
 
+MAX_BODY_BYTES: int = 64 * 1024 * 1024  # media payloads
+
 _pipeline: Any = None
 
 
@@ -44,7 +46,7 @@ async def handle_health(request: web.Request) -> web.Response:
 
 
 def main() -> None:
-    app = web.Application()
+    app = web.Application(client_max_size=MAX_BODY_BYTES)
     app.on_startup.append(on_startup)
     app.router.add_post("/generate", handle_generate)
     app.router.add_get("/health", handle_health)

@@ -54,3 +54,23 @@ async def test_task_forwards_scale_factor_and_extra_to_request() -> None:
     assert sent_request.scale_factor == 2
     assert sent_request.extra == {"denoise": "strong"}
     assert sent_request.asset.mime_type == "image/png"
+
+
+@pytest.mark.asyncio
+async def test_task_rejects_scale_factor_outside_2_4() -> None:
+    backend = AsyncMock()
+    task = UpscaleTask(backend=backend)
+
+    with pytest.raises(ValueError, match="scale_factor must be 2 or 4"):
+        await task.run(
+            {
+                "asset": {
+                    "mime_type": "image/png",
+                    "provider": "openai",
+                    "bytes_data": b"y",
+                },
+                "scale_factor": 3,
+            }
+        )
+
+    backend.upscale.assert_not_awaited()

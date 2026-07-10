@@ -24,6 +24,9 @@ class UpscaleTask:
         from lexigram.contracts.multimedia.types import MediaAsset, UpscaleRequest
 
         asset_data = params["asset"]
+        raw = params.get("scale_factor", 4)
+        if raw not in (2, 4):
+            raise ValueError(f"scale_factor must be 2 or 4: {raw!r}")
         request = UpscaleRequest(
             asset=MediaAsset(
                 mime_type=asset_data["mime_type"],
@@ -32,7 +35,7 @@ class UpscaleTask:
                 uri=asset_data.get("uri"),
                 metadata=asset_data.get("metadata", {}),
             ),
-            scale_factor=params.get("scale_factor", 4),
+            scale_factor=raw,
             extra=params.get("extra", {}),
         )
         result = await self._backend.upscale(request)
