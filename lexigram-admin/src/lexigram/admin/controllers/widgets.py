@@ -13,9 +13,11 @@ from lexigram.admin.auth.protocols import (
     AdminCsrfServiceProtocol,
 )
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.dashboard.content_renderer import render_content
 from lexigram.admin.dashboard.widget_types import ConfigField
 from lexigram.admin.params import parse_widget_params
+from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.contracts.admin.protocols import AdminContributorRegistryProtocol
 from lexigram.contracts.admin.types import WidgetContent
 from lexigram.contracts.web import get, post
@@ -45,12 +47,14 @@ class WidgetController:
         registry: AdminContributorRegistryProtocol,
         audit_service: AdminAuditLogServiceProtocol | None = None,
         csrf_service: AdminCsrfServiceProtocol | None = None,
+        rbac_config: AdminRbacConfig | None = None,
     ) -> None:
         self._registry = registry
         self._settings_service: Any = None
         self._resolver: Any = None
         self._audit_service = audit_service
         self._csrf_service = csrf_service
+        self._rbac_config = rbac_config
 
     def _get_csrf_token(self, request: Request) -> str | None:
         """Resolve the CSRF token for form rendering, if available."""
@@ -73,7 +77,7 @@ class WidgetController:
         dashboard widgets.
         """
         user = getattr(getattr(request, "state", None), "user", None)
-        if user and "superadmin" in (getattr(user, "roles", None) or ()):
+        if self._user_is_superadmin(request):
             return True
         permissions = frozenset(getattr(user, "permissions", None) or ())
         return permissions.issuperset(_REQUIRED_PERMISSIONS)
@@ -85,8 +89,9 @@ class WidgetController:
 
     def _user_is_superadmin(self, request: Request) -> bool:
         """Return True when the requesting user holds the superadmin role."""
+        role = (self._rbac_config or AdminRbacConfig()).super_admin_role
         user = getattr(getattr(request, "state", None), "user", None)
-        return bool(user and "superadmin" in (getattr(user, "roles", None) or ()))
+        return bool(user) and is_super_admin(user, role)
 
     def _has_required_permission(self, request: Request, required: str | None) -> bool:
         """Check *required* against the requesting user; superadmin bypasses."""

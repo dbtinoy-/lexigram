@@ -42,6 +42,15 @@ class RolesResource(Resource):
     # Read-only fields (ensure system roles cannot be renamed easily)
     readonly_fields = ["created_at", "updated_at"]
 
+    def __init__(self, rbac_config: AdminRbacConfig | None = None) -> None:
+        """Store the resolved RBAC config for protected-role checks.
+
+        Args:
+            rbac_config: Optional; falls back to a default
+                ``AdminRbacConfig`` (``super_admin_role="superadmin"``).
+        """
+        self._rbac_config = rbac_config or AdminRbacConfig()
+
     def can_delete(self, item: RoleDefinition) -> bool:
         """Prevent deletion of system roles and the super-admin role.
 
@@ -49,13 +58,21 @@ class RolesResource(Resource):
             item: Role being deleted.
 
         Returns:
-            False when the role is ``is_system`` or matches
-            ``AdminRbacConfig.super_admin_role``.
+            False when the role is ``is_system`` or matches the
+            configured ``super_admin_role``.
         """
-        super_admin_role = AdminRbacConfig().super_admin_role
+        super_admin_role = self._rbac_config.super_admin_role
         return not (item.is_system or item.name == super_admin_role)
 
     def can_update(self, item: RoleDefinition) -> bool:
-        """Prevent renaming of system roles."""
-        # This is a simplification; ideally we'd allow updating permissions but not name
-        return True
+        """Prevent renaming or is_system-flag changes on protected roles.
+
+        Args:
+            item: Role being updated.
+
+        Returns:
+            False when the role is ``is_system`` or matches the
+            configured ``super_admin_role``.
+        """
+        super_admin_role = self._rbac_config.super_admin_role
+        return not (item.is_system or item.name == super_admin_role)

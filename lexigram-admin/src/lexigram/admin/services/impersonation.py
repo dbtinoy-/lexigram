@@ -33,7 +33,9 @@ from datetime import UTC, datetime
 from typing import Any
 import uuid
 
+from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.exceptions import NotFoundError, PermissionDeniedError
+from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity, AuditLoggerProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -67,10 +69,19 @@ class ImpersonationSession:
 
 
 class ImpersonationPolicy:
-    """Default policy: only users with the ``superadmin`` role may impersonate.
+    """Policy: only holders of the configured super-admin role may impersonate.
 
     Override ``can_impersonate`` to customise authorisation logic.
     """
+
+    def __init__(self, super_admin_role: str = "superadmin") -> None:
+        """Store the role name that grants impersonation rights.
+
+        Args:
+            super_admin_role: Role name (default ``"superadmin"``) that
+                grants super-admin rights.
+        """
+        self._super_admin_role = super_admin_role
 
     def can_impersonate(self, actor: Any) -> bool:
         """Return True if *actor* is allowed to impersonate another user.
@@ -79,12 +90,9 @@ class ImpersonationPolicy:
             actor: The admin user attempting to impersonate.
 
         Returns:
-            True if the actor has the ``superadmin`` role.
+            True if the actor holds the configured super-admin role.
         """
-        roles = getattr(actor, "roles", [])
-        if isinstance(roles, list):
-            return "superadmin" in roles
-        return False
+        return is_super_admin(actor, self._super_admin_role)
 
 
 @inject
@@ -105,9 +113,12 @@ class ImpersonationService:
         audit_logger: AuditLoggerProtocol | None = None,
         policy: ImpersonationPolicy | None = None,
         active_sessions: dict[str, ImpersonationSession] | None = None,
+        rbac_config: AdminRbacConfig | None = None,
     ) -> None:
         self._audit = audit_logger
-        self._policy = policy or ImpersonationPolicy()
+        self._policy = policy or ImpersonationPolicy(
+            super_admin_role=(rbac_config or AdminRbacConfig()).super_admin_role
+        )
         # actor_id → active ImpersonationSession
         self._sessions: dict[str, ImpersonationSession] = (
             active_sessions if active_sessions is not None else {}

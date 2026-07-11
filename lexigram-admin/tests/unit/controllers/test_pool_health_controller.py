@@ -293,12 +293,14 @@ class TestPoolHealthPermissions:
     def test_user_is_superadmin_true_when_role_present(self) -> None:
         """The superadmin role bypasses the gates."""
         req = _user_request(roles=("superadmin",))
-        assert PoolHealthController._user_is_superadmin(req) is True
+        controller = PoolHealthController(renderer=MagicMock(), pool_manager=MagicMock())
+        assert controller._user_is_superadmin(req) is True
 
     def test_user_is_superadmin_false_without_role(self) -> None:
         """A regular role does not bypass the gates."""
         req = _user_request(roles=("operator",))
-        assert PoolHealthController._user_is_superadmin(req) is False
+        controller = PoolHealthController(renderer=MagicMock(), pool_manager=MagicMock())
+        assert controller._user_is_superadmin(req) is False
 
     @pytest.fixture
     def audit_service(self) -> AsyncMock:

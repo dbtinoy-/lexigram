@@ -12,7 +12,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
+from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
@@ -44,6 +46,7 @@ class PoolHealthController(AdminController):
         pool_manager: PoolManagerProtocol | None = None,
         task_manager: TaskManagerProtocol | None = None,
         audit_service: AdminAuditLogServiceProtocol | None = None,
+        rbac_config: AdminRbacConfig | None = None,
     ) -> None:
         """Initialize the pool health controller.
 
@@ -53,6 +56,8 @@ class PoolHealthController(AdminController):
             task_manager: TaskManagerProtocol instance (optional).
             audit_service: Security audit log service (optional; denials are
                 best-effort logged, failures never break the response path).
+            rbac_config: Optional; the resolved RBAC config whose
+                ``super_admin_role`` grants management rights.
         """
         if renderer is None:
             from lexigram.admin.engine.renderer import AdminRenderer
@@ -61,6 +66,7 @@ class PoolHealthController(AdminController):
         super().__init__(renderer=renderer, task_manager=task_manager)
         self._pool_manager = pool_manager
         self._audit_service = audit_service
+        self._rbac_config = rbac_config
 
     def _require_pool_manager(self) -> JSONResponse | None:
         """Return a 503 response if no pool manager is available, otherwise None."""
@@ -77,17 +83,16 @@ class PoolHealthController(AdminController):
         user = getattr(getattr(request, "state", None), "user", None)
         return frozenset(getattr(user, "permissions", None) or ())
 
-    @staticmethod
-    def _user_is_superadmin(request: Request) -> bool:
+    def _user_is_superadmin(self, request: Request) -> bool:
         """Return True when the requesting user holds the superadmin role.
 
         Superadmin bypasses per-spec permission gating so accounts created
         with an empty permission set (e.g. via the setup wizard) can still
         manage system operations.
         """
+        role = (self._rbac_config or AdminRbacConfig()).super_admin_role
         user = getattr(getattr(request, "state", None), "user", None)
-        roles = getattr(user, "roles", None) or ()
-        return "superadmin" in roles
+        return is_super_admin(user, role)
 
     async def _audit(
         self,

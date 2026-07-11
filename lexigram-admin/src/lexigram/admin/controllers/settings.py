@@ -12,7 +12,9 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from lexigram.admin.auth.types import AdminSecurityEventType
+from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
+from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.admin.settings.panel import BooleanNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
@@ -52,11 +54,13 @@ class SettingsController(AdminController):
         csrf_service: AdminCsrfServiceProtocol | None = None,
         audit_service: Any = None,
         registry: ConfigRegistry | None = None,
+        rbac_config: AdminRbacConfig | None = None,
     ) -> None:
         super().__init__(renderer=renderer, settings_service=settings_service)
         self._csrf_service = csrf_service
         self._audit_service = audit_service
         self._registry = registry or ConfigRegistry.with_defaults()
+        self._rbac_config = rbac_config
 
     # -- helpers --
 
@@ -70,17 +74,16 @@ class SettingsController(AdminController):
         user = getattr(getattr(request, "state", None), "user", None)
         return frozenset(getattr(user, "permissions", None) or ())
 
-    @staticmethod
-    def _user_is_superadmin(request: Request) -> bool:
+    def _user_is_superadmin(self, request: Request) -> bool:
         """Return True when the requesting user holds the superadmin role.
 
         Superadmin bypasses per-spec permission gating so accounts created
         with an empty permission set (e.g. via the setup wizard) can still
         manage system configurations.
         """
+        role = (self._rbac_config or AdminRbacConfig()).super_admin_role
         user = getattr(getattr(request, "state", None), "user", None)
-        roles = getattr(user, "roles", None) or ()
-        return "superadmin" in roles
+        return is_super_admin(user, role)
 
     def _build_categories(
         self, request: Request

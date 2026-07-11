@@ -18,7 +18,9 @@ from urllib.parse import quote_plus
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
+from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
+from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
 from lexigram.ui import el
@@ -69,11 +71,13 @@ class PluginsController(AdminController):
         renderer: AdminRenderer,
         csrf_service: AdminCsrfServiceProtocol | None = None,
         audit_service: AdminAuditLogServiceProtocol | None = None,
+        rbac_config: AdminRbacConfig | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(renderer=renderer, **kwargs)
         self._csrf_service = csrf_service
         self._audit_service = audit_service
+        self._rbac_config = rbac_config
 
     # ------------------------------------------------------------------
     # Routes
@@ -301,12 +305,11 @@ class PluginsController(AdminController):
         user = getattr(getattr(request, "state", None), "user", None)
         return frozenset(getattr(user, "permissions", None) or ())
 
-    @staticmethod
-    def _user_is_superadmin(request: Request) -> bool:
+    def _user_is_superadmin(self, request: Request) -> bool:
         """Return True when the requesting user holds the superadmin role."""
+        role = (self._rbac_config or AdminRbacConfig()).super_admin_role
         user = getattr(getattr(request, "state", None), "user", None)
-        roles = getattr(user, "roles", None) or ()
-        return "superadmin" in roles
+        return is_super_admin(user, role)
 
     def _user_can_manage(self, request: Request) -> bool:
         """Return True when the user may toggle plugins."""

@@ -420,6 +420,10 @@ class ResourceController(ABC, Generic[T]):
 
             # Update
             data_source = self.get_data_source()
+            item = await data_source.find_one(item_id)
+            can_update = getattr(self, "can_update", None)
+            if can_update and not can_update(item):
+                return HTMLResponse("This record cannot be updated", status_code=403)
             item = await data_source.update(item_id, validated)
             await self._emit_audit(
                 request,

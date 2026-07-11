@@ -37,6 +37,20 @@ class TestImpersonationPolicy:
         actor = _make_actor("user1", [])
         assert not policy.can_impersonate(actor)
 
+    def test_custom_super_admin_role_honored(self) -> None:
+        policy = ImpersonationPolicy(super_admin_role="root")
+        assert policy.can_impersonate(_make_actor("root1", ["root"]))
+        assert not policy.can_impersonate(_make_actor("admin1", ["superadmin"]))
+        assert not policy.can_impersonate(_make_actor("plain1", ["editor"]))
+
+    def test_service_fallback_policy_uses_rbac_config(self) -> None:
+        from lexigram.admin.config import AdminRbacConfig
+
+        service = ImpersonationService(
+            rbac_config=AdminRbacConfig(super_admin_role="root")
+        )
+        assert service._policy._super_admin_role == "root"
+
 
 class TestImpersonationSession:
     def test_session_has_unique_id(self) -> None:
@@ -85,7 +99,9 @@ class TestImpersonationServiceStart:
         mock_request.session = {}
         await service.start(actor, "user-456", request=mock_request)
         assert "_admin_impersonation" in mock_request.session
-        assert mock_request.session["_admin_impersonation"]["target_user_id"] == "user-456"
+        assert (
+            mock_request.session["_admin_impersonation"]["target_user_id"] == "user-456"
+        )
 
     @pytest.mark.asyncio
     async def test_audit_logger_called_on_start(self) -> None:
