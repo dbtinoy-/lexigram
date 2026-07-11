@@ -14,6 +14,7 @@ from lexigram.contracts.security.url_safety import (
     is_safe_url_for_request,
 )
 from lexigram.multimedia.upscale.exceptions import (
+    UpscaleAssetDownloadError,
     UpscaleAssetTooLargeError,
     UpscaleUnsafeAssetURLError,
 )
@@ -43,6 +44,8 @@ async def resolve_asset_bytes(
         The asset's bytes when they satisfy the size and URL policy.
 
     Raises:
+        UpscaleAssetDownloadError: If the remote fetch returns a non-200
+            response.
         UpscaleAssetTooLargeError: If the payload exceeds ``max_bytes``.
         UpscaleUnsafeAssetURLError: If the URI is missing or not safe to
             request.
@@ -58,6 +61,8 @@ async def resolve_asset_bytes(
         aiohttp.ClientSession() as session,
         session.get(uri, allow_redirects=False) as resp,
     ):
+        if resp.status != 200:
+            raise UpscaleAssetDownloadError(resp.status)
         declared = resp.content_length
         if declared is not None and not asset_bytes_ok(declared, max_bytes=max_bytes):
             raise UpscaleAssetTooLargeError(max_bytes)

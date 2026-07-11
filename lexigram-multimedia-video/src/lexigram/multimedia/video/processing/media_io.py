@@ -109,42 +109,102 @@ def read_output_asset(path: str, *, mime_type: str, provider: str) -> MediaAsset
     return MediaAsset(mime_type=mime_type, provider=provider, bytes_data=data)
 
 
-async def probe_duration(path: str, *, ffprobe_binary: str = "ffprobe") -> float:
-    """Return a media file's duration in seconds via ffprobe."""
+async def _run_probe(
+    ffprobe_binary: str, args: list[str], *, timeout: float
+) -> str:
+    """Run ffprobe with a hard timeout, killing the process on expiry.
+
+    Args:
+        ffprobe_binary: ffprobe executable.
+        args: ffprobe arguments (excluding the binary itself).
+        timeout: Max seconds for the probe to complete.
+
+    Returns:
+        The probe's stdout, decoded and stripped.
+
+    Raises:
+        TimeoutError: If ffprobe does not finish within ``timeout``
+            seconds (the process is killed and reaped first).
+    """
     proc = await asyncio.create_subprocess_exec(
         ffprobe_binary,
-        "-v",
-        "error",
-        "-show_entries",
-        "format=duration",
-        "-of",
-        "default=noprint_wrappers=1:nokey=1",
-        path,
+        *args,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout, _ = await proc.communicate()
-    return float(stdout.decode().strip())
+    try:
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except TimeoutError:
+        proc.kill()
+        await proc.communicate()
+        raise TimeoutError(f"ffprobe timed out after {timeout}s") from None
+    return stdout.decode().strip()
 
 
-async def probe_fps(path: str, *, ffprobe_binary: str = "ffprobe") -> float:
-    """Return a video file's frame rate via ffprobe."""
-    proc = await asyncio.create_subprocess_exec(
+async def probe_duration(
+    path: str, *, ffprobe_binary: str = "ffprobe", timeout: float = 30.0
+) -> float:
+    """Return a media file's duration in seconds via ffprobe.
+
+    Args:
+        path: Media file path.
+        ffprobe_binary: ffprobe executable. Defaults to ``ffprobe``.
+        timeout: Max seconds for the probe. Defaults to 30.
+
+    Returns:
+        The media duration in seconds.
+
+    Raises:
+        TimeoutError: If ffprobe does not complete within ``timeout``.
+    """
+    output = await _run_probe(
         ffprobe_binary,
-        "-v",
-        "error",
-        "-select_streams",
-        "v:0",
-        "-show_entries",
-        "stream=r_frame_rate",
-        "-of",
-        "default=noprint_wrappers=1:nokey=1",
-        path,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+        [
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            path,
+        ],
+        timeout=timeout,
     )
-    stdout, _ = await proc.communicate()
-    raw = stdout.decode().strip()
+    return float(output)
+
+
+async def probe_fps(
+    path: str, *, ffprobe_binary: str = "ffprobe", timeout: float = 30.0
+) -> float:
+    """Return a video file's frame rate via ffprobe.
+
+    Args:
+        path: Video file path.
+        ffprobe_binary: ffprobe executable. Defaults to ``ffprobe``.
+        timeout: Max seconds for the probe. Defaults to 30.
+
+    Returns:
+        The video frame rate in frames per second.
+
+    Raises:
+        TimeoutError: If ffprobe does not complete within ``timeout``.
+    """
+    output = await _run_probe(
+        ffprobe_binary,
+        [
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=r_frame_rate",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            path,
+        ],
+        timeout=timeout,
+    )
+    raw = output
     num, _, den = raw.partition("/")
     return float(num) / float(den or 1)
 

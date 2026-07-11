@@ -5,10 +5,24 @@ from __future__ import annotations
 from lexigram.contracts.multimedia.exceptions import UpscaleError
 
 __all__ = [
+    "UpscaleAssetDownloadError",
     "UpscaleAssetTooLargeError",
     "UpscaleError",
     "UpscaleUnsafeAssetURLError",
 ]
+
+
+class UpscaleAssetDownloadError(UpscaleError, ValueError):
+    """Raised when an upscale source asset fetch returns a non-200 response.
+
+    Also a ``ValueError`` so callers and tests can treat the download
+    failure as plain validation.
+    """
+
+    _code = "LEX_ERR_MM_UPSCALE_003"
+
+    def __init__(self, status: int) -> None:
+        super().__init__(f"asset fetch failed: HTTP {status}")
 
 
 class UpscaleAssetTooLargeError(UpscaleError, ValueError):

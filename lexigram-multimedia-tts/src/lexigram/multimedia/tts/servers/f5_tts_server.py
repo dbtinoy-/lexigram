@@ -89,6 +89,10 @@ async def _resolve_reference_audio(
             _aiohttp.ClientSession() as session,
             session.get(uri, allow_redirects=False) as resp,
         ):
+            if resp.status != 200:
+                raise ValueError(
+                    f"reference_audio_uri fetch failed: HTTP {resp.status}"
+                )
             declared = resp.content_length
             if declared is not None and not asset_bytes_ok(
                 declared, max_bytes=DEFAULT_MAX_MEDIA_BYTES
@@ -114,7 +118,10 @@ async def _resolve_reference_audio(
 
 async def handle_generate(request: web.Request) -> web.Response:
     body = await request.json()
-    ref_path = await _resolve_reference_audio(body["reference_audio_uri"])
+    try:
+        ref_path = await _resolve_reference_audio(body["reference_audio_uri"])
+    except (ValueError, KeyError) as exc:
+        raise web.HTTPBadRequest(text=str(exc)) from exc
     wav, sr, _ = _model.infer(
         ref_file=ref_path,
         ref_text=body["reference_text"],

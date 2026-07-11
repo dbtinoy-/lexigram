@@ -215,6 +215,23 @@ async def test_probe_duration_parses_ffprobe_output():
     assert duration == pytest.approx(12.345)
 
 
+@pytest.mark.asyncio
+async def test_probe_duration_times_out_and_kills_ffprobe(tmp_path) -> None:
+    import time
+
+    hang = tmp_path / "hang-ffprobe"
+    hang.write_text("#!/bin/sh\nwhile :; do :; done\n")
+    hang.chmod(0o755)
+
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        await probe_duration(
+            "/tmp/slow.mp4", ffprobe_binary=str(hang), timeout=0.2
+        )
+
+    assert time.monotonic() - started < 5.0
+
+
 @pytestmark_ffmpeg
 @pytest.mark.asyncio
 async def test_probe_fps_reads_synthetic_clip_rate(tmp_path) -> None:

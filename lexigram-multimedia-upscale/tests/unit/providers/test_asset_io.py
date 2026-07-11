@@ -26,9 +26,10 @@ class _FakeContent:
 
 
 class _FakeResp:
-    def __init__(self, body: bytes) -> None:
+    def __init__(self, body: bytes, *, status: int = 200) -> None:
         self.content = _FakeContent([body] if body else [])
         self.content_length: int | None = len(body) if body else None
+        self.status = status
 
 
 class _RespContext:
@@ -90,6 +91,19 @@ class TestResolveAssetBytesSchemeAndIpPolicy:
         )
 
         assert result == b"png-bytes"
+        assert session.get_kwargs.get("allow_redirects") is False
+
+    async def test_non_200_response_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        session = _FakeSession(_FakeResp(body=b"not-found", status=404))
+        monkeypatch.setattr(aiohttp, "ClientSession", lambda: session)
+
+        with pytest.raises(ValueError, match="HTTP 404"):
+            await resolve_asset_bytes(
+                MediaAsset(
+                    mime_type="image/png", provider="x", uri="http://example.com/missing.png"
+                ),
+                resolver=lambda _: [_PUBLIC_IP],
+            )
         assert session.get_kwargs.get("allow_redirects") is False
 
 
