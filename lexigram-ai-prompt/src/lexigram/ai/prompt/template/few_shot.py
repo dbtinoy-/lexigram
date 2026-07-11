@@ -83,6 +83,8 @@ class FewShotPromptTemplate(AbstractPromptTemplate):
         example_separator: Delimiter between examples.  Defaults to ``"\\n\\n"``.
         variables: Additional typed variables for the *suffix*.
         format: Rendering format for *prefix*, *suffix*, and *example_template*.
+        max_variable_length: Global maximum variable value length in
+                characters.  ``0`` means unlimited.
         description: Optional human-readable description.
 
     Example::
@@ -114,6 +116,7 @@ class FewShotPromptTemplate(AbstractPromptTemplate):
         example_separator: str = "\n\n",
         variables: list[PromptVariable] | None = None,
         format: RenderFormat = RenderFormat.F_STRING,
+        max_variable_length: int = 0,
         description: str = "",
         version: str = "1.0.0",
     ) -> None:
@@ -125,6 +128,7 @@ class FewShotPromptTemplate(AbstractPromptTemplate):
         self._example_separator = example_separator
         self._variables: list[PromptVariable] = variables or []
         self._renderer = PromptRenderer(format)
+        self._max_variable_length = max_variable_length
         self.description = description
         self._version = version
 
@@ -173,7 +177,11 @@ class FewShotPromptTemplate(AbstractPromptTemplate):
             :class:`~lexigram.ai.prompt.exceptions.PromptRenderError`:
                 A required variable is missing.
         """
-        resolved = resolve_variables(self._variables, kwargs)
+        resolved = resolve_variables(
+            self._variables,
+            kwargs,
+            max_variable_length=self._max_variable_length,
+        )
 
         examples = self._selector.select(**kwargs)
         formatted_examples = [

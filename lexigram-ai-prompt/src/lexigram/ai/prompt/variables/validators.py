@@ -10,8 +10,19 @@ if TYPE_CHECKING:
     from lexigram.ai.prompt.variables.types import PromptVariable
 
 
-def validate_variable(var: PromptVariable, value: Any) -> None:
+def validate_variable(
+    var: PromptVariable,
+    value: Any,
+    max_variable_length: int = 0,
+) -> None:
     """Validate *value* against *var*'s constraints.
+
+    Args:
+        var: The declared :class:`~lexigram.ai.prompt.variables.types.PromptVariable`.
+        value: Caller-supplied value to validate.
+        max_variable_length: Global maximum value length in characters.
+            ``0`` means unlimited.  Applies to every variable regardless of
+            its own ``max_length``.
 
     Raises:
         :class:`~lexigram.ai.prompt.exceptions.PromptValidationError` when
@@ -33,6 +44,15 @@ def validate_variable(var: PromptVariable, value: Any) -> None:
                 f"exceeds max_length={var.max_length}."
             )
 
+    # --- max_variable_length (global config limit) ---
+    if max_variable_length > 0:
+        str_value = str(value) if not isinstance(value, str) else value
+        if len(str_value) > max_variable_length:
+            raise PromptValidationError(
+                f"Variable '{var.name}': value length {len(str_value)} "
+                f"exceeds max_variable_length={max_variable_length}."
+            )
+
     # --- allowed_values ---
     if var.allowed_values is not None and value not in var.allowed_values:
         raise PromptValidationError(
@@ -44,6 +64,7 @@ def validate_variable(var: PromptVariable, value: Any) -> None:
 def resolve_variables(
     declared: list[PromptVariable],
     supplied: dict[str, Any],
+    max_variable_length: int = 0,
 ) -> dict[str, Any]:
     """Resolve and validate all *supplied* values against *declared* variables.
 
@@ -55,6 +76,9 @@ def resolve_variables(
         declared: List of :class:`~lexigram.ai.prompt.variables.types.PromptVariable`
                   objects that describe accepted variables.
         supplied: Mapping of variable name → caller-provided value.
+        max_variable_length: Global maximum value length in characters.
+            ``0`` means unlimited.  Enforced on declared variables and on
+            undeclared extras that pass through in permissive mode.
 
     Returns:
         Fully resolved ``{name: value}`` mapping ready for template substitution.
@@ -73,7 +97,7 @@ def resolve_variables(
     for var in declared:
         if var.name in supplied:
             value = supplied[var.name]
-            validate_variable(var, value)
+            validate_variable(var, value, max_variable_length)
             resolved[var.name] = value
         elif var.required:
             raise PromptRenderError(f"Required variable '{var.name}' was not supplied.")
@@ -81,9 +105,16 @@ def resolve_variables(
             resolved[var.name] = var.default
 
     # Pass through any extra kwargs that aren't declared (permissive mode).
-    resolved.update(
-        {key: value for key, value in supplied.items() if key not in declared_names}
-    )
+    for key, value in supplied.items():
+        if key not in declared_names:
+            if max_variable_length > 0:
+                str_value = str(value) if not isinstance(value, str) else value
+                if len(str_value) > max_variable_length:
+                    raise PromptValidationError(
+                        f"Variable '{key}': value length {len(str_value)} "
+                        f"exceeds max_variable_length={max_variable_length}."
+                    )
+            resolved[key] = value
 
     return resolved
 
