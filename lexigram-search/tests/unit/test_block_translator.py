@@ -9,9 +9,9 @@ touching any external service or I/O.
 from __future__ import annotations
 
 import dataclasses
-import json
 
 import pytest
+
 from lexigram.contracts.data import (
     AndExpr,
     FieldContains,
@@ -23,7 +23,6 @@ from lexigram.contracts.data import (
     FieldNeq,
     OrExpr,
 )
-
 from lexigram.search.backends.filters import render_meilisearch, render_typesense
 from lexigram.search.filterset import (
     BlockQueryTranslator,
@@ -34,6 +33,7 @@ from lexigram.search.filterset import (
     merge_filters,
     rule_to_filters,
 )
+from lexigram.serialization import dumps_str
 
 
 class TestQueryRule:
@@ -364,11 +364,11 @@ class TestRuleToFilters:
         ) == {"score": {"gte": 80}}
 
     def test_invalid_json_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="invalid literal"):
             rule_to_filters("not json")
 
     def test_invalid_structure_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unknowable entry"):
             rule_to_filters('{"logic": "AND", "rules": [{"bogus": 1}]}')
 
     def test_unsupported_operator_raises(self) -> None:
@@ -419,7 +419,7 @@ class TestBlockTranslatorValueSafety:
 
     def test_hostile_eq_value_renders_safely_in_meili(self) -> None:
         filters = rule_to_filters(
-            json.dumps(
+            dumps_str(
                 {
                     "logic": "AND",
                     "rules": [
@@ -434,7 +434,7 @@ class TestBlockTranslatorValueSafety:
 
     def test_hostile_eq_value_renders_safely_in_typesense(self) -> None:
         filters = rule_to_filters(
-            json.dumps(
+            dumps_str(
                 {
                     "logic": "AND",
                     "rules": [
@@ -449,7 +449,7 @@ class TestBlockTranslatorValueSafety:
 
     def test_hostile_contains_value_renders_safely_in_typesense(self) -> None:
         filters = rule_to_filters(
-            json.dumps(
+            dumps_str(
                 {
                     "logic": "AND",
                     "rules": [

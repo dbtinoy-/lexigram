@@ -7,8 +7,9 @@ scoped query (filter bypass, cross-tenant disclosure).
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 pytest.importorskip("meilisearch")
 pytest.importorskip("typesense")
@@ -69,7 +70,7 @@ class TestTypesenseBackendFilterGuard:
         collection.documents.search = AsyncMock(
             return_value={"hits": [], "found": 0}
         )
-        client.collections.__getitem__ = lambda self, key: collection
+        client.collections.__getitem__ = lambda _self, _key: collection
         return client
 
     @pytest.fixture
