@@ -1,24 +1,10 @@
-"""Request throttling decorators and utilities.
+"""Request throttling utilities.
 
-This module provides decorators and utilities for throttling (rate limiting)
-function calls. It integrates with the rate limiter implementations to
-provide flexible throttling strategies.
+This module provides the :class:`Throttler` class for throttling (rate
+limiting) function calls. It integrates with the rate limiter
+implementations to provide flexible throttling strategies.
 
 Example:
-    Using the throttle decorator::
-
-        from lexigram.resilience import throttle
-
-        @throttle(calls=10, period=1.0)
-        async def api_call():
-            return await make_request()
-
-    Using throttling with different strategies::
-
-        @throttle(calls=100, period=60.0, strategy="sliding_window")
-        async def rate_limited_func():
-            ...
-
     Using the Throttler class::
 
         from lexigram.resilience import Throttler
@@ -29,19 +15,13 @@ Example:
         async def limited_call():
             ...
 
-    Getting throttle statistics::
+    Using throttling with different strategies::
 
-        from lexigram.resilience import get_throttle_stats
-        from lexigram.logging import get_logger
+        throttler = Throttler(calls=100, period=60.0, strategy="sliding_window")
 
-        logger = get_logger(__name__)
-
-        @throttle(calls=10, period=1.0)
-        async def my_func():
+        @throttler.throttle
+        async def rate_limited_func():
             ...
-
-        stats = get_throttle_stats(my_func)
-        logger.info("throttle_stats", allowed=stats['allowed_requests'])
 """
 
 from __future__ import annotations
@@ -74,108 +54,6 @@ class ThrottleConfig:
     period: float
     burst: int | None = None
     strategy: str = "token_bucket"
-
-
-class ThrottleRegistry:
-    """Registry for managing named rate limiters across the application."""
-
-    def __init__(self) -> None:
-        self._limiters: dict[str, RateLimiter | SlidingWindowLimiter] = {}
-        self._lock = asyncio.Lock()
-
-    async def get_or_create(
-        self,
-        key: str,
-        config: ThrottleConfig,
-    ) -> RateLimiter | SlidingWindowLimiter:
-        """Get or create a rate limiter for the given key."""
-        async with self._lock:
-            if key not in self._limiters:
-                if config.strategy == "sliding_window":
-                    self._limiters[key] = SlidingWindowLimiter(
-                        window_size=config.period,
-                        max_requests=config.calls,
-                    )
-                else:
-                    self._limiters[key] = RateLimiter(
-                        rate=config.calls,
-                        per=config.period,
-                        burst=config.burst,
-                    )
-            return self._limiters[key]
-
-    def clear(self) -> None:
-        """Clear all limiters (useful for testing)."""
-        self._limiters.clear()
-
-
-def throttle(
-    calls: int,
-    period: float,
-    *,
-    burst: int | None = None,
-    strategy: str = "token_bucket",
-    key: str | None = None,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Decorator to throttle function calls.
-
-    Resolves the ThrottleRegistry from the DI container context.
-    """
-    ThrottleConfig(calls=calls, period=period, burst=burst, strategy=strategy)
-
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        throttle_key = (
-            key if key is not None else f"{func.__module__}.{func.__qualname__}"
-        )
-
-        is_async = asyncio.iscoroutinefunction(func)
-        _limiter: RateLimiter | SlidingWindowLimiter | None = None
-
-        @functools.wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            nonlocal _limiter
-            if _limiter is None:
-                # Throttling requires explicit registry or container injection.
-                # Ambient context fallback is removed to comply with DI standards (§2.1).
-                raise RuntimeError(
-                    "Throttle limiter not initialized. Throttling requires a container-managed ThrottleRegistry.",
-                )
-
-            async with _limiter:
-                if is_async:
-                    return await func(*args, **kwargs)
-
-                # Run sync functions in executor to avoid blocking event loop
-                loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(
-                    None,
-                    functools.partial(func, *args, **kwargs),
-                )
-
-        wrapper_any = cast("Any", wrapper)
-        wrapper_any._throttle_key = throttle_key
-
-        return wrapper
-
-    return decorator
-
-
-def get_throttle_stats(func: Callable[..., Any]) -> dict[str, float | int] | None:
-    """Get throttle statistics for a throttled function.
-
-    Resolves statistics from the limiter attached to the function wrapper.
-    """
-    # Note: Stats are only available after first call since limiter is resolved lazily.
-    func_any = cast("Any", func)
-    if hasattr(func_any, "__wrapped__"):
-        # Access the closure variable via the wrapper's __closure__ if possible,
-        # but for simplicity we'll just check if it was set on the wrapper.
-        # However, _limiter is a nonlocal. Let's make it more accessible.
-        pass
-
-    # For now, we'll keep the signature but acknowledge stats might be tricky to get
-    # for decorators that resolve registries lazily.
-    return None
 
 
 class Throttler:

@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 class ResilienceProvider(Provider):
     """Resilience patterns DI provider.
 
-    Registers circuit breaker, retry, bulkhead, throttle, and rate-limiter
+    Registers circuit breaker, retry, bulkhead, and rate-limiter
     infrastructure into the container as singletons.
     """
 
@@ -37,7 +37,6 @@ class ResilienceProvider(Provider):
     def __init__(self) -> None:
         super().__init__()
         self._registry: Any | None = None
-        self._throttle_registry: Any | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register resilience services and configurations."""
@@ -48,7 +47,6 @@ class ResilienceProvider(Provider):
         from lexigram.resilience.bulkhead.limiter import Bulkhead, BulkheadConfig
         from lexigram.resilience.circuit.breaker import CircuitBreakerRegistry
         from lexigram.resilience.rate_limiter.token_bucket import RateLimiter
-        from lexigram.resilience.throttle import ThrottleRegistry
 
         # 1. Register Configs (Transient)
         container.transient(CircuitBreakerConfig, CircuitBreakerConfig)
@@ -56,11 +54,9 @@ class ResilienceProvider(Provider):
 
         # 2. Register Registries (Singleton)
         self._registry = CircuitBreakerRegistry()
-        self._throttle_registry = ThrottleRegistry()
 
         container.singleton(CircuitBreakerRegistry, instance=self._registry)
         container.singleton(CircuitBreakerRegistryProtocol, instance=self._registry)
-        container.singleton(ThrottleRegistry, instance=self._throttle_registry)
 
         # 3. Register RateLimiter (Singleton)
         # Default to 1000 rps to avoid blocking tests

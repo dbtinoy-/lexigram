@@ -6,14 +6,9 @@ import asyncio
 
 import pytest
 
-from lexigram.resilience.rate_limiter import RateLimiter, SlidingWindowLimiter
-from lexigram.resilience.throttle.throttle import (
-    ThrottleConfig,
-    ThrottleRegistry,
-    Throttler,
-    get_throttle_stats,
-    throttle,
-)
+from lexigram.resilience.rate_limiter import SlidingWindowLimiter
+from lexigram.resilience.throttle import Throttler
+from lexigram.resilience.throttle.throttle import ThrottleConfig
 
 
 class TestThrottleConfig:
@@ -33,55 +28,6 @@ class TestThrottleConfig:
     def test_sliding_window_strategy(self) -> None:
         config = ThrottleConfig(calls=10, period=1.0, strategy="sliding_window")
         assert config.strategy == "sliding_window"
-
-
-class TestThrottleRegistry:
-    """Tests for ThrottleRegistry."""
-
-    @pytest.fixture
-    def registry(self) -> ThrottleRegistry:
-        return ThrottleRegistry()
-
-    def test_initialization(self, registry: ThrottleRegistry) -> None:
-        assert len(registry._limiters) == 0
-
-    @pytest.mark.asyncio
-    async def test_get_or_create_creates_token_bucket_limiter(
-        self,
-        registry: ThrottleRegistry,
-    ) -> None:
-        config = ThrottleConfig(calls=10, period=1.0)
-        limiter = await registry.get_or_create("test_key", config)
-
-        assert isinstance(limiter, RateLimiter)
-        assert limiter.rate == 10
-        assert limiter.per == 1.0
-
-    @pytest.mark.asyncio
-    async def test_get_or_create_creates_sliding_window_limiter(
-        self,
-        registry: ThrottleRegistry,
-    ) -> None:
-        config = ThrottleConfig(calls=10, period=1.0, strategy="sliding_window")
-        limiter = await registry.get_or_create("test_key_sliding", config)
-
-        assert isinstance(limiter, SlidingWindowLimiter)
-
-    @pytest.mark.asyncio
-    async def test_get_or_create_returns_existing_limiter(
-        self,
-        registry: ThrottleRegistry,
-    ) -> None:
-        config = ThrottleConfig(calls=10, period=1.0)
-        limiter1 = await registry.get_or_create("test_key", config)
-        limiter2 = await registry.get_or_create("test_key", config)
-
-        assert limiter1 is limiter2
-
-    def test_clear(self, registry: ThrottleRegistry) -> None:
-        registry._limiters["test"] = RateLimiter(rate=10, per=1.0)
-        registry.clear()
-        assert len(registry._limiters) == 0
 
 
 class TestThrottler:
@@ -137,36 +83,25 @@ class TestThrottler:
         assert asyncio.iscoroutinefunction(my_func)
 
 
-class TestThrottleDecorator:
-    """Tests for throttle decorator function."""
+class TestDeadApiRemoved:
+    """Regression guards for audit §58: dead decorator API removed.
 
-    def test_throttle_creates_decorator(self) -> None:
-        decorator = throttle(calls=10, period=1.0)
-        assert callable(decorator)
+    The module-level ``throttle()`` decorator, ``ThrottleRegistry`` and
+    ``get_throttle_stats`` were structurally dead (every call raised) and had
+    zero call sites; they were deleted in favour of the DI-wired
+    :class:`Throttler` class.
+    """
 
-    def test_throttle_with_custom_key(self) -> None:
-        decorator = throttle(calls=10, period=1.0, key="custom_key")
-        assert callable(decorator)
+    def test_throttle_module_exports_only_throttler(self) -> None:
+        import lexigram.resilience.throttle as throttle_pkg
 
-    def test_throttle_with_sliding_window_strategy(self) -> None:
-        decorator = throttle(calls=10, period=1.0, strategy="sliding_window")
-        assert callable(decorator)
+        assert throttle_pkg.__all__ == ["Throttler"]
+        assert not hasattr(throttle_pkg, "ThrottleRegistry")
 
+    def test_resilience_package_no_longer_exports_dead_api(self) -> None:
+        from lexigram import resilience
 
-class TestGetThrottleStats:
-    """Tests for get_throttle_stats function."""
-
-    def test_returns_none_for_non_throttled_function(self) -> None:
-        async def regular_func():
-            return "result"
-
-        result = get_throttle_stats(regular_func)
-        assert result is None
-
-    def test_returns_none_for_uninitialized_throttler(self) -> None:
-        @throttle(calls=10, period=1.0)
-        async def throttled_func():
-            return "result"
-
-        result = get_throttle_stats(throttled_func)
-        assert result is None
+        assert "throttle" not in resilience.__all__
+        assert "get_throttle_stats" not in resilience.__all__
+        assert "ThrottleRegistry" not in resilience.__all__
+        assert "Throttler" in resilience.__all__

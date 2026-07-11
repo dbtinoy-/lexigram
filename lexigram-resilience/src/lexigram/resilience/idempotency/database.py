@@ -18,6 +18,8 @@ Schema managed by this store (created lazily on first use)::
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from itertools import count
+import re
 from typing import TYPE_CHECKING, Any
 
 from lexigram import serialization as json
@@ -54,6 +56,20 @@ _ACQUIRE_SQL = (
     "VALUES (?, '__pending__', ?, ?) "
     "ON CONFLICT (key) DO NOTHING"
 )
+
+
+def _translate_placeholders(sql: str, dialect: str) -> str:
+    """Translate ``?`` placeholders into dialect-correct form.
+
+    SQLite (and unknown dialects) keep ``?`` untouched. Postgres uses
+    sequentially numbered ``$1``, ``$2``, ... so that each positional
+    parameter binds to exactly one placeholder — a naive ``?`` -> ``$1``
+    substitution would bind every parameter to the first slot.
+    """
+    if dialect not in ("postgres", "postgresql"):
+        return sql
+    counter = count(1)
+    return re.sub(r"\?", lambda _match: f"${next(counter)}", sql)
 
 
 class DatabaseIdempotencyStore:
@@ -102,7 +118,9 @@ class DatabaseIdempotencyStore:
         await self._ensure_table()
         async with self._db.scoped_context():
             conn = await self._db.get_scoped_connection()
-            rows = await conn.fetch(_GET_SQL.replace("?", self._placeholder), key)
+            rows = await conn.fetch(
+                _translate_placeholders(_GET_SQL, self._dialect), key
+            )
 
         if not rows:
             logger.debug("idempotency.db.get", key=key, found=False)
@@ -143,7 +161,7 @@ class DatabaseIdempotencyStore:
         async with self._db.scoped_context():
             conn = await self._db.get_scoped_connection()
             await conn.execute(
-                _SET_SQL.replace("?", self._placeholder),
+                _translate_placeholders(_SET_SQL, self._dialect),
                 key,
                 serialised,
                 now,
@@ -161,7 +179,7 @@ class DatabaseIdempotencyStore:
         await self._ensure_table()
         async with self._db.scoped_context():
             conn = await self._db.get_scoped_connection()
-            await conn.execute(_DELETE_SQL.replace("?", self._placeholder), key)
+            await conn.execute(_translate_placeholders(_DELETE_SQL, self._dialect), key)
         logger.debug("idempotency.db.delete", key=key)
 
     async def acquire(self, key: str, ttl: int) -> bool:
@@ -185,7 +203,7 @@ class DatabaseIdempotencyStore:
         async with self._db.scoped_context():
             conn = await self._db.get_scoped_connection()
             status = await conn.execute(
-                _ACQUIRE_SQL.replace("?", self._placeholder),
+                _translate_placeholders(_ACQUIRE_SQL, self._dialect),
                 key,
                 now,
                 expires_at,
@@ -204,7 +222,7 @@ class DatabaseIdempotencyStore:
         async with self._db.scoped_context():
             conn = await self._db.get_scoped_connection()
             await conn.execute(
-                _PURGE_EXPIRED_SQL.replace("?", self._placeholder),
+                _translate_placeholders(_PURGE_EXPIRED_SQL, self._dialect),
                 datetime.now(UTC),
             )
         logger.debug("idempotency.db.purge_expired")
@@ -220,7 +238,7 @@ class DatabaseIdempotencyStore:
         async with self._db.scoped_context():
             conn = await self._db.get_scoped_connection()
             status = await conn.execute(
-                _PURGE_EXPIRED_SQL.replace("?", self._placeholder),
+                _translate_placeholders(_PURGE_EXPIRED_SQL, self._dialect),
                 datetime.now(UTC),
             )
         removed = 0
@@ -235,9 +253,14 @@ class DatabaseIdempotencyStore:
         return removed
 
     @property
-    def _placeholder(self) -> str:
-        """SQL parameter placeholder — ``?`` for SQLite; ``$1``-style for Postgres."""
-        return "?"
+    def _dialect(self) -> str:
+        """SQL dialect of the injected provider, used for placeholder translation.
+
+        Reads the provider's ``database_type`` attribute (``postgres``,
+        ``sqlite``, ``mysql``); providers that do not expose it fall back to
+        SQLite-style ``?`` placeholders.
+        """
+        return str(getattr(self._db, "database_type", "sqlite"))
 
     async def _ensure_table(self) -> None:
         """Create the idempotency table if it does not already exist."""
