@@ -101,9 +101,7 @@ def health(
     failures = [r for r in results if r.status == CheckStatus.FAIL]
     if strict:
         failures = [
-            r
-            for r in results
-            if r.status in (CheckStatus.FAIL, CheckStatus.WARNING)
+            r for r in results if r.status in (CheckStatus.FAIL, CheckStatus.WARNING)
         ]
     if failures:
         raise typer.Exit(1)

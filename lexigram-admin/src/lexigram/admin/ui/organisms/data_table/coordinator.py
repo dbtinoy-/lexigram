@@ -87,15 +87,12 @@ class DataTable(Component):
         # Permission state: no permission service is bound at construction
         # time in the framework; async callers may hoist checks via
         # PermissionManager and inject the resulting dict here.
-        self.permissions = (
-            props.get("permissions")
-            or {
-                "can_view": True,
-                "can_create": True,
-                "can_update": True,
-                "can_delete": True,
-            }
-        )
+        self.permissions = props.get("permissions") or {
+            "can_view": True,
+            "can_create": True,
+            "can_update": True,
+            "can_delete": True,
+        }
 
         # Configure actions
         self.action_manager = ActionManager(self.config, self.permissions)

@@ -73,7 +73,13 @@ class DatabaseModule(Module):
 
         return DynamicModule(
             module=cls,
-            providers=[DatabaseProvider(config=config, migration_dir=migration_dir, enable_migrations=enable_migrations)],
+            providers=[
+                DatabaseProvider(
+                    config=config,
+                    migration_dir=migration_dir,
+                    enable_migrations=enable_migrations,
+                )
+            ],
             exports=[DatabaseProviderProtocol, UnitOfWorkProtocol],
         )
 

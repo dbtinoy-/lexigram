@@ -85,9 +85,7 @@ class ContributorRuntime:
     _schema_setups: list[SchemaSetupContribution] | None = None
 
     @classmethod
-    def from_entry_points(
-        cls, group: str = ENTRY_POINT_GROUP
-    ) -> ContributorRuntime:
+    def from_entry_points(cls, group: str = ENTRY_POINT_GROUP) -> ContributorRuntime:
         runtime = cls()
         eps = entry_points(group=group)
 
@@ -139,9 +137,7 @@ class ContributorRuntime:
         if self._health_checks is None:
             self._health_checks = []
             for c in self.contributors:
-                self._health_checks.extend(
-                    getattr(c, "get_health_checks", list)()
-                )
+                self._health_checks.extend(getattr(c, "get_health_checks", list)())
         return list(self._health_checks)
 
     @property
@@ -149,9 +145,7 @@ class ContributorRuntime:
         if self._doctor_checks is None:
             self._doctor_checks = []
             for c in self.contributors:
-                self._doctor_checks.extend(
-                    getattr(c, "get_doctor_checks", list)()
-                )
+                self._doctor_checks.extend(getattr(c, "get_doctor_checks", list)())
         return list(self._doctor_checks)
 
     @property
@@ -159,9 +153,7 @@ class ContributorRuntime:
         if self._shell_contexts is None:
             self._shell_contexts = []
             for c in self.contributors:
-                self._shell_contexts.extend(
-                    getattr(c, "get_shell_context", list)()
-                )
+                self._shell_contexts.extend(getattr(c, "get_shell_context", list)())
         return list(self._shell_contexts)
 
     @property
@@ -177,9 +169,7 @@ class ContributorRuntime:
         if self._schema_setups is None:
             self._schema_setups = []
             for c in self.contributors:
-                self._schema_setups.extend(
-                    getattr(c, "get_schema_setup", list)()
-                )
+                self._schema_setups.extend(getattr(c, "get_schema_setup", list)())
         return list(self._schema_setups)
 
     def _resolve_command_conflicts(self) -> None:
@@ -208,9 +198,7 @@ class ContributorRuntime:
                     resolved.append(cmd)
                 else:
                     existing = seen[cmd.name]
-                    winner = self._pick_winner(
-                        existing, cmd.contributor, eps
-                    )
+                    winner = self._pick_winner(existing, cmd.contributor, eps)
                     losers = [existing, cmd.contributor]
                     losers.remove(winner)
                     seen[cmd.name] = winner
@@ -222,9 +210,7 @@ class ContributorRuntime:
                     )
 
                     if winner == cmd.contributor:
-                        resolved = [
-                            r for r in resolved if r.name != cmd.name
-                        ]
+                        resolved = [r for r in resolved if r.name != cmd.name]
                         resolved.append(cmd)
 
         self._commands = resolved
@@ -256,9 +242,7 @@ class ContributorRuntime:
             if cmd.name in builtin_names:
                 continue
             try:
-                module_path, _, factory_name = cmd.app_factory_path.partition(
-                    ":"
-                )
+                module_path, _, factory_name = cmd.app_factory_path.partition(":")
                 mod = import_module(module_path)
                 factory = getattr(mod, factory_name)
                 sub_app = factory()

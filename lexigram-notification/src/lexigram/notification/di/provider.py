@@ -180,7 +180,9 @@ class NotificationProvider(Provider):
                 and self._config.push_backends[0] is entry
             )
             if is_primary:
-                container.singleton(PushChannelProtocol, factory=lambda *_, b=backend: b)
+                container.singleton(
+                    PushChannelProtocol, factory=lambda *_, b=backend: b
+                )
 
         logger.info(
             "notification_registered",

@@ -98,4 +98,3 @@ class TemplateGeneratorBase:
 
     def generate(self, context: dict[str, object]) -> list[object]:
         raise NotImplementedError
-

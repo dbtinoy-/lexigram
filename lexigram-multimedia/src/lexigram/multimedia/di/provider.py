@@ -129,7 +129,13 @@ class MultimediaProvider(Provider):
 
         try:
             self._storage = await container.resolve(BlobStoreProtocol)
-        except (LookupError, KeyError, ValueError, TypeError, UnresolvableDependencyError):
+        except (
+            LookupError,
+            KeyError,
+            ValueError,
+            TypeError,
+            UnresolvableDependencyError,
+        ):
             self._storage = None
             logger.warning(
                 "multimedia_no_storage_bound",
@@ -139,7 +145,13 @@ class MultimediaProvider(Provider):
 
         try:
             self._cache_backend = await container.resolve(CacheBackendProtocol)
-        except (LookupError, KeyError, ValueError, TypeError, UnresolvableDependencyError):
+        except (
+            LookupError,
+            KeyError,
+            ValueError,
+            TypeError,
+            UnresolvableDependencyError,
+        ):
             self._cache_backend = None
             logger.debug("multimedia_no_cache_backend_bound; result caching disabled")
 
@@ -147,7 +159,13 @@ class MultimediaProvider(Provider):
 
         try:
             self._event_bus = await container.resolve(EventBusProtocol)
-        except (LookupError, KeyError, ValueError, TypeError, UnresolvableDependencyError):
+        except (
+            LookupError,
+            KeyError,
+            ValueError,
+            TypeError,
+            UnresolvableDependencyError,
+        ):
             self._event_bus = None
             logger.debug("multimedia_no_event_bus_bound; generation events disabled")
 
@@ -168,7 +186,13 @@ class MultimediaProvider(Provider):
         try:
             task_provider = await container.resolve(TaskProvider)
             task_queue = await container.resolve(TaskQueueProtocol)
-        except (LookupError, KeyError, ValueError, TypeError, UnresolvableDependencyError):
+        except (
+            LookupError,
+            KeyError,
+            ValueError,
+            TypeError,
+            UnresolvableDependencyError,
+        ):
             logger.warning(
                 "multimedia_no_task_provider_bound",
                 reason="lexigram-tasks not configured — submit() will be unavailable, "
@@ -179,7 +203,13 @@ class MultimediaProvider(Provider):
         idempotency_store: Any
         try:
             idempotency_store = await container.resolve(IdempotencyStoreProtocol)
-        except (LookupError, KeyError, ValueError, TypeError, UnresolvableDependencyError):
+        except (
+            LookupError,
+            KeyError,
+            ValueError,
+            TypeError,
+            UnresolvableDependencyError,
+        ):
             idempotency_store = InMemoryIdempotencyStoreFallback()
 
         idempotency_manager = IdempotencyManager(storage=idempotency_store)

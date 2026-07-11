@@ -105,8 +105,7 @@ class ClusterCenterController(AdminController):
             ),
             el(
                 "p",
-                self._cluster.description
-                or "Manage and monitor this cluster's areas.",
+                self._cluster.description or "Manage and monitor this cluster's areas.",
                 class_="text-muted-foreground mt-1",
             ),
             class_="mb-2",

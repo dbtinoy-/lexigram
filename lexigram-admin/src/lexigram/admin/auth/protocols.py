@@ -574,9 +574,7 @@ class AdminMfaServiceProtocol(Protocol):
         """Validate a TOTP code; ``Err`` when 2FA is not enabled."""
         ...
 
-    async def disable(
-        self, user_id: str, code: str
-    ) -> Result[bool, AdminAuthError]:
+    async def disable(self, user_id: str, code: str) -> Result[bool, AdminAuthError]:
         """Disable 2FA (requires a valid current code)."""
         ...
 
@@ -664,9 +662,7 @@ class AdminEmailOtpStoreProtocol(Protocol):
         """Create the OTP table if it does not exist."""
         ...
 
-    async def save(
-        self, user_id: str, code_hash: str, expires_at: datetime
-    ) -> None:
+    async def save(self, user_id: str, code_hash: str, expires_at: datetime) -> None:
         """Persist a new emailed code.
 
         Args:
@@ -719,9 +715,7 @@ class AdminEmailOtpServiceProtocol(Protocol):
         """
         ...
 
-    async def verify_otp(
-        self, user_id: str, code: str
-    ) -> Result[bool, AdminAuthError]:
+    async def verify_otp(self, user_id: str, code: str) -> Result[bool, AdminAuthError]:
         """Verify a code and consume it when valid.
 
         Returns:

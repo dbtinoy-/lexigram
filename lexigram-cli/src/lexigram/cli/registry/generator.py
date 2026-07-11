@@ -103,7 +103,14 @@ class GeneratorAdapter(CodeGenerator):
                 ],
                 message=f"Generated {len(result.files_created)} files",
             )
-        except (RuntimeError, OSError, AttributeError, LookupError, jinja2.TemplateNotFound, TypeError) as error:
+        except (
+            RuntimeError,
+            OSError,
+            AttributeError,
+            LookupError,
+            jinja2.TemplateNotFound,
+            TypeError,
+        ) as error:
             return GeneratorResult(success=False, error=str(error))
 
     def get_default_output_dir(self) -> str:

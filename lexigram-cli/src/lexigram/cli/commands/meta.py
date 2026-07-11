@@ -15,22 +15,42 @@ def _build_command_registry() -> CommandRegistry:
     registry = CommandRegistry()
 
     builtins: list[CommandEntry] = [
-        CommandEntry("init", "Initialize Lexigram in existing project", "Project", "builtin"),
+        CommandEntry(
+            "init", "Initialize Lexigram in existing project", "Project", "builtin"
+        ),
         CommandEntry("new", "Create a new Lexigram project", "Project", "builtin"),
         CommandEntry("add", "Add a provider to the project", "Project", "builtin"),
         CommandEntry("dev", "Development server and tools", "Server", "builtin"),
-        CommandEntry("run", "Smart runner — auto-detects factory, sets profile", "Server", "builtin"),
+        CommandEntry(
+            "run",
+            "Smart runner — auto-detects factory, sets profile",
+            "Server",
+            "builtin",
+        ),
         CommandEntry("db", "Database management commands", "Database", "builtin"),
         CommandEntry("events", "Event schema management commands", "Events", "builtin"),
         CommandEntry("gen", "Code generation commands", "Code Generation", "builtin"),
         CommandEntry("config", "Configuration management", "Configuration", "builtin"),
         CommandEntry("inspect", "Inspect runtime state", "Inspection", "builtin"),
         CommandEntry("shell", "Interactive Python REPL", "System", "builtin"),
-        CommandEntry("contrib", "Discover and inspect installed contributors", "Plugins", "builtin"),
-        CommandEntry("project", "Project management (test, lint, routes)", "Testing", "builtin"),
-        CommandEntry("system", "System information and management", "System", "builtin"),
-        CommandEntry("version", "Show framework and package versions", "Utilities", "builtin"),
-        CommandEntry("completion", "Generate shell completion script", "Utilities", "builtin"),
+        CommandEntry(
+            "contrib",
+            "Discover and inspect installed contributors",
+            "Plugins",
+            "builtin",
+        ),
+        CommandEntry(
+            "project", "Project management (test, lint, routes)", "Testing", "builtin"
+        ),
+        CommandEntry(
+            "system", "System information and management", "System", "builtin"
+        ),
+        CommandEntry(
+            "version", "Show framework and package versions", "Utilities", "builtin"
+        ),
+        CommandEntry(
+            "completion", "Generate shell completion script", "Utilities", "builtin"
+        ),
         CommandEntry("list", "List all available commands", "Utilities", "builtin"),
         CommandEntry("test", "Run project tests", "Testing", "builtin"),
         CommandEntry("lint", "Run project linting", "Testing", "builtin"),
@@ -109,9 +129,7 @@ def completion(
 
     registry = _build_command_registry()
     names = registry.names()
-    names_help = [
-        f"'{e.name}:{e.help}'" for e in registry.all_entries()
-    ]
+    names_help = [f"'{e.name}:{e.help}'" for e in registry.all_entries()]
 
     if shell == "bash":
         words = " ".join(names)
@@ -135,9 +153,7 @@ _lexigram_complete() {{
 complete -F _lexigram_complete lexigram
 """
     elif shell == "zsh":
-        commands_block = "\n".join(
-            f"        {h}" for h in names_help
-        )
+        commands_block = "\n".join(f"        {h}" for h in names_help)
         script = f"""# Lexigram CLI Zsh Completion
 autoload -U compinit
 compdef _lexigram lexigram
@@ -220,6 +236,7 @@ def list_commands(
             ],
         }
         from lexigram.serialization import dumps_str
+
         out.print(dumps_str(payload))
         return
 

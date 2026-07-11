@@ -89,9 +89,7 @@ class AdminEmailOtpSqlStore:
     # AdminEmailOtpStoreProtocol
     # ------------------------------------------------------------------
 
-    async def save(
-        self, user_id: str, code_hash: str, expires_at: datetime
-    ) -> None:
+    async def save(self, user_id: str, code_hash: str, expires_at: datetime) -> None:
         """Persist a new emailed code (see protocol docs)."""
         await self._db.execute(
             f"INSERT INTO {_TABLE} (id, user_id, code_hash, expires_at) "

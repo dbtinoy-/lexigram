@@ -34,7 +34,9 @@ class FormRenderer:
         self.resource_name = resource_name
         self._renderer = renderer
         self._permission_service = permission_service
-        self._csrf_service = AdminCsrfService(secret=config.auth.session_secret.get_secret_value())
+        self._csrf_service = AdminCsrfService(
+            secret=config.auth.session_secret.get_secret_value()
+        )
 
     async def render_create(
         self,
@@ -605,9 +607,7 @@ class FormRenderer:
 
                 # Build field components from schema
                 field_components = []
-                exclude_names = set(
-                    getattr(resource, "form_exclude_fields", ()) or ()
-                )
+                exclude_names = set(getattr(resource, "form_exclude_fields", ()) or ())
                 for field_schema in schema.fields:
                     # Skip framework-managed / excluded fields
                     if field_schema.name in exclude_names:
@@ -626,9 +626,7 @@ class FormRenderer:
                             if mode == "edit" and not await _perm_svc.can_edit_field(
                                 user, self.resource_name, field_schema.name
                             ):
-                                field_schema = dc_replace(
-                                    field_schema, readonly=True
-                                )
+                                field_schema = dc_replace(field_schema, readonly=True)
                     # --- end RBAC ---
 
                     field_value = initial_data.get(

@@ -22,8 +22,7 @@ def load_cli_contributors() -> list[CliContributorProtocol]:
     output = OutputManager()
     for error in runtime.errors.values():
         output.warning(
-            f"Skipping CLI contributor {error.contributor_id}: "
-            f"{error.exception}"
+            f"Skipping CLI contributor {error.contributor_id}: {error.exception}"
         )
     return runtime.contributors
 

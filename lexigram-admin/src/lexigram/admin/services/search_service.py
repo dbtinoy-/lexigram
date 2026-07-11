@@ -162,9 +162,7 @@ class SearchService:
         catalog: list[dict[str, Any]] = []
         try:
             for resource in self.get_searchable_resources():
-                names: list[str] = list(
-                    getattr(resource, "search_fields", None) or []
-                )
+                names: list[str] = list(getattr(resource, "search_fields", None) or [])
                 spec = self._index_spec(resource)
                 if spec is not None:
                     names += list(getattr(spec, "fields", None) or [])
@@ -211,9 +209,7 @@ class SearchService:
         ``Resource.search()``'s hit shape. Backends that return plain dicts
         are handled as well.
         """
-        result = await integration.query(
-            spec.index_name, query, limit=limit, rule=rule
-        )
+        result = await integration.query(spec.index_name, query, limit=limit, rule=rule)
         raw = result.get("results", []) if isinstance(result, dict) else []
         title_field = getattr(resource, "search_title_field", "name")
         hits: list[dict[str, Any]] = []
