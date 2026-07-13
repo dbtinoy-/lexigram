@@ -74,6 +74,37 @@ def test_render_content_table_content_includes_columns_and_per_cell_tone() -> No
     assert "text-warning" in html
 
 
+def test_render_content_table_matches_tabular_table_visuals() -> None:
+    html = render_content(
+        TableContent(
+            columns=("Channel", "Status"),
+            rows=(
+                (
+                    TableCell(text="Slack", tone=Tone.DEFAULT),
+                    TableCell(text="healthy", tone=Tone.SUCCESS),
+                ),
+                (
+                    TableCell(text="Email", tone=Tone.DEFAULT),
+                    TableCell(text="stale", tone=Tone.WARNING),
+                ),
+                (
+                    TableCell(text="SMS", tone=Tone.DEFAULT),
+                    TableCell(text="down", tone=Tone.DANGER),
+                ),
+            ),
+        )
+    )
+    assert "min-w-full divide-y divide-border" in html
+    assert "border-separate border-spacing-0" in html
+    assert "bg-muted dark:bg-card-50 border-b border-border" in html
+    assert "hover:bg-muted" in html
+    assert "sticky top-0 z-20" in html
+    assert "overflow-x-auto overflow-y-auto shadow-sm ring-1 ring-border" in html
+    assert "bg-muted-30" in html
+    assert html.count("bg-muted-30") == 1
+    assert "transition-shadow" in html
+
+
 @pytest.mark.parametrize("status", list(HealthStatus))
 def test_render_content_health_payload_renders_each_health_status(
     status: HealthStatus,
