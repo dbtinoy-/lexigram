@@ -24,6 +24,13 @@ SAMPLE = """\
 - Fernet encryption usage — confirmed consistent.
 """
 
+STATUS_COLUMN_SAMPLE = """\
+| # | Area | Severity mix | Spec | Plan | Status |
+|---|------|--------------|------|------|--------|
+| 7 | **XSS / output rendering** | Critical \u00d72, High \u00d75, Med \u00d71 | `specs/x.md` | `plans/x.md` | Done |
+| 8 | **Secrets / credentials** | Critical \u00d71 | `specs/y.md` | `plans/y.md` | Open |
+"""
+
 
 def test_parse_tracker_rows_handles_five_and_six_column_rows() -> None:
     rows = parse_tracker_rows(SAMPLE)
@@ -31,9 +38,19 @@ def test_parse_tracker_rows_handles_five_and_six_column_rows() -> None:
     row1, row26, row50 = rows
     assert row1.area == "**P0 session-secret**"
     assert row1.severity_mix == "Critical \u00d73"
-    assert row1.plan.startswith("`plans/")
+    assert row1.status.startswith("`plans/")
+    assert not hasattr(row1, "spec")
+    assert not hasattr(row1, "plan")
     assert row26.severity_mix == "High \u00d71"  # six-column row: §28 ref dropped
-    assert row50.plan == "Not yet written"
+    assert row50.status == "Not yet written"
+
+
+def test_parse_tracker_rows_uses_status_column_without_plan_text() -> None:
+    rows = parse_tracker_rows(STATUS_COLUMN_SAMPLE)
+    assert [row.number for row in rows] == [7, 8]
+    assert rows[0].status.endswith("Done")
+    assert rows[1].status.endswith("Open")
+    assert "specs/" not in rows[0].status
 
 
 def test_row_is_done() -> None:
@@ -41,6 +58,12 @@ def test_row_is_done() -> None:
     assert row_is_done(rows[0]) is True
     assert row_is_done(rows[1]) is True
     assert row_is_done(rows[2]) is False
+
+
+def test_row_is_done_reads_status_column() -> None:
+    rows = parse_tracker_rows(STATUS_COLUMN_SAMPLE)
+    assert row_is_done(rows[0]) is True
+    assert row_is_done(rows[1]) is False
 
 
 def test_parse_verified_clean_extracts_bullets() -> None:
@@ -51,7 +74,9 @@ def test_parse_verified_clean_extracts_bullets() -> None:
 
 
 def test_severity_counts_normalizes_medium() -> None:
-    assert severity_counts("Critical \u00d73, High \u00d72, Med \u00d72, Low \u00d72") == {
+    assert severity_counts(
+        "Critical \u00d73, High \u00d72, Med \u00d72, Low \u00d72"
+    ) == {
         "Critical": 3,
         "High": 2,
         "Med": 2,
