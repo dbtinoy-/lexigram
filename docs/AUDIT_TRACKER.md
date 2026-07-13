@@ -1300,7 +1300,7 @@ executed — 0/15 tasks done.
 - Task 7 — `_EXPORTS` dict was missing `"ops"` and `"share"` entries despite the task's own "Produces" line, its own facade test (`lexigram.ops.map(...)`), and the showcase doc all requiring them; both added.
 - **Task 10 (`SubjectAdminEventHub`) — the security-relevant fix.** The plan's original `publish(event, target_users=None)` silently ignored `target_users` (broadcast to everyone regardless) and `subscribe(user_id=None, ...)` never filtered on `user_id` ("kept for API parity" per its own docstring). `action_executor.py`'s `_publish_action_notification`/`_publish_action_failure` rely on `AdminEventHub.publish(event, target_users=[caller_id])` today to keep each admin's own action-result notification private to that admin — the plan's drop-in replacement would have been a confidentiality regression (every admin sees every other admin's action results). Fixed via a `_TargetedEvent` wrapper dataclass carried inside the `Subject`; `publish()` wraps the event with `target_users`, `subscribe()` filters on `target_users is None or user_id in target_users` before the existing resource/event-type filters. Added a regression test (`test_subject_hub_respects_target_users`) and confirmed Task 13's broadcast-only dashboard widget (`hub.subscribe()` with no `user_id`) is correctly compatible — it now sees only broadcast events by construction, never another admin's targeted notification.
 
-### 14.1 Tasks summary (14/15 done)
+### 14.1 Tasks summary (15/15 done)
 
 | Task | Area | Status |
 |---|---|---|
