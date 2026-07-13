@@ -222,7 +222,6 @@ class QueueProvider(Provider):
         container.singleton(
             QueueAdminContributor,
             QueueAdminContributor,
-            name="queue",
         )
 
         logger.debug("Registered queue admin widget components")
