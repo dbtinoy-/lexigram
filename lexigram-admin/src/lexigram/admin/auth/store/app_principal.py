@@ -11,7 +11,8 @@ Lets the panel run entirely against the application's own users
   in app mode the adapter passes the raw value through as-is — the app's
   hashing policy owns verification; documented for implementers)
 - update_user -> provider.update_principal + provider.sync_roles when
-  roles changed
+  roles changed (a non-empty hashed_password on the record is forwarded
+  onto the principal so implementers can persist panel-side mutations)
 - delete_user -> provider.delete_principal
 - authenticate -> provider.authenticate
 - ensure_schema -> provider.ensure_schema (no-op passthrough)
@@ -104,8 +105,24 @@ class AppPrincipalUserStoreAdapter:
         p = await self._provider.principal_for(user_id)
         return self._to_record(p) if p else None
 
+    async def get_by_id(self, user_id: str) -> Any | None:
+        """Alias of :meth:`get_user_by_id` required by ``AdminAuthMiddleware``.
+
+        Internal stores expose ``get_by_id`` (via ``AuthStoreBase``); the
+        session-loading middleware calls it, so the app-mode adapter mirrors
+        the shape for parity (record with ``is_active`` and ``user_id``).
+        """
+        return await self.get_user_by_id(user_id)
+
     async def update_user(self, user: Any) -> None:
-        """Persist principal changes and sync roles through the provider."""
+        """Persist principal changes and sync roles through the provider.
+
+        A non-empty ``hashed_password`` on the record is forwarded onto the
+        principal (panel password changes/resets land it before this call),
+        so implementers' ``update_principal`` can persist it — mirroring how
+        ``create_principal`` receives the pre-hashed value as-is.
+        """
+        hashed_password = getattr(user, "hashed_password", "") or ""
         await self._provider.update_principal(
             AdminPrincipal(
                 user_id=user.user_id,
@@ -114,6 +131,7 @@ class AppPrincipalUserStoreAdapter:
                 roles=list(getattr(user, "roles", []) or []),
                 permissions=list(getattr(user, "permissions", []) or []),
                 is_active=bool(getattr(user, "is_active", True)),
+                **({"hashed_password": hashed_password} if hashed_password else {}),
             )
         )
         if hasattr(user, "roles") and user.roles is not None:
