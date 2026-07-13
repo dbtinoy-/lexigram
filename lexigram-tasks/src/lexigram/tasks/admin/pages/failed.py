@@ -16,6 +16,7 @@ from lexigram.ui import (
     PaginationLinks,
     Zones,
     el,
+    raw,
     render_to_string,
 )
 
@@ -223,7 +224,7 @@ class TasksFailedPage:
                             ),
                             el(
                                 "tbody",
-                                rows,
+                                raw(rows),
                                 class_="divide-y divide-[var(--border)]",
                             ),
                             class_="min-w-full table-fixed divide-y divide-[var(--border)]",

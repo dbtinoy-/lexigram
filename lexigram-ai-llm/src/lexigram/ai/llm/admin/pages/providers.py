@@ -12,6 +12,7 @@ from lexigram.ui import (
     Divider,
     EmptyState,
     el,
+    raw,
     render_to_string,
 )
 from lexigram.ui.atoms.badge import BadgeVariant
@@ -186,7 +187,7 @@ class LlmProvidersPage:
                         ),
                         el(
                             "tbody",
-                            rows,
+                            raw(rows),
                             class_="divide-y divide-[var(--border)]",
                         ),
                         class_="min-w-full table-fixed divide-y divide-[var(--border)]",

@@ -8,7 +8,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.logging import get_logger
 from lexigram.tasks import WorkerPool
-from lexigram.ui import Card, Divider, EmptyState, el, render_to_string
+from lexigram.ui import Card, Divider, EmptyState, el, raw, render_to_string
 
 logger = get_logger(__name__)
 
@@ -140,7 +140,7 @@ class TasksActivePage:
                                 ),
                                 el(
                                     "tbody",
-                                    rows,
+                                    raw(rows),
                                     class_="divide-y divide-[var(--border)]",
                                 ),
                                 class_="min-w-full table-fixed divide-y divide-[var(--border)]",

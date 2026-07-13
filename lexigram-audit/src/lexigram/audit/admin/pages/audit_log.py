@@ -16,6 +16,7 @@ from lexigram.ui import (
     StatCard,
     Zones,
     el,
+    raw,
     render_to_string,
 )
 
@@ -268,7 +269,7 @@ class AuditLogPage:
                             ),
                             el(
                                 "tbody",
-                                rows,
+                                raw(rows),
                                 class_="divide-y divide-[var(--border)]",
                             ),
                             class_="min-w-full table-fixed divide-y divide-[var(--border)]",

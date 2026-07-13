@@ -170,9 +170,9 @@ class _QueryMixin:
             await self.boot()  # type: ignore[attr-defined]
         try:
             return cast(
-            "InsertResult",
-            await self.db_provider.execute_insert(table, data),  # type: ignore[attr-defined]
-        )
+                "InsertResult",
+                await self.db_provider.execute_insert(table, data),  # type: ignore[attr-defined]
+            )
         except (QueryError, DatabaseError) as exc:
             if isinstance(
                 exc,
@@ -204,9 +204,9 @@ class _QueryMixin:
             await self.boot()  # type: ignore[attr-defined]
         try:
             return cast(
-            "UpdateResult",
-            await self.db_provider.execute_update(table, data, where, params),  # type: ignore[attr-defined]
-        )
+                "UpdateResult",
+                await self.db_provider.execute_update(table, data, where, params),  # type: ignore[attr-defined]
+            )
         except (QueryError, DatabaseError) as exc:
             if isinstance(exc, (DatabaseConnectionError, DatabaseTimeoutError)):
                 raise
@@ -225,9 +225,9 @@ class _QueryMixin:
             await self.boot()  # type: ignore[attr-defined]
         try:
             return cast(
-            "DeleteResult",
-            await self.db_provider.execute_delete(table, where, params),  # type: ignore[attr-defined]
-        )
+                "DeleteResult",
+                await self.db_provider.execute_delete(table, where, params),  # type: ignore[attr-defined]
+            )
         except (QueryError, DatabaseError) as exc:
             if isinstance(exc, (DatabaseConnectionError, DatabaseTimeoutError)):
                 raise

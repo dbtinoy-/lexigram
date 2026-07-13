@@ -13,6 +13,7 @@ from lexigram.ui import (
     PaginationLinks,
     Zones,
     el,
+    raw,
     render_to_string,
 )
 
@@ -194,7 +195,7 @@ class SqlQueriesPage:
                                     ),
                                 ),
                             ),
-                            el("tbody", rows, class_="divide-y divide-[var(--border)]"),
+                            el("tbody", raw(rows), class_="divide-y divide-[var(--border)]"),
                             class_="min-w-full table-fixed divide-y divide-[var(--border)]",
                         ),
                         class_="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]",

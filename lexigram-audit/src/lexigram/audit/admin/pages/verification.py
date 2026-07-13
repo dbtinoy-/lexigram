@@ -13,6 +13,7 @@ from lexigram.ui import (
     Grid,
     StatCard,
     el,
+    raw,
     render_to_string,
 )
 
@@ -124,26 +125,28 @@ class AuditVerificationPage:
                             ),
                             el(
                                 "tbody",
-                                "".join(
-                                    render_to_string(
-                                        el(
-                                            "tr",
+                                raw(
+                                    "".join(
+                                        render_to_string(
                                             el(
-                                                "td",
-                                                m.expected_checksum[:32] + "...",
-                                                class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-[var(--foreground)]",
-                                            ),
-                                            el(
-                                                "td",
-                                                m.actual_checksum[:32] + "...",
-                                                class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-red-600",
-                                            ),
+                                                "tr",
+                                                el(
+                                                    "td",
+                                                    m.expected_checksum[:32] + "...",
+                                                    class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-[var(--foreground)]",
+                                                ),
+                                                el(
+                                                    "td",
+                                                    m.actual_checksum[:32] + "...",
+                                                    class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-red-600",
+                                                ),
+                                            )
                                         )
+                                        for m in mismatches
                                     )
-                                    for m in mismatches
-                                )
-                                if mismatches
-                                else "",
+                                    if mismatches
+                                    else "",
+                                ),
                                 class_="divide-y divide-[var(--border)]",
                             ),
                             class_="min-w-full table-fixed divide-y divide-[var(--border)]",
