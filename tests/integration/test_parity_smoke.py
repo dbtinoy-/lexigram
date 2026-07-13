@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from lexigram.contracts.ai.evaluation import EvaluationDataset, EvaluationSample
-from lexigram.contracts.ai.llm import Role
-from lexigram.contracts.ai.retrievers import RetrievalQuery, RetrievedNode
-from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
+from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.ai.llm.parsers import JSONOutputParser
-from lexigram.ai.llm.runnable import RunnableLambda
+from lexigram.contracts.ai.evaluation import EvaluationDataset, EvaluationSample
+from lexigram.contracts.ai.retrievers import RetrievalQuery, RetrievedNode
 
 
 @pytest.mark.asyncio
@@ -52,7 +50,7 @@ async def test_parity_end_to_end():
         metadata={},
     )
     evaluator = CriteriaEvaluator()
-    report = await harness.run(dataset, evaluator)
+    report = (await harness.run(dataset, evaluator)).unwrap()
     assert report.total_samples == 1
     assert report.dataset_name == "smoke_test"
 
@@ -60,7 +58,7 @@ async def test_parity_end_to_end():
 @pytest.mark.asyncio
 async def test_retriever_protocol():
     """Test RetrieverProtocol compliance."""
-    from lexigram.contracts.ai.retrievers import RetrieverProtocol, RetrieverError
+    from lexigram.contracts.ai.retrievers import RetrieverProtocol
 
     class MockRetriever:
         async def retrieve(self, query: RetrievalQuery):

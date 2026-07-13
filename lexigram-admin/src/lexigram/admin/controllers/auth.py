@@ -84,8 +84,7 @@ class AuthController(AdminController):
         metrics: AdminMetrics | None = None,
         password_reset_service: AdminPasswordResetServiceProtocol | None = None,
         mfa_service: AdminMfaServiceProtocol | None = None,
-        email_verification_service: AdminEmailVerificationServiceProtocol
-        | None = None,
+        email_verification_service: AdminEmailVerificationServiceProtocol | None = None,
         email_otp_service: AdminEmailOtpServiceProtocol | None = None,
     ) -> None:
         """Initialise auth controller.
@@ -244,7 +243,7 @@ class AuthController(AdminController):
                 # email factor the code is emailed right away.
                 factor = "totp"
                 if self._mfa_service is not None:
-                    factor = self._mfa_service.get_factor()
+                    factor = await self._mfa_service.get_factor()
                 request.session["mfa_pending_user_id"] = auth_result.user_id
                 request.session["mfa_pending_email"] = auth_result.email
                 request.session["mfa_pending_roles"] = auth_result.roles
@@ -278,12 +277,14 @@ class AuthController(AdminController):
                 request.session["verify_pending_next"] = next_url
                 error_msg = ""
                 if self._email_verification_service is not None:
-                    verify_result = await self._email_verification_service.send_verification(
-                        user_id=auth_result.user_id,
-                        email=auth_result.email,
-                        user_name=auth_result.email,
-                        base_url=str(request.base_url),
-                        ip_address=ip,
+                    verify_result = (
+                        await self._email_verification_service.send_verification(
+                            user_id=auth_result.user_id,
+                            email=auth_result.email,
+                            user_name=auth_result.email,
+                            base_url=str(request.base_url),
+                            ip_address=ip,
+                        )
                     )
                     if verify_result.is_err():
                         error_msg = str(verify_result.unwrap_err())
@@ -352,8 +353,7 @@ class AuthController(AdminController):
 
         request.session.clear()
         return RedirectResponse(
-            url="/admin/login?notice="
-            + quote_plus("You have been signed out."),
+            url="/admin/login?notice=" + quote_plus("You have been signed out."),
             status_code=302,
         )
 
@@ -362,7 +362,9 @@ class AuthController(AdminController):
     # ------------------------------------------------------------------
 
     @get("/login/2fa")
-    async def mfa_challenge_form(self, request: Request) -> HTMLResponse | RedirectResponse:
+    async def mfa_challenge_form(
+        self, request: Request
+    ) -> HTMLResponse | RedirectResponse:
         """Display the standalone TOTP challenge form.
 
         Only reachable when a pending 2FA challenge exists in the session
@@ -564,7 +566,9 @@ class AuthController(AdminController):
     # ------------------------------------------------------------------
 
     @get("/verify-email")
-    async def verify_email_form(self, request: Request) -> HTMLResponse | RedirectResponse:
+    async def verify_email_form(
+        self, request: Request
+    ) -> HTMLResponse | RedirectResponse:
         """Display the standalone email verification landing page.
 
         Shown after a login attempt was gated on an unverified email.  Lets
@@ -693,7 +697,9 @@ class AuthController(AdminController):
                 reason=str(result.unwrap_err()),
             )
             return HTMLResponse(
-                content=render_email_verified_page(error=_humanize_error(str(result.unwrap_err())))
+                content=render_email_verified_page(
+                    error=_humanize_error(str(result.unwrap_err()))
+                )
             )
 
         for key in (
@@ -710,7 +716,9 @@ class AuthController(AdminController):
     # ------------------------------------------------------------------
 
     @get("/profile/mfa")
-    async def mfa_profile_form(self, request: Request) -> HTMLResponse | RedirectResponse:
+    async def mfa_profile_form(
+        self, request: Request
+    ) -> HTMLResponse | RedirectResponse:
         """Display the authenticated user's 2FA settings page.
 
         Shows the disable form when 2FA is active; otherwise generates a
@@ -739,9 +747,7 @@ class AuthController(AdminController):
 
         email_verified: bool | None = None
         if self._email_verification_service is not None:
-            email_verified = await self._email_verification_service.is_verified(
-                user_id
-            )
+            email_verified = await self._email_verification_service.is_verified(user_id)
 
         if await self._mfa_service.is_enabled(user_id):
             html = render_mfa_setup_page(
@@ -1067,13 +1073,9 @@ class AuthController(AdminController):
             )
 
         if not password or not password_confirmation:
-            password_err = (
-                "New password is required." if not password else ""
-            )
+            password_err = "New password is required." if not password else ""
             confirmation_err = (
-                "Please confirm your password."
-                if not password_confirmation
-                else ""
+                "Please confirm your password." if not password_confirmation else ""
             )
             return RedirectResponse(
                 url=f"/admin/password-reset/{token}?password_err={quote_plus(password_err)}&confirmation_err={quote_plus(confirmation_err)}",
@@ -1118,9 +1120,7 @@ class AuthController(AdminController):
     # ------------------------------------------------------------------
 
     @get("/register")
-    async def register_form(
-        self, request: Request
-    ) -> HTMLResponse | RedirectResponse:
+    async def register_form(self, request: Request) -> HTMLResponse | RedirectResponse:
         """Display the standalone registration page.
 
         Only reachable when self-service registration is enabled in
@@ -1291,9 +1291,39 @@ class AuthController(AdminController):
         logger.info("auth.register_success", email=email, user_id=user_id)
 
         await self._audit_registration(request, ip, user_agent, email)
+
+        notice = "Account created successfully — please sign in."
+        if (
+            self._email_verification_service is not None
+            and user_id
+            and await self._email_verification_service.is_required(user_id)
+        ):
+            verify_result = await self._email_verification_service.send_verification(
+                user_id=user_id,
+                email=email,
+                user_name=name,
+                base_url=str(request.base_url),
+                ip_address=ip,
+            )
+            if verify_result.is_ok():
+                notice = (
+                    "Account created successfully — a verification email was "
+                    f"sent to {email}. Please verify your email before "
+                    "signing in."
+                )
+            else:
+                logger.warning(
+                    "auth.register_verification_send_failed",
+                    email=email,
+                    error=str(verify_result.unwrap_err()),
+                )
+                notice = (
+                    "Account created successfully — email verification is "
+                    "enabled, and you will be asked to verify your email "
+                    "before signing in."
+                )
         return RedirectResponse(
-            url="/admin/login?notice="
-            + quote_plus("Account created successfully — please sign in."),
+            url="/admin/login?notice=" + quote_plus(notice),
             status_code=302,
         )
 

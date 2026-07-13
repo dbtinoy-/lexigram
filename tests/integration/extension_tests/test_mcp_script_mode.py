@@ -7,10 +7,8 @@ from __future__ import annotations
 
 import types
 from typing import Any
-from unittest.mock import patch, MagicMock
 
 import pytest
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -213,20 +211,20 @@ class TestModulePromptProvider:
 
 class TestIsScriptTarget:
     def test_py_file_is_always_script(self) -> None:
-        from lexigram.cli.commands.mcp import _is_script_target
+        from lexigram.ai.mcp.cli.commands import _is_script_target
 
         assert _is_script_target("tools.py") is True
         assert _is_script_target("./my_tools.py") is True
         assert _is_script_target("/abs/path/tools.py") is True
 
     def test_module_colon_attr_is_not_script(self) -> None:
-        from lexigram.cli.commands.mcp import _is_script_target
+        from lexigram.ai.mcp.cli.commands import _is_script_target
 
         assert _is_script_target("my_app.app:create_app") is False
         assert _is_script_target("app:app") is False
 
     def test_dotted_name_without_colon_is_script_when_no_factory(self) -> None:
-        from lexigram.cli.commands.mcp import _is_script_target
+        from lexigram.ai.mcp.cli.commands import _is_script_target
 
         # Does not point to a real file, so no factory detected → script mode
         assert _is_script_target("my_app.mcp_tools") is True
@@ -235,7 +233,7 @@ class TestIsScriptTarget:
 class TestBuildScriptServer:
     @pytest.mark.asyncio
     async def test_build_script_server_from_module(self) -> None:
-        from lexigram.cli.commands.mcp import _build_script_server
+        from lexigram.ai.mcp.cli.commands import _build_script_server
         from lexigram.ai.mcp.controllers import tool
 
         @tool("ping")
@@ -247,11 +245,12 @@ class TestBuildScriptServer:
 
         # Server should be an MCPServer instance
         from lexigram.ai.mcp.server.core import MCPServer
+
         assert isinstance(server, MCPServer)
 
     @pytest.mark.asyncio
     async def test_script_server_uses_module_name(self) -> None:
-        from lexigram.cli.commands.mcp import _build_script_server
+        from lexigram.ai.mcp.cli.commands import _build_script_server
         from lexigram.ai.mcp.server.core import MCPServer
 
         mod = types.ModuleType("my_tools")
@@ -264,15 +263,16 @@ class TestBuildScriptServer:
 
 class TestLoadScriptModule:
     def test_load_by_dotted_name(self) -> None:
-        from lexigram.cli.commands.mcp import _load_script_module
         import sys
+
+        from lexigram.ai.mcp.cli.commands import _load_script_module
 
         # Use a real importable module from stdlib
         mod = _load_script_module("json")
         assert mod is sys.modules["json"]
 
     def test_load_from_file(self, tmp_path) -> None:
-        from lexigram.cli.commands.mcp import _load_script_module
+        from lexigram.ai.mcp.cli.commands import _load_script_module
 
         script = tmp_path / "my_tools.py"
         script.write_text(
