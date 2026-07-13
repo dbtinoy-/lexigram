@@ -225,7 +225,7 @@ def lazy_load_placeholder(
         HTML string for the placeholder
     """
     from lexigram.ui.atoms.skeleton import Skeleton
-    from lexigram.ui.core.base import el
+    from lexigram.ui.core.base import el, raw
 
     if placeholder is None:
         placeholder = render_to_string(Skeleton(variant="table", rows=5))
@@ -233,7 +233,7 @@ def lazy_load_placeholder(
     return render_to_string(
         el(
             "div",
-            placeholder,
+            raw(placeholder),
             id=target_id,
             hx_get=url,
             hx_trigger=trigger,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.config import TableConfiguration
-from lexigram.ui import TableState, el
+from lexigram.ui import TableState, el, raw
 
 
 class LayoutComposer:
@@ -30,7 +30,7 @@ class LayoutComposer:
                 aside_content += str(el("div", filter_section, class_=""))
             left_sidebar = el(
                 "aside",
-                aside_content,
+                raw(aside_content),
                 class_="w-full lg:w-72 lg:mr-6 flex-shrink-0 lg:sticky lg:top-4 lg:self-start",
             )
             main_content = el(
@@ -46,8 +46,8 @@ class LayoutComposer:
             )
         return el(
             "div",
-            el("div", search_section, class_="mb-4") if search_section else "",
-            el("div", filter_section, class_="mb-4") if filter_section else "",
+            el("div", raw(search_section), class_="mb-4") if search_section else "",
+            el("div", raw(filter_section), class_="mb-4") if filter_section else "",
             inner_form,
             class_="block lexigram-data-table-container",
         )

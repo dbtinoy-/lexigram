@@ -12,7 +12,7 @@ from lexigram.admin.ui.organisms.data_table.states import StateRenderer
 from lexigram.admin.ui.organisms.data_table.views import ViewFactory
 from lexigram.admin.ui.organisms.pagination import Pagination
 from lexigram.serialization import dumps_str
-from lexigram.ui import TableState, Zones, el, render_to_string
+from lexigram.ui import TableState, Zones, el, raw, render_to_string
 
 
 class DataTableRenderer:
@@ -165,8 +165,8 @@ class DataTableRenderer:
                 script,
                 el(
                     "div",
-                    header_section,
-                    tabs_html,
+                    raw(header_section),
+                    raw(tabs_html),
                     container,
                     id=Zones.TABLE.id,
                     x_data=f"{{ selectedIds: [], expandedIds: [], collapsedGroups: [], lastSelected: null, focusedId: null, hasActiveFiltersState: false, allIds: {self.all_ids_json}, ...window.LexigramTableLogic }}",

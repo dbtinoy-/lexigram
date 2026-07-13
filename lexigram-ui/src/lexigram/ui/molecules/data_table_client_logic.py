@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.serialization import dumps_str
-from lexigram.ui import Zones, el
+from lexigram.ui import Zones, el, raw
 
 
 class DataTableScriptRenderer:
@@ -294,4 +294,4 @@ class DataTableScriptRenderer:
             }});
         }})();
         """
-        return el("script", script_js)
+        return el("script", raw(script_js))
