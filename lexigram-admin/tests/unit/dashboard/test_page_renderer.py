@@ -32,6 +32,23 @@ async def test_render_page_content_includes_pagination_when_total_positive() -> 
     assert "25" in html
 
 
+async def test_render_page_content_emits_table_data_swap_zone() -> None:
+    from lexigram.contracts.admin.widget_content import TableCell, TableContent
+
+    response = render_page_content(
+        PageContent(
+            title="Audit Log",
+            body=TableContent(
+                columns=("Action", "Actor"),
+                rows=((TableCell("login_success"), TableCell("ace")),),
+            ),
+            pagination=PaginationContent(page=1, total=25, per_page=20, base_url="/t"),
+        )
+    )
+    html = response.body.decode()
+    assert 'id="table-data"' in html
+
+
 async def test_render_page_content_table_markup_is_not_escaped() -> None:
     from lexigram.contracts.admin.widget_content import TableCell, TableContent
 
@@ -73,7 +90,5 @@ async def test_structured_page_handler_rejects_raw_html() -> None:
     }
     wrapped = StructuredPageHandler(bad_handler)
     await wrapped(scope, None, fake_send)
-    body = b"".join(
-        m["body"] for m in sent if m["type"] == "http.response.body"
-    )
+    body = b"".join(m["body"] for m in sent if m["type"] == "http.response.body")
     assert "Contract Violation" in body.decode()
