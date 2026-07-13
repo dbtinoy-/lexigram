@@ -11,11 +11,13 @@ from lexigram.cache.events import (
     CacheHitEvent,
     CacheMissEvent,
 )
-from lexigram.contracts.domain.events import DomainEvent
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import EmptyContent, Stat, StatContent
 from lexigram.contracts.core.health import (
     HealthCheckResult,
     HealthStatus,
 )
+from lexigram.contracts.domain.events import DomainEvent
 
 
 class _FakeCache:
@@ -57,11 +59,22 @@ class TestCacheStatsPage:
             details=details,
         )
 
+    def _stat(self, content: PageContent, label: str) -> Stat:
+        assert isinstance(content.body, StatContent)
+        for stat in content.body.stats:
+            if stat.label == label:
+                return stat
+        raise AssertionError(f"stat {label!r} not found")
+
     def test_no_cache_returns_unavailable(self) -> None:
         import asyncio
 
-        response = asyncio.run(CacheStatsPage(cache=None).handle(object()))
-        assert "Cache Unavailable" in response.body.decode()
+        content = asyncio.run(CacheStatsPage(cache=None).handle(object()))
+        assert content.title == "Cache Statistics"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.title == "Cache Unavailable"
+        assert content.body.message == "The cache backend could not be resolved."
+        assert content.body.icon == "database"
 
     def test_healthy_with_numeric_metrics(self) -> None:
         import asyncio
@@ -80,13 +93,12 @@ class TestCacheStatsPage:
                 }
             )
         )
-        html = asyncio.run(CacheStatsPage(cache=cache).handle(object())).body.decode()
-        assert "Cache Statistics" in html
-        assert "OK" in html
-        assert "80%" in html
-        assert "3.2ms" in html
-        assert "Backend Details" in html
-        assert "_FakeCache" in html
+        content = asyncio.run(CacheStatsPage(cache=cache).handle(object()))
+        assert content.title == "Cache Statistics"
+        assert self._stat(content, "Backend").value == "OK"
+        assert self._stat(content, "Hit Ratio").value == "80%"
+        assert self._stat(content, "Operations").value == "10"
+        assert self._stat(content, "Avg Latency").value == "3.2ms"
 
     def test_healthy_with_string_metrics(self) -> None:
         import asyncio
@@ -94,14 +106,13 @@ class TestCacheStatsPage:
         cache = _FakeCache(
             self._healthy(metrics={"hit_rate": "N/A", "avg_latency_ms": "unknown"})
         )
-        html = asyncio.run(CacheStatsPage(cache=cache).handle(object())).body.decode()
-        assert "N/A" in html
-        assert "unknown" in html
+        content = asyncio.run(CacheStatsPage(cache=cache).handle(object()))
+        assert self._stat(content, "Hit Ratio").value == "N/A"
+        assert self._stat(content, "Avg Latency").value == "unknown"
 
     def test_health_check_raises_marks_down(self) -> None:
         import asyncio
 
         cache = _FakeCache(RuntimeError("boom"))
-        html = asyncio.run(CacheStatsPage(cache=cache).handle(object())).body.decode()
-        assert "Down" in html
-        assert "Unhealthy" in html
+        content = asyncio.run(CacheStatsPage(cache=cache).handle(object()))
+        assert self._stat(content, "Backend").value == "Down"

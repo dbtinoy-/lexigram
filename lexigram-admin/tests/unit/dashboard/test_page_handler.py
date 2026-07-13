@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -104,10 +105,229 @@ class TestAdminPageHandler:
         container.resolve = AsyncMock(side_effect=LookupError)
 
         handler = AdminPageHandler(_SimplePage, container)
-        scope: dict = {"type": "http", "method": "GET", "path": "/test"}
+        scope: dict = {
+            "type": "http",
+            "method": "GET",
+            "path": "/test",
+            "headers": [],
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("test", 80),
+            "client": ("127.0.0.1", 1234),
+            "asgi": {"version": "3.0", "spec_version": "2.0"},
+            "app": None,
+            "root_path": "",
+        }
         receive = AsyncMock()
         send = AsyncMock()
 
         await handler(scope, receive, send)
         # Should not raise — the response mock should be callable
         # and awaited with (scope, receive, send)
+
+    @pytest.mark.asyncio
+    async def test_call_renders_page_content_results(self) -> None:
+        """__call__ renders PageContent from handle() into an HTML response."""
+
+        class _PageContentPage:
+            async def handle(self, request: object) -> Any:
+                from lexigram.contracts.admin import PageContent
+                from lexigram.contracts.admin.widget_content import EmptyContent
+
+                return PageContent(
+                    title="Content Page", body=EmptyContent(title="x")
+                )
+
+        container = MagicMock()
+        container.resolve = AsyncMock(side_effect=LookupError)
+
+        sent: list[dict[str, Any]] = []
+
+        async def fake_send(message: dict[str, Any]) -> None:
+            sent.append(message)
+
+        scope: dict[str, Any] = {
+            "type": "http",
+            "method": "GET",
+            "path": "/admin/content",
+            "headers": [],
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("test", 80),
+            "client": ("127.0.0.1", 1234),
+            "asgi": {"version": "3.0", "spec_version": "2.0"},
+            "app": None,
+            "root_path": "",
+        }
+        handler = AdminPageHandler(_PageContentPage, container)
+        await handler(scope, None, fake_send)
+        body = b"".join(
+            m["body"] for m in sent if m["type"] == "http.response.body"
+        )
+        assert b"Content Page" in body
+
+
+class TestStructuredPageHandlerProtocolDispatch:
+    """StructuredPageHandler must dispatch to ``handle(request)`` on
+    protocol-style page instances (ManagementPageHandler), not call the
+    instance itself."""
+
+    @pytest.mark.asyncio
+    async def test_dispatches_to_handle_method(self) -> None:
+        from lexigram.admin.dashboard.route_integrator import (
+            StructuredPageHandler,
+        )
+        from lexigram.contracts.admin import PageContent
+        from lexigram.contracts.admin.widget_content import EmptyContent
+
+        calls: list[object] = []
+
+        class _ProtocolPage:
+            async def handle(self, request: object) -> PageContent:
+                calls.append(request)
+                return PageContent(title="Protocol Page", body=EmptyContent(title="x"))
+
+        sent: list[dict[str, Any]] = []
+
+        async def fake_send(message: dict[str, Any]) -> None:
+            sent.append(message)
+
+        scope: dict[str, Any] = {
+            "type": "http",
+            "method": "GET",
+            "path": "/x",
+            "headers": [],
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("test", 80),
+            "client": ("127.0.0.1", 1234),
+            "asgi": {"version": "3.0", "spec_version": "2.0"},
+            "app": None,
+            "root_path": "",
+        }
+        wrapped = StructuredPageHandler(_ProtocolPage())
+        await wrapped(scope, None, fake_send)
+        assert len(calls) == 1
+        body = b"".join(
+            m["body"] for m in sent if m["type"] == "http.response.body"
+        )
+        assert b"Protocol Page" in body
+
+    @pytest.mark.asyncio
+    async def test_still_calls_plain_callable_handlers(self) -> None:
+        from lexigram.admin.dashboard.route_integrator import (
+            StructuredPageHandler,
+        )
+
+        calls: list[object] = []
+
+        async def plain_handler(request: object) -> str:
+            calls.append(request)
+            return "<div>plain</div>"
+
+        sent: list[dict[str, Any]] = []
+
+        async def fake_send(message: dict[str, Any]) -> None:
+            sent.append(message)
+
+        scope: dict[str, Any] = {
+            "type": "http",
+            "method": "GET",
+            "path": "/x",
+            "headers": [],
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("test", 80),
+            "client": ("127.0.0.1", 1234),
+            "asgi": {"version": "3.0", "spec_version": "2.0"},
+            "app": None,
+            "root_path": "",
+        }
+        await StructuredPageHandler(plain_handler)(scope, None, fake_send)
+        assert len(calls) == 1
+
+
+class TestRegisterPagesWrapping:
+    """Route registration must apply exactly one wrapper per handler type."""
+
+    @staticmethod
+    def _fake_naming() -> Any:
+        from lexigram.admin.dashboard.naming_policy import NamingPolicy
+
+        return NamingPolicy()
+
+    def test_class_handler_wrapped_as_admin_page_handler_only(self) -> None:
+        from lexigram.admin.dashboard.route_integrator import (
+            StructuredPageHandler,
+            _register_pages,
+        )
+        from lexigram.contracts.admin.types import ManagementPageDefinition
+
+        class _Page:
+            async def handle(self, request: object) -> object:
+                return None
+
+        collected: list[Any] = []
+
+        class _FakeRouter:
+            def add_route(
+                self, path: str, method: str, handler: Any, name: str
+            ) -> None:
+                collected.append(handler)
+
+        _register_pages(
+            _FakeRouter(),  # type: ignore[arg-type]
+            self._fake_naming(),
+            "/admin",
+            [
+                ManagementPageDefinition(
+                    name="p",
+                    title="P",
+                    contributor="c",
+                    route_path="/admin/p",
+                    handler=_Page,
+                )
+            ],
+            container=object(),
+        )
+        assert len(collected) == 1
+        assert isinstance(collected[0], AdminPageHandler)
+        assert not isinstance(collected[0], StructuredPageHandler)
+
+    def test_instance_handler_wrapped_as_structured_handler_only(self) -> None:
+        from lexigram.admin.dashboard.route_integrator import (
+            StructuredPageHandler,
+            _register_pages,
+        )
+        from lexigram.contracts.admin.types import ManagementPageDefinition
+
+        class _Page:
+            async def handle(self, request: object) -> object:
+                return None
+
+        collected: list[Any] = []
+
+        class _FakeRouter:
+            def add_route(
+                self, path: str, method: str, handler: Any, name: str
+            ) -> None:
+                collected.append(handler)
+
+        _register_pages(
+            _FakeRouter(),  # type: ignore[arg-type]
+            self._fake_naming(),
+            "/admin",
+            [
+                ManagementPageDefinition(
+                    name="p",
+                    title="P",
+                    contributor="c",
+                    route_path="/admin/p",
+                    handler=_Page(),
+                )
+            ],
+            container=object(),
+        )
+        assert len(collected) == 1
+        assert isinstance(collected[0], StructuredPageHandler)
+        assert not isinstance(collected[0], AdminPageHandler)

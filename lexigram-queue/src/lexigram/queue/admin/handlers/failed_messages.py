@@ -53,7 +53,9 @@ class FailedMessagesWidgetHandler:
             value, tone = str(count), Tone.DANGER
         else:
             value, tone = "✓ No failures", Tone.SUCCESS
-        return Ok(StatContent(stats=(Stat(label="Failed messages", value=value, tone=tone),)))
+        return Ok(
+            StatContent(stats=(Stat(label="Failed messages", value=value, tone=tone),))
+        )
 
 
 __all__ = ["FailedMessagesWidgetHandler"]

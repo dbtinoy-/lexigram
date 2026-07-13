@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.contracts.admin import PageContent, PaginationContent
-from lexigram.contracts.admin.widget_content import EmptyContent, TableContent, TableCell
+from lexigram.contracts.admin.widget_content import (
+    EmptyContent,
+    TableCell,
+    TableContent,
+)
 from lexigram.contracts.events import EventStoreProtocol
 from lexigram.logging import get_logger
 

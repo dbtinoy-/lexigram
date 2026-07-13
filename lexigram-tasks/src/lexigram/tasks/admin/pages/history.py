@@ -4,21 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from starlette.responses import HTMLResponse
-
+from lexigram.contracts.admin import PageContent, PaginationContent
+from lexigram.contracts.admin.widget_content import (
+    EmptyContent,
+    TableCell,
+    TableContent,
+)
 from lexigram.logging import get_logger
 from lexigram.tasks import ResultStore
-from lexigram.ui import (
-    Badge,
-    Divider,
-    EmptyState,
-    PageSizeSelector,
-    PaginationLinks,
-    Zones,
-    el,
-    raw,
-    render_to_string,
-)
 
 logger = get_logger(__name__)
 
@@ -40,91 +33,47 @@ def _paging(request: Any) -> tuple[int, int]:
     return page, per_page
 
 
-def _pagination_block(page: int, total: int, per_page: int, base_url: str) -> Any:
-    if total <= 0:
-        return ""
-    total_pages = max(1, (total + per_page - 1) // per_page)
-    start_item = (page - 1) * per_page + 1
-    end_item = min(page * per_page, total)
-    return el(
-        "div",
-        {
-            "class": (
-                "flex items-center justify-between border-t border-border "
-                "bg-background px-4 py-3 mt-4"
-            ),
-        },
-        el(
-            "p",
-            {
-                "class": (
-                    "text-[11px] uppercase tracking-wider "
-                    "text-[var(--muted-foreground)] font-semibold"
-                ),
-            },
-            "Showing ",
-            el("span", {"class": "font-bold"}, str(start_item)),
-            " to ",
-            el("span", {"class": "font-bold"}, str(end_item)),
-            " of ",
-            el("span", {"class": "font-bold"}, str(total)),
-            " results",
-        ),
-        el(
-            "div",
-            {"class": "flex items-center space-x-4"},
-            PaginationLinks(
-                page=page,
-                total_pages=total_pages,
-                per_page=per_page,
-                base_url=base_url,
-            ),
-            PageSizeSelector(per_page=per_page, base_url=base_url),
-        ),
-    )
-
-
 class TasksHistoryPage:
     """Management view for /admin/tasks/history."""
 
     def __init__(self, result_store: ResultStore | None = None) -> None:
         self._result_store = result_store
 
-    async def handle(self, request: Any) -> HTMLResponse:
+    async def handle(self, request: Any) -> PageContent:
         """Handle request and render task history page."""
         if self._result_store is None:
-            html = render_to_string(
-                EmptyState(
+            return PageContent(
+                title="Task History",
+                body=EmptyContent(
                     title="Result Store Unavailable",
                     message="No result store service is configured.",
                     icon="clock",
-                )
+                ),
             )
-            return HTMLResponse(html)
 
         try:
             fetch_completed = getattr(self._result_store, "get_completed", None)
             tasks = await fetch_completed() if fetch_completed is not None else []
         except Exception as exc:
             logger.warning("tasks_history.store_unavailable", error=str(exc))
-            html = render_to_string(
-                EmptyState(
+            return PageContent(
+                title="Task History",
+                body=EmptyContent(
                     title="Result Store Error",
                     message="Failed to retrieve completed tasks from the result store.",
                     icon="alert-triangle",
-                )
+                ),
             )
-            return HTMLResponse(html)
 
         if not tasks:
-            html = render_to_string(
-                EmptyState(
+            return PageContent(
+                title="Task History",
+                body=EmptyContent(
                     title="No Completed Tasks",
                     message="No tasks have been completed yet.",
                     icon="clock",
-                )
+                ),
             )
-            return HTMLResponse(html)
 
         page, per_page = _paging(request)
         total = len(tasks)
@@ -132,114 +81,27 @@ class TasksHistoryPage:
         offset = (page - 1) * per_page
         page_tasks = tasks[offset : offset + per_page]
 
-        rows = "".join(
-            render_to_string(
-                el(
-                    "tr",
-                    el(
-                        "td",
-                        str(t.id),
-                        class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--foreground)]",
-                    ),
-                    el(
-                        "td",
-                        str(t.name),
-                        class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--muted-foreground)]",
-                    ),
-                    el(
-                        "td",
-                        str(getattr(t, "completed_at", "")),
-                        class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--muted-foreground)]",
-                    ),
-                    el(
-                        "td",
-                        str(getattr(t, "duration_ms", "")),
-                        class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--muted-foreground)]",
-                    ),
-                    el(
-                        "td",
-                        Badge(
-                            getattr(t, "status", "completed"),
-                            variant="success"
-                            if getattr(t, "status", "completed") == "completed"
-                            else "default",
-                        ),
-                        class_="px-4 py-3 whitespace-nowrap text-sm",
-                    ),
-                )
+        rows = tuple(
+            (
+                TableCell(str(t.id)),
+                TableCell(str(t.name)),
+                TableCell(str(getattr(t, "completed_at", ""))),
+                TableCell(str(getattr(t, "duration_ms", ""))),
+                TableCell(str(getattr(t, "status", "completed"))),
             )
             for t in page_tasks
         )
 
-        html = render_to_string(
-            el(
-                "div",
-                el(
-                    "h1",
-                    "Task History",
-                    class_="text-2xl font-bold text-[var(--foreground)]",
-                ),
-                el(
-                    "p",
-                    "Completed background tasks sorted by finish time.",
-                    class_="text-sm text-[var(--muted-foreground)] mt-1 mb-6",
-                ),
-                Divider(),
-                el(
-                    "div",
-                    el(
-                        "div",
-                        el(
-                            "table",
-                            el(
-                                "thead",
-                                el(
-                                    "tr",
-                                    el(
-                                        "th",
-                                        "ID",
-                                        style="width:20%",
-                                        class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                    ),
-                                    el(
-                                        "th",
-                                        "Name",
-                                        style="width:20%",
-                                        class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                    ),
-                                    el(
-                                        "th",
-                                        "Completed",
-                                        style="width:20%",
-                                        class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                    ),
-                                    el(
-                                        "th",
-                                        "Duration",
-                                        style="width:20%",
-                                        class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                    ),
-                                    el(
-                                        "th",
-                                        "Status",
-                                        style="width:20%",
-                                        class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                    ),
-                                ),
-                            ),
-                            el(
-                                "tbody",
-                                raw(rows),
-                                class_="divide-y divide-[var(--border)]",
-                            ),
-                            class_="min-w-full table-fixed divide-y divide-[var(--border)]",
-                        ),
-                        class_="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]",
-                    ),
-                    _pagination_block(page, total, per_page, request.url.path),
-                    id=Zones.DATA.id,
-                ),
-                class_="p-6",
+        return PageContent(
+            title="Task History",
+            body=TableContent(
+                columns=("ID", "Name", "Completed", "Duration", "Status"),
+                rows=rows,
+            ),
+            pagination=PaginationContent(
+                page=page,
+                total=total,
+                per_page=per_page,
+                base_url=str(request.url).split("?")[0],
             ),
         )
-        return HTMLResponse(html)

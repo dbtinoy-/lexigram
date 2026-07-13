@@ -1,16 +1,22 @@
-"""Tests for the NotificationsInboxPage admin page."""
+"""Tests for the NotificationsInboxPage admin page structured content."""
 
 from __future__ import annotations
 
-import re
-from types import SimpleNamespace
-
 import pytest
 
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import EmptyContent, TableContent
+from lexigram.notification.admin import NotificationsInboxPage
+from lexigram.notification.inbox.service import InboxService
 
-def _plain(html: str) -> str:
-    """Strip tags so summary/pagination text can be asserted simply."""
-    return re.sub(r"<[^>]+>", "", html)
+
+class FakeUrl:
+    """Minimal URL stand-in exposing ``path`` and a string form."""
+
+    path = "/admin/notifications"
+
+    def __str__(self) -> str:
+        return "http://testserver/admin/notifications"
 
 
 class FakeUser:
@@ -20,165 +26,110 @@ class FakeUser:
 
 
 class FakeRequest:
-    """Minimal ASGI request stand-in."""
+    """Minimal ASGI request stand-in with query params and a URL."""
 
     user = FakeUser()
     query_params: dict[str, str] = {}
-    url = SimpleNamespace(path="/admin/notifications")
+    url = FakeUrl()
+
+    @classmethod
+    def with_params(cls, **params: str) -> FakeRequest:
+        request = cls()
+        request.query_params = params
+        return request
 
 
 class TestNotificationsInboxPage:
-    """Unit tests for the inbox page renderer."""
+    """Unit tests for the inbox page structured content."""
 
     @pytest.mark.asyncio
-    async def test_page_renders_messages_and_unread_count(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-        from lexigram.notification.inbox.service import InboxService
-
+    async def test_returns_paginated_message_rows(self) -> None:
         service = InboxService()
         await service.send("user-1", title="Hello", body="World")
 
         page = NotificationsInboxPage(inbox_service=service)
-        response = await page.handle(FakeRequest())  # type: ignore[arg-type]
-        html = response.body.decode()
+        content = await page.handle(FakeRequest())
 
-        assert "Notifications" in html
-        assert "1 unread" in html
-        assert "Hello" in html
-        assert "World" in html
-        assert "Showing 1 to 1 of 1 results" in _plain(html)
+        assert isinstance(content, PageContent)
+        assert content.title == "Notifications Inbox"
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 1
+        assert content.body.rows[0][0].text == "Hello"
+        assert content.body.rows[0][1].text == "World"
+        assert content.pagination is not None
+        assert content.pagination.page == 1
+        assert content.pagination.total == 1
+        assert content.pagination.per_page == 20
+        assert content.pagination.base_url == "http://testserver/admin/notifications"
 
     @pytest.mark.asyncio
-    async def test_page_renders_empty_state_for_anon(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-
+    async def test_returns_empty_content_for_anon(self) -> None:
         page = NotificationsInboxPage()
         request = FakeRequest()
         request.user = None
-        response = await page.handle(request)  # type: ignore[arg-type]
+        content = await page.handle(request)
 
-        assert "No notifications" in response.body.decode()
-
-    @pytest.mark.asyncio
-    async def test_page_marks_all_read_button_posts(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-
-        page = NotificationsInboxPage()
-        response = await page.handle(FakeRequest())  # type: ignore[arg-type]
-        html = response.body.decode()
-
-        assert 'hx-post="/admin/notifications/read-all"' in html
-        assert "Mark all read" in html
+        assert isinstance(content, PageContent)
+        assert content.title == "Notifications Inbox"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.title == "No Notifications"
+        assert content.body.icon == "inbox"
 
     @pytest.mark.asyncio
-    async def test_page_honors_limit(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-        from lexigram.notification.inbox.service import InboxService
-
+    async def test_honors_limit(self) -> None:
         service = InboxService()
         for i in range(5):
             await service.send("user-1", title=f"T{i}", body=f"B{i}")
 
         page = NotificationsInboxPage(inbox_service=service)
-        request = FakeRequest()
-        request.query_params = {"limit": "2"}
-        response = await page.handle(request)  # type: ignore[arg-type]
-        html = response.body.decode()
+        content = await page.handle(FakeRequest.with_params(limit="2"))
 
-        assert 'hx-post="/admin/notifications/read-all"' in html
-        assert "T4" in html
-        assert "T3" in html
-        assert ">T0<" not in html
-        assert "Showing 1 to 2 of 5 results" in _plain(html)
-
-    @pytest.mark.asyncio
-    async def test_page_renders_pagination_for_many(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-        from lexigram.notification.inbox.service import InboxService
-
-        service = InboxService()
-        for i in range(25):
-            await service.send("user-1", title=f"t{i}", body="b")
-
-        page = NotificationsInboxPage(inbox_service=service)
-        response = await page.handle(FakeRequest())  # type: ignore[arg-type]
-        html = response.body.decode()
-
-        assert "Showing 1 to 20 of 25 results" in _plain(html)
-        assert "t24" in html
-        assert "t0" not in html
-        assert 'hx-get="/admin/notifications?page=2&amp;per_page=20"' in html
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 2
+        assert content.body.rows[0][0].text == "T4"
+        assert content.body.rows[1][0].text == "T3"
+        assert content.pagination is not None
+        assert content.pagination.total == 5
+        assert content.pagination.per_page == 2
 
     @pytest.mark.asyncio
-    async def test_page_paginates_page_two(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-        from lexigram.notification.inbox.service import InboxService
-
+    async def test_paginates_page_two(self) -> None:
         service = InboxService()
         for i in range(5):
             await service.send("user-1", title=f"T{i}", body=f"B{i}")
 
         page = NotificationsInboxPage(inbox_service=service)
-        request = FakeRequest()
-        request.query_params = {"page": "2", "per_page": "2"}
-        response = await page.handle(request)  # type: ignore[arg-type]
-        html = response.body.decode()
+        content = await page.handle(FakeRequest.with_params(page="2", per_page="2"))
 
-        assert "Showing 3 to 4 of 5 results" in _plain(html)
-        assert "T2" in html
-        assert "T1" in html
-        assert "T4" not in html  # page 2 of [T4, T3, T2, T1, T0]
+        assert isinstance(content.body, TableContent)
+        assert [row[0].text for row in content.body.rows] == ["T2", "T1"]
+        assert content.pagination is not None
+        assert content.pagination.page == 2
 
     @pytest.mark.asyncio
-    async def test_page_extra_page_has_remaining_item(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-        from lexigram.notification.inbox.service import InboxService
-
+    async def test_extra_page_has_remaining_item(self) -> None:
         service = InboxService()
         for i in range(5):
             await service.send("user-1", title=f"T{i}", body=f"B{i}")
 
         page = NotificationsInboxPage(inbox_service=service)
-        request = FakeRequest()
-        request.query_params = {"page": "3", "per_page": "2"}
-        response = await page.handle(request)  # type: ignore[arg-type]
-        html = response.body.decode()
+        content = await page.handle(FakeRequest.with_params(page="3", per_page="2"))
 
-        assert "T0" in html
-        assert "T4" not in html
-        assert "Showing 5 to 5 of 5 results" in _plain(html)
+        assert isinstance(content.body, TableContent)
+        assert [row[0].text for row in content.body.rows] == ["T0"]
+        assert content.pagination is not None
+        assert content.pagination.page == 3
 
     @pytest.mark.asyncio
-    async def test_page_clamps_page_beyond_end(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-        from lexigram.notification.inbox.service import InboxService
-
+    async def test_clamps_page_beyond_end(self) -> None:
         service = InboxService()
         for i in range(5):
             await service.send("user-1", title=f"T{i}", body=f"B{i}")
 
         page = NotificationsInboxPage(inbox_service=service)
-        request = FakeRequest()
-        request.query_params = {"page": "99", "per_page": "2"}
-        response = await page.handle(request)  # type: ignore[arg-type]
-        html = response.body.decode()
+        content = await page.handle(FakeRequest.with_params(page="99", per_page="2"))
 
-        # page 99 clamps to the last page (3 of 3)
-        assert "Showing 5 to 5 of 5 results" in _plain(html)
-        assert "T0" in html
-
-    @pytest.mark.asyncio
-    async def test_page_renders_size_selector(self) -> None:
-        from lexigram.notification.admin import NotificationsInboxPage
-        from lexigram.notification.inbox.service import InboxService
-
-        service = InboxService()
-        for i in range(25):
-            await service.send("user-1", title=f"t{i}", body="b")
-
-        page = NotificationsInboxPage(inbox_service=service)
-        response = await page.handle(FakeRequest())  # type: ignore[arg-type]
-        html = response.body.decode()
-
-        assert 'name="per_page"' in html
-        assert 'hx-get="/admin/notifications?page=1"' in html
+        assert isinstance(content.body, TableContent)
+        assert [row[0].text for row in content.body.rows] == ["T0"]
+        assert content.pagination is not None
+        assert content.pagination.page == 3

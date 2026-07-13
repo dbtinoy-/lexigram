@@ -170,8 +170,12 @@ class TestClusterAliases:
         assert "/infrastructure/web" in paths
         source = next(r for r in router._extra_routes if r.path == "/web")
         alias = next(r for r in router._extra_routes if r.path == "/infrastructure/web")
-        assert alias.endpoint == source.endpoint == handler
+        assert alias.endpoint is source.endpoint
         assert alias.name == "cluster_alias_web"
+        from lexigram.admin.dashboard.route_integrator import StructuredPageHandler
+
+        assert isinstance(source.endpoint, StructuredPageHandler)
+        assert source.endpoint._handler is handler
 
     def test_placeholder_route_is_aliased_under_cluster_namespace(self) -> None:
         from lexigram.admin.core.routing import AdminRouter

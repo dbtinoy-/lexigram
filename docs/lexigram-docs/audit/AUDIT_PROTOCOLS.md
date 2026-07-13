@@ -22,7 +22,7 @@
 | `lexigram-contracts/src/lexigram/contracts/admin/pii_redactor.py` | PiiRedactorProtocol |
 | `lexigram-contracts/src/lexigram/contracts/admin/protocols.py` | AdminContributorProtocol, AdminContributorRegistryProtocol, AdminDashboardProtocol |
 | `lexigram-contracts/src/lexigram/contracts/admin/repository.py` | AdminRepositoryProtocol |
-| `lexigram-contracts/src/lexigram/contracts/admin/widget_protocols.py` | WidgetHandlerProtocol, WidgetRendererProtocol |
+| `lexigram-contracts/src/lexigram/contracts/admin/widget_protocols.py` | WidgetHandlerProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/agents.py` | ToolProtocol, AgentProtocol, StrategyProtocol, AgentExecutorProtocol, ToolRegistryProtocol, MemoryProtocol, AgentStrategyProtocol, SkillComposerProtocol, RunnableAgentProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/callbacks.py` | CallbackHandlerProtocol, CallbackManagerProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/evaluation.py` | EvaluatorProtocol, EvaluationHarnessProtocol |

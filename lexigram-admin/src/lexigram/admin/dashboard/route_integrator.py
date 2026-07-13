@@ -19,10 +19,12 @@ from lexigram.admin.navigation.clusters import (
     is_cluster_path,
 )
 from lexigram.admin.state.context import wants_fragment
+from lexigram.contracts.admin.page_content import PageContent
 from lexigram.contracts.admin.types import (
     ManagementPageDefinition,
     SettingsPanelDefinition,
 )
+from lexigram.contracts.admin.widget_content import EmptyContent
 from lexigram.contracts.exceptions import UnresolvableDependencyError
 from lexigram.logging import get_logger
 
@@ -135,6 +137,21 @@ class AdminPageHandler:
         try:
             instance = await self._resolve_page()
             response = await instance.handle(request)
+            if not isinstance(response, HTMLResponse):
+                from lexigram.admin.dashboard.page_renderer import (
+                    render_page_content,
+                )
+                from lexigram.contracts.admin.page_content import PageContent
+
+                if isinstance(response, PageContent):
+                    response = render_page_content(response)
+                else:
+                    logger.error(
+                        "admin_page_contract_violation",
+                        page=self._page_cls.__name__,
+                        result_type=type(response).__name__,
+                    )
+                    response = await _placeholder_page(request, self._container)
         except Exception:
             logger.exception(
                 "admin_page_handler_error",
@@ -492,6 +509,51 @@ def _resolve_handler(handler: Any) -> Any:
         return None
 
 
+class StructuredPageHandler:
+    """Wrap management page handlers so only ``PageContent`` reaches the browser.
+
+    Starlette treats class endpoints as ASGI apps (``__call__(scope, receive,
+    send)``), so this wrapper builds a ``StarletteRequest`` from the ASGI scope
+    before delegating to the page handler.
+
+    Any other return (str, HTMLResponse, template, ...) is a contract
+    violation: it is logged and replaced with an error page.
+    """
+
+    def __init__(self, handler: Any) -> None:
+        self._handler = handler
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        from lexigram.admin.dashboard.page_renderer import render_page_content
+
+        request = StarletteRequest(scope, receive, send)
+        handler = self._handler
+        callable_handler = handler.handle if hasattr(handler, "handle") else handler
+        result = await callable_handler(request)
+        if isinstance(result, PageContent):
+            response = render_page_content(result)
+        else:
+            logger.error(
+                "page_contract_violation",
+                handler=type(self._handler).__name__,
+                result_type=type(result).__name__,
+            )
+            response = render_page_content(
+                PageContent(
+                    title="Page Contract Violation",
+                    body=EmptyContent(
+                        title="Invalid Page Content",
+                        message=(
+                            "The page handler returned raw HTML. "
+                            "Convert it to PageContent."
+                        ),
+                        icon="alert-triangle",
+                    ),
+                )
+            )
+        await response(scope, receive, send)
+
+
 def _register_pages(
     router: AdminRouter,
     naming_policy: NamingPolicy,
@@ -515,6 +577,8 @@ def _register_pages(
             continue
         if inspect.isclass(handler) and container is not None:
             handler = AdminPageHandler(handler, container)
+        else:
+            handler = StructuredPageHandler(handler)
         path = page.route_path
         if not path.startswith("/"):
             path = f"/{path}"
@@ -541,6 +605,8 @@ def _register_settings(
             continue
         if inspect.isclass(handler) and container is not None:
             handler = AdminPageHandler(handler, container)
+        else:
+            handler = StructuredPageHandler(handler)
         path = panel.route_path
         if not path.startswith("/"):
             path = f"/{path}"

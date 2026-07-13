@@ -40,11 +40,7 @@ class HitMissRatioWidgetHandler:
             Result containing StatContent with hit-rate metrics.
         """
         if not isinstance(self._cache, CacheStatsProtocol):
-            return Ok(
-                StatContent(
-                    stats=(Stat(label="Hit Rate", value="Unavailable"),)
-                )
-            )
+            return Ok(StatContent(stats=(Stat(label="Hit Rate", value="Unavailable"),)))
         stats = self._cache.get_stats() or {}
         hits = float(stats.get("hits", 0))
         misses = float(stats.get("misses", 0))

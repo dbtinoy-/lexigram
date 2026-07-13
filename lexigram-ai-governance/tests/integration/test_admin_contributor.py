@@ -27,8 +27,14 @@ from lexigram.ai.governance.relay_billing import (
     RelayReservationManager,
     RelayScopeLimit,
 )
+from lexigram.contracts.admin import PageContent
 from lexigram.contracts.admin.types import NavigationContribution, WidgetParams
-from lexigram.contracts.admin.widget_content import MessageContent, StatContent
+from lexigram.contracts.admin.widget_content import (
+    EmptyContent,
+    MessageContent,
+    StatContent,
+    TableContent,
+)
 from lexigram.contracts.ai.governance import (
     RelayUsageRecord,
     RelayUsageScope,
@@ -125,11 +131,28 @@ class FakeContainer:
         return self._services[target]
 
 
+class _FakeUrl:
+    """Minimal URL stand-in exposing a string form."""
+
+    path = "/admin/ai-governance/relay-usage"
+
+    def __str__(self) -> str:
+        return "http://testserver/admin/ai-governance/relay-usage"
+
+
 def _request() -> SimpleNamespace:
     """Build a stand-in starlette request with empty query params."""
     return SimpleNamespace(
-        query_params={}, state=SimpleNamespace(user=None), headers={}
+        query_params={},
+        state=SimpleNamespace(user=None),
+        headers={},
+        url=_FakeUrl(),
     )
+
+
+def _cells(content: PageContent) -> list[str]:
+    assert isinstance(content.body, TableContent)
+    return [cell.text for row in content.body.rows for cell in row]
 
 
 WIDGET_PARAMS = WidgetParams(time_window_minutes=60)
@@ -257,43 +280,53 @@ class TestReadOnlyPages:
     async def test_usage_page_renders_without_dependencies(self) -> None:
         """The usage page renders an explicit unavailable state."""
         page = GovernanceRelayUsagePage()
-        response = await page.handle(_request())
-        assert response.status_code == 200
-        body = response.body.decode()
-        assert "Relay Usage" in body
-        assert "Unavailable" in body
+        content = await page.handle(_request())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Usage"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.title == "Unavailable"
 
     async def test_quotas_page_renders_without_dependencies(self) -> None:
         """The quotas page renders an explicit unavailable state."""
         page = GovernanceQuotasPage()
-        response = await page.handle(_request())
-        assert response.status_code == 200
-        assert "Unavailable" in response.body.decode()
+        content = await page.handle(_request())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Quotas"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.title == "Unavailable"
 
     async def test_settlements_page_renders_without_dependencies(self) -> None:
         """The settlements page renders an explicit unavailable state."""
         page = GovernanceSettlementsPage()
-        response = await page.handle(_request())
-        assert response.status_code == 200
-        assert "Unavailable" in response.body.decode()
+        content = await page.handle(_request())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Settlements"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.title == "Unavailable"
 
 
 class TestPagesWithDependencies:
     async def test_usage_page_renders_report_data(self) -> None:
         """The usage page shows settled records without zeroing spend."""
         page = GovernanceRelayUsagePage(store=FakeUsageStore())
-        response = await page.handle(_request())
-        body = response.body.decode()
-        assert "req-ok" in body
-        assert "tenant-a" in body
+        content = await page.handle(_request())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Usage"
+        cells = _cells(content)
+        assert "req-ok" in cells
+        assert "tenant-a" in cells
+        assert content.pagination is not None
+        assert content.pagination.total == 2
 
     async def test_settlements_page_renders_failed_records(self) -> None:
         """The settlements page shows failed records and their loss codes."""
         page = GovernanceSettlementsPage(store=FakeUsageStore())
-        response = await page.handle(_request())
-        body = response.body.decode()
-        assert "req-fail" in body
-        assert "model_not_found" in body
+        content = await page.handle(_request())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Settlements"
+        cells = _cells(content)
+        assert "req-fail" in cells
+        assert "model_not_found" in cells
 
     async def test_quotas_page_renders_quota_pressure(self) -> None:
         """The quotas page shows live reserved capacity per dimension."""
@@ -305,10 +338,14 @@ class TestPagesWithDependencies:
         outcome = await manager.reserve("req-1", make_scope(), 400, Decimal("2.00"))
         assert outcome.is_ok()
         page = GovernanceQuotasPage(manager=manager)
-        response = await page.handle(_request())
-        body = response.body.decode()
-        assert "tenant-a" in body
-        assert "1,000" in body
+        content = await page.handle(_request())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Quotas"
+        assert isinstance(content.body, StatContent)
+        labels = [stat.label for stat in content.body.stats]
+        assert any(label.startswith("Tenant — tenant-a") for label in labels)
+        values = [stat.value for stat in content.body.stats]
+        assert any("1,000" in value for value in values)
 
 
 class TestWidgets:

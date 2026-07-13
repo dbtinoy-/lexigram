@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lexigram.admin.realtime.subject_hub`: Subject-backed admin event hub.
 - `lexigram.events.admin`: `live_events` dashboard widget (TABLE) rendering the most recent domain events from the event store / dispatcher via reactive streams.
 - `lexigram.admin`: core "Recent Activity" dashboard widget now renders windowed admin events from `SubjectAdminEventHub`.
+- `lexigram.contracts.admin`: structured management pages — `PageContent` / `PaginationContent` contract; the admin host now renders all page HTML (`StructuredPageHandler` boundary enforcer + `page_renderer`), and all in-repo management pages (events, tasks, ai-governance, relay-gateway, auth, cache, queue, sql, web, webhook, audit, ai, ai-guard, ai-llm, notification) return structured content instead of hand-rolled HTML; `get_routes()` remains the sole HTML escape hatch.
 
 ### Security (2026-08-16 → 2026-08-18 audit series)
 

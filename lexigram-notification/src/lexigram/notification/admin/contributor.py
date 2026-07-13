@@ -18,7 +18,6 @@ from lexigram.contracts.admin.types import (
     PageCategory,
 )
 from lexigram.contracts.core.health import HealthStatus
-from lexigram.logging import get_logger
 from lexigram.notification.admin.handlers.inbox import InboxHandlers
 from lexigram.notification.inbox.service import InboxService
 from lexigram.result import Err, Ok
@@ -27,8 +26,6 @@ if TYPE_CHECKING:
     from lexigram.contracts.admin.errors import AdminError
     from lexigram.contracts.core.di import ContainerResolverProtocol
     from lexigram.result import Result
-
-logger = get_logger(__name__)
 
 _NAV_ITEMS: tuple[NavigationContribution, ...] = (
     NavigationContribution(
@@ -77,11 +74,7 @@ class NotificationAdminContributor(BaseAdminContributor):
         Args:
             container: The DI container resolver.
         """
-        service: InboxService | None = None
-        try:
-            service = await container.resolve(InboxService)
-        except Exception as exc:  # noqa: BLE001 — non-fatal
-            logger.warning("notification_contributor.inbox_unavailable", error=str(exc))
+        service = await container.resolve_optional(InboxService)
         self._handlers = InboxHandlers(service=service)
 
     def get_routes(self) -> Sequence[AdminRouteSpec]:
