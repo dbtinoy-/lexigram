@@ -204,7 +204,6 @@ class WebProvider(Provider):
             SecurityHeadersConfig,
         )
         from lexigram.web.security.cors.middleware import CORSMiddlewareFactory
-        from lexigram.web.security.csrf.protection import CSRFProtection
 
         container.singleton(SecurityConfig, self.web_config.security)
         container.singleton(CORSConfig, self.web_config.cors)
@@ -216,10 +215,6 @@ class WebProvider(Provider):
         container.singleton(
             CORSMiddlewareFactory,
             CORSMiddlewareFactory(config=self.web_config.cors),
-        )
-        container.singleton(
-            CSRFProtection,
-            CSRFProtection(config=self.web_config.security.csrf),
         )
 
         # Register the global route registry so DI resolution returns the same

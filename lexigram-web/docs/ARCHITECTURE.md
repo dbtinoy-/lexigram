@@ -166,7 +166,7 @@ container.singleton(InterceptorPipeline, InterceptorPipeline())
 container.singleton(FilterPipeline, filter_pipeline)
 container.singleton(SecurityConfig, self.web_config.security)
 container.singleton(CORSConfig, self.web_config.cors)
-container.singleton(CSRFProtection, CSRFProtection(config=...))
+container.singleton(CSRFConfig, self.web_config.security.csrf)
 container.singleton(ResponseFactoryProtocol, StarletteResponseAdapter)
 container.transient(BackgroundTaskRunnerProtocol, StarletteBackgroundTaskRunner)
 ```

@@ -52,7 +52,7 @@ class TestAuthMiddleware:
     async def test_middleware_sets_user_in_state_and_scope(self):
         """Test that middleware sets user in both request.state and request.scope"""
         # Create a test user directly in the store (providers don't own user creation)
-        hashed_pw = await PasswordHasher.hash("Password123!")
+        hashed_pw = await PasswordHasher().hash("Password123!")
         user = await self.provider.user_store.create_user(
             name="testuser",
             email="test@example.com",

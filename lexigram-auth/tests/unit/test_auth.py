@@ -39,10 +39,10 @@ class TestPasswordHasher:
     async def test_hash_password(self):
         """Test password hashing"""
         password = "testpassword123"
-        hashed = await PasswordHasher.hash(password)
+        hashed = await PasswordHasher().hash(password)
 
         assert hashed != password
-        assert await PasswordHasher.verify(password, hashed)
+        assert await PasswordHasher().verify(password, hashed)
         # ✅ Verify it's using bcrypt (starts with $2b$ or $2a$)
         assert hashed.startswith("$2b$") or hashed.startswith("$2a$")
 
@@ -50,7 +50,7 @@ class TestPasswordHasher:
     async def test_hash_uses_12_rounds(self):
         """Test that password hashing uses at least 12 bcrypt rounds"""
         password = "testpassword123"
-        hashed = await PasswordHasher.hash(password)
+        hashed = await PasswordHasher(rounds=12).hash(password)
 
         # Bcrypt format: $2b$12$... (12 rounds)
         parts = hashed.split("$")
@@ -63,9 +63,9 @@ class TestPasswordHasher:
         """Test password verification with wrong password"""
         password = "testpassword123"
         wrong_password = "wrongpassword"
-        hashed = await PasswordHasher.hash(password)
+        hashed = await PasswordHasher().hash(password)
 
-        assert not await PasswordHasher.verify(wrong_password, hashed)
+        assert not await PasswordHasher().verify(wrong_password, hashed)
 
     @pytest.mark.asyncio
     async def test_verify_password_fallback(self):
@@ -73,18 +73,18 @@ class TestPasswordHasher:
         # When the hash format is unknown, verify() returns False
         password = "plaintextpassword"
         # This tests the UnknownHashError handling - returns False for invalid hash formats
-        assert not await PasswordHasher.verify(password, password)
+        assert not await PasswordHasher().verify(password, password)
 
     @pytest.mark.asyncio
     async def test_hash_long_password(self):
         """Test password hashing with passwords longer than 72 bytes"""
         # Create a password longer than 72 bytes
         long_password = "a" * 100  # 100 characters, > 72 bytes when encoded
-        hashed = await PasswordHasher.hash(long_password)
+        hashed = await PasswordHasher().hash(long_password)
 
         assert hashed != long_password
         # Should be able to verify with the truncated password
-        assert await PasswordHasher.verify(long_password, hashed)
+        assert await PasswordHasher().verify(long_password, hashed)
         # Verify it's using bcrypt
         assert hashed.startswith("$2b$") or hashed.startswith("$2a$")
 
@@ -93,13 +93,13 @@ class TestPasswordHasher:
         """Test password verification with long passwords"""
         # Create a password longer than 72 bytes
         long_password = "a" * 100
-        hashed = await PasswordHasher.hash(long_password)
+        hashed = await PasswordHasher().hash(long_password)
 
         # Verification should work with the same long password
-        assert await PasswordHasher.verify(long_password, hashed)
+        assert await PasswordHasher().verify(long_password, hashed)
 
         # Verification should fail with wrong password
-        assert not await PasswordHasher.verify("wrong" + long_password, hashed)
+        assert not await PasswordHasher().verify("wrong" + long_password, hashed)
 
 
 class TestPasswordPolicy:

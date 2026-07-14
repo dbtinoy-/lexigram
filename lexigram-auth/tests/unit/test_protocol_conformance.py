@@ -8,9 +8,8 @@ signature changes in an incompatible way, these tests will fail immediately.
 
 from __future__ import annotations
 
-import pytest
-
 from pydantic import SecretStr
+import pytest
 
 from lexigram.auth.authn.jwt import JWTTokenManager
 from lexigram.auth.authn.security import PasswordHasher
@@ -78,6 +77,12 @@ class TestPasswordHasherConformance:
 
     def test_has_verify_method(self) -> None:
         assert callable(getattr(PasswordHasher, "verify", None))
+
+    def test_has_needs_rehash_method(self) -> None:
+        assert callable(getattr(PasswordHasher, "needs_rehash", None))
+
+    def test_has_rehash_if_needed_method(self) -> None:
+        assert callable(getattr(PasswordHasher, "rehash_if_needed", None))
 
 
 # ---------------------------------------------------------------------------
@@ -283,8 +288,14 @@ class TestCachedUserStorePubSub:
         # Manually populate L1 cache
         import time
 
-        store._memory_cache["user:id:u1"] = {"user": None, "expires_at": time.monotonic() + 60}
-        store._memory_cache["user:email:a@b.com"] = {"user": None, "expires_at": time.monotonic() + 60}
+        store._memory_cache["user:id:u1"] = {
+            "user": None,
+            "expires_at": time.monotonic() + 60,
+        }
+        store._memory_cache["user:email:a@b.com"] = {
+            "user": None,
+            "expires_at": time.monotonic() + 60,
+        }
 
         await store._handle_invalidation({"user_id": "u1", "email": "a@b.com"})
 

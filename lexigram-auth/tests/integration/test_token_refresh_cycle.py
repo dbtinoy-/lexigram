@@ -81,7 +81,7 @@ class TestTokenRefreshCycle:
         user_store = setup["provider"].user_store
 
         # Step 1: Create a test user
-        hashed_pw = await PasswordHasher.hash("TestPassword123!")
+        hashed_pw = await PasswordHasher().hash("TestPassword123!")
         user = await user_store.create_user(
             name="testuser",
             email="test@example.com",

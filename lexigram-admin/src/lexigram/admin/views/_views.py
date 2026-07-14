@@ -461,6 +461,15 @@ class UserImpersonationView:
         email_field: Field for the user's email.
         impersonate_url_prefix: URL prefix for impersonation endpoint.
         css_class: Extra CSS class.
+
+    Note:
+        **Intentionally unwired (2026-08-18).** The rendered ``hx-post``
+        URL (``{impersonate_url_prefix}/{user_id}``) targets
+        ``/admin/impersonate/{user_id}``, a path no controller registers
+        today. The feature is deliberately not wired pending the design
+        gaps in
+        ``docs/superpowers/specs/2026-08-16-security-impersonation-design.md``
+        §2.1(a)-(c) / §3.1 — read that before adding a route.
     """
 
     id_field: str = "id"

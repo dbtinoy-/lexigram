@@ -82,6 +82,10 @@ class OAuth2UserInfo(DomainModel):
     provider: str = Field(description="OAuth2 provider name")
     provider_user_id: str = Field(description="Provider-specific user ID")
     email: str | None = Field(default=None, description="User email")
+    email_verified: bool = Field(
+        default=False,
+        description="Whether the IdP verified the email address",
+    )
     username: str | None = Field(default=None, description="Provider username")
     name: str | None = Field(default=None, description="Display name")
     avatar_url: str | None = Field(default=None, description="Profile image URL")

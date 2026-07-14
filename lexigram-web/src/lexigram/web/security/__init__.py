@@ -16,7 +16,6 @@ from lexigram.web.security.context import SecurityContext, get_security_context
 from lexigram.web.security.cors.middleware import CORSMiddleware, CORSMiddlewareFactory
 from lexigram.web.security.csp.builder import CSPPolicy
 from lexigram.web.security.csrf.middleware import CSRFProtectionMiddleware
-from lexigram.web.security.csrf.protection import CSRFProtection
 from lexigram.web.security.guards import (
     AuthGuard,
     GuardProtocol,
@@ -33,7 +32,6 @@ __all__ = [
     "CSPConfig",
     "CSPPolicy",
     "CSRFConfig",
-    "CSRFProtection",
     "CSRFProtectionMiddleware",
     "CrossOriginConfig",
     "GuardProtocol",

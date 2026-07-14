@@ -82,6 +82,7 @@ class AdminProvider(Provider):
         self._user_store: Any | None = None
         self._session_service: Any | None = None
         self._authorizer: Any | None = None
+        self._authorizer_service: Any | None = None
 
     @property  # type: ignore[misc]
     def config(self) -> AdminConfig:
@@ -973,6 +974,7 @@ class AdminProvider(Provider):
             resources=resources_dict,
             controllers=controller_instances,
             middleware_stack=middleware_stack,
+            authorizer=self._authorizer_service,
         )
 
         try:
@@ -1181,6 +1183,24 @@ class AdminProvider(Provider):
             raise RuntimeError(
                 "AdminAuthorizationMiddleware's authorizer could not be "
                 "resolved; refusing to boot admin without RBAC enforcement"
+            ) from exc
+
+        from lexigram.contracts.auth import AuthorizerProtocol
+
+        try:
+            self._authorizer_service = await container.resolve(
+                AuthorizerProtocol,
+                bypass_visibility=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — re-raised as fatal below
+            _log.error(
+                "admin.authorizer_service_resolution_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            raise RuntimeError(
+                "AuthorizerProtocol could not be resolved; refusing to boot "
+                "admin without a per-resource permission source for search"
             ) from exc
 
         # Wire the container resolver into WidgetController so contributor

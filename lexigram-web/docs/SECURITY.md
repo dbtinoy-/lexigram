@@ -27,17 +27,17 @@ web:
     max_age: 600
 ```
 
-The `CORSConfig` validator rejects `allow_credentials=True` combined with `allowed_origins=['*']` — browsers block such responses.
+The `CORSConfig` validator rejects `allow_credentials=True` combined with `allowed_origins=['*']` — browsers block such responses. `WebConfig` construction enforces the same rule in **any** environment (staging included), so a wildcard-plus-credentials CORS config can never silently ship.
 
 ```python
 # ✅ Correct — explicit origins with credentials
 config = CORSConfig(allowed_origins=["https://myapp.com"], allow_credentials=True)
 
-# ❌ RuntimeError — browser-incompatible
+# ❌ ValueError — browser-incompatible
 config = CORSConfig(allowed_origins=["*"], allow_credentials=True)
 ```
 
-In production, `WebConfig.validate_production_security()` blocks wildcard CORS at boot:
+In production, `WebConfig.validate_production_security()` blocks wildcard CORS at boot even without credentials:
 
 ```yaml
 # Raises ValueError at boot:
@@ -45,6 +45,27 @@ web:
   cors:
     allowed_origins: ["*"]
 ```
+
+### Debug-permissive CORS (explicit opt-in)
+
+In debug mode (`server.debug: true` or `DEBUG=1`), CORS origins are **not**
+widened automatically — an operator who intentionally wants any-origin CORS
+must opt in explicitly:
+
+```yaml
+web:
+  cors:
+    debug_permissive: true   # wildcard ONLY while debug mode is active
+```
+
+The wildcard widening applies only while `debug_permissive: true` **and**
+debug mode is active at boot; the middleware logs a `warning` when it kicks in.
+`debug_permissive` is ignored outside debug mode.
+
+> **Breaking change:** deployments that previously relied on the implicit
+> debug widening (debug mode + untouched localhost defaults → wildcard) will
+> start rejecting non-listed origins until they set `debug_permissive: true`.
+> This is intentional — the silent behaviour is now explicit.
 
 ## CSRF Protection
 
@@ -71,16 +92,9 @@ web:
         - /metrics
 ```
 
-The `CSRFProtectionMiddleware` sets a signed cookie on GET requests and validates the `X-CSRF-Token` header on state-changing methods (POST, PUT, DELETE, PATCH).
+The `CSRFProtectionMiddleware` sets a signed cookie on GET requests and validates the `X-CSRF-Token` header on state-changing methods (POST, PUT, DELETE, PATCH). With a `CacheBackendProtocol` wired into the middleware, the synchronizer-token pattern is used instead (server-side comparison). The cookie-mode token is an HMAC-signed `base64url("{iss}:{ts}:{nonce}").base64url(hmac)` value that expires after `token_ttl` seconds, forcing rotation on stale tokens.
 
-```python
-from lexigram.web.security.csrf.protection import CSRFProtection
-
-# Already registered by WebProvider.boot() — resolve from container
-csrf: CSRFProtection = await container.resolve(CSRFProtection)
-token = await csrf.generate_token()
-# Set as X-CSRF-Token header on the client
-```
+The middleware is wired automatically by `WebProvider._setup_middleware` when `security.csrf.enabled` is true (the default via `WebConfig`); no manual resolution is needed. On every safe method the current token is also exposed via the `X-CSRF-Token` response header for SPA clients.
 
 ## Rate Limiting
 

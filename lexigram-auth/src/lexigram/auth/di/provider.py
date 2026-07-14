@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.auth.authn.password_hasher import Argon2idKeyDerivation
 from lexigram.auth.config import AuthConfig
-from lexigram.contracts.auth import PasswordHasherProtocol
 from lexigram.contracts.core import HealthCheckResult, HealthStatus, ProviderPriority
 from lexigram.contracts.core.health import HealthCheckCategory
 from lexigram.contracts.security.protocols import KeyDerivationProtocol
@@ -35,8 +35,7 @@ class AuthProvider(Provider):
     - IdGeneratorProtocol for session/token IDs
     - TracerProtocol for observability
     - MetricsCollectorProtocol for metrics
-    - KeyDerivationProtocol (Argon2id) for password hashing
-    - PasswordHasherProtocol for auth-domain password operations
+    - KeyDerivationProtocol (Argon2id) for key derivation
     """
 
     name = "auth"
@@ -57,21 +56,9 @@ class AuthProvider(Provider):
         """Register auth services with the DI container."""
         container.singleton(AuthConfig, instance=self._config)
 
-        from lexigram.auth.authn.password_hasher import (
-            Argon2idKeyDerivation,
-            Argon2idPasswordHasher,
-        )
-
         container.singleton(
             KeyDerivationProtocol,
             factory=lambda _: Argon2idKeyDerivation(config=self._config.password),
-        )
-
-        container.singleton(
-            PasswordHasherProtocol,
-            factory=lambda c: Argon2idPasswordHasher(
-                kdf=c.resolve(KeyDerivationProtocol)
-            ),
         )
 
         if self._config.relay_verification:

@@ -376,6 +376,16 @@ class WidgetController:
         if widget_def is None:
             return HTMLResponse("Widget not found", status_code=404)
 
+        if not self._user_has_edit_permission(request):
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                reason="permission_denied",
+                route="widget_config_popup",
+            )
+            return HTMLResponse("Permission denied", status_code=403)
+
         schema: list[ConfigField] = getattr(
             contributor, "get_widget_config_schema", lambda _: []
         )(name)
@@ -483,6 +493,16 @@ class WidgetController:
     async def customize_all_widgets(self, request: Request) -> object:
         """Render full dashboard customization panel with all widgets."""
         from starlette.responses import HTMLResponse
+
+        if not self._user_has_edit_permission(request):
+            await self._audit(
+                request,
+                success=False,
+                event_type=AdminSecurityEventType.PERMISSION_DENIED,
+                reason="permission_denied",
+                route="customize_all_widgets",
+            )
+            return HTMLResponse("Permission denied", status_code=403)
 
         tenant_id = "default"
         user_id = "default"

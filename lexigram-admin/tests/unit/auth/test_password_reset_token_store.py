@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,14 +15,22 @@ from lexigram.admin.auth.store.password_reset_token_sql import (
 class FakeProvider:
     """Records calls; returns configurable rows."""
 
-    def __init__(self, rows: list[dict] | None = None) -> None:
+    def __init__(
+        self,
+        rows: list[dict] | None = None,
+        row_count: int | None = None,
+    ) -> None:
         self.database_type = "sqlite"
         self.executed: list[tuple[str, list]] = []
         self.queries: list[tuple[str, list]] = []
         self._rows = rows or []
+        self._row_count = row_count
 
-    async def execute(self, sql: str, params: list | None = None) -> None:
+    async def execute(self, sql: str, params: list | None = None) -> object:
         self.executed.append((sql, params or []))
+        if self._row_count is not None:
+            return SimpleNamespace(row_count=self._row_count)
+        return None
 
     async def execute_query(self, sql: str, params: list | None = None) -> list[dict]:
         self.queries.append((sql, params or []))
@@ -83,13 +92,38 @@ async def test_find_by_hash_returns_none_when_missing() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mark_consumed_issues_update() -> None:
-    provider = FakeProvider()
+async def test_mark_consumed_returns_true_when_updated() -> None:
+    provider = FakeProvider(row_count=1)
     store = AdminPasswordResetTokenSqlStore(provider)
 
-    await store.mark_consumed("abc123")
+    consumed = await store.mark_consumed("abc123")
 
+    assert consumed is True
     sql, params = provider.executed[0]
     assert "UPDATE" in sql
     assert "consumed_at" in sql
+    assert "expires_at > CURRENT_TIMESTAMP" in sql
     assert params == ["abc123"]
+
+
+@pytest.mark.asyncio
+async def test_mark_consumed_returns_false_when_expired_unconsumed() -> None:
+    provider = FakeProvider(row_count=0)
+    store = AdminPasswordResetTokenSqlStore(provider)
+
+    consumed = await store.mark_consumed("abc123")
+
+    assert consumed is False
+    sql, params = provider.executed[0]
+    assert "expires_at > CURRENT_TIMESTAMP" in sql
+    assert params == ["abc123"]
+
+
+@pytest.mark.asyncio
+async def test_mark_consumed_returns_false_when_already_consumed() -> None:
+    provider = FakeProvider(row_count=0)
+    store = AdminPasswordResetTokenSqlStore(provider)
+
+    consumed = await store.mark_consumed("abc123")
+
+    assert consumed is False

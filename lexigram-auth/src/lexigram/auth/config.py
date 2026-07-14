@@ -262,6 +262,46 @@ class PasswordConfig(BaseConfig):
             "Use to reject common passwords or the user's own name."
         ),
     )
+    bcrypt_rounds: int = Field(
+        default=12,
+        description="bcrypt cost factor for new hashes (minimum 12 in production)",
+    )
+    argon2_memory_cost: int = Field(
+        default=65536,
+        description="Argon2id memory cost in KiB (OWASP floor is 19456)",
+    )
+    argon2_time_cost: int = Field(
+        default=3,
+        description="Argon2id time cost",
+    )
+    argon2_parallelism: int = Field(
+        default=4,
+        description="Argon2id parallelism",
+    )
+
+    @model_validator(mode="after")
+    def validate_cost_factors(self) -> PasswordConfig:
+        """Reject below-floor cost factors in production and staging.
+
+        Fail-closed below the OWASP floors rather than silently hashing
+        weakly: bcrypt rounds below 12 and Argon2id memory below 19456 KiB
+        are refused.  Development remains unconstrained so tests and local
+        setup can use cheaper parameters.
+        """
+        env = self.environment
+        _STRICT_ENVS = {Environment.PRODUCTION, Environment.STAGING}
+        if env in _STRICT_ENVS:
+            if self.bcrypt_rounds < 12:
+                raise ValueError(
+                    "SECURITY ERROR: bcrypt_rounds must be at least 12 "
+                    f"in {env.value.upper()} (got {self.bcrypt_rounds}).",
+                )
+            if self.argon2_memory_cost < 19456:
+                raise ValueError(
+                    "SECURITY ERROR: argon2_memory_cost must be at least 19456 KiB "
+                    f"in {env.value.upper()} (got {self.argon2_memory_cost}).",
+                )
+        return self
 
 
 @dataclass(init=False)

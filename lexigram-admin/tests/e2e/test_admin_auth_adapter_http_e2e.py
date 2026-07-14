@@ -90,7 +90,7 @@ async def test_admin_auth_adapter_register_and_login_flow():
     container.singleton(DatabaseProviderProtocol, lambda: AsyncMock())
 
     # Create an admin user config with pre-hashed password
-    hashed = await PasswordHasher.hash("Secret1!")
+    hashed = await PasswordHasher().hash("Secret1!")
     admin_user = types.SimpleNamespace(
         username="admin",
         email="admin@example.com",

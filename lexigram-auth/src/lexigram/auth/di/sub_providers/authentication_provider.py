@@ -8,6 +8,11 @@ from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from pydantic import SecretStr
 
+from lexigram.auth.authn.password_hasher import (
+    Argon2idKeyDerivation,
+    Argon2idPasswordHasher,
+    ComposedPasswordHasher,
+)
 from lexigram.auth.authn.security import PasswordHasher, PasswordPolicy
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.storage.token_store import InMemoryUserStore, UserStoreProtocol
@@ -197,6 +202,27 @@ class AuthenticationProvider(Provider):
         self.token_manager = token_manager
         self.delegation_manager: Any = None
         self._service: AuthenticationService | None = None
+        self._hasher: PasswordHasherProtocol | None = None
+
+    @property
+    def password_hasher(self) -> PasswordHasherProtocol:
+        """Composed Argon2id-default hasher with a bcrypt legacy shim.
+
+        Builds the single composed instance (ODD-1 Option A): new hashes use
+        Argon2id with OWASP-2024 parameters; stored bcrypt hashes keep
+        verifying through the legacy shim and upgrade on the next login.
+        """
+        if self._hasher is None:
+            primary = Argon2idPasswordHasher(
+                kdf=Argon2idKeyDerivation(
+                    config=self.config.password if self.config else None,
+                ),
+            )
+            self._hasher = ComposedPasswordHasher(
+                primary=primary,
+                legacy=PasswordHasher(),
+            )
+        return self._hasher
 
     @property
     def service(self) -> AuthenticationService:
@@ -206,6 +232,7 @@ class AuthenticationProvider(Provider):
                 password_policy=self.password_policy,
                 user_store=self.user_store,
                 token_manager=self.token_manager,
+                password_hasher=self.password_hasher,
             )
         return self._service
 
@@ -225,19 +252,19 @@ class AuthenticationProvider(Provider):
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register authentication services with the container.
 
-        Registers both concrete implementations and their corresponding protocols
-        to enable dependency injection across extensions without direct imports.
+        Registers the protocols for dependency injection across extensions
+        without direct imports.  The single ``PasswordHasherProtocol``
+        binding is the composed hasher (Argon2id default, bcrypt legacy
+        shim) — one registration per protocol per AGENTS.md §2.6.
         """
-        hasher = PasswordHasher()
         # Register concrete implementations
-        container.singleton(PasswordHasher, hasher)
         container.singleton(PasswordPolicy, lambda: self.password_policy)
         container.singleton(UserStoreProtocol, lambda: self.user_store)
         container.singleton(AuthenticationService, lambda: self.service)
 
         # Register protocol mappings for cross-extension compatibility (CROSS-EXT-02)
         # This allows other extensions to depend on protocols rather than concrete classes
-        container.singleton(PasswordHasherProtocol, hasher)
+        container.singleton(PasswordHasherProtocol, self.password_hasher)
         container.singleton(PasswordPolicyProtocol, lambda: self.password_policy)
         from lexigram.contracts.auth import AuthProviderProtocol
 

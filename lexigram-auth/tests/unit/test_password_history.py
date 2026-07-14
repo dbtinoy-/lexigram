@@ -23,7 +23,7 @@ async def test_change_password_adds_history():
     assert updated is not None
     assert creds is not None
     assert len(creds.previous_hashes) == 1
-    assert await PasswordHasher.verify("Secure!Pass42", creds.previous_hashes[0])
+    assert await PasswordHasher().verify("Secure!Pass42", creds.previous_hashes[0])
 
     change_result2 = await service.change_user_password(user.user_id, "Different#Pass55", "Another@Pass77")
     assert change_result2.is_ok()
@@ -32,7 +32,7 @@ async def test_change_password_adds_history():
     assert updated is not None
     assert creds is not None
     assert len(creds.previous_hashes) == 2
-    assert await PasswordHasher.verify("Different#Pass55", creds.previous_hashes[0])
+    assert await PasswordHasher().verify("Different#Pass55", creds.previous_hashes[0])
 
 
 @pytest.mark.asyncio
@@ -63,4 +63,4 @@ async def test_admin_set_password_bypasses_reuse_check():
     await service.set_user_password(user.user_id, "AdminSecure!42", force=True)
     creds = await service.user_store.get_credentials(user.user_id)
     assert creds is not None
-    assert await PasswordHasher.verify("AdminSecure!42", creds.hashed_password)
+    assert await PasswordHasher().verify("AdminSecure!42", creds.hashed_password)

@@ -15,7 +15,7 @@ import time
 import pytest
 
 from lexigram.auth.authn.security import DUMMY_PASSWORD_HASH, PasswordHasher
-from lexigram.auth.di import AuthenticationProvider, AuthorizationProvider
+from lexigram.auth.di import AuthenticationProvider
 from lexigram.auth.models.user import UserCredentials
 from lexigram.logging import get_logger
 
@@ -33,7 +33,7 @@ async def test_authenticate_user_timing_is_similar_for_missing_and_existing_user
     provider = AuthenticationProvider()
 
     # Precompute a single hashed password to avoid expensive work per-FakeUser
-    precomputed_hash = await PasswordHasher.hash("Password123!")
+    precomputed_hash = await PasswordHasher().hash("Password123!")
 
     class FakeUser:
         def __init__(self):
@@ -73,15 +73,22 @@ async def test_authenticate_user_timing_is_similar_for_missing_and_existing_user
     provider.user_store.update_user = fake_update_user
     provider.user_store.update_credentials = fake_update_credentials
 
-    # Monkeypatch PasswordHasher.verify to add consistent delay so measurements
-    # are stable and independent of underlying hash implementation.
+    # Monkeypatch the composed hasher's verify to add consistent delay so
+    # measurements are stable and independent of the underlying KDF, and
+    # disable the upgrade-on-login rehash so successful logins do no hashing.
+    composed = provider.password_hasher
+
     async def slow_verify(password: str, hashed: str) -> bool:
         # 5ms async delay to simulate bcrypt-like cost without blocking
         await asyncio.sleep(0.005)
         # Return True for real user hash, False for dummy hash
-        return False if hashed == DUMMY_PASSWORD_HASH else True
+        return hashed != DUMMY_PASSWORD_HASH
 
-    monkeypatch.setattr(PasswordHasher, "verify", slow_verify)
+    async def no_rehash(password: str, hashed_password: str | None) -> str | None:
+        return None
+
+    monkeypatch.setattr(composed, "verify", slow_verify)
+    monkeypatch.setattr(composed, "rehash_if_needed", no_rehash)
 
     # Warm-up to avoid cold-start artifacts
     for _ in range(10):
@@ -97,7 +104,9 @@ async def test_authenticate_user_timing_is_similar_for_missing_and_existing_user
         for _ in range(iterations):
             start = time.perf_counter()
             await provider.service.authenticate_user(
-                "user1@example.com" if get_user_target is get_existing else "no_user@example.com",
+                "user1@example.com"
+                if get_user_target is get_existing
+                else "no_user@example.com",
                 "Password123!",
             )
             times.append(time.perf_counter() - start)
@@ -118,7 +127,8 @@ async def test_authenticate_user_timing_is_similar_for_missing_and_existing_user
 
     # Relative difference (normalized by the higher median)
     rel_diff = abs(median_existing - median_missing) / max(
-        median_existing, median_missing,
+        median_existing,
+        median_missing,
     )
 
     # Log some stats to help debug if this test fails.
@@ -135,6 +145,6 @@ async def test_authenticate_user_timing_is_similar_for_missing_and_existing_user
 
     # Assert relative difference is small — allow a slightly more permissive threshold to
     # avoid CI flakiness while still catching practical timing leaks.
-    assert (
-        rel_diff < 0.35
-    ), "Timing difference too large; possible user enumeration leak"
+    assert rel_diff < 0.35, (
+        "Timing difference too large; possible user enumeration leak"
+    )

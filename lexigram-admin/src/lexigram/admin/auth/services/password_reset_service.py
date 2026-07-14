@@ -231,6 +231,10 @@ class AdminPasswordResetService:
             message = "; ".join(v.message for v in validation.violations)
             return Err(PasswordPolicyError(message))
 
+        consumed = await self._token_store.mark_consumed(token_hash)
+        if not consumed:
+            return Err(PasswordResetTokenInvalidError())
+
         user = await self._user_store.get_user_by_email(record.email)
         if user is None:
             return Err(PasswordResetTokenInvalidError())
@@ -242,7 +246,6 @@ class AdminPasswordResetService:
             hasher = PasswordHasher()
         user.hashed_password = await hasher.hash(new_password)
         await self._user_store.update_user(user)
-        await self._token_store.mark_consumed(token_hash)
 
         user_id = getattr(user, "user_id", None)
         if user_id:

@@ -1,6 +1,6 @@
 """CSV formula/DDE injection sanitization tests.
 
-Covers `_sanitize_csv_value()` per risky leading character plus the
+Covers `sanitize_cell_value()` per risky leading character plus the
 `generate_file()` write path (filtering order, raw-text verification).
 """
 
@@ -11,10 +11,10 @@ import io
 
 import pytest
 
-from lexigram.admin.services.export.adapters.csv import (
-    CsvExportBackend,
-    _RISKY_LEADING_CHARS,
-    _sanitize_csv_value,
+from lexigram.admin.services.export.adapters.csv import CsvExportBackend
+from lexigram.admin.services.export.sanitize import (
+    RISKY_LEADING_CHARS,
+    sanitize_cell_value,
 )
 from lexigram.admin.services.export.scheduler import ExportFormat, ExportJob
 
@@ -38,8 +38,8 @@ class _StubStorage:
 )
 def test_risky_leading_chars_are_prefixed(raw: str) -> None:
     """Every risky leading character gets a leading single quote."""
-    assert raw[0] in _RISKY_LEADING_CHARS
-    assert _sanitize_csv_value(raw) == f"'{raw}"
+    assert raw[0] in RISKY_LEADING_CHARS
+    assert sanitize_cell_value(raw) == f"'{raw}"
 
 
 @pytest.mark.parametrize(
@@ -48,18 +48,18 @@ def test_risky_leading_chars_are_prefixed(raw: str) -> None:
 )
 def test_non_risky_strings_pass_through(value: str) -> None:
     """Strings not starting with a risky character are unchanged."""
-    assert _sanitize_csv_value(value) is value
+    assert sanitize_cell_value(value) is value
 
 
 @pytest.mark.parametrize("value", [1, True, False, None])
 def test_non_strings_pass_through(value: object) -> None:
     """Non-string values pass through unchanged and same type."""
-    assert _sanitize_csv_value(value) is value
+    assert sanitize_cell_value(value) is value
 
 
 def test_prefix_is_lossless() -> None:
     """A single quote itself is not double-prefixed."""
-    assert _sanitize_csv_value("'=already-safe") == "'=already-safe"
+    assert sanitize_cell_value("'=already-safe") == "'=already-safe"
 
 
 @pytest.mark.asyncio

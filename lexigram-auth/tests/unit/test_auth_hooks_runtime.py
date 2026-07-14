@@ -130,7 +130,7 @@ async def test_authenticate_user_emits_auth_login_hook() -> None:
     hooks = _RecordingHooks()
     user_store = InMemoryUserStore()
     password = "Password123!"
-    hashed_password = await PasswordHasher.hash(password)
+    hashed_password = await PasswordHasher().hash(password)
     user = await user_store.create_user(
         name="test",
         email="test@example.com",

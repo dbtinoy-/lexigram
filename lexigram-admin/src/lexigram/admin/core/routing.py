@@ -18,6 +18,7 @@ from lexigram.admin.openapi.controller import OpenAPIController
 from lexigram.admin.relations.routes import register_relation_routes
 from lexigram.admin.resources.handler import ResourceHandler
 from lexigram.admin.services.search_service import SearchService
+from lexigram.contracts.auth import AuthorizerProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 
@@ -49,11 +50,13 @@ class AdminRouter:
         resources: dict[str, Any] | None = None,
         controllers: list[Any] | None = None,
         middleware_stack: list[tuple[type, dict]] | None = None,
+        authorizer: AuthorizerProtocol | None = None,
     ):
         self._config = config
         self._resources = resources or {}
         self._controllers = controllers or []
         self._middleware_stack = middleware_stack or []
+        self._authorizer = authorizer
         self._extra_routes: list[Route] = []
         self._is_mounted = False
 
@@ -187,6 +190,7 @@ class AdminRouter:
         # Global search endpoint
         search_service = SearchService(
             resource_manager=_ResourceManager(self._resources),
+            authorizer=self._authorizer,
         )
         search_controller = SearchController(search_service=search_service)
         routes.append(

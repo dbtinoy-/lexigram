@@ -24,8 +24,8 @@ async def test_basic_functionality():
 
         # Test password hashing
         password = "testpassword123"
-        hashed = await PasswordHasher.hash(password)
-        assert await PasswordHasher.verify(password, hashed)
+        hashed = await PasswordHasher().hash(password)
+        assert await PasswordHasher().verify(password, hashed)
         logger.info("Password hashing works")
 
         # Test JWT token manager

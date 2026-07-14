@@ -18,7 +18,7 @@ from lexigram.auth.storage.token_store import InMemoryUserStore
 
 async def _make_user(store: InMemoryUserStore, name: str, email: str, password: str):
     """Helper: hash password and create user."""
-    hashed = await PasswordHasher.hash(password)
+    hashed = await PasswordHasher().hash(password)
     return await store.create_user(name=name, email=email, hashed_password=hashed)
 
 

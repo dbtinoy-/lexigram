@@ -4,6 +4,7 @@ from datetime import UTC
 import io
 from typing import TYPE_CHECKING, Any
 
+from lexigram.admin.services.export.sanitize import sanitize_cell_value
 from lexigram.admin.services.export.service import IExportBackend
 
 if TYPE_CHECKING:
@@ -63,7 +64,7 @@ class ExcelExportBackend(IExportBackend):
             # Write data
             for row_num, row in enumerate(data, 2):
                 for col_num, field in enumerate(fieldnames, 1):
-                    value = row.get(field, "")
+                    value = sanitize_cell_value(row.get(field, ""))
                     cell = worksheet.cell(row=row_num, column=col_num, value=value)
 
                     # Basic formatting

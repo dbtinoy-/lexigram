@@ -45,7 +45,7 @@ async def test_delete_user_via_adapter_deletes_user():
     container.singleton(AuthProviderProtocol, lambda: auth_provider)
 
     # Create a user to delete
-    hashed_pw = await __import__("lexigram.auth.authn.security", fromlist=["PasswordHasher"]).PasswordHasher.hash("Secure2#")
+    hashed_pw = await __import__("lexigram.auth.authn.security", fromlist=["PasswordHasher"]).PasswordHasher().hash("Secure2#")
     created = await auth_provider.user_store.create_user(
         name="charlie", email="charlie@example.com", hashed_password=hashed_pw,
     )

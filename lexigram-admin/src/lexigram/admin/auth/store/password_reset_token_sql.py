@@ -117,10 +117,16 @@ class AdminPasswordResetTokenSqlStore:
         )
 
     async def mark_consumed(self, token_hash: str) -> bool:
-        """Atomically mark a token consumed (see protocol docs)."""
+        """Atomically verify-and-consume a token in one statement.
+
+        Returns False when the token is missing, already consumed, or
+        expired — the caller cannot distinguish which without a separate
+        lookup.
+        """
         result = await self._db.execute(
             f"UPDATE {_TABLE} SET consumed_at = {now_expr(self._db)} "
-            "WHERE token_hash = ? AND consumed_at IS NULL",
+            "WHERE token_hash = ? AND consumed_at IS NULL "
+            f"AND expires_at > {now_expr(self._db)}",
             [token_hash],
         )
         row_count = getattr(result, "row_count", None)

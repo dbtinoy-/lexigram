@@ -56,7 +56,11 @@ class CommandPaletteController:
         # Dynamic search results from backend
         if len(query) >= _MIN_QUERY_LENGTH:
             try:
-                results = await self._search_service.search(query)
+                user = getattr(request.state, "user", None)
+                allowed = await self._search_service.allowed_resources_for(user)
+                results = await self._search_service.search(
+                    query, allowed_resources=allowed
+                )
                 for r in results.results:
                     commands.append(
                         {

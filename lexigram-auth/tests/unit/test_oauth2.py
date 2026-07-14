@@ -286,6 +286,7 @@ class TestOAuth2UserInfo:
             provider="google",
             provider_user_id="user123",
             email="user@example.com",
+            email_verified=True,
             username="testuser",
             name="Test User",
             avatar_url="https://example.com/avatar.jpg",
@@ -295,6 +296,7 @@ class TestOAuth2UserInfo:
         assert user_info.provider == "google"
         assert user_info.provider_user_id == "user123"
         assert user_info.email == "user@example.com"
+        assert user_info.email_verified is True
         assert user_info.username == "testuser"
         assert user_info.name == "Test User"
         assert user_info.avatar_url == "https://example.com/avatar.jpg"
@@ -310,6 +312,7 @@ class TestOAuth2UserInfo:
         assert user_info.provider == "github"
         assert user_info.provider_user_id == "456"
         assert user_info.email is None
+        assert user_info.email_verified is False
         assert user_info.username is None
         assert user_info.name is None
         assert user_info.avatar_url is None
@@ -330,6 +333,7 @@ class TestOAuth2AuthProvider:
         manager.get_user_info.return_value = {
             "id": "user123",
             "email": "user@example.com",
+            "email_verified": True,
             "login": "testuser",
             "name": "Test User",
             "avatar_url": "https://example.com/avatar.jpg",
@@ -411,6 +415,7 @@ class TestOAuth2AuthProvider:
 
         # Should return existing user without creating new one
         assert user == existing_user
+        mock_user_store.get_user_by_email.assert_called_once()
         mock_user_store.create_user.assert_not_called()
 
     @pytest.mark.asyncio
@@ -461,4 +466,77 @@ class TestOAuth2AuthProvider:
 
         # Should find existing user by identity
         assert user == existing_user
+        mock_user_store.create_user.assert_not_called()
+
+    @pytest.fixture(params=["absent", "false"])
+    def mock_oauth2_manager_unverified(self, request):
+        """Mock OAuth2 manager without a verified-email claim"""
+        manager = AsyncMock()
+        manager.exchange_code_for_token.return_value = {
+            "access_token": "token123",
+            "token_type": "Bearer",
+        }
+        info = {
+            "id": "user123",
+            "email": "user@example.com",
+            "login": "testuser",
+            "name": "Test User",
+        }
+        if request.param == "false":
+            info["email_verified"] = False
+        manager.get_user_info.return_value = info
+        return manager
+
+    @pytest.mark.asyncio
+    async def test_unverified_claim_never_binds_by_email(
+        self, mock_oauth2_manager_unverified, mock_user_store,
+    ):
+        """Unverified email never takes over the existing-email account"""
+        existing_user = MagicMock()
+        mock_user_store.get_user_by_email.return_value = existing_user
+
+        provider = OAuth2AuthProvider(
+            oauth2_manager=mock_oauth2_manager_unverified,
+            user_store=mock_user_store,
+            oauth_identity_store=None,
+        )
+        user = await provider.authenticate_with_oauth2("google", "auth_code")
+
+        assert user is not None
+        assert user != existing_user
+        mock_user_store.get_user_by_email.assert_not_called()
+        mock_user_store.create_user.assert_called_once_with(
+            name="testuser",
+            email="user@example.com",
+            hashed_password=None,
+            roles=["user"],
+            is_verified=False,
+            profile={
+                "name": "Test User",
+                "avatar_url": None,
+                "oauth_provider": "google",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_unverified_email_still_binds_by_identity(
+        self, mock_oauth2_manager_unverified, mock_user_store,
+    ):
+        """Unverified email falls through to the identity match"""
+        existing_user = MagicMock()
+        identity_store = AsyncMock()
+        identity_store.get_oauth_identity.return_value = MagicMock(
+            user_id="existing_user_id",
+        )
+        mock_user_store.get_user_by_id.return_value = existing_user
+
+        provider = OAuth2AuthProvider(
+            oauth2_manager=mock_oauth2_manager_unverified,
+            user_store=mock_user_store,
+            oauth_identity_store=identity_store,
+        )
+        user = await provider.authenticate_with_oauth2("google", "auth_code")
+
+        assert user == existing_user
+        mock_user_store.get_user_by_email.assert_not_called()
         mock_user_store.create_user.assert_not_called()

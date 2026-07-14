@@ -24,6 +24,20 @@ Usage::
 
     # Later, to restore the original admin identity:
     await service.stop(admin_user, request)
+
+.. note::
+    **Intentionally unwired (2026-08-18).** No HTTP route constructs or
+    routes to this service — ``UserImpersonationView`` renders an
+    "Impersonate" button whose ``hx-post`` target (``/admin/impersonate/
+    {user_id}``) is not registered by any controller. Do not wire the
+    feature without first closing the three latent design gaps documented
+    in ``docs/superpowers/specs/2026-08-16-security-impersonation-design.md``
+    §2.1(a)-(c) and §3.1: (a) nested-session overwrite (``start()``
+    unconditionally replaces an actor's existing session); (b) no
+    target-role restriction (only the actor-side ``can_impersonate`` check
+    exists); (c) in-process-dict session storage that is invisible to
+    other workers (``get_active_session``/``is_impersonating`` consult
+    only ``self._sessions``).
 """
 
 from __future__ import annotations

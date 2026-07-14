@@ -39,7 +39,7 @@ async def seed_key(repo: Any, raw_key: str) -> dict[str, Any]:
     row = {
         "id": KEY_ID,
         "name": "test",
-        "key_hash": await PasswordHasher.hash(raw_key),
+        "key_hash": await PasswordHasher().hash(raw_key),
         "prefix": raw_key[:8],
         "user_id": USER_ID,
         "scopes": [],

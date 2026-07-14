@@ -72,6 +72,7 @@ uv run uvicorn app:create_app --factory
 
 ## Next Steps
 
+- [Your First App](../../docs/lexigram-docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
 - [Guide](./GUIDE.md) — mental model, workflows, best practices
 - [How-Tos](./HOWTOS.md) — task-oriented recipes
 - [Configuration](./CONFIGURATION.md) — every config key

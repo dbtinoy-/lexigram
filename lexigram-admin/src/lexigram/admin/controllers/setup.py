@@ -346,16 +346,19 @@ class SetupController(AdminController):
 
 
 def _hash_password(plain: str) -> str:
-    """Hash a plain-text password using bcrypt, falling back to SHA-256.
+    """Hash a plain-text password using bcrypt.
 
-    Bcrypt with 12 rounds is the default.  SHA-256 is used only when the
-    ``bcrypt`` package is not installed (e.g. lightweight test environments).
+    Bcrypt with 12 rounds is used.  A missing ``bcrypt`` package raises
+    ``RuntimeError`` (fail-closed) instead of degrading to SHA-256.
 
     Args:
         plain: Plain-text password string.
 
     Returns:
         Hashed password string suitable for storage.
+
+    Raises:
+        RuntimeError: When the ``bcrypt`` package is not installed.
     """
     from lexigram.admin.lib.password import hash_password
 

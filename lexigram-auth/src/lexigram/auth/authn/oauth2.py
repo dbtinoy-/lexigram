@@ -438,6 +438,7 @@ class OAuth2AuthProvider:
             provider=provider_name,
             provider_user_id=user_info["id"],
             email=user_info.get("email"),
+            email_verified=bool(user_info.get("email_verified", False)),
             username=(user_info.get("login") or user_info.get("username")),
             # prefer login/username over display name so that the test above
             # that expects ``testuser`` continues to pass
@@ -457,13 +458,16 @@ class OAuth2AuthProvider:
     async def _find_or_create_oauth_user(self, oauth_user: OAuth2UserInfo) -> User:
         """Find existing user or provision new one."""
 
-        # Try to find by email
+        # Try to find by email (only when the IdP verified the address)
         if oauth_user.email:
-            existing_user = await self.user_store.get_user_by_email(oauth_user.email)
-            if existing_user:
-                from typing import cast
+            if oauth_user.email_verified:
+                existing_user = await self.user_store.get_user_by_email(
+                    oauth_user.email
+                )
+                if existing_user:
+                    from typing import cast
 
-                return cast("User", existing_user)
+                    return cast("User", existing_user)
             identity_user = await self._find_by_oauth_identity(
                 oauth_user.provider,
                 oauth_user.provider_user_id,
@@ -485,7 +489,7 @@ class OAuth2AuthProvider:
             email=oauth_user.email,
             hashed_password=None,  # No password for OAuth users
             roles=["user"],
-            is_verified=True,  # Email verified by OAuth provider
+            is_verified=oauth_user.email_verified,
             profile={
                 "name": display_name,
                 "avatar_url": oauth_user.avatar_url,

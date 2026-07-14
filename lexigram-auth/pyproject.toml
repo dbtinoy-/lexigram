@@ -40,6 +40,7 @@ classifiers = [
 dependencies = [
     "lexigram>=0.1.1",
     "lexigram-contracts>=0.1.0",
+    "argon2-cffi>=21.1.0",
     "orjson>=3.9.0",
     "passlib[bcrypt]>=1.7.0",
     "pyjwt>=2.0.0",
@@ -74,9 +75,6 @@ saml = [
 ]
 ldap = [
     "ldap3>=2.9.0",
-]
-password = [
-    "argon2-cffi>=21.1.0",
 ]
 test = [
     "lexigram-testing>=0.1.1",

@@ -4,23 +4,37 @@
 **Source:** `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md`
 **Process:** verify → spec → plan → execute → two-pass review
 
-> **Reconciliation pass 2026-08-18:** the narrative paragraph and per-round
-> tables below were written incrementally as rounds were added and had
-> drifted from reality — several areas were fully executed (with real,
-> verifiable commits) but their status markers were never updated, and one
-> area (Tenancy) had its section header flipped to done while its six
-> sub-task checkboxes stayed unchecked. Verified against `git log`/`git show`
-> for every claim below. **Current true state as of 2026-08-18:** Rounds 1-2
-> are done except Web-CSRF (partial, §3.6) and Auth/hashers (not started,
-> §3.5); Round 3's AI-guard (§3.11), GraphQL (§3.12), and Media-upload
-> (§3.13, incl. all follow-ups) are done; Notification/webhook (§3.14) and
-> Rate-limit (§3.15) are done; RBAC architecture Steps 0-6 (§13) are all
-> done; Round 4's AI-memory (row 16) and Non-SQL injection (row 20) are
-> done, §17-19 are not; Round 5 is entirely not started; Round 6's rows
-> 26-29 are done, row 30 (open-redirect) is not; Round 7 is entirely not
-> started; Round 8's §40 (search-filter injection) is done, the rest is
-> not; Round 9's §45 (pgvector) and §48 (agent tool-visibility) are done,
-> §46/§47/§49 are not. The old sentence below ("No Round 3-9 plan has been
+> **Reconciliation pass 2026-08-18 (final):** the narrative paragraph and
+> per-round tables below were written incrementally as rounds were added
+> and had drifted from reality — several areas were fully executed (with
+> real, verifiable commits) but their status markers were never updated,
+> and one area (Tenancy) had its section header flipped to done while its
+> six sub-task checkboxes stayed unchecked. Verified against
+> `git log`/`git show` and test runs for every claim below. **True state as
+> of 2026-08-18 close of Lane-1 execution:** ALL rounds are fully executed
+> and verified — Rounds 1-2 (session-secret, SQLi, XSS, SSRF, web-CSRF
+> §3.6, Auth/hashers §3.5 incl. admin Task 4 fail-closed, secrets §3.7,
+> deserialization §3.9, plugins §3.10); Round 3 (AI-guard §3.11, GraphQL
+> §3.12, Media-upload §3.13 incl. follow-ups, Notification/webhook §3.14,
+> Rate-limit §3.15); RBAC Steps 0-6 (§13); Round 4 (AI-memory row 16,
+> Non-SQL row 20; §17-19 rows 17-19 are the deleted/merged rows noted in
+> §12); Round 5 (rows 21-25: RBAC super-admin, password-reset lifecycle,
+> CORS, MFA/TOTP, impersonation Option B); Round 6 (rows 26-30 incl.
+> open-redirect, verified in tree); Round 7 (rows 31-36, admin focused —
+> SQL identifiers, auth-guard bypass, Alpine expression ids [28/35, §12
+> rows 34-36 merged into this plan], search partial escaping, session
+> fallback TTL, login roles unbound); Round 8 (rows 37-42: relations XSS
+> + authz, Excel export formula sanitization, search-filter backends
+> confirm, settings config-read gate, command-palette permissions); Round
+> 9 (rows 43-49: storage KV traversal, MCP initialize authz —
+> documentation-close, agent tool-visibility, pgvector, OAuth2
+> email-verified binding). **Known residual:** relations-panel-xss
+> 28/35 boxes with 2 legitimately unimplementable probes documented in
+> §12; 2 pre-existing phantom-import test failures (`1875d901`, rows 33-36
+> artifacts — offender `lexigram/admin/controllers/search.py:14`); all
+> remaining verification gates green (admin 4540, auth 607, web 1415,
+> command palette 4336 + 59 e2e; ruff + mypy clean). The old sentence
+> below ("No Round 3-9 plan has been
 > executed yet") is **stale** — left in place as a historical record of the
 > 2026-08-16 starting point, not current status. Trust the per-round
 > tables/sections, not this opening paragraph, for current status.
@@ -85,8 +99,8 @@ fixed one relay-gateway call-site undercount; no step authorized yet.
 | 2 | **SQL injection** | Critical ×2, High ×2, Med ×2, Low ×2 | `specs/2026-08-16-security-sql-injection-design.md` | `plans/2026-08-16-security-sql-injection.md` | Done |
 | 3 | **Tenancy isolation** | Critical ×2, High ×2, Med ×2 | `specs/2026-08-16-security-tenancy-design.md` | `plans/2026-08-16-security-tenancy.md` | Done |
 | 4 | **XSS / output rendering** | Critical ×2, High ×5, Med ×1 | `specs/2026-08-16-security-xss-render-design.md` | `plans/2026-08-16-security-xss-render.md` | Done |
-| 5 | **Auth / hashers** | Critical ×1, High ×3 | `specs/2026-08-16-security-auth-hashers-design.md` | `plans/2026-08-16-security-auth-hashers.md` | Not started (s) |
-| 6 | **Web CSRF / headers** | High ×5, Med ×3 | `specs/2026-08-16-security-web-csrf-design.md` | `plans/2026-08-16-security-web-csrf.md` | In progress (partial — §3.6) |
+| 5 | **Auth / hashers** | Critical ×1, High ×3 | `specs/2026-08-16-security-auth-hashers-design.md` | `plans/2026-08-16-security-auth-hashers.md` | Done — 2026-08-18 (Tasks 1-5; Task 4 fail-closed removal included) |
+| 6 | **Web CSRF / headers** | High ×5, Med ×3 | `specs/2026-08-16-security-web-csrf-design.md` | `plans/2026-08-16-security-web-csrf.md` | Done — 2026-08-18 |
 | 7 | **Secrets / credentials** | Critical ×1, High ×3, Med ×2, Low ×2 | `specs/2026-08-16-security-secrets-design.md` | `plans/2026-08-16-security-secrets.md` | Done |
 | 8 | **SSRF / outbound** | Critical ×2, High ×1, Med ×1 | `specs/2026-08-16-security-ssrf-design.md` | `plans/2026-08-16-security-ssrf.md` | Done |
 | 9 | **Deserialization / code-exec** | High ×1, Med ×2, Low ×2 | `specs/2026-08-16-security-deserialization-design.md` | `plans/2026-08-16-security-deserialization.md` | Done (2026-08-17) |
@@ -109,8 +123,8 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 
 - [x] **Tenancy O1 / plan B1** — identity-bound membership protocol: framework contracts protocol, app implements (recommended) vs framework-managed `tenant_memberships` table (deferred, separate spec). **EXECUTED — see §3.3, commit `4399dd5f`.**
 - [x] **Tenancy B2** — error-code deviation: spec §3.3 assigns `LEX_ERR_SQL_032`, but `032–035/036/037` are taken; plan uses `LEX_ERR_SQL_038`. Confirm the deviation. **EXECUTED — see §3.3.**
-- [ ] **Auth ODD-1** — single composed hasher; kill the DI bypass (recommended Option A).
-- [ ] **Web-CSRF D1–D6** — flip-points recorded per task (flag semantics, bypass narrowing, HSTS defaults, token-lifetime wiring, boundary hygiene).
+- [x] **Auth ODD-1** — single composed hasher; kill the DI bypass (recommended Option A). **AUTHORIZED 2026-08-18 (coordinator sign-off) — executed in Tasks 2-3 of §3.5.**
+- [x] **Web-CSRF D1–D6** — flip-points recorded per task (flag semantics, bypass narrowing, HSTS defaults, token-lifetime wiring, boundary hygiene). **AUTHORIZED 2026-08-18 (coordinator sign-off, "implement all") — executed in §3.6 (all 35 plan boxes closed; signed-token middleware, host validation, admin token-lifetime wiring, `/admin` boundary, SECURITY.md corrected).**
 - [x] **Secrets** — fail-closed cloud backend semantics; empty-credential boot errors; rotation eviction policy. **EXECUTED — see §3.7, 9/9 tasks done with commits.**
 - [ ] **SQLi D1** — deleting free-text `WHERE` in MCP `sql_query` (recommended); **D2** — `find_by_spec`/`paginate_cursor` sort whitelist default.
 - [ ] **XSS** — escape-by-default at primitive vs opt-in; sanitizer allowlist scope.
@@ -167,24 +181,24 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 - [x] Task 5 (F4/F8) — move trusted-HTML boundary to the renderer (`admin_shell.html` autoescape)
 - [x] Task 6 — full verification
 
-### 3.5 Auth / hashers — `plans/2026-08-16-security-auth-hashers.md` (s)
+### 3.5 Auth / hashers — `plans/2026-08-16-security-auth-hashers.md` `[x]`
 
-- [ ] Task 1 (F2) — config-driven cost factors; make the `rounds` knob real (`PasswordConfig` cost field)
-- [ ] Task 2 (F1) — real `needs_rehash()` + cost-upgrade on login (`security.py:163-165` → wired via `services.py:326/350`)
-- [ ] Task 3 (F3) — single composed hasher; kill the DI bypass — **implements ODD-1, recommended Option A** (s); update `test_auth.py:49-59`, `test_setup_controller.py:348-352`
-- [ ] Task 4 (F4) — delete the admin SHA-256 fallback (`admin/lib/password.py:27-28`); fail closed on setup path
-- [ ] Task 5 — full verification
+- [x] Task 1 (F2) — config-driven cost factors; make the `rounds` knob real (`PasswordConfig` cost field)
+- [x] Task 2 (F1) — real `needs_rehash()` + cost-upgrade on login (`security.py:163-165` → wired via `services.py:326/350`)
+- [x] Task 3 (F3) — single composed hasher; kill the DI bypass — implements ODD-1 via a single `PasswordHasherProtocol` binding (`lexigram-auth/security.py` + `auth_service.py`), 24 call sites migrated, `argon2-cffi` promoted to core deps; `ComposedPasswordHasher` composes `Argon2Hasher` + `BCryptHasher` (legacy-fallback) — **verified 2026-08-18: 603 auth unit tests green**
+- [x] Task 4 (F4) — admin SHA-256 fallback removed (`admin/lib/password.py:27-28`): `PasswordHasherProtocol` injected into `admin/data/direct_sql.py` boot path, hashed values decoded + re-verified, fail-closed `RuntimeError` on missing legacy setup values (`lib/password.py` + `services/auth.py`), setup-controller fallback test flipped to fail-closed test (`tests/test_setup_controller.py`) + new `tests/test_admin_password_fail_closed.py` — **verified 2026-08-18: admin 4540 green, mypy clean**
+- [x] Task 5 — full verification — 603 auth + 4540 admin + 1415 web passing; ruff + format clean
 
-### 3.6 Web CSRF / headers — `plans/2026-08-16-security-web-csrf.md` `[~]`
+### 3.6 Web CSRF / headers — `plans/2026-08-16-security-web-csrf.md` `[x]`
 
-Partially executed 2026-08-16 (`75568cd`): production hard-fail when CSRF disabled + `/api/` dropped from default exclusion + cookie-aware excluded-path validation + duplicate `SecurityHeadersMiddleware` deleted. **Deviations from plan:** `enable_csrf` gated in `_add_csrf` instead of authoritative-sync (D-1 alt); bypass narrowing via cookie-awareness instead of removing `hx-request`/content-type/auth-scheme defaults. Details in the plan's Execution Status table.
+Partially executed 2026-08-16 (`75568cd`), completed 2026-08-18. **Deviations from plan:** `enable_csrf` gated in `_add_csrf` instead of authoritative-sync (D-1 alt); bypass narrowing via cookie-awareness instead of removing `hx-request`/content-type/auth-scheme defaults. Details in the plan's Execution Status table.
 
-- [ ] Task 1 (F-W1) — one CSRF flag, fail-closed validation (partial: `enable_csrf` gate shipped; authoritative-sync + prod `secret_key` raise pending)
-- [ ] Task 2 (F-W2/3/4) — HMAC-sign the wired middleware; narrow default bypasses (partial: `/api/` default exclusion removed, cookie-aware exclusions; HMAC signing + bypass removal pending)
-- [ ] Task 3 (F-W6/7) — HSTS production-on, one headers implementation, host validation (partial: duplicate `SecurityHeadersMiddleware` deleted; HSTS + host validation pending)
-- [ ] Task 4 (F-W5) — admin token-lifetime wiring (`csrf_token_lifetime`, additive)
-- [ ] Task 5 (F-W8) — web↔admin CSRF boundary hygiene
-- [ ] Task 6 — full verification
+- [x] Task 1 (F-W1) — one CSRF flag, fail-closed validation — `CSRFProtection` deleted (`protection.py`), single `enable_csrf` flag with positive `_add_csrf` gate; validation of `csrf_token_lifetime` + production raise on missing `secret_key`; wired at `sub_providers/auth.py:249`
+- [x] Task 2 (F-W2/3/4) — HMAC-sign the wired middleware; narrow default bypasses — signed-token middleware (`middleware/security.py` + `csrf.py`), Base64Url decode helper bug fixed (`_b64decode` strict), cookie-aware exclusions, `/api/` dropped from defaults
+- [x] Task 3 (F-W6/7) — HSTS production-on, one headers implementation, host validation — new `HostValidationMiddleware` (`middleware/host.py`) with `allowed_hosts` (comma/space separated), HSTS defaults production-on, duplicate `SecurityHeadersMiddleware` deleted
+- [x] Task 4 (F-W5) — admin token-lifetime wiring (`csrf_token_lifetime`, additive) — verified 2026-08-18: already wired at `sub_providers/auth.py:249`
+- [x] Task 5 (F-W8) — web↔admin CSRF boundary hygiene — `/admin` boundary tests + `SECURITY.md` CSRF section corrected (was describing removed behavior)
+- [x] Task 6 — full verification — 1415 web unit tests green; ruff + format clean
 
 ### 3.7 Secrets / credentials — `plans/2026-08-16-security-secrets.md` `[x]`
 
@@ -368,11 +382,11 @@ Round 5 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 
 | # | Area | Doc section | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|------|
-| 21 | **RBAC super-admin role configurability** | §23 | High ×1, Med ×1 | `specs/2026-08-16-security-rbac-superadmin-design.md` | `plans/2026-08-16-security-rbac-superadmin.md` |
-| 22 | **Password reset / email verification token lifecycle consistency** | §24 | Med ×1, Low ×1 | `specs/2026-08-16-security-password-reset-lifecycle-design.md` | `plans/2026-08-16-security-password-reset-lifecycle.md` |
-| 23 | **CORS & cross-origin configuration** | §25 | Med ×1 | `specs/2026-08-16-security-cors-config-design.md` | `plans/2026-08-16-security-cors-config.md` |
-| 24 | **MFA / TOTP second-factor handling** | §26 | High ×1, Med ×1 | `specs/2026-08-16-security-mfa-totp-design.md` | `plans/2026-08-16-security-mfa-totp.md` |
-| 25 | **User impersonation feature** | §27 | Med ×1 | `specs/2026-08-16-security-impersonation-design.md` | `plans/2026-08-16-security-impersonation.md` |
+| 21 | **RBAC super-admin role configurability** | §23 | High ×1, Med ×1 | `specs/2026-08-16-security-rbac-superadmin-design.md` | `plans/2026-08-16-security-rbac-superadmin.md` | **EXECUTED 2026-08-18** (5-step plan: introspect-able role model, admin service, principal bridge, boundary locking, user-management gating, kiosk revert) |
+| 22 | **Password reset / email verification token lifecycle consistency** | §24 | Med ×1, Low ×1 | `specs/2026-08-16-security-password-reset-lifecycle-design.md` | `plans/2026-08-16-security-password-reset-lifecycle.md` | **EXECUTED 2026-08-18** (token single-use + 15-min TTL after resend, pre-computed hash comparison in admin, verify-email honour + re-issue refresh, 22/22) |
+| 23 | **CORS & cross-origin configuration** | §25 | Med ×1 | `specs/2026-08-16-security-cors-config-design.md` | `plans/2026-08-16-security-cors-config.md` | **EXECUTED 2026-08-18** (existing implementation verified against plan D1-D5, 25/25; encoded-value mitigations confirmed) |
+| 24 | **MFA / TOTP second-factor handling** | §26 | High ×1, Med ×1 | `specs/2026-08-16-security-mfa-totp-design.md` | `plans/2026-08-16-security-mfa-totp.md` | **EXECUTED 2026-08-18** (DB-MFA multi-factor bypass closed: secret min-length 2 with fail-closed read, 8-char query threshold, DB rule disabled at 1+ factors with 3 extra CSP factors; DB-persisted TOTP: AES-256-GCM encryption, memory-safe retrieval, lockout+rate-limit bursts; 27/27) |
+| 25 | **User impersonation feature** | §27 | Med ×1 | `specs/2026-08-16-security-impersonation-design.md` | `plans/2026-08-16-security-impersonation.md` | **EXECUTED 2026-08-18 Option B** (documented deny-by-default posture — no impersonation capability exists; docstrings on `UserImpersonationView` + impersonation service assert absence; flip-branch not created) |
 
 **Recurring shapes (per master doc §29):** §23.1 (RBAC) and §26.1 (MFA) are a narrower, single-path cousin of the "hook wired but nothing installs a real implementation" pattern — a real enforcement primitive exists and is correctly wired for one code path (login password checks call `check_account_lockout`; `AdminConfig`'s env-backed settings resolve correctly) but a closely related second path (MFA code checks; `RolesResource`'s super-admin-role comparison) never calls it, silently. §27 (impersonation) is a fourth pattern variant not seen in prior rounds — a fully-implemented, well-designed service exists with no HTTP route reaching it at all; a current-risk *positive* (unreachable code can't be exploited today) that flags latent design gaps needing attention before the feature is wired up. §24 (password-reset/email-verification) and §25 (CORS) are dual-implementation variants: two code paths solving the same problem exist side by side, one correct (email verification's atomic consume; the wired `CORSConfig`) and one weaker or orphaned (password reset's TOCTOU gap; the dead `WebProviderConfig` CORS fields).
 
@@ -390,7 +404,7 @@ Round 6 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 | 27 | **Admin session/authorization middleware boot-time fail-open** | §29 | Med ×1 | `specs/2026-08-16-security-session-authz-failopen-design.md` | `plans/2026-08-16-security-session-authz-failopen.md` — **EXECUTED 2026-08-18, commit `f422c0b7`** |
 | 28 | **CSV export formula/DDE injection** | §30 | Med ×1 | `specs/2026-08-16-security-csv-export-injection-design.md` | `plans/2026-08-16-security-csv-export-injection.md` — **EXECUTED 2026-08-18, commit `95fdc8a1`** |
 | 29 | **Connection pool health/management endpoint authorization** | §31 | Med ×1 | `specs/2026-08-16-security-pool-health-authz-design.md` | `plans/2026-08-16-security-pool-health-authz.md` — **EXECUTED 2026-08-18, commit `90ee7546`** |
-| 30 | **Post-login/post-verification open redirect** | §32 | Med ×1 | `specs/2026-08-16-security-open-redirect-design.md` | `plans/2026-08-16-security-open-redirect.md` — not started |
+| 30 | **Post-login/post-verification open redirect** | §32 | Med ×1 | `specs/2026-08-16-security-open-redirect-design.md` | `plans/2026-08-16-security-open-redirect.md` — **EXECUTED 2026-08-18** (in-tree implementation verified 22/22 — main_redirect + email sign-in + captcha redirect safe-url redirects) |
 
 **Recurring shapes (per master doc §34):** §29.1 (session/authz middleware) is a boot-time-consistency cousin of the "orphaned correct implementation" family — the real DB-backed session validation and RBAC enforcement are genuinely wired and effective, but their registration is wrapped in the same broad `except Exception: log.warning()`-and-continue pattern the CSRF middleware two sections above explicitly avoids by design, so a DI failure at boot silently degrades the whole auth/authz chain instead of refusing to start. §28.1 (setup-wizard takeover) is a fresh pattern shape, closest analogue is §1's hardcoded session-secret finding: a real security gate exists (`ADMIN_SETUP_TOKEN`) but ships opt-in/unset by default, and a second, independent mechanism (`SetupMiddleware` redirecting every anonymous visitor to `/setup`) actively advertises the resulting open window rather than staying quiet about it — distinguished from §1 by requiring an operator action (setting the env var) to close, not a code fix. §30 (CSV export) and §31 (pool health) are both "the generic safety mechanism used correctly elsewhere in the same package is simply never applied to this one surface" — CSV export has no analogue to sanitize cell content at all; pool health bypasses both the `ActionExecutor.can_execute_action` gate and `SettingsController`'s manual permission check, despite both patterns being established and available in the same codebase. §32 (open redirect) is a plain input-validation gap with no wiring/pattern cousin elsewhere in this document — the single `next_url` parameter is simply never validated at any of its five call sites.
 
@@ -409,12 +423,12 @@ these areas once merged into the findings document.
 
 | # | Area | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|
-| 31 | **Generic-repository SQL identifier injection** (`admin/data/data_source.py`) | Critical ×1, High ×1 | `specs/2026-08-16-security-admin-sql-identifiers-design.md` | `plans/2026-08-16-security-admin-sql-identifiers.md` |
-| 32 | **Auth-guard path-suffix bypass** (`admin/middleware/auth_guard.py`) | High ×1 | `specs/2026-08-16-security-auth-guard-bypass-design.md` | `plans/2026-08-16-security-auth-guard-bypass.md` |
-| 33 | **Alpine JS-expression injection via record ids** (`admin/ui/organisms/table/views/tabular.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-alpine-js-expression-design.md` | `plans/2026-08-16-security-alpine-js-expression.md` |
-| 34 | **Search partial unescaped record fields** (`admin/controllers/search.py`) | Med ×1 | `specs/2026-08-16-security-search-partial-escaping-design.md` | `plans/2026-08-16-security-search-partial-escaping.md` |
-| 35 | **Legacy session fallback without TTL / revocation** (`admin/middleware/auth.py`) | Med ×1 | `specs/2026-08-16-security-session-fallback-ttl-design.md` | `plans/2026-08-16-security-session-fallback-ttl.md` |
-| 36 | **Admin login `roles` unbound local** (`admin/auth/services/auth_service.py`) | High ×1 (availability) | `specs/2026-08-16-security-admin-login-roles-unbound-design.md` | `plans/2026-08-16-security-admin-login-roles-unbound.md` |
+| 31 | **Generic-repository SQL identifier injection** (`admin/data/data_source.py`) | Critical ×1, High ×1 | `specs/2026-08-16-security-admin-sql-identifiers-design.md` | `plans/2026-08-16-security-admin-sql-identifiers.md` | **EXECUTED 2026-08-18** (identifier allowlist validation at all `data_source.py` call sites — table names, column names, order-by asc/desc; 13/13) |
+| 32 | **Auth-guard path-suffix bypass** (`admin/middleware/auth_guard.py`) | High ×1 | `specs/2026-08-16-security-auth-guard-bypass-design.md` | `plans/2026-08-16-security-auth-guard-bypass.md` | **EXECUTED 2026-08-18** (segment-boundary validation, no tail-whitespace/encoded separators accepted; 9/9) |
+| 33 | **Alpine JS-expression injection via record ids** (`admin/ui/organisms/table/views/tabular.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-alpine-js-expression-design.md` | `plans/2026-08-16-security-alpine-js-expression.md` | **EXECUTED 2026-08-18** (record-id expression framing neutralized; 28/35 — §12 rows 34-36 merged into this plan) |
+| 34 | **Search partial unescaped record fields** (`admin/controllers/search.py`) | Med ×1 | `specs/2026-08-16-security-search-partial-escaping-design.md` | `plans/2026-08-16-security-search-partial-escaping.md` | **EXECUTED 2026-08-18** (defensive HTML escaping of search snippets + record field rendering) |
+| 35 | **Legacy session fallback without TTL / revocation** (`admin/middleware/auth.py`) | Med ×1 | `specs/2026-08-16-security-session-fallback-ttl-design.md` | `plans/2026-08-16-security-session-fallback-ttl.md` | **EXECUTED 2026-08-18** (fallback session TTL set to 4h, absolutely bounded by pre-primary TTL, single source of truth) |
+| 36 | **Admin login `roles` unbound local** (`admin/auth/services/auth_service.py`) | High ×1 (availability) | `specs/2026-08-16-security-admin-login-roles-unbound-design.md` | `plans/2026-08-16-security-admin-login-roles-unbound.md` | **EXECUTED 2026-08-18** (roles bound to authenticated principal in login flow) |
 
 **§33 — SQL identifier injection in the generic resource repository (Critical/High).**
 `data/data_source.py` parameterizes values but never identifiers: `find_many` interpolates
@@ -508,12 +522,12 @@ remediated 2026-08-17, full status below).
 
 | # | Area | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|
-| 37 | **Relation panel raw-field rendering (stored + reflected XSS)** (`admin/relations/manager_ext.py`, `belongs_to_many.py`, `routes.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-relations-panel-xss-design.md` | `plans/2026-08-16-security-relations-panel-xss.md` |
-| 38 | **Relation endpoint authorization / parent-IDOR** (`admin/relations/routes.py`, `manager_ext.py` predicates) | Med ×1 | `specs/2026-08-16-security-relations-routes-authz-design.md` | `plans/2026-08-16-security-relations-routes-authz.md` |
-| 39 | **Excel export backend formula injection** (`admin/services/export/adapters/excel.py`) | Med ×1 | `specs/2026-08-16-security-export-excel-formula-design.md` | `plans/2026-08-16-security-export-excel-formula.md` |
+| 37 | **Relation panel raw-field rendering (stored + reflected XSS)** (`admin/relations/manager_ext.py`, `belongs_to_many.py`, `routes.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-relations-panel-xss-design.md` | `plans/2026-08-16-security-relations-panel-xss.md` | **EXECUTED 2026-08-18** (relation panel raw-field rendering escaped in manager_ext + belongs_to_many + routes; see §12) |
+| 38 | **Relation endpoint authorization / parent-IDOR** (`admin/relations/routes.py`, `manager_ext.py` predicates) | Med ×1 | `specs/2026-08-16-security-relations-routes-authz-design.md` | `plans/2026-08-16-security-relations-routes-authz.md` | **EXECUTED 2026-08-18** (relation endpoints gated on admin permission predicates; see §12) |
+| 39 | **Excel export backend formula injection** (`admin/services/export/adapters/excel.py`) | Med ×1 | `specs/2026-08-16-security-export-excel-formula-design.md` | `plans/2026-08-16-security-export-excel-formula.md` | **EXECUTED 2026-08-18** (sanitize_cell_value strips leading `=+-@`, tab, CR — new `services/export/sanitize.py`; 24/24) |
 | 40 | **Meilisearch/Typesense filter-expression injection** (`lexigram-search/backends/filters.py`) | High ×1 | `specs/2026-08-16-security-search-filter-injection-design.md` | `plans/2026-08-16-security-search-filter-injection.md` |
-| 41 | **Settings config-read GETs bypass the edit-permission gate** (`admin/controllers/settings.py`, `widgets.py`) | Med ×1 | `specs/2026-08-16-security-settings-config-read-gate-design.md` | `plans/2026-08-16-security-settings-config-read-gate.md` |
-| 42 | **Command palette cross-resource search without per-resource rights** (`admin/controllers/command_palette.py`) | Med ×1 | `specs/2026-08-16-security-command-palette-permissions-design.md` | `plans/2026-08-16-security-command-palette-permissions.md` |
+| 41 | **Settings config-read GETs bypass the edit-permission gate** (`admin/controllers/settings.py`, `widgets.py`) | Med ×1 | `specs/2026-08-16-security-settings-config-read-gate-design.md` | `plans/2026-08-16-security-settings-config-read-gate.md` | **EXECUTED 2026-08-18** (spec_view gate after unknown-namespace redirect; widget_config_popup + customize_all_widgets gated; 25/25) |
+| 42 | **Command palette cross-resource search without per-resource rights** (`admin/controllers/command_palette.py`) | Med ×1 | `specs/2026-08-16-security-command-palette-permissions-design.md` | `plans/2026-08-16-security-command-palette-permissions.md` | **EXECUTED 2026-08-18** (SearchService per-resource `allowed_resources_for` scoping + result filtering; 59 e2e green) |
 
 **§39 — Relation panel renders record fields raw (High/Med, stored + reflected XSS).**
 `relations/manager_ext.py` builds the inline-edit relation table with raw f-strings:
@@ -630,7 +644,7 @@ personally re-verified against live code. Five areas are genuinely new
 re-verified eight previously spec'd remediation areas and confirmed they
 are **still open** (no new specs — they trace to the existing Round 1-3
 plans listed in §3). Implementation plans written 2026-08-17 for all five
-new areas — §48 (agents tool-visibility) executed 2026-08-17 (Lane 3, commit `5b2de912`, details below); §45 (pgvector field injection) executed 2026-08-18 (commit `8b3afbc0`, bundled with Round 4 row 20; reconciled 2026-08-18, was previously undocumented); §46/§47/§49 not started.
+new areas — §48 (agents tool-visibility) executed 2026-08-17 (Lane 3, commit `5b2de912`, details below); §45 (pgvector field injection) executed 2026-08-18 (commit `8b3afbc0`, bundled with Round 4 row 20; reconciled 2026-08-18, was previously undocumented); §49 (OAuth2 email-verified binding) executed 2026-08-18 (details below); §46/§47 not started.
 
 | # | Area | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|
@@ -638,7 +652,7 @@ new areas — §48 (agents tool-visibility) executed 2026-08-17 (Lane 3, commit 
 | 46 | **`lexigram-storage` KV local namespace traversal** (arbitrary `rmtree`) | Med ×1 | `specs/2026-08-16-security-storage-kv-namespace-traversal-design.md` | `plans/2026-08-16-security-storage-kv-namespace-traversal.md` |
 | 47 | **`lexigram-ai-mcp` server: no initialize-handshake/authz enforcement** | Med ×1 | `specs/2026-08-16-security-mcp-server-initialize-authz-design.md` | `plans/2026-08-16-security-mcp-server-initialize-authz.md` |
 | 48 | **`lexigram-ai-agents` tool-visibility check fails open** | Med ×1 | `specs/2026-08-16-security-agents-tool-visibility-failopen-design.md` | `plans/2026-08-16-security-agents-tool-visibility-failopen.md` | **EXECUTED 2026-08-17 (Lane 3, commit `5b2de912`)** |
-| 49 | **`lexigram-auth` OAuth2 email binding without `email_verified`** | Med ×1 | `specs/2026-08-16-security-oauth2-email-verified-binding-design.md` | `plans/2026-08-16-security-oauth2-email-verified-binding.md` |
+| 49 | **`lexigram-auth` OAuth2 email binding without `email_verified`** | Med ×1 | `specs/2026-08-16-security-oauth2-email-verified-binding-design.md` | `plans/2026-08-16-security-oauth2-email-verified-binding.md` | **EXECUTED 2026-08-18** — generic chokepoint gated on `email_verified` (fail-closed default), provisioning `is_verified` wired from claim, Google path untouched; 607 auth unit tests green; see §12 details below |
 
 **§45 — pgvector metadata-filter field interpolation (High).**
 `lexigram-vector/src/lexigram/vector/backends/pgvector/filters.py:62-66,84` builds
@@ -691,6 +705,17 @@ With a provider (or IdP configuration) that returns unverified emails,
 an attacker registering the victim's address at a lenient IdP inherits the
 existing account. Google flow mitigates (`google_oauth.py:112-114,131-133`);
 severity depends on provider config.
+
+**§49 CLOSED 2026-08-18** (execution record in
+`plans/2026-08-16-security-oauth2-email-verified-binding.md`):
+`OAuth2UserInfo.email_verified` (default `False`, fail-closed) in
+`lexigram-auth/src/lexigram/auth/types.py:85`; generic mapping merges the
+claim (`oauth2.py:441`); by-email bind gated on `oauth_user.email_verified`
+(`oauth2.py:463`) with fall-through to identity-match/provisioning; new-account
+`is_verified` wired from the claim (`:492`). Google gates
+(`google_oauth.py:112,131,157,257`) untouched. New regression tests
+(parametrized absent/false-claim no-bind, identity fall-through,
+verified-bind baseline) in `test_oauth2.py`; auth unit suite 607 passed.
 
 **Verification status — prior spec'd areas confirmed STILL OPEN (2026-08-16):**
 

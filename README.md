@@ -63,9 +63,9 @@ run_server(app, port=8000)
 → http://localhost:8000/hello?name=lexigram
 
 ## also available by default
-→ http://localhost:8000/health
-→ http://localhost:8000/docs (Swagger UI)
-→ http://localhost:8000/redoc (Redoc)
+- → http://localhost:8000/health
+- → http://localhost:8000/docs (Swagger UI)
+- → http://localhost:8000/redoc (Redoc)
 
 
 what just happened?
@@ -74,6 +74,8 @@ what just happened?
 - `WebModule.configure(...)` registered the controller — no router setup, no middleware boilerplate.
 - `HelloController` is a plain typed class; `/hello` maps query params to arguments.
 - `run_server(...)` serves it with uvicorn — `/health`, `/docs`, and `/redoc` come along for free.
+
+→ [Your First App](docs/lexigram-docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
 
 ## what's in the box
 
@@ -102,28 +104,42 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - **providers.** lifecycle and wiring live in one place, so boot order is explicit and tests are trivial.
 - **async, end to end.** the container, the modules, the controllers — concurrency-safe by construction.
 
+## audit
+
+- [Tests](docs/lexigram-docs/audit/AUDIT_TESTS.md) — live test evidence and coverage per package
+- [Quality Gates](docs/lexigram-docs/audit/AUDIT_QUALITY.md) — mypy and ruff quality gates
+
+## reference
+
+- [Env vars](docs/lexigram-docs/reference/REF_ENV_VARS.md) — every `LEX_*` environment variable
+- [Error codes](docs/lexigram-docs/reference/REF_ERROR_CODES.md) — error codes and their meanings
 
 ## roadmap
 
-### Current Status (0.1.x — Alpha)
+#### current status (0.1.x — Alpha)
 - Alpha; public APIs may change before 1.0
-- ~40 open-source packages (MIT)
+- ~50 open-source packages (MIT)
 - Test suite runs in local CI across packages
 
-### Short Term (Q2 2026)
-- [ ] Performance optimizations
-- [ ] Extended AI capabilities
+#### short term (Q2 2026)
+- [~] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - in testing
+- [ ] Reactive state and event wiring
 - [ ] Additional backend support
 
-### Medium Term (Q3-Q4 2026)
+#### medium term (Q3-Q4 2026)
 - [ ] Advanced monitoring
-- [ ] Enhanced security
+- [~] Enhanced security — audit remediation partially implemented (security lanes in progress)
+- [~] Production-grade Admin dashboard — `lexigram-admin` in active development
+- [~] Full-stack starter template — in progress
 - [ ] Distributed tracing
+- [ ] Performance optimizations
 
-### Long Term (2027)
+#### long term (2027)
 - [ ] Enterprise features
 - [ ] Enhanced observability
 - [ ] Community expansion (if approved)
+
+#### → see [MILESTONE.md](./MILESTONE.md) 
 
 ## interesting subsystems and packages
 

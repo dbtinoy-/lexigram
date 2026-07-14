@@ -40,6 +40,8 @@ class CORSConfig(BaseConfig):
         allow_headers: Request headers permitted in CORS requests.
         expose_headers: Response headers the browser may expose to JS.
         allow_credentials: Allow cookies / auth headers in CORS requests.
+        debug_permissive: When True and debug mode is active, allow any origin
+            via wildcard (explicit opt-in; no implicit widening).
         max_age: Pre-flight cache duration in seconds.
         allow_origin_regex: Regex pattern matched against the ``Origin`` header
             as a fallback when the origin is not in ``allowed_origins``.
@@ -58,6 +60,11 @@ class CORSConfig(BaseConfig):
     allow_headers: list[str] = Field(default_factory=lambda: ["*"])
     expose_headers: list[str] = Field(default_factory=list)
     allow_credentials: bool = Field(default=False)
+    debug_permissive: bool = Field(
+        default=False,
+        description="When True and debug mode is active, allow any origin via wildcard "
+        "(explicit opt-in replacement for the old implicit debug widening)",
+    )
     max_age: int = Field(default=600)
     allow_origin_regex: str | None = Field(
         default=None,
@@ -288,19 +295,21 @@ class CSRFConfig(BaseConfig):
         "requests; cookie-bearing requests on these paths are still validated.",
     )
     exclude_content_types: list[str] = Field(
-        default_factory=lambda: ["application/json"],
-        description="Content-Type values that bypass CSRF validation.",
+        default_factory=list,
+        description="Content-Type values that bypass CSRF validation (explicit opt-in — "
+        "JSON requests are validated by default so cookie-authenticated SPA flows "
+        "cannot bypass CSRF).",
     )
     exclude_auth_schemes: list[str] = Field(
-        default_factory=lambda: ["bearer", "apikey", "api-key"],
-        description="Authorization header schemes that bypass CSRF validation.",
+        default_factory=list,
+        description="Authorization header schemes that bypass CSRF validation (explicit opt-in).",
     )
-    _secret_key: str | None = Field(default=None)
-
-    @property
-    def secret_key(self) -> str | None:
-        """Return the HMAC secret key, or ``None`` when not configured."""
-        return self._secret_key
+    secret_key: str | None = Field(
+        default=None,
+        exclude=True,
+        description="HMAC secret used to sign and verify CSRF tokens "
+        "(populated via LEX_WEB__SECURITY__CSRF__SECRET_KEY)",
+    )
 
     def validate_for_environment(
         self, env: Environment | None = None
@@ -310,7 +319,7 @@ class CSRFConfig(BaseConfig):
         issues: list[ConfigIssue] = []
 
         if resolved == Environment.PRODUCTION and self.enabled:
-            if not self._secret_key or self._secret_key.strip() == "":
+            if not self.secret_key or self.secret_key.strip() == "":
                 issues.append(
                     ConfigIssue(
                         field="csrf.secret_key",
@@ -488,6 +497,13 @@ class SecurityConfig(BaseConfig):
     enable_csrf: bool = Field(default=True)
     enable_cors: bool = Field(default=True)
 
+    # Host validation (fail-closed; production requires a non-empty list)
+    allowed_hosts: list[str] = Field(
+        default_factory=list,
+        description="Hostnames permitted to reach the application. Empty by "
+        "default; must be configured before production deployment.",
+    )
+
     # HTTP security-policy sub-configs
     hsts: HSTSConfig = Field(
         default_factory=HSTSConfig,
@@ -533,6 +549,19 @@ class SecurityConfig(BaseConfig):
         issues.extend(self.csrf.validate_for_environment(env))
         issues.extend(self.headers.validate_for_environment(env))
         return issues
+
+    @model_validator(mode="after")
+    def _sync_csrf_enable_flag(self) -> SecurityConfig:
+        """Make ``enable_csrf`` authoritative for disabling CSRF.
+
+        An explicit ``enable_csrf=False`` overrides ``csrf.enabled`` so the
+        convenience flag can never disagree with the wired sub-config; an
+        explicit ``csrf`` (or ``csrf.enabled``) still wins when ``enable_csrf``
+        is left at its default ``True``.
+        """
+        if not self.enable_csrf:
+            self.csrf.enabled = False
+        return self
 
 
 __all__ = [

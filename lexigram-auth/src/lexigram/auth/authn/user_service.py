@@ -80,7 +80,7 @@ class UserService:
         except ValueError as e:
             return Err(PasswordPolicyError(str(e)))
 
-        hashed_password = await PasswordHasher.hash(password)
+        hashed_password = await PasswordHasher().hash(password)
         try:
             user = await self.user_store.create_user(
                 name,
@@ -209,7 +209,7 @@ class UserService:
         if (
             not creds
             or not creds.hashed_password
-            or not await PasswordHasher.verify(
+            or not await PasswordHasher().verify(
                 current_password,
                 creds.hashed_password,
             )
@@ -225,14 +225,14 @@ class UserService:
             history_size = getattr(self.password_policy, "history_size", 5)
             checks = [h for h in [creds.hashed_password, *creds.previous_hashes] if h]
             for old_hash in checks[: history_size + 1]:
-                if await PasswordHasher.verify(new_password, old_hash):
+                if await PasswordHasher().verify(new_password, old_hash):
                     return Err(
                         PasswordPolicyError(
                             "New password must not match recent passwords",
                         )
                     )
 
-        new_hash = await PasswordHasher.hash(new_password)
+        new_hash = await PasswordHasher().hash(new_password)
         new_prev = (
             [creds.hashed_password, *creds.previous_hashes]
             if creds.hashed_password
@@ -275,12 +275,12 @@ class UserService:
                     h for h in [creds.hashed_password, *creds.previous_hashes] if h
                 ]
                 for old_hash in checks[: history_size + 1]:
-                    if await PasswordHasher.verify(new_password, old_hash):
+                    if await PasswordHasher().verify(new_password, old_hash):
                         raise PasswordPolicyError(
                             "New password must not match recent passwords",
                         )
 
-        new_hash = await PasswordHasher.hash(new_password)
+        new_hash = await PasswordHasher().hash(new_password)
         if creds:
             new_prev = (
                 [creds.hashed_password, *creds.previous_hashes]

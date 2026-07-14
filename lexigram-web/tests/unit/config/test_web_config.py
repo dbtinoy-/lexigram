@@ -1,4 +1,5 @@
 """Unit tests for configuration domain"""
+
 import pytest
 
 from lexigram.web.config import (
@@ -65,7 +66,6 @@ class TestWebProviderConfig:
 
         assert config.openapi_title == "API"
         assert config.openapi_version == "1.0.0"
-        assert config.cors_origins == ["*"]
         assert config.middleware == []
         assert config.exception_filters == []
 
@@ -74,32 +74,16 @@ class TestWebProviderConfig:
         config = WebProviderConfig(
             openapi_title="My API",
             openapi_version="2.0.0",
-            cors_origins=["http://localhost:3000"],
             middleware=["lexigram.web.middleware.cors.CORSMiddleware"],
             exception_filters=["lexigram.web.filters.DefaultExceptionFilter"],
         )
 
         assert config.openapi_title == "My API"
         assert config.openapi_version == "2.0.0"
-        assert config.cors_origins == ["http://localhost:3000"]
         assert config.middleware == ["lexigram.web.middleware.cors.CORSMiddleware"]
         assert config.exception_filters == [
             "lexigram.web.filters.DefaultExceptionFilter",
         ]
-
-    def test_web_provider_config_cors_settings(self):
-        """Test CORS configuration"""
-        config = WebProviderConfig(
-            cors_origins=["http://localhost:3000", "https://example.com"],
-            cors_methods=["GET", "POST", "PUT"],
-            cors_headers=["Content-Type", "Authorization"],
-            cors_credentials=True,
-        )
-
-        assert config.cors_origins == ["http://localhost:3000", "https://example.com"]
-        assert config.cors_methods == ["GET", "POST", "PUT"]
-        assert config.cors_headers == ["Content-Type", "Authorization"]
-        assert config.cors_credentials is True
 
     def test_web_provider_config_compression(self):
         """Test compression settings"""
@@ -273,13 +257,11 @@ class TestConfigValidation:
         full_config = WebProviderConfig(
             openapi_title="Test API",
             openapi_version="1.0.0",
-            cors_origins=["http://localhost:3000"],
             middleware=[],
             exception_filters=[],
             compression_enabled=False,
         )
         assert full_config.openapi_title == "Test API"
-        assert full_config.cors_origins == ["http://localhost:3000"]
 
     def test_rate_limit_validation(self):
         """Test rate limit config validation"""

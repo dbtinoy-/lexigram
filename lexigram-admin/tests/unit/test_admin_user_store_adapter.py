@@ -11,7 +11,7 @@ async def test_auth_provider_admin_user_store_delegates():
     _key = "test-user-store-adapter-key-32byte"
     auth = AuthenticationProvider(config=AuthConfig(secret_key=_key, token=JWTConfig(secret_key=_key)))
     # create a user directly in the store (providers don't own user creation)
-    hashed_pw = await PasswordHasher.hash("Secret1!")
+    hashed_pw = await PasswordHasher().hash("Secret1!")
     created = await auth.user_store.create_user(
         name="u1", email="u1@example.com", hashed_password=hashed_pw,
     )
