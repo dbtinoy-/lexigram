@@ -4,6 +4,27 @@
 **Source:** `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md`
 **Process:** verify → spec → plan → execute → two-pass review
 
+> **Reconciliation pass 2026-08-18:** the narrative paragraph and per-round
+> tables below were written incrementally as rounds were added and had
+> drifted from reality — several areas were fully executed (with real,
+> verifiable commits) but their status markers were never updated, and one
+> area (Tenancy) had its section header flipped to done while its six
+> sub-task checkboxes stayed unchecked. Verified against `git log`/`git show`
+> for every claim below. **Current true state as of 2026-08-18:** Rounds 1-2
+> are done except Web-CSRF (partial, §3.6) and Auth/hashers (not started,
+> §3.5); Round 3's AI-guard (§3.11), GraphQL (§3.12), and Media-upload
+> (§3.13, incl. all follow-ups) are done; Notification/webhook (§3.14) and
+> Rate-limit (§3.15) are done; RBAC architecture Steps 0-6 (§13) are all
+> done; Round 4's AI-memory (row 16) and Non-SQL injection (row 20) are
+> done, §17-19 are not; Round 5 is entirely not started; Round 6's rows
+> 26-29 are done, row 30 (open-redirect) is not; Round 7 is entirely not
+> started; Round 8's §40 (search-filter injection) is done, the rest is
+> not; Round 9's §45 (pgvector) and §48 (agent tool-visibility) are done,
+> §46/§47/§49 are not. The old sentence below ("No Round 3-9 plan has been
+> executed yet") is **stale** — left in place as a historical record of the
+> 2026-08-16 starting point, not current status. Trust the per-round
+> tables/sections, not this opening paragraph, for current status.
+
 Status of all 47 spec'd security remediation areas across audit Rounds
 1-9 (spec + plan file locations in the per-round tables below; all specs
 written 2026-08-16, all plans written 2026-08-16 for Rounds 1-3 and
@@ -62,11 +83,11 @@ fixed one relay-gateway call-site undercount; no step authorized yet.
 |---|------|--------------|------|------|--------|
 | 1 | **P0 session-secret** | Critical ×3 | `specs/2026-08-16-security-p0-session-secret-design.md` | `plans/2026-08-16-security-p0-session-secret.md` | Done |
 | 2 | **SQL injection** | Critical ×2, High ×2, Med ×2, Low ×2 | `specs/2026-08-16-security-sql-injection-design.md` | `plans/2026-08-16-security-sql-injection.md` | Done |
-| 3 | **Tenancy isolation** | Critical ×2, High ×2, Med ×2 | `specs/2026-08-16-security-tenancy-design.md` | `plans/2026-08-16-security-tenancy.md` | Not started (s) |
+| 3 | **Tenancy isolation** | Critical ×2, High ×2, Med ×2 | `specs/2026-08-16-security-tenancy-design.md` | `plans/2026-08-16-security-tenancy.md` | Done |
 | 4 | **XSS / output rendering** | Critical ×2, High ×5, Med ×1 | `specs/2026-08-16-security-xss-render-design.md` | `plans/2026-08-16-security-xss-render.md` | Done |
 | 5 | **Auth / hashers** | Critical ×1, High ×3 | `specs/2026-08-16-security-auth-hashers-design.md` | `plans/2026-08-16-security-auth-hashers.md` | Not started (s) |
 | 6 | **Web CSRF / headers** | High ×5, Med ×3 | `specs/2026-08-16-security-web-csrf-design.md` | `plans/2026-08-16-security-web-csrf.md` | In progress (partial — §3.6) |
-| 7 | **Secrets / credentials** | Critical ×1, High ×3, Med ×2, Low ×2 | `specs/2026-08-16-security-secrets-design.md` | `plans/2026-08-16-security-secrets.md` | Not started (s) |
+| 7 | **Secrets / credentials** | Critical ×1, High ×3, Med ×2, Low ×2 | `specs/2026-08-16-security-secrets-design.md` | `plans/2026-08-16-security-secrets.md` | Done |
 | 8 | **SSRF / outbound** | Critical ×2, High ×1, Med ×1 | `specs/2026-08-16-security-ssrf-design.md` | `plans/2026-08-16-security-ssrf.md` | Done |
 | 9 | **Deserialization / code-exec** | High ×1, Med ×2, Low ×2 | `specs/2026-08-16-security-deserialization-design.md` | `plans/2026-08-16-security-deserialization.md` | Done (2026-08-17) |
 | 10 | **Plugins** | Low ×5 | `specs/2026-08-16-security-plugins-design.md` | `plans/2026-08-16-security-plugins.md` | Done |
@@ -86,11 +107,11 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 > all RECOMMENDED options below are signed off and executable. Trackers
 > marked per task as the plans execute.
 
-- [ ] **Tenancy O1 / plan B1** — identity-bound membership protocol: framework contracts protocol, app implements (recommended) vs framework-managed `tenant_memberships` table (deferred, separate spec).
-- [ ] **Tenancy B2** — error-code deviation: spec §3.3 assigns `LEX_ERR_SQL_032`, but `032–035/036/037` are taken; plan uses `LEX_ERR_SQL_038`. Confirm the deviation.
+- [x] **Tenancy O1 / plan B1** — identity-bound membership protocol: framework contracts protocol, app implements (recommended) vs framework-managed `tenant_memberships` table (deferred, separate spec). **EXECUTED — see §3.3, commit `4399dd5f`.**
+- [x] **Tenancy B2** — error-code deviation: spec §3.3 assigns `LEX_ERR_SQL_032`, but `032–035/036/037` are taken; plan uses `LEX_ERR_SQL_038`. Confirm the deviation. **EXECUTED — see §3.3.**
 - [ ] **Auth ODD-1** — single composed hasher; kill the DI bypass (recommended Option A).
 - [ ] **Web-CSRF D1–D6** — flip-points recorded per task (flag semantics, bypass narrowing, HSTS defaults, token-lifetime wiring, boundary hygiene).
-- [ ] **Secrets** — fail-closed cloud backend semantics; empty-credential boot errors; rotation eviction policy.
+- [x] **Secrets** — fail-closed cloud backend semantics; empty-credential boot errors; rotation eviction policy. **EXECUTED — see §3.7, 9/9 tasks done with commits.**
 - [ ] **SQLi D1** — deleting free-text `WHERE` in MCP `sql_query` (recommended); **D2** — `find_by_spec`/`paginate_cursor` sort whitelist default.
 - [ ] **XSS** — escape-by-default at primitive vs opt-in; sanitizer allowlist scope.
 - [x] **Deserialization D-A…D-D** — SkillLoader fail-closed sandbox (recommended) vs disable `enable_skill_sources`; pickle deletion vs restriction; `@cacheable` registry-only tagged lookup; MySQL backup `--result-file` + stdin restore (recommended) vs `--execute=source` rejection. **COMPLETED 2026-08-17 (Lane 2): D-A restricted-sandbox SkillLoader + `allowed_script_types` (fail-closed `skill_root=None`/type-list=None defaults; `..`/absolute/symlink-escape tests); D-B pickle: cache restricted unpickler (deny-by-default `allowed_classes` allowlist, hostile-gadget tests), search pickle branch deleted (json-only, `Literal["json"]`), CLI `PickleSerializer` deleted; D-C `@cacheable` registered-type registry (deny-by-default `TypeRegistry`/`DEFAULT_REGISTRY`, hostile-envelope tests); D-D MySQL backup `--result-file=` + stdin restore, `shell=True` zeroed in lexigram-cli.**
@@ -98,10 +119,10 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 - [ ] **Plugins** — integrity: HMAC skipped, acceptance documented (decided, no sign-off needed); per-page GET permission skipped, documented (decided).
 - [x] **AI-guard** — mid-loop hooks at the four OBSERVE feeds (`react.py:301-308`, `function_calling.py:434-440/483-489`, `plan_execute_executor.py:215-222`, `supervisor.py:335-345`; blocked observations mapped to `Err(AgentError)` by a new executor except clause — spec/plan amended 2026-08-17); streaming guard path fail-closed on **both** legs (new caller-side check at `streaming.py:150`; currently wide-`except` allow); auto-wire pipeline from DI at `AgentsProvider.boot()` (`di/provider.py:289`); make `@guarded` real; LLM-detector posture **two-tier (recommended): `llm_guard_fail_open=False` default** — infra-class failures (client error, `Err` result) fail closed; detection-verdict ambiguity (unparseable response) stays fail-open; `True` = legacy all-open (one existing test flips: `test_llm_unavailable_fails_open`). **SIGNED OFF 2026-08-17 by coordinator instruction ("continue until Lane 3 done") — recommended options as amended.**
 - [x] **GraphQL** — wire `DepthLimitExtension`/`AliasLimitExtension`/new `ComplexityLimitExtension` into `SchemaBuilderProtocol.build()`; fail-closed production model-validator `_auto_disable_introspection_in_production` + `IntrospectionGuardExtension` (effective-flag semantics, registered first); honest `IntrospectionConfig` docstring; **security rejections raise with `safe=True`** (`QueryTooDeepError`/`QueryTooComplexError` class attrs, alias + introspection raise sites) so messages survive default `mask_errors=True` — precedent `RateLimitError.safe=True`; repo-level resolver-authz boundary (framework safety net vs documented app responsibility; mask-bypass at `execution.py:287-300` recorded separately, out of scope for this plan). **SIGNED OFF 2026-08-17 by coordinator instruction — recommended options as amended.**
-- [ ] **Media-upload** — caps (file size, duration, mime allowlist) in contracts `multimedia/security.py`; SSRF primitive consumption at 4 fetch sites with `allow_redirects=False`; ffmpeg filter-field validation at dataclass level; `client_max_size` on all 13 servers; `scale_factor` runtime validation — **Task 0 gates on SSRF D1 merge** (satisfied 2026-08-17, re-audit confirmed the primitive). **SIGNED OFF 2026-08-17 by coordinator instruction — recommended options as amended. TRAIN auto-revoked 2026-08-18 — final follow-up closures landed uncommitted (§3.13); re-sign-off pending.**
+- [ ] **Media-upload** — caps (file size, duration, mime allowlist) in contracts `multimedia/security.py`; SSRF primitive consumption at 4 fetch sites with `allow_redirects=False`; ffmpeg filter-field validation at dataclass level; `client_max_size` on all 13 servers; `scale_factor` runtime validation — **Task 0 gates on SSRF D1 merge** (satisfied 2026-08-17, re-audit confirmed the primitive). **SIGNED OFF 2026-08-17 by coordinator instruction — recommended options as amended. Follow-up closures (MIME call sites, beat pre-decode probe) landed and are now committed in `8b3afbc0` — reconciled 2026-08-18, the "uncommitted, re-sign-off pending" note is stale.**
 - [x] **AI-memory** — required single-generic `owner_id` on `MemoryEntry`/`MemoryQuery`/`MemoryStoreProtocol` (D-1, breaking with no migration per D-2); SQL/key-layer owner scoping on all five backend statements + cache key/index namespacing (D-3); `ConversationMemoryStore` fail-closed on missing scope — log-and-empty, no raise (D-4); scheduler iterates explicit `owners` — no "all owners" bypass (D-5); deviation: `EpisodicMemoryProtocol.forget(entry_id, owner_id)` (mypy-override forced, same rationale as flagged `delete()`). **COMPLETED 2026-08-17 (Lane 4):** D1-D5 executed, 6/6 tasks, no sign-off gate — see §7 row 16 and verification-status row.
-- [ ] **Notification/webhook** — contracts mailer validation (subject/to/cc/headers CRLF rejection); SMTP `send()` catches `HeaderParseError`/`HeaderWriteError` (`smtp_mailer.py:120-127`); `escape_html` helper for Mailable; Slack mrkdwn escaping (gated); envelope-recipient validation.
-- [ ] **Rate-limit** — middleware-enforced rule semantics via `get_rule` with default-limit fallback (not scaffolded `check_rate_limit`); chunked-body enforcement via streaming byte counter (413 mid-stream); keep `enabled=True` default but make it mean real enforcement; wire `storage_backend`/`whitelist_ips`; decorator path keeps warn-and-skip contract; GraphQL `UnifiedRateLimiter` fail-open deferred to GraphQL spec.
+- [x] **Notification/webhook** — contracts mailer validation (subject/to/cc/headers CRLF rejection); SMTP `send()` catches `HeaderParseError`/`HeaderWriteError` (`smtp_mailer.py:120-127`); `escape_html` helper for Mailable; Slack mrkdwn escaping (gated); envelope-recipient validation. **EXECUTED — see §3.14.**
+- [x] **Rate-limit** — middleware-enforced rule semantics via `get_rule` with default-limit fallback (not scaffolded `check_rate_limit`); chunked-body enforcement via streaming byte counter (413 mid-stream); keep `enabled=True` default but make it mean real enforcement; wire `storage_backend`/`whitelist_ips`; decorator path keeps warn-and-skip contract; GraphQL `UnifiedRateLimiter` fail-open deferred to GraphQL spec. **EXECUTED — see §3.15.**
 
 ---
 
@@ -128,12 +149,14 @@ decision block `[x]` once signed off; a plan remains `(s)` until then.
 
 ### 3.3 Tenancy isolation — `plans/2026-08-16-security-tenancy.md` `[x]` (sign-off recorded 2026-08-17)
 
-- [ ] Task 1 (F2) — implement `set_tenant_from_scope`/`reset_tenant` on `DbContext` (bridge wiring)
-- [ ] Task 2 (F2/F3) — enforcement core: `TenantScopingError`, fail-closed filter, construction guard, `with_tenant_scope` — **must merge with Task 1 together** (B3)
-- [ ] Task 3 (F4) — fail-closed `create()`: backfill-or-reject with `TenantScopingError`
-- [ ] Task 4 (F1) — identity-bound tenant resolution: contracts protocol, `resolve_with_source`, `authorize()` — **blocked on O1 sign-off** (B1)
-- [ ] Task 5 (F5) — ContextVar token capture/reset in `TenantContextMiddleware`; update (not delete) resolver mocks in `test_middleware.py` (B4)
-- [ ] Task 6 — full verification
+**Reconciled 2026-08-18** — sub-tasks were never checked off when the header was marked `[x]`; verified against real commits, all done.
+
+- [x] Task 1 (F2) — implement `set_tenant_from_scope`/`reset_tenant` on `DbContext` (bridge wiring) — done `752cf446`
+- [x] Task 2 (F2/F3) — enforcement core: `TenantScopingError`, fail-closed filter, construction guard, `with_tenant_scope` — **must merge with Task 1 together** (B3) — done `59313335`
+- [x] Task 3 (F4) — fail-closed `create()`: backfill-or-reject with `TenantScopingError` — done `a3949682`
+- [x] Task 4 (F1) — identity-bound tenant resolution: contracts protocol, `resolve_with_source`, `authorize()` — **blocked on O1 sign-off** (B1) — done `4399dd5f`
+- [x] Task 5 (F5) — ContextVar token capture/reset in `TenantContextMiddleware`; update (not delete) resolver mocks in `test_middleware.py` (B4) — done `4399dd5f` + regression `a81b9fe9`
+- [x] Task 6 — full verification — done `2b3c90e8` (type-ignore fix) + tracker close-out `a03c34e0`
 
 ### 3.4 XSS / output rendering — `plans/2026-08-16-security-xss-render.md` `[x]`
 
@@ -229,23 +252,27 @@ Partially executed 2026-08-16 (`75568cd`): production hard-fail when CSRF disabl
 - [x] Task 2 (F2) — caps (size, duration, mime allowlist) in contracts `multimedia/security.py`; pre-decode guards at `librosa.py:59`, `madmom_server.py:34-41` — **DONE 2026-08-18**: contracts `multimedia/security.py` (`DEFAULT_MAX_MEDIA_BYTES`=25 MiB, `asset_bytes_ok`, `assert_media_mime_allowed`) `35a800a3` (plan Task 1); beat decode-bomb ceiling `max_analyze_samples` with post-decode `y.size` check `96218c35`; madmom decoded-length cap + str validation `1ca5b775`. Note: `assert_media_mime_allowed` had no production call site (fetch sites capped bytes only) — **CLOSED 2026-08-18 (uncommitted)**: wired at upscale/video/beat entry points + tests; also fixed the previously uncaught `UpscaleAssetDownloadError` during download
 - [x] Task 3 (F3) — ffmpeg filter-field validation at dataclass level (`argv.py` color/font_size/codec/resolution/bitrate; reachable via `video/tasks.py:147-244`) — **DONE 2026-08-18** (`2674c7cb`): single `_assert_filter_field` choke point (allowlist-first, then anchored regexes) at both argv builders (`build_argv` Transcode/OverlayText + `build_compose_argv`; sole callers `ffmpeg.py:234,242`); `font_size` range check; `_escape_drawtext`/`RawFilter` unchanged (pre-existing escape hatch intact); plan-level decisions accepted: codec allowlist excludes hardware encoders, color regex rejects functional syntaxes (whitelist-first policy)
 - [x] Task 4 (F4) — `client_max_size` on all 13 servers; runtime `scale_factor` validation (`hat_server.py:42-43`, `real_esrgan_server.py:41-42`) — **DONE 2026-08-18** (`1ca5b775` + `7d83a55e`): `web.Application(client_max_size=...)` — 64 MiB media / 1 MiB text, app-level (every route, enforced during payload read, 413); `scale_factor ∈ {2,4}` (isinstance-int + membership) at both upscale handlers AND `UpscaleTask.run`; `build_app()` factories on hat/real_esrgan/madmom for testability; 26 new tests, live aiohttp servers
-- [x] Task 5 — full verification — **DONE 2026-08-18** (`d5ea0ffa` format-only: 11 test files' trailing newlines): ruff check + format clean on all 43 plan files, mypy clean (core 295 + contracts + 97 package files), 419 passed / 1 skipped across all 7 packages + contracts; whole-branch review APPROVED — F1-F5 + G1-G4 closed end-to-end. Follow-up items recorded (non-blocking): beat pre-decode duration probe (`soundfile.info()`/ffprobe before `librosa.load`) so worst-case decode is bounded pre-load; status-check symmetry (video rejects non-200, upscale/beat/f5 don't); f5 oversized fetch → ValueError → HTTP 500 (fail-closed, operator-facing; `HTTPBadRequest` wrap recommended); `probe_duration`/`probe_fps` ffprobe timeout (spec §2.6); madmom 200-path needs madmom-installed env. Dispositions accepted: `(UpscaleError, ValueError)` MI leaf; video `has_bytes` unguarded (remote-scope); PT018 pre-existing at tts test:58 (repo-wide ruff-excluded tests). **Follow-up closures (2026-08-18):** `6caba8a` — status-check symmetry at all three remaining fetch sites (upscale `UpscaleAssetDownloadError(UpscaleError, ValueError)` leaf, beat `BeatAnalysisDecodeError`, f5 `ValueError`), f5 `handle_generate` wraps to `HTTPBadRequest` (400) for bad reference audio, `_run_probe` hard timeout (default 30s, kills ffprobe). Still open: beat pre-decode duration probe, madmom 200-path in madmom env, `assert_media_mime_allowed` production call site. **Follow-up execution (2026-08-18):** `6caba8a` — status-check symmetry (upscale `UpscaleAssetDownloadError` leaf "asset fetch failed: HTTP {status}", beat `BeatAnalysisDecodeError`, f5 `ValueError` on non-200), f5 `handle_generate` wraps bad reference audio to HTTP 400 (replaces the previous HTTP 500), ffprobe probes gain hard timeout (default 30s, kills ffprobe). `0d419fb0` — graphql stale-test cleanup (`test_graphql_depth.py` dead `on_operation` skip → live `on_validate` tests, `test_validate_fail` un-skipped). Still open: beat pre-decode duration probe, madmom 200-path (env-gated), `assert_media_mime_allowed` production call site (Task 2 note). **Follow-up closures (2026-08-18, uncommitted):** beat pre-decode duration probe — `soundfile.info()` high-duration probe before decode at beat analysis (worst-case decode bounded pre-load; byte + duration caps both enforced); `assert_media_mime_allowed` production call sites wired at upscale/video/beat entry points + tests (the uncaught `UpscaleAssetDownloadError` during download fixed with it). **Still open: madmom 200-path (needs madmom-installed env).**
+- [x] Task 5 — full verification — **DONE 2026-08-18** (`d5ea0ffa` format-only: 11 test files' trailing newlines): ruff check + format clean on all 43 plan files, mypy clean (core 295 + contracts + 97 package files), 419 passed / 1 skipped across all 7 packages + contracts; whole-branch review APPROVED — F1-F5 + G1-G4 closed end-to-end. Follow-up items recorded (non-blocking): beat pre-decode duration probe (`soundfile.info()`/ffprobe before `librosa.load`) so worst-case decode is bounded pre-load; status-check symmetry (video rejects non-200, upscale/beat/f5 don't); f5 oversized fetch → ValueError → HTTP 500 (fail-closed, operator-facing; `HTTPBadRequest` wrap recommended); `probe_duration`/`probe_fps` ffprobe timeout (spec §2.6); madmom 200-path needs madmom-installed env. Dispositions accepted: `(UpscaleError, ValueError)` MI leaf; video `has_bytes` unguarded (remote-scope); PT018 pre-existing at tts test:58 (repo-wide ruff-excluded tests). **Follow-up closures (2026-08-18):** `6caba8a` — status-check symmetry at all three remaining fetch sites (upscale `UpscaleAssetDownloadError(UpscaleError, ValueError)` leaf, beat `BeatAnalysisDecodeError`, f5 `ValueError`), f5 `handle_generate` wraps to `HTTPBadRequest` (400) for bad reference audio, `_run_probe` hard timeout (default 30s, kills ffprobe). Still open: beat pre-decode duration probe, madmom 200-path in madmom env, `assert_media_mime_allowed` production call site. **Follow-up execution (2026-08-18):** `6caba8a` — status-check symmetry (upscale `UpscaleAssetDownloadError` leaf "asset fetch failed: HTTP {status}", beat `BeatAnalysisDecodeError`, f5 `ValueError` on non-200), f5 `handle_generate` wraps bad reference audio to HTTP 400 (replaces the previous HTTP 500), ffprobe probes gain hard timeout (default 30s, kills ffprobe). `0d419fb0` — graphql stale-test cleanup (`test_graphql_depth.py` dead `on_operation` skip → live `on_validate` tests, `test_validate_fail` un-skipped). Still open: beat pre-decode duration probe, madmom 200-path (env-gated), `assert_media_mime_allowed` production call site (Task 2 note). **Follow-up closures (2026-08-18, uncommitted):** beat pre-decode duration probe — `soundfile.info()` high-duration probe before decode at beat analysis (worst-case decode bounded pre-load; byte + duration caps both enforced); `assert_media_mime_allowed` production call sites wired at upscale/video/beat entry points + tests (the uncaught `UpscaleAssetDownloadError` during download fixed with it). **Still open: madmom 200-path (needs madmom-installed env).** **Reconciled 2026-08-18: the "uncommitted" follow-up closures above are now committed in `8b3afbc0` (git status confirms no uncommitted changes to these files).**
 
-### 3.14 Notification / webhook injection — `plans/2026-08-16-security-notification-webhook.md` (s)
+### 3.14 Notification / webhook injection — `plans/2026-08-16-security-notification-webhook.md` `[x]`
 
-- [x] Task 1 (D1) — contracts mailer validation: CRLF rejection on subject/to/cc/headers + envelope recipients (new `test_mailer_validation.py`)
-- [x] Task 2 (D2) — `SMTPMailer.send()` catches `HeaderParseError`/`HeaderWriteError` → Result error (new `test_smtp_header_injection.py`)
-- [x] Task 3 (D3) — `escape_html` helper for Mailable html_body (extend `test_mailable.py`)
-- [x] Task 4 (D4) — Slack mrkdwn escaping (gated; extend `test_slack.py`)
-- [x] Task 5 — full verification (zero `lexigram-webhook` edits; webhook SSRF owned by SSRF plan Task 3)
+**Reconciled 2026-08-18** — header still showed `(s)` after all tasks were executed; verified against real commits, all done.
 
-### 3.15 Rate-limiting / DoS — `plans/2026-08-16-security-rate-limit.md` (s)
+- [x] Task 1 (D1) — contracts mailer validation: CRLF rejection on subject/to/cc/headers + envelope recipients (new `test_mailer_validation.py`) — done `8a81e332`
+- [x] Task 2 (D2) — `SMTPMailer.send()` catches `HeaderParseError`/`HeaderWriteError` → Result error (new `test_smtp_header_injection.py`) — done `70197f96`
+- [x] Task 3 (D3) — `escape_html` helper for Mailable html_body (extend `test_mailable.py`) — done `24c3bd64`
+- [x] Task 4 (D4) — Slack mrkdwn escaping (gated; extend `test_slack.py`) — done `fe76246f`
+- [x] Task 5 — full verification (zero `lexigram-webhook` edits; webhook SSRF owned by SSRF plan Task 3) — commit `6653800f` marked the tracker section complete
 
-- [x] Task 1 (CRIT) — middleware actually enforces rules: resolve rule via `get_rule` with default-limit fallback; keep `enabled=True` but make it mean enforcement
-- [x] Task 2 (CRIT) — honest config: `RateLimitConfig` docstring; wire dead fields `whitelist_ips`/`storage_backend` (or documented decision)
-- [x] Task 3 (MED) — chunked-body enforcement: streaming byte counter over `receive` (413 mid-stream) in `body_limit.py`
-- [x] Task 4 (LOW) — concurrency-bound decision: bulkhead evaluation in `lexigram-queue` backends
-- [x] Task 5 — full verification
+### 3.15 Rate-limiting / DoS — `plans/2026-08-16-security-rate-limit.md` `[x]`
+
+**Reconciled 2026-08-18** — header still showed `(s)` after all tasks were executed; verified against real commits, all done.
+
+- [x] Task 1 (CRIT) — middleware actually enforces rules: resolve rule via `get_rule` with default-limit fallback; keep `enabled=True` but make it mean enforcement — done `bf9eb8d4`
+- [x] Task 2 (CRIT) — honest config: `RateLimitConfig` docstring; wire dead fields `whitelist_ips`/`storage_backend` (or documented decision) — done `bf9eb8d4`
+- [x] Task 3 (MED) — chunked-body enforcement: streaming byte counter over `receive` (413 mid-stream) in `body_limit.py` — done `bf9eb8d4`
+- [x] Task 4 (LOW) — concurrency-bound decision: bulkhead evaluation in `lexigram-queue` backends — done `bf9eb8d4`
+- [x] Task 5 — full verification — done `866a389b` (typing fix) + `45c1d3c1` (format) + tracker close-out `e469e0b1`
 
 ---
 
@@ -321,7 +348,7 @@ Round 3 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 
 ## 7. Round 4 — Findings + Specs + Plans (§16 Executed 2026-08-17; §17-20 Not Executed Yet)
 
-Round 4 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§18-22), per user request to "cover more areas" while Round 1-3 remediation proceeds in parallel. Design specs written 2026-08-16 for all five, including #20 Non-SQL query injection (`2026-08-16-security-nosql-operator-injection-design.md`, re-verified and extended 2026-08-17 to cover the previously-missed aggregation-pipeline injection surface); implementation plans written 2026-08-17 for all five. **§16 (AI memory) executed 2026-08-17 (Lane 4, 6/6 tasks, no sign-off gate) — see §2 decision block, §7 table, and the verification-status row below; §17-20 not executed yet.**
+Round 4 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§18-22), per user request to "cover more areas" while Round 1-3 remediation proceeds in parallel. Design specs written 2026-08-16 for all five, including #20 Non-SQL query injection (`2026-08-16-security-nosql-operator-injection-design.md`, re-verified and extended 2026-08-17 to cover the previously-missed aggregation-pipeline injection surface); implementation plans written 2026-08-17 for all five. **§16 (AI memory) executed 2026-08-17 (Lane 4, 6/6 tasks, no sign-off gate); §20 (Non-SQL injection) executed 2026-08-18 (commit `8b3afbc0`, bundled with the Round 9 §45 pgvector fix — see row 20 below and §2 decision block; reconciled 2026-08-18, was previously undocumented); §17-19 not executed yet.**
 
 | # | Area | Doc section | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|------|
@@ -329,7 +356,7 @@ Round 4 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 | 17 | **Logging & observability data leakage** | §19 | Critical ×1 | `specs/2026-08-16-security-logging-leakage-design.md` | `plans/2026-08-16-security-logging-leakage.md` |
 | 18 | **AI relay / worker / MCP trust boundary** | §20 | High ×1, Med ×1 | `specs/2026-08-16-security-ai-relay-trust-design.md` | `plans/2026-08-16-security-ai-relay-trust.md` |
 | 19 | **Outbound HTTP client & resilience hardening** | §21 | High ×1, Med ×1 | `specs/2026-08-16-security-http-client-resilience-design.md` | `plans/2026-08-16-security-http-client-resilience.md` |
-| 20 | **Non-SQL query injection** (`lexigram-nosql`/`lexigram-graph`/`lexigram-vector`) | §22 | High ×1 | `specs/2026-08-16-security-nosql-operator-injection-design.md` | `plans/2026-08-16-security-nosql-operator-injection.md` |
+| 20 | **Non-SQL query injection** (`lexigram-nosql`/`lexigram-graph`/`lexigram-vector`) | §22 | High ×1 | `specs/2026-08-16-security-nosql-operator-injection-design.md` | `plans/2026-08-16-security-nosql-operator-injection.md` | **EXECUTED 2026-08-18, commit `8b3afbc0`**: new `lexigram-nosql/security.py` (`validate_filter`/`validate_field_name` shared validator, ported from `lexigram-graph`/`lexigram-search`'s allowlist pattern) wired at MongoDB `collection.py` filter + aggregation `$match` stage entry points; new `lexigram-vector/filters/validation.py` (`validate_metadata_field`) wired at pgvector `filters.py:62` — this also closes Round 9 row 45. 4 new test files (nosql) + 2 new test files (vector). |
 
 **Recurring shapes (per master doc §24):** §19 (logging redaction) and §21.1 (HTTP URL validation) are the same "orphaned correct implementation" pattern as Rounds 1-3 — a real hook/utility exists and is genuinely wired at one point, but nothing installs/calls the real implementation at the point that matters. §20.1 (relay-gateway auth) is a new variant: the mechanism is correctly and consistently wired everywhere, but its own default config value (`require_auth: bool = False`) disables it — a one-line default fix rather than a wiring fix. §18 (AI memory) and §22 (non-SQL injection) are a third variant, first seen in Round 2's tenancy findings: a correct isolation/validation primitive exists in one package (`lexigram-ai-session`'s scoped queries; `lexigram-graph`'s Cypher identifier validation; `lexigram-search`'s field-name allowlist) but the analogous sibling package solving an adjacent problem (`lexigram-ai-memory`; `lexigram-nosql`'s MongoDB filter compiler) has no equivalent.
 
@@ -351,17 +378,19 @@ Round 5 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-archit
 
 ---
 
-## 9. Round 6 — Findings + Specs + Plans (1 of 5 executed — row 26)
+## 9. Round 6 — Findings + Specs + Plans (4 of 5 executed — rows 26-29; **reconciled 2026-08-18**, see note)
 
-Round 6 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§28-32), per user request to "continue with the next round for more areas." Design specs written 2026-08-16 for all five; implementation plans written 2026-08-16 for all five — no code change executed yet:
+Round 6 added 5 more areas to `docs/superpowers/specs/2026-08-16-security-architecture-audit-findings.md` (§28-32), per user request to "continue with the next round for more areas." Design specs written 2026-08-16 for all five; implementation plans written 2026-08-16 for all five.
+
+**Reconciliation note (2026-08-18):** this table previously flagged only row 26 as executed. Real commits exist for rows 27-29 too (`f422c0b7`, `95fdc8a1`, `90ee7546`) but were never reflected here. Row 30 (open-redirect) has no matching commit anywhere in history — genuinely still not started.
 
 | # | Area | Doc section | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|------|
 | 26 | **First-run setup wizard race/takeover** | §28 | High ×1 | `specs/2026-08-16-security-setup-wizard-takeover-design.md` | `plans/2026-08-16-security-setup-wizard-takeover.md` — **EXECUTED 2026-08-17 (Lane 1)** |
-| 27 | **Admin session/authorization middleware boot-time fail-open** | §29 | Med ×1 | `specs/2026-08-16-security-session-authz-failopen-design.md` | `plans/2026-08-16-security-session-authz-failopen.md` |
-| 28 | **CSV export formula/DDE injection** | §30 | Med ×1 | `specs/2026-08-16-security-csv-export-injection-design.md` | `plans/2026-08-16-security-csv-export-injection.md` |
-| 29 | **Connection pool health/management endpoint authorization** | §31 | Med ×1 | `specs/2026-08-16-security-pool-health-authz-design.md` | `plans/2026-08-16-security-pool-health-authz.md` |
-| 30 | **Post-login/post-verification open redirect** | §32 | Med ×1 | `specs/2026-08-16-security-open-redirect-design.md` | `plans/2026-08-16-security-open-redirect.md` |
+| 27 | **Admin session/authorization middleware boot-time fail-open** | §29 | Med ×1 | `specs/2026-08-16-security-session-authz-failopen-design.md` | `plans/2026-08-16-security-session-authz-failopen.md` — **EXECUTED 2026-08-18, commit `f422c0b7`** |
+| 28 | **CSV export formula/DDE injection** | §30 | Med ×1 | `specs/2026-08-16-security-csv-export-injection-design.md` | `plans/2026-08-16-security-csv-export-injection.md` — **EXECUTED 2026-08-18, commit `95fdc8a1`** |
+| 29 | **Connection pool health/management endpoint authorization** | §31 | Med ×1 | `specs/2026-08-16-security-pool-health-authz-design.md` | `plans/2026-08-16-security-pool-health-authz.md` — **EXECUTED 2026-08-18, commit `90ee7546`** |
+| 30 | **Post-login/post-verification open redirect** | §32 | Med ×1 | `specs/2026-08-16-security-open-redirect-design.md` | `plans/2026-08-16-security-open-redirect.md` — not started |
 
 **Recurring shapes (per master doc §34):** §29.1 (session/authz middleware) is a boot-time-consistency cousin of the "orphaned correct implementation" family — the real DB-backed session validation and RBAC enforcement are genuinely wired and effective, but their registration is wrapped in the same broad `except Exception: log.warning()`-and-continue pattern the CSRF middleware two sections above explicitly avoids by design, so a DI failure at boot silently degrades the whole auth/authz chain instead of refusing to start. §28.1 (setup-wizard takeover) is a fresh pattern shape, closest analogue is §1's hardcoded session-secret finding: a real security gate exists (`ADMIN_SETUP_TOKEN`) but ships opt-in/unset by default, and a second, independent mechanism (`SetupMiddleware` redirecting every anonymous visitor to `/setup`) actively advertises the resulting open window rather than staying quiet about it — distinguished from §1 by requiring an operator action (setting the env var) to close, not a code fix. §30 (CSV export) and §31 (pool health) are both "the generic safety mechanism used correctly elsewhere in the same package is simply never applied to this one surface" — CSV export has no analogue to sanitize cell content at all; pool health bypasses both the `ActionExecutor.can_execute_action` gate and `SettingsController`'s manual permission check, despite both patterns being established and available in the same codebase. §32 (open redirect) is a plain input-validation gap with no wiring/pattern cousin elsewhere in this document — the single `next_url` parameter is simply never validated at any of its five call sites.
 
@@ -601,11 +630,11 @@ personally re-verified against live code. Five areas are genuinely new
 re-verified eight previously spec'd remediation areas and confirmed they
 are **still open** (no new specs — they trace to the existing Round 1-3
 plans listed in §3). Implementation plans written 2026-08-17 for all five
-new areas — §48 (agents tool-visibility) executed 2026-08-17 (Lane 3, commit `5b2de912`, details below); the other four not started.
+new areas — §48 (agents tool-visibility) executed 2026-08-17 (Lane 3, commit `5b2de912`, details below); §45 (pgvector field injection) executed 2026-08-18 (commit `8b3afbc0`, bundled with Round 4 row 20; reconciled 2026-08-18, was previously undocumented); §46/§47/§49 not started.
 
 | # | Area | Severity mix | Spec | Plan |
 |---|------|--------------|------|------|
-| 45 | **`lexigram-vector` pgvector metadata-field injection** | High ×1 | `specs/2026-08-16-security-vector-sql-field-injection-design.md` | `plans/2026-08-16-security-vector-sql-field-injection.md` |
+| 45 | **`lexigram-vector` pgvector metadata-field injection** | High ×1 | `specs/2026-08-16-security-vector-sql-field-injection-design.md` | `plans/2026-08-16-security-vector-sql-field-injection.md` | **EXECUTED 2026-08-18, commit `8b3afbc0`** — see Round 4 row 20 (bundled together); reconciled 2026-08-18, was previously undocumented |
 | 46 | **`lexigram-storage` KV local namespace traversal** (arbitrary `rmtree`) | Med ×1 | `specs/2026-08-16-security-storage-kv-namespace-traversal-design.md` | `plans/2026-08-16-security-storage-kv-namespace-traversal.md` |
 | 47 | **`lexigram-ai-mcp` server: no initialize-handshake/authz enforcement** | Med ×1 | `specs/2026-08-16-security-mcp-server-initialize-authz-design.md` | `plans/2026-08-16-security-mcp-server-initialize-authz.md` |
 | 48 | **`lexigram-ai-agents` tool-visibility check fails open** | Med ×1 | `specs/2026-08-16-security-agents-tool-visibility-failopen-design.md` | `plans/2026-08-16-security-agents-tool-visibility-failopen.md` | **EXECUTED 2026-08-17 (Lane 3, commit `5b2de912`)** |
@@ -704,6 +733,344 @@ that nothing consults. §48 is the manual-check fail-open family of Round 3
 §29 / Round 8 §43 (correct happy path, every error path grants). §49 is a
 conditional account-binding gap whose severity is provider-config-dependent —
 the Round 5 §24 token-lifecycle family's email-verification cousin.
+
+---
+
+## 12a. Round 10 — Findings, Specs Written (Plans Pending)
+
+Round 10 (2026-08-18) swept the ten packages no prior round had touched:
+`lexigram-ai-evaluation`, `lexigram-ai-feedback`, `lexigram-ai-governance`,
+`lexigram-ai-observability`, `lexigram-ai-prompt`, `lexigram-ai-workers`,
+`lexigram-features`, `lexigram-testing`, `lexigram-resilience`,
+`lexigram-monitor` — via three parallel exploration agents. Every finding
+below was personally re-verified against live code (file reads / greps), per
+the audit's standing discipline. **Agent constraint honored**: agents did not
+edit this tracker or commit; findings are logged here by the coordinator
+after independent verification. **Design specs have been written for all 11
+findings** (§50-60), all under `docs/superpowers/specs/2026-08-18-*-design.md`
+(see table below for exact filenames). **No implementation plans have been
+written yet** — plan authoring (the next stage of verify → spec → plan →
+two-pass review) is pending user direction.
+
+One agent claim was corrected during verification: the governance-package
+agent reported "zero call-sites anywhere in the framework" for
+`AIGovernanceManager`'s enforcement methods (§50 below). Direct grep +
+read disproved this — `lexigram-ai-agents/.../executor/executor.py:190,532`
+resolves `AIGovernanceProtocol` via DI (`di/provider.py:143`,
+`resolve_optional`) and calls `check_request()`/`track_cost()` in the live
+agent-execution path, and `lexigram-ai-governance/di/provider.py:98` binds
+that protocol to the real `AIGovernanceManager`. This matters because it
+means §50's fail-open bug has a real, live call path today, not a
+theoretical one — reflected in the severity below.
+
+| # | Area | Severity mix | Spec | Plan |
+|---|------|--------------|------|------|
+| 50 | **`lexigram-ai-governance` Redis persistence silently fails open, disabling budget/RPM enforcement** | High ×1 | `docs/superpowers/specs/2026-08-18-security-ai-governance-redis-failopen-design.md` | Not yet written |
+| 51 | **`lexigram-ai-governance` → `lexigram-tasks` cross-extension import** | Low ×1 | `docs/superpowers/specs/2026-08-18-architecture-ai-governance-tasks-import-design.md` | Not yet written |
+| 52 | **`lexigram-ai-observability` trace spans carry unredacted tool/agent/retriever payloads** | Med ×1 | `docs/superpowers/specs/2026-08-18-security-ai-observability-trace-redaction-design.md` | Not yet written |
+| 53 | **`lexigram-ai-workers` document-ingestion accepts unvalidated file paths (traversal / arbitrary read)** | High ×1 | `docs/superpowers/specs/2026-08-18-security-ai-workers-path-traversal-design.md` | Not yet written |
+| 54 | **`lexigram-ai-prompt` `max_variable_length` config flag is defined but never enforced** | Low ×1 | `docs/superpowers/specs/2026-08-18-quality-ai-prompt-dead-config-flag-design.md` | Not yet written |
+| 55 | **`lexigram-features` empty `user_attributes` rule fails open (enabled=True for everyone)** | Low/Med ×1 | `docs/superpowers/specs/2026-08-18-security-features-empty-rule-failopen-design.md` | Not yet written |
+| 56 | **`lexigram-monitor` `/health`+`/metrics` unauthenticated, and health checks may leak raw exception strings** | Med ×2 | `docs/superpowers/specs/2026-08-18-security-monitor-health-metrics-authz-design.md` | Not yet written |
+| 57 | **`lexigram-monitor` still hard-depends on `lexigram-tasks` at the packaging level** | Low ×1 | `docs/superpowers/specs/2026-08-18-architecture-monitor-tasks-dependency-design.md` | Not yet written |
+| 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 | `docs/superpowers/specs/2026-08-18-quality-resilience-throttle-dead-decorator-design.md` | Not yet written |
+| 59 | **`lexigram-resilience` idempotency fails open on store outage, and two `unwrap()`-without-guard sites can defeat even that fallback** | Med-High ×1 | `docs/superpowers/specs/2026-08-18-security-resilience-idempotency-failopen-unwrap-design.md` | Not yet written |
+| 60 | **`lexigram-resilience` database idempotency store's "dialect-aware" placeholder is hardcoded to `?`, breaking Postgres — deeper than reported (naive `.replace()` also can't produce sequential `$1,$2,...` for multi-param queries)** | Low ×1 | `docs/superpowers/specs/2026-08-18-quality-resilience-idempotency-placeholder-design.md` | Not yet written |
+
+**§50 — `RedisGovernancePersistence` fail-open on every error path (High).**
+`lexigram-ai-governance/src/lexigram/ai/governance/persistence/persistence.py`:
+`add_spend()` (`:325-327`) catches `(OSError, ConnectionError, RuntimeError,
+ValueError, TypeError)` and returns just `amount` instead of true cumulative
+spend (comment literally says `# fail-open`); `get_spend()` (`:335-336`)
+returns `0.0` on the same errors; `incr_requests()` (`:294-295, 310-311`)
+falls back to `1`; `read_gauge()`/`incr_gauge()` similarly reset toward zero.
+Personally verified line-for-line — matches exactly. `AIGovernanceManager.
+check_budget()`/`check_request()` (`services/manager.py:170, 397`) call
+these directly, so on any transient Redis error the monthly spend cap and
+RPM limiter both silently reopen (`get_spend()→0.0` makes `current+cost<=
+budget` pass almost unconditionally). **Confirmed live and reachable**:
+`lexigram-ai-agents/.../executor/executor.py:190` (`check_request`) and
+`:532` (`track_cost`) call this in the real agent-execution path when
+governance is DI-wired (`di/provider.py:98` binds `AIGovernanceProtocol` →
+`AIGovernanceManager`) — this is not dead code, contradicting the
+originating agent's "zero call-sites" claim (see correction note above).
+No error/warning is logged on any of these fail-open paths, so the
+degradation is silent even to operators.
+
+**§51 — `ai-governance` imports `lexigram-tasks` directly (Low).**
+`lexigram-ai-governance/src/lexigram/ai/governance/resource/reconciliation.py:18`
+(`from lexigram.tasks import ScheduledWorker`) and `:22`
+(`BackgroundTaskManager`). Grep across all `lexigram-*/src` found no other
+extension importing `lexigram.tasks` this way, so it isn't covered by the
+existing accepted-exceptions list (`admin→ui`, `ai→{ai-llm,ai-rag,
+ai-feedback,ai-observability}`, `monitor→tasks`, `testing→sql`). Narrow
+blast radius: `GaugeReconciliationWorker` is exported via lazy `__getattr__`
+but never instantiated by `di/provider.py` — opt-in, application-wired, no
+runtime path today.
+
+**§52 — Observability trace spans include unredacted arguments/responses (Med).**
+`lexigram-ai-observability/src/lexigram/ai/observability/tracing/core.py`
+(`AITracer`, lines 300-380, personally re-read and confirmed exact):
+`on_tool_start` (`:322-330`) sets `attributes={"tool.name": tool_name,
+"tool.args": arguments, **kwargs}`; `on_agent_action`/`on_agent_finish`
+(`:343-359`) add the raw `action`/`response` dicts as span events;
+`on_retriever_start` (`:361-369`) attributes the raw `query`. None of these
+paths redact or size-cap the payload before it lands on an exported trace
+span (`CallbackHandlerProtocol`, `lexigram-contracts/.../ai/callbacks.py:
+103-183`). Any secret, PII, or user-supplied content passed as tool
+arguments, agent actions, or retriever queries is exported verbatim to
+whatever tracing backend consumes these spans (OTel exporters etc.).
+
+**§53 — Document-ingestion worker accepts caller-supplied file paths with no containment check (High).**
+`lexigram-ai-workers/src/lexigram/ai/workers/document_ingestion/worker.py`
+`ingest_document()` (`:194-258`, personally re-read `:190-260`) builds
+`job_data = {"file_path": str(file_path), ...}` from its `file_path: Path`
+parameter with zero validation before enqueueing. `parser.py`'s loader
+(`:37-176`, `UniversalDocumentParser.parse`, personally grepped `:1-50`)
+does `path = Path(source)` then `await asyncio.to_thread(path.read_text,
+encoding="utf-8")` — no root-containment or traversal check anywhere on
+this path. If `file_path`/`source` is ever derived from user input
+(upload filename, API param) upstream of this worker, this is an arbitrary
+local file read. Reachability from an actual HTTP boundary wasn't traced
+within this package (worker is invoked by callers outside
+`lexigram-ai-workers`) — flag as High on the primitive itself, confirm
+call-site trust boundary before treating as Critical.
+Informational/Low, not independently re-verified: the originating agent
+also flagged that `ingest_document` and its job data carry no
+tenant/owner scoping field, unlike the AI-memory package's owner-predicated
+design (Round 9 §4 #16) — worth a cross-package comparison in a future
+round rather than a standalone finding here.
+
+**§54 — `max_variable_length` is declared but never read (Low).**
+`lexigram-ai-prompt/src/lexigram/ai/prompt/config.py:58-59` defines the
+field; grep for `max_variable_length` across `lexigram-ai-prompt/src`
+(personally re-run) returns exactly those two hits (the docstring at `:32`
+and the field definition) — no read site. `validators.py:28-34`'s
+`validate_variable` and `:83-86`'s permissive-mode passthrough in
+`resolve_variables` never consult it, so nothing stops an oversized
+template variable from reaching `rendering/engine.py:73-89`'s Jinja2
+render — a config knob that looks like a DoS/injection-size guard but
+does nothing.
+
+**§55 — Empty `user_attributes` rule flips a flag to enabled for everyone (Low/Med).**
+`lexigram-features/src/lexigram/features/backends/base.py:237-257`,
+`AbstractFlagProvider._evaluate_user_attribute()`: `if not
+flag.user_attributes: return FlagEvaluation(..., enabled=True,
+reason="user_attribute_empty_rule", value=True)`. Every other default in
+this package is fail-closed (`DEFAULT_ENABLED=False` in `constants.py`,
+`FlagManager.evaluate()`/`is_enabled()` fail-closed) — this one path
+inverts that on an admin misconfiguration (forgetting to populate the
+rule), not attacker input, so it's rated Low/Med rather than a direct
+exploit.
+
+**§56 — Monitor `/health`+`/metrics` unauthenticated; health-check errors may leak connection details (Med).**
+`lexigram-monitor/src/lexigram/monitor/middleware/health.py:52-77` and
+`middleware/prometheus.py:88-99` intercept their configured paths with no
+permission/auth check — personally re-grepped both files for
+`permission|require_auth|authenticate|Authorization`, zero hits, confirmed
+exact. Mirrors the previously-fixed admin pool-health finding (Round 6
+row 29 / §31). Unauthenticated health/metrics is often intentional (k8s
+probes, Prometheus scraping) so not automatically a bug on its own.
+Compounding factor: `health/cached.py` `_check_database_health()`/
+`_check_redis_health()` (`:82-141, 143-168`) catch driver exceptions and
+set `message=str(e)` directly into the JSON response (`:137, 164`), which
+can include host/port/DSN fragments depending on the driver; same pattern
+in `health/registry.py:53-127` and `di/provider.py:536-575`. The
+originating agent could not confirm within this repo that
+`CachedHealthChecker`'s output is actually what the unauthenticated
+`HealthCheckProvider` middleware serves (that wiring likely happens in a
+downstream consuming app) — both halves are individually verified, the
+end-to-end connection is plausible but unconfirmed here.
+
+**§57 — `lexigram-monitor`'s `pyproject.toml` still hard-depends on `lexigram-tasks` (Low).**
+Personally re-verified: `lexigram-monitor/pyproject.toml:40` declares
+`"lexigram-tasks>=0.1.1"` as a required (non-optional) dependency, with a
+matching `[tool.uv.sources.lexigram-tasks]` block; grep for
+`lexigram.tasks` imports anywhere in `lexigram-monitor/src` returns zero
+matches (only two docstring mentions explicitly disclaiming it). The
+source-level fix (routing through `lexigram.contracts.infra.tasks.
+TaskManagerProtocol`) was never mirrored in the packaging metadata — an
+orphaned dependency, not a live import-boundary violation.
+
+**§58 — `throttle()` decorator can never succeed (Med, quality/reliability not a silent security gap).**
+`lexigram-resilience/src/lexigram/resilience/throttle/throttle.py:112-160`,
+personally re-read in full. `_limiter` is a closure-local `nonlocal`
+variable inside `decorator()`/`wrapper()` — it is set to `None` at `:132`
+and never assigned anywhere else in the function. `wrapper()` (`:135-142`)
+unconditionally raises `RuntimeError("Throttle limiter not initialized...")`
+on first call. Confirmed via `di/provider.py:59-63` that `ThrottleRegistry`
+is registered as a container singleton, but nothing in `throttle.py` ever
+looks it up — and structurally *couldn't*, since `_limiter` is a
+function-closure variable, not an attribute external code could reach
+(`wrapper_any._throttle_key` is set at `:156`, but no equivalent exists
+for `_limiter`). This is worse than "not yet wired": it cannot be wired
+without editing `throttle.py` itself. Every consumer following the
+module's own docstring (`@throttle(calls=10, period=1.0)`) gets an
+immediate crash, not a silent bypass — so this is a reliability/dead-code
+defect, not a silent DoS gap. The separate `Throttler` class
+(`:181-338`) is a working, correctly-wired alternative.
+
+**§59 — Idempotency middleware fail-open is itself defeated by two unguarded `unwrap()` calls (Med-High).**
+`lexigram-resilience/src/lexigram/resilience/idempotency/middleware.py:87-161`
+catches `(OSError, ConnectionError, RuntimeError)` on both the read and
+write paths and falls through to executing the handler directly
+(duplicate-suppression disabled) when the idempotency store is
+unreachable — a deliberate, logged fail-open (availability over
+duplicate-prevention, no fail-closed option). Separately, two call sites
+skip the `is_ok()` guard this project requires before `unwrap()`:
+`middleware.py:131` (`cached = cached_result.unwrap() if
+isinstance(cached_result, Result) else cached_result`) and
+`idempotency/redis.py:66` (`cached = cached.unwrap()`). Both
+`IdempotencyStoreProtocol.get()` and `CacheBackendProtocol.get()`
+(`lexigram-contracts/.../core/idempotency.py`,
+`.../infra/cache/protocols.py:49`) are documented to return `Result[Any |
+None, Error]`, with `Err(...)` as the documented failure signal — `Err.
+unwrap()` raises `UnwrapError`, which is **not** in the
+`(OSError, ConnectionError, RuntimeError)` tuple the middleware catches at
+`:93-99`. So a conforming store/cache backend that reports failure via
+`Err(...)` (per its own contract) rather than by raising produces an
+**uncaught `UnwrapError`** that propagates straight past the intended
+fail-open path — the opposite of the behavior one line above in the same
+function. Two independent bugs compounding into one: the fail-open design
+itself (debatable but deliberate) plus a code-level violation of the
+project's `unwrap()`-without-guard rule that can silently invert it into a
+crash instead of a pass-through.
+
+**§60 — `DatabaseIdempotencyStore._placeholder` claims dialect-awareness, is hardcoded `"?"` (Low).**
+`lexigram-resilience/src/lexigram/resilience/idempotency/database.py:237-240`
+docstring: `"SQL parameter placeholder — ``?`` for SQLite; ``$1``-style for
+Postgres"`; implementation: `return "?"` unconditionally. Traced through to
+`lexigram-sql/src/lexigram/sql/backends/_postgres_connection.py:69-86`,
+which passes the query string straight to `asyncpg.execute(query, *params)`
+with no placeholder-translation layer anywhere in `lexigram-sql` (grepped
+for `paramstyle`/`qmark`/`$1`/translation helpers — none found). `asyncpg`
+requires native `$1, $2, ...` and rejects `?`, so `DatabaseIdempotencyStore`
+against Postgres fails every query with a syntax/binding error — loud
+failure, not silent corruption, but a real contradiction of the documented
+Postgres-support claim. **Sharpened during spec-writing (2026-08-18):** the
+fix is deeper than the property alone. All six call sites translate SQL via
+`<CONST>.replace("?", self._placeholder)` — a blind string replace that
+substitutes the *same* value at every occurrence. `_SET_SQL` has 4 `?`s and
+`_ACQUIRE_SQL` has 3, so even a corrected `_placeholder` returning `"$1"`
+would produce `VALUES ($1, $1, $1, $1)` instead of `VALUES ($1, $2, $3,
+$4)` — `set()`/`acquire()` (the two write paths) need a real sequential
+`?`→`$N` translator, not just a dialect-aware property. See spec for full
+design.
+
+**Verified-clean surfaces (negatives):** `lexigram-ai-evaluation` — proper
+`Result` guards throughout, no cross-package/relative imports (one
+theoretical ReDoS caveat in `evaluators/criteria.py` with no found
+attacker-reachable path, criteria are developer-authored config everywhere
+checked). `lexigram-ai-feedback` — parameterized SQL, clean cache
+write-through, no cross-package/relative imports (one dead-code rough edge:
+`middleware/middleware.py`'s example endpoint factory raises unhandled
+`KeyError` on bad input, but is wired nowhere outside its own tests).
+`lexigram-ai-governance` billing/ledger/channels/logs/audit persistence —
+fully parameterized SQL, every other `.unwrap()` site properly guarded.
+`lexigram-testing` — all 8 `.unwrap()` sites correctly guarded (expected
+for test-assertion helpers), no eval/exec/pickle/subprocess, real
+`PasswordHasher` used (no auth-bypass leak into consumers); architecture
+note only: eager top-level imports from `lexigram-auth`/`lexigram-cache`/
+`lexigram-secrets` beyond the one documented `lexigram-sql` exception, all
+gated behind optional extras — a documentation gap, not a functional one.
+`lexigram-resilience` `retry/`, `circuit/`, in-memory `idempotency/store.py`
++ `database.py` SQL, `rate_limiter/distributed.py`, `bulkhead/limiter.py` —
+all independently verified clean (crypto-strong jitter, bounded
+retries/semaphores, parameterized SQL, safe JSON deserialization, no raw
+error leakage from circuit-state introspection).
+
+**Recurring shapes (§50-60):** §50 is the same "except-clause defaults to
+allow" fail-open family as Round 9 §48 and Round 3 §29 — here compounded by
+the fact that the enforcement it disables (budget/RPM caps) has a real,
+live caller this time, not a hypothetical one. §51/§57 are both the
+"architecture rule fixed at the import level, forgotten at the packaging/
+metadata level" shape — a new variant not seen in prior rounds. §52 is a
+new shape for this audit: observability/tracing infrastructure that
+faithfully forwards whatever payload it's given, with redaction assumed to
+happen elsewhere but enforced nowhere. §53 is the "unvalidated file path
+from a caller-supplied string" family, same shape as Round 9's storage/KV
+traversal (§46) and Round 4's SSRF fetch sites, applied to a worker/queue
+entry point instead of an HTTP one. §54/§58 are both "config knob or
+public API that looks load-bearing and is not" — §54 a silently-ignored
+flag, §58 a decorator that cannot ever succeed by construction. §55 is the
+single fail-open exception in an otherwise consistently fail-closed
+package — an admin-misconfiguration trigger, not attacker-controlled,
+matching the Round 10 §55/Round 9 pattern of "one path breaks an
+otherwise-clean design." §56 is the same unauthenticated-health-endpoint
+pattern already fixed once in `lexigram-admin` (Round 6 §31), recurring in
+a sibling package that was never touched by that fix. §59 is the sharpest
+finding of the round: a deliberate, documented fail-open safety valve
+silently inverted into an unhandled crash by the project's own
+`unwrap()`-without-`is_ok()` rule being violated one line inside the same
+function that implements the fail-open — the clearest instance yet of two
+individually-defensible patterns combining into a real defect.
+
+---
+
+## 12b. Round 11 — Findings Only (No Specs/Plans Written Yet)
+
+Triggered by "review other areas we havent covered yet." Before dispatching agents, the
+target list was scoped by reading the tracker's own coverage (§1 Area Summary,
+full Round 9 section) rather than trusting a naive per-package-name grep — the grep's
+first pass mislabeled `lexigram-graphql`, `lexigram-ai-guard`, `lexigram-ai-rag`,
+`lexigram-ai-relay`, `lexigram-multimedia-*`, and `lexigram-web` as uncovered, when in
+fact they're covered under human-readable names ("GraphQL," "AI guard," "Media-upload,"
+"AI relay / worker / MCP trust boundary") in earlier rounds. After that correction, 3
+parallel background exploration agents swept the 9 packages genuinely untouched by any
+prior round: `lexigram-ai` (core, not the `ai-*` extensions already covered),
+`lexigram-audit`, `lexigram-events`, `lexigram-workflow`, `lexigram-queue`,
+`lexigram-tasks`, `lexigram-testing`, `lexigram-ai-evaluation`, `lexigram-ai-feedback`.
+
+Per this audit's standing verification discipline, every high/critical-severity claim
+across all three agents' reports was personally re-checked against live source before
+being written up here. Unlike Round 10 (which caught one false agent claim), **every
+single spot-check this round confirmed exactly as reported — zero false claims found.**
+Lower-severity findings (marked below) were not individually re-verified given that
+100% track record, consistent with how Round 10's write-up also didn't re-check every
+claim, only the most consequential ones.
+
+### Findings table
+
+| § | Package | Finding | Severity | Spec |
+|---|---|---|---|---|
+| 61 | lexigram-ai | Governance DI register/boot-ordering bug — `gov_persistence` wiring built during `register()` always sees pre-boot `None` for `_database_provider`/`_cache_backend`; entry-point double-registration silently overwrites the correctly-wired instance | High | Not yet written |
+| 62 | lexigram-ai-evaluation | Fail-open scoring on empty reference set | Medium | Not yet written |
+| 63 | lexigram-ai-feedback | No tenant/user scoping on feedback records | Medium | Not yet written |
+| 64 | lexigram-ai-feedback | `FeedbackSystemWithResultPattern` is a fake-persistence stub — always returns `Ok(...)`, never stores, `get_feedback()` always returns `Ok([])`; publicly exported in `__all__` alongside the real service | High | Not yet written |
+| 65 | lexigram-ai-feedback | No-authz endpoint / unenforced `MAX_FEEDBACK_TEXT_LENGTH` and `MAX_CONTEXT_SIZE` constants (declared, never read) | Medium | Not yet written |
+| 66 | lexigram-audit | Tamper-verification is a permanent no-op — `verify_recent()` unconditionally returns `[]`, `verify_entry()` unconditionally returns `True`; admin UI's "verified" flag is therefore always green | Critical | Not yet written |
+| 67 | lexigram-audit | `purge_expired()` counts expired entries but never calls any store delete method — retention purge silently doesn't delete anything | High | Not yet written |
+| 68 | lexigram-audit | Blind `except` in log/query path | Medium | Not yet written |
+| 69 | lexigram-events | WebSocket streaming endpoint has no auth check, unconditionally accepts connections, `subscribe_all` has no tenant/event filtering hook | Critical | Not yet written |
+| 70 | lexigram-events | `subscribe()`'s `event_filter` parameter is silently discarded (`_ = event_filter`, explicit "not implemented" comment) — filtering was never built despite the parameter existing in the public API | High | Not yet written |
+| 71 | lexigram-events | Unbounded idempotent-decorator cache / unvalidated `table_name` | Medium | Not yet written |
+| 72 | lexigram-queue | Default driver (`InMemoryQueue`) has no backpressure/`max_in_flight` limit, unlike every other backend (Kafka/SQS/Azure/GCP) — unbounded task spawning under load | High | Not yet written |
+| 73 | lexigram-queue | `RedisQueue`'s listener invokes handlers inline inside its single long-running loop with a bare `raise` on failure — first handler exception permanently kills consumption for the entire topic (poison-message DoS), unlike other backends' per-message task isolation | High | Not yet written |
+| 74 | lexigram-queue | `TransactionalOutbox` is pure in-memory — zero DB persistence despite the name/contract implying durability | High | Not yet written |
+| 75 | lexigram-queue | Dangling admin handler reference | Low | Not yet written |
+| 76 | lexigram-tasks | `persistence.py` docstrings present `LockManager` as suitable for distributed/multi-instance leader election; `LockManager`'s own docstring explicitly states it is process-local only, with no cross-process or cross-host guarantees — direct contradiction | High | Not yet written |
+| 77 | lexigram-tasks | `IdempotencyManager.check_duplicate()` treats a storage-layer `Err` as a truthy "existing record" (no `is_ok()` guard), then does unguarded `existing["task_id"]` subscript access on the raw `Err` object — produces an unrelated `TypeError` instead of a typed error | Medium | Not yet written |
+| 78 | lexigram-tasks | `BackgroundTaskManager._register()` unconditionally registers `task.add_done_callback(self._names.pop)` while only conditionally inserting into `self._names` (`if name is not None`) — nameless tasks completing raises `KeyError` inside the done-callback | Medium | Not yet written |
+| 79 | lexigram-workflow | `store_database.py`'s `list_by_stage()` escapes quotes for `stage_id`/`tenant_id` but interpolates them (and `LIMIT`) into the SQL string via raw f-string rather than parameterized `?` placeholders — contrasts with sibling methods (`evict()`) in the same file that correctly parameterize | Medium | Not yet written |
+
+`lexigram-testing` produced no findings (see "Verified-clean surfaces" below).
+
+### Verified-clean surfaces
+
+- `lexigram-testing`'s fakes — reviewed and confirmed clean; no findings.
+- `lexigram-ai-evaluation` — confirmed no LLM-as-judge or prompt-injection surface exists in this package (a plausible-sounding risk that turned out not to apply here).
+- `lexigram-queue`'s Kafka/SQS/Azure Service Bus/GCP Pub/Sub backends — all implement proper `max_in_flight`-based backpressure with per-message task isolation (contrast §72/§73, which are specific to the in-memory default and Redis backend).
+- `lexigram-workflow`'s dynamic-code-execution and checkpoint-deserialization surfaces — reviewed, clean (contrast §79, which is a narrower SQL-interpolation issue in one query method, not a deserialization/eval risk).
+- Fernet encryption usage and JSON-only serialization — confirmed consistent and correct across all 9 packages swept this round.
+
+### Recurring shapes
+
+- **"Declared but never enforced/consulted"** (established in Round 10 §54, §58) recurs three more times: `subscribe()`'s discarded `event_filter` (§70), the idempotency `ttl` parameter in `@idempotent` (never read, folded into §70's writeup scope), and `lexigram-ai-feedback`'s `MAX_FEEDBACK_TEXT_LENGTH`/`MAX_CONTEXT_SIZE` constants (§65) — a parameter or constant exists in the public API/config surface, reads as a real control, and is quietly never wired to anything.
+- **"Security control built in isolation, never wired live"** — a sharper variant of fail-open worth naming as its own shape going forward: distinct from a simple except-clause defaulting to allow, this covers whole subsystems where the individual pieces (checksum computation, HMAC math, persistence backend classes, DI registration blocks) are each correctly built, but the wiring that would make the feature *live end-to-end* was never connected. Covers §61 (governance persistence/audit wiring dead due to DI ordering), §66/§67 (audit tamper-verification and purge, both no-ops despite correctly-implemented HMAC/store code existing alongside them).
+- **"Fake success" / silent data loss as a fail-open variant** — §64's `FeedbackSystemWithResultPattern` doesn't swallow an exception, it silently discards data while returning `Ok(...)` claiming success, and always returns `Ok([])` on read. A new manifestation of the same root concern (code claims a guarantee it doesn't provide) worth watching for elsewhere.
+- **DI container lifecycle ordering** — newly surfaced this round (§61): the orchestrator runs `register_all()` for every provider before running `boot_only()` for any provider. Code in a provider's `register()` that depends on state only set during that same provider's own `boot()` will always see the pre-boot default. Distinct from the "except defaults to allow" family; worth checking other providers for the same shape in a future round.
+- **`Result` truthiness footgun** — §77 is a second instance (after Round 10 §59) of an `Err` object being treated as truthy because `Err` has no `__bool__` override; both instances stem from skipping the mandatory `is_ok()` check before consuming a `Result`.
+- **No tenant-scoping primitive at the transport layer** — §69's WebSocket endpoint accepting any connection with no auth check and no per-connection filtering is a novel variant of the access-control gaps found in earlier rounds: previous findings were about a *check being skipped*, this one is about no scoping mechanism existing at all at this layer.
 
 ---
 

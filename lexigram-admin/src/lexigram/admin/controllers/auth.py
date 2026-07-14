@@ -305,6 +305,9 @@ class AuthController(AdminController):
 
             request.session["admin_user_id"] = auth_result.user_id
             request.session["admin_user_email"] = auth_result.email
+            request.session["admin_session_expires_at"] = (
+                auth_result.expires_at.isoformat()
+            )
             if hasattr(auth_result, "session_id"):
                 request.session["session_id"] = auth_result.session_id
             self._metrics.record_login(status="success")
@@ -476,6 +479,7 @@ class AuthController(AdminController):
         next_url = request.session.get("mfa_pending_next", "/admin/")
         request.session["admin_user_id"] = auth_result.user_id
         request.session["admin_user_email"] = auth_result.email
+        request.session["admin_session_expires_at"] = auth_result.expires_at.isoformat()
         request.session["session_id"] = auth_result.session_id
         for key in (
             "mfa_pending_user_id",

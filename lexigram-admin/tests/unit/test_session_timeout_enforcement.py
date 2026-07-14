@@ -9,6 +9,7 @@ Covers:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,6 +19,10 @@ from lexigram.admin.auth.models import GUEST_USER
 from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
 from lexigram.admin.middleware.auth import AdminAuthMiddleware
 from lexigram.contracts import AuthenticatedUserProtocol
+from lexigram.primitives import clock
+from lexigram.testing.clock import FixedClock
+
+FIXED_NOW = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -139,10 +144,168 @@ async def test_missing_session_service_falls_back(
         user_store=mock_user_store,
         session_service=None,
     )
-    request = _make_request({"admin_user_id": "u1"})
-    user = await middleware._load_user(request)
+    request = _make_request(
+        {
+            "admin_user_id": "u1",
+            "admin_session_expires_at": datetime(2999, 1, 1, tzinfo=UTC).isoformat(),
+        }
+    )
+    with clock.use(FixedClock(FIXED_NOW)):
+        user = await middleware._load_user(request)
     assert user is fake_user
     mock_user_store.get_by_id.assert_awaited_once_with("u1")
+
+
+@pytest.mark.asyncio
+async def test_stamped_fallback_loads_unexpired_user(
+    mock_user_store: MagicMock,
+) -> None:
+    """Service-less fallback with a valid, unexpired stamp loads the user."""
+    fake_user = MagicMock(spec=AuthenticatedUserProtocol)
+    fake_user.user_id = "u1"
+    fake_user.is_active = True
+    mock_user_store.get_by_id.return_value = fake_user
+
+    middleware = AdminAuthMiddleware(
+        app=MagicMock(),
+        user_store=mock_user_store,
+        session_service=None,
+    )
+    request = _make_request(
+        {
+            "admin_user_id": "u1",
+            "admin_session_expires_at": datetime(2999, 1, 1, tzinfo=UTC).isoformat(),
+        }
+    )
+    with clock.use(FixedClock(FIXED_NOW)):
+        user = await middleware._load_user(request)
+    assert user is fake_user
+
+
+@pytest.mark.asyncio
+async def test_expired_stamp_returns_guest_and_clears(
+    mock_user_store: MagicMock,
+) -> None:
+    """Expired stamp: GUEST_USER and the session cookie is cleared."""
+    fake_user = MagicMock(spec=AuthenticatedUserProtocol)
+    fake_user.is_active = True
+    mock_user_store.get_by_id.return_value = fake_user
+
+    middleware = AdminAuthMiddleware(
+        app=MagicMock(),
+        user_store=mock_user_store,
+        session_service=None,
+    )
+    request = _make_request(
+        {
+            "admin_user_id": "u1",
+            "admin_session_expires_at": datetime(2020, 1, 1, tzinfo=UTC).isoformat(),
+        }
+    )
+    with clock.use(FixedClock(FIXED_NOW)):
+        user = await middleware._load_user(request)
+    assert user is GUEST_USER
+    assert not request.session
+
+
+@pytest.mark.asyncio
+async def test_missing_stamp_returns_guest_and_clears(
+    mock_user_store: MagicMock,
+) -> None:
+    """Pre-fix legacy cookie without a stamp is rejected fail-closed."""
+    fake_user = MagicMock(spec=AuthenticatedUserProtocol)
+    fake_user.is_active = True
+    mock_user_store.get_by_id.return_value = fake_user
+
+    middleware = AdminAuthMiddleware(
+        app=MagicMock(),
+        user_store=mock_user_store,
+        session_service=None,
+    )
+    request = _make_request({"admin_user_id": "u1"})
+    with clock.use(FixedClock(FIXED_NOW)):
+        user = await middleware._load_user(request)
+    assert user is GUEST_USER
+    assert not request.session
+    mock_user_store.get_by_id.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_malformed_stamp_returns_guest_and_clears(
+    mock_user_store: MagicMock,
+) -> None:
+    """An unparseable stamp is rejected fail-closed."""
+    fake_user = MagicMock(spec=AuthenticatedUserProtocol)
+    fake_user.is_active = True
+    mock_user_store.get_by_id.return_value = fake_user
+
+    middleware = AdminAuthMiddleware(
+        app=MagicMock(),
+        user_store=mock_user_store,
+        session_service=None,
+    )
+    request = _make_request(
+        {
+            "admin_user_id": "u1",
+            "admin_session_expires_at": "not-a-date",
+        }
+    )
+    with clock.use(FixedClock(FIXED_NOW)):
+        user = await middleware._load_user(request)
+    assert user is GUEST_USER
+    assert not request.session
+
+
+@pytest.mark.asyncio
+async def test_naive_stamp_returns_guest_and_clears(
+    mock_user_store: MagicMock,
+) -> None:
+    """A timezone-naive stamp cannot be compared and is rejected."""
+    fake_user = MagicMock(spec=AuthenticatedUserProtocol)
+    fake_user.is_active = True
+    mock_user_store.get_by_id.return_value = fake_user
+
+    middleware = AdminAuthMiddleware(
+        app=MagicMock(),
+        user_store=mock_user_store,
+        session_service=None,
+    )
+    request = _make_request(
+        {
+            "admin_user_id": "u1",
+            "admin_session_expires_at": "2026-06-01T12:00:00",
+        }
+    )
+    with clock.use(FixedClock(FIXED_NOW)):
+        user = await middleware._load_user(request)
+    assert user is GUEST_USER
+    assert not request.session
+
+
+@pytest.mark.asyncio
+async def test_service_bound_without_session_id_returns_guest(
+    mock_session_service: AdminSessionServiceProtocol,
+    mock_user_store: MagicMock,
+) -> None:
+    """D2: service-bound + no session_id never consults admin_user_id."""
+    mock_user_store.get_by_id.return_value = MagicMock(spec=AuthenticatedUserProtocol)
+
+    middleware = AdminAuthMiddleware(
+        app=MagicMock(),
+        user_store=mock_user_store,
+        session_service=mock_session_service,
+    )
+    request = _make_request(
+        {
+            "admin_user_id": "u1",
+            "admin_session_expires_at": datetime(2999, 1, 1, tzinfo=UTC).isoformat(),
+        }
+    )
+    with clock.use(FixedClock(FIXED_NOW)):
+        user = await middleware._load_user(request)
+    assert user is GUEST_USER
+    mock_session_service.get_session.assert_not_awaited()
+    mock_user_store.get_by_id.assert_not_awaited()
 
 
 @pytest.mark.asyncio

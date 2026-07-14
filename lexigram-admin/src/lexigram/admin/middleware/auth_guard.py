@@ -50,6 +50,13 @@ _BYPASS_TOKEN_PREFIXES: tuple[str, ...] = (
     "/admin/password-reset/",
 )
 
+# Exact public routes derived from _BYPASS_SUFFIXES — full-path membership
+# only, never suffix matching, so resource names like "login", "register",
+# "health", or "setup" cannot shadow protected admin routes.
+_BYPASS_ROUTES: frozenset[str] = frozenset(
+    f"/admin{s.rstrip('/')}" for s in _BYPASS_SUFFIXES
+)
+
 
 class AdminAuthGuardMiddleware:
     """Pure ASGI middleware that enforces session-based authentication.
@@ -140,9 +147,9 @@ class AdminAuthGuardMiddleware:
         Returns:
             True when the path maps to a public endpoint or static asset.
         """
-        for suffix in _BYPASS_SUFFIXES:
-            if path == suffix or path.endswith(suffix):
-                return True
+        stripped = path.rstrip("/") or path
+        if stripped in _BYPASS_ROUTES:
+            return True
 
         if any(path.startswith(prefix) for prefix in _BYPASS_TOKEN_PREFIXES):
             return True

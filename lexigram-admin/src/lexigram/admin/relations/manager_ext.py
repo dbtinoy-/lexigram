@@ -10,6 +10,7 @@ from typing import Any
 from lexigram.admin.exceptions import PermissionDeniedError
 from lexigram.admin.relations.manager import AbstractRelationManager
 from lexigram.result import Ok, Result
+from lexigram.ui import el, render_to_string
 
 
 class RelationManager(AbstractRelationManager):
@@ -80,38 +81,79 @@ class RelationManager(AbstractRelationManager):
         rel_name = self.get_relationship_name()
         parent_id = self.parent_id
 
-        rows_html = ""
+        rows: list[Any] = []
         for item in items:
             item_id = getattr(item, "id", str(id(item)))
-            row_cells = ""
+            cells: list[Any] = []
             cols = self.table()
             if cols:
                 for col in cols:
                     value = getattr(item, col.name, "") if hasattr(col, "name") else ""
-                    row_cells += f"<td>{value}</td>"
+                    cells.append(el("td", value))
             else:
-                row_cells = f"<td>{item}</td>"
+                cells.append(el("td", item))
 
-            actions_html = ""
+            actions: list[Any] = []
             if self.inline_edit:
                 edit_url = f"/admin/{resource_name}/{parent_id}/relations/{rel_name}/{item_id}/edit"
-                actions_html += f'<a href="{edit_url}" hx-get="{edit_url}" hx-target="closest tr" hx-swap="outerHTML">Edit</a> '
+                actions.append(
+                    el(
+                        "a",
+                        "Edit",
+                        href=edit_url,
+                        hx_get=edit_url,
+                        hx_target="closest tr",
+                        hx_swap="outerHTML",
+                    )
+                )
+                actions.append(" ")
             if self.inline_delete:
                 delete_url = (
                     f"/admin/{resource_name}/{parent_id}/relations/{rel_name}/{item_id}"
                 )
-                actions_html += f'<a href="{delete_url}" hx-delete="{delete_url}" hx-confirm="Delete this record?" hx-target="closest tr" hx-swap="outerHTML">Delete</a>'
-            if actions_html:
-                row_cells += f"<td>{actions_html}</td>"
+                actions.append(
+                    el(
+                        "a",
+                        "Delete",
+                        href=delete_url,
+                        hx_delete=delete_url,
+                        hx_confirm="Delete this record?",
+                        hx_target="closest tr",
+                        hx_swap="outerHTML",
+                    )
+                )
+            if actions:
+                cells.append(el("td", *actions))
 
-            rows_html += f"<tr>{row_cells}</tr>"
+            rows.append(el("tr", *cells))
 
-        header_html = ""
+        header: list[Any] = []
         if self.inline_create:
             create_url = f"/admin/{resource_name}/{parent_id}/relations/{rel_name}/new"
-            header_html = f'<div><a href="{create_url}" hx-get="{create_url}" hx-target="this" hx-swap="outerHTML">+ Add {rel_name}</a></div>'
+            header.append(
+                el(
+                    "div",
+                    el(
+                        "a",
+                        "+ Add ",
+                        rel_name,
+                        href=create_url,
+                        hx_get=create_url,
+                        hx_target="this",
+                        hx_swap="outerHTML",
+                    ),
+                )
+            )
 
-        return f'<div class="relation-panel" id="relation-panel-{rel_name}">{header_html}<table><tbody>{rows_html}</tbody></table></div>'
+        return render_to_string(
+            el(
+                "div",
+                *header,
+                el("table", el("tbody", *rows)),
+                class_="relation-panel",
+                id=f"relation-panel-{rel_name}",
+            )
+        )
 
 
 __all__ = [

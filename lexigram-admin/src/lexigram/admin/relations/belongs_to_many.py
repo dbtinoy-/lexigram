@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 from lexigram.admin.data.query import QuerySpec
 from lexigram.admin.relations.errors import RelationPersistenceError
 from lexigram.admin.relations.manager_ext import RelationManager
-from lexigram.serialization import loads_str
+from lexigram.serialization import dumps_str, loads_str
+from lexigram.ui import el, render_to_string
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -214,85 +215,168 @@ class BelongsToManyRelationManager(RelationManager):
         attached_ids = await self.get_attached_ids()
         rel_name = self.get_relationship_name()
 
-        rows_html = ""
+        rows: list[Any] = []
         for item in items:
             item_id = str(getattr(item, "id", ""))
             is_attached = item_id in attached_ids
             label = str(getattr(item, "name", item_id))
 
             pivot_data = await self.get_pivot_data(item_id) if is_attached else None
-            pivot_cells = self._render_pivot_cells(item_id, pivot_data)
+            rows.append(
+                self._build_row(
+                    resource_name,
+                    item_id,
+                    label,
+                    is_attached,
+                    self._render_pivot_cells(item_id, pivot_data),
+                )
+            )
 
-            checked = "checked" if is_attached else ""
-            row = f"""<tr class="{"bg-primary-50 dark:bg-primary-900/20" if is_attached else ""}">
-                <td class="px-4 py-2">
-                    <input type="checkbox" class="belongs-to-many-checkbox rounded border-border text-primary-600 focus:ring-primary-500"
-                           data-related-id="{item_id}" {checked}
-                           hx-post="/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/toggle"
-                           hx-vals='{{"related_id": "{item_id}"}}'
-                           hx-target="closest tr" hx-swap="outerHTML" />
-                </td>
-                <td class="px-4 py-2 text-sm text-foreground">{label}</td>
-                {pivot_cells}
-                <td class="px-4 py-2 text-sm text-muted-foreground">{item_id}</td>
-            </tr>"""
-            rows_html += row
+        header = el(
+            "div",
+            el(
+                "h3",
+                rel_name.replace("_", " ").title(),
+                class_="text-lg font-medium text-foreground",
+            ),
+            el(
+                "div",
+                el(
+                    "input",
+                    type="text",
+                    class_="px-3 py-1.5 text-sm border rounded-lg",
+                    placeholder="Search...",
+                    id=f"search-{rel_name}",
+                    hx_trigger="keyup changed delay:300ms",
+                    hx_get=f"/admin/{resource_name}/{self.parent_id}/relations/{rel_name}",
+                    hx_target=f"#relation-panel-{rel_name}",
+                    hx_select=".relation-panel",
+                ),
+                class_="flex gap-2",
+            ),
+            class_="flex items-center justify-between mb-4",
+        )
 
-        header = f"""<div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-foreground">{rel_name.replace("_", " ").title()}</h3>
-            <div class="flex gap-2">
-                <input type="text" class="px-3 py-1.5 text-sm border rounded-lg"
-                       placeholder="Search..." id="search-{rel_name}"
-                       hx-trigger="keyup changed delay:300ms"
-                       hx-get="/admin/{resource_name}/{self.parent_id}/relations/{rel_name}"
-                       hx-target="#relation-panel-{rel_name}" hx-select=".relation-panel" />
-            </div>
-        </div>"""
+        table = el(
+            "table",
+            el(
+                "thead",
+                el(
+                    "tr",
+                    el(
+                        "th",
+                        "Attach",
+                        class_="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase",
+                    ),
+                    el(
+                        "th",
+                        "Record",
+                        class_="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase",
+                    ),
+                    *self._pivot_header_elements(),
+                    el(
+                        "th",
+                        "ID",
+                        class_="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase",
+                    ),
+                ),
+                class_="bg-muted dark:bg-card",
+            ),
+            el("tbody", *rows, class_="divide-y divide-border"),
+            class_="min-w-full divide-y divide-border",
+        )
 
-        table = f"""<table class="min-w-full divide-y divide-border">
-            <thead class="bg-muted dark:bg-card">
-                <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Attach</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Record</th>
-                    {self._render_pivot_headers()}
-                    <th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">ID</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-border">{rows_html}</tbody>
-        </table>"""
+        return render_to_string(
+            el(
+                "div",
+                header,
+                table,
+                el(
+                    "button",
+                    "Save",
+                    type="button",
+                    class_="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700",
+                    hx_post=f"/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/sync",
+                    hx_target=f"#relation-panel-{rel_name}",
+                    hx_swap="outerHTML",
+                ),
+                class_="relation-panel p-4",
+                id=f"relation-panel-{rel_name}",
+            )
+        )
 
-        return f"""<div class="relation-panel p-4" id="relation-panel-{rel_name}">
-            {header}
-            {table}
-            <div class="mt-3 flex gap-2">
-                <button type="button" class="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
-                        hx-post="/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/sync"
-                        hx-target="#relation-panel-{rel_name}" hx-swap="outerHTML">Save</button>
-            </div>
-        </div>"""
+    def _pivot_header_elements(self) -> list[Any]:
+        """Return table header cell elements for the pivot columns."""
+        return [
+            el(
+                "th",
+                c.replace("_", " ").title(),
+                class_="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase",
+            )
+            for c in self.pivot_columns
+        ]
 
     def _render_pivot_headers(self) -> str:
-        if not self.pivot_columns:
-            return ""
-        return "".join(
-            f'<th class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">{c.replace("_", " ").title()}</th>'
-            for c in self.pivot_columns
+        """Render the pivot column table headers as HTML."""
+        return render_to_string(self._pivot_header_elements())
+
+    def _build_row(
+        self,
+        resource_name: str,
+        item_id: str,
+        label: str,
+        is_attached: bool,
+        pivot_cells: list[Any],
+    ) -> Any:
+        """Build a single belongs-to-many row element."""
+        rel_name = self.get_relationship_name()
+        return el(
+            "tr",
+            el(
+                "td",
+                el(
+                    "input",
+                    type="checkbox",
+                    class_="belongs-to-many-checkbox rounded border-border text-primary-600 focus:ring-primary-500",
+                    data_related_id=item_id,
+                    checked="checked" if is_attached else None,
+                    hx_post=f"/admin/{resource_name}/{self.parent_id}/relations/{rel_name}/toggle",
+                    hx_vals=dumps_str({"related_id": item_id}),
+                    hx_target="closest tr",
+                    hx_swap="outerHTML",
+                ),
+            ),
+            el("td", label, class_="px-4 py-2 text-sm text-foreground"),
+            *pivot_cells,
+            el("td", item_id, class_="px-4 py-2 text-sm text-muted-foreground"),
+            class_="bg-primary-50 dark:bg-primary-900/20" if is_attached else None,
         )
 
     def _render_pivot_cells(
         self, related_id: str, pivot_data: dict[str, Any] | None
-    ) -> str:
+    ) -> list[Any]:
+        """Return pivot cell elements for a single related record."""
         if not self.pivot_columns:
-            return ""
-        cells = ""
+            return []
+        cells: list[Any] = []
         for col in self.pivot_columns:
             value = (pivot_data or {}).get(col, "")
-            cells += f"""<td class="px-4 py-2">
-                <input type="text" class="px-2 py-1 text-sm border rounded w-full"
-                       value="{value}" name="pivot_{col}_{related_id}"
-                       hx-post="/admin/{self.parent_id}/relations/{self.get_relationship_name()}/pivot/{related_id}"
-                       hx-trigger="change" hx-swap="none" />
-            </td>"""
+            cells.append(
+                el(
+                    "td",
+                    el(
+                        "input",
+                        type="text",
+                        class_="px-2 py-1 text-sm border rounded w-full",
+                        value=value,
+                        name=f"pivot_{col}_{related_id}",
+                        hx_post=f"/admin/{self.parent_id}/relations/{self.get_relationship_name()}/pivot/{related_id}",
+                        hx_trigger="change",
+                        hx_swap="none",
+                    ),
+                    class_="px-4 py-2",
+                )
+            )
         return cells
 
     def get_pivot_routes(self, resource_name: str) -> list[Any]:
@@ -368,19 +452,14 @@ class BelongsToManyRelationManager(RelationManager):
         is_attached = related_id in attached_ids
         label = str(getattr(item, "name", related_id))
         pivot_data = await self.get_pivot_data(related_id) if is_attached else None
-        pivot_cells = self._render_pivot_cells(related_id, pivot_data)
-        checked = "checked" if is_attached else ""
-
-        row = f"""<tr class="{"bg-primary-50 dark:bg-primary-900/20" if is_attached else ""}">
-            <td class="px-4 py-2">
-                <input type="checkbox" class="belongs-to-many-checkbox rounded border-border text-primary-600 focus:ring-primary-500"
-                       data-related-id="{related_id}" {checked}
-                       hx-post="/admin/{resource_name}/{self.parent_id}/relations/{self.get_relationship_name()}/toggle"
-                       hx-vals='{{"related_id": "{related_id}"}}'
-                       hx-target="closest tr" hx-swap="outerHTML" />
-            </td>
-            <td class="px-4 py-2 text-sm text-foreground">{label}</td>
-            {pivot_cells}
-            <td class="px-4 py-2 text-sm text-muted-foreground">{related_id}</td>
-        </tr>"""
-        return HTMLResponse(row)
+        return HTMLResponse(
+            render_to_string(
+                self._build_row(
+                    resource_name,
+                    related_id,
+                    label,
+                    is_attached,
+                    self._render_pivot_cells(related_id, pivot_data),
+                )
+            )
+        )

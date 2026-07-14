@@ -44,19 +44,13 @@ class TestAdminAuthServiceMfa:
         )
         return svc, attempt_service, audit_service, session_service, mfa_service
 
-    def _event_types(
-        self, audit_service: MagicMock
-    ) -> list[AdminSecurityEventType]:
-        return [
-            c.kwargs["event_type"] for c in audit_service.log_event.await_args_list
-        ]
+    def _event_types(self, audit_service: MagicMock) -> list[AdminSecurityEventType]:
+        return [c.kwargs["event_type"] for c in audit_service.log_event.await_args_list]
 
     @pytest.mark.asyncio
     async def test_authenticate_returns_mfa_required_when_enabled(
         self,
-        services: tuple[
-            AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock
-        ],
+        services: tuple[AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock],
     ) -> None:
         svc, attempt_service, audit_service, session_service, mfa_service = services
         mfa_service.is_enabled = AsyncMock(return_value=True)
@@ -110,17 +104,19 @@ class TestAdminAuthServiceMfa:
         )
 
         assert result.is_ok()
-        assert result.unwrap().mfa_required is False
+        auth = result.unwrap()
+        assert auth.mfa_required is False
+        assert auth.roles == ["admin"]
         session_service.create_session.assert_awaited_once()
+        create_call = session_service.create_session.await_args
+        assert create_call.kwargs["roles"] == ["admin"]
         events = self._event_types(audit_service)
         assert AdminSecurityEventType.MFA_CHALLENGE_ISSUED not in events
 
     @pytest.mark.asyncio
     async def test_authenticate_skips_challenge_when_disabled(
         self,
-        services: tuple[
-            AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock
-        ],
+        services: tuple[AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock],
     ) -> None:
         svc, _, audit_service, session_service, mfa_service = services
         mfa_service.is_enabled = AsyncMock(return_value=False)
@@ -133,19 +129,20 @@ class TestAdminAuthServiceMfa:
         )
 
         assert result.is_ok()
-        assert result.unwrap().mfa_required is False
+        auth = result.unwrap()
+        assert auth.mfa_required is False
+        assert auth.roles == ["admin"]
+        create_call = session_service.create_session.await_args
+        assert create_call.kwargs["roles"] == ["admin"]
         session_service.create_session.assert_awaited_once()
-        assert (
-            AdminSecurityEventType.MFA_CHALLENGE_ISSUED
-            not in self._event_types(audit_service)
+        assert AdminSecurityEventType.MFA_CHALLENGE_ISSUED not in self._event_types(
+            audit_service
         )
 
     @pytest.mark.asyncio
     async def test_complete_mfa_login_success(
         self,
-        services: tuple[
-            AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock
-        ],
+        services: tuple[AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock],
     ) -> None:
         svc, attempt_service, audit_service, session_service, mfa_service = services
         mfa_service.verify_code = AsyncMock(return_value=Ok(True))
@@ -180,9 +177,7 @@ class TestAdminAuthServiceMfa:
     @pytest.mark.asyncio
     async def test_complete_mfa_login_invalid_code(
         self,
-        services: tuple[
-            AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock
-        ],
+        services: tuple[AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock],
     ) -> None:
         svc, attempt_service, audit_service, session_service, mfa_service = services
         mfa_service.verify_code = AsyncMock(return_value=Ok(False))
@@ -206,17 +201,14 @@ class TestAdminAuthServiceMfa:
             success=False,
             failure_reason="invalid_mfa_code",
         )
-        assert (
-            AdminSecurityEventType.MFA_CHALLENGE_FAILED
-            in self._event_types(audit_service)
+        assert AdminSecurityEventType.MFA_CHALLENGE_FAILED in self._event_types(
+            audit_service
         )
 
     @pytest.mark.asyncio
     async def test_complete_mfa_login_not_enabled(
         self,
-        services: tuple[
-            AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock
-        ],
+        services: tuple[AdminAuthService, MagicMock, MagicMock, MagicMock, MagicMock],
     ) -> None:
         svc, _, audit_service, session_service, mfa_service = services
         mfa_service.verify_code = AsyncMock(
@@ -239,9 +231,8 @@ class TestAdminAuthServiceMfa:
         assert result.is_err()
         assert isinstance(result.unwrap_err(), MfaNotEnabledError)
         session_service.create_session.assert_not_awaited()
-        assert (
-            AdminSecurityEventType.MFA_CHALLENGE_FAILED
-            in self._event_types(audit_service)
+        assert AdminSecurityEventType.MFA_CHALLENGE_FAILED in self._event_types(
+            audit_service
         )
 
     @pytest.mark.asyncio

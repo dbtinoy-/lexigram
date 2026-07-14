@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from starlette.datastructures import FormData
 from starlette.requests import Request
 
 from lexigram.admin.controllers.resource import ResourceController, ResourceMeta
-from lexigram.admin.data.data_source import QueryResult
+from lexigram.admin.data.data_source import QueryResult, SqlDataSource
 from lexigram.admin.exceptions import NotFoundError
 
 # ---------------------------------------------------------------------------
@@ -714,3 +714,81 @@ class TestResourceMeta:
         assert meta.default_sort == "created_at"
         assert meta.default_sort_order == "asc"
         assert meta.searchable_fields == ["name", "email"]
+
+
+# ---------------------------------------------------------------------------
+# Test: hostile identifier form fields surface as 400 (Round 7 finding 31)
+# ---------------------------------------------------------------------------
+
+
+class RecordingDb:
+    """Recording fake for the database provider surface used by SqlDataSource."""
+
+    def __init__(self) -> None:
+        self.fetch_one = AsyncMock(return_value={"id": 1})
+        self.fetch_all = AsyncMock(return_value=[])
+        self.execute = AsyncMock(return_value=1)
+
+
+class SqlGuardedController(ConcreteResourceController):
+    """Controller whose data layer is a real SqlDataSource over a fake provider."""
+
+    def __init__(self, db: RecordingDb, *, table_name: str = "users") -> None:
+        super().__init__(data_source=None)
+        self._db = db
+        self._table_name = table_name
+
+    def get_data_source(self) -> SqlDataSource[Any]:
+        if self._data_source is None:
+            self._data_source = SqlDataSource(db=self._db, table_name=self._table_name)  # type: ignore[arg-type]
+        return self._data_source  # type: ignore[return-value]
+
+
+class TestHostileIdentifierFieldsReturn400:
+    """Hostile form-field names must surface as 400, not SQL execution."""
+
+    HOSTILE_FIELD = "email) VALUES ('x',"
+
+    def setup_method(self) -> None:
+        self.db = RecordingDb()
+        self.controller = SqlGuardedController(self.db)
+
+    @pytest.mark.asyncio
+    async def test_create_hostile_field_name_returns_400(self) -> None:
+        request = _make_request(
+            "POST", "/admin/item", form_data={self.HOSTILE_FIELD: "value"}
+        )
+        response = await self.controller.create(request)
+        assert response.status_code == 400
+        assert b"Invalid SQL identifier" in response.body
+        self.db.fetch_one.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_create_benign_field_names_still_redirect(self) -> None:
+        request = _make_request("POST", "/admin/item", form_data={"name": "New Item"})
+        response = await self.controller.create(request)
+        assert response.status_code == 302
+        assert self.db.fetch_one.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_update_hostile_field_name_returns_400(self) -> None:
+        request = _make_request(
+            "PUT",
+            "/admin/item/1",
+            path_params={"id": "1"},
+            form_data={self.HOSTILE_FIELD: "x"},
+        )
+        response = await self.controller.update(request)
+        assert response.status_code == 400
+        assert b"Invalid SQL identifier" in response.body
+
+    @pytest.mark.asyncio
+    async def test_update_benign_field_names_still_redirect(self) -> None:
+        request = _make_request(
+            "PUT",
+            "/admin/item/1",
+            path_params={"id": "1"},
+            form_data={"name": "Renamed"},
+        )
+        response = await self.controller.update(request)
+        assert response.status_code == 302

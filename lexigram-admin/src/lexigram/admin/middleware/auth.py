@@ -6,6 +6,7 @@ request-scoped user authentication and authorization.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from starlette.requests import Request
@@ -17,6 +18,7 @@ from lexigram.admin.auth.store.base import AbstractAdminUserStore
 from lexigram.contracts import AuthenticatedUserProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.primitives import clock
 
 if TYPE_CHECKING:
     from lexigram.admin.auth.protocols import AdminSessionServiceProtocol
@@ -151,7 +153,11 @@ class AdminAuthMiddleware:
 
             # ── Session-service path (enforces TTL) ────────────────────
             session_id = request.session.get("session_id")
-            if session_id and self._session_service is not None:
+            if self._session_service is not None:
+                if not session_id:
+                    # Service-bound deployment without a service-managed
+                    # session: never consult the legacy fallback.
+                    return GUEST_USER
                 session_data = await self._session_service.get_session(session_id)
                 if session_data is None:
                     # Session expired or revoked — clear cookie
@@ -183,6 +189,18 @@ class AdminAuthMiddleware:
             # ── Legacy fallback (no session_service / no session_id) ───
             user_id = request.session.get("admin_user_id")
             if user_id:
+                expires_at_raw = request.session.get("admin_session_expires_at")
+                if expires_at_raw is None:
+                    request.session.clear()
+                    return GUEST_USER
+                try:
+                    expires_at = datetime.fromisoformat(expires_at_raw)
+                except ValueError:
+                    request.session.clear()
+                    return GUEST_USER
+                if expires_at.tzinfo is None or clock.now() >= expires_at:
+                    request.session.clear()
+                    return GUEST_USER
                 user_store = self.user_store
                 user = await user_store.get_by_id(user_id) if user_store else None
                 if user and user.is_active:

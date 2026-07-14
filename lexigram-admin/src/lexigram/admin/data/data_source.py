@@ -254,7 +254,7 @@ class SqlDataSource(DataSourceBase[T]):
         where_clauses: list[str] = []
         params: list[Any] = []
         for i, (field, value) in enumerate(filters.items(), 1):
-            where_clauses.append(f"{field} = ${i}")
+            where_clauses.append(f"{_quote_identifier(field)} = ${i}")
             params.append(value)
 
         if where_clauses:
@@ -293,7 +293,7 @@ class SqlDataSource(DataSourceBase[T]):
         placeholders = [f"${i}" for i in range(1, len(fields) + 1)]
         values = list(data.values())
         query = f"""
-            INSERT INTO {self.table_name} ({", ".join(fields)})
+            INSERT INTO {_quote_identifier(self.table_name)} ({", ".join(_quote_identifier(f) for f in fields)})
             VALUES ({", ".join(placeholders)})
             RETURNING *
         """
@@ -321,14 +321,15 @@ class SqlDataSource(DataSourceBase[T]):
             return None
         update_data = {k: v for k, v in data.items() if k != self.id_field}
         set_clauses = [
-            f"{field} = ${i}" for i, field in enumerate(update_data.keys(), 1)
+            f"{_quote_identifier(field)} = ${i}"
+            for i, field in enumerate(update_data.keys(), 1)
         ]
         values = list(update_data.values())
         values.append(item_id)
         query = f"""
-            UPDATE {self.table_name}
+            UPDATE {_quote_identifier(self.table_name)}
             SET {", ".join(set_clauses)}
-            WHERE {self.id_field} = ${len(values)}
+            WHERE {_quote_identifier(self.id_field)} = ${len(values)}
             RETURNING *
         """
         return await self.db.fetch_one(query, values)  # type: ignore[attr-defined]
