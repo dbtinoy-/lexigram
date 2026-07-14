@@ -160,7 +160,7 @@ class SearchService:
                 spec = self._index_spec(r)
                 if spec is not None and spec.index_name:
                     resources.append(r)
-        except Exception:  # noqa: S112
+        except Exception:  # noqa: S112, S110
             pass
         return resources
 

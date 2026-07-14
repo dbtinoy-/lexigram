@@ -227,7 +227,7 @@ class InMemoryProgressTracker:
 
 # Verify protocol conformance at import time (cheap structural check).
 def _assert_protocol_conformance() -> None:
-    assert isinstance(InMemoryProgressTracker(), ProgressTrackerProtocol)
+    assert isinstance(InMemoryProgressTracker(), ProgressTrackerProtocol)  # noqa: S101  # import-time protocol conformance
 
 
 _assert_protocol_conformance()

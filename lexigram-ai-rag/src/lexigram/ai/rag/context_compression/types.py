@@ -12,7 +12,7 @@ class CompressionStrategy(StrEnum):
     EXTRACTIVE = "extractive"
     ABSTRACTIVE = "abstractive"
     RERANKING = "reranking"
-    TOKEN_LIMIT = "token_limit"
+    TOKEN_LIMIT = "token_limit"  # noqa: S105  # strategy name, not a credential
     SEMANTIC_DEDUP = "semantic_dedup"
     HYBRID = "hybrid"
     LLMLINGUA2 = "llmlingua2"

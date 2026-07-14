@@ -20,7 +20,7 @@ class MigrationStatusWidgetHandler:
 
     def __init__(
         self,
-        migration_manager: MigrationManagerProtocol,
+        migration_manager: MigrationManagerProtocol | None = None,
         migration_runner: MigrationRunnerProtocol | None = None,
     ) -> None:
         """Initialize the handler.

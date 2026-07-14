@@ -97,9 +97,9 @@ class AuthModule(Module):
             providers=[
                 AuthBundleProvider(
                     config=AuthConfig(
-                        secret_key="test-secret-key-for-testing-only",
+                        secret_key="test-secret-key-for-testing-only",  # noqa: S106  # in-memory test bootstrap
                         token=JWTConfig(
-                            secret_key="test-secret-key-for-testing-only",
+                            secret_key="test-secret-key-for-testing-only",  # noqa: S106  # in-memory test bootstrap
                         ),
                     ),
                     initial_roles=None,

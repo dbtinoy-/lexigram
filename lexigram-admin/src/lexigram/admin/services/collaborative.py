@@ -447,7 +447,7 @@ class CollaborativeEditingService:
             try:
                 await self._realtime.broadcast_to_user(entry.user_id, message)  # type: ignore[attr-defined]
                 notified += 1
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 pass
 
         return notified

@@ -16,7 +16,6 @@ from lexigram.web.config import RateLimitConfig, WebConfig
 from lexigram.web.integrations.rate_limit import RateLimitIntegration
 from lexigram.web.middleware.rate_limit import RateLimiter, RateLimitMiddleware
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -67,27 +66,41 @@ class TestRateLimitIntegrationConfigure:
 
     @pytest.mark.asyncio
     async def test_resolves_web_rate_limiter_from_container(self) -> None:
-        """When enabled, tries to resolve WebRateLimiterProtocol from container."""
+        """When enabled, resolves WebRateLimiterProtocol optionally from container."""
         app = _make_app()
         mock_limiter = MagicMock(spec=RateLimiter)
         container = MagicMock()
-        container.resolve = AsyncMock(return_value=mock_limiter)
+        container.resolve_optional = AsyncMock(return_value=mock_limiter)
         config = _make_config(enabled=True)
 
         await RateLimitIntegration.configure(app, container, config)
 
-        container.resolve.assert_awaited_once()
+        container.resolve_optional.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_falls_back_to_in_memory_when_container_resolve_fails(self) -> None:
-        """Falls back to in-memory RateLimiter when container resolution fails."""
+    async def test_falls_back_to_in_memory_when_protocol_unbound(self) -> None:
+        """Falls back to in-memory RateLimiter when the protocol is not bound."""
         app = _make_app()
         container = MagicMock()
-        container.resolve = AsyncMock(side_effect=Exception("not found"))
+        container.resolve_optional = AsyncMock(return_value=None)
         config = _make_config(enabled=True)
 
         # Should not raise — falls back to RateLimiter()
         await RateLimitIntegration.configure(app, container, config)
+
+    @pytest.mark.asyncio
+    async def test_fallback_is_silent_when_protocol_unbound(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Unbound WebRateLimiterProtocol must not log DI noise."""
+        app = _make_app()
+        container = MagicMock()
+        container.resolve_optional = AsyncMock(return_value=None)
+        config = _make_config(enabled=True)
+
+        with caplog.at_level("INFO"):
+            await RateLimitIntegration.configure(app, container, config)
+        assert not [r for r in caplog.records if "not in container" in r.message]
 
     @pytest.mark.asyncio
     async def test_adds_rate_limit_middleware_when_enabled(self) -> None:
@@ -95,7 +108,7 @@ class TestRateLimitIntegrationConfigure:
         app = _make_app()
         mock_limiter = MagicMock(spec=RateLimiter)
         container = MagicMock()
-        container.resolve = AsyncMock(return_value=mock_limiter)
+        container.resolve_optional = AsyncMock(return_value=mock_limiter)
         config = _make_config(enabled=True)
 
         added_middlewares: list = []
@@ -118,7 +131,7 @@ class TestRateLimitIntegrationConfigure:
         app = _make_app()
         mock_limiter = MagicMock(spec=RateLimiter)
         container = MagicMock()
-        container.resolve = AsyncMock(return_value=mock_limiter)
+        container.resolve_optional = AsyncMock(return_value=mock_limiter)
         config = _make_config(enabled=True)
 
         registered_handlers: list = []
@@ -126,7 +139,7 @@ class TestRateLimitIntegrationConfigure:
         with patch.object(
             app,
             "add_exception_handler",
-            side_effect=lambda exc, handler: registered_handlers.append(exc),
+            side_effect=lambda exc, _handler: registered_handlers.append(exc),
         ), patch.object(app, "add_middleware"):
             await RateLimitIntegration.configure(app, container, config)
 
@@ -150,7 +163,7 @@ class TestRateLimitIntegrationConfigure:
         app = Starlette(routes=[Route("/test", endpoint=_raising_route)])
         mock_limiter = MagicMock(spec=RateLimiter)
         container = MagicMock()
-        container.resolve = AsyncMock(return_value=mock_limiter)
+        container.resolve_optional = AsyncMock(return_value=mock_limiter)
         config = _make_config(enabled=True)
 
         with patch.object(app, "add_middleware"):
@@ -167,11 +180,8 @@ class TestRateLimitIntegrationConfigure:
         """storage_backend='redis' tries the container for a redis client."""
         app = _make_app()
         container = MagicMock()
-        container.resolve = AsyncMock(
-            side_effect=lambda token: (
-                Exception("no WebRateLimiterProtocol") if token is not None else None
-            )
-        )
+        container.resolve_optional = AsyncMock(return_value=None)
+        container.resolve = AsyncMock(side_effect=Exception("no redis client"))
         config = WebConfig()
         config.rate_limit = RateLimitConfig(enabled=True, storage_backend="redis")
         await RateLimitIntegration.configure(app, container, config)

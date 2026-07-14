@@ -16,10 +16,10 @@ class NotificationType(StrEnum):
     USER_INVITED = "user_invited"
     USER_ACTIVATED = "user_activated"
     USER_DEACTIVATED = "user_deactivated"
-    PASSWORD_RESET = "password_reset"
+    PASSWORD_RESET = "password_reset"  # noqa: S105  # event type name, not a credential
     EMAIL_VERIFICATION = "email_verification"
     EMAIL_OTP = "email_otp"
-    PASSWORD_CHANGED = "password_changed"
+    PASSWORD_CHANGED = "password_changed"  # noqa: S105  # event type name, not a credential
 
     # Bulk operations
     BULK_STARTED = "bulk_started"

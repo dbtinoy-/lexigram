@@ -99,7 +99,7 @@ class WorkflowRunner:
             engine=self._engine.name,
             attempts=attempts,
         )
-        assert last_error is not None
+        assert last_error is not None  # noqa: S101  # exhaustion path always records an error
         return Err(last_error)
 
     async def resume(

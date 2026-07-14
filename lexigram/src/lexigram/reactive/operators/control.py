@@ -80,7 +80,7 @@ def merge(*sources: EventStream[Any]) -> Any:
                 try:
                     async for item in stream:
                         await queue.put(item)
-                except Exception:  # noqa: BLE001 — operator boundary
+                except Exception:  # noqa: BLE001, S110 — operator boundary
                     pass
                 finally:
                     remaining -= 1

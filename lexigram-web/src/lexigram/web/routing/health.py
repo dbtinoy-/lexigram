@@ -74,13 +74,13 @@ def register_health_route(provider: WebProvider, _app: Application) -> None:
                 from lexigram.contracts.data import DatabaseProviderProtocol
 
                 db_provider = await container.resolve(DatabaseProviderProtocol)
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 pass
             try:
                 from lexigram.contracts.infra.cache import CacheBackendProtocol
 
                 redis_client = await container.resolve(CacheBackendProtocol)
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 pass
 
         checker = WebHealthChecker(

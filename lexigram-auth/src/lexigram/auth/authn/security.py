@@ -230,7 +230,7 @@ class PasswordHasher(PasswordHasherProtocol):
 # attackers from distinguishing between "user not found" and "wrong password"
 # via timing attacks. The hash is valid bcrypt format but the password that
 # produces it is unknown/impossible to guess.
-DUMMY_PASSWORD_HASH = "$2b$12$OMAqo55i5DcmvOMAqo55i5DcmvOMAqo55i5DcmvOMAqo55i5Dcmv"
+DUMMY_PASSWORD_HASH = "$2b$12$OMAqo55i5DcmvOMAqo55i5DcmvOMAqo55i5DcmvOMAqo55i5Dcmv"  # noqa: S105  # timing-equalization dummy, no real password matches
 
 
 class PasswordPolicy(PasswordPolicyProtocol):

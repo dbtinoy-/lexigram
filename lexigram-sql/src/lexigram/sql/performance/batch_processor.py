@@ -197,7 +197,7 @@ class BatchProcessor:
 
             sql = (
                 f"INSERT INTO {Table(table)} "  # noqa: S608 -- identifiers quoted via Table()/Column()
-                f"({', '.join(Column(c) for c in columns)}) "
+                f"({', '.join(str(Column(c)) for c in columns)}) "
                 f"VALUES {', '.join(placeholders_per_row)}"
             )
 

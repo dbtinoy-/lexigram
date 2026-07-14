@@ -51,7 +51,7 @@ __all__ = [
 class SelectionCriteria(StrEnum):
     """Criteria for model selection."""
 
-    TOKEN_COUNT = "token_count"
+    TOKEN_COUNT = "token_count"  # noqa: S105  # criterion name, not a credential
     COST = "cost"
     LATENCY = "latency"
     QUALITY = "quality"

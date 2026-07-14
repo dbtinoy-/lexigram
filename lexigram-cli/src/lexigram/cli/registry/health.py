@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 class CheckStatus(str, Enum):
     """Status of a health check."""
 
-    PASS = "pass"
+    PASS = "pass"  # noqa: S105  # health check status, not a credential
     WARNING = "warning"
     FAIL = "fail"
     SKIP = "skip"

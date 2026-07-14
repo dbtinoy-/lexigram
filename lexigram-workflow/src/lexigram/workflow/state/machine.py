@@ -149,7 +149,7 @@ class StateMachine:
         self._version += 1
 
         if self._persistence is not None:
-            assert self._machine_id is not None
+            assert self._machine_id is not None  # noqa: S101  # persistence implies machine id
             expected_version = self._version - 1
             try:
                 self._version = await self._persistence.append_transition(

@@ -115,6 +115,6 @@ class AdminInputSanitizer:
 
 
 # Verify structural compliance at import time
-assert isinstance(AdminInputSanitizer(), InputSanitizerProtocol)
+assert isinstance(AdminInputSanitizer(), InputSanitizerProtocol)  # noqa: S101  # import-time protocol conformance
 
 __all__ = ["AdminInputSanitizer"]

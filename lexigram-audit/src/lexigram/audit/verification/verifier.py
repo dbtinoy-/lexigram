@@ -120,7 +120,7 @@ class AuditVerifier:
         backfilled legacy checksums are computed at version 1, so a
         matching checksum may verify under either version.
         """
-        assert self._hmac_key is not None
+        assert self._hmac_key is not None  # noqa: S101  # configured at construction; verifier is unusable without it
         return verify_audit_checksum(
             row, self._hmac_key, stored, schema_version=1
         ) or verify_audit_checksum(row, self._hmac_key, stored, schema_version=2)

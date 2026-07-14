@@ -21,11 +21,11 @@ class AdminSecurityEventType(str, Enum):
     SESSION_ROTATED = "session_rotated"
     ACCOUNT_LOCKED = "account_locked"
     ACCOUNT_UNLOCKED = "account_unlocked"
-    PASSWORD_CHANGED = "password_changed"
-    PASSWORD_RESET_REQUESTED = "password_reset_requested"
+    PASSWORD_CHANGED = "password_changed"  # noqa: S105  # event type name, not a credential
+    PASSWORD_RESET_REQUESTED = "password_reset_requested"  # noqa: S105  # event type name, not a credential
     SETUP_COMPLETED = "setup_completed"
     SETUP_BLOCKED = "setup_blocked"
-    SETUP_TOKEN_USED = "setup_token_used"
+    SETUP_TOKEN_USED = "setup_token_used"  # noqa: S105  # event type name, not a credential
     CSRF_VIOLATION = "csrf_violation"
     PERMISSION_DENIED = "permission_denied"
     SUSPICIOUS_ACTIVITY = "suspicious_activity"
@@ -65,7 +65,7 @@ class AdminPasswordRule(str, Enum):
     MISSING_LOWERCASE = "missing_lowercase"
     MISSING_DIGIT = "missing_digit"
     MISSING_SPECIAL = "missing_special"
-    COMMON_PASSWORD = "common_password"
+    COMMON_PASSWORD = "common_password"  # noqa: S105  # policy rule name, not a credential
     CONTAINS_EMAIL = "contains_email"
 
 

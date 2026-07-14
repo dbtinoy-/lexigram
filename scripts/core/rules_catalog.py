@@ -609,7 +609,16 @@ def _detect_jwt_verification_disabled(
     source_file: RuleSourceFile,
     _context: RuleCatalogContext,
 ) -> tuple[RuleFinding, ...]:
-    """Flag JWT verification disabled via algorithms=['none'] or verify_signature=False."""
+    """Flag JWT verification disabled via algorithms=['none'] or verify_signature=False.
+
+    The ``options={"verify_signature": False}`` decode pattern is only
+    flagged when it could feed an authentication decision.  Decoding a
+    token without verification to extract metadata (expiry TTL, subject
+    for audit hooks, revocation targeting after the signature was already
+    verified upstream) is a standard PyJWT idiom and is not flagged.
+    Explicitly gated dev-only opt-in paths are reported as IMPORTANT
+    instead of CRITICAL.
+    """
 
     findings: list[RuleFinding] = []
     for node in ast.walk(source_file.tree):
@@ -617,32 +626,108 @@ def _detect_jwt_verification_disabled(
             continue
         if _call_name(node).lower() not in ("decode", "verify_token"):
             continue
-        for keyword in node.keywords:
-            if keyword.arg == "algorithms" and _list_contains_none(keyword.value):
-                findings.append(
-                    _finding(
-                        source_file,
-                        rule_id="sec-jwt-verification-disabled",
-                        severity=RuleSeverity.CRITICAL,
-                        owner="security",
-                        rationale="Signing JWT verification must never be disabled or pinned to the 'none' algorithm.",
-                        line=node.lineno,
-                        message=f"{source_file.relative_path.as_posix()} accepts the unsigned 'none' JWT algorithm.",
-                    )
+        if _list_contains_none(_keyword_value(node, "algorithms")):
+            findings.append(
+                _finding(
+                    source_file,
+                    rule_id="sec-jwt-verification-disabled",
+                    severity=RuleSeverity.CRITICAL,
+                    owner="security",
+                    rationale="Signing JWT verification must never be disabled or pinned to the 'none' algorithm.",
+                    line=node.lineno,
+                    message=f"{source_file.relative_path.as_posix()} accepts the unsigned 'none' JWT algorithm.",
                 )
-            if keyword.arg == "options" and _dict_disables_verification(keyword.value):
-                findings.append(
-                    _finding(
-                        source_file,
-                        rule_id="sec-jwt-verification-disabled",
-                        severity=RuleSeverity.CRITICAL,
-                        owner="security",
-                        rationale="Signing JWT verification must never be disabled or pinned to the 'none' algorithm.",
-                        line=node.lineno,
-                        message=f"{source_file.relative_path.as_posix()} disables JWT signature verification via options.",
-                    )
-                )
+            )
+            continue
+        if not _dict_disables_verification(_keyword_value(node, "options")):
+            continue
+        if _is_benign_unverified_decode(source_file.tree, node):
+            continue
+        severity = (
+            RuleSeverity.IMPORTANT
+            if _is_gated_dev_opt_in(source_file.tree, node)
+            else RuleSeverity.CRITICAL
+        )
+        findings.append(
+            _finding(
+                source_file,
+                rule_id="sec-jwt-verification-disabled",
+                severity=severity,
+                owner="security",
+                rationale="Signing JWT verification must never be disabled or pinned to the 'none' algorithm.",
+                line=node.lineno,
+                message=(
+                    f"{source_file.relative_path.as_posix()} disables JWT signature "
+                    f"verification via options{_dev_gate_note(source_file.tree, node)}."
+                ),
+            )
+        )
     return tuple(findings)
+
+
+def _keyword_value(node: ast.Call, name: str) -> ast.expr | None:
+    """Return the value of the named keyword argument, or ``None``."""
+
+    for keyword in node.keywords:
+        if keyword.arg == name:
+            return keyword.value
+    return None
+
+
+def _nodes_containing(tree: ast.Module, node: ast.AST) -> list[ast.AST]:
+    """Return all ancestors (and the node itself) that enclose *node*."""
+
+    return [
+        candidate
+        for candidate in ast.walk(tree)
+        if getattr(candidate, "lineno", -1) >= 0
+        and getattr(candidate, "end_lineno", -1) >= 0
+        and candidate.lineno <= node.lineno <= candidate.end_lineno
+    ]
+
+
+def _is_benign_unverified_decode(tree: ast.Module, node: ast.Call) -> bool:
+    """Return whether the decode result is used for metadata extraction only.
+
+    Two signals mark the standard safe idiom: the result is bound to a
+    variable whose name contains "unverified", or the decode sits inside a
+    revoke/logout/blacklist/refresh routine where the signature has either
+    already been verified or is irrelevant to the operation.
+    """
+
+    for enclosing in _nodes_containing(tree, node):
+        if isinstance(enclosing, ast.Assign):
+            for target in enclosing.targets:
+                if isinstance(target, ast.Name) and "unverified" in target.id.lower():
+                    return True
+        if isinstance(enclosing, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            name = enclosing.name.lower()
+            if any(marker in name for marker in ("revoke", "logout", "blacklist", "refresh")):
+                return True
+    return False
+
+
+def _is_gated_dev_opt_in(tree: ast.Module, node: ast.Call) -> bool:
+    """Return whether the decode is gated behind an explicit dev-only flag."""
+
+    for enclosing in _nodes_containing(tree, node):
+        if not isinstance(enclosing, ast.If):
+            continue
+        for child in ast.walk(enclosing.test):
+            if not isinstance(child, ast.Attribute):
+                continue
+            attr = child.attr.lower()
+            if "unverified" in attr and "dev" in attr:
+                return True
+    return False
+
+
+def _dev_gate_note(tree: ast.Module, node: ast.Call) -> str:
+    """Return a suffix noting an explicit dev-opt-in gate when present."""
+
+    if _is_gated_dev_opt_in(tree, node):
+        return " (explicit dev-only opt-in gate)"
+    return ""
 
 
 def _call_name(node: ast.Call) -> str:

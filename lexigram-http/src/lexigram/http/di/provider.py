@@ -82,7 +82,7 @@ class HTTPProvider(Provider):
 
         try:
             retry_policy = await container.resolve(RetryPolicyProtocol)
-        except Exception:  # noqa: BLE001 — resilience not registered, use default
+        except Exception:  # noqa: BLE001, S110 — resilience not registered, use default
             pass
 
         try:
@@ -92,12 +92,12 @@ class HTTPProvider(Provider):
 
             registry = await container.resolve(CircuitBreakerRegistryProtocol)
             circuit_breaker = await registry.get_or_create("http-default", None)
-        except Exception:  # noqa: BLE001 — circuit breaker optional
+        except Exception:  # noqa: BLE001, S110 — circuit breaker optional
             pass
 
         try:
             resilience = await container.resolve(ResiliencePipelineProtocol)
-        except Exception:  # noqa: BLE001 — resilience pipeline optional
+        except Exception:  # noqa: BLE001, S110 — resilience pipeline optional
             pass
 
         self._client = HTTPClient(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from lexigram.contracts.data.identifiers import Column
+from lexigram.contracts.data.identifiers import Column, Table
 from lexigram.logging import get_logger
 from lexigram.sql.exceptions import (
     DatabaseConnectionError,
@@ -20,6 +20,9 @@ logger = get_logger(__name__)
 
 class _ReadMixin:
     """Provides ``find_by_id``, ``find_many``, ``find_one``, ``count``, ``exists``."""
+
+    _table: Table
+    _key_col: Column
 
     async def find_by_id(
         self,
@@ -42,7 +45,7 @@ class _ReadMixin:
         """
         try:
             fields = ", ".join(str(Column(c)) for c in columns) if columns else "*"
-            query = f"SELECT {fields} FROM {self._table} WHERE {self._key_col} = ?"  # noqa: S608 -- self._table/_key_col are validated Table()/Column() identifiers  # type: ignore[attr-defined]
+            query = f"SELECT {fields} FROM {self._table} WHERE {self._key_col} = ?"  # noqa: S608 -- self._table/_key_col are validated Table()/Column() identifiers
             if self.soft_delete_enabled and not include_deleted:  # type: ignore[attr-defined]
                 query += " AND deleted_at IS NULL"
 

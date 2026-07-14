@@ -194,14 +194,14 @@ class AdminTestClient:
         text = ""
         try:
             text = resp.text
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
 
         json_data = None
         try:
             if "application/json" in headers.get("content-type", ""):
                 json_data = resp.json()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
 
         return AdminResponse(

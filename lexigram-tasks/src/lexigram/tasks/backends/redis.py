@@ -123,7 +123,7 @@ class RedisTaskQueue(TaskQueueProtocol):
         """
         if not self.redis:
             self.redis = await redis.from_url(self.redis_url)
-        assert self.redis is not None
+        assert self.redis is not None  # noqa: S101  # assigned just above when absent
         return self.redis
 
     async def enqueue(self, task: JobProtocol) -> Result[str, TaskError]:  # type: ignore[override]

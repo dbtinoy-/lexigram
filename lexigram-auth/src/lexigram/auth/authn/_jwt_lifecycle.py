@@ -520,7 +520,7 @@ class _JWTLifecycleMixin:
         token_pair = self.create_token_pair(user)
         await self._emit_action(
             "token.refreshed",
-            AuthTokenRefreshedHook(user_id=verified.user_id, token_type="access"),
+            AuthTokenRefreshedHook(user_id=verified.user_id, token_type="access"),  # noqa: S106  # token KIND string, not a credential
         )
         return token_pair
 

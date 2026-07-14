@@ -37,7 +37,7 @@ class _SimpleDispatcher:
                 result = handler(event)
                 if hasattr(result, "__await__"):
                     await result
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 pass
 
 

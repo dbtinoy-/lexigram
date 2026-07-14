@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.logging import get_logger
 from lexigram.serialization import dumps_str, loads_str
@@ -75,7 +75,7 @@ class RedisDLQBackend:
         Returns:
             List of DLQ entry dicts, most recent first.
         """
-        raw = await self._redis.lrange(self._key, 0, limit - 1)
+        raw = await cast("Any", self._redis.lrange(self._key, 0, limit - 1))
         return [loads_str(entry) for entry in raw]
 
     async def size(self) -> int:
@@ -84,5 +84,5 @@ class RedisDLQBackend:
         Returns:
             Integer count of DLQ entries.
         """
-        count: int = await self._redis.llen(self._key)
+        count: int = await cast("Any", self._redis.llen(self._key))
         return count

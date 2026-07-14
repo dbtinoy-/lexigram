@@ -349,8 +349,8 @@ class FFmpegVideoProcessor:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        assert proc.stdout is not None
-        assert proc.stderr is not None
+        assert proc.stdout is not None  # noqa: S101  # PIPE requested so streams are guaranteed
+        assert proc.stderr is not None  # noqa: S101  # PIPE requested so streams are guaranteed
         stdout = proc.stdout
         stderr = proc.stderr
 

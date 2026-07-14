@@ -794,7 +794,7 @@ class GeminiMapper:
         if resolved.is_err():
             return Err(resolved.unwrap_err())
         image = resolved.unwrap()
-        assert image is not None  # lossy=False never drops media
+        assert image is not None  # lossy=False never drops media  # noqa: S101
         return Ok(image)
 
     @staticmethod

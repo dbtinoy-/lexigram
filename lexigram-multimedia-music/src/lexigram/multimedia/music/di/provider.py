@@ -115,7 +115,7 @@ class AudioMusicProvider(Provider):
                 f"Unknown or unimplemented music backend: {self._config.backend!r}"
             )
 
-        assert self._backend is not None
+        assert self._backend is not None  # noqa: S101  # raised via ProviderNotInstalledError above
         container.singleton(MusicProvider, self._backend)
 
         self._task_handler = MusicGenerationTask(backend=self._backend)

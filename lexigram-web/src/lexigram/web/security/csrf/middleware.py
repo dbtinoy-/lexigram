@@ -40,7 +40,7 @@ logger = get_logger(__name__)
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 #: Issuer label embedded in every token (fixed per process/secret).
-_TOKEN_ISSUER = "web"
+_TOKEN_ISSUER = "web"  # noqa: S105  # issuer label constant, not a credential
 
 
 def _b64decode(data: str) -> bytes:
@@ -144,7 +144,7 @@ class CSRFProtectionMiddleware:
     def _expected_signature(self, encoded_payload: bytes) -> bytes:
         """Recompute the HMAC-SHA256 signature over the encoded payload."""
         secret = self._config.secret_key
-        assert secret is not None
+        assert secret is not None  # noqa: S101  # secret_key validated at boot; signature path requires it
         return hmac.new(secret.encode(), encoded_payload, hashlib.sha256).digest()
 
     # ------------------------------------------------------------------

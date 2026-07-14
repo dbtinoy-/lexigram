@@ -11,7 +11,7 @@ from lexigram.contracts.exceptions import ValidationError as BaseValidationError
 class ErrorCode(StrEnum):
     """Machine-readable error codes for admin operations."""
 
-    AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
+    AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"  # noqa: S105  # error code name, not a credential
     AUTH_SESSION_EXPIRED = "AUTH_SESSION_EXPIRED"
     AUTH_PERMISSION_DENIED = "AUTH_PERMISSION_DENIED"
     AUTH_NOT_AUTHENTICATED = "AUTH_NOT_AUTHENTICATED"

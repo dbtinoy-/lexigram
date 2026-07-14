@@ -143,7 +143,7 @@ class AdminController(ControllerProtocol):
                     self._settings_service = await resolve_admin_settings_service(
                         container
                     )
-            except Exception:  # noqa: BLE001 — non-fatal
+            except Exception:  # noqa: BLE001, S110 — non-fatal
                 pass
         if not self._settings_service:
             return
@@ -162,7 +162,7 @@ class AdminController(ControllerProtocol):
                 value = overrides.get(field) or overrides.get(f"admin.branding.{field}")
                 if value:
                     extra_context.setdefault(field, value)
-        except Exception:  # noqa: BLE001 — non-fatal
+        except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
     async def render_admin(

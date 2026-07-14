@@ -48,8 +48,9 @@ class ActiveConnectionsWidgetHandler:
                 )
             )
         metric = self._metrics.get_metric(_METRIC_GAUGE)
-        value = getattr(metric, "get_value", None) or getattr(
-            metric, "get_count", lambda: 0.0
+        get_value = getattr(metric, "get_value", None)
+        value = (
+            get_value if callable(get_value) else getattr(metric, "get_count", lambda: 0.0)
         )
         return Ok(
             StatContent(

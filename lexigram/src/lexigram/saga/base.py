@@ -222,7 +222,7 @@ class AbstractSaga(ABC, Generic[T]):
                     )
                     await asyncio.sleep(step.retry_delay)
 
-            assert step_result is not None  # loop always executes at least once
+            assert step_result is not None  # loop guarantee  # noqa: S101
 
             if step_result.is_err():
                 cause = step_result.unwrap_err()

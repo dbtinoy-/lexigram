@@ -545,7 +545,7 @@ class DatabaseProvider(Provider):
         container.singleton(
             MigrationStatusWidgetHandler,
             lambda: MigrationStatusWidgetHandler(
-                migration_manager=self._db_provider.migration_manager,  # type: ignore[arg-type]
+                migration_manager=self._db_provider.migration_manager,
                 migration_runner=MigrationRunnerAdapter(
                     self._db_provider.migration_manager
                 ),

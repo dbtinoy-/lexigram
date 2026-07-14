@@ -21,8 +21,8 @@ class AuthStatus(StrEnum):
 
     AUTHENTICATED = "authenticated"
     UNAUTHENTICATED = "unauthenticated"
-    TOKEN_EXPIRED = "token_expired"
-    TOKEN_INVALID = "token_invalid"
+    TOKEN_EXPIRED = "token_expired"  # noqa: S105  # status name, not a credential
+    TOKEN_INVALID = "token_invalid"  # noqa: S105  # status name, not a credential
     USER_INACTIVE = "user_inactive"
     USER_NOT_VERIFIED = "user_not_verified"
 

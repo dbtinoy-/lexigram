@@ -441,7 +441,7 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
         if self._conn:
             try:
                 await self._conn.close()
-            except Exception:  # noqa: BLE001 — best-effort close of a stale handle
+            except Exception:  # noqa: BLE001, S110 — best-effort close of a stale handle
                 pass
             self._conn = None
         self._file_identity = None

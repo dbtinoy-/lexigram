@@ -36,6 +36,9 @@ class _FakeContainer:
     async def resolve(self, service_type: Any) -> Any:
         raise LookupError("not registered")
 
+    async def resolve_optional(self, service_type: Any) -> Any | None:
+        return None
+
     async def resolve_all(self, service_type: Any) -> list[Any]:
         return self._candidates
 
