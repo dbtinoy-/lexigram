@@ -71,7 +71,7 @@ class DatabaseSecretStore:
         conn = await self._db.acquire()
         try:
             row = await conn.fetchrow(
-                f"SELECT value FROM {self._table_name} WHERE name = $1",
+                f"SELECT value FROM {self._table_name} WHERE name = $1",  # noqa: S608 -- self._table_name set at init, values parameterized
                 name,
             )
             return row["value"] if row else None
@@ -94,7 +94,7 @@ class DatabaseSecretStore:
         conn = await self._db.acquire()
         try:
             rows = await conn.fetch(
-                f"SELECT name, value FROM {self._table_name} WHERE name = ANY($1)",
+                f"SELECT name, value FROM {self._table_name} WHERE name = ANY($1)",  # noqa: S608 -- self._table_name set at init, values parameterized
                 list(names),
             )
             return {row["name"]: row["value"] for row in rows}
@@ -111,7 +111,7 @@ class DatabaseSecretStore:
                 INSERT INTO {self._table_name} (name, value)
                 VALUES ($1, $2)
                 ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = NOW()
-                """,
+                """,  # noqa: S608 -- self._table_name set at init, values parameterized
                 name,
                 value,
             )
@@ -124,7 +124,7 @@ class DatabaseSecretStore:
         conn = await self._db.acquire()
         try:
             await conn.execute(
-                f"DELETE FROM {self._table_name} WHERE name = $1",
+                f"DELETE FROM {self._table_name} WHERE name = $1",  # noqa: S608 -- self._table_name set at init, values parameterized
                 name,
             )
         finally:

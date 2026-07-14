@@ -70,7 +70,7 @@ class LocalEmbeddingAdapter(AbstractEmbeddingAdapter):
 
         dimension = self._get_dimension()
         for _ in texts:
-            vector = [random.random() for _ in range(dimension)]
+            vector = [random.random() for _ in range(dimension)]  # noqa: S311 — mock-dummy vectors (non-secret)
             embeddings.append(vector)
 
         return embeddings

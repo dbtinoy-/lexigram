@@ -127,7 +127,7 @@ class DatabaseProvider(Provider):
                 )
                 if maybe_id_gen is not None:
                     id_generator = maybe_id_gen
-            except Exception:
+            except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
 
             try:
@@ -139,7 +139,7 @@ class DatabaseProvider(Provider):
                 )
                 if maybe_tracer is not None:
                     tracer = maybe_tracer
-            except Exception:
+            except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
 
             try:
@@ -151,7 +151,7 @@ class DatabaseProvider(Provider):
                 )
                 if maybe_metrics is not None:
                     metrics = maybe_metrics
-            except Exception:
+            except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
 
         self._clock = None  # Now using ambient clock

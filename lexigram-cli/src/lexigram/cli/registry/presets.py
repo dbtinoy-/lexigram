@@ -40,7 +40,7 @@ class WebAPIPreset(PresetDefinition):
     description = "Basic web API with HTTP routing and middleware"
     packages = ["lexigram", "lexigram-web", "lexigram-sql"]
     config = {
-        "web": {"host": "0.0.0.0", "port": 8000},
+        "web": {"host": "0.0.0.0", "port": 8000},  # noqa: S104 — preset template default
         "database": {"url": "sqlite:///./dev.db"},
     }
 
@@ -60,7 +60,7 @@ class GraphQLPreset(PresetDefinition):
     description = "GraphQL API with web framework"
     packages = ["lexigram", "lexigram-web", "lexigram-sql", "lexigram-graphql"]
     config = {
-        "web": {"host": "0.0.0.0", "port": 8000},
+        "web": {"host": "0.0.0.0", "port": 8000},  # noqa: S104 — preset template default
         "database": {"url": "sqlite:///./dev.db"},
         "graphql": {"path": "/graphql"},
     }
@@ -109,7 +109,7 @@ class FullStackPreset(PresetDefinition):
         "lexigram-monitoring",
     ]
     config = {
-        "web": {"host": "0.0.0.0", "port": 8000},
+        "web": {"host": "0.0.0.0", "port": 8000},  # noqa: S104 — preset template default
         "database": {"url": "sqlite:///./app.db"},
         "auth": {"enabled": True},
     }

@@ -77,7 +77,7 @@ class DatabaseStateStore:
         conn = await self._db.acquire()
         try:
             row = await conn.fetchrow(
-                f"SELECT value FROM {self._table_name} WHERE key = $1",
+                f"SELECT value FROM {self._table_name} WHERE key = $1",  # noqa: S608 -- table name from init-time config, values parameterized
                 key,
             )
             if row and row.get("value"):
@@ -111,7 +111,7 @@ class DatabaseStateStore:
                     VALUES ($1, $2, $3)
                     ON CONFLICT (key) DO UPDATE
                     SET value = $2, expires_at = $3, updated_at = NOW()
-                    """,
+                    """,  # noqa: S608 -- table name from init-time config, values parameterized
                     key,
                     value_json,
                     expires_at,
@@ -122,7 +122,7 @@ class DatabaseStateStore:
                     INSERT INTO {self._table_name} (key, value)
                     VALUES ($1, $2)
                     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()
-                    """,
+                    """,  # noqa: S608 -- table name from init-time config, values parameterized
                     key,
                     value_json,
                 )
@@ -135,7 +135,7 @@ class DatabaseStateStore:
         conn = await self._db.acquire()
         try:
             await conn.execute(
-                f"DELETE FROM {self._table_name} WHERE key = $1",
+                f"DELETE FROM {self._table_name} WHERE key = $1",  # noqa: S608 -- table name from init-time config, values parameterized
                 key,
             )
         finally:
@@ -159,7 +159,7 @@ class DatabaseStateStore:
         conn = await self._db.acquire()
         try:
             rows = await conn.fetch(
-                f"SELECT key, value FROM {self._table_name} WHERE key = ANY($1)",
+                f"SELECT key, value FROM {self._table_name} WHERE key = ANY($1)",  # noqa: S608 -- table name from init-time config, values parameterized
                 keys,
             )
             return {
@@ -201,7 +201,7 @@ class DatabaseStateStore:
                         VALUES ($1, $2, $3)
                         ON CONFLICT (key) DO UPDATE
                         SET value = $2, expires_at = $3, updated_at = NOW()
-                        """,
+                        """,  # noqa: S608 -- table name from init-time config, values parameterized
                         key,
                         value_json,
                         expires_at,
@@ -212,7 +212,7 @@ class DatabaseStateStore:
                         INSERT INTO {self._table_name} (key, value)
                         VALUES ($1, $2)
                         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()
-                        """,
+                        """,  # noqa: S608 -- table name from init-time config, values parameterized
                         key,
                         value_json,
                     )

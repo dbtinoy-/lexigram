@@ -162,7 +162,7 @@ class SqlAuditStore:
         row["checksum"] = checksum
 
         sql = (
-            f"INSERT INTO {self._table} "
+            f"INSERT INTO {self._table} "  # noqa: S608 — table name from AuditConfig (init-time, validated config), not user input
             "(table_name, entity_id, action, old_values, new_values, "
             "changed_by, changed_at, metadata, checksum, severity, source, outcome, "
             "tenant_id, correlation_id, causation_id, command_payload_hash, payload_size_bytes, entry_schema_version) "
@@ -202,7 +202,7 @@ class SqlAuditStore:
         conditions, params = self._build_where(query)
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         sql = (
-            f"SELECT * FROM {self._table} "
+            f"SELECT * FROM {self._table} "  # noqa: S608 — table name from AuditConfig (init-time, validated config); where_clause built from fixed conditions
             f"WHERE {where_clause} "
             f"ORDER BY changed_at DESC "
             f"LIMIT ? OFFSET ?"
@@ -225,7 +225,7 @@ class SqlAuditStore:
         """
         conditions, params = self._build_where(query)
         where_clause = " AND ".join(conditions) if conditions else "1=1"
-        sql = f"SELECT COUNT(*) as count FROM {self._table} WHERE {where_clause}"
+        sql = f"SELECT COUNT(*) as count FROM {self._table} WHERE {where_clause}"  # noqa: S608 — table name from AuditConfig (init-time, validated config); where_clause built from fixed conditions
 
         result = await self._db.execute_query(sql, params)
         if result.success and result.rows:

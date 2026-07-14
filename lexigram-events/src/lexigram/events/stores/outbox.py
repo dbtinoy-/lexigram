@@ -117,13 +117,13 @@ class OutboxEventStore(AbstractEventStore):
         # Detect SQL dialect: Postgres uses $N positional params, SQLite uses ?
         if isinstance(inner, PostgresEventStore):
             sql = (
-                f"INSERT INTO {self.outbox_table} "
+                f"INSERT INTO {self.outbox_table} "  # noqa: S608 — outbox table from init-time ctor arg, never user input
                 "(event_id, event_type, event_data, metadata, timestamp, status) "
                 "VALUES ($1, $2, $3, $4, $5, 'pending')"
             )
         else:
             sql = (
-                f"INSERT INTO {self.outbox_table} "
+                f"INSERT INTO {self.outbox_table} "  # noqa: S608 — outbox table from init-time ctor arg, never user input
                 "(event_id, event_type, event_data, metadata, timestamp, status) "
                 "VALUES (?, ?, ?, ?, ?, 'pending')"
             )
@@ -267,7 +267,7 @@ class OutboxPublisher:
                 ORDER BY timestamp ASC
                 LIMIT {self.batch_size}
                 FOR UPDATE SKIP LOCKED
-            """)
+            """)  # noqa: S608 — outbox table from init-time ctor arg; batch_size int, never user input
 
             if not rows:
                 return 0
@@ -291,7 +291,7 @@ class OutboxPublisher:
                     UPDATE {self.outbox_table}
                     SET status = 'published', published_at = $1
                     WHERE event_id = ANY($2)
-                """,
+                """,  # noqa: S608 — outbox table from init-time ctor arg, never user input
                     ambient_clock.now(),
                     event_ids,
                 )
@@ -307,7 +307,7 @@ class OutboxPublisher:
             WHERE status = 'pending'
             ORDER BY timestamp ASC
             LIMIT ?
-        """,
+        """,  # noqa: S608 — outbox table from init-time ctor arg, never user input
             (self.batch_size,),
         )
 
@@ -334,7 +334,7 @@ class OutboxPublisher:
                 UPDATE {self.outbox_table}
                 SET status = 'published', published_at = ?
                 WHERE event_id IN ({placeholders})
-            """,
+            """,  # noqa: S608 — outbox table from init-time ctor arg; placeholders are ? marks, never user input
                 (ambient_clock.now().isoformat(), *event_ids),
             )
             await conn.commit()

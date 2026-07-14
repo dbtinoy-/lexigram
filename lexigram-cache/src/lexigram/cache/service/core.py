@@ -158,7 +158,7 @@ class CacheService(PipelineMixin, InvalidationMixin, PatternsMixin):
         # Apply ±10% jitter
         jitter_percent = 0.1
         jitter = int(ttl * jitter_percent)
-        actual_ttl = ttl + random.randint(-jitter, jitter)
+        actual_ttl = ttl + random.randint(-jitter, jitter)  # noqa: S311 — TTL jitter (non-crypto)
 
         # Ensure TTL is at least 1 second
         return max(1, actual_ttl)

@@ -88,7 +88,7 @@ class _AdvancedMixin:
                 safe_group_cols = [str(Column(c)) for c in group_cols]
                 select_parts = [*safe_group_cols, *select_parts]
 
-            query = f"SELECT {', '.join(select_parts)} FROM {self._table}"  # type: ignore[attr-defined]
+            query = f"SELECT {', '.join(select_parts)} FROM {self._table}"  # noqa: S608 -- self._table Table()-validated; select parts Column()-validated  # type: ignore[attr-defined]
             params: list[Any] = []
 
             query = await self._apply_filters_to_query(  # type: ignore[attr-defined]
@@ -146,7 +146,7 @@ class _AdvancedMixin:
         """
         try:
             where_sql, params = spec.to_sql()
-            query = f"SELECT * FROM {self._table} WHERE {where_sql}"  # type: ignore[attr-defined]
+            query = f"SELECT * FROM {self._table} WHERE {where_sql}"  # noqa: S608 -- self._table Table()-validated; spec fragments Column()-validated (RawSpecification is documented escape hatch)  # type: ignore[attr-defined]
 
             if sort_by:
                 sort_col = Column(sort_by)
@@ -184,7 +184,7 @@ class _AdvancedMixin:
         """
         try:
             where_sql, params = spec.to_sql()
-            query = f"SELECT COUNT(*) AS count FROM {self._table} WHERE {where_sql}"  # type: ignore[attr-defined]
+            query = f"SELECT COUNT(*) AS count FROM {self._table} WHERE {where_sql}"  # noqa: S608 -- self._table Table()-validated; spec fragments Column()-validated (RawSpecification is documented escape hatch)  # type: ignore[attr-defined]
             result = await self.provider.execute_query(query, params)  # type: ignore[attr-defined]
             if result.success and result.rows:
                 return int(result.rows[0]["count"])
@@ -227,7 +227,7 @@ class _AdvancedMixin:
             direction = "DESC" if is_desc else "ASC"
             op = "<" if is_desc else ">"
 
-            query = f"SELECT * FROM {self._table}"  # type: ignore[attr-defined]
+            query = f"SELECT * FROM {self._table}"  # noqa: S608 -- self._table Table()-validated  # type: ignore[attr-defined]
             params: list[Any] = []
 
             # Apply filters

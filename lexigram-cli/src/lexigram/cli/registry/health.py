@@ -314,7 +314,7 @@ class GitCheck(HealthCheck):
         if git_dir.exists():
             try:
                 result = subprocess.run(
-                    ["git", "status"],
+                    ["git", "status"],  # noqa: S607 — static CLI tool on PATH (operator-invoked)
                     capture_output=True,
                     check=False,
                 )
@@ -354,7 +354,7 @@ class DockerCheck(HealthCheck):
 
         try:
             result = subprocess.run(
-                ["docker", "version"],
+                ["docker", "version"],  # noqa: S607 — static CLI tool on PATH (operator-invoked)
                 capture_output=True,
                 check=False,
             )

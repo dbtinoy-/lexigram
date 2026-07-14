@@ -65,6 +65,36 @@ def _make_provider() -> MagicMock:
 # ---------------------------------------------------------------------------
 
 
+class TestPgVectorCollectionValidation:
+    """Collection names are validated before SQL interpolation."""
+
+    def test_plain_identifier_accepted(self) -> None:
+        PgVectorCollection(
+            provider=_make_provider(),
+            name="articles_v1",
+            dimension=384,
+            distance_metric=DistanceMetric.COSINE,
+        )
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            'v"1; DROP TABLE articles; --',
+            "my collection",
+            "my-collection",
+            "1starts_with_digit",
+        ],
+    )
+    def test_invalid_names_raise(self, name: str) -> None:
+        with pytest.raises(ValueError, match="identifier"):
+            PgVectorCollection(
+                provider=_make_provider(),
+                name=name,
+                dimension=384,
+                distance_metric=DistanceMetric.COSINE,
+            )
+
+
 class TestPgVectorStoreConnect:
     @pytest.mark.asyncio
     async def test_connect_creates_client(self) -> None:

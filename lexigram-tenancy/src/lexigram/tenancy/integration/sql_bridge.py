@@ -68,7 +68,7 @@ class TenantSQLContextBridge:
             set_tenant = getattr(db_ctx, "set_tenant_from_scope", None)
             if set_tenant and callable(set_tenant):
                 return set_tenant({"tenant_id": tenant_id})
-        except Exception:
+        except Exception:  # noqa: S110 — intentional best-effort fallback
             pass
         return None
 
@@ -78,7 +78,7 @@ class TenantSQLContextBridge:
             reset_tenant = getattr(db_ctx, "reset_tenant", None)
             if reset_tenant and callable(reset_tenant):
                 reset_tenant(token)
-        except Exception:
+        except Exception:  # noqa: S110 — intentional best-effort fallback
             pass
 
 

@@ -39,7 +39,7 @@ class PgVectorCollection(BaseVectorCollection):
             return UpsertResult(upserted_count=0)
 
         sql = (
-            f'INSERT INTO "{self.name}" (id, embedding, metadata, content) '
+            f'INSERT INTO "{self.name}" (id, embedding, metadata, content) '  # noqa: S608 -- collection name validated in BaseVectorCollection.__init__
             "VALUES ($1, $2::vector, $3::jsonb, $4) "
             "ON CONFLICT (id) DO UPDATE SET "
             "embedding = EXCLUDED.embedding, "
@@ -88,7 +88,7 @@ class PgVectorCollection(BaseVectorCollection):
         if self.distance_metric == DistanceMetric.DOT_PRODUCT:
             score_expr = f"-(embedding {op} $1::vector)"
 
-        sql = f'SELECT id, metadata, content, {score_expr} as score FROM "{self.name}"'
+        sql = f'SELECT id, metadata, content, {score_expr} as score FROM "{self.name}"'  # noqa: S608 -- collection name validated in BaseVectorCollection.__init__
         params: list[Any] = [vec_str]
 
         if query.filter:
@@ -98,7 +98,7 @@ class PgVectorCollection(BaseVectorCollection):
                 r"\$(\d+)", lambda m: f"${int(m.group(1)) + 1}", filter_sql
             )
             sql = (
-                f"SELECT id, metadata, content, {score_expr} as score "
+                f"SELECT id, metadata, content, {score_expr} as score "  # noqa: S608 -- collection name validated in BaseVectorCollection.__init__
                 f'FROM "{self.name}" WHERE {filter_sql_shifted}'
             )
             params.extend(filter_params)
@@ -121,7 +121,7 @@ class PgVectorCollection(BaseVectorCollection):
         return search_results
 
     async def get(self, ids: list[str]) -> list[VectorRecord]:
-        sql = f'SELECT id, embedding, metadata, content FROM "{self.name}" WHERE id = ANY($1)'
+        sql = f'SELECT id, embedding, metadata, content FROM "{self.name}" WHERE id = ANY($1)'  # noqa: S608 -- collection name validated in BaseVectorCollection.__init__
         result = await self._provider.execute_query(sql, [ids])
 
         records: list[VectorRecord] = []
@@ -154,7 +154,7 @@ class PgVectorCollection(BaseVectorCollection):
         return DeleteResult(deleted_count=result.affected_rows)
 
     async def count(self) -> int:
-        sql = f'SELECT count(*) as count FROM "{self.name}"'
+        sql = f'SELECT count(*) as count FROM "{self.name}"'  # noqa: S608 -- collection name validated in BaseVectorCollection.__init__
         result = await self._provider.execute_query(sql)
         return int(result[0]["count"])
 

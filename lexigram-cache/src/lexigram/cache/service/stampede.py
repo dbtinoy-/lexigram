@@ -234,7 +234,7 @@ class StampedeProtectedCache:
         if jitter_factor == 0.0:
             return ttl
         delta = int(ttl * jitter_factor)
-        return ttl + random.randint(-delta, delta)
+        return ttl + random.randint(-delta, delta)  # noqa: S311 — TTL jitter (non-crypto)
 
     async def _should_refresh_early(
         self,
@@ -266,4 +266,4 @@ class StampedeProtectedCache:
 
         # The closer to expiry the higher the probability
         staleness = 1.0 - (time_left / ttl)
-        return random.random() < staleness
+        return random.random() < staleness  # noqa: S311 — probabilistic refresh (non-crypto)

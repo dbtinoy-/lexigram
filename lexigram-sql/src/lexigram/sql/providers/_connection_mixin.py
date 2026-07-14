@@ -267,7 +267,7 @@ class _ConnectionMixin:
             if hasattr(conn, "close"):
                 try:
                     await conn.close()
-                except Exception:
+                except Exception:  # noqa: S110 — intentional best-effort fallback
                     pass
 
     def get_unit_of_work(self) -> Any:

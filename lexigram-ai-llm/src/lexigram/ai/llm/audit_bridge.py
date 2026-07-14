@@ -54,7 +54,7 @@ class _AuditWrappedClient:
             try:
                 bridge = await self._get_bridge()
                 await bridge.on_completion(cast("Completion", result.unwrap()))
-            except Exception:
+            except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
         return result
 

@@ -100,7 +100,7 @@ def start(
     host: Annotated[
         str,
         typer.Option("--host", "-h", help="Host to bind to"),
-    ] = "0.0.0.0",
+    ] = "0.0.0.0",  # noqa: S104 — dev server default, operator overridable
     port: Annotated[
         int,
         typer.Option("--port", "-p", help="Port to bind to"),

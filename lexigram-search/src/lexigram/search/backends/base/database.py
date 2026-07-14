@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+import re
 from typing import TYPE_CHECKING, Any, cast
+
+from lexigram.search.backends.filters import _FIELD_NAME_RE
 
 if TYPE_CHECKING:
     from lexigram.contracts.core import HealthCheckResult
@@ -82,8 +85,10 @@ class DatabaseSearchBase:
         """Sanitize index name for safe use in SQL/queries.
 
         Replaces characters that could cause issues in table/collection names.
+        Non-identifier characters are replaced with underscores so the result
+        can never break out of a table-name context.
         """
-        return index.replace("-", "_").replace(".", "_").replace(" ", "_")
+        return re.sub(r"[^A-Za-z0-9_]", "_", index)
 
     def _extract_doc_id(self, document: dict[str, Any]) -> str:
         """Extract document ID from document.
@@ -235,6 +240,8 @@ class AsyncDatabaseSearchBase(DatabaseSearchBase):
         params: list[Any] = []
 
         for key, value in filters.items():
+            if not _FIELD_NAME_RE.fullmatch(key):
+                raise ValueError(f"Invalid filter field: {key!r}")
             if isinstance(value, dict):
                 # Pass through operators directly - for JSONB/postgres
                 clauses.append(f"document @> ${len(params) + 1}")

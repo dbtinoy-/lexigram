@@ -125,7 +125,7 @@ class SQLBackupStrategy(BackupStrategy):
         primary_key = pk_result["column_name"] if pk_result else None
 
         # Get all data
-        select_query = f"SELECT * FROM {table}"
+        select_query = f"SELECT * FROM {table}"  # noqa: S608 -- table passes _validate_table_name() and is a Table() quoted identifier
         rows = await conn.fetch_all(select_query)
 
         # Convert rows to lists
@@ -167,7 +167,7 @@ class SQLBackupStrategy(BackupStrategy):
         """Get table metadata"""
         _validate_table_name(table_name)
         table = Table(table_name)
-        count_query = f"SELECT COUNT(*) as count FROM {table}"
+        count_query = f"SELECT COUNT(*) as count FROM {table}"  # noqa: S608 -- table passes _validate_table_name() and is a Table() quoted identifier
         result = await conn.fetch_one(count_query)
         return {
             "record_count": result["count"] if result else 0,
@@ -300,7 +300,7 @@ class BackupManager:
             return
 
         # Clear existing data
-        await conn.execute(f"DELETE FROM {table}")
+        await conn.execute(f"DELETE FROM {table}")  # noqa: S608 -- table passes _validate_table_name() and is a Table() quoted identifier
 
         # Insert data in batches
         batch_size = 1000
@@ -311,7 +311,7 @@ class BackupManager:
             # Validate column names from backup data before SQL interpolation
             safe_columns = [str(Column(c)) for c in columns]
             placeholders = ", ".join(["?"] * len(columns))
-            query = f"INSERT INTO {table} ({', '.join(safe_columns)}) VALUES ({placeholders})"
+            query = f"INSERT INTO {table} ({', '.join(safe_columns)}) VALUES ({placeholders})"  # noqa: S608 -- table _validate_table_name()-checked; safe_columns are Column() quoted identifiers
 
             # Execute batch
             await conn.execute_many(query, batch)
@@ -443,7 +443,7 @@ class BackupManager:
         async with self.connection_pool.get_connection() as conn:
             while True:
                 rows = await conn.fetch_all(
-                    f"SELECT * FROM {table} LIMIT {batch_size} OFFSET {offset}",
+                    f"SELECT * FROM {table} LIMIT {batch_size} OFFSET {offset}",  # noqa: S608 -- table _validate_table_name()-checked; batch_size/offset are ints
                 )
                 if not rows:
                     break

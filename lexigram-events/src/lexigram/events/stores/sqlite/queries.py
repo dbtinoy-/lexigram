@@ -67,7 +67,7 @@ class SqliteQueries:
         (stream_id, stream_version, event_id, event_type,
          event_data, metadata, timestamp)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_read_events_sql(
         self, to_version: int | None = None, limit: int | None = None
@@ -78,7 +78,7 @@ class SqliteQueries:
                stream_id, stream_version, timestamp
         FROM {self._events_table}
         WHERE stream_id = ? AND stream_version >= ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
         if to_version is not None:
             query += " AND stream_version <= ?"
         query += " ORDER BY stream_version ASC"
@@ -92,7 +92,7 @@ class SqliteQueries:
         SELECT COALESCE(MAX(stream_version), 0)
         FROM {self._events_table}
         WHERE stream_id = ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_stream_all_sql(self) -> str:
         """Get SQL for streaming all events."""
@@ -103,7 +103,7 @@ class SqliteQueries:
         WHERE global_sequence > ?
         ORDER BY global_sequence ASC
         LIMIT ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_stream_all_partitioned_sql(self) -> str:
         """Get SQL for streaming all events with partitioning."""
@@ -115,7 +115,7 @@ class SqliteQueries:
           AND ABS(STR_HASH(stream_id)) % ? = ?
         ORDER BY global_sequence ASC
         LIMIT ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_stream_by_type_sql(self, event_types_count: int) -> str:
         """Get SQL for streaming events by type."""
@@ -127,7 +127,7 @@ class SqliteQueries:
         WHERE global_sequence > ?
           AND event_type IN ({placeholders})
         ORDER BY global_sequence ASC
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def find_by_type_sql(self) -> str:
         """Get SQL for getting events by type."""
@@ -138,7 +138,7 @@ class SqliteQueries:
         WHERE event_type = ?
         ORDER BY global_sequence ASC
         LIMIT ? OFFSET ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_events_count_sql(self, stream_id: str | None = None) -> str:
         """Get SQL for counting events."""
@@ -147,15 +147,15 @@ class SqliteQueries:
             SELECT COUNT(*)
             FROM {self._events_table}
             WHERE stream_id = ?
-            """
-        return f"SELECT COUNT(*) FROM {self._events_table}"
+            """  # noqa: S608 — table name from validated Table() identifier, never user input
+        return f"SELECT COUNT(*) FROM {self._events_table}"  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_delete_stream_sql(self) -> str:
         """Get SQL for deleting a stream."""
         return f"""
         DELETE FROM {self._events_table}
         WHERE stream_id = ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_all_stream_ids_sql(self) -> str:
         """Get SQL for getting all stream IDs."""
@@ -163,7 +163,7 @@ class SqliteQueries:
         SELECT DISTINCT stream_id
         FROM {self._events_table}
         ORDER BY stream_id
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_insert_snapshot_sql(self) -> str:
         """Get SQL for inserting/updating a snapshot."""
@@ -171,7 +171,7 @@ class SqliteQueries:
         INSERT OR REPLACE INTO {self._snapshots_table}
         (aggregate_id, aggregate_type, version, state, timestamp)
         VALUES (?, ?, ?, ?, ?)
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_load_snapshot_sql(self) -> str:
         """Get SQL for loading latest snapshot."""
@@ -181,7 +181,7 @@ class SqliteQueries:
         WHERE aggregate_id = ?
         ORDER BY version DESC
         LIMIT 1
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_snapshot_by_version_sql(self) -> str:
         """Get SQL for loading specific snapshot version."""
@@ -189,7 +189,7 @@ class SqliteQueries:
         SELECT aggregate_id, aggregate_type, version, state, timestamp
         FROM {self._snapshots_table}
         WHERE aggregate_id = ? AND version = ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_snapshot_count_sql(self) -> str:
         """Get SQL for counting snapshots."""
@@ -197,7 +197,7 @@ class SqliteQueries:
         SELECT COUNT(*)
         FROM {self._snapshots_table}
         WHERE aggregate_id = ?
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
     def get_delete_old_snapshots_sql(self) -> str:
         """Get SQL for deleting old snapshots."""
@@ -211,7 +211,7 @@ class SqliteQueries:
             ORDER BY version DESC
             LIMIT ?
           )
-        """
+        """  # noqa: S608 — table name from validated Table() identifier, never user input
 
 
 __all__ = ["SqliteQueries"]

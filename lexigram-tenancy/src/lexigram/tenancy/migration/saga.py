@@ -262,7 +262,7 @@ class TenantTierMigrationSaga(ContentAddressedSaga):
         if self._copy_result is not None:
             try:
                 await self._copy_strategy.rollback(self._tenant_id, self._copy_result)
-            except Exception:
+            except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
 
     async def _rebuild_projections(self, inputs: dict[str, Any]) -> dict[str, str]:

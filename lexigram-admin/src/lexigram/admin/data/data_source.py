@@ -235,7 +235,7 @@ class SqlDataSource(DataSourceBase[T]):
         """Find a single entity by ID."""
         table = _quote_identifier(self.table_name)
         id_field = _quote_identifier(self.id_field)
-        query = f"SELECT * FROM {table} WHERE {id_field} = $1"
+        query = f"SELECT * FROM {table} WHERE {id_field} = $1"  # noqa: S608 — table/id_field pre-validated by _quote_identifier (alnum+underscore only)
         return await self.db.fetch_one(query, [item_id])  # type: ignore[attr-defined]
 
     async def find_many(
@@ -248,8 +248,8 @@ class SqlDataSource(DataSourceBase[T]):
     ) -> QueryResult[T]:
         """Find multiple entities with pagination."""
         table = _quote_identifier(self.table_name)
-        base_query = f"SELECT * FROM {table}"
-        count_query = f"SELECT COUNT(*) FROM {table}"
+        base_query = f"SELECT * FROM {table}"  # noqa: S608 — table pre-validated by _quote_identifier (alnum+underscore only)
+        count_query = f"SELECT COUNT(*) FROM {table}"  # noqa: S608 — table pre-validated by _quote_identifier (alnum+underscore only)
 
         where_clauses: list[str] = []
         params: list[Any] = []
@@ -296,7 +296,7 @@ class SqlDataSource(DataSourceBase[T]):
             INSERT INTO {_quote_identifier(self.table_name)} ({", ".join(_quote_identifier(f) for f in fields)})
             VALUES ({", ".join(placeholders)})
             RETURNING *
-        """
+        """  # noqa: S608 — identifiers pre-validated by _quote_identifier (alnum+underscore only)
         return await self.db.fetch_one(query, values)  # type: ignore[attr-defined]
 
     async def update(
@@ -331,7 +331,7 @@ class SqlDataSource(DataSourceBase[T]):
             SET {", ".join(set_clauses)}
             WHERE {_quote_identifier(self.id_field)} = ${len(values)}
             RETURNING *
-        """
+        """  # noqa: S608 — identifiers pre-validated by _quote_identifier (alnum+underscore only)
         return await self.db.fetch_one(query, values)  # type: ignore[attr-defined]
 
     async def delete(self, item_id: Any) -> bool:
@@ -342,6 +342,6 @@ class SqlDataSource(DataSourceBase[T]):
             item_id = item_id.get(self.id_field, item_id)
         table = _quote_identifier(self.table_name)
         id_field = _quote_identifier(self.id_field)
-        query = f"DELETE FROM {table} WHERE {id_field} = $1"
+        query = f"DELETE FROM {table} WHERE {id_field} = $1"  # noqa: S608 — table/id_field pre-validated by _quote_identifier (alnum+underscore only)
         result = await self.db.execute(query, [item_id])
         return result > 0 if isinstance(result, int) else True

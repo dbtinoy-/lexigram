@@ -70,7 +70,7 @@ class OpenAIEmbeddingAdapter(AbstractEmbeddingAdapter):
             import random
 
             for _ in batch:
-                vector = [random.random() for _ in range(1536)]
+                vector = [random.random() for _ in range(1536)]  # noqa: S311 — mock-dummy vectors (non-secret)
                 embeddings.append(vector)
 
         return embeddings

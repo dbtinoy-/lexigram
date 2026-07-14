@@ -96,7 +96,7 @@ class AdminEmailVerificationSqlStore:
     async def is_verified(self, user_id: str) -> bool:
         """Return True when the user's email is verified (see protocol docs)."""
         result = await self._db.execute_query(
-            f"SELECT email_verified_at FROM {_TABLE} WHERE user_id = ?",
+            f"SELECT email_verified_at FROM {_TABLE} WHERE user_id = ?",  # noqa: S608 — table name is module constant "admin_email_verifications", never user input
             [user_id],
         )
         row = None
@@ -113,7 +113,7 @@ class AdminEmailVerificationSqlStore:
     async def find_user_by_token_hash(self, token_hash: str) -> str | None:
         """Look up the user owning an unconsumed token (see protocol docs)."""
         result = await self._db.execute_query(
-            f"SELECT user_id FROM {_TABLE} "
+            f"SELECT user_id FROM {_TABLE} "  # noqa: S608 — table name is module constant "admin_email_verifications", never user input
             "WHERE token_hash = ? AND email_verified_at IS NULL",
             [token_hash],
         )
@@ -140,7 +140,7 @@ class AdminEmailVerificationSqlStore:
                 token_hash = excluded.token_hash,
                 token_expires_at = excluded.token_expires_at,
                 updated_at = {now_expr(self._db)}
-            """,
+            """,  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
             [user_id, token_hash, expires_at],
         )
 
@@ -157,7 +157,7 @@ class AdminEmailVerificationSqlStore:
               AND token_hash = ?
               AND email_verified_at IS NULL
               AND token_expires_at > {now_expr(self._db)}
-            """,
+            """,  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
             [user_id, token_hash],
         )
         row_count = getattr(result, "row_count", None)
@@ -174,7 +174,7 @@ class AdminEmailVerificationSqlStore:
                 token_expires_at = NULL,
                 updated_at = {now_expr(self._db)}
             WHERE user_id = ?
-            """,
+            """,  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
             [user_id],
         )
 

@@ -8,7 +8,7 @@
 
 - Verdict: **WARN** — static analysis found issues to review
 - Dependency scan: clean (0 vulnerable package(s))
-- SAST (ruff `S` rules): 609 finding(s) (0 unverified, 305 verified low-risk, 304 low-signal noise)
+- SAST (ruff `S` rules): 304 finding(s) (0 unverified, 0 verified low-risk, 304 low-signal noise)
 - Framework security rules: 1 finding(s)
 - Tracker areas: 99 total, 99 done
 
@@ -16,7 +16,7 @@
 
 - Command: `uv run pip-audit --timeout 60`
 - Exit code: `0`
-- Duration: `47717 ms`
+- Duration: `1152 ms`
 - Vulnerable packages: 0
 - Summary: `No known vulnerabilities found`
 
@@ -35,317 +35,14 @@ No known vulnerabilities found
 |------|------|------|---------|
 | `(none)` | 0 | `-` | No unverified bandit findings. |
 
-### Verified Low-Risk Families (reviewed 2026-08-19; see notes below)
+### Verified Low-Risk Families (reviewed 2026-08-19; all closed — see notes below)
 
-- Count: 305
+- Count: 0
 
-| File | Line | Rule | Message |
-|------|------|------|---------|
-| `lexigram-admin/src/lexigram/admin/auth/store/audit_log_sql.py` | 220 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_otp_sql.py` | 95 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_otp_sql.py` | 103 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_otp_sql.py` | 120 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_verification_sql.py` | 99 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_verification_sql.py` | 116 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_verification_sql.py` | 136 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_verification_sql.py` | 150 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/email_verification_sql.py` | 171 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/lockout_sql.py` | 154 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/lockout_sql.py` | 218 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/lockout_sql.py` | 260 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/login_attempt_sql.py` | 160 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/login_attempt_sql.py` | 188 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/mfa_sql.py` | 107 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/mfa_sql.py` | 139 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/mfa_sql.py` | 152 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/password_reset_token_sql.py` | 93 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/password_reset_token_sql.py` | 100 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/password_reset_token_sql.py` | 127 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/session_sql.py` | 83 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/session_sql.py` | 98 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/session_sql.py` | 188 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/session_sql.py` | 212 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/session_sql.py` | 226 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/session_sql.py` | 236 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/auth/store/session_sql.py` | 248 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/controllers/base.py` | 146 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/controllers/base.py` | 165 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/controllers/resource.py` | 484 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 275 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 313 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 342 | `S704` | Unsafe use of `markupsafe.Markup` detected |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 467 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/data/data_source.py` | 238 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/data/data_source.py` | 251 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/data/data_source.py` | 252 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/data/data_source.py` | 295 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/data/data_source.py` | 329 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/data/data_source.py` | 345 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/engine/renderer.py` | 156 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/events/adapter.py` | 40 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/media/library.py` | 271 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/rbac/roles_sql.py` | 94 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/rbac/roles_sql.py` | 102 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/rbac/roles_sql.py` | 111 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/rbac/roles_sql.py` | 124 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/rbac/roles_sql.py` | 138 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/resources/handler.py` | 121 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/resources/handler.py` | 451 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/services/collaborative.py` | 450 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/services/search_service.py` | 163 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/services/settings_service.py` | 80 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/services/settings_service.py` | 91 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/services/settings_service.py` | 105 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-admin/src/lexigram/admin/state/context.py` | 202 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/ui/layouts/admin_layout.py` | 426 | `S704` | Unsafe use of `markupsafe.Markup` detected |
-| `lexigram-admin/src/lexigram/admin/ui/layouts/standalone_layout.py` | 255 | `S704` | Unsafe use of `markupsafe.Markup` detected |
-| `lexigram-ai-governance/src/lexigram/ai/governance/audit/database.py` | 138 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-governance/src/lexigram/ai/governance/audit/database.py` | 164 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-governance/src/lexigram/ai/governance/audit/database.py` | 181 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-governance/src/lexigram/ai/governance/audit/database.py` | 189 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-governance/src/lexigram/ai/governance/audit/database.py` | 197 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-governance/src/lexigram/ai/governance/relay_billing/persistence.py` | 305 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-governance/src/lexigram/ai/governance/resource/scheduled_worker.py` | 131 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-ai-llm/src/lexigram/ai/llm/audit_bridge.py` | 57 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-ai-llm/src/lexigram/ai/llm/embedding/cohere.py` | 66 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-ai-llm/src/lexigram/ai/llm/embedding/jina.py` | 68 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-ai-llm/src/lexigram/ai/llm/embedding/local.py` | 73 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-ai-llm/src/lexigram/ai/llm/embedding/openai.py` | 73 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-ai-llm/src/lexigram/ai/llm/embedding/voyage.py` | 66 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-ai-mcp/src/lexigram/ai/mcp/config.py` | 146 | `S104` | Possible binding to all interfaces |
-| `lexigram-ai-mcp/src/lexigram/ai/mcp/connectors/sql.py` | 266 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-mcp/src/lexigram/ai/mcp/connectors/sql.py` | 324 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-mcp/src/lexigram/ai/mcp/resources/database.py` | 126 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-mcp/src/lexigram/ai/mcp/resources/database.py` | 136 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-ai-prompt/src/lexigram/ai/prompt/optimization/optimizer.py` | 170 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-audit/src/lexigram/audit/admin/contributor.py` | 89 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-audit/src/lexigram/audit/store/sql.py` | 165 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-audit/src/lexigram/audit/store/sql.py` | 205 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-audit/src/lexigram/audit/store/sql.py` | 228 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-audit/src/lexigram/audit/verification/backfill.py` | 52 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-audit/src/lexigram/audit/verification/backfill.py` | 82 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-auth/src/lexigram/auth/storage/apikey_sql.py` | 63 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-auth/src/lexigram/auth/storage/apikey_sql.py` | 75 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-auth/src/lexigram/auth/storage/apikey_sql.py` | 88 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-auth/src/lexigram/auth/storage/apikey_sql.py` | 103 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-cache/src/lexigram/cache/service/core.py` | 161 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-cache/src/lexigram/cache/service/stampede.py` | 237 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-cache/src/lexigram/cache/service/stampede.py` | 269 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-cli/src/lexigram/cli/commands/db.py` | 580 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/commands/db.py` | 636 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/commands/dev.py` | 103 | `S104` | Possible binding to all interfaces |
-| `lexigram-cli/src/lexigram/cli/commands/new.py` | 21 | `S701` | By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True` or the `select_autoescape` function to mitigate XSS vulnerabilities. |
-| `lexigram-cli/src/lexigram/cli/commands/run.py` | 156 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/lib/templates.py` | 13 | `S701` | By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True` or the `select_autoescape` function to mitigate XSS vulnerabilities. |
-| `lexigram-cli/src/lexigram/cli/registry/database.py` | 492 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/registry/health.py` | 317 | `S607` | Starting a process with a partial executable path |
-| `lexigram-cli/src/lexigram/cli/registry/health.py` | 357 | `S607` | Starting a process with a partial executable path |
-| `lexigram-cli/src/lexigram/cli/registry/presets.py` | 43 | `S104` | Possible binding to all interfaces |
-| `lexigram-cli/src/lexigram/cli/registry/presets.py` | 63 | `S104` | Possible binding to all interfaces |
-| `lexigram-cli/src/lexigram/cli/registry/presets.py` | 112 | `S104` | Possible binding to all interfaces |
-| `lexigram-cli/src/lexigram/cli/registry/provider.py` | 381 | `S104` | Possible binding to all interfaces |
-| `lexigram-cli/src/lexigram/cli/registry/provider.py` | 544 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/registry/provider.py` | 545 | `S607` | Starting a process with a partial executable path |
-| `lexigram-cli/src/lexigram/cli/registry/server.py` | 284 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/registry/server.py` | 297 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/registry/task.py` | 70 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/registry/task.py` | 111 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/registry/task.py` | 149 | `S603` | `subprocess` call: check for execution of untrusted input |
-| `lexigram-cli/src/lexigram/cli/registry/version.py` | 60 | `S607` | Starting a process with a partial executable path |
-| `lexigram-events/src/lexigram/events/middleware/retry.py` | 81 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 27 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 33 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 51 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 59 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 75 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 79 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 91 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 95 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 107 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 122 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 128 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 146 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/checkpoints.py` | 152 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/database_bridge.py` | 50 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/database_bridge.py` | 77 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/database_bridge.py` | 121 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/database_bridge.py` | 154 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/database_bridge.py` | 172 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/idempotency.py` | 29 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/idempotency.py` | 35 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/idempotency.py` | 59 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/idempotency.py` | 66 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/idempotency.py` | 80 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/idempotency.py` | 90 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/outbox.py` | 120 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/outbox.py` | 126 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/outbox.py` | 263 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/outbox.py` | 290 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/outbox.py` | 304 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/outbox.py` | 333 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/postgres/event_store.py` | 148 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/postgres/event_store.py` | 262 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/postgres/event_store.py` | 267 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/postgres/event_store.py` | 336 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 65 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 76 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 91 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 99 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 110 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 123 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 134 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 146 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 151 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 155 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 162 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 170 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 178 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 188 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 196 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-events/src/lexigram/events/stores/sqlite/queries.py` | 204 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-graphql/src/lexigram/graphql/di/provider.py` | 223 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-http/src/lexigram/http/client/http_client.py` | 102 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-http/src/lexigram/http/di/provider.py` | 85 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-http/src/lexigram/http/di/provider.py` | 95 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-http/src/lexigram/http/di/provider.py` | 100 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-http/src/lexigram/http/retry/policy.py` | 36 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-monitor/src/lexigram/monitor/backends/db_exporter.py` | 103 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-monitor/src/lexigram/monitor/scheduling/scheduled_worker.py` | 131 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-multimedia-image/src/lexigram/multimedia/image/providers/comfyui.py` | 181 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-multimedia-video/src/lexigram/multimedia/video/providers/comfyui.py` | 198 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-queue/src/lexigram/queue/admin/pages/overview.py` | 33 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-search/src/lexigram/search/backends/mysql/backend.py` | 130 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/mysql/backend.py` | 195 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/mysql/backend.py` | 213 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/mysql/backend.py` | 240 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/postgres/backend.py` | 123 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/postgres/backend.py` | 199 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/postgres/backend.py` | 217 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/postgres/backend.py` | 246 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/postgres/backend.py` | 304 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/postgres/backend.py` | 326 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/backend.py` | 68 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/backend.py` | 96 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/backend.py` | 143 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/backend.py` | 221 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/backend.py` | 240 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 46 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 53 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 60 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 85 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 94 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 106 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 119 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 134 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/sqlite/schema.py` | 144 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-search/src/lexigram/search/backends/translate.py` | 180 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/backends/sqlite.py` | 444 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-sql/src/lexigram/sql/backup/backup_manager.py` | 128 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/backup/backup_manager.py` | 170 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/backup/backup_manager.py` | 303 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/backup/backup_manager.py` | 314 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/backup/backup_manager.py` | 446 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/di/provider.py` | 130 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-sql/src/lexigram/sql/di/provider.py` | 142 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-sql/src/lexigram/sql/di/provider.py` | 154 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-sql/src/lexigram/sql/logging/loggers.py` | 88 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-sql/src/lexigram/sql/outbox/store.py` | 51 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/outbox/store.py` | 65 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/outbox/store.py` | 74 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/outbox/store.py` | 81 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/performance/batch_processor.py` | 199 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/providers/_connection_mixin.py` | 270 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-sql/src/lexigram/sql/providers/crud_operations.py` | 123 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/providers/crud_operations.py` | 158 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/providers/crud_operations.py` | 190 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/providers/schema_manager.py` | 51 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/query/_sql_build_mixin.py` | 87 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/query/_sql_build_mixin.py` | 173 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/query/_sql_build_mixin.py` | 214 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/query/_sql_build_mixin.py` | 233 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_advanced_mixin.py` | 91 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_advanced_mixin.py` | 149 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_advanced_mixin.py` | 187 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_advanced_mixin.py` | 230 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_read_mixin.py` | 45 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_read_mixin.py` | 103 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_read_mixin.py` | 190 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_read_mixin.py` | 240 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_read_mixin.py` | 284 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_write_mixin.py` | 153 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_write_mixin.py` | 216 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_write_mixin.py` | 294 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/_write_mixin.py` | 369 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 80 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 105 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 152 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 185 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 198 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 211 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/append_log.py` | 214 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/repositories/base.py` | 177 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/resilience/core.py` | 225 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-sql/src/lexigram/sql/search/full_text.py` | 154 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/search/full_text.py` | 229 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 82 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 110 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 125 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 141 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 148 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 160 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/storage/postgres.py` | 166 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/locks.py` | 99 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/locks.py` | 115 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/locks.py` | 124 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/locks.py` | 152 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/locks.py` | 182 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/secrets.py` | 74 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/secrets.py` | 97 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/secrets.py` | 110 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/secrets.py` | 127 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/state.py` | 80 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/state.py` | 109 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/state.py` | 121 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/state.py` | 138 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/state.py` | 162 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/state.py` | 199 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-sql/src/lexigram/sql/stores/state.py` | 211 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 111 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 140 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 179 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 198 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 229 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 240 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 275 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 292 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/backends/postgres.py` | 307 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-tasks/src/lexigram/tasks/di/provider.py` | 385 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-tasks/src/lexigram/tasks/di/provider.py` | 490 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-tasks/src/lexigram/tasks/scheduled_worker.py` | 155 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-tenancy/src/lexigram/tenancy/integration/sql_bridge.py` | 71 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-tenancy/src/lexigram/tenancy/integration/sql_bridge.py` | 81 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-tenancy/src/lexigram/tenancy/migration/saga.py` | 265 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-testing/src/lexigram/testing/lib/admin_helpers.py` | 197 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-testing/src/lexigram/testing/lib/admin_helpers.py` | 204 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-ui/src/lexigram/ui/layouts/html_document.py` | 66 | `S704` | Unsafe use of `markupsafe.Markup` detected |
-| `lexigram-vector/src/lexigram/vector/backends/pgvector/collection.py` | 42 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-vector/src/lexigram/vector/backends/pgvector/collection.py` | 91 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-vector/src/lexigram/vector/backends/pgvector/collection.py` | 101 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-vector/src/lexigram/vector/backends/pgvector/collection.py` | 124 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-vector/src/lexigram/vector/backends/pgvector/collection.py` | 157 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-web/src/lexigram/web/constants.py` | 21 | `S104` | Possible binding to all interfaces |
-| `lexigram-web/src/lexigram/web/errors/html_error_renderer.py` | 182 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-web/src/lexigram/web/routing/health.py` | 77 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-web/src/lexigram/web/routing/health.py` | 83 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-webhook/src/lexigram/webhook/store/sql.py` | 171 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-webhook/src/lexigram/webhook/store/sql.py` | 338 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/checkpoint/store_database.py` | 86 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/checkpoint/store_database.py` | 111 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/checkpoint/store_database.py` | 149 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/state/persistence.py` | 98 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram-workflow/src/lexigram/workflow/state/persistence.py` | 123 | `S608` | Possible SQL injection vector through string-based query construction |
-| `lexigram/src/lexigram/middleware/builtins/resilience.py` | 70 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram/src/lexigram/reactive/operators/control.py` | 83 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
+All previously verified low-risk findings are closed: each site is
+either `# noqa`-annotated with a per-site justification or hardened
+in code. See Verification Notes.
+
 
 ### Low-Signal Rules (S101 asserts, S105/S106 hardcoded strings)
 
@@ -660,15 +357,13 @@ No known vulnerabilities found
 
 ### Verification Notes
 
-Each family below was triaged on the 2026-08-18 working tree:
+All 305 verified low-risk findings were closed on 2026-08-19 by deep re-verification of every site:
 
-- **S608** (SQL injection, 221 sites): every flagged statement was extracted and its f-string interpolations enumerated. All interpolations are table/column identifiers, internal fragment builders, or int-cast values; all row values are passed as parameters. Two identifier interpolation paths (`extra_filters` keys in `lexigram-sql` full-text search, `machine_id` in `lexigram-workflow` state persistence) were hardened on 2026-08-18: keys are now validated as plain identifiers and the machine id is passed as a bound parameter.
-- **S311** (pseudo-random, sampled): all sites are retry/TTL jitter, backoff, or vector noise — no tokens, keys, or other secrets.
-- **S110** (except-pass, sampled): intentional non-fatal suppression paths; several already carry explicit `noqa: BLE001` annotations.
-- **S603/S607** (subprocess, sampled): `lexigram-cli` operator tooling only; argv lists without `shell=True` and PATH lookup.
-- **S104** (bind-all, sampled): `0.0.0.0` defaults on dev servers and operator-set config; not remote-facing by default.
-- **S701** (jinja autoescape): two CLI scaffold generators rendering shipped, trusted templates.
-- **S704** (markupsafe.Markup): framework HTML layout composition API.
+- **S608** (SQL injection, 221 sites): every site re-verified individually. Nine genuine issues fixed: `index_many` index sanitization on the Postgres/MySQL backends, identifier validation at construction for `PostgresFTSQuery`/`MySQLFTSQuery` (table and columns), `Column()` quoting for `batch_processor` record keys, and a collection-name allowlist in `BaseVectorCollection` (prevents quoted-identifier breakout in pgvector SQL). All remaining sites are `# noqa: S608`-annotated with per-site justification: config-only identifiers, allowlisted sanitizers (`_sanitize_index_name`, `_quote_identifier`, `_FIELD_NAME_RE`, `_safe_filter_key`), fixed condition strings, or parameterized values.
+- **S110** (except-pass, 41 sites): intentional non-fatal fallbacks; every site annotated with its justification.
+- **S311** (pseudo-random, 16 sites): retry/TTL jitter, backoff, sampling, and mock vectors — no security context; annotated.
+- **S603** (subprocess, 10 sites): nine operator CLI tooling sites annotated (argv lists, no shell); one genuine fix — `lexigram-cli` MCP self-invocation switched from `sys.argv[0]` to `sys.executable -m lexigram.cli.runtime.main` (argv[0] independence).
+- **S607/S104/S704/S701** (17 sites): static PATH tools invoked by the operator, `0.0.0.0` dev-server config defaults, trusted framework HTML composition, and trusted CLI scaffold templates — all annotated with per-site justification.
 
 ## Framework Security Rules
 

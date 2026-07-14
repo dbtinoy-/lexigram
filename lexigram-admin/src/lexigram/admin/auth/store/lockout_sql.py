@@ -151,7 +151,7 @@ class AdminAccountLockoutSqlStore:
         if not is_permanent and unlock_at is not None:
             # Ask the DB whether the lockout has expired — avoids timezone issues.
             expired_sql = (
-                "UPDATE admin_account_lockouts "
+                "UPDATE admin_account_lockouts "  # noqa: S608 — now_expr yields fixed NOW()/CURRENT_TIMESTAMP, no user data interpolated
                 f"SET is_active = FALSE, deactivated_at = {now_expr(self._db)} "
                 "WHERE email = ? AND is_active = TRUE AND is_permanent = FALSE "
                 f"AND unlock_at <= {now_expr(self._db)}"
@@ -215,7 +215,7 @@ class AdminAccountLockoutSqlStore:
 
         # 1. Deactivate any existing active lockout.
         deactivate_sql = (
-            "UPDATE admin_account_lockouts "
+            "UPDATE admin_account_lockouts "  # noqa: S608 — now_expr yields fixed NOW()/CURRENT_TIMESTAMP, no user data interpolated
             f"SET is_active = FALSE, deactivated_at = {now_expr(self._db)} "
             "WHERE email = ? AND is_active = TRUE"
         )
@@ -257,7 +257,7 @@ class AdminAccountLockoutSqlStore:
         """
         await self.ensure_schema()
         sql = (
-            "UPDATE admin_account_lockouts "
+            "UPDATE admin_account_lockouts "  # noqa: S608 — now_expr yields fixed NOW()/CURRENT_TIMESTAMP, no user data interpolated
             f"SET is_active = FALSE, unlocked_at = {now_expr(self._db)} "
             "WHERE email = ? AND is_active = TRUE"
         )

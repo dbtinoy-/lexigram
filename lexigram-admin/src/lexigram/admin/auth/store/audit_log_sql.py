@@ -217,7 +217,7 @@ class AdminAuditLogSqlStore:
 
         where_clause = " AND ".join(conditions)
         sql = (
-            f"SELECT id, event_type, admin_user_id, ip_address, user_agent,"
+            f"SELECT id, event_type, admin_user_id, ip_address, user_agent,"  # noqa: S608 — table const, where_clause built from fixed conditions, int(limit)
             f" success, metadata, created_at"
             f" FROM {_TABLE}"
             f" WHERE {where_clause}"

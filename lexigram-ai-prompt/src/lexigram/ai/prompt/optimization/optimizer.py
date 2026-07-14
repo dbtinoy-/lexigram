@@ -167,7 +167,7 @@ class PromptOptimizer:
         """
         self._llm = llm
         self._embedding_client = embedding_client
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # noqa: S311 — deterministic optimization sampling
 
     async def optimize(
         self,

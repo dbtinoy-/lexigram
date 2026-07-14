@@ -18,7 +18,7 @@ PACKAGE_TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "package"
 
 
 def render_template(template_path: Path, output_path: Path, context: dict[str, Any]):
-    env = Environment(loader=FileSystemLoader(str(template_path)))
+    env = Environment(loader=FileSystemLoader(str(template_path)))  # noqa: S701 — CLI scaffold templates, no HTML context
 
     for root, _dirs, files in os.walk(template_path):
         rel_path = Path(root).relative_to(template_path)

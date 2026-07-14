@@ -199,7 +199,7 @@ class AdminContextManager:
                 session["_flash"] = messages
             else:
                 session.pop("_flash", None)
-        except Exception:
+        except Exception:  # noqa: S110 — intentional best-effort fallback
             pass
 
     async def __aenter__(self) -> AdminContext:

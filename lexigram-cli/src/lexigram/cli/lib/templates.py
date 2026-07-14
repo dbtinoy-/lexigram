@@ -10,7 +10,7 @@ class TemplateRenderer:
 
     def __init__(self, templates_dir: Path | str):
         self.templates_dir = Path(templates_dir)
-        self.env = Environment(
+        self.env = Environment(  # noqa: S701 — CLI scaffold templates, no HTML context
             loader=FileSystemLoader(str(self.templates_dir)),
             trim_blocks=False,
             lstrip_blocks=False,

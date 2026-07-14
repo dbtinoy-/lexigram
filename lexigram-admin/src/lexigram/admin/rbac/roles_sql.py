@@ -91,7 +91,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
     async def list_roles(self) -> list[RoleDefinition]:
         """Return all roles ordered by name (see protocol docs)."""
         result = await self._db.execute_query(
-            f"SELECT name, description, permissions, inherits, is_system FROM {_TABLE} ORDER BY name",
+            f"SELECT name, description, permissions, inherits, is_system FROM {_TABLE} ORDER BY name",  # noqa: S608 — table name is module constant "admin_roles", never user input
             [],
         )
         return [self._row_to_role(row) for row in self._rows(result)]
@@ -99,7 +99,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
     async def get_role(self, name: str) -> RoleDefinition | None:
         """Look up a role by name (see protocol docs)."""
         result = await self._db.execute_query(
-            f"SELECT name, description, permissions, inherits, is_system FROM {_TABLE} WHERE name = ?",
+            f"SELECT name, description, permissions, inherits, is_system FROM {_TABLE} WHERE name = ?",  # noqa: S608 — table name is module constant "admin_roles", never user input
             [name],
         )
         rows = self._rows(result)
@@ -108,7 +108,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
     async def create_role(self, role: RoleDefinition) -> None:
         """Insert a new role (see protocol docs)."""
         await self._db.execute(
-            f"INSERT INTO {_TABLE} (name, description, permissions, inherits, is_system) VALUES (?, ?, ?, ?, ?)",
+            f"INSERT INTO {_TABLE} (name, description, permissions, inherits, is_system) VALUES (?, ?, ?, ?, ?)",  # noqa: S608 — table name is module constant "admin_roles", never user input
             [
                 role.name,
                 role.description,
@@ -121,7 +121,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
     async def update_role(self, role: RoleDefinition) -> None:
         """Update an existing role by name (see protocol docs)."""
         await self._db.execute(
-            f"UPDATE {_TABLE} SET description = ?, permissions = ?, inherits = ?, is_system = ?, "
+            f"UPDATE {_TABLE} SET description = ?, permissions = ?, inherits = ?, is_system = ?, "  # noqa: S608 — table name is module constant "admin_roles", never user input
             f"updated_at = {now_expr(self._db)} WHERE name = ?",
             [
                 role.description,
@@ -135,7 +135,7 @@ class AdminRoleSqlStore(AdminRoleStoreProtocol):
     async def delete_role(self, name: str) -> bool:
         """Delete a role by name; ``True`` when a row was removed."""
         result = await self._db.execute(
-            f"DELETE FROM {_TABLE} WHERE name = ?",
+            f"DELETE FROM {_TABLE} WHERE name = ?",  # noqa: S608 — table name is module constant "admin_roles", never user input
             [name],
         )
         row_count = getattr(result, "row_count", None)

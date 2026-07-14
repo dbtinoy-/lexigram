@@ -80,7 +80,7 @@ class AdminSessionSqlRepository:
     async def _table_exists(self, db_type: str) -> bool:
         if db_type in ("postgres", "postgresql"):
             sql = (
-                "SELECT EXISTS ("
+                "SELECT EXISTS ("  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
                 "  SELECT FROM information_schema.tables"
                 "  WHERE table_schema = 'public'"
                 f"  AND table_name = '{self._TABLE.name}'"
@@ -95,7 +95,7 @@ class AdminSessionSqlRepository:
 
         # SQLite fallback
         sql = (
-            "SELECT name FROM sqlite_master "
+            "SELECT name FROM sqlite_master "  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
             f"WHERE type='table' AND name='{self._TABLE.name}'"
         )
         result = await self._db.execute_query(sql, [])
@@ -185,7 +185,7 @@ class AdminSessionSqlRepository:
             Raw row dict, or ``None``.
         """
         await self.ensure_schema()
-        sql = f"SELECT * FROM {self._TABLE} WHERE session_id = ? AND is_active = TRUE"
+        sql = f"SELECT * FROM {self._TABLE} WHERE session_id = ? AND is_active = TRUE"  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
         result = await self._db.execute_query(sql, [session_id])
 
         rows = self._extract_rows(result)
@@ -209,7 +209,7 @@ class AdminSessionSqlRepository:
         """
         await self.ensure_schema()
         sql = (
-            f"SELECT * FROM {self._TABLE} "
+            f"SELECT * FROM {self._TABLE} "  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
             "WHERE admin_id = ? AND is_active = TRUE AND expires_at > ? "
             "ORDER BY last_active_at DESC"
         )
@@ -223,7 +223,7 @@ class AdminSessionSqlRepository:
             session_id: Session to revoke.
         """
         await self.ensure_schema()
-        sql = f"UPDATE {self._TABLE} SET is_active = FALSE WHERE session_id = ?"
+        sql = f"UPDATE {self._TABLE} SET is_active = FALSE WHERE session_id = ?"  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
         await self._db.execute(sql, (session_id,))
 
     async def revoke_all(self, user_id: str) -> None:
@@ -233,7 +233,7 @@ class AdminSessionSqlRepository:
             user_id: Owner whose sessions are to be revoked.
         """
         await self.ensure_schema()
-        sql = f"UPDATE {self._TABLE} SET is_active = FALSE WHERE admin_id = ?"
+        sql = f"UPDATE {self._TABLE} SET is_active = FALSE WHERE admin_id = ?"  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
         await self._db.execute(sql, (user_id,))
 
     async def update_activity(self, session_id: str, now: datetime) -> None:
@@ -245,7 +245,7 @@ class AdminSessionSqlRepository:
         """
         await self.ensure_schema()
         sql = (
-            f"UPDATE {self._TABLE} "
+            f"UPDATE {self._TABLE} "  # noqa: S608 — table name is constant class attr Table("admin_sessions"), never user input
             "SET last_active_at = ? "
             "WHERE session_id = ? AND is_active = TRUE"
         )

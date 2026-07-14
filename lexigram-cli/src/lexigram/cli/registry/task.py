@@ -67,7 +67,7 @@ class PytestRunner(TaskRunner):
             cmd.append("-v")
 
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603 — argv list, no shell; operator-supplied path arg
                 cmd,
                 check=False,
                 capture_output=True,
@@ -108,7 +108,7 @@ class RuffRunner(TaskRunner):
             cmd.append("--fix")
 
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603 — argv list, no shell; operator-supplied path arg
                 cmd,
                 check=False,
                 capture_output=True,
@@ -146,7 +146,7 @@ class MypyRunner(TaskRunner):
         cmd = ["mypy", path]
 
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603 — argv list, no shell; operator-supplied path arg
                 cmd,
                 check=False,
                 capture_output=True,

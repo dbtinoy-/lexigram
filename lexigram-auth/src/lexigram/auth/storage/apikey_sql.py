@@ -60,7 +60,7 @@ class APIKeySqlRepository:
         Returns:
             List of row dicts; empty when nothing matches.
         """
-        sql = f"SELECT * FROM {self._TABLE} WHERE prefix = ? AND revoked_at IS NULL"
+        sql = f"SELECT * FROM {self._TABLE} WHERE prefix = ? AND revoked_at IS NULL"  # noqa: S608 — table name is constant class attr "api_keys", never user input
         result = await self._db.execute_query(sql, [prefix])
         return list(result.rows)
 
@@ -72,7 +72,7 @@ class APIKeySqlRepository:
             ip_address: Caller IP, or ``None`` when unavailable.
         """
         sql = (
-            f"UPDATE {self._TABLE} "
+            f"UPDATE {self._TABLE} "  # noqa: S608 — table name is constant class attr "api_keys", never user input
             "SET last_used_at = NOW(), last_used_ip = ? "
             "WHERE id = ?"
         )
@@ -85,7 +85,7 @@ class APIKeySqlRepository:
             key_id: Target key identifier.
         """
         sql = (
-            f"UPDATE {self._TABLE} "
+            f"UPDATE {self._TABLE} "  # noqa: S608 — table name is constant class attr "api_keys", never user input
             "SET revoked_at = NOW(), updated_at = NOW() "
             "WHERE id = ?"
         )
@@ -100,7 +100,7 @@ class APIKeySqlRepository:
         Returns:
             List of row dicts; empty when nothing matches.
         """
-        sql = f"SELECT * FROM {self._TABLE} WHERE user_id = ? AND revoked_at IS NULL"
+        sql = f"SELECT * FROM {self._TABLE} WHERE user_id = ? AND revoked_at IS NULL"  # noqa: S608 — table name is constant class attr "api_keys", never user input
         result = await self._db.execute_query(sql, [user_id])
         return list(result.rows)
 

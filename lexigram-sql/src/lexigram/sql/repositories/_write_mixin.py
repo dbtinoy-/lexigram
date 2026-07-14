@@ -150,7 +150,7 @@ class _WriteMixin:
             where_clause = f"{self._key_col} = ?"  # type: ignore[attr-defined]
             where_params: list[Any] = [param_key]
             # Append RLS scope to UPDATE WHERE clause
-            _dummy = f"UPDATE _ SET _ WHERE {where_clause}"
+            _dummy = f"UPDATE _ SET _ WHERE {where_clause}"  # noqa: S608 -- where-clause from Column()-validated self._key_col, values parameterized
             _dummy, where_params = self._rls_apply(_dummy, where_params, "UPDATE")  # type: ignore[attr-defined]
             # Extract only the part after WHERE (provider takes a where_clause string)
             where_clause = _dummy.split(" WHERE ", 1)[1]
@@ -213,7 +213,7 @@ class _WriteMixin:
             param_key = str(key_value) if isinstance(key_value, UUID) else key_value
             where_clause_v = f"{self._key_col} = ? AND version = ?"  # type: ignore[attr-defined]
             where_params_v: list[Any] = [param_key, current_version]
-            _dummy_v = f"UPDATE _ SET _ WHERE {where_clause_v}"
+            _dummy_v = f"UPDATE _ SET _ WHERE {where_clause_v}"  # noqa: S608 -- where-clause from Column()-validated self._key_col, values parameterized
             _dummy_v, where_params_v = self._rls_apply(  # type: ignore[attr-defined]
                 _dummy_v, where_params_v, "UPDATE"
             )
@@ -291,7 +291,7 @@ class _WriteMixin:
         try:
             del_where = f"{self._key_col} = ?"  # type: ignore[attr-defined]
             del_params: list[Any] = [key]
-            _dummy_d = f"DELETE FROM _ WHERE {del_where}"
+            _dummy_d = f"DELETE FROM _ WHERE {del_where}"  # noqa: S608 -- where-clause from Column()-validated self._key_col, values parameterized
             _dummy_d, del_params = self._rls_apply(_dummy_d, del_params, "DELETE")  # type: ignore[attr-defined]
             del_where = _dummy_d.split(" WHERE ", 1)[1]
             result = await self.provider.execute_delete(  # type: ignore[attr-defined]
@@ -366,7 +366,7 @@ class _WriteMixin:
             )
 
             query = (
-                f"INSERT INTO {self._table} "  # type: ignore[attr-defined]
+                f"INSERT INTO {self._table} "  # type: ignore[attr-defined]  # noqa: S608 -- validated Table()/Column() identifiers, values parameterized
                 f"({', '.join(safe_columns)}) VALUES ({placeholders}) "
                 f"ON CONFLICT ({safe_conflict}) DO UPDATE SET {safe_set}"
             )

@@ -157,7 +157,7 @@ class AdminLoginAttemptSqlStore:
         """
         await self.ensure_schema()
         sql = (
-            "SELECT COUNT(*) AS count FROM admin_login_attempts "
+            "SELECT COUNT(*) AS count FROM admin_login_attempts "  # noqa: S608 — since_expr(..., int-cast seconds) builds fixed dialect expression only
             "WHERE email = ? AND success = FALSE "
             f"AND attempted_at > {since_expr(self._db, since_seconds)}"
         )
@@ -185,7 +185,7 @@ class AdminLoginAttemptSqlStore:
         """
         await self.ensure_schema()
         sql = (
-            "SELECT COUNT(*) AS count FROM admin_login_attempts "
+            "SELECT COUNT(*) AS count FROM admin_login_attempts "  # noqa: S608 — since_expr(..., int-cast seconds) builds fixed dialect expression only
             "WHERE ip_address = ? AND success = FALSE "
             f"AND attempted_at > {since_expr(self._db, since_seconds)}"
         )

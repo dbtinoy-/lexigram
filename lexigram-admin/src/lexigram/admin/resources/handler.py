@@ -118,7 +118,7 @@ def _coerce_form_data(data: dict, model: type | None) -> dict:
                     from lexigram.serialization import loads_str as _json_loads
 
                     data[key] = _json_loads(value)
-                except Exception:
+                except Exception:  # noqa: S110 — intentional best-effort fallback
                     pass
 
     return data
@@ -448,7 +448,7 @@ class DeleteActionHandler:
                         if val:
                             record_label = str(val)
                             break
-            except Exception:
+            except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
 
         resource_prefix = request.scope.get("admin_resource_prefix", "")

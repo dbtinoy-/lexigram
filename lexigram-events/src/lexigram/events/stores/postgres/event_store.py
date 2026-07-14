@@ -145,7 +145,7 @@ class PostgresEventStore(AbstractEventStore):
     async def get_stream_ids(self) -> list[str]:
         """Get all stream IDs in the store."""
         result = await self.provider.execute_query(
-            f"SELECT DISTINCT stream_id FROM {self._table}"
+            f"SELECT DISTINCT stream_id FROM {self._table}"  # noqa: S608 — table name from validated Table() identifier, never user input
         )
         return [row["stream_id"] for row in result.rows]
 
@@ -259,12 +259,12 @@ class PostgresEventStore(AbstractEventStore):
         """Get total event count."""
         if stream_id:
             result = await self.provider.execute_query(
-                f"SELECT COUNT(*) as count FROM {self._table} WHERE stream_id = $1",
+                f"SELECT COUNT(*) as count FROM {self._table} WHERE stream_id = $1",  # noqa: S608 — table name from validated Table() identifier, never user input
                 [stream_id],
             )
         else:
             result = await self.provider.execute_query(
-                f"SELECT COUNT(*) as count FROM {self._table}"
+                f"SELECT COUNT(*) as count FROM {self._table}"  # noqa: S608 — table name from validated Table() identifier, never user input
             )
 
         return int(result.rows[0]["count"]) if result.rows else 0
@@ -333,7 +333,7 @@ class PostgresEventStore(AbstractEventStore):
 
             await self.provider.execute_query("SELECT 1")
             count_res = await self.provider.execute_query(
-                f"SELECT COUNT(*) as count FROM {self._table}"
+                f"SELECT COUNT(*) as count FROM {self._table}"  # noqa: S608 — table name from validated Table() identifier, never user input
             )
             return HealthCheckResult(
                 status=HealthStatus.HEALTHY,

@@ -83,7 +83,7 @@ class DatabaseContentCheckpointStore:
     async def get(self, key: ContentCheckpointKey) -> ContentCheckpointEntry | None:
         await self._ensure_schema()
         result = await self._provider.execute_query(
-            f"SELECT key_str, entry_json FROM {self._table_name} WHERE key_str = ?",
+            f"SELECT key_str, entry_json FROM {self._table_name} WHERE key_str = ?",  # noqa: S608 -- table name allowlisted by _TABLE_NAME_RE in __init__
             [key.as_str()],
         )
         if not result.rows:
@@ -108,7 +108,7 @@ class DatabaseContentCheckpointStore:
         entry_json = _entry_to_json(entry)
         now_ts = datetime.now().timestamp()
         await self._provider.execute(
-            f"INSERT INTO {self._table_name} "
+            f"INSERT INTO {self._table_name} "  # noqa: S608 -- table name allowlisted by _TABLE_NAME_RE in __init__
             f"(key_str, entry_json, stage_handler_version, "
             f"output_size_bytes, completed_at, created_at) "
             f"VALUES (?, ?, ?, ?, ?, ?) "
@@ -146,7 +146,7 @@ class DatabaseContentCheckpointStore:
         where = " AND ".join(where_parts)
         params.append(limit)
         result = await self._provider.execute_query(
-            f"SELECT key_str FROM {self._table_name} WHERE {where} LIMIT ?",
+            f"SELECT key_str FROM {self._table_name} WHERE {where} LIMIT ?",  # noqa: S608 -- table name allowlisted by _TABLE_NAME_RE in __init__
             params,
         )
         keys: list[ContentCheckpointKey] = []

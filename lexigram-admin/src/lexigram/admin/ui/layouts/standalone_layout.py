@@ -252,7 +252,7 @@ def standalone_layout(
         Complete HTML page
     """
     layout = StandaloneLayout(config=config, context=context)
-    return Markup(layout.render(str(content)))
+    return Markup(layout.render(str(content)))  # noqa: S704 — framework-composed trusted HTML
 
 
 __all__ = [

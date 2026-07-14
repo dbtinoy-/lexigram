@@ -63,7 +63,7 @@ class VoyageEmbeddingAdapter(AbstractEmbeddingAdapter):
         import random
 
         for _ in texts:
-            vector = [random.random() for _ in range(1024)]
+            vector = [random.random() for _ in range(1024)]  # noqa: S311 — mock-dummy vectors (non-secret)
             embeddings.append(vector)
 
         return embeddings

@@ -50,7 +50,7 @@ class DatabaseBridgeEventStore(AbstractEventStore):
                     f"""INSERT INTO {self._events_table} 
                     (stream_id, stream_version, event_type, event_data, metadata, timestamp)
                     VALUES ($1, $2, $3, $4, $5, NOW())
-                    """,
+                    """,  # noqa: S608 — events table from init-time ctor arg, never user input
                     stream_id,
                     expected_version or 1,
                     event_data.get("event_type", event.__class__.__name__),
@@ -74,7 +74,7 @@ class DatabaseBridgeEventStore(AbstractEventStore):
 
         conn = await self._db.acquire()
         try:
-            query = f"SELECT * FROM {self._events_table} WHERE stream_id = $1"
+            query = f"SELECT * FROM {self._events_table} WHERE stream_id = $1"  # noqa: S608 — events table from init-time ctor arg, never user input
             params: list[Any] = [stream_id]
 
             if from_version:
@@ -118,7 +118,7 @@ class DatabaseBridgeEventStore(AbstractEventStore):
 
         conn = await self._db.acquire()
         try:
-            query = f"SELECT * FROM {self._events_table} ORDER BY global_sequence ASC"
+            query = f"SELECT * FROM {self._events_table} ORDER BY global_sequence ASC"  # noqa: S608 — events table from init-time ctor arg, never user input
             params: list[Any] = []
             if count is not None:
                 query += f" LIMIT ${len(params) + 1}"
@@ -151,7 +151,7 @@ class DatabaseBridgeEventStore(AbstractEventStore):
         conn = await self._db.acquire()
         try:
             row = await conn.fetchrow(
-                f"SELECT COUNT(*) as count, MAX(stream_version) as version FROM {self._events_table} WHERE stream_id = $1",
+                f"SELECT COUNT(*) as count, MAX(stream_version) as version FROM {self._events_table} WHERE stream_id = $1",  # noqa: S608 — events table from init-time ctor arg, never user input
                 stream_id,
             )
             if row:
@@ -169,7 +169,7 @@ class DatabaseBridgeEventStore(AbstractEventStore):
         conn = await self._db.acquire()
         try:
             result = await conn.execute(
-                f"DELETE FROM {self._events_table} WHERE stream_id = $1",
+                f"DELETE FROM {self._events_table} WHERE stream_id = $1",  # noqa: S608 — events table from init-time ctor arg, never user input
                 stream_id,
             )
             return str(result) != "DELETE 0"

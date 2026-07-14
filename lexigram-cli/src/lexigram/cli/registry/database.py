@@ -489,7 +489,7 @@ class DatabaseConnection:
         """Open the native database shell."""
         cmd = self.backend.build_shell_command(self.params)
         try:
-            subprocess.run(cmd, check=False)
+            subprocess.run(cmd, check=False)  # noqa: S603 — registry-built argv list
         except OSError as e:
             raise RuntimeError(f"Failed to open shell: {e}") from e
 

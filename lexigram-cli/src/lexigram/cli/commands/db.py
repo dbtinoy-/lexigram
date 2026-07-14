@@ -577,7 +577,7 @@ def backup(
             cmd = backend.build_backup_command(conn.params, output_path)
             out.info(f"Backing up {backend.name} database to {output_path}...")
 
-            subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True)  # noqa: S603 — registry-built argv list
             out.success(f"Database backed up to {output_path}")
         except subprocess.CalledProcessError as e:
             out.error(f"Backup failed: {e}")
@@ -633,7 +633,7 @@ def restore(
         out.info(f"Restoring {backend.name} database from {input_path}...")
 
         with open(input_path) as f:
-            subprocess.run(cmd, stdin=f, check=True)
+            subprocess.run(cmd, stdin=f, check=True)  # noqa: S603 — registry-built argv list
 
         out.success(f"Database restored from {input_path}")
 

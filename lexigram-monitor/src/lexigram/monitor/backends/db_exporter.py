@@ -100,7 +100,7 @@ class DBMetricsExporter:
     ) -> None:
         try:
             # Use JSON-compatible labels insertion if supported; provider handles paramization
-            sql = f"INSERT INTO {self._table} (name, metric_type, labels, value) VALUES ($1, $2, $3, $4)"
+            sql = f"INSERT INTO {self._table} (name, metric_type, labels, value) VALUES ($1, $2, $3, $4)"  # noqa: S608 -- init-time config attribute, never user input
             from lexigram import serialization as json
 
             labels_payload = json.dumps(labels or {})

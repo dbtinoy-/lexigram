@@ -92,7 +92,7 @@ class AdminEmailOtpSqlStore:
     async def save(self, user_id: str, code_hash: str, expires_at: datetime) -> None:
         """Persist a new emailed code (see protocol docs)."""
         await self._db.execute(
-            f"INSERT INTO {_TABLE} (id, user_id, code_hash, expires_at) "
+            f"INSERT INTO {_TABLE} (id, user_id, code_hash, expires_at) "  # noqa: S608 — table name is module constant "admin_email_otps", never user input
             "VALUES (?, ?, ?, ?)",
             [str(uuid.uuid4()), user_id, code_hash, expires_at],
         )
@@ -106,7 +106,7 @@ class AdminEmailOtpSqlStore:
               AND code_hash = ?
               AND used_at IS NULL
               AND expires_at > {now_expr(self._db)}
-            """,
+            """,  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
             [user_id, code_hash],
         )
         row_count = getattr(result, "row_count", None)
@@ -117,7 +117,7 @@ class AdminEmailOtpSqlStore:
     async def last_sent_at(self, user_id: str) -> datetime | None:
         """Return the creation time of the most recent code (see protocol docs)."""
         result = await self._db.execute_query(
-            f"SELECT created_at FROM {_TABLE} "
+            f"SELECT created_at FROM {_TABLE} "  # noqa: S608 — table name is module constant "admin_email_otps", never user input
             "WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
             [user_id],
         )

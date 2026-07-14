@@ -84,7 +84,7 @@ class _BuildMixin:
             else:
                 select_clause = f"DISTINCT {select_clause}"
 
-        parts = [f"{cte_prefix}SELECT {select_clause} FROM {self._table}"]  # type: ignore[attr-defined]
+        parts = [f"{cte_prefix}SELECT {select_clause} FROM {self._table}"]  # noqa: S608 -- builder validates all identifiers via Table()/Column() at entry  # type: ignore[attr-defined]
 
         # Collect raw select params
         for raw in self._raw_selects:  # type: ignore[attr-defined]
@@ -170,7 +170,7 @@ class _BuildMixin:
         len(values) + 1
 
         parts = [
-            f"INSERT INTO {self._table} ({', '.join(columns)}) VALUES ({', '.join(placeholders)})",  # type: ignore[attr-defined]
+            f"INSERT INTO {self._table} ({', '.join(columns)}) VALUES ({', '.join(placeholders)})",  # noqa: S608 -- builder validates all identifiers via Table()/Column() at entry  # type: ignore[attr-defined]
         ]
 
         # ON CONFLICT
@@ -211,7 +211,7 @@ class _BuildMixin:
             params.append(self._data[key])  # type: ignore[attr-defined]
             param_idx += 1
 
-        parts = [f"UPDATE {self._table} SET {', '.join(set_parts)}"]  # type: ignore[attr-defined]
+        parts = [f"UPDATE {self._table} SET {', '.join(set_parts)}"]  # noqa: S608 -- builder validates all identifiers via Table()/Column() at entry  # type: ignore[attr-defined]
 
         where_sql, where_params, _next_idx = self._build_where(param_idx)
         if where_sql:
@@ -230,7 +230,7 @@ class _BuildMixin:
                 "DELETE queries must have WHERE conditions to prevent accidental mass deletions",
             )
 
-        parts = [f"DELETE FROM {self._table}"]  # type: ignore[attr-defined]
+        parts = [f"DELETE FROM {self._table}"]  # noqa: S608 -- builder validates all identifiers via Table()/Column() at entry  # type: ignore[attr-defined]
         params = []
         param_idx = 1
 

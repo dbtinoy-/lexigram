@@ -136,9 +136,10 @@ def main(
     # Dual-protocol: also spawn MCP SSE server as a background subprocess.
     mcp_proc: subprocess.Popen[bytes] | None = None
     if mcp_port is not None:
-        lexigram_bin = sys.argv[0] if sys.argv[0] else "lexigram"
         mcp_cmd = [
-            lexigram_bin,
+            sys.executable,
+            "-m",
+            "lexigram.cli.runtime.main",
             "mcp",
             "serve",
             "--transport",
@@ -153,7 +154,7 @@ def main(
             f"[info]MCP (SSE): [bold]{host}:{mcp_port}[/bold]  "
             f"→ POST http://{host}:{mcp_port}/mcp"
         )
-        mcp_proc = subprocess.Popen(mcp_cmd)
+        mcp_proc = subprocess.Popen(mcp_cmd)  # noqa: S603 — argv list; sys.executable -m (argv[0]-independent)
 
     try:
         manager = ServerManager(server_backend)

@@ -95,7 +95,7 @@ def test_security_generator_verdict_critical_with_open_critical_row(
     assert "## Static Analysis (ruff bandit rules)" in markdown
     assert "## Audit Tracker Status" in markdown
     assert "| 50 |" in markdown
-    assert f"(reviewed {date.today().isoformat()}; see notes below)" in markdown
+    assert f"(reviewed {date.today().isoformat()}; all closed — see notes below)" in markdown
 
 
 def test_security_generator_parses_ruff_and_pip_evidence(
