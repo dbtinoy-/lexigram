@@ -126,3 +126,61 @@ async def test_mcp_server_host_404(mock_server: MagicMock) -> None:
     
     resp_start = await send_queue.get()
     assert resp_start["status"] == 404
+
+
+@pytest.mark.asyncio
+async def test_host_default_posture_is_fail_closed() -> None:
+    """A real MCPServer host boots and rejects non-handshake methods post-init."""
+    tool_handler = MagicMock()
+    tool_handler.call_tool = AsyncMock(
+        return_value={"content": [{"type": "text", "text": "ok"}]}
+    )
+    server = MCPServer(tool_handler=tool_handler, name="smoke")
+    host = MCPServerHost(server)
+    assert host._server is server
+
+    init_resp = await server.handle_message(
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+    )
+    assert "result" in init_resp
+
+    resp = await server.handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {"name": "t", "arguments": {}},
+        }
+    )
+    assert resp is not None
+    assert "error" in resp
+    assert resp["error"]["code"] == -32000
+    tool_handler.call_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_host_opt_in_posture_dispatches() -> None:
+    """A real MCPServer host mounts and dispatches under the opt-in posture."""
+    tool_handler = MagicMock()
+    tool_handler.call_tool = AsyncMock(
+        return_value={"content": [{"type": "text", "text": "ok"}]}
+    )
+    server = MCPServer(tool_handler=tool_handler, name="smoke", allow_unauthenticated=True)
+    host = MCPServerHost(server)
+    assert host._server is server
+
+    await server.handle_message(
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+    )
+
+    resp = await server.handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {"name": "t", "arguments": {}},
+        }
+    )
+    assert resp is not None
+    assert "result" in resp
+    tool_handler.call_tool.assert_awaited_once()

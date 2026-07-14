@@ -10,10 +10,6 @@ import aiohttp
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.multimedia.exceptions import UpscaleError
 from lexigram.contracts.multimedia.types import MediaAsset, UpscaleRequest
-from lexigram.multimedia.upscale.exceptions import (
-    UpscaleAssetTooLargeError,
-    UpscaleUnsafeAssetURLError,
-)
 from lexigram.multimedia.upscale.providers._asset_io import resolve_asset_bytes
 
 if TYPE_CHECKING:
@@ -57,7 +53,7 @@ class RealEsrganUpscaleProvider:
     ) -> Result[MediaAsset, UpscaleError]:
         try:
             image_bytes = await resolve_asset_bytes(request.asset)
-        except (UpscaleAssetTooLargeError, UpscaleUnsafeAssetURLError) as exc:
+        except (UpscaleError, ValueError) as exc:
             return Err(UpscaleError(str(exc)))
         payload: dict[str, object] = {
             "image_bytes": base64.b64encode(image_bytes).decode("ascii"),

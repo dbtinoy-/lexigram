@@ -276,9 +276,7 @@ async def test_get_without_csrf_cookie_sets_cookie() -> None:
     headers_list = start.get("headers", [])
     header_names = {name for name, _ in headers_list}
     # Should have set a CSRF cookie
-    assert b"set-cookie" in header_names, (
-        "GET without cookie should set a CSRF cookie"
-    )
+    assert b"set-cookie" in header_names, "GET without cookie should set a CSRF cookie"
 
 
 # ---------------------------------------------------------------------------

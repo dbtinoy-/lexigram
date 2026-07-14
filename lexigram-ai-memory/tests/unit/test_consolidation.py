@@ -22,6 +22,7 @@ class TestRecencyDecayStrategy:
         strategy = RecencyDecayStrategy(half_life_hours=1.0, threshold=0.5)
         old = MemoryEntry(
             id="old",
+            owner_id="owner-1",
             content="old content",
             role="user",
             timestamp=datetime.now(UTC) - timedelta(hours=48),
@@ -39,6 +40,7 @@ class TestRecencyDecayStrategy:
         strategy = RecencyDecayStrategy(half_life_hours=1.0, threshold=0.5)
         old = MemoryEntry(
             id="old",
+            owner_id="owner-1",
             content="old",
             role="user",
             timestamp=datetime.now(UTC) - timedelta(hours=100),

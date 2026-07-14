@@ -7,6 +7,10 @@ Run in a dedicated venv with the madmom-server extra installed:
 Loads the model once at process startup; never reloaded per-request.
 Verify madmom's actual pinned-version license terms before relying on
 this in a commercial deployment (design spec §7/§11.4).
+
+madmom is an optional extra: if it is not installed, the server still
+starts and serves /health, but /analyze returns HTTP 503 (fail-closed)
+until the process runs in a madmom-enabled environment.
 """
 
 from __future__ import annotations
@@ -19,17 +23,26 @@ from typing import Any
 from aiohttp import web
 
 from lexigram.contracts.multimedia.security import DEFAULT_MAX_MEDIA_BYTES
+from lexigram.logging import get_logger
 
 MAX_BODY_BYTES: int = 64 * 1024 * 1024  # media payloads, base64 window
 MAX_AUDIO_BYTES: int = DEFAULT_MAX_MEDIA_BYTES  # decoded-length cap (contracts policy)
+
+logger = get_logger(__name__)
 
 _processor: Any = None
 
 
 async def on_startup(app: web.Application) -> None:
     global _processor
-    import madmom  # type: ignore[import-not-found]
-
+    try:
+        import madmom
+    except ImportError:
+        logger.warning(
+            "madmom_unavailable",
+            detail="reference server running without the madmom optional extra",
+        )
+        return
     _processor = madmom.features.beats.RNNBeatProcessor()
 
 
@@ -41,6 +54,9 @@ async def handle_analyze(request: web.Request) -> web.Response:
     audio_bytes = base64.b64decode(raw_audio)
     if len(audio_bytes) > MAX_AUDIO_BYTES:
         raise web.HTTPBadRequest(text=f"decoded audio exceeds {MAX_AUDIO_BYTES} bytes")
+
+    if _processor is None:
+        raise web.HTTPServiceUnavailable(text="madmom processor unavailable")
 
     import madmom
 
@@ -67,7 +83,9 @@ async def handle_analyze(request: web.Request) -> web.Response:
 
 
 async def handle_health(request: web.Request) -> web.Response:
-    return web.json_response({"status": "ok" if _processor is not None else "loading"})
+    return web.json_response(
+        {"status": "ok" if _processor is not None else "unavailable"}
+    )
 
 
 def build_app() -> web.Application:

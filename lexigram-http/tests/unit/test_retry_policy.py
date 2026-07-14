@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from lexigram.contracts.infra.resilience.models import RetryConfig
@@ -68,6 +70,7 @@ class TestRetryPolicyInit:
     def test_config_is_frozen(self) -> None:
         """RetryConfig is frozen/immutable."""
         from dataclasses import is_dataclass
+
         assert is_dataclass(RetryConfig)
 
 
@@ -97,6 +100,7 @@ class TestRetryPolicyExecute:
     @pytest.mark.asyncio
     async def test_execute_success(self) -> None:
         """Successful call returns result immediately."""
+
         async def ok() -> str:
             return "done"
 
@@ -124,6 +128,7 @@ class TestRetryPolicyExecute:
     @pytest.mark.asyncio
     async def test_execute_exhaust_retries(self) -> None:
         """Raises last exception after all retries exhausted."""
+
         async def always_fail() -> None:
             raise ValueError("boom")
 
@@ -134,6 +139,7 @@ class TestRetryPolicyExecute:
     @pytest.mark.asyncio
     async def test_execute_non_retryable_exception(self) -> None:
         """Raises immediately for exception not in retry_on."""
+
         async def fail() -> None:
             raise KeyError("missing")
 
@@ -144,6 +150,7 @@ class TestRetryPolicyExecute:
     @pytest.mark.asyncio
     async def test_execute_no_retries(self) -> None:
         """max_attempts=1 means no retries on failure."""
+
         async def fail() -> None:
             raise RuntimeError("fail")
 
@@ -154,6 +161,7 @@ class TestRetryPolicyExecute:
     @pytest.mark.asyncio
     async def test_execute_with_retry_if(self) -> None:
         """retry_if callback controls retry decision."""
+
         async def fail() -> None:
             raise ValueError("ephemeral")
 
@@ -169,12 +177,96 @@ class TestRetryPolicyExecute:
     @pytest.mark.asyncio
     async def test_execute_passes_args_and_kwargs(self) -> None:
         """Args and kwargs are forwarded to the callable."""
+
         async def identity(*args: int, **kwargs: str) -> dict:
             return {"args": args, "kwargs": kwargs}
 
         policy = RetryPolicy()
         result = await policy.execute(identity, 1, 2, key="val")
         assert result == {"args": (1, 2), "kwargs": {"key": "val"}}
+
+    @pytest.mark.asyncio
+    async def test_execute_retries_idempotent_method(self) -> None:
+        """GET/HEAD/OPTIONS are retried by default (idempotent)."""
+        call_count = 0
+
+        async def flaky() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ConnectionError("timeout")
+            return "ok"
+
+        policy = RetryPolicy(RetryConfig(max_attempts=2, base_delay=0.01))
+        result = await policy.execute(flaky, method="GET")
+        assert result == "ok"
+        assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_execute_does_not_retry_non_idempotent_method(self) -> None:
+        """POST/PUT/DELETE/PATCH raise immediately (idempotency gate)."""
+        call_count = 0
+
+        async def always_fail() -> None:
+            nonlocal call_count
+            call_count += 1
+            raise ConnectionError("timeout")
+
+        policy = RetryPolicy(RetryConfig(max_attempts=2, base_delay=0.01))
+        with pytest.raises(ConnectionError):
+            await policy.execute(always_fail, method="POST")
+        assert call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_execute_method_not_forwarded_to_callable(self) -> None:
+        """The method kwarg is consumed by the policy, not the callable."""
+
+        async def spy(**kwargs: Any) -> dict:
+            return kwargs
+
+        policy = RetryPolicy()
+        result = await policy.execute(spy, method="GET")
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_execute_idempotent_gate_opt_out(self) -> None:
+        """idempotent_methods_only=False retries non-idempotent methods."""
+        call_count = 0
+
+        async def flaky() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ConnectionError("timeout")
+            return "ok"
+
+        policy = RetryPolicy(
+            RetryConfig(
+                max_attempts=2,
+                base_delay=0.01,
+                idempotent_methods_only=False,
+            )
+        )
+        result = await policy.execute(flaky, method="POST")
+        assert result == "ok"
+        assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_execute_no_method_gate_inactive(self) -> None:
+        """Callers without a method (non-HTTP) are retried as before."""
+        call_count = 0
+
+        async def flaky() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ConnectionError("timeout")
+            return "ok"
+
+        policy = RetryPolicy(RetryConfig(max_attempts=2, base_delay=0.01))
+        result = await policy.execute(flaky)
+        assert result == "ok"
+        assert call_count == 2
 
 
 class TestCalculateDelay:

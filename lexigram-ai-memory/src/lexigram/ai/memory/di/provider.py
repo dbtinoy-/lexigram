@@ -44,6 +44,11 @@ class MemoryProvider(Provider):
     services. The default backend is ``InMemoryMemoryBackend``; callers
     with persistent needs should register a ``MemoryStoreProtocol``
     override after this provider runs.
+
+    Note:
+        All memory services are owner-scoped — entries carry an
+        ``owner_id`` and every store operation is restricted to one
+        owner (user, session, or system scope).
     """
 
     name = "ai-memory"

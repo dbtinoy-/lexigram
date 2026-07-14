@@ -59,7 +59,9 @@ class NavigationManager:
             if self._state
             else None
         )
-        registry = getattr(self._state, "cluster_registry", None) if self._state else None
+        registry = (
+            getattr(self._state, "cluster_registry", None) if self._state else None
+        )
         self._cluster_registry = registry or ClusterRegistry.with_defaults()
 
     # ------------------------------------------------------------------
@@ -123,13 +125,10 @@ class NavigationManager:
             if not items:
                 continue
             items_by_cluster[cluster] = items
-            if (
-                cluster_nav is None
-                and is_cluster_path(current_path, items, cluster=cluster)
+            if cluster_nav is None and is_cluster_path(
+                current_path, items, cluster=cluster
             ):
-                cluster_nav = build_secondary_nav(
-                    items, current_path, cluster=cluster
-                )
+                cluster_nav = build_secondary_nav(items, current_path, cluster=cluster)
         for cluster, items in items_by_cluster.items():
             assembler_nav_items = collapse_cluster_in_primary(
                 assembler_nav_items,
@@ -169,8 +168,8 @@ class NavigationManager:
             href = (item.get("href", "") or "").strip()
             label = (item.get("label", "") or "").strip()
             if current_path is not None and href:
-                item["active"] = (
-                    current_path == href or current_path.startswith(href + "/")
+                item["active"] = current_path == href or current_path.startswith(
+                    href + "/"
                 )
             if href:
                 seen_hrefs.add(href)
@@ -221,7 +220,9 @@ class NavigationManager:
     # User menu
     # ------------------------------------------------------------------
 
-    def user_menu_items(self, include_plugins: bool = True) -> list[dict[str, str | None]]:
+    def user_menu_items(
+        self, include_plugins: bool = True
+    ) -> list[dict[str, str | None]]:
         """Build the shell user-menu entries for this request.
 
         The Profile entry comes first, then cluster centers (one entry per

@@ -178,7 +178,7 @@ class HuggingFaceCounter:
         if not self._loaded:
             self._loaded = True
             try:
-                from transformers import AutoTokenizer  # type: ignore[import-not-found]
+                from transformers import AutoTokenizer
 
                 self._tokenizer = AutoTokenizer.from_pretrained(
                     self._model,

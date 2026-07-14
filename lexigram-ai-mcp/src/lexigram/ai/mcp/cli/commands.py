@@ -110,7 +110,7 @@ def _resolve_entry_point(target: str | None) -> str:
 
     module = _path_to_module(file_path)
     entry_point = f"{module}:{attr}"
-    typer.echo(f"Detected entry point: {entry_point}")
+    typer.echo(f"Detected entry point: {entry_point}", err=True)
     return entry_point
 
 
@@ -302,6 +302,7 @@ def _build_script_server(module: object) -> object:
         tool_handler=ToolHandler(tool_provider),
         resource_handler=ResourceHandler(resource_provider),
         prompt_handler=PromptHandler(prompt_provider),
+        allow_unauthenticated=True,
     )
 
 
@@ -325,6 +326,24 @@ def _is_script_target(target: str) -> bool:
         return False
     attr = _detect_factory_attr(target) if Path(target).exists() else None
     return attr is None
+
+
+def _route_logs_to_stderr() -> None:
+    """Send structlog output to stderr.
+
+    structlog's default ``PrintLoggerFactory`` writes to stdout, which
+    corrupts the newline-delimited JSON-RPC stream of the stdio transport.
+    """
+    import structlog
+
+    _cfg = structlog.get_config()
+    structlog.configure(
+        processors=_cfg.get("processors", []),
+        context_class=_cfg.get("context_class", dict),
+        wrapper_class=_cfg.get("wrapper_class", structlog.BoundLogger),
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+        cache_logger_on_first_use=_cfg.get("cache_logger_on_first_use", True),
+    )
 
 
 def serve(
@@ -392,12 +411,15 @@ def serve(
             )
             raise typer.Exit(1)
 
+        if transport == "stdio":
+            _route_logs_to_stderr()
+
         if profile:
             os.environ["LEX_PROFILE"] = profile
-            typer.echo(f"Profile: {profile}")
+            typer.echo(f"Profile: {profile}", err=True)
 
         if target is not None and _is_script_target(target):
-            typer.echo(f"Script mode: loading {target}")
+            typer.echo(f"Script mode: loading {target}", err=True)
 
             async def _run_script() -> None:
                 module = _load_script_module(target)
@@ -405,12 +427,14 @@ def serve(
 
                 if transport == "stdio":
                     typer.echo(
-                        "MCP server started (stdio transport — reading from stdin)"
+                        "MCP server started (stdio transport — reading from stdin)",
+                        err=True,
                     )
                     await _serve_stdio(mcp_server)
                 else:
                     typer.echo(
-                        f"MCP server started (SSE transport — listening on {host}:{port})"
+                        f"MCP server started (SSE transport — listening on {host}:{port})",
+                        err=True,
                     )
                     await _serve_sse(mcp_server, host, port)
 
@@ -424,6 +448,8 @@ def serve(
 
             lexigram_app = _load_app(entry_point)
             await start_application(lexigram_app)  # type: ignore[arg-type]
+            if transport == "stdio":
+                _route_logs_to_stderr()
             try:
                 mcp_server = lexigram_app.container.resolve(  # type: ignore[attr-defined]
                     "lexigram.ai.mcp.server.core.MCPServer"

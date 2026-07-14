@@ -173,6 +173,15 @@ class MCPConfig(BaseConfig):
     request_timeout: float = Field(default=30.0, ge=1.0)
     """Request timeout in seconds."""
 
+    allow_unauthenticated: bool = Field(default=False)
+    """Permit non-authorizer request dispatch.
+
+    ``False`` (default) fails closed: after ``initialize``, requests for
+    non-handshake methods are rejected with ``-32000`` unless an
+    authorizer is bound or this flag is ``True``.  ``True`` is an explicit
+    opt-out restoring the open posture for local/development use.
+    """
+
     # Client-side configuration
     client_url: str | None = Field(default=None)
     """URL of an external MCP server to connect to as a client.

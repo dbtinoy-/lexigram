@@ -139,7 +139,7 @@ class ImageLoader:
         # Lazy import of pytesseract only if OCR is requested
         if extract_text:
             try:
-                import pytesseract as _pt  # type: ignore[import-not-found]
+                import pytesseract as _pt
 
                 mod._pytesseract = _pt  # type: ignore[attr-defined]
                 mod.TESSERACT_AVAILABLE = True  # type: ignore[attr-defined]

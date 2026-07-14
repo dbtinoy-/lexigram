@@ -7,7 +7,7 @@ import pytest
 
 from lexigram.admin.services.storage.service import AdminStorageService
 from lexigram.admin.services.storage.upload import FileUploadService
-from lexigram.storage.exceptions import StorageUnsupportedOperationError
+from lexigram.contracts.infra.storage import StorageUnsupportedOperationError
 
 
 class UnsupportedPresignStore:
@@ -16,7 +16,9 @@ class UnsupportedPresignStore:
     def __init__(self) -> None:
         self.presigned_calls: list[tuple[str, str]] = []
 
-    async def get_presigned_url(self, path: str, expires_in=None, method: str = "GET") -> str:
+    async def get_presigned_url(
+        self, path: str, expires_in=None, method: str = "GET"
+    ) -> str:
         self.presigned_calls.append((path, method))
         raise StorageUnsupportedOperationError("unsupported")
 

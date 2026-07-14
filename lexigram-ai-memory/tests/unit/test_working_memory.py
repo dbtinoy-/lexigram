@@ -85,13 +85,13 @@ class TestWorkingMemoryManager:
             return_value=[MemorySearchResult(entry=entry, score=0.9, source="episodic")]
         )
         mgr = WorkingMemoryManager(episodic=mock_episodic)
-        result = await mgr.assemble("query", 2000)
+        result = await mgr.assemble("query", 2000, owner_id="owner-1")
         assert any(e.id == entry.id for e in result)
 
     @pytest.mark.asyncio
     async def test_assemble_no_sources(self) -> None:
         mgr = WorkingMemoryManager()
-        result = await mgr.assemble("query", 2000)
+        result = await mgr.assemble("query", 2000, owner_id="owner-1")
         assert result == []
 
     @pytest.mark.asyncio
@@ -103,6 +103,6 @@ class TestWorkingMemoryManager:
             return_value=[MemorySearchResult(entry=entry, score=0.8, source="episodic")]
         )
         mgr = WorkingMemoryManager(episodic=mock_episodic)
-        await mgr.assemble("something", 1000)
+        await mgr.assemble("something", 1000, owner_id="owner-1")
         ctx = await mgr.get_context_entries()
         assert any(e.id == entry.id for e in ctx)

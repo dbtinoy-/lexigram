@@ -41,11 +41,18 @@ class TransactionError(NoSQLError):
     _code: str = "LEX_ERR_NOSQL_006"
 
 
+class NoSQLFilterError(NoSQLError):
+    """Filter rejected by the operator/identifier validation guard."""
+
+    _code: str = "LEX_ERR_NOSQL_007"
+
+
 __all__ = [
     "DocumentNotFoundError",
     "DocumentValidationError",
     "DuplicateKeyError",
     "NoSQLConnectionError",
     "NoSQLError",
+    "NoSQLFilterError",
     "TransactionError",
 ]

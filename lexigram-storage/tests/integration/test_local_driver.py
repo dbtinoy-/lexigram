@@ -24,7 +24,8 @@ class TestLocalDriver:
     def driver(self, temp_dir):
         """Create a local driver with temp directory"""
         return LocalDriver(
-            root_dir=str(temp_dir), base_url="http://localhost:8000/files",
+            root_dir=str(temp_dir),
+            base_url="http://localhost:8000/files",
         )
 
     @pytest.mark.asyncio
@@ -88,7 +89,8 @@ class TestLocalDriver:
         """Test uploading with custom options"""
         content = "test content"
         options = UploadOptions(
-            content_type="text/custom", metadata={"author": "test", "version": "1.0"},
+            content_type="text/custom",
+            metadata={"author": "test", "version": "1.0"},
         )
 
         info = await driver.upload("options.txt", content, options)
@@ -235,16 +237,18 @@ class TestLocalDriver:
 
         with pytest.raises(StorageUnsupportedOperationError):
             await driver.get_presigned_url(
-                "test/file.txt", expires_in=7200, method="PUT",
+                "test/file.txt",
+                expires_in=7200,
+                method="PUT",
             )
 
     @pytest.mark.asyncio
     async def test_health_check_healthy(self, driver):
         """Test health check returns healthy status"""
         await driver.upload("file.txt", b"content")
-        
+
         result = await driver.health_check()
-        
+
         assert result.status.value == "healthy"
         assert result.component == "storage.local"
         assert "root_dir" in result.details
@@ -253,15 +257,16 @@ class TestLocalDriver:
     async def test_health_check_nonexistent_directory(self, driver, temp_dir):
         """Test health check with nonexistent directory"""
         import os
+
         nonexistent_dir = temp_dir / "nonexistent"
-        
+
         bad_driver = LocalDriver(
             root_dir=str(nonexistent_dir),
             base_url="http://localhost:8000/files",
         )
-        
+
         result = await bad_driver.health_check()
-        
+
         assert result.status.value == "unhealthy"
         assert "does not exist" in result.error
 
@@ -271,20 +276,20 @@ class TestLocalDriver:
         # This is tested via path security - paths starting with / should be handled
         # The internal method strips leading slash at line 53-54
         await driver.upload("file.txt", b"content")
-        
+
         assert await driver.exists("file.txt")
 
     @pytest.mark.asyncio
     async def test_copy_default_implementation(self, driver):
         """Test copy uses default implementation"""
         await driver.upload("source.txt", b"original content")
-        
+
         result = await driver.copy("source.txt", "dest.txt")
-        
+
         assert result.path == "dest.txt"
         assert await driver.exists("source.txt")
         assert await driver.exists("dest.txt")
-        
+
         dest_content = await driver.download("dest.txt")
         assert dest_content == b"original content"
 
@@ -292,9 +297,9 @@ class TestLocalDriver:
     async def test_move_default_implementation(self, driver):
         """Test move uses default implementation"""
         await driver.upload("source.txt", b"to be moved")
-        
+
         result = await driver.move("source.txt", "moved.txt")
-        
+
         assert result.path == "moved.txt"
         assert not await driver.exists("source.txt")
         assert await driver.exists("moved.txt")
@@ -304,7 +309,7 @@ class TestLocalDriver:
         """Test that paths with leading slash are handled"""
         # Internal method strips leading slash at line 53-54
         await driver.upload("file.txt", b"content")
-        
+
         # Should work normally
         assert await driver.exists("file.txt")
 
@@ -318,12 +323,13 @@ class TestLocalDriver:
     @pytest.mark.asyncio
     async def test_write_stream_default(self, driver):
         """Test write_stream uses default implementation"""
+
         async def data_stream():
             yield b"hello"
             yield b" world"
-        
+
         result = await driver.write_stream("streamed.txt", data_stream())
-        
+
         assert result.path == "streamed.txt"
         content = await driver.download("streamed.txt")
         assert content == b"hello world"

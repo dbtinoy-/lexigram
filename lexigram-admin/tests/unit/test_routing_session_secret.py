@@ -25,9 +25,7 @@ class TestAdminRouterSessionSecret:
 
         assert admin_app is not None
         session_middleware = [
-            m
-            for m in admin_app.user_middleware
-            if m.cls is SessionMiddleware
+            m for m in admin_app.user_middleware if m.cls is SessionMiddleware
         ]
         assert len(session_middleware) == 1
         assert session_middleware[0].kwargs["secret_key"] == "x" * 64
@@ -47,9 +45,7 @@ class TestAdminRouterSessionSecret:
         admin_app = router.mount(app)
 
         session_middleware = [
-            m
-            for m in admin_app.user_middleware
-            if m.cls is SessionMiddleware
+            m for m in admin_app.user_middleware if m.cls is SessionMiddleware
         ]
         options = session_middleware[0].kwargs
         assert options["secret_key"] == "a-strong-secret-abcdefgh"

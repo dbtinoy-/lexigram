@@ -215,6 +215,7 @@ class AdminEmailVerificationService:
                 metadata={"email": email},
             )
         return Ok(None)
+
     async def verify_token(self, token: str) -> Result[bool, AdminAuthError]:
         """Validate and consume a verification token.
 
@@ -231,12 +232,20 @@ class AdminEmailVerificationService:
 
         if user_id is None:
             await self._audit_failure("no_such_token")
-            return Err(EmailVerificationTokenInvalidError("Invalid or expired verification link."))
+            return Err(
+                EmailVerificationTokenInvalidError(
+                    "Invalid or expired verification link."
+                )
+            )
 
         consumed = await self._store.consume_token(user_id, token_hash)
         if not consumed:
             await self._audit_failure("consumed_or_expired", user_id)
-            return Err(EmailVerificationTokenInvalidError("Invalid or expired verification link."))
+            return Err(
+                EmailVerificationTokenInvalidError(
+                    "Invalid or expired verification link."
+                )
+            )
 
         if self._audit_service is not None:
             await self._audit_service.log_event(
@@ -296,17 +305,13 @@ class AdminEmailVerificationService:
             count = int(value) if value else 0
             if count >= self._resend_request_limit:
                 return True
-            await cache.set(
-                key, str(count + 1), ttl=self._resend_window_seconds
-            )
+            await cache.set(key, str(count + 1), ttl=self._resend_window_seconds)
             return False
         except Exception:  # noqa: BLE001 — fail open on cache outages
             logger.warning("email_verification_rate_limit_unavailable")
             return False
 
-    async def _audit_failure(
-        self, reason: str, user_id: str | None = None
-    ) -> None:
+    async def _audit_failure(self, reason: str, user_id: str | None = None) -> None:
         """Record a failed verification attempt (never raises)."""
         if self._audit_service is None:
             return

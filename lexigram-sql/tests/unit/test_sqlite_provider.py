@@ -136,7 +136,9 @@ class TestSQLiteProvider:
 
         provider = SQLiteProvider()
         result = await provider._execute_query_raw(
-            mock_connection, "SELECT * FROM test", ["param"],
+            mock_connection,
+            "SELECT * FROM test",
+            ["param"],
         )
 
         mock_connection.execute.assert_called_once_with("SELECT * FROM test", ["param"])
@@ -154,7 +156,8 @@ class TestSQLiteProvider:
 
         provider = SQLiteProvider()
         result = await provider._execute_query_raw(
-            mock_connection, "SELECT * FROM test",
+            mock_connection,
+            "SELECT * FROM test",
         )
 
         mock_connection.execute.assert_called_once_with("SELECT * FROM test", [])
@@ -168,11 +171,14 @@ class TestSQLiteProvider:
 
         provider = SQLiteProvider()
         result = await provider._execute_modify_raw(
-            mock_connection, "INSERT INTO test VALUES (?)", ["value"],
+            mock_connection,
+            "INSERT INTO test VALUES (?)",
+            ["value"],
         )
 
         mock_connection.execute.assert_called_once_with(
-            "INSERT INTO test VALUES (?)", ["value"],
+            "INSERT INTO test VALUES (?)",
+            ["value"],
         )
         mock_connection.commit.assert_called_once()
         mock_cursor.close.assert_called_once()

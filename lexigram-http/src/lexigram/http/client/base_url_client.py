@@ -336,6 +336,7 @@ class BaseURLHTTPClient:
             raise RuntimeError(
                 f"BaseURLHTTPClient '{self._name}': connection pool session is None."
             )
+        await http_client._assert_url_safe(full_url)
         async with pool._session.request(  # type: ignore[attr-defined]
             method, full_url, headers=merged_headers, **kwargs
         ) as resp:

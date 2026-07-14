@@ -72,7 +72,7 @@ def _make_csrf_service(*, valid: bool = True) -> MagicMock:
 def _make_mfa_service(*, factor: str = "totp") -> MagicMock:
     """Return a mock AdminMfaServiceProtocol with a fixed factor."""
     svc = MagicMock()
-    svc.get_factor = AsyncMock(return_value=factor)
+    svc.get_factor = MagicMock(return_value=factor)
     svc.is_enabled = AsyncMock(return_value=factor == "totp")
     svc.start_setup = AsyncMock(
         return_value=Ok(("SECRET", "otpauth://totp/x", "<svg>qr</svg>"))

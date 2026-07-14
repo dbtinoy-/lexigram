@@ -139,11 +139,7 @@ def render_delete_confirm(
                 el(
                     "p",
                     {"class": "mt-1 text-sm text-destructive leading-relaxed"},
-                    *(
-                        [raw(message)]
-                        if message is not None
-                        else list(default_message)
-                    ),
+                    *([raw(message)] if message is not None else list(default_message)),
                 ),
             ),
         ),
@@ -343,11 +339,7 @@ def render_bulk_delete_confirm(
                 el(
                     "p",
                     {"class": "mt-1 text-sm text-destructive leading-relaxed"},
-                    *(
-                        [raw(message)]
-                        if message is not None
-                        else list(default_message)
-                    ),
+                    *([raw(message)] if message is not None else list(default_message)),
                 ),
             ),
         ),

@@ -14,7 +14,12 @@ except ImportError:
 
 from lexigram.contracts.data.nosql.nosql import BulkWriteResult, DocumentResult
 from lexigram.logging import get_logger
-from lexigram.nosql.exceptions import DuplicateKeyError, NoSQLError
+from lexigram.nosql.exceptions import DuplicateKeyError, NoSQLError, NoSQLFilterError
+from lexigram.nosql.security import (
+    _PIPELINE_WRITE_STAGES,
+    _scan_denied,
+    validate_filter,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -37,6 +42,46 @@ class MongoDBCollection:
     def name(self) -> str:
         """Collection name."""
         return self._name
+
+    # ── Guards ───────────────────────────────────────────────────
+
+    def _guard_filter(self, filter: dict[str, Any] | None) -> None:
+        """Validate a caller-supplied filter before driver dispatch.
+
+        Args:
+            filter: The filter dict, or ``None`` when the caller
+                omitted it (guarded as ``{}`` at the call sites).
+
+        Raises:
+            NoSQLFilterError: If the filter is rejected.
+        """
+        if filter:
+            validate_filter(filter)
+
+    def _guard_pipeline(self, pipeline: list[dict[str, Any]]) -> None:
+        """Validate a caller-supplied aggregation pipeline before dispatch.
+
+        Denies pipeline-write stages in any position and evaluation
+        operators anywhere, and runs the filter validator on every
+        ``$match`` stage value.
+
+        Args:
+            pipeline: The pipeline list.
+
+        Raises:
+            NoSQLFilterError: If the pipeline is rejected.
+        """
+        for stage in pipeline:
+            if not isinstance(stage, dict):
+                raise NoSQLFilterError(
+                    f"Pipeline stage must be a dict, got {type(stage).__name__}",
+                )
+            for key in stage:
+                if key in _PIPELINE_WRITE_STAGES:
+                    raise NoSQLFilterError(f"Pipeline stage {key!r} is denied")
+            _scan_denied(stage)
+            if "$match" in stage:
+                validate_filter(stage["$match"])
 
     # ── Insert ───────────────────────────────────────────────────
 
@@ -79,6 +124,7 @@ class MongoDBCollection:
         projection: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Find a single document matching the filter."""
+        self._guard_filter(filter)
         doc: dict[str, Any] | None = await self._col.find_one(
             filter, projection=projection
         )
@@ -94,6 +140,7 @@ class MongoDBCollection:
         limit: int = 0,
     ) -> AsyncIterator[dict[str, Any]]:
         """Find documents matching the filter. Returns async iterator."""
+        self._guard_filter(filter)
         cursor = self._col.find(filter, projection=projection)
         if sort:
             cursor = cursor.sort(sort)
@@ -114,6 +161,7 @@ class MongoDBCollection:
         upsert: bool = False,
     ) -> DocumentResult:
         """Update a single document matching the filter."""
+        self._guard_filter(filter)
         result = await self._col.update_one(filter, update, upsert=upsert)
         return DocumentResult(
             matched_count=result.matched_count,
@@ -128,6 +176,7 @@ class MongoDBCollection:
         update: dict[str, Any],
     ) -> DocumentResult:
         """Update all documents matching the filter."""
+        self._guard_filter(filter)
         result = await self._col.update_many(filter, update)
         return DocumentResult(
             matched_count=result.matched_count,
@@ -139,6 +188,7 @@ class MongoDBCollection:
 
     async def delete_one(self, filter: dict[str, Any]) -> DocumentResult:
         """Delete a single document matching the filter."""
+        self._guard_filter(filter)
         result = await self._col.delete_one(filter)
         return DocumentResult(
             matched_count=result.deleted_count,
@@ -147,6 +197,7 @@ class MongoDBCollection:
 
     async def delete_many(self, filter: dict[str, Any]) -> DocumentResult:
         """Delete all documents matching the filter."""
+        self._guard_filter(filter)
         result = await self._col.delete_many(filter)
         return DocumentResult(
             matched_count=result.deleted_count,
@@ -163,6 +214,7 @@ class MongoDBCollection:
         upsert: bool = False,
     ) -> DocumentResult:
         """Replace a single document matching the filter."""
+        self._guard_filter(filter)
         result = await self._col.replace_one(filter, replacement, upsert=upsert)
         return DocumentResult(
             matched_count=result.matched_count,
@@ -180,6 +232,7 @@ class MongoDBCollection:
         return_document: bool = True,
     ) -> dict[str, Any] | None:
         """Atomically find and update a document."""
+        self._guard_filter(filter)
         from pymongo import ReturnDocument
 
         return_doc = ReturnDocument.AFTER if return_document else ReturnDocument.BEFORE
@@ -195,6 +248,7 @@ class MongoDBCollection:
 
     async def count_documents(self, filter: dict[str, Any] | None = None) -> int:
         """Count documents matching the filter."""
+        self._guard_filter(filter or {})
         count: int = await self._col.count_documents(filter or {})
         return count
 
@@ -219,6 +273,7 @@ class MongoDBCollection:
         pipeline: list[dict[str, Any]],
     ) -> AsyncIterator[dict[str, Any]]:
         """Execute an aggregation pipeline."""
+        self._guard_pipeline(pipeline)
         cursor = self._col.aggregate(pipeline)
         async for doc in cursor:
             yield doc
@@ -234,6 +289,7 @@ class MongoDBCollection:
         filter: dict[str, Any] | None = None,
     ) -> list[Any]:
         """Get distinct values for a specified key."""
+        self._guard_filter(filter or {})
         values: list[Any] = await self._col.distinct(key, filter=filter or {})
         return values
 

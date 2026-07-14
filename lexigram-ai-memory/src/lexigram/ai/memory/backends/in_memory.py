@@ -33,17 +33,21 @@ def _score(entry: MemoryEntry, query: MemoryQuery) -> float:
 
 
 class InMemoryMemoryBackend:
-    """MemoryStoreProtocol backed by an in-process dictionary."""
+    """MemoryStoreProtocol backed by an in-process dictionary.
+
+    Entries are partitioned by ``owner_id`` so that every operation only
+    ever touches the owning partition.
+    """
 
     def __init__(self) -> None:
-        self._store: dict[str, MemoryEntry] = {}
+        self._store: dict[str, dict[str, MemoryEntry]] = {}
 
     async def store(self, entry: MemoryEntry) -> None:
-        self._store[entry.id] = entry
+        self._store.setdefault(entry.owner_id, {})[entry.id] = entry
 
     async def retrieve(self, query: MemoryQuery) -> list[MemorySearchResult]:
         scored: list[tuple[float, MemoryEntry]] = []
-        for entry in self._store.values():
+        for entry in self._store.get(query.owner_id, {}).values():
             score = _score(entry, query)
             if score < query.min_relevance:
                 continue
@@ -63,29 +67,32 @@ class InMemoryMemoryBackend:
             for score, entry in scored[: query.top_k]
         ]
 
-    async def get_recent(self, n: int) -> list[MemoryEntry]:
+    async def get_recent(self, n: int, owner_id: str) -> list[MemoryEntry]:
         sorted_entries = sorted(
-            self._store.values(),
+            self._store.get(owner_id, {}).values(),
             key=lambda entry: entry.timestamp,
             reverse=True,
         )
         return sorted_entries[:n]
 
-    async def delete(self, entry_id: str) -> None:
-        self._store.pop(entry_id, None)
+    async def delete(self, entry_id: str, owner_id: str) -> None:
+        self._store.get(owner_id, {}).pop(entry_id, None)
 
-    async def clear(self) -> None:
-        self._store.clear()
+    async def clear(self, owner_id: str) -> None:
+        self._store.pop(owner_id, None)
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         return HealthCheckResult(
             component="memory.in_memory",
             status=HealthStatus.HEALTHY,
-            details={"entries": len(self._store), "timeout": timeout},
+            details={
+                "entries": sum(len(v) for v in self._store.values()),
+                "timeout": timeout,
+            },
         )
 
     def __len__(self) -> int:
-        return len(self._store)
+        return sum(len(v) for v in self._store.values())
 
 
 __all__ = ["InMemoryMemoryBackend"]

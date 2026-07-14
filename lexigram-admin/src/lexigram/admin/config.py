@@ -397,14 +397,6 @@ class AdminAuditConfig(DomainModel):
         default=False,
         description="Log read operations (off by default; compliance mode only).",
     )
-    redaction_field_denylist: tuple[str, ...] = Field(
-        default_factory=lambda: ("email", "phone", "password_hash", "ssn"),
-        description="Field names whose values are always redacted in audit payloads.",
-    )
-    redaction_patterns: tuple[str, ...] = Field(
-        default_factory=lambda: ("email", "phone"),
-        description="Pattern-based redaction strategies to apply.",
-    )
 
     model_config = {"extra": "forbid"}
 

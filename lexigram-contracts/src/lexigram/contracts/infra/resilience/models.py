@@ -33,6 +33,9 @@ class RetryConfig:
     abort_on: tuple[type[Exception], ...] = field(default=())
     abort_if: Callable[[Any], bool] | None = None
     retry_sync: bool = False
+    # Retry only requests whose HTTP method is idempotent (GET/HEAD/OPTIONS).
+    # Defaults to True (safe by default).
+    idempotent_methods_only: bool = True
 
 
 @dataclass(frozen=True)

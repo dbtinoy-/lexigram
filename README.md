@@ -102,6 +102,29 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - **providers.** lifecycle and wiring live in one place, so boot order is explicit and tests are trivial.
 - **async, end to end.** the container, the modules, the controllers — concurrency-safe by construction.
 
+
+## roadmap
+
+### Current Status (0.1.x — Alpha)
+- Alpha; public APIs may change before 1.0
+- ~40 open-source packages (MIT)
+- Test suite runs in local CI across packages
+
+### Short Term (Q2 2026)
+- [ ] Performance optimizations
+- [ ] Extended AI capabilities
+- [ ] Additional backend support
+
+### Medium Term (Q3-Q4 2026)
+- [ ] Advanced monitoring
+- [ ] Enhanced security
+- [ ] Distributed tracing
+
+### Long Term (2027)
+- [ ] Enterprise features
+- [ ] Enhanced observability
+- [ ] Community expansion (if approved)
+
 ## interesting subsystems and packages
 
 - CLI → [lexigram-cli](https://github.com/dbtinoy-/lexigram-cli-experimental)

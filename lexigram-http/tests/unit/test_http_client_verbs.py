@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lexigram import serialization as json
+from lexigram.http.config import HTTPClientConfig
 from lexigram.http.client.http_client import HTTPClient as HTTPClientImpl
 from lexigram.http.exceptions import (
     HTTPStatusError,
@@ -48,7 +49,7 @@ def mock_pool():
 @pytest.fixture
 def http_client(mock_pool):
     """Create HTTPClient with mocked pool."""
-    client = HTTPClientImpl()
+    client = HTTPClientImpl(config=HTTPClientConfig(enforce_url_safety=False))
     client._pool = mock_pool
     return client
 

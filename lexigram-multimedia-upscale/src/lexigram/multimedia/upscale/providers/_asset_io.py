@@ -6,6 +6,7 @@ import aiohttp
 
 from lexigram.contracts.multimedia.security import (
     DEFAULT_MAX_MEDIA_BYTES,
+    assert_media_mime_allowed,
     asset_bytes_ok,
 )
 from lexigram.contracts.multimedia.types import MediaAsset
@@ -26,12 +27,13 @@ async def resolve_asset_bytes(
     max_bytes: int = DEFAULT_MAX_MEDIA_BYTES,
     resolver: HostResolver | None = None,
 ) -> bytes:
-    """Resolve an asset's source bytes, enforcing size and URL-safety policy.
+    """Resolve an asset's source bytes, enforcing size, mime, and URL safety.
 
     Inline bytes are returned as-is when they fit under ``max_bytes``.
     Remote URIs are validated against the SSRF primitive
     (``is_safe_url_for_request``) and streamed with a hard byte cap;
-    redirects are never followed.
+    redirects are never followed. The asset's mime type must be in the
+    framework media allowlist (``assert_media_mime_allowed``).
 
     Args:
         asset: Source media asset (inline bytes or remote URI).
@@ -41,15 +43,18 @@ async def resolve_asset_bytes(
             Defaults to the system resolver.
 
     Returns:
-        The asset's bytes when they satisfy the size and URL policy.
+        The asset's bytes when they satisfy the size, mime, and URL
+        policy.
 
     Raises:
+        ValueError: If the mime type is not in the media allowlist.
         UpscaleAssetDownloadError: If the remote fetch returns a non-200
             response.
         UpscaleAssetTooLargeError: If the payload exceeds ``max_bytes``.
         UpscaleUnsafeAssetURLError: If the URI is missing or not safe to
             request.
     """
+    assert_media_mime_allowed(asset.mime_type)
     if asset.has_bytes:
         if not asset_bytes_ok(len(asset.bytes_data or b""), max_bytes=max_bytes):
             raise UpscaleAssetTooLargeError(max_bytes)

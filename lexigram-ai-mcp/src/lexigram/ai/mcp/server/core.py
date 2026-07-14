@@ -8,6 +8,7 @@ from lexigram.ai.mcp.types import (
     MCPServerCapabilities,
     MCPServerInfo,
 )
+from lexigram.contracts.mcp.protocols import MCPAuthorizerProtocol
 from lexigram.logging import (
     get_logger,
 )
@@ -17,6 +18,10 @@ logger = get_logger(__name__)
 
 JSONRPC_VERSION = "2.0"
 MCP_PROTOCOL_VERSION = "2024-11-05"
+
+_PRE_INIT_METHODS: frozenset[str] = frozenset(
+    {"initialize", "ping", "notifications/initialized"}
+)
 
 
 class MCPServer:
@@ -46,6 +51,8 @@ class MCPServer:
         prompt_handler: Any | None = None,
         sampling_handler: Any | None = None,
         logging_handler: Any | None = None,
+        authorizer: MCPAuthorizerProtocol | None = None,
+        allow_unauthenticated: bool = False,
     ) -> None:
         """Initialize the MCP server.
 
@@ -58,6 +65,13 @@ class MCPServer:
             prompt_handler: Handler for prompt-related methods.
             sampling_handler: Handler for sampling/createMessage (optional).
             logging_handler: Handler for logging/setLevel (optional).
+            authorizer: Optional authz hook consulted once per
+                non-handshake request post-initialize.  ``None`` means
+                requests are denied with ``-32000`` unless
+                ``allow_unauthenticated`` is set.
+            allow_unauthenticated: When ``True`` (and no ``authorizer``)
+                restore the open posture: non-handshake methods dispatch
+                without authorization.  Defaults to ``False`` (fail-closed).
         """
         if config is None:
             from lexigram.ai.mcp.config import MCPConfig
@@ -72,7 +86,10 @@ class MCPServer:
         self._prompt_handler = prompt_handler
         self._sampling_handler = sampling_handler
         self._logging_handler = logging_handler
+        self._authorizer = authorizer
+        self._allow_unauthenticated = allow_unauthenticated
         self._initialized = False
+        self._client_info: dict[str, Any] = {}
 
         self._handlers: dict[str, Any] = {}
         self._register_handlers()
@@ -151,6 +168,26 @@ class MCPServer:
 
             handler = self._handlers[method]
             params = message.get("params", {})
+
+            if method not in _PRE_INIT_METHODS:
+                if not self._initialized:
+                    return self._error_response(
+                        request_id, -32002, "Server not initialized"
+                    )
+                if self._authorizer is not None:
+                    allowed = await self._authorizer.authorize(
+                        method=method,
+                        params=params,
+                        client_info=self._client_info,
+                    )
+                    if not allowed:
+                        return self._error_response(
+                            request_id, -32000, "Request not authorized"
+                        )
+                elif not self._allow_unauthenticated:
+                    return self._error_response(
+                        request_id, -32000, "Request not authorized"
+                    )
 
             try:
                 handler_result = await handler(**params) if params else await handler()
@@ -239,11 +276,11 @@ class MCPServer:
     ) -> dict[str, Any]:
         """Handle the initialize method."""
         # Client can send capabilities in params
-        client_capabilities = params.get("clientInfo", {})
+        self._client_info = params.get("clientInfo", {})
 
         logger.info(
             "mcp_initialized",
-            client_info=client_capabilities,
+            client_info=self._client_info,
             server_name=self._name,
         )
 

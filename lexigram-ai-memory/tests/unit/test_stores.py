@@ -136,7 +136,7 @@ class TestConversationMemoryStore:
         await store.store(make_entry("other", metadata={"session_id": "sess2"}))
         from lexigram.contracts.ai.memory import MemoryQuery
 
-        q = MemoryQuery(query="x", filters={"session_id": "sess1"})
+        q = MemoryQuery(owner_id="owner-1", query="x", filters={"session_id": "sess1"})
         results = await store.retrieve(q)
         assert all(r.entry.metadata["session_id"] == "sess1" for r in results)
 

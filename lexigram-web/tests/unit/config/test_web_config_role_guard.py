@@ -22,7 +22,9 @@ class TestRoleGuardConfig:
             role_guard=RoleGuardConfig(
                 rules=[
                     RoleGuardRuleConfig(path="/api/users", roles=["admin"]),
-                    RoleGuardRuleConfig(path="/api/admin/**", roles=["admin", "moderator"]),
+                    RoleGuardRuleConfig(
+                        path="/api/admin/**", roles=["admin", "moderator"]
+                    ),
                 ]
             )
         )

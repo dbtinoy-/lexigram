@@ -33,9 +33,15 @@ class EpisodicMemoryStore:
     async def recall(self, query: MemoryQuery) -> list[MemorySearchResult]:
         return await self._backend.retrieve(query)
 
-    async def forget(self, entry_id: str) -> None:
-        await self._backend.delete(entry_id)
-        logger.debug("episodic_forgotten", entry_id=entry_id)
+    async def forget(self, entry_id: str, owner_id: str) -> None:
+        """Forget a specific episode within an owner scope.
+
+        Args:
+            entry_id: ID of the entry to forget.
+            owner_id: Owner scope preventing cross-owner deletion.
+        """
+        await self._backend.delete(entry_id, owner_id)
+        logger.debug("episodic_forgotten", entry_id=entry_id, owner_id=owner_id)
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         return HealthCheckResult(

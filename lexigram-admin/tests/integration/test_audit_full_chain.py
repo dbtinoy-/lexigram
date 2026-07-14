@@ -1,13 +1,13 @@
 """R2 T7 — End-to-end audit chain smoke test.
 
 Exercises the full admin audit pipeline:
-  correlation context → PII redaction → UoW deferral → audit logger
+  correlation context → redaction → UoW deferral → audit logger
 
 Covers T7 assertions:
   1. Exactly one AuditEntry written
   2. entry.correlation_id equals the configured value
   3. entry.outcome == "success"
-  4. entry.before and entry.after are PII-redacted
+  4. entry.before and entry.after are redacted
   5. Rollback path: RuntimeError → outcome="errored", txn rolled back
 """
 
@@ -18,7 +18,6 @@ from typing import Any
 
 import pytest
 
-from lexigram.admin.audit import DefaultPiiRedactor
 from lexigram.admin.audit.correlation import (
     get_correlation_id,
     new_correlation_id,
@@ -26,6 +25,7 @@ from lexigram.admin.audit.correlation import (
 )
 from lexigram.admin.audit.uow_writer import UowAuditWriter
 from lexigram.contracts.admin.audit_entry import AuditEntry, AuditOutcome
+from lexigram.logging.redaction import DefaultRedactor, get_redactor, set_redactor
 
 
 class _FakeAdminAuditLogger:
@@ -81,8 +81,8 @@ class _FakeUoW:
 
 _PAYLOAD_WITH_PII = {
     "name": "Ada Lovelace",
-    "email": "ada@example.com",
-    "phone": "+1 555-123-4567",
+    "password": "hunter2",
+    "token": "tok-abc123",
     "role": "admin",
 }
 
@@ -91,14 +91,27 @@ def _verify_pii_redacted(
     payload: dict[str, Any],
     expected_name: str = "Ada Lovelace",
     expect_role: bool = True,
-    expect_phone: bool = True,
 ) -> None:
     assert payload.get("name") == expected_name
     if expect_role:
         assert payload.get("role") == "admin"
-    assert payload.get("email") == "<redacted>"
-    if expect_phone:
-        assert payload.get("phone") == "<redacted>"
+    assert payload.get("password") == "<redacted>"
+    assert payload.get("token") == "<redacted>"
+
+
+@pytest.fixture(autouse=True)
+def _install_framework_redactor() -> Any:
+    """Install the framework redactor via the same get_redactor() mechanism
+    the audit write path (SqlAuditStore.append) redacts through."""
+    from lexigram.logging.redaction import _redactor_var
+
+    token = set_redactor(
+        DefaultRedactor(field_denylist=("password", "token"))
+    )
+    try:
+        yield
+    finally:
+        _redactor_var.reset(token)
 
 
 @pytest.mark.integration
@@ -108,13 +121,11 @@ async def test_success_path_writes_one_entry() -> None:
     logger = _FakeAdminAuditLogger()
     uow = _FakeUoW()
     writer = UowAuditWriter(logger=logger, uow_provider=lambda: uow)
-    redactor = DefaultPiiRedactor(
-        field_denylist=["email", "phone"], patterns=["email", "phone"]
-    )
+    redactor = get_redactor()
     cid = new_correlation_id()
     set_correlation_id(cid)
 
-    before_raw: dict[str, Any] = {"name": "Old Name", "email": "old@example.com"}
+    before_raw: dict[str, Any] = {"name": "Old Name", "password": "old-pass"}
     after_raw: dict[str, Any] = dict(_PAYLOAD_WITH_PII)
 
     entry = AuditEntry(
@@ -123,8 +134,8 @@ async def test_success_path_writes_one_entry() -> None:
         resource_type="users",
         resource_id="u-42",
         outcome=AuditOutcome.SUCCESS,
-        before=redactor.redact(before_raw),
-        after=redactor.redact(after_raw),
+        before=redactor.redact_dict(before_raw),
+        after=redactor.redact_dict(after_raw),
         correlation_id=get_correlation_id(),
     )
 
@@ -143,14 +154,12 @@ async def test_pii_redacted_in_before_and_after() -> None:
     """Assert before/after have email and phone redacted."""
     logger = _FakeAdminAuditLogger()
     writer = UowAuditWriter(logger=logger, uow_provider=lambda: None)
-    redactor = DefaultPiiRedactor(
-        field_denylist=["email", "phone"], patterns=["email", "phone"]
-    )
+    redactor = get_redactor()
     cid = new_correlation_id()
     set_correlation_id(cid)
 
-    before = redactor.redact({"name": "Old", "email": "old@example.com"})
-    after = redactor.redact(dict(_PAYLOAD_WITH_PII))
+    before = redactor.redact_dict({"name": "Old", "password": "old-pass", "token": "old-tok"})
+    after = redactor.redact_dict(dict(_PAYLOAD_WITH_PII))
 
     entry = AuditEntry(
         admin_user_id="admin-1",
@@ -168,7 +177,7 @@ async def test_pii_redacted_in_before_and_after() -> None:
     assert len(logger.entries) == 1
     e = logger.entries[0]
     _verify_pii_redacted(
-        e.before, expected_name="Old", expect_role=False, expect_phone=False
+        e.before, expected_name="Old", expect_role=False
     )
     _verify_pii_redacted(e.after)
 

@@ -53,7 +53,9 @@ async def test_boot_succeeds_with_setup_token() -> None:
 async def test_boot_succeeds_with_optin_unsafe_flag() -> None:
     """Boot must succeed with the explicit opt-out flag for local envs."""
     provider = _provider(
-        AdminConfig.from_dict({"auth": {"security": {"setup_token_optin_unsafe": True}}})
+        AdminConfig.from_dict(
+            {"auth": {"security": {"setup_token_optin_unsafe": True}}}
+        )
     )
     await provider.boot(_EverythingResolver())
 

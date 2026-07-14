@@ -8,11 +8,9 @@ from lexigram.admin.audit.correlation import (
     new_correlation_id,
     set_correlation_id,
 )
-from lexigram.admin.audit.redactor import DefaultPiiRedactor
 from lexigram.admin.audit.uow_writer import UowAuditWriter, UoWProtocol
 
 __all__ = [
-    "DefaultPiiRedactor",
     "UoWProtocol",
     "UowAuditWriter",
     "correlation_id_ctx",

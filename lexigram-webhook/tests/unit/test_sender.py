@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import Response
 
-from lexigram.contracts.webhook.types import DeliveryStatus, WebhookEvent, WebhookSubscription
+from lexigram.contracts.webhook.types import (
+    DeliveryStatus,
+    WebhookEvent,
+    WebhookSubscription,
+)
 from lexigram.webhook.config import WebhookConfig
 from lexigram.webhook.delivery.sender import WebhookSender
 
@@ -43,16 +47,16 @@ async def test_webhook_sender_success(
 ) -> None:
     """Test successful delivery."""
     mock_response = Response(200, content=b"OK")
-    
+
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
-        
+
         attempt = await sender.send(event, subscription)
-        
+
         assert attempt.status == DeliveryStatus.DELIVERED
         assert attempt.status_code == 200
         assert attempt.error_message is None
-        
+
         mock_post.assert_called_once()
         # Verify headers were sent
         _, kwargs = mock_post.call_args
@@ -70,12 +74,12 @@ async def test_webhook_sender_http_error(
 ) -> None:
     """Test delivery resulting in HTTP error."""
     mock_response = Response(400, content=b"Bad Request")
-    
+
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
-        
+
         attempt = await sender.send(event, subscription)
-        
+
         assert attempt.status == DeliveryStatus.FAILED
         assert attempt.status_code == 400
         assert "HTTP 400: Bad Request" in attempt.error_message
@@ -88,10 +92,10 @@ async def test_webhook_sender_connection_error(
     subscription: WebhookSubscription,
 ) -> None:
     """Test delivery resulting in connection exception."""
-    
+
     with patch("httpx.AsyncClient.post", side_effect=Exception("Connection failed")):
         attempt = await sender.send(event, subscription)
-        
+
         assert attempt.status == DeliveryStatus.FAILED
         assert attempt.status_code is None
         assert "Connection failed" in attempt.error_message

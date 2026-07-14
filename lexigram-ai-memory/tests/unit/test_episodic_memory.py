@@ -31,7 +31,7 @@ class TestEpisodicMemoryStore:
     async def test_forget_removes_entry(self, store: EpisodicMemoryStore) -> None:
         entry = make_entry("something to forget")
         await store.record(entry)
-        await store.forget(entry.id)
+        await store.forget(entry.id, "owner-1")
         results = await store.recall(make_query())
         assert all(r.entry.id != entry.id for r in results)
 

@@ -6,6 +6,7 @@ import re
 import types
 from typing import TYPE_CHECKING, Any, cast, get_args, get_origin, get_type_hints
 
+from markupsafe import Markup
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import HTMLResponse
 
@@ -260,9 +261,7 @@ class AdminPageHandler:
         from lexigram.admin.navigation.manager import NavigationManager
 
         user_menu_items: list[dict[str, str | None]] = (
-            NavigationManager(request).user_menu_items()
-            if request is not None
-            else []
+            NavigationManager(request).user_menu_items() if request is not None else []
         )
 
         branding: dict[str, str] = {}
@@ -306,11 +305,14 @@ class AdminPageHandler:
             user_menu_items=user_menu_items,
             breadcrumbs=breadcrumbs,
             theme_css=theme_css,
-            **cast("Any", {
-                k: v
-                for k, v in branding.items()
-                if k in ("dark_mode", "site_name", "logo_url")
-            }),
+            **cast(
+                "Any",
+                {
+                    k: v
+                    for k, v in branding.items()
+                    if k in ("dark_mode", "site_name", "logo_url")
+                },
+            ),
         )
         shell_html = render_to_string(shell)
 
@@ -320,7 +322,7 @@ class AdminPageHandler:
             request,
             "admin_shell.html",
             context={
-                "content": shell_html,
+                "content": Markup(shell_html),
                 "title": title,
                 "dark_mode": branding.get("dark_mode", ""),
             },

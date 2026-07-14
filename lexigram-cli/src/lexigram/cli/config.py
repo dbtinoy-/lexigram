@@ -71,7 +71,7 @@ class ConfigManager:
 
         # Write TOML
         try:
-            import tomli_w  # type: ignore[import-not-found]
+            import tomli_w
 
             with open(cls.config_path, "wb") as f:
                 tomli_w.dump(existing_data, f)

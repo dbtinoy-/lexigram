@@ -68,9 +68,7 @@ def _fake_entry_points(
         _FakeEntryPoint(name, descriptor)
         for name, descriptor in (descriptors or {}).items()
     ]
-    provider_eps = [
-        _FakeEntryPoint(name, cls) for name, cls in providers.items()
-    ]
+    provider_eps = [_FakeEntryPoint(name, cls) for name, cls in providers.items()]
 
     def _entry_points(*, group: str) -> list[Any]:
         if group == "lexigram.plugins":
@@ -79,9 +77,7 @@ def _fake_entry_points(
             return provider_eps
         return []
 
-    monkeypatch.setattr(
-        "lexigram.plugins.discovery._entry_points", _entry_points
-    )
+    monkeypatch.setattr("lexigram.plugins.discovery._entry_points", _entry_points)
 
 
 def _descriptor(name: str, provider_entry_point: str) -> PluginDescriptor:

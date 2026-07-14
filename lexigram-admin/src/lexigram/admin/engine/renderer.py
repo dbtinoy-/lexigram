@@ -157,9 +157,7 @@ class AdminRenderer:
             pass
 
         user_menu_items: list[dict[str, str | None]] = (
-            NavigationManager(request).user_menu_items()
-            if request is not None
-            else []
+            NavigationManager(request).user_menu_items() if request is not None else []
         )
 
         site_name = extra_context.get("site_name") or self.config.site_name

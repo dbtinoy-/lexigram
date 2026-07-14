@@ -28,12 +28,16 @@ class CacheMemoryBackend:
         self._cache = cache
         self._ttl = ttl
 
-    def _key(self, entry_id: str) -> str:
-        return f"{_KEY_PREFIX}{entry_id}"
+    def _key(self, owner_id: str, entry_id: str) -> str:
+        return f"{_KEY_PREFIX}{owner_id}:{entry_id}"
+
+    def _index_key(self, owner_id: str) -> str:
+        return f"{_INDEX_KEY}:{owner_id}"
 
     def _to_json(self, entry: MemoryEntry) -> str:
         payload = {
             "id": entry.id,
+            "owner_id": entry.owner_id,
             "content": entry.content,
             "role": entry.role,
             "timestamp": entry.timestamp.isoformat(),
@@ -47,6 +51,7 @@ class CacheMemoryBackend:
         data = cast("dict[str, Any]", loads(raw))
         return MemoryEntry(
             id=str(data["id"]),
+            owner_id=str(data["owner_id"]),
             content=str(data["content"]),
             role=str(data["role"]),
             timestamp=datetime.fromisoformat(str(data["timestamp"])),
@@ -95,23 +100,25 @@ class CacheMemoryBackend:
 
     async def store(self, entry: MemoryEntry) -> None:
         await self._cache_set_text(
-            self._key(entry.id), self._to_json(entry), ttl=self._ttl
+            self._key(entry.owner_id, entry.id), self._to_json(entry), ttl=self._ttl
         )
-        index_raw = await self._cache_get_text(_INDEX_KEY)
+        index_raw = await self._cache_get_text(self._index_key(entry.owner_id))
         ids: list[str] = cast("list[str]", loads(index_raw)) if index_raw else []
         if entry.id not in ids:
             ids.append(entry.id)
-            await self._cache_set_text(_INDEX_KEY, dumps_str(ids))
+            await self._cache_set_text(
+                self._index_key(entry.owner_id), dumps_str(ids)
+            )
 
     async def retrieve(self, query: MemoryQuery) -> list[MemorySearchResult]:
-        index_raw = await self._cache_get_text(_INDEX_KEY)
+        index_raw = await self._cache_get_text(self._index_key(query.owner_id))
         if index_raw is None:
             return []
 
         ids = cast("list[str]", loads(index_raw))
         entries: list[MemoryEntry] = []
         for entry_id in ids:
-            raw = await self._cache_get_text(self._key(entry_id))
+            raw = await self._cache_get_text(self._key(query.owner_id, entry_id))
             if raw is not None:
                 entries.append(self._from_json(raw))
 
@@ -140,35 +147,35 @@ class CacheMemoryBackend:
             for score, entry in scored[: query.top_k]
         ]
 
-    async def get_recent(self, n: int) -> list[MemoryEntry]:
-        index_raw = await self._cache_get_text(_INDEX_KEY)
+    async def get_recent(self, n: int, owner_id: str) -> list[MemoryEntry]:
+        index_raw = await self._cache_get_text(self._index_key(owner_id))
         if index_raw is None:
             return []
 
         ids = cast("list[str]", loads(index_raw))
         entries: list[MemoryEntry] = []
         for entry_id in ids:
-            raw = await self._cache_get_text(self._key(entry_id))
+            raw = await self._cache_get_text(self._key(owner_id, entry_id))
             if raw is not None:
                 entries.append(self._from_json(raw))
         return sorted(entries, key=lambda entry: entry.timestamp, reverse=True)[:n]
 
-    async def delete(self, entry_id: str) -> None:
-        await self._cache_delete(self._key(entry_id))
-        index_raw = await self._cache_get_text(_INDEX_KEY)
+    async def delete(self, entry_id: str, owner_id: str) -> None:
+        await self._cache_delete(self._key(owner_id, entry_id))
+        index_raw = await self._cache_get_text(self._index_key(owner_id))
         if index_raw is None:
             return
         remaining_ids = [
             item for item in cast("list[str]", loads(index_raw)) if item != entry_id
         ]
-        await self._cache_set_text(_INDEX_KEY, dumps_str(remaining_ids))
+        await self._cache_set_text(self._index_key(owner_id), dumps_str(remaining_ids))
 
-    async def clear(self) -> None:
-        index_raw = await self._cache_get_text(_INDEX_KEY)
+    async def clear(self, owner_id: str) -> None:
+        index_raw = await self._cache_get_text(self._index_key(owner_id))
         if index_raw is not None:
             for entry_id in cast("list[str]", loads(index_raw)):
-                await self._cache_delete(self._key(entry_id))
-        await self._cache_delete(_INDEX_KEY)
+                await self._cache_delete(self._key(owner_id, entry_id))
+        await self._cache_delete(self._index_key(owner_id))
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         health_result = await self._cache.health_check(timeout=timeout)

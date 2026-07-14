@@ -25,8 +25,8 @@ _model: Any = None
 
 async def on_startup(app: web.Application) -> None:
     global _model
-    import torch  # type: ignore[import-not-found]
-    from wan import WanT2V  # type: ignore[import-not-found]
+    import torch
+    from wan import WanT2V
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     _model = WanT2V.from_pretrained(device=device)

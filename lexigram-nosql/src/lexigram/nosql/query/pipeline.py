@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+from lexigram.nosql.exceptions import NoSQLFilterError
+from lexigram.nosql.security import validate_filter
+
+_COLLECTION_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class AggregationPipeline:
@@ -32,7 +38,18 @@ class AggregationPipeline:
         self._stages: list[dict[str, Any]] = []
 
     def match(self, filter: dict[str, Any]) -> AggregationPipeline:
-        """Filter documents (``$match`` stage)."""
+        """Filter documents (``$match`` stage).
+
+        Args:
+            filter: Filter dict, validated at insertion.
+
+        Returns:
+            The pipeline, for chaining.
+
+        Raises:
+            NoSQLFilterError: If the filter is rejected.
+        """
+        validate_filter(filter)
         self._stages.append({"$match": filter})
         return self
 
@@ -102,7 +119,26 @@ class AggregationPipeline:
         foreign_field: str,
         as_field: str,
     ) -> AggregationPipeline:
-        """Join with another collection (``$lookup`` stage)."""
+        """Join with another collection (``$lookup`` stage).
+
+        Args:
+            from_collection: Collection name, scoped to a bare
+                collection-name shape (no ``.``, ``$``, or whitespace).
+            local_field: Field in the source documents.
+            foreign_field: Field in the joined collection.
+            as_field: Output field name.
+
+        Returns:
+            The pipeline, for chaining.
+
+        Raises:
+            NoSQLFilterError: If *from_collection* is not a bare
+                collection-name-shaped string.
+        """
+        if not _COLLECTION_NAME_RE.match(from_collection):
+            raise NoSQLFilterError(
+                f"Invalid collection name for lookup: {from_collection!r}",
+            )
         self._stages.append(
             {
                 "$lookup": {

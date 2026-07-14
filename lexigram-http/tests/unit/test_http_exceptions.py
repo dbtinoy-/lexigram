@@ -14,6 +14,7 @@ from lexigram.http.exceptions import (
     HTTPRetryExhaustedError,
     HTTPStatusError,
     HTTPTimeoutError,
+    HTTPUnsafeURLError,
 )
 
 
@@ -40,6 +41,21 @@ class TestHttpExceptionHierarchy:
 
     def test_http_status_error_inherits_from_http_client_error(self) -> None:
         assert issubclass(HTTPStatusError, HTTPClientError)
+
+    def test_http_unsafe_url_error_inherits_from_http_client_error(self) -> None:
+        assert issubclass(HTTPUnsafeURLError, HTTPClientError)
+
+
+class TestHTTPUnsafeURLError:
+    """Tests for HTTPUnsafeURLError."""
+
+    def test_http_unsafe_url_error_code(self) -> None:
+        error = HTTPUnsafeURLError("blocked")
+        assert error._code == "LEX_ERR_HTTP_008"
+
+    def test_http_unsafe_url_error_default_message(self) -> None:
+        error = HTTPUnsafeURLError("Unsafe URL rejected")
+        assert error.message == "Unsafe URL rejected"
 
 
 class TestHTTPClientError:
@@ -141,6 +157,7 @@ class TestExceptionAllExports:
             "HTTPRetryExhaustedError",
             "HTTPStatusError",
             "HTTPTimeoutError",
+            "HTTPUnsafeURLError",
         ]
         for item in expected:
             assert item in exc_module.__all__

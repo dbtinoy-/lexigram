@@ -14,9 +14,8 @@ from __future__ import annotations
 import pytest
 import structlog
 
-from lexigram.logging.config import LoggingConfig
-from lexigram.logging.config import SamplingConfig
 from lexigram.logging import apply_config, configure_logging, get_logger, reset_logging
+from lexigram.logging.config import LoggingConfig, RedactionConfig, SamplingConfig
 
 # ---------------------------------------------------------------------------
 # Stdlib bridge
@@ -328,6 +327,8 @@ class TestLoggingConfigModel:
         assert config.json_format is False
         assert config.levels == {}
         assert isinstance(config.sampling, SamplingConfig)
+        assert isinstance(config.redaction, RedactionConfig)
+        assert config.redaction.enabled is True
 
     def test_sampling_config_defaults(self) -> None:
         """SamplingConfig has sensible defaults."""
@@ -351,6 +352,22 @@ class TestLoggingConfigModel:
         )
         assert config.sampling.enabled is True
         assert config.sampling.default_rate == 0.5
+
+    def test_logging_config_with_redaction(self) -> None:
+        """LoggingConfig accepts nested RedactionConfig."""
+        config = LoggingConfig(
+            redaction=RedactionConfig(enabled=False, field_denylist=("a",)),
+        )
+        assert config.redaction.enabled is False
+        assert config.redaction.field_denylist == ("a",)
+
+    def test_logging_config_redaction_from_dict(self) -> None:
+        """LoggingConfig redaction can be constructed from nested dict."""
+        config = LoggingConfig(
+            redaction={"enabled": False, "field_denylist": ("a",)},
+        )
+        assert config.redaction.enabled is False
+        assert config.redaction.field_denylist == ("a",)
 
     def test_logging_config_from_dict(self) -> None:
         """LoggingConfig can be constructed from nested dict."""
@@ -411,3 +428,85 @@ class TestApplyConfig:
         from lexigram.logging.processors import _state
         assert _state.sampling_enabled is True
         assert _state.sampling_default_rate == 0.5
+
+    def test_apply_redaction_enabled_default(self) -> None:
+        """apply_config() installs a DefaultRedactor by default."""
+        config = LoggingConfig()
+        apply_config(config)
+
+        from lexigram.logging.redaction import DefaultRedactor, get_redactor
+        assert isinstance(get_redactor(), DefaultRedactor)
+
+    def test_apply_redaction_explicit_enabled(self) -> None:
+        """apply_config() installs a DefaultRedactor when enabled."""
+        config = LoggingConfig(redaction=RedactionConfig(enabled=True))
+        apply_config(config)
+
+        from lexigram.logging.redaction import DefaultRedactor, get_redactor
+        assert isinstance(get_redactor(), DefaultRedactor)
+
+    def test_apply_redaction_disabled(self) -> None:
+        """apply_config() installs a NoOpRedactor when disabled."""
+        config = LoggingConfig(redaction=RedactionConfig(enabled=False))
+        apply_config(config)
+
+        from lexigram.logging.redaction import NoOpRedactor, get_redactor
+        assert isinstance(get_redactor(), NoOpRedactor)
+
+    def test_apply_redaction_custom_denylist(self) -> None:
+        """apply_config() forwards a custom field denylist."""
+        config = LoggingConfig(
+            redaction=RedactionConfig(enabled=True, field_denylist=("ssn",)),
+        )
+        apply_config(config)
+
+        from lexigram.logging.redaction import DefaultRedactor, get_redactor
+        redactor = get_redactor()
+        assert isinstance(redactor, DefaultRedactor)
+        assert redactor._field_denylist == frozenset({"ssn"})
+
+
+# ---------------------------------------------------------------------------
+# End-to-end redaction through the real pipeline
+# ---------------------------------------------------------------------------
+
+
+class TestRedactionE2E:
+    """Prove redaction works through the full structlog pipeline."""
+
+    def test_password_field_redacted(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """A denylisted key is masked in JSON output."""
+        configure_logging(level="DEBUG", json_format=True)
+
+        logger = get_logger()
+        logger.info("payment_failed", password="hunter2", user_id=7)
+
+        captured = capsys.readouterr()
+        outerr = captured.out + captured.err
+        assert "<redacted>" in outerr
+        assert "hunter2" not in outerr
+
+    def test_nested_key_redacted(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Nested denylisted keys are masked recursively."""
+        configure_logging(level="DEBUG", json_format=True)
+
+        logger = get_logger()
+        logger.info("request_started", metadata={"api_key": "x", "user": "bob"})
+
+        captured = capsys.readouterr()
+        outerr = captured.out + captured.err
+        assert "<redacted>" in outerr
+        assert '"x"' not in outerr
+        assert "bob" in outerr
+
+    def test_redaction_disabled_passes_raw(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """configure_logging(redaction_enabled=False) passes raw values."""
+        configure_logging(level="DEBUG", json_format=True, redaction_enabled=False)
+
+        logger = get_logger()
+        logger.info("payment_failed", password="hunter2")
+
+        captured = capsys.readouterr()
+        outerr = captured.out + captured.err
+        assert "<redacted>" not in outerr
+        assert "hunter2" in outerr

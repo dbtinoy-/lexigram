@@ -1,12 +1,81 @@
 """Tests for logging/redaction module."""
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
+import pytest
+
+from lexigram.contracts.core.logging import RedactorProtocol
 from lexigram.logging.redaction import (
+    DefaultRedactor,
     NoOpRedactor,
+    _redactor_var,
     get_redactor,
     set_redactor,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_redactor_var() -> None:
+    """Isolate the process-global ContextVar state per test."""
+    token = _redactor_var.set(None)
+    yield
+    _redactor_var.reset(token)
+
+
+class TestDefaultRedactor:
+    """Tests for DefaultRedactor class."""
+
+    def test_denylisted_top_level_key_masked(self) -> None:
+        """Test top-level denylisted keys are masked."""
+        redactor = DefaultRedactor()
+        result = redactor.redact_dict({"password": "x", "user_id": 7})
+        assert result == {"password": "<redacted>", "user_id": 7}
+
+    def test_case_insensitive_masking(self) -> None:
+        """Test denylist matching is case-insensitive."""
+        redactor = DefaultRedactor()
+        result = redactor.redact_dict({"API_KEY": "x", "Session_Token": "y"})
+        assert result == {"API_KEY": "<redacted>", "Session_Token": "<redacted>"}
+
+    def test_nested_dict_recursion(self) -> None:
+        """Test nested dicts are recursed and masked at depth."""
+        redactor = DefaultRedactor()
+        result = redactor.redact_dict({"headers": {"authorization": "x"}})
+        assert result == {"headers": {"authorization": "<redacted>"}}
+
+    def test_nested_list_recursion(self) -> None:
+        """Test nested lists are recursed and masked at depth."""
+        redactor = DefaultRedactor()
+        result = redactor.redact_dict({"items": [{"token": "y"}, "plain"]})
+        assert result == {"items": [{"token": "<redacted>"}, "plain"]}
+
+    def test_non_denylisted_fields_pass_through(self) -> None:
+        """Test non-denylisted fields pass through unchanged."""
+        redactor = DefaultRedactor()
+        data = {"name": "alice", "email": "a@b.c"}
+        assert redactor.redact_dict(data) == data
+
+    def test_redact_value_non_container_unchanged(self) -> None:
+        """Test redact_value passes non-container values through (Decision 2)."""
+        redactor = DefaultRedactor()
+        assert redactor.redact_value("hunter2") == "hunter2"
+        assert redactor.redact_value(42) == 42
+        assert redactor.redact_value(None) is None
+
+    def test_redact_value_recurses_tuple(self) -> None:
+        """Test redact_value recurses tuples."""
+        redactor = DefaultRedactor()
+        result = redactor.redact_value(({"secret": "s"}, 1))
+        assert result == ({"secret": "<redacted>"}, 1)
+
+    def test_satisfies_redactor_protocol(self) -> None:
+        """Test DefaultRedactor structurally satisfies RedactorProtocol."""
+        assert isinstance(DefaultRedactor(), RedactorProtocol)
+
+    def test_custom_denylist(self) -> None:
+        """Test a custom field_denylist overrides the default."""
+        redactor = DefaultRedactor(field_denylist=("custom_field",))
+        result = redactor.redact_dict({"custom_field": "x", "password": "y"})
+        assert result == {"custom_field": "<redacted>", "password": "y"}
 
 
 class TestNoOpRedactor:

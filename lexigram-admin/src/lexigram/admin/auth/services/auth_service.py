@@ -75,8 +75,7 @@ class AdminAuthService:
         audit_service: AdminAuditLogServiceProtocol,
         session_service: AdminSessionServiceProtocol,
         mfa_service: AdminMfaServiceProtocol | None = None,
-        email_verification_service: AdminEmailVerificationServiceProtocol
-        | None = None,
+        email_verification_service: AdminEmailVerificationServiceProtocol | None = None,
         email_otp_service: AdminEmailOtpServiceProtocol | None = None,
         mfa_factor: str = "totp",
         session_lifetime: int = 86400,
@@ -329,7 +328,7 @@ class AdminAuthService:
                 session_id=session_id,
                 user_id=str(user.user_id),
                 email=str(user.email),
-                roles=roles,
+                roles=session_roles,
                 expires_at=expires_at,
             )
         )

@@ -48,6 +48,8 @@ class WorkingMemoryManager:
         self,
         query: str,
         token_budget: int,
+        *,
+        owner_id: str,
         session_id: str | None = None,
     ) -> list[MemoryEntry]:
         """Assemble context window from all available memory tiers.
@@ -55,6 +57,7 @@ class WorkingMemoryManager:
         Args:
             query: Current user query used to retrieve relevant memories.
             token_budget: Total token budget for the assembled context.
+            owner_id: Owner scope restricting memory retrieval.
             session_id: Optional session scope for retrieval filtering.
 
         Returns:
@@ -71,6 +74,7 @@ class WorkingMemoryManager:
             # Recent conversation turns
             recent = await self._episodic.recall(
                 MemoryQuery(
+                    owner_id=owner_id,
                     query=query,
                     top_k=self._config.max_recent_turns,
                     recency_weight=0.8,
@@ -84,6 +88,7 @@ class WorkingMemoryManager:
             # Episodic semantic recall
             episodic_results = await self._episodic.recall(
                 MemoryQuery(
+                    owner_id=owner_id,
                     query=query,
                     top_k=10,
                     recency_weight=0.2,
@@ -119,6 +124,7 @@ class WorkingMemoryManager:
             for fact in facts[: budget["semantic"] // 20]:  # rough token estimate
                 fact_entry = MemoryEntry(
                     id=str(uuid4()),
+                    owner_id=owner_id,
                     content=f"{fact.get('subject')} {fact.get('predicate')} {fact.get('object_')}",
                     role="system",
                     timestamp=datetime.now(UTC),

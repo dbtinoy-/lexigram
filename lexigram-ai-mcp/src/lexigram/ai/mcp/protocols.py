@@ -7,6 +7,9 @@ importing the full lexigram-ai-mcp implementation.
 from __future__ import annotations
 
 from lexigram.contracts.mcp.protocols import (
+    MCPAuthorizerProtocol as MCPAuthorizerProtocol,
+)
+from lexigram.contracts.mcp.protocols import (
     MCPPromptHandlerProtocol as MCPPromptHandlerProtocol,
 )
 from lexigram.contracts.mcp.protocols import (
@@ -32,6 +35,7 @@ from lexigram.contracts.mcp.protocols import (
 )
 
 __all__ = [
+    "MCPAuthorizerProtocol",
     "MCPPromptHandlerProtocol",
     "MCPPromptProviderProtocol",
     "MCPResourceHandlerProtocol",

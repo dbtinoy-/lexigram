@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from lexigram.http.client.http_client import HTTPClient
+from lexigram.http.config import HTTPClientConfig
 
 
 class MockAsyncContextManager:
@@ -63,7 +64,7 @@ def mock_pool():
 @pytest.fixture
 def http_client(mock_pool):
     """Create HTTPClient with mocked pool."""
-    client = HTTPClient()
+    client = HTTPClient(config=HTTPClientConfig(enforce_url_safety=False))
     client._pool = mock_pool
     return client
 

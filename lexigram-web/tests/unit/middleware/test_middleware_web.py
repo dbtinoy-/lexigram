@@ -1,4 +1,5 @@
 """Unit tests for middleware domain"""
+
 import asyncio
 from unittest.mock import Mock
 
@@ -30,7 +31,9 @@ class TestCORSMiddleware:
         async def endpoint(request):
             return JSONResponse({"data": "test"})
 
-        app = Starlette(routes=[Route("/", endpoint, methods=["GET", "POST", "OPTIONS"])])
+        app = Starlette(
+            routes=[Route("/", endpoint, methods=["GET", "POST", "OPTIONS"])]
+        )
         app.add_middleware(
             CORSMiddleware,
             allow_origins=["http://localhost:3000"],
@@ -43,6 +46,7 @@ class TestCORSMiddleware:
     @pytest.fixture
     def client(self, app):
         from starlette.testclient import TestClient
+
         return TestClient(app)
 
     def test_cors_middleware_creation(self):
@@ -59,21 +63,30 @@ class TestCORSMiddleware:
 
     def test_cors_preflight_request(self, client):
         """Test CORS preflight request handling"""
-        response = client.options("/", headers={
-            "Origin": "http://localhost:3000",
-            "Access-Control-Request-Method": "POST",
-        })
+        response = client.options(
+            "/",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
 
         assert response.status_code == 204
-        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        assert (
+            response.headers.get("access-control-allow-origin")
+            == "http://localhost:3000"
+        )
         assert "POST" in response.headers.get("access-control-allow-methods", "")
 
     def test_cors_actual_request(self, client):
         """Test CORS headers on actual request"""
         response = client.get("/", headers={"Origin": "http://localhost:3000"})
-        
+
         assert response.status_code == 200
-        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+        assert (
+            response.headers.get("access-control-allow-origin")
+            == "http://localhost:3000"
+        )
 
 
 class TestRateLimiting:
@@ -288,18 +301,19 @@ class TestRateLimitMiddleware:
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route
-        
+
         async def endpoint(request):
             return JSONResponse({"allowed": True})
-            
+
         app = Starlette(routes=[Route("/test", endpoint)])
         limiter = RateLimiter(redis_client=None)
         app.add_middleware(RateLimitMiddleware, rate_limiter=limiter)
         return app
-        
+
     @pytest.fixture
     def client(self, app):
         from starlette.testclient import TestClient
+
         return TestClient(app)
 
     def test_middleware_adds_headers(self):
@@ -336,17 +350,18 @@ class TestTimingMiddleware:
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route
-        
+
         async def endpoint(request):
             return JSONResponse({"timed": True})
-            
+
         app = Starlette(routes=[Route("/test", endpoint)])
         app.add_middleware(TimingMiddleware)
         return app
-        
+
     @pytest.fixture
     def client(self, app):
         from starlette.testclient import TestClient
+
         return TestClient(app)
 
     def test_timing_middleware_creation(self):
@@ -358,7 +373,7 @@ class TestTimingMiddleware:
     def test_timing_middleware_adds_header(self, client):
         """Test timing middleware adds timing header"""
         response = client.get("/test")
-        
+
         assert "x-process-time" in response.headers
         assert response.status_code == 200
 
@@ -371,23 +386,23 @@ class TestCompressionMiddleware:
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route
-        
+
         async def small_endpoint(request):
             return JSONResponse({"small": "data"})
-            
+
         async def large_endpoint(request):
             return JSONResponse({"data": "x" * 1000})
-            
-        app = Starlette(routes=[
-            Route("/small", small_endpoint),
-            Route("/large", large_endpoint)
-        ])
+
+        app = Starlette(
+            routes=[Route("/small", small_endpoint), Route("/large", large_endpoint)]
+        )
         app.add_middleware(CompressionMiddleware, minimum_size=100)
         return app
-        
+
     @pytest.fixture
     def client(self, app):
         from starlette.testclient import TestClient
+
         return TestClient(app)
 
     def test_compression_middleware_creation(self):

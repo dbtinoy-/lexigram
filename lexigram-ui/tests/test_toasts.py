@@ -34,8 +34,7 @@ def test_legacy_toast_alias_emits_deprecation_warning():
 
         _ = Toast(message="legacy")
     assert any(
-        issubclass(w.category, DeprecationWarning)
-        and "InlineToast" in str(w.message)
+        issubclass(w.category, DeprecationWarning) and "InlineToast" in str(w.message)
         for w in caught
     ), "Expected DeprecationWarning pointing at InlineToast"
 

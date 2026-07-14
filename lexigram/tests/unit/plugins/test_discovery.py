@@ -72,13 +72,10 @@ def _fake_entry_points(
 
     plugin_eps = []
     if isinstance(descriptors, dict):
-        plugin_eps = [
-            _FakeEntryPoint(name, d) for name, d in descriptors.items()
-        ]
+        plugin_eps = [_FakeEntryPoint(name, d) for name, d in descriptors.items()]
     elif descriptors:
         plugin_eps = [
-            _FakeEntryPoint(name, _plugin_descriptor(name))
-            for name in descriptors
+            _FakeEntryPoint(name, _plugin_descriptor(name)) for name in descriptors
         ]
 
     def _entry_points(*, group: str) -> list[Any]:
@@ -104,7 +101,9 @@ def test_discover_providers_skips_disabled(monkeypatch: pytest.MonkeyPatch) -> N
     assert result == []
 
 
-def test_discover_providers_skips_unconstructible(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_discover_providers_skips_unconstructible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _fake_entry_points(
         monkeypatch, {"broken": _BrokenCtorProvider}, descriptors={"broken"}
     )
@@ -120,7 +119,9 @@ def test_discover_providers_skips_raising_ctor(monkeypatch: pytest.MonkeyPatch) 
     assert result == []
 
 
-def test_discover_providers_empty_when_no_entry_points(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_discover_providers_empty_when_no_entry_points(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _fake_entry_points(monkeypatch, {})
     assert discovery.discover_providers() == []
 

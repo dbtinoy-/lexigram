@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from lexigram.admin.auth.store.app_principal import AppPrincipalUserStoreAdapter
-from lexigram.contracts.admin import AdminPrincipal, AdminPrincipalProviderProtocol
+from lexigram.contracts.admin import AdminPrincipal
 
 
 class FakeProvider:
@@ -73,3 +73,27 @@ async def test_adapter_sync_roles_delegates() -> None:
                         "is_active": True})()
     )
     assert provider.synced == [("u1", ["viewer"])]
+
+
+@pytest.mark.asyncio
+async def test_adapter_update_user_forwards_hashed_password() -> None:
+    provider = FakeProvider()
+    store = AppPrincipalUserStoreAdapter(provider=provider)
+    await store.update_user(
+        type("U", (), {"user_id": "u1", "name": "Ada", "email": "ada@example.com",
+                        "roles": ["superadmin"], "permissions": [],
+                        "hashed_password": "pbkdf2$newhash", "is_active": True})()
+    )
+    assert provider.principals["u1"].hashed_password == "pbkdf2$newhash"
+
+
+@pytest.mark.asyncio
+async def test_adapter_update_user_empty_hash_not_forwarded() -> None:
+    provider = FakeProvider()
+    store = AppPrincipalUserStoreAdapter(provider=provider)
+    await store.update_user(
+        type("U", (), {"user_id": "u1", "name": "Ada", "email": "ada@example.com",
+                        "roles": ["superadmin"], "permissions": [],
+                        "hashed_password": "", "is_active": True})()
+    )
+    assert provider.principals["u1"].hashed_password == ""

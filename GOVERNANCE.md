@@ -162,28 +162,6 @@ See `.importlinter` for enforced contracts.
 - **PyPI**: Package distribution
 - **Documentation**: Public docs site (no sensitive info)
 
-## Roadmap
-
-### Current Status (0.1.x — Alpha)
-- Alpha; public APIs may change before 1.0
-- ~40 open-source packages (MIT)
-- Test suite runs in CI across packages
-
-### Short Term (Q2 2026)
-- [ ] Performance optimizations
-- [ ] Extended AI capabilities
-- [ ] Additional backend support
-
-### Medium Term (Q3-Q4 2026)
-- [ ] Advanced monitoring
-- [ ] Enhanced security
-- [ ] Distributed tracing
-
-### Long Term (2027)
-- [ ] Enterprise features
-- [ ] Enhanced observability
-- [ ] Community expansion (if approved)
-
 ## Code Review Standards
 
 ### Review Checklist

@@ -18,11 +18,14 @@ from lexigram.admin.services.storage.types import (
     AdminUploadOptions,
 )
 from lexigram.admin.services.storage.utils import get_content_type
-from lexigram.contracts.infra.storage import BlobStoreProtocol, FileInfo
+from lexigram.contracts.infra.storage import (
+    BlobStoreProtocol,
+    FileInfo,
+    StorageUnsupportedOperationError,
+)
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
-from lexigram.storage.exceptions import StorageUnsupportedOperationError
 
 logger = get_logger(__name__)
 
