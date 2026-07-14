@@ -163,7 +163,7 @@ class ConfigRegistry:
         values: dict[str, Any],
         store_name: str = "default",
     ) -> None:
-        """Save values for a spec to a store."""
+        """Save values for a spec to a store, skipping readonly nodes."""
         spec = self._specs.get(namespace)
         if not spec:
             return
@@ -171,7 +171,7 @@ class ConfigRegistry:
         store = self._stores.get(store_name, self._stores["default"])
         nodes = spec.get_nodes()
         for key, value in values.items():
-            if key in nodes:
+            if key in nodes and not nodes[key].readonly:
                 full_key = f"{namespace}.{key}"
                 validated = nodes[key].validate(value)
                 await store.set(full_key, validated)
