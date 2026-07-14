@@ -14,7 +14,7 @@ from starlette.responses import HTMLResponse
 
 from lexigram.admin.controllers.search import SearchController
 from lexigram.admin.services.search_service import SearchResult, SearchResults
-from lexigram.ui.core.base import render_to_string
+from lexigram.ui import render_to_string
 
 
 class TestSearchResultsHTMLStructure:

@@ -28,10 +28,10 @@
 > confirm, settings config-read gate, command-palette permissions); Round
 > 9 (rows 43-49: storage KV traversal, MCP initialize authz —
 > documentation-close, agent tool-visibility, pgvector, OAuth2
-> email-verified binding). **Known residual:** relations-panel-xss
-> 28/35 boxes with 2 legitimately unimplementable probes documented in
-> §12; 2 pre-existing phantom-import test failures (`1875d901`, rows 33-36
-> artifacts — offender `lexigram/admin/controllers/search.py:14`); all
+> email-verified binding). **Known residual:** relations-panel-xss 33/35 boxes checked, 2 documented
+> unimplementable probes (§12); alpine 18/20, 2 deferred review conventions;
+> **phantom-import failures fixed 2026-08-18** (4 files migrated from
+> `lexigram.ui.core.base` to `lexigram.ui` — guard 2 passed); all
 > remaining verification gates green (admin 4540, auth 607, web 1415,
 > command palette 4336 + 59 e2e; ruff + mypy clean). The old sentence
 > below ("No Round 3-9 plan has been
@@ -1237,7 +1237,105 @@ executed — 0/15 tasks done.
 
 ---
 
-## 15. Commands (from AGENTS.md)
+## 15. Architecture — Admin Dashboard Widgets, Real Data Wiring (Spec + Plan Fixed, Gaps Resolved, Not Yet Authorized)
+
+Distinct from §13 and §14 — a fourth **architectural placement** spec,
+replacing eight framework packages' hardcoded/`EmptyContent` admin
+dashboard widget placeholders with real DI-resolved data via small
+`@runtime_checkable` capability protocols. Directly collides with §14's
+Task 13 on one branch (see below) — logged here for the same reason as
+§13/§14: tracked centrally so no other lane starts a step that collides
+with these files.
+
+**Spec:** `docs/superpowers/specs/2026-08-18-architecture-admin-dashboard-widgets-real-data-design.md`
+**Plan:** `docs/superpowers/plans/2026-08-18-admin-dashboard-widgets-real-data.md` (Tasks 0-10)
+
+**Review + fix pass (2026-08-18):** the plan previously existed only as a
+single file with a one-paragraph inline "Spec:" note, not a real
+spec/plan pairing — a process gap relative to the `verify → spec → plan →
+execute` convention used elsewhere in this tracker. A standalone spec was
+written, and both documents were verified against live source and fixed
+in place. No sign-off/authorization has been given yet and no task has
+been executed — 0/11 tasks (0-10) done.
+
+**Collision with §14:** this plan's Task 10 and §14's Task 13 both
+targeted the same `if widget_name == "activity":` branch in
+`lexigram-admin/src/lexigram/admin/contributors/core.py` with
+incompatible implementations (`AuditStoreProtocol`-backed summary vs.
+`SubjectAdminEventHub`-backed live feed). Resolved by **sequencing, not
+merging**: §14's Task 13 (richer, already fixed) owns `activity`; this
+plan's Task 10 was cut down to `health`/`chart_metrics`/`render_health_check`
+only and drops the `activity` branch entirely — see spec §4 D1.
+
+**Spec fixes / findings applied:**
+- Disproved an initial DI-bug hypothesis (Task 2's named `AuthActivityTracker`
+  registration) by reading the resolver directly — the container correctly
+  awaits a lambda-returned coroutine; the registration is dead code, not a
+  bug, and was removed rather than "fixed."
+- Confirmed real bugs via live-source verification: Task 8's
+  `tasks_adapter.get_stats()` iterating `get_worker_stats()` breaks under
+  both possible real return shapes — fixed to read `get_pool_stats()`'s
+  flat `active_workers` field. Task 5's `_uptime_seconds()` returned raw
+  `time.monotonic()` with no captured start reference — fixed with a
+  module-level `_PROCESS_START`. Task 7's `oldest_age_minutes` and Task 10's
+  `health_payload` were dead/never-assigned locals — deleted.
+- Flagged, not silently patched: `SqlAuditStore.query()` doesn't
+  auto-scope by tenant, and `WidgetParams`/`render_widget()` carry no
+  tenant context (spec §4 D3) — see gap-resolution below for final
+  disposition.
+
+**Gap-resolution pass (2026-08-18):** two gaps were left open by the
+initial review; both re-examined and closed:
+- **Task 4 (`tasks_summary`/`avg_duration`) hardcoded `running_tasks`/
+  `failed_tasks`/duration** — previously left as-is pending verification
+  of the concrete stats source. Verification found the original draft's
+  dependency wiring was actually broken: `self.scheduler` (injected as
+  `scheduler_or_metrics`) is a bare `TaskScheduler()`
+  (`lexigram-tasks/src/lexigram/tasks/scheduling/scheduler.py:53`) with no
+  stats method at all — calling `.get_worker_stats()` on it would have
+  raised `AttributeError` at runtime, not returned stub data. Fixed by
+  rewiring both handlers to `self.worker_pool`
+  (`WorkerPool.get_pool_stats()`, sync,
+  `lexigram-tasks/src/lexigram/tasks/execution/pool.py:203-229`), which has
+  real `active_workers`/`total_jobs_succeeded`/`total_jobs_failed`/
+  `average_processing_time` keys, plus `di/provider.py`'s
+  `_register_admin_widgets` factory wiring. Also caught and fixed a units
+  bug: `average_processing_time` is in **seconds**
+  (`execution/worker.py:189`), not ms as the stub's `f"{avg_ms}ms"` label
+  implied. P95 duration has no data source anywhere in `lexigram-tasks`
+  (no percentile tracking exists) and stays a documented `0.0` placeholder
+  rather than an invented value.
+- **`activity`-widget tenant scoping (spec §4 D3)** — confirmed to have
+  zero remaining code manifestation in this plan: Task 10's `AuditQuery`
+  usage was removed by the D1 collision fix, not merely deferred, and
+  §14's Task 13 (which now owns `activity`) uses `SubjectAdminEventHub`/
+  `AdminEvent`, not `AuditStoreProtocol`, so it isn't affected by this gap
+  either. The broader architectural gap (no `tenant_id` path into
+  `WidgetParams`/`render_widget`, affecting every contributor's signature)
+  remains a standing note for whoever next authorizes an
+  `AuditStoreProtocol`-backed widget — implementing that cross-cutting
+  contracts change now, with no concrete consumer, would be speculative
+  work rather than a fix.
+
+### 15.1 Tasks summary (0/11 done, none authorized)
+
+| Task | Area |
+|---|---|
+| 0 | Dashboard capability protocols (`lexigram-contracts/admin/stats.py`) |
+| 1 | Pool statistics + migration status handlers (`lexigram-sql`) |
+| 2 | Auth activity tracker (`lexigram-auth`) |
+| 3 | Active sessions, failed logins, token refresh handlers (`lexigram-auth`) |
+| 4 | Tasks summary + average duration handlers (`lexigram-tasks`) |
+| 5 | Server status + request metrics handlers (`lexigram-web`) |
+| 6 | Cache backend stats + hit/miss and eviction handlers (`lexigram-cache`) |
+| 7 | Dead-letter count widget (`lexigram-events`) |
+| 8 | Queue stats capability implementers + widget handlers (`lexigram-queue`/`lexigram-ai-workers`) |
+| 9 | Named health check on the monitor registry (`lexigram-monitor`) |
+| 10 | Admin core widgets — health, chart metrics (`lexigram-admin`; `activity` intentionally excluded, see §14 Task 13) |
+
+---
+
+## 16. Commands (from AGENTS.md)
 
 ```bash
 uv run ruff check . && uv run ruff format --check .   # lint
