@@ -123,23 +123,24 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - Test suite runs in local CI across packages
 
 #### short term (Q2 2026)
-[~] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - in testing
-[~] Reactive state and event wiring - in testing
-[ ] Additional backend support
+- [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - in testing
+- [x] Reactive state and event wiring - in testing
+- [ ] Additional backend support
 
 #### medium term (Q3-Q4 2026)
-[ ] Advanced monitoring
-[~] Enhanced security — audit remediation partially implemented (security lanes in progress)
-[~] Production-grade Admin dashboard — `lexigram-admin` in active development
-[~] Full-stack starter template — in progress
-[ ] Distributed tracing
-[ ] Performance optimizations
-[~] Reach 80% overall Tests coverage (now 75% in progress)
+- [ ] Advanced monitoring
+- [x] Enhanced security — audit remediation partially implemented (security lanes in progress)
+- [x] Production-grade Admin dashboard — `lexigram-admin` in active development
+- [x] Full-stack starter template — in progress
+- [ ] Distributed tracing
+- [ ] Performance optimizations
+- [x] Reach 80% Unit Tests overall coverage (now 75% in progress)
+- [ ] Reach 80% Integration Tests overall coverage
 
 #### long term (2027)
-[ ] Enterprise features
-[ ] Enhanced observability
-[ ] Community expansion (if approved)
+- [ ] Enterprise features
+- [ ] Enhanced observability
+- [ ] Community expansion (if approved)
 
 #### → see [MILESTONE.md](./MILESTONE.md) 
 
