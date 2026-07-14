@@ -17,14 +17,14 @@
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 245 ms | `uv run ruff check .` |
-| `Mypy` | **PASS** | 0 | 77752 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 246 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 126392 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `245 ms`
+- Duration: `246 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -36,7 +36,7 @@ All checks passed!
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `77752 ms`
+- Duration: `126392 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
@@ -49,7 +49,7 @@ All per-package mypy checks passed.
 | Package | Source Files | Test Files |
 |---------|--------------|------------|
 | `lexigram` | 295 | 252 |
-| `lexigram-admin` | 452 | 418 |
+| `lexigram-admin` | 453 | 430 |
 | `lexigram-ai` | 25 | 41 |
 | `lexigram-ai-agents` | 57 | 39 |
 | `lexigram-ai-evaluation` | 18 | 20 |
@@ -68,7 +68,7 @@ All per-package mypy checks passed.
 | `lexigram-ai-skills` | 53 | 38 |
 | `lexigram-ai-workers` | 34 | 34 |
 | `lexigram-audit` | 46 | 34 |
-| `lexigram-auth` | 128 | 79 |
+| `lexigram-auth` | 128 | 81 |
 | `lexigram-cache` | 86 | 65 |
 | `lexigram-cli` | 96 | 74 |
 | `lexigram-contracts` | 314 | 156 |
@@ -99,7 +99,7 @@ All per-package mypy checks passed.
 | `lexigram-testing` | 151 | 39 |
 | `lexigram-ui` | 152 | 74 |
 | `lexigram-vector` | 63 | 41 |
-| `lexigram-web` | 185 | 162 |
+| `lexigram-web` | 185 | 164 |
 | `lexigram-webhook` | 42 | 34 |
 | `lexigram-workflow` | 68 | 51 |
 
