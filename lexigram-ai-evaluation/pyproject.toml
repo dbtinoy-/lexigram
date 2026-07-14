@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-evaluation"
-version = "0.1.3006"
+version = "0.1.3007"
 description = "AI Evaluation framework for the Lexigram Framework"
 readme = "README.md"
 requires-python = ">=3.11"

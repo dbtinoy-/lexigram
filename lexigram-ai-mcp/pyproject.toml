@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-mcp"
-version = "0.1.3006"
+version = "0.1.3007"
 description = "MCP Server for Lexigram Framework - Model Context Protocol server for AI agents"
 readme = "README.md"
 requires-python = ">=3.11"

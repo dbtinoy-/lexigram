@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-relay"
-version = "0.1.3006"
+version = "0.1.3007"
 description = "Protocol-neutral conversion engine for the Lexigram AI relay — OpenAI Chat, Responses, Claude, and Gemini"
 readme = "README.md"
 requires-python = ">=3.11"
