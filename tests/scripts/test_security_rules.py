@@ -65,7 +65,11 @@ def test_security_rules_ignore_safe_code(tmp_path: Path) -> None:
         'def safe() -> None:\n'
         '    context = ssl.create_default_context()\n'
         '    del context\n'
-        'SESSION_COOKIE = "example-session"\n',
+        'SESSION_COOKIE = "example-session"\n'
+        'ERROR_MSG_INSECURE_PASSWORD = "The supplied password was rejected"\n'
+        'STABILITY_API_KEY_SECRET_NAME = "stability_api_key"\n'
+        'DUMMY_PASSWORD_HASH = "d3adbeefd3adbeefd3adbeefd3adbeef"\n'
+        'PASSWORD_RESET_REQUESTED = "password_reset_requested"\n',
         encoding="utf-8",
     )
     findings = run_rules(tmp_path, packages=("lexigram",)).findings

@@ -83,7 +83,9 @@ def _run_pip_audit(*, root: Path) -> dict[str, str | int | bool | None]:
     primary = run_command(("uv", "run", "pip-audit"), cwd=root, timeout=PIP_AUDIT_TIMEOUT)
     output = primary.stdout + primary.stderr
     if primary.exit_code not in (None, 0) and re.search(
-        r"no module|no such file|command not found|not found", output, re.IGNORECASE
+        r"no module|no such file|command not found|unrecognized subcommand|not found",
+        output,
+        re.IGNORECASE,
     ):
         fallback = run_command(("uv", "pip", "audit"), cwd=root, timeout=PIP_AUDIT_TIMEOUT)
         return {
