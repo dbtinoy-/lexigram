@@ -21,7 +21,7 @@
 > — all executed); Round 5 (rows 21-25: RBAC super-admin, password-reset lifecycle,
 > CORS, MFA/TOTP, impersonation Option B); Round 6 (rows 26-30 incl.
 > open-redirect, verified in tree); Round 7 (rows 31-36, admin focused —
-> SQL identifiers, auth-guard bypass, Alpine expression ids [28/35, §12
+> SQL identifiers, auth-guard bypass, Alpine expression ids [18/20, §12
 > rows 34-36 merged into this plan], search partial escaping, session
 > fallback TTL, login roles unbound); Round 8 (rows 37-42: relations XSS
 > + authz, Excel export formula sanitization, search-filter backends
@@ -435,7 +435,7 @@ these areas once merged into the findings document.
 |---|------|--------------|------|------|
 | 31 | **Generic-repository SQL identifier injection** (`admin/data/data_source.py`) | Critical ×1, High ×1 | `specs/2026-08-16-security-admin-sql-identifiers-design.md` | `plans/2026-08-16-security-admin-sql-identifiers.md` | **EXECUTED 2026-08-18** (identifier allowlist validation at all `data_source.py` call sites — table names, column names, order-by asc/desc; 13/13) |
 | 32 | **Auth-guard path-suffix bypass** (`admin/middleware/auth_guard.py`) | High ×1 | `specs/2026-08-16-security-auth-guard-bypass-design.md` | `plans/2026-08-16-security-auth-guard-bypass.md` | **EXECUTED 2026-08-18** (segment-boundary validation, no tail-whitespace/encoded separators accepted; 9/9) |
-| 33 | **Alpine JS-expression injection via record ids** (`admin/ui/organisms/table/views/tabular.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-alpine-js-expression-design.md` | `plans/2026-08-16-security-alpine-js-expression.md` | **EXECUTED 2026-08-18** (record-id expression framing neutralized; 28/35 — §12 rows 34-36 merged into this plan) |
+| 33 | **Alpine JS-expression injection via record ids** (`admin/ui/organisms/table/views/tabular.py`) | High ×1, Med ×1 | `specs/2026-08-16-security-alpine-js-expression-design.md` | `plans/2026-08-16-security-alpine-js-expression.md` | **EXECUTED 2026-08-18** (record-id expression framing neutralized; 18/20 — 2 deferred review conventions, see §12; rows 34-36 merged into this plan) |
 | 34 | **Search partial unescaped record fields** (`admin/controllers/search.py`) | Med ×1 | `specs/2026-08-16-security-search-partial-escaping-design.md` | `plans/2026-08-16-security-search-partial-escaping.md` | **EXECUTED 2026-08-18** (defensive HTML escaping of search snippets + record field rendering) |
 | 35 | **Legacy session fallback without TTL / revocation** (`admin/middleware/auth.py`) | Med ×1 | `specs/2026-08-16-security-session-fallback-ttl-design.md` | `plans/2026-08-16-security-session-fallback-ttl.md` | **EXECUTED 2026-08-18** (fallback session TTL set to 4h, absolutely bounded by pre-primary TTL, single source of truth) |
 | 36 | **Admin login `roles` unbound local** (`admin/auth/services/auth_service.py`) | High ×1 (availability) | `specs/2026-08-16-security-admin-login-roles-unbound-design.md` | `plans/2026-08-16-security-admin-login-roles-unbound.md` | **EXECUTED 2026-08-18** (roles bound to authenticated principal in login flow) |
