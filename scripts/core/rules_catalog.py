@@ -5,6 +5,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+import re
 
 
 class RuleSeverity(str, Enum):
@@ -160,6 +161,34 @@ def build_rules_catalog() -> tuple[RuleDefinition, ...]:
             owner="framework",
             rationale="Enumeration-like classes must inherit from enum.Enum for type safety and consistency.",
             detector=_detect_pseudo_enum,
+        ),
+        RuleDefinition(
+            rule_id="sec-tls-verify-disabled",
+            severity=RuleSeverity.IMPORTANT,
+            owner="security",
+            rationale="TLS certificate verification must stay enabled for every outbound client; verify=False or an unverified context defeats transport encryption.",
+            detector=_detect_tls_verify_disabled,
+        ),
+        RuleDefinition(
+            rule_id="sec-hardcoded-secret",
+            severity=RuleSeverity.IMPORTANT,
+            owner="security",
+            rationale="Long literal secrets assigned to secret-named variables must come from configuration, not source code.",
+            detector=_detect_hardcoded_secret,
+        ),
+        RuleDefinition(
+            rule_id="sec-cors-wildcard-credentials",
+            severity=RuleSeverity.IMPORTANT,
+            owner="security",
+            rationale="A wildcard CORS origin combined with allow_credentials exposes authenticated endpoints to any origin.",
+            detector=_detect_cors_wildcard_credentials,
+        ),
+        RuleDefinition(
+            rule_id="sec-jwt-verification-disabled",
+            severity=RuleSeverity.CRITICAL,
+            owner="security",
+            rationale="Signing JWT verification must never be disabled or pinned to the 'none' algorithm.",
+            detector=_detect_jwt_verification_disabled,
         ),
     )
 
@@ -442,3 +471,221 @@ def _is_constant_member_name(name: str) -> bool:
     """Return whether a class attribute name looks like an enum member."""
 
     return name.isupper() and any(character.isalpha() for character in name)
+
+
+_SECRET_NAME_RE = re.compile(
+    r"(?i)(password|passwd|secret|api_key|apikey|private_key|auth_token)"
+)
+_PLACEHOLDER_RE = re.compile(
+    r"(?i)(change|example|your-|xxx|placeholder|lorem|dummy|test|fixture)"
+)
+
+
+def _detect_tls_verify_disabled(
+    source_file: RuleSourceFile,
+    _context: RuleCatalogContext,
+) -> tuple[RuleFinding, ...]:
+    """Flag calls that disable TLS certificate verification."""
+
+    findings: list[RuleFinding] = []
+    for node in ast.walk(source_file.tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if _call_name(node) == "_create_unverified_context":
+            findings.append(
+                _finding(
+                    source_file,
+                    rule_id="sec-tls-verify-disabled",
+                    severity=RuleSeverity.IMPORTANT,
+                    owner="security",
+                    rationale="TLS certificate verification must stay enabled for every outbound client; verify=False or an unverified context defeats transport encryption.",
+                    line=node.lineno,
+                    message=f"{source_file.relative_path.as_posix()} disables TLS verification via ssl._create_unverified_context.",
+                )
+            )
+        for keyword in node.keywords:
+            if keyword.arg != "verify" or not isinstance(keyword.value, ast.Constant):
+                continue
+            if keyword.value.value is False or keyword.value.value == 0:
+                findings.append(
+                    _finding(
+                        source_file,
+                        rule_id="sec-tls-verify-disabled",
+                        severity=RuleSeverity.IMPORTANT,
+                        owner="security",
+                        rationale="TLS certificate verification must stay enabled for every outbound client; verify=False or an unverified context defeats transport encryption.",
+                        line=node.lineno,
+                        message=f"{source_file.relative_path.as_posix()} disables TLS verification with verify={keyword.value.value!r}.",
+                    )
+                )
+    return tuple(findings)
+
+
+def _detect_hardcoded_secret(
+    source_file: RuleSourceFile,
+    _context: RuleCatalogContext,
+) -> tuple[RuleFinding, ...]:
+    """Flag long literal strings assigned to secret-named module/class variables.
+
+    Test files and placeholder-looking values are skipped to keep the signal
+    high where ruff S105/S106 are noisy.
+    """
+
+    if "tests" in source_file.path.parts or source_file.path.name.startswith("test_"):
+        return ()
+    findings: list[RuleFinding] = []
+    for node in ast.walk(source_file.tree):
+        if isinstance(node, ast.AnnAssign):
+            targets = (node.target,)
+            value = node.value
+        elif isinstance(node, ast.Assign):
+            targets = node.targets
+            value = node.value
+        else:
+            continue
+        if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+            continue
+        secret = value.value
+        if len(secret) < 16 or _PLACEHOLDER_RE.search(secret):
+            continue
+        for target in targets:
+            if not isinstance(target, ast.Name) or not _SECRET_NAME_RE.search(target.id):
+                continue
+            findings.append(
+                _finding(
+                    source_file,
+                    rule_id="sec-hardcoded-secret",
+                    severity=RuleSeverity.IMPORTANT,
+                    owner="security",
+                    rationale="Long literal secrets assigned to secret-named variables must come from configuration, not source code.",
+                    line=node.lineno,
+                    message=f"{source_file.relative_path.as_posix()} assigns a {len(secret)}-character literal to '{target.id}'; move it to configuration.",
+                )
+            )
+    return tuple(findings)
+
+
+def _detect_cors_wildcard_credentials(
+    source_file: RuleSourceFile,
+    _context: RuleCatalogContext,
+) -> tuple[RuleFinding, ...]:
+    """Flag CORS configuration combining a '*' origin list with credentials."""
+
+    findings: list[RuleFinding] = []
+    for node in ast.walk(source_file.tree):
+        if not isinstance(node, ast.Call):
+            continue
+        origins: ast.expr | None = None
+        credentials: ast.expr | None = None
+        for keyword in node.keywords:
+            if keyword.arg == "allow_origins":
+                origins = keyword.value
+            elif keyword.arg == "allow_credentials":
+                credentials = keyword.value
+        if origins is None or credentials is None:
+            continue
+        if not _is_wildcard_origin_list(origins) or not _is_true_constant(credentials):
+            continue
+        findings.append(
+            _finding(
+                source_file,
+                rule_id="sec-cors-wildcard-credentials",
+                severity=RuleSeverity.IMPORTANT,
+                owner="security",
+                rationale="A wildcard CORS origin combined with allow_credentials exposes authenticated endpoints to any origin.",
+                line=node.lineno,
+                message=f"{source_file.relative_path.as_posix()} sets allow_origins=['*'] with allow_credentials=True.",
+            )
+        )
+    return tuple(findings)
+
+
+def _detect_jwt_verification_disabled(
+    source_file: RuleSourceFile,
+    _context: RuleCatalogContext,
+) -> tuple[RuleFinding, ...]:
+    """Flag JWT verification disabled via algorithms=['none'] or verify_signature=False."""
+
+    findings: list[RuleFinding] = []
+    for node in ast.walk(source_file.tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if _call_name(node).lower() not in ("decode", "verify_token"):
+            continue
+        for keyword in node.keywords:
+            if keyword.arg == "algorithms" and _list_contains_none(keyword.value):
+                findings.append(
+                    _finding(
+                        source_file,
+                        rule_id="sec-jwt-verification-disabled",
+                        severity=RuleSeverity.CRITICAL,
+                        owner="security",
+                        rationale="Signing JWT verification must never be disabled or pinned to the 'none' algorithm.",
+                        line=node.lineno,
+                        message=f"{source_file.relative_path.as_posix()} accepts the unsigned 'none' JWT algorithm.",
+                    )
+                )
+            if keyword.arg == "options" and _dict_disables_verification(keyword.value):
+                findings.append(
+                    _finding(
+                        source_file,
+                        rule_id="sec-jwt-verification-disabled",
+                        severity=RuleSeverity.CRITICAL,
+                        owner="security",
+                        rationale="Signing JWT verification must never be disabled or pinned to the 'none' algorithm.",
+                        line=node.lineno,
+                        message=f"{source_file.relative_path.as_posix()} disables JWT signature verification via options.",
+                    )
+                )
+    return tuple(findings)
+
+
+def _call_name(node: ast.Call) -> str:
+    """Return the dotted function name for a call node."""
+
+    if isinstance(node.func, ast.Name):
+        return node.func.id
+    if isinstance(node.func, ast.Attribute):
+        return node.func.attr
+    return ""
+
+
+def _is_wildcard_origin_list(node: ast.expr) -> bool:
+    """Return whether an expression is a literal list/set/tuple containing '*'."""
+
+    if not isinstance(node, (ast.List, ast.Set, ast.Tuple)):
+        return False
+    for element in node.elts:
+        if isinstance(element, ast.Constant) and element.value == "*":
+            return True
+    return False
+
+
+def _is_true_constant(node: ast.expr) -> bool:
+    """Return whether an expression is the constant True."""
+
+    return isinstance(node, ast.Constant) and node.value is True
+
+
+def _list_contains_none(node: ast.expr) -> bool:
+    """Return whether an expression is a literal list containing 'none'."""
+
+    if not isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        return False
+    return any(
+        isinstance(element, ast.Constant) and element.value == "none"
+        for element in node.elts
+    )
+
+
+def _dict_disables_verification(node: ast.expr) -> bool:
+    """Return whether a literal dict sets verify_signature to False."""
+
+    if not isinstance(node, ast.Dict):
+        return False
+    for key, value in zip(node.keys, node.values, strict=True):
+        if not isinstance(key, ast.Constant) or key.value != "verify_signature":
+            continue
+        if isinstance(value, ast.Constant) and value.value is False:
+            return True
+    return False

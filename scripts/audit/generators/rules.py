@@ -26,6 +26,21 @@ RULE_RESOLUTION_GUIDE: dict[str, str] = {
     "python-syntax-error": (
         "Fix syntax so the rule scanner can parse the file. Audit results are incomplete while parse failures remain."
     ),
+    "sec-tls-verify-disabled": (
+        "Re-enable certificate verification (use `ssl.create_default_context()` and never "
+        "pass `verify=False`); if a test environment needs it, gate it behind a config flag."
+    ),
+    "sec-hardcoded-secret": (
+        "Move the literal secret to environment configuration and resolve it via the "
+        "framework's config/secrets stores."
+    ),
+    "sec-cors-wildcard-credentials": (
+        "Replace the `*` origin with an explicit allow-list when credentials are enabled."
+    ),
+    "sec-jwt-verification-disabled": (
+        "Keep signature verification on; pin `algorithms` to the signed algorithms and never "
+        "set `verify_signature=False`."
+    ),
 }
 
 
