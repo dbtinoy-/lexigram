@@ -15,7 +15,7 @@ from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
 from lexigram.admin.rbac.super_admin import is_super_admin
-from lexigram.admin.settings.panel import BooleanNode
+from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
 from lexigram.admin.settings.panel.types import ConfigCategory, get_default_categories
@@ -272,6 +272,12 @@ class SettingsController(AdminController):
             key: value for key, value in updates.items() if not nodes[key].readonly
         }
 
+        cleared_secrets: list[str] = []
+        for key in list(editable_updates):
+            if isinstance(nodes[key], SecretNode) and not editable_updates[key]:
+                editable_updates.pop(key)
+                cleared_secrets.append(key)
+
         invalid = [
             key
             for key, value in editable_updates.items()
@@ -285,6 +291,7 @@ class SettingsController(AdminController):
             keys=sorted(editable_updates),
             invalid=invalid,
             ignored_readonly=ignored_readonly,
+            cleared_secrets=sorted(cleared_secrets),
         )
 
         if request.headers.get("hx-request") == "true":
