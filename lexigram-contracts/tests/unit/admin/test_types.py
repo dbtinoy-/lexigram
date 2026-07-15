@@ -189,6 +189,14 @@ class TestWidgetParams:
         assert params.time_window_minutes == 120
         assert params.raw == (("k", "v"),)
 
+    def test_tenant_id_defaults_to_none(self) -> None:
+        params = WidgetParams()
+        assert params.tenant_id is None
+
+    def test_tenant_id_settable(self) -> None:
+        params = WidgetParams(tenant_id="acme")
+        assert params.tenant_id == "acme"
+
     def test_widget_params_is_frozen(self) -> None:
         params = WidgetParams()
         with pytest.raises((AttributeError, TypeError)):

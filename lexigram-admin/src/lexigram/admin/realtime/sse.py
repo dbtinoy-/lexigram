@@ -77,6 +77,7 @@ class AdminEvent:
     id: str | None = None
     resource_type: str | None = None
     resource_id: Any = None
+    tenant_id: str | None = None
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
