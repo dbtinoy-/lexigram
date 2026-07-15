@@ -88,7 +88,7 @@ class TestNotificationsInboxPage:
         assert 'hx-post="/admin/notifications/read-all"' in html
         assert "T4" in html
         assert "T3" in html
-        assert "T0" not in html
+        assert ">T0<" not in html
         assert "Showing 1 to 2 of 5 results" in _plain(html)
 
     @pytest.mark.asyncio

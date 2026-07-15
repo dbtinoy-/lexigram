@@ -40,6 +40,14 @@ class TestPasswordHasherProtocol:
             async def verify(self, password: str, hashed_password: str) -> bool:
                 return False
 
+            def needs_rehash(self, hashed_password: str) -> bool:
+                return False
+
+            async def rehash_if_needed(
+                self, password: str, hashed_password: str | None
+            ) -> str | None:
+                return None
+
         assert isinstance(Hasher(), PasswordHasherProtocol)
 
     @pytest.mark.asyncio
