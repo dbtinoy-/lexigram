@@ -63,7 +63,7 @@ class TestTypedFieldRendering:
         html = render_to_string(ConfigDashboardUI().render_field(node, {}))
         assert 'type="color" name="primary_color"' in html
 
-    def test_secret_node_renders_password_input(self) -> None:
+    def test_secret_node_never_leaks_the_stored_value(self) -> None:
         node = {
             "name": "api_key",
             "label": "API Key",
@@ -75,3 +75,19 @@ class TestTypedFieldRendering:
         }
         html = render_to_string(ConfigDashboardUI().render_field(node, {}))
         assert 'type="password" name="api_key"' in html
+        assert "sk-123" not in html
+        assert "currently set" in html
+
+    def test_secret_node_shows_not_set_when_no_value(self) -> None:
+        node = {
+            "name": "api_key",
+            "label": "API Key",
+            "type": "secret",
+            "default": None,
+            "help_text": None,
+            "readonly": False,
+            "options": [],
+        }
+        html = render_to_string(ConfigDashboardUI().render_field(node, {}))
+        assert 'type="password" name="api_key"' in html
+        assert "not set" in html
