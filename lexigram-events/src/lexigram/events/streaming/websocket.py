@@ -40,7 +40,8 @@ Mount the endpoint under any ASGI router::
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+import inspect
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -108,6 +109,8 @@ class EventWebSocketEndpoint:
         dispatcher: The stream dispatcher to receive events from.
         ping_interval: Seconds between server-originated keepalive ping frames.
             Set to ``0`` to disable keepalives.
+        authorize: Optional callback that decides whether a connection may
+            proceed. See ``__init__`` for the full contract.
 
     Example:
         ```python
@@ -121,15 +124,26 @@ class EventWebSocketEndpoint:
         self,
         dispatcher: StreamDispatcher,
         ping_interval: float = 30.0,
+        authorize: (
+            Callable[[_Scope], bool] | Callable[[_Scope], Awaitable[bool]] | None
+        ) = None,
     ) -> None:
         """Initialise the WebSocket endpoint.
 
         Args:
             dispatcher: Dispatcher whose events will be forwarded to clients.
             ping_interval: Server keepalive interval in seconds (0 to disable).
+            authorize: Optional callback deciding whether a connection may
+                proceed. Receives the ASGI connection ``scope``; return a
+                truthy value to accept the connection or a falsy value to
+                reject it with close code 4401 before the handshake is
+                accepted. May be synchronous or asynchronous. When ``None``
+                (default), every connection is accepted — see the module
+                docstring warning.
         """
         self._dispatcher = dispatcher
         self._ping_interval = ping_interval
+        self._authorize = authorize
 
     async def __call__(
         self,
@@ -175,6 +189,17 @@ class EventWebSocketEndpoint:
         connect_msg = await receive()
         if connect_msg.get("type") != "websocket.connect":
             return
+
+        if self._authorize is not None:
+            decision = self._authorize(scope)
+            if inspect.isawaitable(decision):
+                decision = await decision
+            if not decision:
+                await send({"type": "websocket.close", "code": 4401})
+                logger.warning(
+                    "ws_client_unauthorized", client=scope.get("client")
+                )
+                return
 
         await send({"type": "websocket.accept"})
         logger.info("ws_client_connected", client=scope.get("client"))
