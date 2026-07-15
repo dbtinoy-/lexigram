@@ -12,6 +12,7 @@ from datetime import UTC
 import math
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.exceptions.idempotency import IdempotencyStoreError
 from lexigram.logging import get_logger
 from lexigram.result import Result
 
@@ -60,12 +61,21 @@ class RedisIdempotencyStore:
 
         Returns:
             The stored result, or ``None`` if not found or still pending.
+
+        Raises:
+            IdempotencyStoreError: When the cache backend reports an error
+                instead of returning a value.
         """
-        cached = await self._cache.get(self._prefixed(key))
+        cached: Any = await self._cache.get(self._prefixed(key))
         if isinstance(cached, Result):
+            if cached.is_err():
+                error = cached.unwrap_err()
+                raise IdempotencyStoreError(
+                    f"Cache backend failed to read idempotency key {key!r}"
+                ) from error
             cached = cached.unwrap()
         if cached == "__pending__":
-            cached = None  # type: ignore[assignment]
+            cached = None
         logger.debug("idempotency.redis.get", key=key, found=cached is not None)
         return cached
 
