@@ -267,18 +267,24 @@ class SettingsController(AdminController):
             if not key.startswith("_") and key in nodes
         }
 
+        ignored_readonly = sorted(key for key in updates if nodes[key].readonly)
+        editable_updates = {
+            key: value for key, value in updates.items() if not nodes[key].readonly
+        }
+
         invalid = [
             key
-            for key, value in updates.items()
+            for key, value in editable_updates.items()
             if str(nodes[key].validate(value)).lower() != value.lower()
         ]
-        await self._registry.save_values(namespace, updates, self._store_name())
+        await self._registry.save_values(namespace, editable_updates, self._store_name())
 
         await self._audit(
             request,
             namespace=namespace,
-            keys=sorted(updates),
+            keys=sorted(editable_updates),
             invalid=invalid,
+            ignored_readonly=ignored_readonly,
         )
 
         if request.headers.get("hx-request") == "true":
