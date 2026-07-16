@@ -196,6 +196,7 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
     icon: str = "cog"
     description: str = ""
     required_permissions: frozenset[str] = frozenset()
+    package_source: str = "built-in"
 
     _nodes: dict[str, AbstractConfigNode] = {}
 

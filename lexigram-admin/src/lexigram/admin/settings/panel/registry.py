@@ -64,32 +64,29 @@ class ConfigRegistry:
             "env": EnvStore(),
             "default": MemoryStore(),
         }
-        self._category_map: dict[str, list[str]] = {
-            "env": [],
-            "app": [],
-            "system": [],
-        }
 
     def register_store(self, name: str, store: StoreBase) -> None:
         """Register a configuration store."""
         self._stores[name] = store
 
-    def register_spec(self, category: str, spec: type[ConfigSpec]) -> None:
-        """Register a spec under a category (env, admin, app)."""
+    def register_spec(self, spec: type[ConfigSpec]) -> None:
+        """Register a spec, grouped in the sidebar under its ``package_source``."""
         if spec.namespace in self._specs:
             return
-
         self._specs[spec.namespace] = spec
-        if category in self._category_map:
-            self._category_map[category].append(spec.namespace)
 
-    def get_specs(self, category: str) -> list[type[ConfigSpec]]:
-        """Get all registered specs for a category that have editable nodes."""
-        namespaces = self._category_map.get(category, [])
+    def get_package_sources(self) -> list[str]:
+        """Return distinct package sources among specs with editable nodes, sorted."""
+        return sorted(
+            {spec.package_source for spec in self._specs.values() if spec.get_nodes()}
+        )
+
+    def get_specs_by_package(self, package_source: str) -> list[type[ConfigSpec]]:
+        """Get all registered specs for a package source that have editable nodes."""
         return [
-            self._specs[ns]
-            for ns in namespaces
-            if ns in self._specs and self._specs[ns].get_nodes()
+            spec
+            for spec in self._specs.values()
+            if spec.package_source == package_source and spec.get_nodes()
         ]
 
     def get_spec(self, namespace: str) -> type[ConfigSpec] | None:
