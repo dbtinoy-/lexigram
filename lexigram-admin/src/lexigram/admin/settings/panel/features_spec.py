@@ -22,4 +22,4 @@ class FeaturesSpec(PydanticConfigSpec):
 
 def register_spec(registry: ConfigRegistry) -> None:
     """Register this spec with the config registry."""
-    registry.register_spec("system", FeaturesSpec)
+    registry.register_spec(FeaturesSpec)

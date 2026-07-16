@@ -22,4 +22,4 @@ class SecuritySpec(PydanticConfigSpec):
 
 def register_spec(registry: ConfigRegistry) -> None:
     """Register this spec with the config registry."""
-    registry.register_spec("system", SecuritySpec)
+    registry.register_spec(SecuritySpec)

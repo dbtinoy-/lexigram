@@ -22,4 +22,4 @@ class I18nSpec(PydanticConfigSpec):
 
 def register_spec(registry: ConfigRegistry) -> None:
     """Register this spec with the config registry."""
-    registry.register_spec("system", I18nSpec)
+    registry.register_spec(I18nSpec)

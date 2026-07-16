@@ -22,4 +22,4 @@ class CacheSpec(PydanticConfigSpec):
 
 def register_spec(registry: ConfigRegistry) -> None:
     """Register this spec with the config registry."""
-    registry.register_spec("system", CacheSpec)
+    registry.register_spec(CacheSpec)
