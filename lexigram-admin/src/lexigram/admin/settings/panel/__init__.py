@@ -57,15 +57,10 @@ from lexigram.admin.settings.panel.security_spec import SecuritySpec
 from lexigram.admin.settings.panel.security_spec import (
     register_spec as register_security_spec,
 )
-from lexigram.admin.settings.panel.types import (
-    DEFAULT_CATEGORIES,
-    ConfigCategory,
-    get_default_categories,
-)
+from lexigram.admin.settings.panel.types import ConfigCategory
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
 
 __all__ = [
-    "DEFAULT_CATEGORIES",
     "AbstractConfigNode",
     "BooleanNode",
     "BrandingSpec",
@@ -91,7 +86,6 @@ __all__ = [
     "SecuritySpec",
     "StoreBase",
     "StringNode",
-    "get_default_categories",
     "register_branding_spec",
     "register_cache_spec",
     "register_features_spec",
