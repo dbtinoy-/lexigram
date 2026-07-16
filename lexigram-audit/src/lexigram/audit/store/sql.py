@@ -215,6 +215,41 @@ class SqlAuditStore:
             return int(result.rows[0].get("count", 0))
         return 0
 
+    async def delete_expired(self, cutoff: datetime) -> int:
+        """Delete entries whose stored expiry precedes or equals cutoff.
+
+        Issues a single bulk ``DELETE`` keyed on the ``__expires_at``
+        metadata stamp written by ``AuditLogger.log()``. Rows without
+        the stamp are never deleted.
+
+        Args:
+            cutoff: UTC datetime; entries expiring at or before this
+                instant are deleted.
+
+        Returns:
+            Number of rows deleted, or 0 when the backend reports failure.
+        """
+        db_url = str(getattr(self._db, "url", "")).lower()
+        if (
+            "postgres" in db_url
+            or "postgresql" in db_url
+            or "Postgres" in self._db.__class__.__name__
+        ):
+            where_clause = (
+                "(metadata::jsonb->>'__expires_at')::timestamptz <= ?::timestamptz"
+            )
+        else:
+            where_clause = "json_extract(metadata, '$.__expires_at') <= ?"
+        result = await self._db.execute_delete(
+            self._table, where_clause, [cutoff.isoformat()]
+        )
+        if not result.success:
+            logger.warning(
+                "audit.store.delete_expired_failed", cutoff=cutoff.isoformat()
+            )
+            return 0
+        return result.affected_rows
+
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
