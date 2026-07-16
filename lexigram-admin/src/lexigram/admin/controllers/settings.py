@@ -18,7 +18,7 @@ from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
 from lexigram.admin.settings.panel.registry import ConfigRegistry
-from lexigram.admin.settings.panel.types import ConfigCategory, get_default_categories
+from lexigram.admin.settings.panel.types import ConfigCategory
 from lexigram.admin.settings.panel.ui import ConfigDashboardUI
 from lexigram.contracts.web import get, post
 from lexigram.logging import get_logger
@@ -32,8 +32,6 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 __all__ = ["SettingsController"]
-
-_SYSTEM_CATEGORY = "system"
 
 
 class SettingsController(AdminController):
@@ -88,20 +86,34 @@ class SettingsController(AdminController):
     def _build_categories(
         self, request: Request
     ) -> tuple[list[ConfigCategory], list[Any]]:
-        """Build categories with the visible specs for the requesting user."""
+        """Build one category per package source, with visible specs for the user."""
         permissions = self._user_permissions(request)
         is_superadmin = self._user_is_superadmin(request)
-        visible = [
-            spec
-            for spec in self._registry.get_specs(_SYSTEM_CATEGORY)
-            if not spec.required_permissions
-            or is_superadmin
-            or permissions.issuperset(spec.required_permissions)
-        ]
-        categories = get_default_categories()
-        for cat in categories:
-            if cat.name == _SYSTEM_CATEGORY:
-                cat.specs.extend(visible)
+
+        def _is_visible(spec: Any) -> bool:
+            return (
+                not spec.required_permissions
+                or is_superadmin
+                or permissions.issuperset(spec.required_permissions)
+            )
+
+        categories: list[ConfigCategory] = []
+        visible: list[Any] = []
+        for order, package_source in enumerate(self._registry.get_package_sources()):
+            specs = [
+                spec
+                for spec in self._registry.get_specs_by_package(package_source)
+                if _is_visible(spec)
+            ]
+            visible.extend(specs)
+            categories.append(
+                ConfigCategory(
+                    name=package_source,
+                    label=package_source.replace("-", " ").replace("_", " ").title(),
+                    order=order * 10,
+                    specs=specs,
+                )
+            )
         return categories, visible
 
     def _get_csrf_token(self, request: Request) -> str | None:
@@ -143,14 +155,13 @@ class SettingsController(AdminController):
     @get("/")
     async def index(self, request: Request) -> Response:
         """Redirect to the first editable spec, or render an empty state."""
-        _, visible = self._build_categories(request)
+        categories, visible = self._build_categories(request)
         if visible:
             return RedirectResponse(
                 url=f"/admin/settings/{visible[0].namespace}",
                 status_code=302,
             )
 
-        categories = get_default_categories()
         layout = ConfigLayout(
             categories=categories,
             active_category=None,
@@ -205,7 +216,7 @@ class SettingsController(AdminController):
 
         layout = ConfigLayout(
             categories=categories,
-            active_category=_SYSTEM_CATEGORY,
+            active_category=spec.package_source,
             active_namespace=namespace,
             content=form_content,
             title="Settings",
