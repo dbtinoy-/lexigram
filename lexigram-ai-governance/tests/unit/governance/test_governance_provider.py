@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
+from lexigram.ai.governance.config import GovernanceConfig
 from lexigram.ai.governance.di.provider import GovernanceProvider
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
@@ -74,3 +76,51 @@ class TestGovernanceProviderLifecycle:
 
         # Should complete without error
         await prov.shutdown()
+
+
+class TestGovernanceProviderRegisterWiring:
+    """Test GovernanceProvider.register() audit-store and manager bindings."""
+
+    @pytest.mark.asyncio
+    async def test_register_enabled_registers_audit_store_and_manager(self) -> None:
+        from lexigram.ai.governance.audit import AIAuditStore, InMemoryAuditStore
+        from lexigram.ai.governance.services.manager import AIGovernanceManager
+        from lexigram.contracts.ai.governance import AIGovernanceProtocol
+
+        provider = GovernanceProvider(GovernanceConfig(enabled=True))
+        container = MagicMock()
+        container.singleton = MagicMock()
+
+        await provider.register(container)
+
+        registered = {
+            call.args[0]: call.args[1] if len(call.args) > 1 else None
+            for call in container.singleton.call_args_list
+        }
+        audit_store = registered[AIAuditStore]
+        assert isinstance(audit_store, InMemoryAuditStore)
+
+        manager = registered[AIGovernanceManager]
+        assert isinstance(manager, AIGovernanceManager)
+        assert manager._audit_store is audit_store
+        assert registered[AIGovernanceProtocol] is manager
+
+    @pytest.mark.asyncio
+    async def test_register_disabled_skips_audit_store_and_manager(self) -> None:
+        from lexigram.ai.governance.audit import AIAuditStore
+        from lexigram.ai.governance.services.manager import AIGovernanceManager
+        from lexigram.contracts.ai.governance import AIGovernanceProtocol
+
+        provider = GovernanceProvider(GovernanceConfig(enabled=False))
+        container = MagicMock()
+        container.singleton = MagicMock()
+
+        await provider.register(container)
+
+        registered_types = [
+            call.args[0] for call in container.singleton.call_args_list
+        ]
+        assert container.singleton.call_count == 5
+        assert AIGovernanceManager not in registered_types
+        assert AIGovernanceProtocol not in registered_types
+        assert AIAuditStore not in registered_types
