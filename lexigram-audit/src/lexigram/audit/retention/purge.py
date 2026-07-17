@@ -39,11 +39,15 @@ class AuditPurger:
         self._retention = retention
         self._audit_logger = audit_logger
 
-    async def purge_expired(self) -> int:
+    async def purge_expired(self, dry_run: bool = False) -> int:
         """Evaluate all entries and purge those past expiry.
 
+        Args:
+            dry_run: When True, only count entries that would be purged
+                without deleting anything. Defaults to False.
+
         Returns:
-            Number of entries purged.
+            Number of entries purged (or that would be purged in dry-run).
         """
         from lexigram.contracts.audit import AuditQuery, RetentionDecision
 
@@ -60,7 +64,15 @@ class AuditPurger:
             if expiry and expiry <= now:
                 purged += 1
 
-        logger.info("audit.purge_expired", purged=purged, evaluated=len(entries))
+        if not dry_run and purged > 0:
+            await self._store.delete_expired(now)
+
+        logger.info(
+            "audit.purge_expired",
+            purged=purged,
+            evaluated=len(entries),
+            dry_run=dry_run,
+        )
 
         if self._audit_logger:
             meta_entry = AuditEntry(
@@ -69,7 +81,11 @@ class AuditPurger:
                 resource_type="audit_log",
                 outcome="success",
                 severity=AuditEventSeverity.LOW,
-                metadata={"purged": purged, "evaluated": len(entries)},
+                metadata={
+                    "purged": purged,
+                    "evaluated": len(entries),
+                    "dry_run": dry_run,
+                },
                 source="audit_purger",
             )
             await self._audit_logger.log(meta_entry)
