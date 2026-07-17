@@ -52,3 +52,23 @@ class TestTenantConfigStore:
         store = TenantConfigStore(svc)
         await store.get("admin.cache.enabled")
         svc.get.assert_awaited_once_with("default", "admin.cache.enabled")
+
+
+class TestTenantConfigStoreOverride:
+    """Per-call tenant_id takes precedence over the constructor default."""
+
+    @pytest.mark.asyncio
+    async def test_explicit_tenant_id_overrides_constructor_default(self) -> None:
+        svc = _FakeSettingsService()
+        store = TenantConfigStore(svc, tenant_id="tenant-a")
+
+        await store.get("k", tenant_id="tenant-b")
+        svc.get.assert_awaited_once_with("tenant-b", "k")
+
+    @pytest.mark.asyncio
+    async def test_no_tenant_id_falls_back_to_constructor_default(self) -> None:
+        svc = _FakeSettingsService()
+        store = TenantConfigStore(svc, tenant_id="tenant-a")
+
+        await store.get("k")
+        svc.get.assert_awaited_once_with("tenant-a", "k")
