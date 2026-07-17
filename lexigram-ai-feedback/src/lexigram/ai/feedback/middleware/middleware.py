@@ -6,12 +6,30 @@ request/response data for feedback collection.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+import inspect
 from typing import Any
 
+from lexigram.ai.feedback.exceptions import FeedbackAuthorizationError
 from lexigram.ai.feedback.processors.processor_registry import FeedbackProcessorRegistry
 from lexigram.ai.feedback.services.collector import FeedbackCollector
 from lexigram.ai.feedback.types import FeedbackType
+
+
+@dataclass(frozen=True)
+class FeedbackAuthContext:
+    """Identity material handed to the middleware's authorization callback.
+
+    Attributes:
+        context_id: Feedback context ID the caller is submitting against.
+        metadata: Remaining keyword arguments the host framework supplied
+            to the endpoint handler (e.g. an authenticated user or request
+            object). May be empty.
+    """
+
+    context_id: str
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class FeedbackMiddleware:
@@ -19,6 +37,11 @@ class FeedbackMiddleware:
 
     Captures prediction inputs/outputs automatically and provides
     hooks for user feedback collection.
+
+    When an :attr:`authorize` callback is supplied, feedback submissions
+    via ``create_feedback_endpoint()`` are gated on it. Leaving it unset
+    means the endpoint is open to anyone who can reach it — an explicit,
+    informed choice, not an enforced control.
 
     Example:
         >>> from lexigram.app import Application
@@ -37,6 +60,8 @@ class FeedbackMiddleware:
         capture_outputs: bool = True,
         capture_metadata: bool = True,
         registry: FeedbackProcessorRegistry | None = None,
+        authorize: Callable[[FeedbackAuthContext], bool | Awaitable[bool]]
+        | None = None,
     ):
         """Initialize feedback middleware.
 
@@ -46,11 +71,19 @@ class FeedbackMiddleware:
             capture_outputs: Whether to capture response outputs
             capture_metadata: Whether to capture additional metadata
             registry: Feedback processor registry (defaults to one with built-in processors)
+            authorize: Optional callback gating feedback submissions.
+                Receives the submission's context id and metadata; return
+                True to accept, False to raise
+                :class:`~lexigram.ai.feedback.exceptions.FeedbackAuthorizationError`.
+                Sync and async callables are supported. ``None`` (default)
+                performs no check — the endpoint is open to anyone who can
+                reach it.
         """
         self.collector = collector
         self.capture_inputs = capture_inputs
         self.capture_outputs = capture_outputs
         self.capture_metadata = capture_metadata
+        self.authorize = authorize
         self._registry = (
             registry
             if registry is not None
@@ -107,6 +140,11 @@ class FeedbackMiddleware:
     def create_feedback_endpoint(self) -> Callable:
         """Create a feedback submission endpoint.
 
+        The returned handler first consults the middleware's
+        ``authorize`` callback (if set); a denied submission raises
+        :class:`~lexigram.ai.feedback.exceptions.FeedbackAuthorizationError`
+        before any processing.
+
         Returns:
             Async handler function for feedback submission
 
@@ -129,11 +167,27 @@ class FeedbackMiddleware:
                 context_id: Context ID from original request
                 feedback_type: Type of feedback (rating, text, etc.)
                 value: Feedback value
-                **kwargs: Additional metadata
+                **kwargs: Additional metadata (passed to the authorize
+                    callback as identity material)
 
             Returns:
                 Response with feedback ID
+
+            Raises:
+                FeedbackAuthorizationError: If the authorize callback is
+                    set and denies the submission.
             """
+            if self.authorize is not None:
+                decision = self.authorize(
+                    FeedbackAuthContext(context_id=context_id, metadata=dict(kwargs))
+                )
+                if inspect.isawaitable(decision):
+                    decision = await decision
+                if not decision:
+                    raise FeedbackAuthorizationError(
+                        f"caller not authorized to submit feedback for context {context_id}"
+                    )
+
             fb_type = FeedbackType[feedback_type.upper()]
             context_dict = {"context_id": context_id, **kwargs}
 
