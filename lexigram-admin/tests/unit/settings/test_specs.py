@@ -173,6 +173,22 @@ class TestPackageSourceGrouping:
         assert ConfigSpec.package_source == "built-in"
 
 
+class TestStoreTenantIdParameter:
+    async def test_memory_store_accepts_tenant_id_kwarg(self) -> None:
+        store = MemoryStore()
+        await store.set("k", "v", tenant_id="tenant-a")
+        assert await store.get("k", tenant_id="tenant-a") == "v"
+
+    async def test_env_store_accepts_and_ignores_tenant_id_kwarg(
+        self, monkeypatch
+    ) -> None:
+        from lexigram.admin.settings.panel.registry import EnvStore
+
+        monkeypatch.setenv("FOO_BAR", "baz")
+        store = EnvStore()
+        assert await store.get("foo.bar", tenant_id="tenant-a") == "baz"
+
+
 class TestRegistryEdgeCases:
     """Edge cases for registry lookups and stores."""
 
