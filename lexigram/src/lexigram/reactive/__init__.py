@@ -17,6 +17,7 @@ Example:
 
 from __future__ import annotations
 
+from lexigram.reactive import operators as ops  # noqa: E402
 from lexigram.reactive.core import EventStream, Op, Stream
 from lexigram.reactive.exceptions import BackpressureError, ReactiveError
 
@@ -26,4 +27,5 @@ __all__ = [
     "Op",
     "ReactiveError",
     "Stream",
+    "ops",
 ]
