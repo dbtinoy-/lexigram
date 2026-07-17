@@ -26,11 +26,8 @@ class QueryStatsWidgetHandler:
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch query stats.
 
-        Mirrors the widget template's four stat rows, including each row's
-        static tone class (slow-query count renders as a warning, error count
-        as destructive).
-
-        Infrastructure failures propagate.
+        Reports the pool's connection acquisition counters, degrading to an
+        ``Unavailable`` stat when no pool is reachable.
 
         Args:
             params: Widget parameters.
@@ -38,21 +35,34 @@ class QueryStatsWidgetHandler:
         Returns:
             Result with StatContent or AdminError.
         """
-        # TODO: Implement actual query stats retrieval
-        # For now, return hardcoded mock data
-        total_queries = 1250
-        avg_duration_ms = 12.5
-        slow_queries = 3
-        error_count = 0
+        try:
+            pool = await self._db.get_primary_pool()
+            stats = await pool.get_pool_stats()
+        except Exception:  # noqa: BLE001
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="In Progress",
+                            value="Unavailable",
+                            tone=Tone.WARNING,
+                        ),
+                    )
+                )
+            )
+        acquired = int(stats.get("acquired_connections", 0))
+        released = int(stats.get("released_connections", 0))
+        in_progress = max(acquired - released, 0)
         return Ok(
             StatContent(
                 stats=(
-                    Stat(label="Total Queries", value=str(total_queries)),
-                    Stat(label="Avg Duration", value=f"{avg_duration_ms}ms"),
+                    Stat(label="Acquired", value=str(acquired)),
+                    Stat(label="Released", value=str(released)),
                     Stat(
-                        label="Slow Queries", value=str(slow_queries), tone=Tone.WARNING
+                        label="In Progress",
+                        value=str(in_progress),
+                        tone=Tone.WARNING if in_progress else Tone.DEFAULT,
                     ),
-                    Stat(label="Errors", value=str(error_count), tone=Tone.DANGER),
                 )
             )
         )

@@ -2,49 +2,59 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
-from lexigram.contracts.admin import StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import WidgetParams
+from lexigram.result import Ok
 from lexigram.sql.admin.handlers.query_stats import QueryStatsWidgetHandler
 
 
-def _fake_db() -> MagicMock:
-    return MagicMock()
+class _FakePool:
+    def __init__(self, stats: dict) -> None:
+        self._stats = stats
+
+    async def get_pool_stats(self) -> dict:
+        return self._stats
 
 
-async def test_query_stats_handler_returns_single_stat_content() -> None:
-    result = await QueryStatsWidgetHandler(db=_fake_db()).get_data(WidgetParams())
+class _FakeDatabaseProvider:
+    def __init__(self, pool: _FakePool | None = None) -> None:
+        self._pool = pool
+
+    async def get_primary_pool(self) -> _FakePool:
+        if self._pool is None:
+            raise RuntimeError("no pool")
+        return self._pool
+
+
+async def test_query_stats_reports_acquired_released() -> None:
+    pool = _FakePool(
+        {
+            "acquired_connections": 10,
+            "released_connections": 7,
+        }
+    )
+    handler = QueryStatsWidgetHandler(_FakeDatabaseProvider(pool))
+    result = await handler.get_data(WidgetParams(time_window_minutes=60))
+    assert isinstance(result, Ok)
     content = result.unwrap()
-    assert isinstance(content, StatContent)
-    assert len(content.stats) == 4
+    labels = [s.label for s in content.stats]
+    values = [s.value for s in content.stats]
+    assert "Acquired" in labels
+    assert "10" in values
+    assert "Released" in labels
+    assert "7" in values
+    assert "In Progress" in labels
+    assert "3" in values
 
 
-async def test_query_stats_copies_template_values_exactly() -> None:
-    result = await QueryStatsWidgetHandler(db=_fake_db()).get_data(WidgetParams())
-    content = result.unwrap()
-    total, avg, slow, errors = content.stats
-    assert total.label == "Total Queries"
-    assert total.value == "1250"
-    assert avg.label == "Avg Duration"
-    assert avg.value == "12.5ms"
-    assert slow.label == "Slow Queries"
-    assert slow.value == "3"
-    assert errors.label == "Errors"
-    assert errors.value == "0"
-
-
-async def test_query_stats_mirrors_per_line_tone_classes() -> None:
-    result = await QueryStatsWidgetHandler(db=_fake_db()).get_data(WidgetParams())
-    content = result.unwrap()
-    total, avg, slow, errors = content.stats
-    assert total.tone is Tone.DEFAULT
-    assert avg.tone is Tone.DEFAULT
-    assert slow.tone is Tone.WARNING
-    assert errors.tone is Tone.DANGER
+async def test_query_stats_degrades_without_pool() -> None:
+    handler = QueryStatsWidgetHandler(_FakeDatabaseProvider(None))
+    result = await handler.get_data(WidgetParams(time_window_minutes=60))
+    assert isinstance(result, Ok)
+    values = [s.value for s in result.unwrap().stats]
+    assert "Unavailable" in values
 
 
 __all__ = [
-    "test_query_stats_handler_returns_single_stat_content",
-    "test_query_stats_copies_template_values_exactly",
-    "test_query_stats_mirrors_per_line_tone_classes",
+    "test_query_stats_reports_acquired_released",
+    "test_query_stats_degrades_without_pool",
 ]

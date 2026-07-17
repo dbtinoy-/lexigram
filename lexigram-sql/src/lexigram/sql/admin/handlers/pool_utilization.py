@@ -26,10 +26,8 @@ class PoolUtilizationWidgetHandler:
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch pool stats.
 
-        Mirror of the widget template, which renders the metric value
-        statically — no tone/threshold logic in the template.
-
-        Infrastructure failures propagate as exceptions.
+        Reads live statistics from the provider's primary connection pool,
+        degrading to an ``Unavailable`` stat when no pool is reachable.
 
         Args:
             params: Widget parameters.
@@ -37,22 +35,36 @@ class PoolUtilizationWidgetHandler:
         Returns:
             Result with StatContent or AdminError.
         """
-        # TODO: Implement actual pool stats retrieval
-        # For now, return hardcoded mock data
-        pool_size = 20
-        active_connections = 8
-        utilization_pct = round(40.0, 1)
+        try:
+            pool = await self._db.get_primary_pool()
+            stats = await pool.get_pool_stats()
+        except Exception:  # noqa: BLE001
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="Active Connections",
+                            value="Unavailable",
+                            tone=Tone.WARNING,
+                        ),
+                    )
+                )
+            )
+        active = int(stats.get("active_connections", 0))
+        total = int(stats.get("max_connections", 0))
+        utilization = round(float(stats.get("utilization_rate", 0.0)) * 100, 1)
         return Ok(
             StatContent(
                 stats=(
                     Stat(
                         label="Active Connections",
-                        value=f"{active_connections}/{pool_size}",
-                        tone=Tone.PRIMARY,
+                        value=f"{active}/{total}",
+                        tone=Tone.SUCCESS if utilization < 80 else Tone.WARNING,
                     ),
                     Stat(
                         label="Utilization",
-                        value=f"{utilization_pct}%",
+                        value=f"{utilization}%",
+                        tone=Tone.SUCCESS if utilization < 80 else Tone.DANGER,
                     ),
                 )
             )
