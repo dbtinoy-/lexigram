@@ -100,6 +100,48 @@ FeedbackModule.configure(config)
 - **Middleware integration**: `FeedbackMiddleware` and `FeedbackContext` for request/response capture
 - **Lifecycle hooks**: `FeedbackSubmittedHook`, `FeedbackProcessedHook`, `FeedbackStoredHook`
 
+## Security
+
+### Enforced payload size limits
+
+Submitted feedback is validated at the submission chokepoints
+(`FeedbackCollector._store()` for the middleware/processor pipeline and
+the `collect_*` API; `FeedbackService.submit_feedback()` for the
+programmatic service). Oversized payloads are **rejected** with
+`FeedbackTooLargeError` (never silently truncated); boundary values
+(exactly at the limit) pass.
+
+| Limit | Constant | Applied to |
+|-------|----------|------------|
+| 10,000 characters | `MAX_FEEDBACK_TEXT_LENGTH` | `TEXT` feedback values and `submit_feedback(comment=...)` |
+| 50,000 characters (serialized JSON) | `MAX_CONTEXT_SIZE` | `context` and `metadata` dicts |
+
+### Optional endpoint authorization
+
+`create_feedback_endpoint()` performs **no identity check by default** —
+an endpoint mounted without an `authorize` callback accepts feedback from
+anyone who can reach it; that is an explicit, informed choice, not an
+enforced control. Pass an authorization callback to gate submissions:
+
+```python
+from lexigram.ai.feedback import FeedbackCollector, FeedbackMiddleware
+
+def authorize(ctx) -> bool:
+    # ctx.context_id is the context being submitted against;
+    # ctx.metadata carries what the host framework supplied (e.g. user)
+    return ctx.metadata.get("user_id") is not None
+
+middleware = FeedbackMiddleware(
+    collector=FeedbackCollector(),
+    authorize=authorize,
+)
+app.post("/feedback", middleware.create_feedback_endpoint())
+```
+
+Sync and async (`bool | Awaitable[bool]`) callables are supported. A
+denied submission raises `FeedbackAuthorizationError` before any
+processing.
+
 ## Testing
 
 ```python

@@ -124,6 +124,12 @@ sequenceDiagram
 
 Two entry points: **web middleware** (auto-captures request context) and **programmatic API** (trace-correlated submission).
 
+Both entry points enforce the size limits declared in `constants.py` before
+persisting: `FeedbackCollector._store()` and `FeedbackService.submit_feedback()`
+reject payloads whose `TEXT` value exceeds `MAX_FEEDBACK_TEXT_LENGTH` or whose
+serialized `context`/`metadata` exceeds `MAX_CONTEXT_SIZE` with
+`FeedbackTooLargeError`.
+
 ---
 
 ## Provider Lifecycle
@@ -211,6 +217,14 @@ Built-in processors loaded via `with_defaults()`. Custom processors implement `F
 
 `FeedbackMiddleware.__call__()` extracts request context (body, user_id, session_id), calls next handler, captures output. `create_feedback_endpoint()` returns a `POST /feedback` handler. `FeedbackContext` is an async context manager for manual scoping:
 
+An optional `authorize` callback
+(`Callable[[FeedbackAuthContext], bool | Awaitable[bool]]`, default `None` =
+open) gates `create_feedback_endpoint()` submissions — the callback receives
+the submitted `context_id` plus the handler's trailing keyword arguments as
+identity material, and a denial raises `FeedbackAuthorizationError` before any
+processing. Leaving `authorize` unset means the endpoint is open to anyone who
+can reach it.
+
 ```python
 async with FeedbackContext(collector, operation="prediction") as ctx:
     result = await model.predict(input_data)
@@ -223,8 +237,10 @@ async with FeedbackContext(collector, operation="prediction") as ctx:
 
 ```
 FeedbackError
-├── FeedbackProcessingError  # Processor pipeline failure
-└── FeedbackValidationError  # Schema / data-validation failure
+├── FeedbackProcessingError      # Processor pipeline failure
+├── FeedbackValidationError      # Schema / data-validation failure
+│   └── FeedbackTooLargeError    # Payload exceeds MAX_FEEDBACK_TEXT_LENGTH / MAX_CONTEXT_SIZE
+└── FeedbackAuthorizationError   # Endpoint authorize callback denied
 ```
 
 Domain operations use `Result[T, E]`. Exceptions above signal configuration and processing failures.
@@ -241,3 +257,4 @@ Domain operations use `Result[T, E]`. Exceptions above signal configuration and 
 | Custom processors | Implement `FeedbackProcessor`, call `registry.register()` | Sentiment analysis |
 | Lifecycle hooks | Subscribe to `FeedbackSubmittedHook` | Audit logging |
 | Custom middleware | Subclass or wrap `FeedbackMiddleware` | AI chat application |
+| Endpoint authorization | `FeedbackMiddleware(authorize=...)` | Gate feedback submissions on caller identity |
