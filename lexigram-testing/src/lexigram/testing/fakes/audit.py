@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from lexigram.contracts.audit import (
     AuditEntry,
     AuditQuery,
@@ -63,6 +65,23 @@ class FakeAuditLogger:
     async def count(self, query: AuditQuery) -> int:
         """Implement AuditStoreProtocol.count."""
         return len(await self.query(query))
+
+    async def delete_expired(self, cutoff: datetime) -> int:
+        """Implement AuditStoreProtocol.delete_expired."""
+        expired: list[AuditEntry] = []
+        for entry in self.entries:
+            stamp = entry.metadata.get("__expires_at")
+            if stamp is None:
+                continue
+            try:
+                expires = datetime.fromisoformat(stamp)
+            except (TypeError, ValueError):
+                continue
+            if expires <= cutoff:
+                expired.append(entry)
+        for entry in expired:
+            self.entries.remove(entry)
+        return len(expired)
 
     def clear(self) -> None:
         """Clear all entries (test helper)."""

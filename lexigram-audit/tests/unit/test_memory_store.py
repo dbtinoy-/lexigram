@@ -194,6 +194,39 @@ class TestInMemoryAuditStore:
         results = await store.query(AuditQuery(limit=10))
         assert len(results) == 3
 
+    @pytest.mark.asyncio
+    async def test_delete_expired_removes_only_expired_entries(self, store: InMemoryAuditStore) -> None:
+        now = datetime.now(UTC)
+        expired = AuditEntry(
+            action="old.login",
+            actor_id="user-1",
+            outcome="success",
+            metadata={"__expires_at": (now - timedelta(days=1)).isoformat()},
+        )
+        retained = AuditEntry(
+            action="recent.login",
+            actor_id="user-1",
+            outcome="success",
+            metadata={"__expires_at": (now + timedelta(days=30)).isoformat()},
+        )
+        await store.append(expired)
+        await store.append(retained)
+
+        deleted = await store.delete_expired(now)
+
+        assert deleted == 1
+        results = await store.query(AuditQuery(limit=100))
+        assert [e.action for e in results] == ["recent.login"]
+
+    @pytest.mark.asyncio
+    async def test_delete_expired_keeps_unstamped_entries(self, store: InMemoryAuditStore, sample_entry: AuditEntry) -> None:
+        await store.append(sample_entry)
+
+        deleted = await store.delete_expired(datetime.now(UTC))
+
+        assert deleted == 0
+        assert len(await store.query(AuditQuery(limit=10))) == 1
+
 
 class TestInMemoryAuditStoreNewFields:
     """LXF-003: New fields round-trip and correlation_id filter."""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+from datetime import datetime
 
 from lexigram.contracts.audit import AuditEntry, AuditQuery
 
@@ -80,6 +81,27 @@ class InMemoryAuditStore:
             offset=0,
         )
         return len(await self.query(unlimited))
+
+    async def delete_expired(self, cutoff: datetime) -> int:
+        """Delete entries whose stored expiry precedes or equals cutoff.
+
+        Mirrors the SQL store: only entries stamped with the
+        ``__expires_at`` metadata key are candidates for deletion.
+        """
+        expired: list[AuditEntry] = []
+        for entry in self._entries:
+            stamp = entry.metadata.get("__expires_at")
+            if stamp is None:
+                continue
+            try:
+                expires = datetime.fromisoformat(stamp)
+            except (TypeError, ValueError):
+                continue
+            if expires <= cutoff:
+                expired.append(entry)
+        for entry in expired:
+            self._entries.remove(entry)
+        return len(expired)
 
     def clear(self) -> None:
         """Clear all entries (test helper)."""
