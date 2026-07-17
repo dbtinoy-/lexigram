@@ -95,19 +95,19 @@ class TestSpecs:
         registry = ConfigRegistry()
         register_cache_spec(registry)
         register_cache_spec(registry)
-        assert len(registry.get_specs("system")) == 1
+        assert len(registry.get_specs_by_package("built-in")) == 1
 
     def test_get_specs_filters_specs_without_nodes(self) -> None:
         registry = ConfigRegistry()
         register_branding_spec(registry)
         register_cache_spec(registry)
         register_security_spec(registry)
-        namespaces = [s.namespace for s in registry.get_specs("system")]
+        namespaces = [s.namespace for s in registry.get_specs_by_package("built-in")]
         assert namespaces == ["admin.branding", "admin.cache", "admin.security"]
 
     def test_with_defaults_registers_all_bound_specs(self) -> None:
         registry = ConfigRegistry.with_defaults()
-        namespaces = {s.namespace for s in registry.get_specs("system")}
+        namespaces = {s.namespace for s in registry.get_specs_by_package("built-in")}
         assert namespaces == {
             "admin.branding",
             "admin.cache",
@@ -178,7 +178,7 @@ class TestRegistryEdgeCases:
 
     def test_get_specs_empty_registry(self) -> None:
         registry = ConfigRegistry()
-        assert registry.get_specs("system") == []
+        assert registry.get_specs_by_package("built-in") == []
 
     async def test_save_values_unknown_namespace_is_noop(self) -> None:
         registry = ConfigRegistry()
