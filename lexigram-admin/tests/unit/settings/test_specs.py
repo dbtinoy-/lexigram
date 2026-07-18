@@ -117,6 +117,7 @@ class TestSpecs:
             "admin.profiler",
             "admin.rate_limit",
             "admin.rbac",
+            "admin.deployment",
         }
         assert registry.get_spec("admin.cache") is CacheSpec
         assert registry.get_spec("admin.nope") is None

@@ -18,6 +18,10 @@ from lexigram.admin.settings.panel.cache_spec import CacheSpec
 from lexigram.admin.settings.panel.cache_spec import (
     register_spec as register_cache_spec,
 )
+from lexigram.admin.settings.panel.deployment_spec import DeploymentInfoSpec
+from lexigram.admin.settings.panel.deployment_spec import (
+    register_spec as register_deployment_spec,
+)
 from lexigram.admin.settings.panel.features_spec import FeaturesSpec
 from lexigram.admin.settings.panel.features_spec import (
     register_spec as register_features_spec,
@@ -72,6 +76,7 @@ __all__ = [
     "ConfigRegistry",
     "ConfigSpec",
     "ConfigSpecMeta",
+    "DeploymentInfoSpec",
     "EnumNode",
     "EnvStore",
     "FeaturesSpec",
@@ -88,6 +93,7 @@ __all__ = [
     "StringNode",
     "register_branding_spec",
     "register_cache_spec",
+    "register_deployment_spec",
     "register_features_spec",
     "register_i18n_spec",
     "register_profiler_spec",
