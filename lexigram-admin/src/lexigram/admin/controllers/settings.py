@@ -63,9 +63,9 @@ class SettingsController(AdminController):
 
     # -- helpers --
 
-    def _store_name(self) -> str:
-        """Use the DB store when registered, else the in-memory default."""
-        return "db" if self._registry.has_store("db") else "default"
+    def _store_name(self, spec: type[Any]) -> str:
+        """Use the spec's configured store when registered, else the in-memory default."""
+        return spec.store_name if self._registry.has_store(spec.store_name) else "default"
 
     @staticmethod
     def _user_permissions(request: Request) -> frozenset[str]:
@@ -211,7 +211,7 @@ class SettingsController(AdminController):
             else None
         )
         values = await self._registry.get_values(
-            namespace, self._store_name(), tenant_id=tenant_id
+            namespace, self._store_name(spec), tenant_id=tenant_id
         )
 
         ui = ConfigDashboardUI()
@@ -308,7 +308,7 @@ class SettingsController(AdminController):
             else None
         )
         await self._registry.save_values(
-            namespace, editable_updates, self._store_name(), tenant_id=tenant_id
+            namespace, editable_updates, self._store_name(spec), tenant_id=tenant_id
         )
 
         await self._audit(
@@ -337,7 +337,7 @@ class SettingsController(AdminController):
             )
 
             values = await self._registry.get_values(
-                namespace, self._store_name(), tenant_id=tenant_id
+                namespace, self._store_name(spec), tenant_id=tenant_id
             )
             ui = ConfigDashboardUI()
             form_content = ui.render_config_form(
