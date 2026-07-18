@@ -647,3 +647,55 @@ class TestDynamicCategories:
         assert len(categories) == 1
         assert categories[0].name == "built-in"
         assert len(visible) == 8
+
+
+class TestTenantScopedSettings:
+    @pytest.mark.asyncio
+    async def test_tenant_scoped_spec_resolves_tenant_id(self, monkeypatch) -> None:
+        from lexigram.admin.settings.panel import BrandingSpec
+
+        registry = ConfigRegistry.with_defaults()
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        controller = SettingsController(renderer=renderer, registry=registry)
+
+        async def _fake_resolve(request, *, default):
+            return "tenant-42"
+
+        monkeypatch.setattr(
+            "lexigram.admin.controllers.settings.resolve_tenant_id", _fake_resolve
+        )
+
+        called_with = {}
+        original_get_values = registry.get_values
+
+        async def _spy_get_values(namespace, store_name="default", tenant_id=None):
+            called_with["tenant_id"] = tenant_id
+            return await original_get_values(namespace, store_name, tenant_id=tenant_id)
+
+        registry.get_values = _spy_get_values
+
+        req = _mock_request(user=_FakeUser())
+        req.path_params = {"namespace": "admin.branding"}
+        await controller.spec_view(req)
+
+        assert called_with["tenant_id"] == "tenant-42"
+        assert BrandingSpec.scope == "tenant"
+
+    @pytest.mark.asyncio
+    async def test_global_scoped_spec_passes_no_tenant_id(self, monkeypatch) -> None:
+        registry = ConfigRegistry.with_defaults()
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        controller = SettingsController(renderer=renderer, registry=registry)
+
+        async def _fail_resolve(request, *, default):
+            raise AssertionError("resolve_tenant_id should not be called for global specs")
+
+        monkeypatch.setattr(
+            "lexigram.admin.controllers.settings.resolve_tenant_id", _fail_resolve
+        )
+
+        req = _mock_request(user=_FakeUser())
+        req.path_params = {"namespace": "admin.cache"}
+        await controller.spec_view(req)
