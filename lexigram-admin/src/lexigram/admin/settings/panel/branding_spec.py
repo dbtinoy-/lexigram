@@ -19,6 +19,7 @@ class BrandingSpec(PydanticConfigSpec):
     model = BrandingSettings
     node_overrides = {"primary_color": ColorNode}
     required_permissions = frozenset({"admin.settings.edit"})
+    scope = "tenant"
 
 
 def register_spec(registry: ConfigRegistry) -> None:
