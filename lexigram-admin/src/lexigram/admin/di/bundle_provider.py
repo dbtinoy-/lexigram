@@ -16,8 +16,6 @@ from lexigram.logging import get_logger
 _log = get_logger(__name__)
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from lexigram.admin.config import AdminConfig
     from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
@@ -990,51 +988,26 @@ class AdminProvider(Provider):
             _log.warning("admin.contributors_route_integration_failed", exc_info=True)
             self._mount_failures["route_integrator"] = str(exc)
 
-        # Register SSE endpoint for real-time notification streaming
+        # Register SSE endpoint for live widget delivery
         try:
-            from lexigram.admin.realtime.sse import AdminEventHub, AdminEventsHandler  # noqa: I001
-            from lexigram.serialization import dumps_str
-            from starlette.responses import StreamingResponse
+            from lexigram.admin.dashboard.widget_stream import (
+                build_widget_event_stream_handler,
+            )
+            from lexigram.admin.rbac.service import PermissionService
+            from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
 
-            hub: AdminEventHub = await container.resolve(AdminEventHub)
-
-            async def sse_event_stream(request: Any) -> StreamingResponse:
-                handler = AdminEventsHandler(hub)
-
-                async def event_generator() -> AsyncGenerator[str, None]:
-                    try:
-                        async for event_dict in handler.stream(request):
-                            data_str = dumps_str(event_dict.get("data", {}))
-                            event_name = event_dict.get("event", "message")
-                            event_id = event_dict.get("id")
-                            yield f"event: {event_name}\ndata: {data_str}\n"
-                            if event_id:
-                                yield f"id: {event_id}\n"
-                            yield "\n"
-                    except GeneratorExit:
-                        pass
-                    except RuntimeError:
-                        pass
-
-                return StreamingResponse(
-                    event_generator(),
-                    media_type="text/event-stream",
-                    headers={
-                        "Cache-Control": "no-cache",
-                        "Connection": "keep-alive",
-                        "X-Accel-Buffering": "no",
-                    },
-                )
+            widget_hub: SubjectAdminEventHub = await container.resolve(SubjectAdminEventHub)
+            permission_service: PermissionService = await container.resolve(PermissionService)
 
             router.add_route(
-                "/_sse/events",
+                "/_sse/widgets",
                 "GET",
-                sse_event_stream,
-                "admin_sse",
+                build_widget_event_stream_handler(widget_hub, permission_service),
+                "admin_sse_widgets",
             )
-            _log.info("admin.sse_route_registered", path="/admin/_sse/events")
+            _log.info("admin.sse_widgets_route_registered", path="/admin/_sse/widgets")
         except Exception as exc:  # noqa: BLE001 — SSE is optional
-            _log.warning("admin.sse_route_skipped", reason=str(exc))
+            _log.warning("admin.sse_widgets_route_skipped", reason=str(exc))
 
         admin_app = router.mount(app)
 
