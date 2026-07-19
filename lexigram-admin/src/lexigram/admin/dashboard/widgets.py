@@ -21,6 +21,40 @@ from lexigram.contracts.admin.types import (
 from lexigram.ui import el, render_to_string
 
 
+def _render_live_widget_script() -> str:
+    """Shared EventSource connection driving all live widgets on the page.
+
+    One connection per page, not one per widget — browsers cap concurrent
+    HTTP/1.1 connections per origin (~6), the same constraint the staggered
+    hx-trigger delays above already work around. Each live widget's body
+    element carries data-live-resources (comma-separated resource types,
+    or "*" for broadcast-only widgets like activity); on a matching SSE
+    message this re-triggers that widget's existing htmx load (reconcile
+    via the same snapshot endpoint the widget already renders from — no
+    separate patch/diff wire format).
+    """
+    return (
+        "<script>"
+        "(function(){"
+        "if(window.__lexigramLiveWidgets)return;"
+        "window.__lexigramLiveWidgets=true;"
+        "var es=new EventSource('/admin/_sse/widgets');"
+        "es.onmessage=function(ev){"
+        "var data;"
+        "try{data=JSON.parse(ev.data);}catch(e){return;}"
+        "var resourceType=data.resource_type;"
+        "document.querySelectorAll('[data-live-resources]').forEach(function(el){"
+        "var types=el.getAttribute('data-live-resources').split(',');"
+        "if(types.indexOf('*')!==-1||(resourceType&&types.indexOf(resourceType)!==-1)){"
+        "htmx.trigger(el,'live-refresh');"
+        "}"
+        "});"
+        "};"
+        "})();"
+        "</script>"
+    )
+
+
 class WidgetType(StrEnum):
     """Widget types for legacy dashboard builder."""
 
@@ -252,10 +286,14 @@ class WidgetRegistry:
             }
             col_span = size_col_map.get(widget_def.size, "")
 
-            # Build refresh trigger if interval is set
+            # Build refresh trigger if interval is set. Live widgets (declared
+            # via live_resource_types) are pushed to via a shared EventSource
+            # instead of polled — see the script emitted after this loop.
+            is_live = bool(widget_def.live_resource_types)
             refresh_trigger = ""
             if (
-                widget_def.refresh_interval_seconds
+                not is_live
+                and widget_def.refresh_interval_seconds
                 and widget_def.refresh_interval_seconds > 0
             ):
                 interval_ms = widget_def.refresh_interval_seconds * 1000
@@ -274,6 +312,8 @@ class WidgetRegistry:
             load_trigger = f"load delay:{widget_index * 350}ms"
             if refresh_trigger:
                 load_trigger = f"{load_trigger}, {refresh_trigger}"
+            if is_live:
+                load_trigger = f"{load_trigger}, live-refresh"
 
             # Build the title bar with optional icon and config cog.
             icon_html = (
@@ -340,6 +380,10 @@ class WidgetRegistry:
                 "hx-trigger": load_trigger,
                 "hx-swap": "innerHTML",
             }
+            if is_live:
+                body_kwargs["data-live-resources"] = ",".join(
+                    widget_def.live_resource_types
+                )
             card_children.append(
                 el(
                     "div",
@@ -358,6 +402,9 @@ class WidgetRegistry:
             )
 
             parts.append(render_to_string(card))
+
+        if any(w.live_resource_types for w in contributor_widgets):
+            parts.append(_render_live_widget_script())
 
         return "".join(parts)
 
