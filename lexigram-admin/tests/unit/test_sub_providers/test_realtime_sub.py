@@ -89,7 +89,7 @@ class TestAdminRealtimeSubProvider:
 
     @pytest.mark.asyncio
     async def test_boot_without_hub_does_not_wire_bridge(self, sub_provider):
-        """Boot must tolerate a container without AdminEventHub."""
+        """Boot must tolerate a container without SubjectAdminEventHub."""
         from lexigram.hooks.ambient import current
 
         class FakeContainer:

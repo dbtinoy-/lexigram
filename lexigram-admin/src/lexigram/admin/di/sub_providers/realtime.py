@@ -37,7 +37,6 @@ class AdminRealtimeSubProvider:
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register realtime services: WebSocket manager, event hub, SSE manager, collaborative."""
-        from lexigram.admin.realtime.sse import AdminEventHub
         from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
         from lexigram.admin.realtime.ws_handler_registry import WSMessageTypeRegistry
         from lexigram.admin.services.collaborative import CollaborativeEditingService
@@ -48,7 +47,6 @@ class AdminRealtimeSubProvider:
 
         container.singleton(WSMessageTypeRegistry, WSMessageTypeRegistry())
         container.singleton(RealtimeService, realtime_svc)
-        container.singleton(AdminEventHub, AdminEventHub())
         container.singleton(SubjectAdminEventHub, SubjectAdminEventHub())
 
         # Lock store is provided externally through container bindings.
@@ -66,12 +64,12 @@ class AdminRealtimeSubProvider:
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot realtime services: initialize WebSocket and SSE connections."""
-        from lexigram.admin.realtime.sse import AdminEventHub
+        from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
         from lexigram.contracts.notification.inbox import INBOX_SENT_HOOK
         from lexigram.hooks.ambient import register_action
 
         try:
-            self._hub = await container.resolve(AdminEventHub)
+            self._hub = await container.resolve(SubjectAdminEventHub)
         except Exception:  # noqa: BLE001 — hub is optional
             self._hub = None
             logger.debug("admin_realtime.no_event_hub")
