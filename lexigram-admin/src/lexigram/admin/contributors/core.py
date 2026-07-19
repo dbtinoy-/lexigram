@@ -5,6 +5,9 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 from collections.abc import Sequence
+from importlib.metadata import PackageNotFoundError, version
+import os
+import platform
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.admin.realtime import AdminEvent, SubjectAdminEventHub
@@ -15,6 +18,8 @@ from lexigram.contracts.admin import (
     HealthOverviewProtocol,
     MetricsReadbackProtocol,
     NamedHealthCheckProtocol,
+    PageContent,
+    SettingsPanelDefinition,
     Stat,
     StatContent,
     TableCell,
@@ -58,6 +63,46 @@ def _status_from_value(value: object) -> HealthStatus:
     if status_value in {"healthy", "degraded", "unhealthy"}:
         return HealthStatus(status_value)
     return HealthStatus.UNKNOWN
+
+
+def _framework_version() -> str:
+    """Return the installed lexigram core package version, or 'unknown'."""
+    try:
+        return version("lexigram")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+class _SystemInfoPageHandler:
+    """Read-only diagnostics panel — proves out the ``get_settings_panels()`` path."""
+
+    def __init__(self, health: object | None) -> None:
+        self._health = health
+
+    async def handle(self, request: Any) -> PageContent:
+        """Render framework, runtime, and health diagnostics as a table."""
+        health_status = "unknown"
+        if isinstance(self._health, HealthOverviewProtocol):
+            payload, _details = await self._health.run_all()
+            health_status = str(getattr(payload, "value", "unknown"))
+
+        rows = (
+            (TableCell(text="Framework Version"), TableCell(text=_framework_version())),
+            (TableCell(text="Python Version"), TableCell(text=platform.python_version())),
+            (
+                TableCell(text="Environment"),
+                TableCell(text=os.environ.get("ENVIRONMENT", "unknown")),
+            ),
+            (
+                TableCell(text="Log Level"),
+                TableCell(text=os.environ.get("LOG_LEVEL", "INFO")),
+            ),
+            (TableCell(text="Health Status"), TableCell(text=health_status)),
+        )
+        return PageContent(
+            title="System Info",
+            body=TableContent(columns=("Field", "Value"), rows=rows),
+        )
 
 
 class CoreAdminContributor(BaseAdminContributor):
@@ -206,6 +251,21 @@ class CoreAdminContributor(BaseAdminContributor):
                 icon="shield-check",
                 description="Admin panel core services health.",
             ),
+        ]
+
+    def get_settings_panels(self) -> Sequence[SettingsPanelDefinition]:
+        """Contribute the read-only System Info diagnostics panel."""
+        return [
+            SettingsPanelDefinition(
+                name="system-info",
+                title="System Info",
+                contributor=self.package_source,
+                route_path="/admin/system/info",
+                handler=_SystemInfoPageHandler(self._health),
+                icon="info",
+                category="System",
+                order=10,
+            )
         ]
 
     async def render_widget(
