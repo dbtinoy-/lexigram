@@ -28,12 +28,15 @@ from lexigram.ai.feedback.types import FeedbackItem, FeedbackType
 def _item(
     feedback_type: FeedbackType = FeedbackType.RATING,
     value: Any = 4.5,
+    owner_id: str = "owner-1",
     session_id: str | None = "session-1",
 ) -> FeedbackItem:
     ctx: dict[str, Any] = {}
     if session_id:
         ctx["session_id"] = session_id
-    return FeedbackItem(feedback_type=feedback_type, value=value, context=ctx)
+    return FeedbackItem(
+        feedback_type=feedback_type, value=value, owner_id=owner_id, context=ctx
+    )
 
 
 def _row(item: FeedbackItem) -> dict[str, Any]:
@@ -47,6 +50,7 @@ def _row(item: FeedbackItem) -> dict[str, Any]:
         "context": dumps_str(item.context),
         "metadata": dumps_str(item.metadata),
         "session_id": item.context.get("session_id"),
+        "owner_id": item.owner_id,
         "created_at": item.created_at.isoformat(),
     }
 
@@ -158,7 +162,7 @@ class TestDatabaseFeedbackStore:
         db = _db_mock(rows=[_row(item)])
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True  # skip _ensure_table
-        results = await store.find_by_session("s-abc")
+        results = await store.find_by_session("s-abc", owner_id="owner-1")
         assert len(results) == 1
         assert results[0].id == item.id
         assert results[0].type == FeedbackType.RATING
@@ -168,7 +172,7 @@ class TestDatabaseFeedbackStore:
         db = _db_mock(rows=[])
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
-        results = await store.find_by_session("unknown-session")
+        results = await store.find_by_session("unknown-session", owner_id="owner-1")
         assert results == []
 
     @pytest.mark.asyncio
@@ -176,11 +180,11 @@ class TestDatabaseFeedbackStore:
         db = _db_mock(rows=[])
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
-        await store.find_by_session("s-1")
+        await store.find_by_session("s-1", owner_id="owner-1")
         call_args = db.execute_query.await_args
         sql: str = call_args[0][0]
         assert "session_id" in sql
-        assert call_args[0][1] == ["s-1"]
+        assert call_args[0][1] == ["s-1", "owner-1"]
 
     @pytest.mark.asyncio
     async def test_find_by_type_returns_items(self) -> None:
@@ -188,7 +192,7 @@ class TestDatabaseFeedbackStore:
         db = _db_mock(rows=[_row(item)])
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
-        results = await store.find_by_type(FeedbackType.TEXT)
+        results = await store.find_by_type(FeedbackType.TEXT, owner_id="owner-1")
         assert len(results) == 1
         assert results[0].id == item.id
         assert results[0].type == FeedbackType.TEXT
@@ -198,10 +202,10 @@ class TestDatabaseFeedbackStore:
         db = _db_mock(rows=[])
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
-        await store.find_by_type(FeedbackType.RATING, limit=25)
+        await store.find_by_type(FeedbackType.RATING, limit=25, owner_id="owner-1")
         call_args = db.execute_query.await_args
         params: list = call_args[0][1]
-        assert 25 in params
+        assert params == ["rating", "owner-1", 25]
 
     @pytest.mark.asyncio
     async def test_aggregate_computes_summary(self) -> None:
@@ -223,7 +227,7 @@ class TestDatabaseFeedbackStore:
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
 
-        summary = await store.aggregate(window_hours=24)
+        summary = await store.aggregate(owner_id="owner-1", window_hours=24)
         assert summary.total_count == 10
         assert abs(summary.average_rating - 4.2) < 1e-9
         assert summary.count_by_type == {"rating": 7, "text": 3}
@@ -232,14 +236,16 @@ class TestDatabaseFeedbackStore:
     async def test_aggregate_handles_null_average_rating(self) -> None:
         db = MagicMock()
         db.execute = AsyncMock()
-        db.execute_query = AsyncMock(side_effect=[
-            MagicMock(rows=[{"cnt": 0}]),
-            MagicMock(rows=[{"avg_rating": None}]),
-            MagicMock(rows=[]),
-        ])
+        db.execute_query = AsyncMock(
+            side_effect=[
+                MagicMock(rows=[{"cnt": 0}]),
+                MagicMock(rows=[{"avg_rating": None}]),
+                MagicMock(rows=[]),
+            ]
+        )
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
-        summary = await store.aggregate()
+        summary = await store.aggregate(owner_id="owner-1")
         assert summary.average_rating is None
         assert summary.total_count == 0
 
@@ -371,8 +377,8 @@ class TestFeedbackProviderBoot:
         has_cache: bool = False,
     ) -> MagicMock:
         """Build a mock DI container."""
-        from lexigram.contracts.infra.cache import CacheBackendProtocol
         from lexigram.contracts.data import DatabaseProviderProtocol
+        from lexigram.contracts.infra.cache import CacheBackendProtocol
 
         db_mock = MagicMock() if has_db else None
         cache_mock = MagicMock() if has_cache else None
