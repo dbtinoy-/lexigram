@@ -13,7 +13,7 @@ from lexigram.contracts.data import DatabaseProviderProtocol
 from lexigram.logging import get_logger
 from lexigram.logging.redaction import get_redactor
 
-__all__ = ["SqlAuditStore"]
+__all__ = ["SqlAuditStore", "entry_to_row"]
 
 logger = get_logger(__name__)
 
@@ -30,6 +30,54 @@ def _as_utc_naive(dt: datetime) -> datetime:
         if dt.tzinfo is None
         else dt.astimezone(UTC).replace(tzinfo=None)
     )
+
+
+def entry_to_row(entry: AuditEntry) -> dict[str, Any]:
+    """Build the canonical persisted row dict for an audit entry.
+
+    This row layout is the canonical form checksums are computed over:
+    it includes the redacted, serialized payloads exactly as they are
+    persisted. ``append`` and verification must use this same function
+    so write-time and verify-time hashes always agree.
+
+    Args:
+        entry: The audit entry to map.
+
+    Returns:
+        Row dict keyed by database column name.
+    """
+    redactor = get_redactor()
+    return {
+        "table_name": entry.resource_type,
+        "entity_id": str(entry.resource_id),
+        "action": entry.action,
+        "old_values": json.dumps_str(redactor.redact_dict(entry.old_values or {})),
+        "new_values": json.dumps_str(redactor.redact_dict(entry.new_values or {})),
+        "changed_by": entry.actor_id,
+        "changed_at": _as_utc_naive(entry.occurred_at),
+        "metadata": json.dumps_str(redactor.redact_dict(entry.metadata or {})),
+        "severity": str(entry.severity) if entry.severity else None,
+        "source": entry.source or None,
+        "outcome": entry.outcome or None,
+        "tenant_id": entry.tenant_id,
+        "correlation_id": correlation_id
+        if isinstance(correlation_id := getattr(entry, "correlation_id", None), str)
+        else None,
+        "causation_id": causation_id
+        if isinstance(causation_id := getattr(entry, "causation_id", None), str)
+        else None,
+        "command_payload_hash": cmd_hash.hex()
+        if isinstance(
+            cmd_hash := getattr(entry, "command_payload_hash", None), bytes
+        )
+        else None,
+        "payload_size_bytes": payload_size
+        if isinstance(
+            payload_size := getattr(entry, "payload_size_bytes", None), int
+        )
+        else None,
+        "entry_schema_version": getattr(entry, "schema_version", 1),
+    }
 
 
 class SqlAuditStore:
@@ -106,38 +154,7 @@ class SqlAuditStore:
         Args:
             entry: The audit event to store.
         """
-        redactor = get_redactor()
-        row: dict[str, Any] = {
-            "table_name": entry.resource_type,
-            "entity_id": str(entry.resource_id),
-            "action": entry.action,
-            "old_values": json.dumps_str(redactor.redact_dict(entry.old_values or {})),
-            "new_values": json.dumps_str(redactor.redact_dict(entry.new_values or {})),
-            "changed_by": entry.actor_id,
-            "changed_at": _as_utc_naive(entry.occurred_at),
-            "metadata": json.dumps_str(redactor.redact_dict(entry.metadata or {})),
-            "severity": str(entry.severity) if entry.severity else None,
-            "source": entry.source or None,
-            "outcome": entry.outcome or None,
-            "tenant_id": entry.tenant_id,
-            "correlation_id": correlation_id
-            if isinstance(correlation_id := getattr(entry, "correlation_id", None), str)
-            else None,
-            "causation_id": causation_id
-            if isinstance(causation_id := getattr(entry, "causation_id", None), str)
-            else None,
-            "command_payload_hash": cmd_hash.hex()
-            if isinstance(
-                cmd_hash := getattr(entry, "command_payload_hash", None), bytes
-            )
-            else None,
-            "payload_size_bytes": payload_size
-            if isinstance(
-                payload_size := getattr(entry, "payload_size_bytes", None), int
-            )
-            else None,
-            "entry_schema_version": getattr(entry, "schema_version", 1),
-        }
+        row = entry_to_row(entry)
 
         checksum: str | None = None
         if self._hmac_key:
@@ -359,4 +376,5 @@ class SqlAuditStore:
             causation_id=row.get("causation_id"),
             command_payload_hash=command_payload_hash,
             payload_size_bytes=row.get("payload_size_bytes"),
+            checksum=row.get("checksum"),
         )

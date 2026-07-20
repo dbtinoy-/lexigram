@@ -332,6 +332,25 @@ class TestSqlAuditStoreRowToEntry:
         entry = store._row_to_entry(row)
         assert entry.severity is not None
 
+    def test_row_to_entry_preserves_checksum(self, store: SqlAuditStore) -> None:
+        row = {
+            "action": "user.login",
+            "changed_by": "user-1",
+            "table_name": "User",
+            "entity_id": "user-1",
+            "outcome": "success",
+            "severity": "medium",
+            "changed_at": datetime.now(UTC).isoformat(),
+            "metadata": "{}",
+            "old_values": None,
+            "new_values": None,
+            "source": None,
+            "tenant_id": None,
+            "checksum": "abcd1234ef567890",
+        }
+        entry = store._row_to_entry(row)
+        assert entry.checksum == "abcd1234ef567890"
+
 
 def _make_entry(**overrides: object) -> MagicMock:
     """Build a MagicMock AuditEntry with sensible defaults."""
@@ -451,3 +470,46 @@ class TestSqlAuditStoreRedaction:
         assert "<redacted>" in params[4]
         assert "hunter2" not in params[4]
         assert "k-1" not in params[3]
+
+
+class TestSqlAuditStoreChecksumRoundTrip:
+    """Append must write the checksum; query must read it back."""
+
+    @pytest.mark.asyncio
+    async def test_append_then_read_back_preserves_checksum(self) -> None:
+        db = MockDb()
+        store = SqlAuditStore(db=db, config=MockConfig(hmac_key="secret"))
+        entry = _make_entry()
+
+        await store.append(entry)
+
+        insert_queries = [q for q in db.executed_queries if "INSERT INTO" in q[0]]
+        assert insert_queries
+        _, params = insert_queries[0]
+        stored_checksum = params[8]
+        assert stored_checksum
+
+        from lexigram.contracts.audit import AuditQuery
+
+        db.rows = [
+            {
+                "id": 1,
+                "action": entry.action,
+                "changed_by": entry.actor_id,
+                "table_name": entry.resource_type,
+                "entity_id": str(entry.resource_id),
+                "outcome": entry.outcome,
+                "severity": str(entry.severity),
+                "changed_at": entry.occurred_at.isoformat(),
+                "metadata": params[7],
+                "old_values": params[3],
+                "new_values": params[4],
+                "source": None,
+                "tenant_id": None,
+                "checksum": stored_checksum,
+                "entry_schema_version": 1,
+            }
+        ]
+        results = await store.query(AuditQuery(limit=10))
+        assert len(results) == 1
+        assert results[0].checksum == stored_checksum
