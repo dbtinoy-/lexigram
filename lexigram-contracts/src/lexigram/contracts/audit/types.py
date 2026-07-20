@@ -11,6 +11,7 @@ __all__ = [
     "AuditEntry",
     "AuditEventSeverity",
     "AuditMismatch",
+    "AuditMismatchReason",
     "AuditQuery",
     "RetentionDecision",
     "RetentionPolicy",
@@ -24,6 +25,13 @@ class AuditEventSeverity(StrEnum):
     MEDIUM = auto()  # Notable — privilege changes, config updates
     HIGH = auto()  # Security-sensitive — auth failures, data access
     CRITICAL = auto()  # Compliance-critical — data deletion, impersonation
+
+
+class AuditMismatchReason(StrEnum):
+    """Why an audit entry failed checksum verification."""
+
+    CHECKSUM_MISMATCH = auto()  # Stored checksum does not match recomputed checksum
+    NO_CHECKSUM_PRESENT = auto()  # Entry has no stored checksum (pre-checksum row)
 
 
 @dataclass(frozen=True)
@@ -51,6 +59,8 @@ class AuditEntry:
         causation_id: Causing event ID for event-driven traces (optional).
         command_payload_hash: SHA-256 hash of the command payload (optional).
         payload_size_bytes: Size of the payload in bytes (optional).
+        checksum: HMAC-SHA256 checksum of the persisted row, populated
+            by stores on read-back (None for pre-checksum entries).
     """
 
     action: str
@@ -69,6 +79,7 @@ class AuditEntry:
     causation_id: str | None = None
     command_payload_hash: bytes | None = None
     payload_size_bytes: int | None = None
+    checksum: str | None = None
 
 
 @dataclass(frozen=True)
@@ -116,11 +127,13 @@ class AuditMismatch:
         entry_id: Identifier of the audit entry with a bad checksum.
         expected_checksum: Checksum stored in the database.
         actual_checksum: Checksum recomputed from current data.
+        reason: Whether the entry is tampered or simply has no stored checksum.
     """
 
     entry_id: str
     expected_checksum: str
     actual_checksum: str
+    reason: AuditMismatchReason = AuditMismatchReason.CHECKSUM_MISMATCH
 
 
 class RetentionDecision(StrEnum):
