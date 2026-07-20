@@ -124,7 +124,78 @@ class GovernanceProvider(Provider):
         logger.info("governance_registered")
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Boot phase."""
+        """Attach governance persistence and boot remaining sub-systems.
+
+        The persistence backend is resolved here, after container freezing,
+        so that the optional database/cache backends are available and the
+        persistence-aware manager can be rebound (spec: DI ordering).
+
+        Args:
+            container: The DI container.
+        """
+        if not self._config.enabled:
+            return
+
+        from lexigram.ai.governance.audit import AIAuditStore
+        from lexigram.contracts import CacheBackendProtocol, DatabaseProviderProtocol
+        from lexigram.contracts.ai.governance import AIGovernanceProtocol
+
+        manager = await container.resolve(AIGovernanceManager)
+        audit_store = await container.resolve_optional(AIAuditStore)
+
+        database = await container.resolve_optional(DatabaseProviderProtocol)
+        cache = await container.resolve_optional(CacheBackendProtocol)
+
+        if database is not None:
+            from lexigram.ai.governance.persistence import (
+                DatabaseGovernancePersistence,
+            )
+
+            persistence = DatabaseGovernancePersistence(database)
+            manager_with_persistence = AIGovernanceManager(
+                self._config, persistence=persistence, audit_store=audit_store
+            )
+        elif cache is not None:
+            from lexigram.ai.governance.persistence import (
+                RedisGovernancePersistence,
+            )
+
+            persistence = RedisGovernancePersistence(cache)
+            manager_with_persistence = AIGovernanceManager(
+                self._config, persistence=persistence, audit_store=audit_store
+            )
+        else:
+            logger.info(
+                "governance_persistence_skip",
+                reason="no database or cache backend available",
+                backend="in-memory",
+            )
+            manager_with_persistence = manager
+
+        if manager_with_persistence is not manager:
+            container.bind(AIGovernanceManager, manager_with_persistence)
+            container.bind(AIGovernanceProtocol, manager_with_persistence)
+
+            # Keep the resource-unit tracker/registry routing through the
+            # same backend as the rebound manager (see register()).
+            if (
+                self._config.resource_units
+                and manager_with_persistence.resource_tracker is not None
+            ):
+                from lexigram.ai.governance.resource.registry import (
+                    ResourceUnitRegistry,
+                )
+                from lexigram.ai.governance.resource.tracker import (
+                    ResourceUnitTracker,
+                )
+
+                container.bind(
+                    ResourceUnitRegistry, manager_with_persistence._resource_registry
+                )
+                container.bind(
+                    ResourceUnitTracker, manager_with_persistence.resource_tracker
+                )
+
         await boot_relay_billing(
             cast("BootContainerProtocol", container),
             self._config,
