@@ -212,7 +212,7 @@ config = PasswordConfig(
 - ✅ **Use `require_roles`/`require_permissions`** guards on web routes instead of manual checks
 - ✅ **Validate JWT audience** (`required_audience`) in multi-service deployments
 - ❌ **Never use default secrets** (`"change-me"`, `"your-secret-key"`) in production — raises `ValueError`
-- ❌ **Never enable `allow_unverified_dev`** outside local development
+- ❌ **Never allow unverified JWT decoding** — the framework always verifies signatures; a missing dev secret falls back to an ephemeral secret
 
 ## Next Steps
 

@@ -30,9 +30,6 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# Sentinel used when no real secret has been configured (dev opt-in path only).
-_UNVERIFIED_DEV_SENTINEL = "__unverified_dev__"
-
 
 @inject
 class TokenProvider(Provider):
@@ -51,25 +48,13 @@ class TokenProvider(Provider):
         token_config = config.token if config else None
 
         # ── JWT verification policy ──────────────────────────────────────────
-        # Determine whether the unverified-dev opt-in is active.  This must be
-        # evaluated before resolving secret_key so we can decide whether a
-        # missing secret is fatal or permitted.
+        # Verified-only decoding is enforced everywhere.  A missing secret is
+        # fatal in PRODUCTION/STAGING; in DEVELOPMENT an ephemeral secret is
+        # generated so signature verification never needs to be disabled.
         env = Environment.from_env()
         _STRICT_ENVS = {Environment.PRODUCTION, Environment.STAGING}
-        allow_unverified_dev: bool = bool(
-            getattr(token_config, "allow_unverified_dev", False)
-        )
 
-        # In production/staging the opt-in is always suppressed.
-        if env in _STRICT_ENVS and allow_unverified_dev:
-            logger.warning(
-                "jwt_allow_unverified_dev_ignored_at_boot",
-                environment=env.value,
-                reason="allow_unverified_dev is not permitted in PRODUCTION/STAGING",
-            )
-            allow_unverified_dev = False
-
-        # Three cases for secret resolution:
+        # Secret resolution:
         # 1. Explicit secret_key argument → use it directly (verified mode).
         # 2. Config provided with a secret → use it (verified mode).
         # 3. Config provided but secret is absent → policy enforcement below.
@@ -107,36 +92,21 @@ class TokenProvider(Provider):
                     "but none was provided. "
                     "Set LEX_AUTH__TOKEN__SECRET_KEY (or token.secret_key in config)."
                 )
-            if not allow_unverified_dev:
-                raise ConfigurationError(
-                    "JWT secret_key is missing in DEVELOPMENT. "
-                    "Either provide a secret key or set "
-                    "JWTConfig.allow_unverified_dev=True for a local dev workflow."
-                )
-            # Dev opt-in: boot with sentinel, decode will skip verification.
+            resolved_secret = secrets.token_urlsafe(32)
             logger.warning(
-                "jwt_boot_unverified_dev_mode",
+                "jwt_ephemeral_secret_generated",
                 environment=env.value,
-                reason="No JWT secret configured; booting in unverified-dev mode. "
-                "All tokens will be decoded WITHOUT signature verification.",
-            )
-            resolved_secret = _UNVERIFIED_DEV_SENTINEL
-
-        if env in _STRICT_ENVS and resolved_secret == _UNVERIFIED_DEV_SENTINEL:
-            # Should not reach here, but belt-and-suspenders.
-            raise ConfigurationError(
-                f"CRITICAL SECURITY: Unverified-dev sentinel detected in {env.value.upper()}."
+                reason="No JWT secret configured; using a generated ephemeral JWT secret. "
+                "Signature verification stays enabled. Tokens are invalidated on "
+                "restart; set LEX_AUTH__TOKEN__SECRET_KEY for stable dev secrets.",
             )
 
         self.secret_key: str = resolved_secret
-        self._allow_unverified_dev: bool = allow_unverified_dev and (
-            env == Environment.DEVELOPMENT
-        )
 
         logger.info(
             "jwt_verification_policy_boot",
             environment=env.value,
-            mode="unverified_dev" if self._allow_unverified_dev else "verified_only",
+            mode="verified_only",
         )
         # ── End JWT verification policy ──────────────────────────────────────
 
@@ -232,7 +202,6 @@ class TokenProvider(Provider):
                 access_expiration_hours=self.jwt_access_expiration_hours,
                 refresh_expiration_days=self.jwt_refresh_expiration_days,
                 grace_period_seconds=self.jwt_key_rotation_grace_period_seconds,
-                allow_unverified_dev=self._allow_unverified_dev,
             )
         else:
             current_key = (
@@ -247,7 +216,6 @@ class TokenProvider(Provider):
                 access_expiration_hours=self.jwt_access_expiration_hours,
                 refresh_expiration_days=self.jwt_refresh_expiration_days,
                 grace_period_seconds=self.jwt_key_rotation_grace_period_seconds,
-                allow_unverified_dev=self._allow_unverified_dev,
             )
 
         # Register with container

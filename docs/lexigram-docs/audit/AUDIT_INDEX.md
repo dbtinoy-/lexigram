@@ -10,7 +10,7 @@
 
 - Registered audits: 14
 - Reports present: 12
-- Total rows/findings: 1958
+- Total rows/findings: 2008
 - `correct`: 0
 - `incomplete`: 0
 - `suspect`: 0
@@ -19,9 +19,9 @@
 
 | Tool | Status | Source |
 |------|--------|--------|
-| `mypy` | FAIL | `quality` |
+| `mypy` | PASS | `quality` |
 | `pytest` | PASS | `tests` |
-| `ruff` | FAIL | `quality` |
+| `ruff` | PASS | `quality` |
 
 ## Rules Health
 
@@ -50,13 +50,13 @@
 | `docs-defaults` | `AUDIT_DOC_DEFAULTS.md` | 0 | 0 | 0 | 0 | missing |
 | `docs-imports` | `AUDIT_DOC_IMPORTS.md` | 0 | 0 | 0 | 0 | present |
 | `docs-links` | `AUDIT_DOC_LINKS.md` | 0 | 0 | 0 | 0 | present |
-| `env_vars` | `AUDIT_ENV_VARS.md` | 847 | 0 | 0 | 0 | present |
+| `env_vars` | `AUDIT_ENV_VARS.md` | 921 | 0 | 0 | 0 | present |
 | `index` | `AUDIT_INDEX.md` | 0 | 0 | 0 | 0 | present |
 | `integrations` | `AUDIT_INTEGRATIONS.md` | 22 | 0 | 0 | 0 | present |
 | `optional-imports` | `AUDIT_OPTIONAL_IMPORTS.md` | 628 | 0 | 0 | 0 | present |
 | `overview` | `AUDIT_OVERVIEW.md` | 54 | 0 | 0 | 0 | present |
 | `protocols` | `AUDIT_PROTOCOLS.md` | 154 | 0 | 0 | 0 | present |
-| `quality` | `AUDIT_QUALITY.md` | 80 | 0 | 0 | 0 | present |
+| `quality` | `AUDIT_QUALITY.md` | 56 | 0 | 0 | 0 | present |
 | `rules` | `AUDIT_RULES.md` | 116 | 0 | 0 | 0 | present |
 | `security` | `AUDIT_SECURITY.md` | 3 | 0 | 0 | 0 | present |
 | `tests` | `AUDIT_TESTS.md` | 54 | 0 | 0 | 0 | present |

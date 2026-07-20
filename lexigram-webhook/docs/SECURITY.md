@@ -189,5 +189,5 @@ webhook:
 ```
 
 :::caution
-**Common misconfiguration**: using `allow_unverified_dev`-style patterns with webhooks (there is no such flag — the verifier always enforces HMAC). If you need to bypass verification in development, register a test-only `HMACSignatureVerifier` subclass or mock the verifier in your test container.
+**Common misconfiguration**: trying to disable signature verification "like the old JWT dev flag" — that flag no longer exists anywhere in the framework; verification is always enforced. If you need to bypass verification in development, register a test-only `HMACSignatureVerifier` subclass or mock the verifier in your test container.
 :::

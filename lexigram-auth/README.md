@@ -142,7 +142,7 @@ async with Application.boot(modules=[AuthModule.stub()]) as app:
 | File | What it contains |
 |------|-----------------|
 | `src/lexigram/auth/module.py` | AuthModule definition |
-| `src/lexigram/auth/config.py` | AuthConfig, JWTConfig (+ `allow_unverified_dev`), RBACConfig |
+| `src/lexigram/auth/config.py` | AuthConfig, JWTConfig, RBACConfig |
 | `src/lexigram/auth/di/bundle_provider.py` | AuthBundleProvider wiring |
 | `src/lexigram/auth/di/sub_providers/token_provider.py` | TokenProvider (boots policy) |
 | `src/lexigram/auth/authn/jwt.py` | JWTTokenManager implementation |
@@ -151,21 +151,21 @@ async with Application.boot(modules=[AuthModule.stub()]) as app:
 
 ## JWT verification policy
 
-`lexigram-auth` enforces **verified-only** JWT decoding by default.
+`lexigram-auth` enforces **verified-only** JWT decoding — signature verification
+cannot be disabled.
 
-| Environment | Secret present | `allow_unverified_dev` | Behaviour |
-|-------------|---------------|------------------------|-----------|
-| `PRODUCTION` / `STAGING` | yes | any | Verified-only. Boot succeeds. |
-| `PRODUCTION` / `STAGING` | **no** | any | **Raises `ConfigurationError` at boot.** Flag ignored. |
-| `DEVELOPMENT` | yes | any | Verified-only. Boot succeeds. |
-| `DEVELOPMENT` | **no** | `False` (default) | **Raises `ConfigurationError` at boot.** |
-| `DEVELOPMENT` | **no** | `True` | Boots. Single warning logged. Tokens decoded **without** signature verification. |
+| Environment | Secret present | Behaviour |
+|-------------|---------------|-----------|
+| `PRODUCTION` / `STAGING` | yes | Verified-only. Boot succeeds. |
+| `PRODUCTION` / `STAGING` | **no** | **Raises `ConfigurationError` at boot.** |
+| `DEVELOPMENT` | yes | Verified-only. Boot succeeds. |
+| `DEVELOPMENT` | **no** | Verified-only. Boots with a generated **ephemeral secret** (tokens invalidated on restart). |
 
-### Enable the dev opt-in
+### Stable development secret
 
-Via environment variable:
+For multi-service development, set a stable secret via environment variable:
 ```bash
-export LEX_AUTH__TOKEN__ALLOW_UNVERIFIED_DEV=true
+export LEX_AUTH__TOKEN__SECRET_KEY="a-stable-dev-secret-at-least-32-chars"
 ```
 
 Via Python config:
@@ -173,15 +173,12 @@ Via Python config:
 from lexigram.auth.config import AuthConfig, JWTConfig
 
 config = AuthConfig(
-    secret_key="any-placeholder",
+    secret_key="a-stable-dev-secret-at-least-32-chars",
     token=JWTConfig(
-        secret_key="any-placeholder",
-        allow_unverified_dev=True,
+        secret_key="a-stable-dev-secret-at-least-32-chars",
     ),
 )
 ```
 
-The `allow_unverified_dev` flag is **silently ignored** in `PRODUCTION` and `STAGING`; the
-service always rejects the flag in those environments and raises if no real secret is
-configured. This prevents the Piccolina-style mistake of silently trusting unverified tokens
+This prevents the Piccolina-style mistake of silently trusting unverified tokens
 in production when a secret env-var is missing.

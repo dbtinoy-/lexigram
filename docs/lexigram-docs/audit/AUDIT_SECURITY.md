@@ -6,17 +6,17 @@
 
 ## Summary
 
-- Verdict: **WARN** — static analysis found issues to review
+- Verdict: **PASS** — no open critical, high, or static-analysis findings
 - Dependency scan: clean (0 vulnerable package(s))
 - SAST (ruff `S` rules): 0 finding(s) (0 unverified, 0 verified low-risk, 0 low-signal noise)
-- Framework security rules: 1 finding(s)
+- Framework security rules: 0 finding(s)
 - Tracker areas: 99 total, 99 done
 
 ## Dependency Scan
 
 - Command: `uv run pip-audit --timeout 60`
 - Exit code: `0`
-- Duration: `33654 ms`
+- Duration: `51589 ms`
 - Vulnerable packages: 0
 - Summary: `No known vulnerabilities found`
 
@@ -63,7 +63,7 @@ All 305 verified low-risk findings were closed on 2026-08-19 by deep re-verifica
 
 | File | Line | Rule ID | Severity | Message |
 |------|------|---------|----------|---------|
-| `lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py` | 214 | `sec-jwt-verification-disabled` | `important` | lexigram-auth/src/lexigram/auth/authn/_jwt_lifecycle.py disables JWT signature verification via options (explicit dev-only opt-in gate). |
+| `(none)` | 0 | `-` | `-` | No framework security-rule findings. |
 
 ## Audit Tracker Status
 

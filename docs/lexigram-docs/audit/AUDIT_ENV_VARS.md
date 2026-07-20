@@ -6,9 +6,9 @@
 
 ## Summary
 
-- Packages scanned: 34
-- Documented env var entries: 843
-- Unique env var names: 842
+- Packages scanned: 35
+- Documented env var entries: 917
+- Unique env var names: 916
 - Duplicate env var names: 1
 - Intentional non-config env sources: 3
 
@@ -26,8 +26,6 @@
 |---------|------|---------|-------------|--------|
 | `LEX_ADMIN__API_PREFIX` | str | "/admin/api" |  | `lexigram-admin/src/lexigram/admin/config.py:AdminConfig.api_prefix` |
 | `LEX_ADMIN__AUDIT__READ_AUDIT_ENABLED` | bool | False | Log read operations (off by default; compliance mode only). | `lexigram-admin/src/lexigram/admin/config.py:AdminAuditConfig.audit.read_audit_enabled` |
-| `LEX_ADMIN__AUDIT__REDACTION_FIELD_DENYLIST` | tuple[str, ...] | (required) | Field names whose values are always redacted in audit payloads. | `lexigram-admin/src/lexigram/admin/config.py:AdminAuditConfig.audit.redaction_field_denylist` |
-| `LEX_ADMIN__AUDIT__REDACTION_PATTERNS` | tuple[str, ...] | (required) | Pattern-based redaction strategies to apply. | `lexigram-admin/src/lexigram/admin/config.py:AdminAuditConfig.audit.redaction_patterns` |
 | `LEX_ADMIN__AUTH__CSRF_TOKEN_LIFETIME` | int | 3600 | CSRF token expiry in seconds | `lexigram-admin/src/lexigram/admin/config.py:AdminAuthConfig.auth.csrf_token_lifetime` |
 | `LEX_ADMIN__AUTH__EMAIL_OTP__ENABLED` | bool | True | Enable email OTP factor | `lexigram-admin/src/lexigram/admin/config.py:AdminEmailOtpConfig.auth.email_otp.enabled` |
 | `LEX_ADMIN__AUTH__EMAIL_OTP__RESEND_COOLDOWN_SECONDS` | int | 60 | Minimum seconds between email OTP sends | `lexigram-admin/src/lexigram/admin/config.py:AdminEmailOtpConfig.auth.email_otp.resend_cooldown_secon` |
@@ -55,6 +53,7 @@
 | `LEX_ADMIN__AUTH__PASSWORD_POLICY__REQUIRE_SPECIAL` | bool | True |  | `lexigram-admin/src/lexigram/admin/config.py:AdminPasswordPolicyConfig.auth.password_policy.require_s` |
 | `LEX_ADMIN__AUTH__PASSWORD_POLICY__REQUIRE_UPPERCASE` | bool | True |  | `lexigram-admin/src/lexigram/admin/config.py:AdminPasswordPolicyConfig.auth.password_policy.require_u` |
 | `LEX_ADMIN__AUTH__PERMISSION_CACHE_TTL` | int | 300 |  | `lexigram-admin/src/lexigram/admin/config.py:AdminAuthConfig.auth.permission_cache_ttl` |
+| `LEX_ADMIN__AUTH__PRINCIPAL_SOURCE` | Literal['internal', 'app'] | "internal" |  | `lexigram-admin/src/lexigram/admin/config.py:AdminAuthConfig.auth.principal_source` |
 | `LEX_ADMIN__AUTH__REGISTRATION__ALLOWED_EMAIL_DOMAINS` | list[str] | (required) | Restrict registration to these email domains (empty = any) | `lexigram-admin/src/lexigram/admin/config.py:AdminRegistrationConfig.auth.registration.allowed_email_` |
 | `LEX_ADMIN__AUTH__REGISTRATION__DEFAULT_ROLE` | str | "admin" | Role granted to new accounts | `lexigram-admin/src/lexigram/admin/config.py:AdminRegistrationConfig.auth.registration.default_role` |
 | `LEX_ADMIN__AUTH__REGISTRATION__ENABLED` | bool | False | Allow self-service registration | `lexigram-admin/src/lexigram/admin/config.py:AdminRegistrationConfig.auth.registration.enabled` |
@@ -66,8 +65,9 @@
 | `LEX_ADMIN__AUTH__SECURITY__LOCKOUT_THRESHOLDS` | list[tuple[int, int]] | (required) |  | `lexigram-admin/src/lexigram/admin/config.py:AdminSecurityConfig.auth.security.lockout_thresholds` |
 | `LEX_ADMIN__AUTH__SECURITY__PERMANENT_LOCKOUT_THRESHOLD` | int | 50 |  | `lexigram-admin/src/lexigram/admin/config.py:AdminSecurityConfig.auth.security.permanent_lockout_thre` |
 | `LEX_ADMIN__AUTH__SECURITY__SETUP_TOKEN` | str  \| None | None | Optional ADMIN_SETUP_TOKEN — when set, must be provided during first-run setup. | `lexigram-admin/src/lexigram/admin/config.py:AdminSecurityConfig.auth.security.setup_token` |
+| `LEX_ADMIN__AUTH__SECURITY__SETUP_TOKEN_OPTIN_UNSAFE` | bool | False | Explicit escape hatch: boot without a setup token. Only for local/ephemeral environments — leaves the first-run wizard o | `lexigram-admin/src/lexigram/admin/config.py:AdminSecurityConfig.auth.security.setup_token_optin_unsa` |
 | `LEX_ADMIN__AUTH__SESSION_LIFETIME` | int | 86400 |  | `lexigram-admin/src/lexigram/admin/config.py:AdminAuthConfig.auth.session_lifetime` |
-| `LEX_ADMIN__AUTH__SESSION_SECRET` | str | "change-me-in-production" | Session secret for signing | `lexigram-admin/src/lexigram/admin/config.py:AdminAuthConfig.auth.session_secret` |
+| `LEX_ADMIN__AUTH__SESSION_SECRET` | SecretStr | SecretStr(...) | Session secret for signing | `lexigram-admin/src/lexigram/admin/config.py:AdminAuthConfig.auth.session_secret` |
 | `LEX_ADMIN__AUTH__USERS` | list[Any] | (required) |  | `lexigram-admin/src/lexigram/admin/config.py:AdminAuthConfig.auth.users` |
 | `LEX_ADMIN__CLUSTERS__EXTRA` | list[ClusterSpec] | (required) | Extra clusters beyond the built-in infrastructure cluster | `lexigram-admin/src/lexigram/admin/config.py:AdminClustersConfig.clusters.extra` |
 | `LEX_ADMIN__COMMANDS` | list[dict[str, Any]] | (required) |  | `lexigram-admin/src/lexigram/admin/config.py:AdminConfig.commands` |
@@ -215,6 +215,7 @@
 |---------|------|---------|-------------|--------|
 | `LEX_AI_GOVERNANCE__ENABLED` | bool | True | Enable AI governance | `lexigram-ai-governance/src/lexigram/ai/governance/config.py:GovernanceConfig.enabled` |
 | `LEX_AI_GOVERNANCE__ENFORCE_BUDGET` | bool | True | Enforce budget limits | `lexigram-ai-governance/src/lexigram/ai/governance/config.py:GovernanceConfig.enforce_budget` |
+| `LEX_AI_GOVERNANCE__FAIL_OPEN_ON_PERSISTENCE_ERROR` | bool | False | Allow requests when the persistence backend is unavailable. When False (default, fail-closed), a persistence failure (e. | `lexigram-ai-governance/src/lexigram/ai/governance/config.py:GovernanceConfig.fail_open_on_persistenc` |
 | `LEX_AI_GOVERNANCE__MAX_REQUEST_COST` | float  \| None | None | Maximum cost in dollars for a single request. Requests with an estimated cost above this threshold are rejected before t | `lexigram-ai-governance/src/lexigram/ai/governance/config.py:GovernanceConfig.max_request_cost` |
 | `LEX_AI_GOVERNANCE__MAX_TOKENS_PER_REQUEST` | int  \| None | None | Max tokens per request | `lexigram-ai-governance/src/lexigram/ai/governance/config.py:GovernanceConfig.max_tokens_per_request` |
 | `LEX_AI_GOVERNANCE__MODEL_ALLOWLIST` | dict[str, list[str]] | (required) | Per-user/role model allowlist. Keys are user IDs or role names; values are lists of allowed model patterns (supports glo | `lexigram-ai-governance/src/lexigram/ai/governance/config.py:GovernanceConfig.model_allowlist` |
@@ -236,6 +237,7 @@
 | `LEX_AI_GUARD__INJECTION_ACTION` | str | "block" |  | `lexigram-ai-guard/src/lexigram/ai/guard/config.py:GuardConfig.injection_action` |
 | `LEX_AI_GUARD__INJECTION_DETECTION` | bool | True |  | `lexigram-ai-guard/src/lexigram/ai/guard/config.py:GuardConfig.injection_detection` |
 | `LEX_AI_GUARD__LENGTH_ACTION` | str | "block" |  | `lexigram-ai-guard/src/lexigram/ai/guard/config.py:GuardConfig.length_action` |
+| `LEX_AI_GUARD__LLM_GUARD_FAIL_OPEN` | bool | False |  | `lexigram-ai-guard/src/lexigram/ai/guard/config.py:GuardConfig.llm_guard_fail_open` |
 | `LEX_AI_GUARD__LLM_GUARD_THRESHOLD` | float | 0.7 |  | `lexigram-ai-guard/src/lexigram/ai/guard/config.py:GuardConfig.llm_guard_threshold` |
 | `LEX_AI_GUARD__MAX_INPUT_CHARS` | int | 0 |  | `lexigram-ai-guard/src/lexigram/ai/guard/config.py:GuardConfig.max_input_chars` |
 | `LEX_AI_GUARD__MAX_OUTPUT_CHARS` | int | 0 |  | `lexigram-ai-guard/src/lexigram/ai/guard/config.py:GuardConfig.max_output_chars` |
@@ -251,6 +253,7 @@
 
 | Env Var | Type | Default | Description | Source |
 |---------|------|---------|-------------|--------|
+| `LEX_AI_MCP__ALLOW_UNAUTHENTICATED` | bool | False |  | `lexigram-ai-mcp/src/lexigram/ai/mcp/config.py:MCPConfig.allow_unauthenticated` |
 | `LEX_AI_MCP__CLIENT_STDIO_COMMAND` | list[str] | field(...) |  | `lexigram-ai-mcp/src/lexigram/ai/mcp/config.py:MCPConfig.client_stdio_command` |
 | `LEX_AI_MCP__CLIENT_URL` | str  \| None | None |  | `lexigram-ai-mcp/src/lexigram/ai/mcp/config.py:MCPConfig.client_url` |
 | `LEX_AI_MCP__CONNECTORS__FILESYSTEM__READ_ONLY` | bool | False |  | `lexigram-ai-mcp/src/lexigram/ai/mcp/config.py:FilesystemConnectorConfig.connectors.filesystem.read_o` |
@@ -315,6 +318,8 @@
 | `LEX_AI_OBSERVABILITY__ENABLED` | bool | True | Master on/off switch for all observability | `lexigram-ai-observability/src/lexigram/ai/observability/config.py:ObservabilityConfig.enabled` |
 | `LEX_AI_OBSERVABILITY__HEALTH_CHECKS_ENABLED` | bool | True | Enable background health checking for AI components | `lexigram-ai-observability/src/lexigram/ai/observability/config.py:ObservabilityConfig.health_checks_` |
 | `LEX_AI_OBSERVABILITY__METRICS_ENABLED` | bool | True | Enable metrics collection | `lexigram-ai-observability/src/lexigram/ai/observability/config.py:ObservabilityConfig.metrics_enable` |
+| `LEX_AI_OBSERVABILITY__TRACE_MAX_ATTRIBUTE_LENGTH` | int | 0 | Cap on string attribute values written to trace spans, in characters. 0 disables the cap. | `lexigram-ai-observability/src/lexigram/ai/observability/config.py:ObservabilityConfig.trace_max_attr` |
+| `LEX_AI_OBSERVABILITY__TRACE_REDACTION_ENABLED` | bool | False | Redact secret-shaped keys (e.g. token, password, api_key) from trace span attributes and audit metadata. Strongly recomm | `lexigram-ai-observability/src/lexigram/ai/observability/config.py:ObservabilityConfig.trace_redactio` |
 | `LEX_AI_OBSERVABILITY__TRACING_ENABLED` | bool | True | Enable distributed tracing | `lexigram-ai-observability/src/lexigram/ai/observability/config.py:ObservabilityConfig.tracing_enable` |
 
 ### `lexigram-ai-prompt`
@@ -442,7 +447,11 @@
 | `LEX_AUTH__MIDDLEWARE__SCHEME` | str | (complex) | Token scheme | `lexigram-auth/src/lexigram/auth/config.py:AuthMiddlewareConfig.middleware.scheme` |
 | `LEX_AUTH__NAME` | str | "auth" |  | `lexigram-auth/src/lexigram/auth/config.py:AuthConfig.name` |
 | `LEX_AUTH__OAUTH2_PROVIDERS` | dict[str, dict[str, str]] | (required) | OAuth2 configs | `lexigram-auth/src/lexigram/auth/config.py:AuthConfig.oauth2_providers` |
+| `LEX_AUTH__PASSWORD__ARGON2_MEMORY_COST` | int | 65536 | Argon2id memory cost in KiB (OWASP floor is 19456) | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.argon2_memory_cost` |
+| `LEX_AUTH__PASSWORD__ARGON2_PARALLELISM` | int | 4 | Argon2id parallelism | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.argon2_parallelism` |
+| `LEX_AUTH__PASSWORD__ARGON2_TIME_COST` | int | 3 | Argon2id time cost | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.argon2_time_cost` |
 | `LEX_AUTH__PASSWORD__BANNED_PATTERNS` | list[str] | (required) | Substrings that must not appear in the password (case-insensitive). Use to reject common passwords or the user's own nam | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.banned_patterns` |
+| `LEX_AUTH__PASSWORD__BCRYPT_ROUNDS` | int | 12 | bcrypt cost factor for new hashes (minimum 12 in production) | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.bcrypt_rounds` |
 | `LEX_AUTH__PASSWORD__MAX_LENGTH` | int | 128 | Maximum password length | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.max_length` |
 | `LEX_AUTH__PASSWORD__MIN_LENGTH` | int | 12 | Minimum password length | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.min_length` |
 | `LEX_AUTH__PASSWORD__REQUIRE_DIGITS` | bool | True | Require at least one digit | `lexigram-auth/src/lexigram/auth/config.py:PasswordConfig.password.require_digits` |
@@ -459,12 +468,11 @@
 | `LEX_AUTH__SECRET_KEY` | str | (required) | Secret key for signing | `lexigram-auth/src/lexigram/auth/config.py:AuthConfig.secret_key` |
 | `LEX_AUTH__TOKEN__ACCESS_TOKEN_EXPIRE` | Duration | Duration.minutes(...) | Access token expiry duration | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.access_token_expire` |
 | `LEX_AUTH__TOKEN__ALGORITHM` | str | (complex) | Algorithm | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.algorithm` |
-| `LEX_AUTH__TOKEN__ALLOW_UNVERIFIED_DEV` | bool | False | Allow unverified JWT decode when the secret is absent. ONLY effective in Environment.DEVELOPMENT. Silently overridden to | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.allow_unverified_dev` |
 | `LEX_AUTH__TOKEN__ID_TOKEN_EXPIRE` | Duration | Duration.hours(...) | ID token expiry duration | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.id_token_expire` |
 | `LEX_AUTH__TOKEN__KEY_ROTATION_GRACE_PERIOD` | Duration | Duration.seconds(...) | Duration during which tokens signed by a rotated-out key remain accepted. Prevents immediate logout on key rotation. | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.key_rotation_grace_period` |
 | `LEX_AUTH__TOKEN__REFRESH_TOKEN_EXPIRE` | Duration | Duration.days(...) | Refresh token expiry duration | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.refresh_token_expire` |
 | `LEX_AUTH__TOKEN__REQUIRED_AUDIENCE` | str  \| None | None | Expected ``aud`` claim for every token verified by this service. When set, tokens whose audience does not match are reje | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.required_audience` |
-| `LEX_AUTH__TOKEN__SECRET_KEY` | str | Ellipsis | Secret key for signing tokens | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.secret_key` |
+| `LEX_AUTH__TOKEN__SECRET_KEY` | SecretStr | Ellipsis | Secret key for signing tokens | `lexigram-auth/src/lexigram/auth/config.py:JWTConfig.token.secret_key` |
 | `LEX_AUTH__USERS` | list[AuthUserConfig] | (required) | Initial users | `lexigram-auth/src/lexigram/auth/config.py:AuthConfig.users` |
 
 ### `lexigram-cache`
@@ -622,6 +630,8 @@
 
 | Env Var | Type | Default | Description | Source |
 |---------|------|---------|-------------|--------|
+| `LEX_GRAPHQL__ALIAS_LIMIT__ENABLED` | bool | True |  | `lexigram-graphql/src/lexigram/graphql/config.py:AliasLimitConfig.alias_limit.enabled` |
+| `LEX_GRAPHQL__ALIAS_LIMIT__MAX_ALIASES` | int | (complex) |  | `lexigram-graphql/src/lexigram/graphql/config.py:AliasLimitConfig.alias_limit.max_aliases` |
 | `LEX_GRAPHQL__BATCH__ENABLED` | bool | False |  | `lexigram-graphql/src/lexigram/graphql/config.py:BatchConfig.batch.enabled` |
 | `LEX_GRAPHQL__BATCH__MAX_BATCH_SIZE` | int | 10 |  | `lexigram-graphql/src/lexigram/graphql/config.py:BatchConfig.batch.max_batch_size` |
 | `LEX_GRAPHQL__CACHE__DEFAULT_MAX_AGE` | Duration  \| int | (complex) |  | `lexigram-graphql/src/lexigram/graphql/config.py:CacheConfig.cache.default_max_age` |
@@ -784,6 +794,70 @@
 | `LEX_RESILIENCE__RETRY` | RetryConfig | field(...) |  | `lexigram-resilience/src/lexigram/resilience/config.py:ResilienceConfig.retry` |
 | `LEX_RESILIENCE__TIMEOUT` | TimeoutConfig | field(...) |  | `lexigram-resilience/src/lexigram/resilience/config.py:ResilienceConfig.timeout` |
 
+### `lexigram-search`
+
+| Env Var | Type | Default | Description | Source |
+|---------|------|---------|-------------|--------|
+| `LEX_SEARCH__BACKENDS` | list[NamedSearchConfig] | (required) | Named search backends for multi-backend support. When non-empty, the provider registers each backend under Annotated[Sea | `lexigram-search/src/lexigram/search/config.py:SearchConfig.backends` |
+| `LEX_SEARCH__DATABASE` | str  \| None | None | Named database to use for DB-backed backends (postgres/mysql). References a named database registered via Annotated[Data | `lexigram-search/src/lexigram/search/config.py:SearchConfig.database` |
+| `LEX_SEARCH__ELASTICSEARCH__API_KEY` | SecretStr  \| None | None |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.api_key` |
+| `LEX_SEARCH__ELASTICSEARCH__HOSTS` | list[str] | (required) | Elasticsearch hosts | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.hosts` |
+| `LEX_SEARCH__ELASTICSEARCH__INDEX_PREFIX` | str | "lexigram_search_" |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.index_prefix` |
+| `LEX_SEARCH__ELASTICSEARCH__NUMBER_OF_REPLICAS` | int | 0 |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.number_of_replicas` |
+| `LEX_SEARCH__ELASTICSEARCH__NUMBER_OF_SHARDS` | int | 1 |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.number_of_shards` |
+| `LEX_SEARCH__ELASTICSEARCH__PASSWORD` | SecretStr  \| None | None |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.password` |
+| `LEX_SEARCH__ELASTICSEARCH__USERNAME` | str  \| None | None |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.username` |
+| `LEX_SEARCH__ELASTICSEARCH__USE_SSL` | bool | False |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.use_ssl` |
+| `LEX_SEARCH__ELASTICSEARCH__VERIFY_CERTS` | bool | True |  | `lexigram-search/src/lexigram/search/config.py:ElasticsearchConfig.elasticsearch.verify_certs` |
+| `LEX_SEARCH__ENABLED` | bool | True | Enable the search subsystem | `lexigram-search/src/lexigram/search/config.py:SearchConfig.enabled` |
+| `LEX_SEARCH__MEILISEARCH__API_KEY` | SecretStr  \| None | None | MeiliSearch API key | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.api_key` |
+| `LEX_SEARCH__MEILISEARCH__DISPLAYED_ATTRIBUTES` | list[str] | (required) | Fields to return in results | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.displayed_attributes` |
+| `LEX_SEARCH__MEILISEARCH__FILTERABLE_ATTRIBUTES` | list[str] | (required) | Attributes that can be filtered | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.filterable_attributes` |
+| `LEX_SEARCH__MEILISEARCH__MAX_CONNECTIONS` | int | 10 | Maximum number of connections | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.max_connections` |
+| `LEX_SEARCH__MEILISEARCH__MIN_WORD_SIZE_FOR_TYPOS` | dict[str, int] | (required) | Minimum word size for typo tolerance | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.min_word_size_for_typos` |
+| `LEX_SEARCH__MEILISEARCH__RANKING_RULES` | list[str] | (required) | Ranking rules in order | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.ranking_rules` |
+| `LEX_SEARCH__MEILISEARCH__SEARCHABLE_ATTRIBUTES` | list[str] | (required) | Fields to search in | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.searchable_attributes` |
+| `LEX_SEARCH__MEILISEARCH__SORTABLE_ATTRIBUTES` | list[str] | (required) | Attributes that can be sorted | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.sortable_attributes` |
+| `LEX_SEARCH__MEILISEARCH__TIMEOUT` | int | 30 | Request timeout in seconds | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.timeout` |
+| `LEX_SEARCH__MEILISEARCH__TYPO_TOLERANCE_ENABLED` | bool | True | Enable typo tolerance | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.typo_tolerance_enabled` |
+| `LEX_SEARCH__MEILISEARCH__URL` | str | "http://localhost:7700" | MeiliSearch server URL | `lexigram-search/src/lexigram/search/config.py:MeiliSearchConfig.meilisearch.url` |
+| `LEX_SEARCH__MONGO__CONNECTION_STRING` | SecretStr | SecretStr(...) |  | `lexigram-search/src/lexigram/search/config.py:MongoSearchConfig.mongo.connection_string` |
+| `LEX_SEARCH__MONGO__DATABASE_NAME` | str | "search" |  | `lexigram-search/src/lexigram/search/config.py:MongoSearchConfig.mongo.database_name` |
+| `LEX_SEARCH__MONGO__USE_ATLAS_SEARCH` | bool | False |  | `lexigram-search/src/lexigram/search/config.py:MongoSearchConfig.mongo.use_atlas_search` |
+| `LEX_SEARCH__MYSQL__CONNECTION_STRING` | SecretStr | SecretStr(...) |  | `lexigram-search/src/lexigram/search/config.py:MySQLSearchConfig.mysql.connection_string` |
+| `LEX_SEARCH__MYSQL__FULLTEXT_MODE` | str | "natural_language" |  | `lexigram-search/src/lexigram/search/config.py:MySQLSearchConfig.mysql.fulltext_mode` |
+| `LEX_SEARCH__MYSQL__MIN_WORD_LENGTH` | int | 3 |  | `lexigram-search/src/lexigram/search/config.py:MySQLSearchConfig.mysql.min_word_length` |
+| `LEX_SEARCH__OPENSEARCH__HOSTS` | list[str] | (required) | OpenSearch hosts | `lexigram-search/src/lexigram/search/config.py:OpenSearchConfig.opensearch.hosts` |
+| `LEX_SEARCH__OPENSEARCH__INDEX_PREFIX` | str | "lexigram_search_" |  | `lexigram-search/src/lexigram/search/config.py:OpenSearchConfig.opensearch.index_prefix` |
+| `LEX_SEARCH__OPENSEARCH__PASSWORD` | str  \| None | None |  | `lexigram-search/src/lexigram/search/config.py:OpenSearchConfig.opensearch.password` |
+| `LEX_SEARCH__OPENSEARCH__TIMEOUT` | int | 30 |  | `lexigram-search/src/lexigram/search/config.py:OpenSearchConfig.opensearch.timeout` |
+| `LEX_SEARCH__OPENSEARCH__USERNAME` | str  \| None | None |  | `lexigram-search/src/lexigram/search/config.py:OpenSearchConfig.opensearch.username` |
+| `LEX_SEARCH__OPENSEARCH__USE_SSL` | bool | False |  | `lexigram-search/src/lexigram/search/config.py:OpenSearchConfig.opensearch.use_ssl` |
+| `LEX_SEARCH__OPENSEARCH__VERIFY_SSL` | bool | True |  | `lexigram-search/src/lexigram/search/config.py:OpenSearchConfig.opensearch.verify_ssl` |
+| `LEX_SEARCH__OPERATIONS__BULK_CHUNK_SIZE` | int | 500 | Bulk request chunk size | `lexigram-search/src/lexigram/search/config.py:SearchOperationsConfig.operations.bulk_chunk_size` |
+| `LEX_SEARCH__OPERATIONS__MAX_RETRIES` | int | 3 | Max retry attempts | `lexigram-search/src/lexigram/search/config.py:SearchOperationsConfig.operations.max_retries` |
+| `LEX_SEARCH__OPERATIONS__REQUEST_TIMEOUT` | float | 30.0 | Request timeout seconds | `lexigram-search/src/lexigram/search/config.py:SearchOperationsConfig.operations.request_timeout` |
+| `LEX_SEARCH__OPERATIONS__RETRY_BACKOFF` | float | 0.5 | Retry backoff multiplier | `lexigram-search/src/lexigram/search/config.py:SearchOperationsConfig.operations.retry_backoff` |
+| `LEX_SEARCH__POSTGRES__AUTO_CREATE_TABLES` | bool | True |  | `lexigram-search/src/lexigram/search/config.py:PostgresSearchConfig.postgres.auto_create_tables` |
+| `LEX_SEARCH__POSTGRES__CONNECTION_STRING` | SecretStr | SecretStr(...) | PostgreSQL connection string | `lexigram-search/src/lexigram/search/config.py:PostgresSearchConfig.postgres.connection_string` |
+| `LEX_SEARCH__POSTGRES__ENABLE_TRIGRAM` | bool | True | Enable pg_trgm fuzzy matching | `lexigram-search/src/lexigram/search/config.py:PostgresSearchConfig.postgres.enable_trigram` |
+| `LEX_SEARCH__POSTGRES__TEXT_SEARCH_CONFIG` | str | "english" | PostgreSQL text search config | `lexigram-search/src/lexigram/search/config.py:PostgresSearchConfig.postgres.text_search_config` |
+| `LEX_SEARCH__QUERY__DEFAULT_LIMIT` | int | (complex) |  | `lexigram-search/src/lexigram/search/config.py:QueryConfig.query.default_limit` |
+| `LEX_SEARCH__QUERY__ENABLE_AGGREGATIONS` | bool | False |  | `lexigram-search/src/lexigram/search/config.py:QueryConfig.query.enable_aggregations` |
+| `LEX_SEARCH__QUERY__ENABLE_FACETING` | bool | True |  | `lexigram-search/src/lexigram/search/config.py:QueryConfig.query.enable_faceting` |
+| `LEX_SEARCH__QUERY__ENABLE_HIGHLIGHTING` | bool | True |  | `lexigram-search/src/lexigram/search/config.py:QueryConfig.query.enable_highlighting` |
+| `LEX_SEARCH__QUERY__FUZZY_THRESHOLD` | float | 0.8 |  | `lexigram-search/src/lexigram/search/config.py:QueryConfig.query.fuzzy_threshold` |
+| `LEX_SEARCH__QUERY__MAX_LIMIT` | int | (complex) |  | `lexigram-search/src/lexigram/search/config.py:QueryConfig.query.max_limit` |
+| `LEX_SEARCH__QUERY__STRATEGY` | str | "fuzzy" |  | `lexigram-search/src/lexigram/search/config.py:QueryConfig.query.strategy` |
+| `LEX_SEARCH__SQLITE__AUTO_CREATE_TABLES` | bool | True |  | `lexigram-search/src/lexigram/search/config.py:SQLiteSearchConfig.sqlite.auto_create_tables` |
+| `LEX_SEARCH__SQLITE__DB_PATH` | str | ":memory:" |  | `lexigram-search/src/lexigram/search/config.py:SQLiteSearchConfig.sqlite.db_path` |
+| `LEX_SEARCH__SQLITE__TOKENIZER` | str | "porter unicode61" |  | `lexigram-search/src/lexigram/search/config.py:SQLiteSearchConfig.sqlite.tokenizer` |
+| `LEX_SEARCH__TIMEOUT` | float | 30.0 | Default request timeout seconds | `lexigram-search/src/lexigram/search/config.py:SearchConfig.timeout` |
+| `LEX_SEARCH__TYPESENSE__API_KEY` | SecretStr  \| None | None | Typesense API key | `lexigram-search/src/lexigram/search/config.py:TypesenseConfig.typesense.api_key` |
+| `LEX_SEARCH__TYPESENSE__CONNECTION_TIMEOUT` | int | 30 | Connection timeout | `lexigram-search/src/lexigram/search/config.py:TypesenseConfig.typesense.connection_timeout` |
+| `LEX_SEARCH__TYPESENSE__HEALTH_CHECK_INTERVAL` | int | 60 | Health check interval | `lexigram-search/src/lexigram/search/config.py:TypesenseConfig.typesense.health_check_interval` |
+| `LEX_SEARCH__TYPESENSE__NODES` | list[dict[str, str]] | (required) | Typesense node connections | `lexigram-search/src/lexigram/search/config.py:TypesenseConfig.typesense.nodes` |
+
 ### `lexigram-sql`
 
 | Env Var | Type | Default | Description | Source |
@@ -868,7 +942,9 @@
 | `LEX_TENANCY__RESOLUTION__JWT_CLAIM_KEY` | str | DEFAULT_JWT_CLAIM_KEY |  | `lexigram-tenancy/src/lexigram/tenancy/config.py:ResolutionConfig.resolution.jwt_claim_key` |
 | `LEX_TENANCY__RESOLUTION__PATH_PATTERN` | str  \| None | DEFAULT_PATH_PATTERN |  | `lexigram-tenancy/src/lexigram/tenancy/config.py:ResolutionConfig.resolution.path_pattern` |
 | `LEX_TENANCY__RESOLUTION__RESOLVERS` | list[str] | field(...) |  | `lexigram-tenancy/src/lexigram/tenancy/config.py:ResolutionConfig.resolution.resolvers` |
+| `LEX_TENANCY__RESOLUTION__STRICT_MEMBERSHIP` | bool | True |  | `lexigram-tenancy/src/lexigram/tenancy/config.py:ResolutionConfig.resolution.strict_membership` |
 | `LEX_TENANCY__RESOLUTION__SUBDOMAIN_PATTERN` | str  \| None | None |  | `lexigram-tenancy/src/lexigram/tenancy/config.py:ResolutionConfig.resolution.subdomain_pattern` |
+| `LEX_TENANCY__RESOLUTION__TRUSTED_RESOLVERS` | list[str] | field(...) |  | `lexigram-tenancy/src/lexigram/tenancy/config.py:ResolutionConfig.resolution.trusted_resolvers` |
 | `LEX_TENANCY__RESOLUTION__VALIDATOR_CACHE_TTL` | int | DEFAULT_VALIDATOR_CACHE_TTL |  | `lexigram-tenancy/src/lexigram/tenancy/config.py:ResolutionConfig.resolution.validator_cache_ttl` |
 
 ### `lexigram-testing`
@@ -947,6 +1023,7 @@
 
 | Env Var | Type | Default | Description | Source |
 |---------|------|---------|-------------|--------|
+| `LEX_WEB__ALLOWED_HOSTS` | list[str] | (required) | Hostnames permitted to reach the application. Empty by default; must be configured before production deployment. | `lexigram-web/src/lexigram/web/security/config.py:SecurityConfig.allowed_hosts` |
 | `LEX_WEB__API_DOCS__ENABLED` | bool | True | Enable API documentation endpoints (/docs, /redoc) and auto-configure CSP for their CDN assets | `lexigram-web/src/lexigram/web/config.py:APIDocsConfig.api_docs.enabled` |
 | `LEX_WEB__API_DOCS__PROVIDER` | str | "both" | Documentation provider: 'swagger', 'redoc', or 'both' | `lexigram-web/src/lexigram/web/config.py:APIDocsConfig.api_docs.provider` |
 | `LEX_WEB__AUTH_EXCLUDE_PATHS` | list[str] | (required) | Paths to exclude from authentication | `lexigram-web/src/lexigram/web/config.py:WebConfig.auth_exclude_paths` |
@@ -957,6 +1034,7 @@
 | `LEX_WEB__CORS__ALLOW_HEADERS` | list[str] | (required) |  | `lexigram-web/src/lexigram/web/security/config.py:CORSConfig.cors.allow_headers` |
 | `LEX_WEB__CORS__ALLOW_METHODS` | list[str] | (required) |  | `lexigram-web/src/lexigram/web/security/config.py:CORSConfig.cors.allow_methods` |
 | `LEX_WEB__CORS__ALLOW_ORIGIN_REGEX` | str  \| None | None | Regex pattern for allowed origins (matched when not in allowed_origins) | `lexigram-web/src/lexigram/web/security/config.py:CORSConfig.cors.allow_origin_regex` |
+| `LEX_WEB__CORS__DEBUG_PERMISSIVE` | bool | False | When True and debug mode is active, allow any origin via wildcard (explicit opt-in replacement for the old implicit debu | `lexigram-web/src/lexigram/web/security/config.py:CORSConfig.cors.debug_permissive` |
 | `LEX_WEB__CORS__ENABLED` | bool | True | Enable CORS | `lexigram-web/src/lexigram/web/security/config.py:CORSConfig.cors.enabled` |
 | `LEX_WEB__CORS__EXPOSE_HEADERS` | list[str] | (required) |  | `lexigram-web/src/lexigram/web/security/config.py:CORSConfig.cors.expose_headers` |
 | `LEX_WEB__CORS__MAX_AGE` | int | 600 |  | `lexigram-web/src/lexigram/web/security/config.py:CORSConfig.cors.max_age` |
@@ -973,10 +1051,11 @@
 | `LEX_WEB__CSRF__COOKIE_SAMESITE` | str | "Lax" |  | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.cookie_samesite` |
 | `LEX_WEB__CSRF__COOKIE_SECURE` | bool | True |  | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.cookie_secure` |
 | `LEX_WEB__CSRF__ENABLED` | bool | False |  | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.enabled` |
-| `LEX_WEB__CSRF__EXCLUDED_PATHS` | list[str] | (required) | URL path prefixes that are exempt from CSRF validation. | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.excluded_paths` |
-| `LEX_WEB__CSRF__EXCLUDE_AUTH_SCHEMES` | list[str] | (required) | Authorization header schemes that bypass CSRF validation. | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.exclude_auth_schemes` |
-| `LEX_WEB__CSRF__EXCLUDE_CONTENT_TYPES` | list[str] | (required) | Content-Type values that bypass CSRF validation. | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.exclude_content_types` |
+| `LEX_WEB__CSRF__EXCLUDED_PATHS` | list[str] | (required) | URL path prefixes exempt from CSRF validation for cookie-less requests; cookie-bearing requests on these paths are still | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.excluded_paths` |
+| `LEX_WEB__CSRF__EXCLUDE_AUTH_SCHEMES` | list[str] | (required) | Authorization header schemes that bypass CSRF validation (explicit opt-in). | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.exclude_auth_schemes` |
+| `LEX_WEB__CSRF__EXCLUDE_CONTENT_TYPES` | list[str] | (required) | Content-Type values that bypass CSRF validation (explicit opt-in — JSON requests are validated by default so cookie-auth | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.exclude_content_types` |
 | `LEX_WEB__CSRF__HEADER_NAME` | str | "X-CSRF-Token" |  | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.header_name` |
+| `LEX_WEB__CSRF__SECRET_KEY` | str  \| None | None | HMAC secret used to sign and verify CSRF tokens (populated via LEX_WEB__SECURITY__CSRF__SECRET_KEY) | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.secret_key` |
 | `LEX_WEB__CSRF__TOKEN_LENGTH` | int | 32 |  | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.token_length` |
 | `LEX_WEB__CSRF__TOKEN_TTL` | int | 3600 | TTL in seconds for synchronizer-mode tokens stored in cache. | `lexigram-web/src/lexigram/web/security/config.py:CSRFConfig.csrf.token_ttl` |
 | `LEX_WEB__CUSTOM_HEADERS` | dict[str, str] | (required) | Additional HTTP response headers emitted verbatim | `lexigram-web/src/lexigram/web/security/config.py:SecurityConfig.custom_headers` |
@@ -1010,8 +1089,8 @@
 | `LEX_WEB__PERMISSIONS_POLICY` | dict[str, str] | (required) | Permissions-Policy directive map | `lexigram-web/src/lexigram/web/security/config.py:SecurityConfig.permissions_policy` |
 | `LEX_WEB__RATE_LIMIT__DEFAULT_LIMIT` | int | (complex) | Max requests per window | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.default_limit` |
 | `LEX_WEB__RATE_LIMIT__DEFAULT_WINDOW` | int | (complex) | Window size in seconds | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.default_window` |
-| `LEX_WEB__RATE_LIMIT__ENABLED` | bool | True | Enable rate limiting | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.enabled` |
-| `LEX_WEB__RATE_LIMIT__RULES` | dict[str, RateLimitRuleConfig] | (required) | Per-path rate limit rules | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.rules` |
+| `LEX_WEB__RATE_LIMIT__ENABLED` | bool | True | Enable rate limiting. When true, RateLimitMiddleware enforces the matched per-path rule or the default_limit/default_win | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.enabled` |
+| `LEX_WEB__RATE_LIMIT__RULES` | dict[str, RateLimitRuleConfig] | (required) | Per-path rate limit rules; longest-prefix match wins | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.rules` |
 | `LEX_WEB__RATE_LIMIT__STORAGE_BACKEND` | str | "memory" | Storage backend (memory/redis) | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.storage_backend` |
 | `LEX_WEB__RATE_LIMIT__WHITELIST_IPS` | list[str] | (required) | Exempt IP addresses | `lexigram-web/src/lexigram/web/config.py:RateLimitConfig.rate_limit.whitelist_ips` |
 | `LEX_WEB__REDOC_JS_URL` | str  \| None | None |  | `lexigram-web/src/lexigram/web/config.py:WebConfig.redoc_js_url` |
