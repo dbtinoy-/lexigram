@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from lexigram.reactive.operators.control import catch, merge, skip, take
+from lexigram.reactive.operators.time_ops import buffer, debounce, throttle, window
 from lexigram.reactive.operators.transform import (
     distinct,
     filter,
@@ -14,7 +15,9 @@ from lexigram.reactive.operators.transform import (
 )
 
 __all__ = [
+    "buffer",
     "catch",
+    "debounce",
     "distinct",
     "filter",
     "map",
@@ -22,4 +25,6 @@ __all__ = [
     "scan",
     "skip",
     "take",
+    "throttle",
+    "window",
 ]
