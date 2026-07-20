@@ -235,6 +235,20 @@ print(f"Purged {purged} expired entries")
 
 The purger logs its own activity as audit entries — meta-audit.
 
+Run a dry run before the first real purge on an existing deployment —
+the audit log may contain a backlog that was never actually purged
+before this fix shipped (purge previously counted expired entries but
+did not delete them). A dry run reports exactly the count a real run
+would report, without deleting anything:
+
+```python
+would_purge = await purger.purge_expired(dry_run=True)
+print(f"Would purge {would_purge} expired entries")
+```
+
+The purger logs its own activity as audit entries — meta-audit, including
+the `dry_run` flag on each purger run.
+
 ---
 
 ## 8. Testing
