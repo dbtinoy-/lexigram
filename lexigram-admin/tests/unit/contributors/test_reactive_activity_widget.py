@@ -11,6 +11,13 @@ from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
 from lexigram.contracts.admin import EmptyContent, TableContent, WidgetParams
 
 
+async def test_activity_widget_definition_is_live() -> None:
+    """The activity widget declares itself live so the dashboard drops polling for it."""
+    contributor = CoreAdminContributor()
+    widgets = {w.name: w for w in contributor.get_dashboard_widgets()}
+    assert widgets["activity"].live_resource_types == ("*",)
+
+
 class StubResolver:
     """Minimal container-resolver stand-in returning the hub."""
 

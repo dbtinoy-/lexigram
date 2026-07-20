@@ -215,6 +215,7 @@ class CoreAdminContributor(BaseAdminContributor):
                 order=90,
                 icon="activity",
                 description="Recent admin operations and system events.",
+                live_resource_types=("*",),
             ),
             DashboardWidgetDefinition(
                 name="chart_metrics",
