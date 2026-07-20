@@ -13,6 +13,7 @@ from lexigram.admin.exceptions import (
     AdminValidationError,
     PermissionDeniedError,
 )
+from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
 from lexigram.admin.services.action_registry import (
     ActionConfig,
     ActionContext,
@@ -49,7 +50,7 @@ class ActionExecutor:
     - Authorization checks
     - Sync and async execution
     - Result handling
-    - Real-time notification publishing via AdminEventHub
+    - Real-time notification publishing via SubjectAdminEventHub
 
     Example:
         >>> executor = ActionExecutor(registry, authorizer)
@@ -67,7 +68,7 @@ class ActionExecutor:
         registry: ActionRegistry,
         authorizer: AuthorizerProtocol | None = None,
         task_scheduler: TaskScheduler | None = None,
-        event_hub: Any | None = None,
+        event_hub: SubjectAdminEventHub | None = None,
         resource_resolver: Any | None = None,
     ):
         """Initialize the action executor.
@@ -76,7 +77,10 @@ class ActionExecutor:
             registry: Action registry
             authorizer: Optional authorizer for permission checks
             task_scheduler: Optional task scheduler for async actions
-            event_hub: Optional AdminEventHub for publishing real-time notifications
+            event_hub: Optional SubjectAdminEventHub for publishing
+                real-time notifications. Uses on_overflow="drop_latest"
+                internally, so publishing here never blocks this
+                method's caller on a slow subscriber.
             resource_resolver: Optional callable ``(resource_name) -> Resource``
                 used to resolve resource-level action hooks via
                 ``Resource.get_action_hooks(action_name)``.
