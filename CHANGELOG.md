@@ -5,6 +5,14 @@ All notable changes to the Lexigram Framework are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Admin dashboard live widgets (L1 reactive delivery, audit §16): `/admin/_sse/events` retired in favor of `/admin/_sse/widgets` — breaking for any external client polling the old path directly (none found in-repo); clients must now open the new stream and filter by `resource_type` server-side via the `resources` query parameter (RBAC-checked against `PermissionService.can_list`).
+- The `activity` widget now pushes live updates over a single shared `EventSource` instead of polling every 15s; widgets declaring `live_resource_types` skip their htmx poll trigger and re-render on matching SSE messages.
+- `SubjectAdminEventHub` gained tenant scoping (`subscribe(tenant_id=...)`), `drop_latest` subscriber overflow (publishing never blocks on a slow subscriber), and `publish_notification()`; `ActionExecutor.event_hub` is now typed `SubjectAdminEventHub | None` so `@inject` auto-resolution can wire it.
+- `WidgetParams` and `AdminEvent` carry an optional `tenant_id` for future tenant-scoped streams.
+
 ## [0.1.1] — 2026-04-22
 
 ### Added

@@ -1501,6 +1501,28 @@ through the existing `from_bus` shape (no new transport invented);
 **Status:** spec and plan written, plan twice-reviewed and approved; no
 execution yet.
 
+### 16.1 Tasks summary (8/8 done, executed 2026-08-19)
+
+| Task | Area |
+|---|---|
+| 1 | `tenant_id` on `WidgetParams` (`lexigram-contracts/admin/types.py`) and `AdminEvent` (`lexigram-admin/realtime/sse.py`) |
+| 2 | `SubjectAdminEventHub` hardening — `on_overflow="drop_latest"`, tenant filter on `subscribe()`, `publish_notification()` |
+| 3 | `/admin/_sse/widgets` SSE route — RBAC-gated `resources` filter, `SubjectAdminEventHub`-backed via `sse_from_stream` bridge |
+| 4 | Retire legacy `AdminEventHub`/`AdminEventsHandler`/`create_sse_response`; repoint inbox bridge to `SubjectAdminEventHub`; drop stale `_PUBLIC_PATHS` `/admin/events` entry |
+| 5 | `DashboardWidgetDefinition.live_resource_types` + SSE-triggered refresh in `render_contributor_widgets` (shared page-level `EventSource`, `data-live-resources` dispatch) |
+| 6 | `activity` widget marked `live_resource_types=("*",)` — poll trigger suppressed; push replaces polling |
+| 7 | `ActionExecutor.event_hub: Any | None` → `SubjectAdminEventHub | None` for `@inject` auto-resolution |
+
+**Execution (2026-08-19):** all 8 tasks landed. Commits: Task 1 `a8d8eba8`, Task 2 `c807bd4e`, Task 3 `b946700d`, Task 4 `add338bd`, Task 5 `0400fe2b`, Task 6 `d382525d`, Task 7 `f616ee4b`.
+
+**Execution deviations from plan snippets (verified against live source, documented here):**
+- Task 3 integration testing: `httpx.ASGITransport` awaits the app inline and only returns when the response completes, so it hangs on the endless SSE stream — the authorized-user test invokes the handler directly with a Starlette `Request` scope instead (deviation recorded in `tests/integration/test_widget_sse_route.py`); the finite `requires_auth` case runs through `ASGITransport` normally.
+- Task 7: `mypy` on `action_executor.py` surfaces one pre-existing `no-any-return` (line 167, handler-validate path) present at HEAD — confirmed by diffing against the HEAD snapshot; not introduced by this task, left untouched per surgical-changes rule (repo-wide mypy debt tracked separately).
+- Task 6 plan step 5 (manual browser verification of poll → push behavior) has not run; needs a human/browser pass before the poll→push switch is observed end-to-end.
+- The `live_events` scope-narrowing finding (cannot be migrated without a forbidden `lexigram-events`→`lexigram-admin` import) stands as documented in the header above — `activity` only for v1.
+
+**Verification:** scoped suites green — contracts 1786, admin full non-integration 4478 (7 skipped; one transient other-lane flake in `test_settings_controller.py` each run, passes per-file), contracts+admin combined 6381; integration `test_widget_sse_route.py` 2/2; `ruff check` clean tree-wide (report-only; 9 pre-existing format-flagged files belong to other lanes — `sse.py` reformatted, all others untouched); `mypy lexigram/src/` clean; API boundary gate (`tools/generate_package_api.py -s 25000`) clean.
+
 ---
 
 ## 17. Commands (from AGENTS.md)
