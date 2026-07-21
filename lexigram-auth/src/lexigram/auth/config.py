@@ -110,6 +110,8 @@ class JWTConfig(BaseConfig):
 
     - ``PRODUCTION`` / ``STAGING``: A secret is **required** and must meet
       strength checks (no known default value, >= 32 bytes for HS algorithms).
+      An explicit ``required_audience`` is **mandatory** so tokens cannot
+      cross service boundaries.
     - ``DEVELOPMENT``: A missing secret falls back to a generated ephemeral
       secret so signature verification **stays enabled**; tokens are
       invalidated on restart. Set ``LEX_AUTH__TOKEN__SECRET_KEY`` for a
@@ -178,6 +180,13 @@ class JWTConfig(BaseConfig):
                     f"least 32 bytes in {env.value}.\n"
                     "Either provide a strong secret (e.g. secrets.token_hex(32)) "
                     "or switch to RS256 for asymmetric key security.",
+                )
+            if self.required_audience is None:
+                raise ValueError(
+                    f"SECURITY ERROR: JWT required_audience is required in {env.value.upper()}.\n"
+                    "Without an audience, tokens verified by this service are accepted "
+                    "by any service sharing the secret. Set "
+                    "LEX_AUTH__TOKEN__REQUIRED_AUDIENCE or token.required_audience in config.",
                 )
 
         elif env == Environment.DEVELOPMENT:

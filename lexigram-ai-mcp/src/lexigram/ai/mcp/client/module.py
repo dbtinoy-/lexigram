@@ -22,7 +22,7 @@ Basic usage::
                         name="git",
                     ),
                     MCPConnection.sse(
-                        "http://analytics.internal/mcp",
+                        "http://localhost:8080/mcp",
                         name="analytics",
                     ),
                 ]
@@ -168,7 +168,7 @@ class MCPConnection:
         Example::
 
             MCPConnection.sse(
-                "http://analytics.internal/mcp",
+                "http://localhost:8080/mcp",
                 name="analytics",
                 headers={"Authorization": "Bearer secret"},
             )
