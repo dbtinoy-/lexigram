@@ -42,7 +42,7 @@ def _render_live_widget_script() -> str:
         "es.onmessage=function(ev){"
         "var data;"
         "try{data=JSON.parse(ev.data);}catch(e){return;}"
-        "var resourceType=data.resource_type;"
+        "var resourceType=(data.data||{}).resource_type;"
         "document.querySelectorAll('[data-live-resources]').forEach(function(el){"
         "var types=el.getAttribute('data-live-resources').split(',');"
         "if(types.indexOf('*')!==-1||(resourceType&&types.indexOf(resourceType)!==-1)){"

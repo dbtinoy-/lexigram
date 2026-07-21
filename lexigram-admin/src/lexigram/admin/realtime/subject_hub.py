@@ -1,8 +1,10 @@
 """Subject-backed admin event hub.
 
-Same public surface as :class:`lexigram.admin.realtime.sse.AdminEventHub`
-but backed by :class:`lexigram.reactive.Subject`, giving subscribers
-bounded backpressure and the full operator toolbox.
+The hub the legacy SSE event stream used (``AdminEventHub`` in
+``realtime/sse.py``) was retired in the live-widgets plan; this hub
+backs both the inbox bridge and the ``/admin/_sse/widgets`` stream via
+:class:`lexigram.reactive.Subject`, giving subscribers bounded
+backpressure and the full operator toolbox.
 """
 
 from __future__ import annotations
@@ -72,7 +74,7 @@ class SubjectAdminEventHub:
             user_id: Restricts delivery to broadcast events
                 (``target_users is None``) plus events explicitly
                 targeted at this user. ``None`` (the default) sees only
-                broadcast events — matches ``AdminEventHub``'s targeting
+                broadcast events — matches the legacy hub's targeting
                 semantics, which ``action_executor.py`` relies on to keep
                 a caller's own action-result notification private to
                 that caller.
@@ -142,7 +144,9 @@ class SubjectAdminEventHub:
     ) -> int:
         """Publish a notification event.
 
-        Mirrors ``AdminEventHub.publish_notification``'s signature so
+        Produces an ``AdminEventType.NOTIFICATION`` broadcast to the
+        given users (or everyone when ``target_users`` is ``None``),
+        mirroring the retired legacy hub's call signature so
         callers (the inbox bridge, action-result notifications) can move
         to this hub with no call-site changes beyond the import.
         """
