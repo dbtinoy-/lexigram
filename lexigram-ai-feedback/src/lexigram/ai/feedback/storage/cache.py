@@ -29,12 +29,12 @@ _SESSION_TTL = 300  # 5 minutes
 _TYPE_TTL = 60  # 1 minute
 
 
-def _session_key(session_id: str) -> str:
-    return f"feedback:session:{session_id}"
+def _session_key(owner_id: str, session_id: str) -> str:
+    return f"feedback:session:{owner_id}:{session_id}"
 
 
-def _type_key(feedback_type: FeedbackType) -> str:
-    return f"feedback:type:{feedback_type.value}"
+def _type_key(owner_id: str, feedback_type: FeedbackType) -> str:
+    return f"feedback:type:{owner_id}:{feedback_type.value}"
 
 
 class CachedFeedbackStore:
@@ -70,68 +70,83 @@ class CachedFeedbackStore:
         if result.is_ok():
             session_id: str | None = feedback.context.get("session_id")
             if session_id:
-                await self._cache.delete(_session_key(session_id))
-            await self._cache.delete(_type_key(feedback.feedback_type))
+                await self._cache.delete(_session_key(feedback.owner_id, session_id))
+            await self._cache.delete(
+                _type_key(feedback.owner_id, feedback.feedback_type)
+            )
             logger.debug(
                 "feedback_cache_invalidated",
                 feedback_id=feedback.id,
+                owner_id=feedback.owner_id,
                 session_id=session_id,
             )
         return result
 
-    async def find_by_session(self, session_id: str) -> list[FeedbackItem]:
-        """Return items for *session_id*, using cache when available.
+    async def find_by_session(
+        self, session_id: str, *, owner_id: str
+    ) -> list[FeedbackItem]:
+        """Return items for *session_id* owned by *owner_id*, using cache when available.
 
         Args:
             session_id: Session identifier.
+            owner_id: Owner scope; only this owner's items are returned.
 
         Returns:
             Feedback items for the session, newest first.
         """
-        cached = await self._cache.get(_session_key(session_id))
+        key = _session_key(owner_id, session_id)
+        cached = await self._cache.get(key)
         if cached is not None:
-            logger.debug("feedback_cache_hit", key=_session_key(session_id))
+            logger.debug("feedback_cache_hit", key=key)
             return cached  # type: ignore[return-value]
 
-        items = await self._store.find_by_session(session_id)
-        await self._cache.set(_session_key(session_id), items, ttl=_SESSION_TTL)
+        items = await self._store.find_by_session(session_id, owner_id=owner_id)
+        await self._cache.set(key, items, ttl=_SESSION_TTL)
         return items
 
     async def find_by_type(
         self,
         feedback_type: FeedbackType,
         *,
+        owner_id: str,
         limit: int = 100,
     ) -> list[FeedbackItem]:
-        """Return items of *feedback_type*, using cache when available.
+        """Return items of *feedback_type* owned by *owner_id*, using cache when available.
 
         Args:
             feedback_type: Type to filter by.
+            owner_id: Owner scope; only this owner's items are returned.
             limit: Maximum result count.
 
         Returns:
             Matching feedback items, newest first.
         """
-        cached = await self._cache.get(_type_key(feedback_type))
+        key = _type_key(owner_id, feedback_type)
+        cached = await self._cache.get(key)
         if cached is not None:
-            logger.debug("feedback_cache_hit", key=_type_key(feedback_type))
+            logger.debug("feedback_cache_hit", key=key)
             items: list[FeedbackItem] = cached  # type: ignore[assignment]
             return items[:limit]
 
-        items = await self._store.find_by_type(feedback_type, limit=limit)
-        await self._cache.set(_type_key(feedback_type), items, ttl=_TYPE_TTL)
+        items = await self._store.find_by_type(
+            feedback_type, owner_id=owner_id, limit=limit
+        )
+        await self._cache.set(key, items, ttl=_TYPE_TTL)
         return items
 
-    async def aggregate(self, *, window_hours: int = 24) -> FeedbackSummary:
+    async def aggregate(
+        self, *, owner_id: str, window_hours: int = 24
+    ) -> FeedbackSummary:
         """Delegate aggregation to the backing store — not cached.
 
         Args:
+            owner_id: Owner scope; only this owner's items are aggregated.
             window_hours: Look-back window in hours.
 
         Returns:
             :class:`~lexigram.ai.feedback.storage.protocols.FeedbackSummary`.
         """
-        return await self._store.aggregate(window_hours=window_hours)
+        return await self._store.aggregate(owner_id=owner_id, window_hours=window_hours)
 
 
 __all__ = ["CachedFeedbackStore"]
