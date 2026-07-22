@@ -301,7 +301,6 @@ Partially executed 2026-08-16 (`75568cd`), completed 2026-08-18. **Deviations fr
 ---
 
 ### 3.16 Audit retention purge no-op (Round 11, Lane 7) — `plans/2026-08-18-security-audit-purge-noop.md` `[ ]`
-
 **EXECUTED 2026-08-18 (Lane 7, Area 1; §2 sign-off pending).** Finding §67: `purge_expired()` counted expired entries but never deleted — now real + dry-run mode. All 5 tasks done, 5 commits:
 
 - [x] Task 1 (contracts) — `AuditStoreProtocol.delete_expired(cutoff) -> int` + conforming fakes — `a6cba27d`
@@ -311,6 +310,19 @@ Partially executed 2026-08-16 (`75568cd`), completed 2026-08-18. **Deviations fr
 - [x] Task 5 (docs + verification) — audit-trail guide dry-run/first-run guidance — `534a2913`
 
 Verified: lexigram-audit 274 unit tests green, contracts protocol tests 12 green, ruff clean on all touched trees, mypy clean (audit 46 files, testing 151 files; the plan's combined mypy command hits a pre-existing duplicate-module limitation — two `lexigram/` roots in one invocation — run per-tree instead). Spec cross-check: §3.1/§4.2 store-state tests, §3.2 single-delete test, §6 untouched (`verification/`, `retention/policy.py`, `cli/commands.py`).
+
+---
+
+### 3.17 Audit tamper-verification no-op (Round 11, Lane 7) — `plans/2026-08-18-security-audit-verification-noop.md` `[ ]`
+
+**EXECUTED 2026-08-18 (Lane 7, Area 2; §2 sign-off pending).** Finding §66: `verify_recent()`/`verify_entry()` were permanent no-ops (always `[]` / always `True`; admin page forever green). Now real recompute-and-compare with honest legacy handling. Plan file was truncated at Task 3 (`<!-- CHUNK_TASK3 -->`); Tasks 1-2 executed verbatim, Tasks 3-4 reconstructed from the spec + plan-header constraints (dual-version comparison, `no_checksum_present` legacy reporting, three-way admin status). 4 commits:
+
+- [x] Task 1 (contracts) — `AuditEntry.checksum` (defaulted, last field), `AuditMismatchReason` StrEnum (`checksum_mismatch`/`no_checksum_present`), `AuditMismatch.reason` defaulted, `AuditVerifierProtocol.verify_entry(entry) -> AuditMismatch | None`; exports + 5 model tests — `9105da48`
+- [x] Task 2 (SQL store) — module-level `entry_to_row()` (canonical checksum form, moved verbatim from append, in `__all__`); `append()` uses it; `_row_to_entry()` populates `checksum`; round-trip + read-back tests — `0fff2da4`
+- [x] Task 3 (verifier) — real `verify_recent()`/`verify_entry()`: recompute over `entry_to_row`, dual-version comparison (v1 backfilled / v2 write-time), `no_checksum_present` for legacy, no-key → None/`[]` (feature-off semantics preserved); test_verifier.py rewritten (clean/tampered/legacy/v1/mixed) — `b51560b` (+ `a697f8c`, `668b6da` style)
+- [x] Task 4 (admin page) — three-way Integrity Status (Verified/Compromised/Unverifiable with color+icon), detail text per state, mismatch table renders tampered rows only; new `test_verification_page.py` (7 tests) — `c692e64c`
+
+Verified: lexigram-audit 287 unit tests green (incl. 12 rewritten verifier + 7 new page tests), contracts audit protocol tests 12 green, ruff clean on audit+contracts trees, mypy clean (audit+contracts 49 files; only caller `verify_recent` in scheduler/contributor unaffected — grep confirms no legacy `verify_entry(entry_id)` callers). Reconstruction decisions: `entry_id` = `action#occurred_at.isoformat()` (contract has no id field); `_checksum_matches` tries schema versions 1 and 2 explicitly (the `entry_schema_version` column is unreliable — append writes 1 while checksums are computed at v2; backfill-vs-new split is exactly what dual-version covers); legacy `expected_checksum=""`; no-key `verify_entry` → `None` (mirrors verify_recent feature-off).
 
 ---
 
