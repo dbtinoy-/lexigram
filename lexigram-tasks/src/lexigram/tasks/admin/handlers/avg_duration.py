@@ -13,11 +13,11 @@ class AvgDurationWidgetHandler:
     """Fetches average task execution duration statistics.
 
     Args:
-        scheduler_or_metrics: Injected task scheduler or metrics provider (Any).
+        pool_provider: Injected worker pool exposing ``get_pool_stats`` (Any).
     """
 
-    def __init__(self, scheduler_or_metrics: Any = None) -> None:
-        self._scheduler_or_metrics = scheduler_or_metrics
+    def __init__(self, pool_provider: Any = None) -> None:
+        self._pool_provider = pool_provider
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch average duration statistics.
@@ -31,9 +31,15 @@ class AvgDurationWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # TODO: Integrate with metrics collector to fetch real duration stats.
-        # For now, return stub data.
         avg_ms = 0.0
+        get_pool_stats = getattr(self._pool_provider, "get_pool_stats", None)
+        if callable(get_pool_stats):
+            pool_stats = get_pool_stats()
+            avg_seconds = float(pool_stats.get("average_processing_time", 0.0))
+            avg_ms = round(avg_seconds * 1000, 1)
+        # P95 has no data source anywhere in lexigram-tasks (WorkerJobStats only
+        # tracks a running average, no percentile distribution) — left at 0.0,
+        # same documented-placeholder treatment as the activity/health branches.
         p95_ms = 0.0
         return Ok(
             StatContent(

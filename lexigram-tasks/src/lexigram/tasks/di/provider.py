@@ -320,13 +320,13 @@ class TaskProvider(Provider):
         # Register handlers as transient
         container.transient(
             TasksSummaryWidgetHandler,
-            factory=lambda: TasksSummaryWidgetHandler(queue_provider=self.queue),
+            factory=lambda: TasksSummaryWidgetHandler(
+                queue_provider=self.queue, pool_provider=self.worker_pool
+            ),
         )
         container.transient(
             AvgDurationWidgetHandler,
-            factory=lambda: AvgDurationWidgetHandler(
-                scheduler_or_metrics=self.scheduler
-            ),
+            factory=lambda: AvgDurationWidgetHandler(pool_provider=self.worker_pool),
         )
 
         # Register the contributor as singleton

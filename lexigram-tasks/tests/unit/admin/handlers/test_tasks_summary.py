@@ -5,7 +5,49 @@ from __future__ import annotations
 import pytest
 
 from lexigram.contracts.admin import StatContent, Tone, WidgetParams
+from lexigram.result import Ok
 from lexigram.tasks.admin.handlers.tasks_summary import TasksSummaryWidgetHandler
+
+
+class _FakeQueue:
+    """Implements TaskQueueProtocol.get_task_count."""
+
+    def __init__(self, count: int = 0) -> None:
+        self.count = count
+
+    async def get_task_count(self) -> int:
+        return self.count
+
+
+class _FakePool:
+    """Implements WorkerPool.get_pool_stats."""
+
+    def __init__(self, stats: dict | None = None) -> None:
+        self.stats = stats or {}
+
+    def get_pool_stats(self) -> dict:
+        return self.stats
+
+
+@pytest.mark.asyncio
+async def test_tasks_summary_reports_real_queue_and_pool_stats() -> None:
+    handler = TasksSummaryWidgetHandler(
+        queue_provider=_FakeQueue(count=25),
+        pool_provider=_FakePool(
+            stats={
+                "active_workers": 3,
+                "total_jobs_succeeded": 40,
+                "total_jobs_failed": 2,
+            }
+        ),
+    )
+    result = await handler.get_data(WidgetParams(time_window_minutes=60))
+    assert isinstance(result, Ok)
+    values = [s.value for s in result.unwrap().stats]
+    assert "25" in values
+    assert "3" in values
+    assert "40" in values
+    assert "2" in values
 
 
 @pytest.mark.asyncio
