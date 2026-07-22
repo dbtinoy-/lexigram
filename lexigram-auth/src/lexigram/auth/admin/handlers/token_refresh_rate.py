@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from lexigram.auth.services.activity_tracker import AuthActivityTracker
 from lexigram.contracts.admin import Stat, StatContent, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.ai.session import SessionManagerProtocol
 from lexigram.result import Ok, Result
 
 
@@ -12,16 +12,16 @@ class TokenRefreshRateWidgetHandler:
     """Handler for the token refresh rate widget.
 
     Args:
-        session_manager: injected SessionManagerProtocol.
+        tracker: injected AuthActivityTracker.
     """
 
-    def __init__(self, session_manager: SessionManagerProtocol) -> None:
-        """Initialize handler with session manager.
+    def __init__(self, tracker: AuthActivityTracker) -> None:
+        """Initialize handler with the activity tracker.
 
         Args:
-            session_manager: SessionManagerProtocol for token metrics.
+            tracker: AuthActivityTracker for token metrics.
         """
-        self._session_manager = session_manager
+        self._tracker = tracker
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch token refresh rate data.
@@ -38,11 +38,10 @@ class TokenRefreshRateWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # TODO: Implement token refresh metrics tracking
-        # For now, return safe defaults (0.0)
-        refreshes_per_minute = 0.0
-        total_refreshes = 0
-
+        window = getattr(params, "time_window_minutes", 30)
+        refreshes_per_minute, total_refreshes = self._tracker.refresh_summary(
+            window_minutes=int(window or 30)
+        )
         return Ok(
             self._build_content(
                 refreshes_per_minute=refreshes_per_minute,

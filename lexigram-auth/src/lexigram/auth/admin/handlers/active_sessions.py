@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.admin import Stat, StatContent, WidgetParams
+from datetime import UTC, datetime
+
+from lexigram.contracts.admin import (
+    SessionCountProtocol,
+    Stat,
+    StatContent,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.ai.session import SessionManagerProtocol
+from lexigram.contracts.auth import SessionRepositoryProtocol
 from lexigram.result import Ok, Result
 
 
@@ -12,16 +19,20 @@ class ActiveSessionsWidgetHandler:
     """Handler for the active sessions widget.
 
     Args:
-        session_manager: injected SessionManagerProtocol.
+        session_repository: optional session repository. Degrades to a zero
+            count when absent or when it lacks the session-count capability.
     """
 
-    def __init__(self, session_manager: SessionManagerProtocol) -> None:
-        """Initialize handler with session manager.
+    def __init__(
+        self, session_repository: SessionRepositoryProtocol | None = None
+    ) -> None:
+        """Initialize handler with the session repository.
 
         Args:
-            session_manager: SessionManagerProtocol to retrieve active sessions.
+            session_repository: repository implementing SessionRepositoryProtocol.
+                When None, the widget reports a zero count.
         """
-        self._session_manager = session_manager
+        self._session_repository = session_repository
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch active sessions data.
@@ -38,12 +49,11 @@ class ActiveSessionsWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # TODO: Implement actual session statistics retrieval
-        # For now, return safe defaults (0)
         count = 0
-        peak_today = 0
-
-        return Ok(self._build_content(count=count, peak_today=peak_today))
+        if isinstance(self._session_repository, SessionCountProtocol):
+            cutoff = datetime.now(UTC)
+            count = await self._session_repository.count_active(cutoff)
+        return Ok(self._build_content(count=count, peak_today=0))
 
     def _build_content(self, count: int, peak_today: int) -> StatContent:
         """Build the StatContent mirroring the widget template.

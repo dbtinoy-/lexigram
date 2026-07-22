@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from lexigram.auth.services.activity_tracker import AuthActivityTracker
 from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.ai.session import SessionManagerProtocol
 from lexigram.result import Ok, Result
 
 
@@ -12,16 +12,16 @@ class FailedLoginsWidgetHandler:
     """Handler for the failed logins widget.
 
     Args:
-        session_manager: injected SessionManagerProtocol.
+        tracker: injected AuthActivityTracker.
     """
 
-    def __init__(self, session_manager: SessionManagerProtocol) -> None:
-        """Initialize handler with session manager.
+    def __init__(self, tracker: AuthActivityTracker) -> None:
+        """Initialize handler with the activity tracker.
 
         Args:
-            session_manager: SessionManagerProtocol for login failure tracking.
+            tracker: AuthActivityTracker for login failure tracking.
         """
-        self._session_manager = session_manager
+        self._tracker = tracker
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch failed login statistics.
@@ -38,15 +38,13 @@ class FailedLoginsWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # TODO: Implement failed login tracking
-        # For now, return safe defaults (0, 0, False)
-        count = 0
-        unique_ips = 0
-        is_elevated = False
-
+        window = getattr(params, "time_window_minutes", 30)
+        count, unique_ips = self._tracker.failed_login_summary(
+            window_minutes=int(window or 30)
+        )
         return Ok(
             self._build_content(
-                count=count, unique_ips=unique_ips, is_elevated=is_elevated
+                count=count, unique_ips=unique_ips, is_elevated=count > 0
             )
         )
 
