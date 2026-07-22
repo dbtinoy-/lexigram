@@ -26,15 +26,15 @@ class MockConfig:
 
 
 def _entry(**kw: Any) -> AuditEntry:
-    base = dict(
-        action="user.login",
-        actor_id="u-1",
-        resource_type="User",
-        resource_id="u-1",
-        outcome="success",
-        severity=AuditEventSeverity.MEDIUM,
-        source="admin",
-    )
+    base: dict[str, Any] = {
+        "action": "user.login",
+        "actor_id": "u-1",
+        "resource_type": "User",
+        "resource_id": "u-1",
+        "outcome": "success",
+        "severity": AuditEventSeverity.MEDIUM,
+        "source": "admin",
+    }
     base.update(kw)
     return AuditEntry(**base)
 
