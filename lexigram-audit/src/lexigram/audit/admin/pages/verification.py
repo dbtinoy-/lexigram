@@ -4,7 +4,7 @@ from typing import Any
 
 from starlette.responses import HTMLResponse
 
-from lexigram.contracts.audit import AuditVerifierProtocol
+from lexigram.contracts.audit import AuditMismatchReason, AuditVerifierProtocol
 from lexigram.logging import get_logger
 from lexigram.ui import (
     Card,
@@ -42,7 +42,23 @@ class AuditVerificationPage:
             logger.warning("audit_verification.verify_failed")
             mismatches = []
 
-        verified = len(mismatches) == 0
+        tampered = [
+            m for m in mismatches if m.reason == AuditMismatchReason.CHECKSUM_MISMATCH
+        ]
+        unverifiable_count = len(mismatches) - len(tampered)
+
+        if not mismatches:
+            status, status_color, status_icon = "Verified", "green", "shield-check"
+            detail = "All entries verified — no hash chain mismatches detected."
+        elif tampered:
+            status, status_color, status_icon = "Compromised", "red", "shield-x"
+            detail = f"{len(mismatches)} hash chain mismatches detected."
+        else:
+            status, status_color, status_icon = "Unverifiable", "amber", "shield-alert"
+            detail = (
+                f"{unverifiable_count} legacy entries lack stored checksums "
+                "and could not be verified."
+            )
 
         html = render_to_string(
             el(
@@ -61,9 +77,9 @@ class AuditVerificationPage:
                 Grid(
                     StatCard(
                         label="Integrity Status",
-                        value="Verified" if verified else "Compromised",
-                        delta_color="green" if verified else "red",
-                        icon="shield-check",
+                        value=status,
+                        delta_color=status_color,
+                        icon=status_icon,
                     ),
                     StatCard(
                         label="Mismatches Found",
@@ -85,9 +101,7 @@ class AuditVerificationPage:
                             ),
                             el(
                                 "dd",
-                                "All entries verified — no hash chain mismatches detected."
-                                if verified
-                                else f"{len(mismatches)} hash chain mismatches detected.",
+                                detail,
                                 class_="text-sm text-[var(--foreground)] pb-3",
                             ),
                             class_="divide-y divide-[var(--border)]",
@@ -142,16 +156,16 @@ class AuditVerificationPage:
                                                 ),
                                             )
                                         )
-                                        for m in mismatches
+                                        for m in tampered
                                     )
-                                    if mismatches
+                                    if tampered
                                     else "",
                                 ),
                                 class_="divide-y divide-[var(--border)]",
                             ),
                             class_="min-w-full table-fixed divide-y divide-[var(--border)]",
                         )
-                        if mismatches
+                        if tampered
                         else el(
                             "p",
                             "No mismatches found.",
