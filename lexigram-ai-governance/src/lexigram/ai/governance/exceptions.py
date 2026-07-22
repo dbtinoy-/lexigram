@@ -61,9 +61,25 @@ class ModelAccessDeniedError(GovernanceError):
         )
 
 
+class GovernancePersistenceError(GovernanceError):
+    """Raised when a governance persistence backend is unavailable.
+
+    Raised by
+    :class:`~lexigram.ai.governance.persistence.RedisGovernancePersistence`
+    when the cache backend reports failure (an ``Err`` result).  The
+    :class:`~lexigram.ai.governance.manager.AIGovernanceManager` catches this at
+    the policy boundary and applies the configured fail-open / fail-closed
+    decision instead of letting a fabricated value inform the allow/deny
+    verdict.
+    """
+
+    _code: str = "LEX_ERR_GOV_008"
+
+
 __all__ = [
     "BudgetExceededError",
     "GovernanceError",
+    "GovernancePersistenceError",
     "ModelAccessDeniedError",
     "RateLimitExceededError",
     "ResourceExhaustedError",
