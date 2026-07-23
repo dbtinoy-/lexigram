@@ -226,12 +226,14 @@ class TestExceptionHierarchy:
         assert issubclass(exceptions.BudgetExceededError, BaseGovernanceError)
         assert issubclass(exceptions.RateLimitExceededError, BaseGovernanceError)
         assert issubclass(exceptions.ModelAccessDeniedError, BaseGovernanceError)
+        assert issubclass(exceptions.GovernancePersistenceError, BaseGovernanceError)
 
     def test_all_exceptions_inherit_from_governance_error(self) -> None:
         """Verify all leaf exceptions inherit from GovernanceError."""
         assert issubclass(exceptions.BudgetExceededError, exceptions.GovernanceError)
         assert issubclass(exceptions.RateLimitExceededError, exceptions.GovernanceError)
         assert issubclass(exceptions.ModelAccessDeniedError, exceptions.GovernanceError)
+        assert issubclass(exceptions.GovernancePersistenceError, exceptions.GovernanceError)
 
 
 class TestAllExports:
@@ -253,6 +255,10 @@ class TestAllExports:
         """Verify RateLimitExceededError is in __all__."""
         assert "RateLimitExceededError" in exceptions.__all__
 
+    def test_all_contains_governance_persistence_error(self) -> None:
+        """Verify GovernancePersistenceError is in __all__."""
+        assert "GovernancePersistenceError" in exceptions.__all__
+
     def test_all_exports_count(self) -> None:
         """Verify __all__ has expected number of exports."""
-        assert len(exceptions.__all__) == 5
+        assert len(exceptions.__all__) == 6
