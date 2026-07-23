@@ -8,6 +8,7 @@ from typing import Any
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import get_logger
 from lexigram.monitor.health.base import HealthCheck
+from lexigram.monitor.health.sanitize import safe_error_message
 from lexigram.primitives.registry import Registry
 
 logger = get_logger(__name__)
@@ -73,7 +74,7 @@ class HealthCheckRegistry(Registry[str, HealthCheck]):
                 result = HealthCheckResult(
                     component=check_name,
                     status=HealthStatus.UNHEALTHY,
-                    message=f"Check failed: {e}",
+                    message=safe_error_message(e),
                 )
                 results.append(result)
                 overall_status = HealthStatus.UNHEALTHY
@@ -112,7 +113,7 @@ class HealthCheckRegistry(Registry[str, HealthCheck]):
                 result = HealthCheckResult(
                     component=check_name,
                     status=HealthStatus.UNHEALTHY,
-                    message=f"Check failed: {e}",
+                    message=safe_error_message(e),
                 )
                 results.append(result)
                 if check.critical:
