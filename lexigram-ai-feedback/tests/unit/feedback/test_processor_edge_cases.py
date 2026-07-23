@@ -46,6 +46,7 @@ class TestProcessorRegistryEdgeCases:
                 5,
                 {},
                 collector,
+                owner_id="owner-1",
             )
 
     @pytest.mark.asyncio
@@ -55,7 +56,7 @@ class TestProcessorRegistryEdgeCases:
         collector = FeedbackCollector()
         
         with pytest.raises(ValueError, match="No processor for feedback type"):
-            await registry.process("any_type", "value", {}, collector)
+            await registry.process("any_type", "value", {}, collector, owner_id="owner-1")
 
     @pytest.mark.asyncio
     async def test_process_with_non_enum_type(self) -> None:
@@ -73,6 +74,7 @@ class TestProcessorRegistryEdgeCases:
             "value",
             {"ctx": "test"},
             collector=FeedbackCollector(),
+            owner_id="owner-1",
         )
         
         assert result == "custom-id"

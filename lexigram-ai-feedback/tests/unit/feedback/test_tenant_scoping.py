@@ -12,6 +12,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lexigram.ai.feedback.middleware import FeedbackMiddleware
+from lexigram.ai.feedback.services.collector import FeedbackCollector
+from lexigram.ai.feedback.services.feedback_service import FeedbackService
 from lexigram.ai.feedback.storage.cache import CachedFeedbackStore
 from lexigram.ai.feedback.storage.database import DatabaseFeedbackStore
 from lexigram.ai.feedback.types import FeedbackItem, FeedbackType
@@ -200,3 +203,77 @@ class TestCachedFeedbackStoreIsolation:
         deleted_keys = [call.args[0] for call in cache.delete.await_args_list]
         assert f"feedback:session:{OWNER_A}:session-1" in deleted_keys
         assert f"feedback:type:{OWNER_A}:rating" in deleted_keys
+
+
+class TestServiceLayerIsolation:
+    @pytest.mark.asyncio
+    async def test_submit_feedback_marks_item_with_owner(self) -> None:
+        store = MagicMock()
+        store.save = AsyncMock(return_value=Ok("fb-1"))
+        service = FeedbackService(store=store)
+
+        await service.submit_feedback(trace_id="t1", score=0.9, owner_id=OWNER_A)
+
+        item: FeedbackItem = store.save.await_args.args[0]
+        assert item.owner_id == OWNER_A
+
+    @pytest.mark.asyncio
+    async def test_get_feedback_stats_scopes_aggregate(self) -> None:
+        store = MagicMock()
+        store.aggregate = AsyncMock(
+            return_value=MagicMock(
+                total_count=0, average_rating=None, count_by_type={}
+            )
+        )
+        service = FeedbackService(store=store)
+
+        await service.get_feedback_stats(owner_id=OWNER_B)
+
+        store.aggregate.assert_awaited_once_with(owner_id=OWNER_B, window_hours=24)
+
+    @pytest.mark.asyncio
+    async def test_collector_memory_buffer_is_owner_scoped(self) -> None:
+        collector = FeedbackCollector()
+        await collector.collect_rating(rating=5.0, owner_id=OWNER_A)
+        await collector.collect_rating(rating=3.0, owner_id=OWNER_B)
+
+        a_items = await collector.get_feedback(owner_id=OWNER_A)
+        b_items = await collector.get_feedback(owner_id=OWNER_B)
+
+        assert len(a_items) == 1
+        assert a_items[0].owner_id == OWNER_A
+        assert len(b_items) == 1
+        assert b_items[0].owner_id == OWNER_B
+
+    @pytest.mark.asyncio
+    async def test_collector_storage_path_scopes_find_by_type(self) -> None:
+        backing = MagicMock()
+        backing.save = AsyncMock()
+        backing.find_by_type = AsyncMock(return_value=[])
+        collector = FeedbackCollector(storage=backing)
+
+        await collector.get_feedback(owner_id=OWNER_A, feedback_type=FeedbackType.RATING)
+
+        backing.find_by_type.assert_awaited_with(
+            FeedbackType.RATING, owner_id=OWNER_A, limit=100
+        )
+
+    @pytest.mark.asyncio
+    async def test_middleware_feedback_handler_accepts_owner_id(self) -> None:
+        registry = MagicMock()
+        registry.process = AsyncMock(return_value="fb-1")
+        collector = MagicMock()
+        middleware = FeedbackMiddleware(
+            collector=collector, registry=registry
+        )
+        handler = middleware.create_feedback_endpoint()
+
+        response = await handler(
+            "ctx-1", "rating", 4.5, owner_id=OWNER_A, extra="x"
+        )
+
+        assert response["feedback_id"] == "fb-1"
+        registry.process.assert_awaited_once_with(
+            "rating", 4.5, {"context_id": "ctx-1", "extra": "x"},
+            collector, owner_id=OWNER_A,
+        )

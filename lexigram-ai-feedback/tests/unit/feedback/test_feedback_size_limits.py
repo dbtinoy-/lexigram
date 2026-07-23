@@ -30,14 +30,16 @@ class TestCollectorSizeLimits:
     @pytest.mark.asyncio
     async def test_text_at_limit_accepted(self, collector: FeedbackCollector) -> None:
         """Text exactly at the limit passes (boundary is inclusive)."""
-        await collector.collect_text(text="x" * MAX_FEEDBACK_TEXT_LENGTH)
+        await collector.collect_text(text="x" * MAX_FEEDBACK_TEXT_LENGTH, owner_id="owner-1")
         assert len(collector) == 1
 
     @pytest.mark.asyncio
     async def test_text_over_limit_rejected(self, collector: FeedbackCollector) -> None:
         """One char over the limit raises and nothing is stored."""
         with pytest.raises(FeedbackTooLargeError):
-            await collector.collect_text(text="x" * (MAX_FEEDBACK_TEXT_LENGTH + 1))
+            await collector.collect_text(
+                text="x" * (MAX_FEEDBACK_TEXT_LENGTH + 1), owner_id="owner-1"
+            )
         assert len(collector) == 0
 
     @pytest.mark.asyncio
@@ -49,7 +51,7 @@ class TestCollectorSizeLimits:
         pad = MAX_CONTEXT_SIZE - len(dumps_str(base))
         ctx = {"key": "x" * pad}
         assert len(dumps_str(ctx)) == MAX_CONTEXT_SIZE
-        await collector.collect_rating(rating=5, context=ctx)
+        await collector.collect_rating(rating=5, context=ctx, owner_id="owner-1")
         assert len(collector) == 1
 
     @pytest.mark.asyncio
@@ -60,7 +62,7 @@ class TestCollectorSizeLimits:
         base = {"key": ""}
         pad = MAX_CONTEXT_SIZE - len(dumps_str(base)) + 1
         with pytest.raises(FeedbackTooLargeError):
-            await collector.collect_rating(rating=5, context={"key": "x" * pad})
+            await collector.collect_rating(rating=5, context={"key": "x" * pad}, owner_id="owner-1")
         assert len(collector) == 0
 
     @pytest.mark.asyncio
@@ -71,7 +73,7 @@ class TestCollectorSizeLimits:
         base = {"m": ""}
         pad = MAX_CONTEXT_SIZE - len(dumps_str(base)) + 1
         with pytest.raises(FeedbackTooLargeError):
-            await collector.collect_text(text="ok", metadata={"m": "x" * pad})
+            await collector.collect_text(text="ok", metadata={"m": "x" * pad}, owner_id="owner-1")
         assert len(collector) == 0
 
     @pytest.mark.asyncio
@@ -82,6 +84,7 @@ class TestCollectorSizeLimits:
         await collector.collect_rating(
             rating=9999,
             context={"data": "x" * (MAX_FEEDBACK_TEXT_LENGTH + 100)},
+            owner_id="owner-1",
         )
         assert len(collector) == 1
 
@@ -96,6 +99,7 @@ class TestCollectorSizeLimits:
                 "x" * (MAX_FEEDBACK_TEXT_LENGTH + 1),
                 {"context_id": "c1"},
                 collector,
+                owner_id="owner-1",
             )
         assert len(collector) == 0
 
@@ -110,18 +114,21 @@ class _InMemoryStore(FeedbackStoreProtocol):
         self.items.append(feedback)
         return Ok(feedback.id)
 
-    async def find_by_session(self, session_id: str) -> list[FeedbackItem]:
+    async def find_by_session(
+        self, session_id: str, *, owner_id: str
+    ) -> list[FeedbackItem]:
         return []
 
     async def find_by_type(
         self,
         feedback_type: FeedbackType,
         *,
+        owner_id: str,
         limit: int = 100,
     ) -> list[FeedbackItem]:
         return []
 
-    async def aggregate(self, *, window_hours: int = 24) -> FeedbackSummary:
+    async def aggregate(self, *, owner_id: str, window_hours: int = 24) -> FeedbackSummary:
         return FeedbackSummary(total_count=len(self.items))
 
 
@@ -134,7 +141,7 @@ class TestFeedbackServiceSizeLimits:
         store = _InMemoryStore()
         service = FeedbackService(store=store)
         await service.submit_feedback(
-            trace_id="t1", score=5.0, comment="x" * MAX_FEEDBACK_TEXT_LENGTH
+            trace_id="t1", score=5.0, comment="x" * MAX_FEEDBACK_TEXT_LENGTH, owner_id="owner-1"
         )
         assert len(store.items) == 1
 
@@ -148,6 +155,7 @@ class TestFeedbackServiceSizeLimits:
                 trace_id="t1",
                 score=5.0,
                 comment="x" * (MAX_FEEDBACK_TEXT_LENGTH + 1),
+                owner_id="owner-1",
             )
         assert len(store.items) == 0
 
@@ -160,7 +168,7 @@ class TestFeedbackServiceSizeLimits:
         pad = MAX_CONTEXT_SIZE - len(dumps_str(base)) + 1
         with pytest.raises(FeedbackTooLargeError):
             await service.submit_feedback(
-                trace_id="t1", score=5.0, metadata={"m": "x" * pad}
+                trace_id="t1", score=5.0, metadata={"m": "x" * pad}, owner_id="owner-1"
             )
         assert len(store.items) == 0
 
@@ -173,6 +181,7 @@ class TestFeedbackServiceSizeLimits:
                 trace_id="t1",
                 score=5.0,
                 comment="x" * (MAX_FEEDBACK_TEXT_LENGTH + 1),
+                owner_id="owner-1",
             )
 
     @pytest.mark.asyncio
@@ -180,6 +189,6 @@ class TestFeedbackServiceSizeLimits:
         """Normal submission without comment still persists."""
         store = _InMemoryStore()
         service = FeedbackService(store=store)
-        await service.submit_feedback(trace_id="t1", score=5.0)
+        await service.submit_feedback(trace_id="t1", score=5.0, owner_id="owner-1")
         assert len(store.items) == 1
         assert store.items[0].metadata == {}

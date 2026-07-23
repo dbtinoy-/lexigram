@@ -15,8 +15,17 @@ class FeedbackProcessor(Protocol):
         value: Any,
         context: dict[str, Any],
         collector: FeedbackCollector,
+        *,
+        owner_id: str,
     ) -> str:
-        """Process feedback and return feedback ID."""
+        """Process feedback and return feedback ID.
+
+        Args:
+            value: Feedback value.
+            context: Context dict for the feedback.
+            collector: Collector to store the feedback.
+            owner_id: Owner scope; the item is recorded under this owner.
+        """
         ...
 
 
@@ -28,8 +37,12 @@ class RatingFeedbackProcessor:
         value: Any,
         context: dict[str, Any],
         collector: FeedbackCollector,
+        *,
+        owner_id: str,
     ) -> str:
-        return await collector.collect_rating(rating=value, context=context)
+        return await collector.collect_rating(
+            rating=value, owner_id=owner_id, context=context
+        )
 
 
 class TextFeedbackProcessor:
@@ -40,8 +53,12 @@ class TextFeedbackProcessor:
         value: Any,
         context: dict[str, Any],
         collector: FeedbackCollector,
+        *,
+        owner_id: str,
     ) -> str:
-        return await collector.collect_text(text=value, context=context)
+        return await collector.collect_text(
+            text=value, owner_id=owner_id, context=context
+        )
 
 
 class CorrectionFeedbackProcessor:
@@ -52,10 +69,13 @@ class CorrectionFeedbackProcessor:
         value: Any,
         context: dict[str, Any],
         collector: FeedbackCollector,
+        *,
+        owner_id: str,
     ) -> str:
         return await collector.collect_correction(
             original=value["original"],
             corrected=value["corrected"],
+            owner_id=owner_id,
             context=context,
         )
 
@@ -68,10 +88,13 @@ class LabelFeedbackProcessor:
         value: Any,
         context: dict[str, Any],
         collector: FeedbackCollector,
+        *,
+        owner_id: str,
     ) -> str:
         return await collector.collect_label(
             label=value["label"],
             input_data=value["input"],
+            owner_id=owner_id,
             context=context,
         )
 
@@ -104,9 +127,19 @@ class FeedbackProcessorRegistry:
         value: Any,
         context: dict[str, Any],
         collector: FeedbackCollector,
+        *,
+        owner_id: str,
     ) -> str:
-        """Process feedback using the appropriate processor."""
+        """Process feedback using the appropriate processor.
+
+        Args:
+            fb_type: Feedback type key.
+            value: Feedback value.
+            context: Context dict for the feedback.
+            collector: Collector to store the feedback.
+            owner_id: Owner scope; the item is recorded under this owner.
+        """
         processor = self._processors.get(fb_type)
         if not processor:
             raise ValueError(f"No processor for feedback type: {fb_type}")
-        return await processor.process(value, context, collector)
+        return await processor.process(value, context, collector, owner_id=owner_id)

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from lexigram.ai.feedback.services.feedback_service import FeedbackService
-from lexigram.contracts.ai.feedback import FeedbackItem, FeedbackType, FeedbackSummary
-from lexigram.result import Ok, Err
+from lexigram.contracts.ai.feedback import FeedbackItem, FeedbackSummary, FeedbackType
+from lexigram.result import Err, Ok
 
 
 class TestFeedbackService:
@@ -45,7 +46,7 @@ class TestFeedbackService:
         self, service: FeedbackService, mock_store: MagicMock
     ) -> None:
         """submit_feedback calls store.save exactly once."""
-        await service.submit_feedback(trace_id="trace-123", score=0.9)
+        await service.submit_feedback(trace_id="trace-123", score=0.9, owner_id="owner-1")
         mock_store.save.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -53,7 +54,7 @@ class TestFeedbackService:
         self, service: FeedbackService, mock_store: MagicMock
     ) -> None:
         """Stored item has RATING feedback type."""
-        await service.submit_feedback(trace_id="trace-abc", score=0.75)
+        await service.submit_feedback(trace_id="trace-abc", score=0.75, owner_id="owner-1")
         item: FeedbackItem = mock_store.save.call_args[0][0]
         assert item.feedback_type == FeedbackType.RATING
 
@@ -62,7 +63,7 @@ class TestFeedbackService:
         self, service: FeedbackService, mock_store: MagicMock
     ) -> None:
         """Stored item carries the supplied score as value."""
-        await service.submit_feedback(trace_id="trace-abc", score=0.5)
+        await service.submit_feedback(trace_id="trace-abc", score=0.5, owner_id="owner-1")
         item: FeedbackItem = mock_store.save.call_args[0][0]
         assert item.value == 0.5
 
@@ -71,7 +72,7 @@ class TestFeedbackService:
         self, service: FeedbackService, mock_store: MagicMock
     ) -> None:
         """Stored item carries trace_id inside context."""
-        await service.submit_feedback(trace_id="trace-xyz", score=1.0)
+        await service.submit_feedback(trace_id="trace-xyz", score=1.0, owner_id="owner-1")
         item: FeedbackItem = mock_store.save.call_args[0][0]
         assert item.context["trace_id"] == "trace-xyz"
 
@@ -81,7 +82,7 @@ class TestFeedbackService:
     ) -> None:
         """Comment is stored under metadata['comment']."""
         await service.submit_feedback(
-            trace_id="trace-123", score=0.8, comment="Great!"
+            trace_id="trace-123", score=0.8, comment="Great!", owner_id="owner-1"
         )
         item: FeedbackItem = mock_store.save.call_args[0][0]
         assert item.metadata.get("comment") == "Great!"
@@ -96,6 +97,7 @@ class TestFeedbackService:
             score=0.6,
             comment="ok",
             metadata={"session": "s1"},
+            owner_id="owner-1",
         )
         item: FeedbackItem = mock_store.save.call_args[0][0]
         assert item.metadata["session"] == "s1"
@@ -106,7 +108,7 @@ class TestFeedbackService:
         self, service: FeedbackService, mock_store: MagicMock
     ) -> None:
         """When no comment supplied, 'comment' key is absent from metadata."""
-        await service.submit_feedback(trace_id="t1", score=0.5)
+        await service.submit_feedback(trace_id="t1", score=0.5, owner_id="owner-1")
         item: FeedbackItem = mock_store.save.call_args[0][0]
         assert "comment" not in item.metadata
 
@@ -117,14 +119,14 @@ class TestFeedbackService:
         """When store.save returns Err, submit_feedback completes without raising."""
         mock_store.save = AsyncMock(return_value=Err(Exception("db down")))
         # Should not raise
-        await service.submit_feedback(trace_id="t1", score=0.5)
+        await service.submit_feedback(trace_id="t1", score=0.5, owner_id="owner-1")
 
     @pytest.mark.asyncio
     async def test_submit_feedback_no_store_is_noop(
         self, service_no_store: FeedbackService
     ) -> None:
         """Without a store, submit_feedback completes silently."""
-        await service_no_store.submit_feedback(trace_id="t1", score=0.9)
+        await service_no_store.submit_feedback(trace_id="t1", score=0.9, owner_id="owner-1")
 
     # ------------------------------------------------------------------
     # get_feedback_stats
@@ -135,7 +137,7 @@ class TestFeedbackService:
         self, service: FeedbackService
     ) -> None:
         """Result dict always contains total_count, average_rating, by_type."""
-        stats = await service.get_feedback_stats()
+        stats = await service.get_feedback_stats(owner_id="owner-1")
         assert "total_count" in stats
         assert "average_rating" in stats
         assert "by_type" in stats
@@ -145,7 +147,7 @@ class TestFeedbackService:
         self, service: FeedbackService
     ) -> None:
         """Stats values match the FeedbackSummary returned by the store."""
-        stats = await service.get_feedback_stats()
+        stats = await service.get_feedback_stats(owner_id="owner-1")
         assert stats["total_count"] == 10
         assert stats["average_rating"] == pytest.approx(4.2)
         assert stats["by_type"] == {"rating": 10}
@@ -155,7 +157,7 @@ class TestFeedbackService:
         self, service: FeedbackService
     ) -> None:
         """When model is supplied it appears in the result."""
-        stats = await service.get_feedback_stats(model="gpt-4")
+        stats = await service.get_feedback_stats(model="gpt-4", owner_id="owner-1")
         assert stats["model"] == "gpt-4"
 
     @pytest.mark.asyncio
@@ -163,7 +165,7 @@ class TestFeedbackService:
         self, service: FeedbackService
     ) -> None:
         """When provider is supplied it appears in the result."""
-        stats = await service.get_feedback_stats(provider="openai")
+        stats = await service.get_feedback_stats(provider="openai", owner_id="owner-1")
         assert stats["provider"] == "openai"
 
     @pytest.mark.asyncio
@@ -171,7 +173,7 @@ class TestFeedbackService:
         self, service: FeedbackService
     ) -> None:
         """When model is not supplied, 'model' key is absent."""
-        stats = await service.get_feedback_stats()
+        stats = await service.get_feedback_stats(owner_id="owner-1")
         assert "model" not in stats
 
     @pytest.mark.asyncio
@@ -179,7 +181,7 @@ class TestFeedbackService:
         self, service_no_store: FeedbackService
     ) -> None:
         """Without a store, stats returns zeroed-out dict."""
-        stats = await service_no_store.get_feedback_stats()
+        stats = await service_no_store.get_feedback_stats(owner_id="owner-1")
         assert stats["total_count"] == 0
         assert stats["average_rating"] is None
         assert stats["by_type"] == {}
