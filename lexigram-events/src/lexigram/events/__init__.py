@@ -378,6 +378,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "EventHandledHook": ("lexigram.events.hooks", "EventHandledHook"),
     "EventPublishedHook": ("lexigram.events.hooks", "EventPublishedHook"),
     "EventStoredHook": ("lexigram.events.hooks", "EventStoredHook"),
+    # Reactive bridges
+    "from_bus": ("lexigram.events.reactive", "from_bus"),
+    "from_store": ("lexigram.events.reactive", "from_store"),
+    "retry_with_resilience": ("lexigram.events.reactive", "retry_with_resilience"),
 }
 
 
