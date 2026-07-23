@@ -43,7 +43,7 @@ async def test_cached_health_checker_db_only(mock_db):
     await asyncio.sleep(0.15)
     result = await checker.get_database_health()
     assert result.status == HealthStatus.UNHEALTHY
-    assert "offline" in result.message
+    assert result.message == "ConnectionError: connection check failed"
 
 @pytest.mark.asyncio
 async def test_cached_health_checker_redis_only(mock_cache):
@@ -60,7 +60,7 @@ async def test_cached_health_checker_redis_only(mock_cache):
     await asyncio.sleep(0.15)
     result = await checker.get_redis_health()
     assert result.status == HealthStatus.UNHEALTHY
-    assert "slow" in result.message
+    assert result.message == "TimeoutError: connection check failed"
 
 @pytest.mark.asyncio
 async def test_cached_health_checker_overall(mock_db, mock_cache):
@@ -118,3 +118,45 @@ async def test_cached_health_checker_no_provider():
     # That might be a bug or intended.
     redis_res = await checker.get_redis_health()
     assert redis_res.status == HealthStatus.HEALTHY
+
+
+@pytest.mark.asyncio
+async def test_cached_health_db_failure_leaks_nothing_but_logs_detail(mocker):
+    """Raw exception strings never reach the JSON payload; full detail goes to logs."""
+    from lexigram.monitor.health import cached as cached_module
+
+    db = MagicMock()
+    if hasattr(db, "health_check"):
+        del db.health_check
+    db.execute = AsyncMock(side_effect=ConnectionError("offline"))
+    warning_spy = mocker.patch.object(cached_module, "logger")
+
+    checker = CachedHealthChecker(db_provider=db, cache_ttl=0.1)
+    result = await checker.get_database_health()
+
+    assert result.status == HealthStatus.UNHEALTHY
+    assert result.message == "ConnectionError: connection check failed"
+    assert "offline" not in result.message
+    warning_spy.warning.assert_called_once()
+    assert warning_spy.warning.call_args.kwargs["error"] == "offline"
+    assert warning_spy.warning.call_args.kwargs["component"] == "database"
+
+
+@pytest.mark.asyncio
+async def test_cached_health_redis_failure_leaks_nothing_but_logs_detail(mocker):
+    """Same guarantee for the redis check path."""
+    from lexigram.monitor.health import cached as cached_module
+
+    cache = MagicMock()
+    cache.health_check = AsyncMock(side_effect=TimeoutError("slow"))
+    warning_spy = mocker.patch.object(cached_module, "logger")
+
+    checker = CachedHealthChecker(cache_backend=cache, cache_ttl=0.1)
+    result = await checker.get_redis_health()
+
+    assert result.status == HealthStatus.UNHEALTHY
+    assert result.message == "TimeoutError: connection check failed"
+    assert "slow" not in result.message
+    warning_spy.warning.assert_called_once()
+    assert warning_spy.warning.call_args.kwargs["error"] == "slow"
+    assert warning_spy.warning.call_args.kwargs["component"] == "redis"
