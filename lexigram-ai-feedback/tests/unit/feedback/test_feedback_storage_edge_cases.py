@@ -20,6 +20,7 @@ class TestDatabaseFeedbackStoreEdgeCases:
             "value": "invalid-json",
             "context": "not-a-dict",
             "metadata": "also-not-a-dict",
+            "owner_id": "owner-1",
             "created_at": datetime.datetime.now().isoformat()
         }
         
@@ -29,6 +30,7 @@ class TestDatabaseFeedbackStoreEdgeCases:
         assert item.value == "invalid-json"
         assert item.context == {}
         assert item.metadata == {}
+        assert item.owner_id == "owner-1"
 
     @pytest.mark.asyncio
     async def test_find_by_session_handles_invalid_rows(self):
@@ -40,6 +42,7 @@ class TestDatabaseFeedbackStoreEdgeCases:
             "value": "some-text", # Valid string but maybe not JSON-serialized if it was direct write
             "context": "{invalid}",
             "metadata": "{invalid}",
+            "owner_id": "owner-1",
             "created_at": datetime.datetime.now().isoformat()
         }
         
@@ -56,7 +59,7 @@ class TestDatabaseFeedbackStoreEdgeCases:
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
         
-        results = await store.find_by_session("session-1")
+        results = await store.find_by_session("session-1", owner_id="owner-1")
         assert len(results) == 1
         assert results[0].id == item_id
         assert results[0].context == {}
@@ -78,7 +81,7 @@ class TestDatabaseFeedbackStoreEdgeCases:
         store = DatabaseFeedbackStore(provider=db)
         store._initialised = True
         
-        summary = await store.aggregate()
+        summary = await store.aggregate(owner_id="owner-1")
         assert summary.total_count == 0
         assert summary.average_rating is None
         assert summary.count_by_type == {}
