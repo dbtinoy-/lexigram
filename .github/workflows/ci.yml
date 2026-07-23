@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality gate (format, lint, types, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install workspace
+        run: uv sync --all-extras
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type check (core)
+        run: uv run mypy lexigram/src/
+
+      - name: Tests (per package)
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -A DESELECT
+          # Per-package runs root at the package dir, so node ids are
+          # package-relative (tests/unit/...).
+          # Time-of-day dependent: fail only during the 23:00 UTC business-hours window
+          DESELECT[lexigram-monitor]="--deselect tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_queues_outside_business_hours --deselect tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_flush_queue_sends_queued"
+          # Require the private-only lexigram-cli templates package
+          DESELECT[lexigram-nosql]="--deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_creates_file --deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_no_force_skips_existing --deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_with_fields_str"
+          DESELECT[lexigram-queue]="--deselect tests/unit/test_message_consumer_generator.py::test_message_consumer_generator_fields"
+          for p in \
+            lexigram lexigram-contracts lexigram-secrets lexigram-vector \
+            lexigram-graph lexigram-web lexigram-sql lexigram-cache \
+            lexigram-auth lexigram-events lexigram-queue lexigram-tasks \
+            lexigram-http lexigram-resilience lexigram-storage \
+            lexigram-search lexigram-notification lexigram-monitor \
+            lexigram-webhook lexigram-tenancy lexigram-features \
+            lexigram-audit lexigram-graphql lexigram-nosql \
+            lexigram-workflow lexigram-testing; do
+            if [ ! -d "$p/tests" ]; then
+              continue
+            fi
+            # Scoped runs have no coverage floor (floors apply to
+            # aggregate runs from the repo root); pass/fail is the gate.
+            uv run pytest -q -m "not integration" --no-cov "$p/tests" ${DESELECT[$p]:-}
+          done
