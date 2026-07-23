@@ -346,9 +346,7 @@ class RedisGovernancePersistence:
 
         # Fallback: simple increment counter (less precise but always works)
         counter_key = f"{redis_key}:count"
-        raw_val = _cache_payload(
-            await self._cache.get(counter_key), key=counter_key
-        )
+        raw_val = _cache_payload(await self._cache.get(counter_key), key=counter_key)
         current = int(raw_val) + 1 if raw_val is not None else 1
         _cache_payload(
             await self._cache.set(counter_key, str(current), ttl=int(window) + 1),
