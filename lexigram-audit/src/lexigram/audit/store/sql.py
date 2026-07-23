@@ -67,14 +67,10 @@ def entry_to_row(entry: AuditEntry) -> dict[str, Any]:
         if isinstance(causation_id := getattr(entry, "causation_id", None), str)
         else None,
         "command_payload_hash": cmd_hash.hex()
-        if isinstance(
-            cmd_hash := getattr(entry, "command_payload_hash", None), bytes
-        )
+        if isinstance(cmd_hash := getattr(entry, "command_payload_hash", None), bytes)
         else None,
         "payload_size_bytes": payload_size
-        if isinstance(
-            payload_size := getattr(entry, "payload_size_bytes", None), int
-        )
+        if isinstance(payload_size := getattr(entry, "payload_size_bytes", None), int)
         else None,
         "entry_schema_version": getattr(entry, "schema_version", 1),
     }
