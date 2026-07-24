@@ -2,40 +2,53 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.admin import HealthCheckPayload, WidgetParams
+import platform
+import threading
+import time
+
+from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
-from lexigram.contracts.core.health import HealthStatus
 from lexigram.result import Ok, Result
+
+_PROCESS_START = time.monotonic()
 
 
 class ServerStatusWidgetHandler:
     """Handler for the server_status widget.
 
-    Fetches server status information and uptime.
-    For now, returns reasonable defaults (TODO: integrate with actual server stats).
+    Reports real process information: Python version, process uptime, and
+    thread count.
     """
 
-    async def get_data(
-        self, params: WidgetParams
-    ) -> Result[HealthCheckPayload, AdminError]:
+    async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch server status data.
 
         Args:
             params: Widget request parameters (unused for this widget).
 
         Returns:
-            Result containing HealthCheckPayload with server status.
+            Result containing StatContent with process information.
         """
-        is_running = True
-        uptime_seconds = 3600  # 1 hour
-        server_version = "1.0.0"
         return Ok(
-            HealthCheckPayload(
-                status=HealthStatus.HEALTHY if is_running else HealthStatus.UNHEALTHY,
-                component="HTTP Server",
-                detail=f"v{server_version}, up {uptime_seconds}s",
+            StatContent(
+                stats=(
+                    Stat(label="Python", value=platform.python_version()),
+                    Stat(
+                        label="Process Uptime (s)",
+                        value=f"{int(self._uptime_seconds()):,}",
+                    ),
+                    Stat(
+                        label="Threads",
+                        value=str(threading.active_count()),
+                        tone=Tone.INFO,
+                    ),
+                )
             )
         )
+
+    @staticmethod
+    def _uptime_seconds() -> float:
+        return time.monotonic() - _PROCESS_START
 
 
 __all__ = ["ServerStatusWidgetHandler"]

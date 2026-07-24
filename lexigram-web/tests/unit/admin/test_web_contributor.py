@@ -175,18 +175,14 @@ class TestWidgetHandlers:
 
     @pytest.mark.asyncio
     async def test_server_status_handler(self) -> None:
-        """Test server_status handler returns HealthCheckPayload."""
-        from lexigram.contracts.core.health import HealthStatus
-
+        """Test server_status handler returns StatContent with process info."""
         handler = ServerStatusWidgetHandler()
         result = await handler.get_data(WidgetParams())
 
         assert result.is_ok()
         content = result.unwrap()
-        assert isinstance(content, HealthCheckPayload)
-        assert content.status is HealthStatus.HEALTHY
-        assert content.component == "HTTP Server"
-        assert content.detail
+        assert isinstance(content, StatContent)
+        assert len(content.stats) == 3
 
     @pytest.mark.asyncio
     async def test_active_connections_handler(self) -> None:
@@ -197,7 +193,7 @@ class TestWidgetHandlers:
         assert result.is_ok()
         content = result.unwrap()
         assert isinstance(content, StatContent)
-        assert len(content.stats) == 3
+        assert content.stats[0].label == "Active"
 
     @pytest.mark.asyncio
     async def test_request_rate_handler(self) -> None:
@@ -208,7 +204,7 @@ class TestWidgetHandlers:
         assert result.is_ok()
         content = result.unwrap()
         assert isinstance(content, StatContent)
-        assert len(content.stats) == 3
+        assert content.stats[0].label == "Requests/sec"
 
 
 __all__ = [

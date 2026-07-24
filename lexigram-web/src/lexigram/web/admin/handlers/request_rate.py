@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import (
+    MetricsReadbackProtocol,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
+
+_METRIC_COUNTER = "http_requests_total"
 
 
 class RequestRateWidgetHandler:
     """Handler for the request_rate widget.
 
-    Fetches current request rate and error metrics.
-    For now, returns reasonable defaults (TODO: integrate with actual request tracking).
+    Args:
+        metrics: optional metrics readback source; when absent or lacking the
+            readback capability, the widget degrades to "Not measured".
     """
+
+    def __init__(self, metrics: MetricsReadbackProtocol | None = None) -> None:
+        self._metrics = metrics
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch request rate data.
@@ -23,21 +35,25 @@ class RequestRateWidgetHandler:
         Returns:
             Result containing StatContent with request metrics.
         """
-        rps, total, error_pct = 12.5, 45000, 0.5
-        tone = (
-            Tone.DANGER
-            if error_pct > 5
-            else Tone.WARNING
-            if error_pct > 1
-            else Tone.SUCCESS
+        if not isinstance(self._metrics, MetricsReadbackProtocol):
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="Requests/sec",
+                            value="Not measured",
+                            tone=Tone.WARNING,
+                        ),
+                    )
+                )
+            )
+        metric = self._metrics.get_metric(_METRIC_COUNTER)
+        value = getattr(metric, "get_value", None) or getattr(
+            metric, "get_count", lambda: 0.0
         )
         return Ok(
             StatContent(
-                stats=(
-                    Stat(label="Requests/sec", value=f"{rps:.1f}"),
-                    Stat(label="Total", value=str(total)),
-                    Stat(label="Error rate", value=f"{error_pct:.1f}%", tone=tone),
-                )
+                stats=(Stat(label="Requests/sec", value=f"{float(value()):.1f}"),)
             )
         )
 
