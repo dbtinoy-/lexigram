@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.ai.callbacks import CallbackHandlerProtocol
 from lexigram.contracts.ai.llm import ChatMessage, Completion
+from lexigram.contracts.core.logging import RedactorProtocol
 from lexigram.contracts.observability.tracing import SpanProtocol as Span
 from lexigram.contracts.observability.tracing import TracerProtocol as Tracer
 from lexigram.di.decorators import inject
@@ -49,14 +50,30 @@ class AITracer(CallbackHandlerProtocol):
         ...     span.set_attribute("cost", response.cost)
     """
 
-    def __init__(self, tracer: Tracer | None = None) -> None:
+    def __init__(
+        self,
+        tracer: Tracer | None = None,
+        *,
+        redaction_policy: RedactorProtocol | None = None,
+        max_attribute_length: int | None = None,
+    ) -> None:
         """Initialize intelligence tracer.
 
         Args:
             tracer: Tracer instance to use for tracing. Defaults to a
                 no-op tracer when ``None``.
+            redaction_policy: Optional policy applied to every payload
+                dict before it reaches a span boundary (``start_span``
+                attributes and ``add_event``). Defaults to ``None``,
+                which passes payloads through unchanged.
+            max_attribute_length: Optional cap on string attribute
+                values, applied recursively to dicts, lists, and
+                tuples, independent of the redaction policy. Defaults
+                to ``None`` (no truncation).
         """
         self.tracer = tracer if tracer is not None else NoOpTracer()
+        self._redaction_policy = redaction_policy
+        self._max_attribute_length = max_attribute_length
 
     def trace_llm_call(
         self,
@@ -249,6 +266,50 @@ class AITracer(CallbackHandlerProtocol):
         """
         return self.tracer.get_current_span()
 
+    def _sanitize_attributes(self, attributes: dict[str, Any]) -> dict[str, Any]:
+        """Redact and/or truncate *attributes* before a span boundary.
+
+        When neither ``redaction_policy`` nor ``max_attribute_length``
+        is configured, *attributes* is returned unchanged so trace
+        output stays byte-identical to an unsanitized tracer.
+
+        Args:
+            attributes: The payload dict destined for ``start_span``
+                attributes or ``add_event``.
+
+        Returns:
+            The sanitized payload dict.
+        """
+        if self._redaction_policy is None and self._max_attribute_length is None:
+            return attributes
+        sanitized = attributes
+        if self._redaction_policy is not None:
+            sanitized = self._redaction_policy.redact_dict(sanitized)
+        if self._max_attribute_length is not None:
+            sanitized = self._truncate_attributes(sanitized)
+        return sanitized
+
+    def _truncate_attributes(self, attributes: dict[str, Any]) -> dict[str, Any]:
+        """Cap *attributes* string values at ``max_attribute_length``."""
+        return {key: self._truncate_value(value) for key, value in attributes.items()}
+
+    def _truncate_value(self, value: Any) -> Any:
+        """Truncate *value* if it is an oversized string, recursing containers."""
+        max_length = self._max_attribute_length
+        if max_length is None:
+            return value
+        if isinstance(value, str):
+            if len(value) > max_length:
+                return value[:max_length]
+            return value
+        if isinstance(value, dict):
+            return self._truncate_attributes(value)
+        if isinstance(value, list):
+            return [self._truncate_value(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(self._truncate_value(item) for item in value)
+        return value
+
     async def on_llm_start(
         self,
         messages: list[ChatMessage],
@@ -328,7 +389,9 @@ class AITracer(CallbackHandlerProtocol):
         """Called when a tool starts executing."""
         self.tracer.start_span(
             name=f"tool.{tool_name}",
-            attributes={"tool.name": tool_name, "tool.args": arguments, **kwargs},
+            attributes=self._sanitize_attributes(
+                {"tool.name": tool_name, "tool.args": arguments, **kwargs}
+            ),
         )
 
     async def on_tool_end(
@@ -351,7 +414,7 @@ class AITracer(CallbackHandlerProtocol):
         """Called when an agent takes an action."""
         span = self.tracer.get_current_span()
         if span:
-            span.add_event("agent.action", action)
+            span.add_event("agent.action", self._sanitize_attributes(action))
 
     async def on_agent_finish(
         self,
@@ -361,7 +424,7 @@ class AITracer(CallbackHandlerProtocol):
         """Called when an agent finishes executing."""
         span = self.tracer.get_current_span()
         if span:
-            span.add_event("agent.finish", response)
+            span.add_event("agent.finish", self._sanitize_attributes(response))
             span.end()
 
     async def on_retriever_start(
@@ -372,7 +435,7 @@ class AITracer(CallbackHandlerProtocol):
         """Called when a retriever starts a search."""
         self.tracer.start_span(
             name="retriever.search",
-            attributes={"retriever.query": query, **kwargs},
+            attributes=self._sanitize_attributes({"retriever.query": query, **kwargs}),
         )
 
     async def on_retriever_end(
