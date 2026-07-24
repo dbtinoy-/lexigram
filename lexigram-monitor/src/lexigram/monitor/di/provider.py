@@ -65,6 +65,7 @@ from lexigram.monitor.backends.exporters.otel_registry import (
 from lexigram.monitor.config import MonitorConfig
 from lexigram.monitor.constants import DEFAULT_MAX_SPANS
 from lexigram.monitor.health import HealthCheckerRegistry, HealthCheckRegistry
+from lexigram.monitor.health.sanitize import safe_error_message
 from lexigram.monitor.metrics.collector import (
     MetricsCollectorProtocol as _ConcreteMetricsCollector,
 )
@@ -559,10 +560,15 @@ class MonitorProvider(Provider):
                     details.update(cast("dict[str, Any]", backend_health.details))
                 return cast("HealthCheckResult", backend_health)
             except (OSError, ConnectionError, RuntimeError, ValueError) as e:
+                logger.warning(
+                    "monitor_health_check_failed",
+                    component="monitor",
+                    error=str(e),
+                )
                 return HealthCheckResult(
                     component="monitor",
                     status=HealthStatus.UNHEALTHY,
-                    error=str(e),
+                    error=safe_error_message(e),
                     details=details,
                     category=HealthCheckCategory.READINESS,
                 )
