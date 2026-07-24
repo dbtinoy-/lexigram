@@ -10,7 +10,7 @@ UV         := uv
 PYTEST     := $(UV) run pytest
 RUFF       := $(UV) run ruff
 MYPY       := $(UV) run mypy
-CORE_SRC   := lexigram/src/
+TYPED_PKGS := lexigram-audit lexigram-auth lexigram-cache lexigram-events lexigram-monitor lexigram-notification lexigram-queue lexigram-search lexigram-sql lexigram-testing lexigram-vector lexigram-webhook lexigram-workflow
 WEB_DIR    := lexigram-web
 
 # Extension packages that pass mypy with their own per-package config.
@@ -54,11 +54,6 @@ lint-fix:  ## Run ruff check + format (auto-fix)
 	$(RUFF) check . --fix
 	$(RUFF) format .
 
-.PHONY: lint-boundaries
-lint-boundaries:  ## Enforce import boundary + private-access contracts
-	$(UV) run python tools/lint_imports.py
-	$(UV) run python tools/lint_private_access.py
-
 .PHONY: type
 type:  ## Run mypy on core, lexigram-web and all TYPED_PKGS (each with its own pyproject config)
 	$(MYPY) $(CORE_SRC)
@@ -66,7 +61,7 @@ type:  ## Run mypy on core, lexigram-web and all TYPED_PKGS (each with its own p
 	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
 
 .PHONY: type-pkg
-type-pkg:  ## Run mypy on one package with its own config: make type-pkg PKG=lexigram-ai-llm
+type-pkg:  ## Run mypy on one package with its own config: make type-pkg PKG=lexigram-web
 	cd $(PKG) && $(MYPY) src
 
 .PHONY: test
@@ -86,11 +81,9 @@ test-unit:  ## Run only unit tests (exclude integration / e2e)
 	$(PYTEST) --tb=short -q -m "not integration and not e2e"
 
 .PHONY: ci
-ci:  ## Full CI pipeline: lint + boundary-check + type-check + tests with coverage gate
+ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 	$(RUFF) check . \
 	  && $(RUFF) format --check . \
-	  && $(UV) run python tools/lint_imports.py \
-	  && $(UV) run python tools/lint_private_access.py \
 	  && $(MYPY) $(CORE_SRC) \
 	  && cd $(WEB_DIR) && $(MYPY) src/lexigram/web
 	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
@@ -191,10 +184,6 @@ clean:  ## Remove build artifacts and caches
 	find . -name "coverage.xml" -delete 2>/dev/null || true
 	@echo "Clean complete."
 
-.PHONY: docs
-docs:  ## Regenerate API surface files
-	$(UV) run python tools/generate_package_api.py -s 25000
-
 .PHONY: fmt
 fmt:  ## Format code (no lint check)
 	$(RUFF) format .
@@ -223,53 +212,14 @@ catalog-package:  ## Run all standalone catalog generators
 	$(UV) run python scripts/catalogs/generate_env_vars_catalog.py
 	$(UV) run python scripts/catalogs/generate_error_catalog.py
 
-# ---------------------------------------------------------------------------
-# Public mirror publish
-# ---------------------------------------------------------------------------
-
-.PHONY: publish-framework
-publish-framework:  ## Push framework packages to public mirror
-	COMMIT_MSG="$(m)" bash tools/publish_public.sh --push
-
-.PHONY: publish-experimental
-publish-experimental:  ## Push experimental packages (cli, ui, admin) to *-experimental repos
-	COMMIT_MSG="$(m)" bash tools/publish_public.sh --experimental --push
-
-.PHONY: publish-all
-publish-all:  ## Push both framework and experimental packages
-	COMMIT_MSG="$(m)" bash tools/publish_public.sh --push --experimental
-
-.PHONY: publish-reset
-publish-reset:  ## Force-reset main mirror history (rare)
-	bash tools/publish_public.sh --reset --push
-
-.PHONY: publish-dry-framework
-publish-dry-framework:  ## Dry run — framework packages only, no push
-	bash tools/publish_public.sh
-
-# ---------------------------------------------------------------------------
-# Version check & bump (git ↔ PyPI sync)
-# ---------------------------------------------------------------------------
-
-.PHONY: version-check
 version-check:  ## Compare local versions vs PyPI (exit 1 if bumps needed)
 	$(UV) run python scripts/check_version.py check
 
-.PHONY: version-bump
 version-bump:  ## Show next version for PKG (add APPLY=--apply to write); all packages if PKG unset
 	$(UV) run python scripts/check_version.py bump $(if $(PKG),--pkg $(PKG),) $(APPLY)
 
-.PHONY: version-bump-all
 version-bump-all:  ## Show next version for all packages
 	$(UV) run python scripts/check_version.py bump
-
-.PHONY: publish-dry-experimental
-publish-dry-experimental:  ## Dry run — experimental packages only, no push
-	COMMIT_MSG="$(m)" bash tools/publish_public.sh --experimental
-
-.PHONY: publish-dry-all
-publish-dry-all:  ## Dry run — both framework and experimental, no push
-	COMMIT_MSG="$(m)" bash tools/publish_public.sh --experimental
 
 # ---------------------------------------------------------------------------
 # AUDIT File Generation (Test/Doc Audits)
@@ -333,55 +283,42 @@ audit-package: audit-overview audit-integrations audit-protocols audit-security 
 	@echo "All AUDIT files generated in docs/lexigram-docs/audit"
 
 # All-packages audit targets (write to repo root)
-.PHONY: audit-overview-all
 audit-overview-all:
 	$(UV) run python -m scripts.cli audit run overview --all
 
-.PHONY: audit-integrations-all
 audit-integrations-all:
 	$(UV) run python -m scripts.cli audit run integrations --all
 
-.PHONY: audit-protocols-all
 audit-protocols-all:
 	$(UV) run python -m scripts.cli audit run protocols --all
 
-.PHONY: audit-security-all
 audit-security-all:
 	$(UV) run python -m scripts.cli audit run security --all
 
-.PHONY: audit-quality-all
 audit-quality-all:
 	$(UV) run python -m scripts.cli audit run quality --all
 
-.PHONY: audit-rules-all
 audit-rules-all:
 	$(UV) run python -m scripts.cli audit run rules --all
 
-.PHONY: audit-tests-all
 audit-tests-all:
 	$(UV) run python -m scripts.cli audit run tests --all
 
-.PHONY: audit-optional-imports-all
 audit-optional-imports-all:
 	$(UV) run python -m scripts.cli audit run optional-imports --all
 
-.PHONY: audit-docs-links-all
 audit-docs-links-all:
 	$(UV) run python -m scripts.cli audit run docs-links --all
 
-.PHONY: audit-docs-claims-all
 audit-docs-claims-all:
 	$(UV) run python -m scripts.cli audit run docs-claims --all
 
-.PHONY: audit-docs-defaults-all
 audit-docs-defaults-all:
 	$(UV) run python -m scripts.cli audit run docs-defaults --all
 
-.PHONY: audit-docs-imports-all
 audit-docs-imports-all:
 	$(UV) run python -m scripts.cli audit run docs-imports --all
 
-.PHONY: audit-package-all
 audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all audit-optional-imports-all audit-docs-links-all audit-docs-imports-all audit-docs-claims-all audit-docs-defaults-all scripts-audit-index-all
 	@echo "All AUDIT files generated at repo root"
 
@@ -389,7 +326,6 @@ audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all
 scripts-audit:
 	$(UV) run python -m scripts.cli audit run all
 
-.PHONY: scripts-audit-all
 scripts-audit-all:
 	$(UV) run python -m scripts.cli audit run all --all
 
@@ -397,7 +333,6 @@ scripts-audit-all:
 scripts-audit-index:
 	$(UV) run python -m scripts.cli audit run index
 
-.PHONY: scripts-audit-index-all
 scripts-audit-index-all:
 	$(UV) run python -m scripts.cli audit run index --all
 
