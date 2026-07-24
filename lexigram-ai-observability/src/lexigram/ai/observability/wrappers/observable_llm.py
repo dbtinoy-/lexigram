@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from lexigram.contracts.ai import LLMClientProtocol
     from lexigram.contracts.ai.governance import AIAuditStoreProtocol
     from lexigram.contracts.core import HealthCheckResult
+    from lexigram.contracts.core.logging import RedactorProtocol
 
 logger = get_logger(__name__)
 
@@ -57,6 +58,7 @@ class ObservableLLMClient:
         tracer: AITracer | None = None,
         metrics: AIMetrics | None = None,
         audit_store: AIAuditStoreProtocol | None = None,
+        redaction_policy: RedactorProtocol | None = None,
     ) -> None:
         self._delegate = delegate
         self._provider = provider
@@ -64,6 +66,7 @@ class ObservableLLMClient:
         self._tracer = tracer
         self._metrics = metrics
         self._audit_store = audit_store
+        self._redaction_policy = redaction_policy
 
     async def complete(self, messages: list[Any], **kwargs: Any) -> Any:
         """Complete with tracing and metrics."""
@@ -196,12 +199,26 @@ class ObservableLLMClient:
         tokens: int | None = None,
         cost: float | None = None,
         latency_ms: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Fire-and-forget audit event for an LLM call."""
+        """Fire-and-forget audit event for an LLM call.
+
+        Args:
+            status: Outcome — ``"success"`` or ``"error"``.
+            tokens: Token count consumed, if applicable.
+            cost: Dollar cost incurred, if applicable.
+            latency_ms: Request latency in milliseconds, if applicable.
+            metadata: Free-form key/value bag; redacted by the
+                redaction policy before recording when one is set.
+        """
         if self._audit_store is None:
             return
 
         from lexigram.contracts.ai.governance import AIAuditEvent, AuditEventType
+
+        redacted_metadata = metadata
+        if self._redaction_policy is not None and metadata is not None:
+            redacted_metadata = self._redaction_policy.redact_dict(metadata)
 
         event = AIAuditEvent(
             event_type=AuditEventType.LLM_CALL,
@@ -211,6 +228,7 @@ class ObservableLLMClient:
             tokens=tokens,
             cost=cost,
             latency_ms=latency_ms,
+            metadata=redacted_metadata or {},
         )
 
         import asyncio
