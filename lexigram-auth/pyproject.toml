@@ -62,9 +62,6 @@ maintainers = [
 text = "MIT"
 
 [project.optional-dependencies]
-admin = [
-    "lexigram-admin>=0.1.1",
-]
 oauth2 = [
     "authlib>=1.0.0",
 ]

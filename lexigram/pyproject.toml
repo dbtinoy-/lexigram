@@ -117,39 +117,12 @@ security = [
 # ── Extension Convenience Groups ──────────────────────────────────────
 # Users can install entire subsystems via:
 #   pip install lexigram[web]     → all web packages
-#   pip install lexigram[ai]      → all AI packages
-#   pip install lexigram[api]     → web + ai (the demo stack)
-#   pip install lexigram[all]     → everything on PyPI
 
 # ── Web & API ─────────────────────────────────────────────────────────
 
 web = [
     "lexigram-web[uvicorn]>=0.1.2",
 ]
-
-api = [
-    "lexigram-web[uvicorn]>=0.1.2",
-    "lexigram-ai>=0.1.2",
-    "lexigram-ai-llm>=0.1.2",
-]
-
-# ── AI Subsystem ──────────────────────────────────────────────────────
-
-ai = [
-    "lexigram-ai>=0.1.2",
-    "lexigram-ai-llm>=0.1.2",
-    "lexigram-ai-agents>=0.1.2",
-    "lexigram-ai-rag>=0.1.2",
-    "lexigram-ai-mcp>=0.1.2",
-    "lexigram-ai-memory>=0.1.2",
-    "lexigram-ai-skills>=0.1.2",
-    "lexigram-ai-feedback>=0.1.2",
-    "lexigram-ai-observability>=0.1.2",
-    "lexigram-ai-prompt>=0.1.2",
-    "lexigram-ai-session>=0.1.2",
-    "lexigram-ai-workers>=0.1.2",
-]
-
 # ── Data & Storage ────────────────────────────────────────────────────
 
 db = [
@@ -184,60 +157,11 @@ tasks = [
 monitor = [
     "lexigram-monitor>=0.1.2",
 ]
-
-# ── UI / Admin ────────────────────────────────────────────────────────
-
-ui = [
-    "lexigram-ui>=0.1.2",
-]
-
-admin = [
-    "lexigram-ui>=0.1.2",
-]
-
 # ── GraphQL ───────────────────────────────────────────────────────────
 
 graphql = [
     "lexigram-graphql>=0.1.2",
 ]
-
-# ── CLI ───────────────────────────────────────────────────────────────
-
-cli = [
-    "lexigram-cli>=0.1.2",
-    "uvicorn[standard]>=0.27.0",
-]
-
-# ── Everything ────────────────────────────────────────────────────────
-
-all = [
-    "lexigram-web[uvicorn]>=0.1.2",
-    "lexigram-ai>=0.1.2",
-    "lexigram-ai-llm>=0.1.2",
-    "lexigram-ai-agents>=0.1.2",
-    "lexigram-ai-rag>=0.1.2",
-    "lexigram-ai-mcp>=0.1.2",
-    "lexigram-ai-memory>=0.1.2",
-    "lexigram-ai-skills>=0.1.2",
-    "lexigram-ai-feedback>=0.1.2",
-    "lexigram-ai-observability>=0.1.2",
-    "lexigram-ai-prompt>=0.1.2",
-    "lexigram-ai-session>=0.1.2",
-    "lexigram-ai-workers>=0.1.2",
-    "lexigram-nosql>=0.1.2",
-    "lexigram-storage>=0.1.2",
-    "lexigram-search>=0.1.2",
-    "lexigram-cache>=0.1.2",
-    "lexigram-auth>=0.1.2",
-    "lexigram-audit>=0.1.2",
-    "lexigram-events>=0.1.2",
-    "lexigram-tasks>=0.1.2",
-    "lexigram-monitor>=0.1.2",
-    "lexigram-ui>=0.1.2",
-    "lexigram-graphql>=0.1.2",
-    "lexigram-cli>=0.1.2",
-]
-
 # =============================================================================
 # URLs
 # =============================================================================

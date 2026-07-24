@@ -71,12 +71,6 @@ cache = [
 storage = [
     "lexigram-storage>=0.1.0",
 ]
-ai = [
-    "lexigram-ai>=0.1.0",
-]
-secrets = [
-    "lexigram-secrets>=0.1.0",
-]
 dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
@@ -91,8 +85,6 @@ all = [
     "lexigram-auth>=0.1.0",
     "lexigram-cache>=0.1.0",
     "lexigram-storage>=0.1.0",
-    "lexigram-ai>=0.1.0",
-    "lexigram-secrets>=0.1.0",
 ]
 integration = [
     "asyncpg>=0.29.0",
@@ -125,10 +117,6 @@ test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
-]
-secrets = [
-    { include-group = "test" },
-    "lexigram-secrets>=0.1.0",
 ]
 integration = [
     { include-group = "test" },

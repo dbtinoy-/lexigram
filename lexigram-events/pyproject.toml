@@ -53,9 +53,6 @@ maintainers = [
 text = "MIT"
 
 [project.optional-dependencies]
-admin = [
-    "lexigram-admin>=0.1.1",
-]
 postgres = [
     "asyncpg>=0.29.0",
 ]
