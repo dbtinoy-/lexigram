@@ -635,6 +635,45 @@ class TestSaveSpecSecretHandling:
         assert values["api_key"] == "sk-new"
 
 
+class TestSettingsCsrfSessionScope:
+    """The rendered form token must bind to the same session id the CSRF
+    middleware validates against (csrf_session_id first, then admin_user_id)."""
+
+    @staticmethod
+    def _controller() -> SettingsController:
+        from lexigram.admin.auth.services.csrf_service import AdminCsrfService
+
+        return SettingsController(
+            renderer=MagicMock(),
+            csrf_service=AdminCsrfService(secret="test-secret"),
+            registry=ConfigRegistry.with_defaults(),
+        )
+
+    def test_token_valid_against_middleware_session_selection(self) -> None:
+        controller = self._controller()
+        req = _mock_request(user=_FakeUser())
+        req.session = {
+            "csrf_session_id": "stale-pre-login",
+            "admin_user_id": "user-1",
+        }
+        token = controller._get_csrf_token(req)
+        assert token is not None
+
+        # Mirror of middleware/csrf.py session-id resolution.
+        session_id = req.session.get("csrf_session_id") or req.session.get(
+            "admin_user_id", "anonymous"
+        )
+        assert controller._csrf_service.validate_token(session_id, token)  # type: ignore[union-attr]
+
+    def test_token_valid_against_plain_authenticated_session(self) -> None:
+        controller = self._controller()
+        req = _mock_request(user=_FakeUser())
+        req.session = {"admin_user_id": "user-1"}
+        token = controller._get_csrf_token(req)
+        assert token is not None
+        assert controller._csrf_service.validate_token("user-1", token)  # type: ignore[union-attr]
+
+
 class TestDynamicCategories:
     @pytest.mark.asyncio
     async def test_categories_are_grouped_by_package_source(self) -> None:

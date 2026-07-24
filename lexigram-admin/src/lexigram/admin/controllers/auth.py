@@ -312,6 +312,7 @@ class AuthController(AdminController):
             request.session["admin_session_expires_at"] = (
                 auth_result.expires_at.isoformat()
             )
+            request.session.pop("csrf_session_id", None)
             if hasattr(auth_result, "session_id"):
                 request.session["session_id"] = auth_result.session_id
             self._metrics.record_login(status="success")
@@ -485,6 +486,7 @@ class AuthController(AdminController):
         request.session["admin_user_email"] = auth_result.email
         request.session["admin_session_expires_at"] = auth_result.expires_at.isoformat()
         request.session["session_id"] = auth_result.session_id
+        request.session.pop("csrf_session_id", None)
         for key in (
             "mfa_pending_user_id",
             "mfa_pending_email",
@@ -831,7 +833,9 @@ class AuthController(AdminController):
 
         form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
-        csrf_session_id = request.session.get("csrf_session_id", "")
+        csrf_session_id = request.session.get("csrf_session_id") or request.session.get(
+            "admin_user_id", ""
+        )
         if not csrf_session_id or not self._csrf_service.validate_token(
             csrf_session_id, csrf_token
         ):
@@ -891,7 +895,9 @@ class AuthController(AdminController):
 
         form_data = request.scope.get("admin_form_data") or await request.form()
         csrf_token = str(form_data.get("csrf_token", ""))
-        csrf_session_id = request.session.get("csrf_session_id", "")
+        csrf_session_id = request.session.get("csrf_session_id") or request.session.get(
+            "admin_user_id", ""
+        )
         if not csrf_session_id or not self._csrf_service.validate_token(
             csrf_session_id, csrf_token
         ):

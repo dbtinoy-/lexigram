@@ -125,7 +125,11 @@ class SettingsController(AdminController):
             return None
         try:
             session = getattr(request, "session", {})
-            session_id: str = session.get("admin_user_id", "")
+            # Canonical session-id resolution — keep in sync with
+            # middleware/csrf.py _validate_csrf and resources/handler.py.
+            session_id: str = session.get("csrf_session_id") or session.get(
+                "admin_user_id", "anonymous"
+            )
             return self._csrf_service.generate_token(session_id)
         except Exception:  # noqa: BLE001 — non-fatal for form rendering
             logger.warning("settings.csrf_token_unavailable")

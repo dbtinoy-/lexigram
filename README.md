@@ -135,7 +135,7 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - [ ] Distributed tracing
 - [ ] Performance optimizations
 - [x] Reach 80% Unit Tests overall coverage (now 75% in progress)
-- [ ] Reach 80% Integration Tests overall coverage (integration-only baseline measured 34% for lexigram-admin; gate = per-package integration-only ≥ floor, root aggregate ≥80% — in progress)
+- [ ] Reach 80% test coverage overall (unit + integration; integration-only baseline ~35% — in progress)
 
 #### long term (2027)
 - [ ] Enterprise features

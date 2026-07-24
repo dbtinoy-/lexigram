@@ -241,6 +241,10 @@ async def test_login_logout_cycle() -> None:
         expires_at = session["admin_session_expires_at"]
         assert datetime.fromisoformat(expires_at).tzinfo is not None
 
+        # Pre-login csrf_session_id must not survive into the authenticated
+        # session (settings-form CSRF 403 regression).
+        assert "csrf_session_id" not in session
+
         # Logout
         r2 = await client.get("/admin/logout")
         assert r2.status_code == 302
