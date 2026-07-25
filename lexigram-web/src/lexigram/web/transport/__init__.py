@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 # Lazy loading to avoid circular imports
 
 if TYPE_CHECKING:
+    from lexigram.web.transport.reactive import sse_from_stream
     from lexigram.web.transport.responses import (  # type: ignore[attr-defined]
         FastJSONResponse,
         FileResponse,
@@ -60,6 +61,8 @@ _LAZY_IMPORTS = {
         "lexigram.web.transport.websocket_guards",
         "execute_websocket_guards",
     ),
+    # Reactive
+    "sse_from_stream": ("lexigram.web.transport.reactive", "sse_from_stream"),
 }
 
 
@@ -101,4 +104,5 @@ __all__ = [
     "redirect_response",
     "sse_response",
     "streaming_response",
+    "sse_from_stream",
 ]
