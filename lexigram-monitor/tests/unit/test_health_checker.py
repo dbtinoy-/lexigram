@@ -81,17 +81,24 @@ async def test_run_all_timeout():
     assert "timed out" in results["slow"].message
 
 @pytest.mark.asyncio
-async def test_run_all_exception():
+async def test_run_all_exception(mocker):
     """Test exception handling."""
+    from lexigram.monitor.health import checker as checker_module
+
     checker = HealthChecker()
-    
+
     def crashing_check():
         raise ValueError("crash")
-        
+
+    warning_spy = mocker.patch.object(checker_module, "logger")
     checker.add("crash", crashing_check)
     results = await checker.run_all()
     assert results["crash"].status == HealthStatus.UNHEALTHY
-    assert "crash" in results["crash"].message
+    assert results["crash"].message == "ValueError: connection check failed"
+    assert "crash" not in results["crash"].message
+    warning_spy.warning.assert_called_once()
+    assert warning_spy.warning.call_args.kwargs["error"] == "crash"
+    assert warning_spy.warning.call_args.kwargs["component"] == "crash"
 
 def test_aggregate_status():
     """Test status aggregation."""
