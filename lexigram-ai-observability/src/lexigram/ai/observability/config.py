@@ -43,6 +43,21 @@ class ObservabilityConfig(BaseConfig):
         default=True,
         description="Enable background health checking for AI components",
     )
+    trace_redaction_enabled: bool = Field(
+        default=False,
+        description=(
+            "Redact secret-shaped keys (e.g. token, password, api_key) from "
+            "trace span attributes and audit metadata. Strongly recommended "
+            "for production tracing."
+        ),
+    )
+    trace_max_attribute_length: int = Field(
+        default=0,
+        description=(
+            "Cap on string attribute values written to trace spans, in "
+            "characters. 0 disables the cap."
+        ),
+    )
 
     def validate_for_environment(
         self, env: Environment | None = None
@@ -72,6 +87,23 @@ class ObservabilityConfig(BaseConfig):
                         suggestion=(
                             f"Set {const.ENV_PREFIX}METRICS_ENABLED=true to collect "
                             "operational metrics."
+                        ),
+                    )
+                )
+            if self.tracing_enabled and not self.trace_redaction_enabled:
+                issues.append(
+                    ConfigIssue(
+                        severity="warning",
+                        field="trace_redaction_enabled",
+                        message=(
+                            "Trace payload redaction disabled in production; "
+                            "secrets in tool arguments, agent actions, or "
+                            "retriever queries may be exported to the tracing "
+                            "backend."
+                        ),
+                        suggestion=(
+                            f"Set {const.ENV_PREFIX}TRACE_REDACTION_ENABLED=true "
+                            "to redact secret-shaped keys from trace spans."
                         ),
                     )
                 )

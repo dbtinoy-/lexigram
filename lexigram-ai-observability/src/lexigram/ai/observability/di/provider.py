@@ -23,6 +23,7 @@ from lexigram.di.provider import Provider
 from lexigram.logging import (
     get_logger,
 )
+from lexigram.logging.redaction import DefaultRedactor
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -82,8 +83,24 @@ class ObservabilityProvider(Provider):
         # by protocol receive the same instances.
         container.singleton(AIMetrics)
         container.singleton(AIMetricsProtocol, AIMetrics)
-        container.singleton(AITracer)
-        container.singleton(AITracerProtocol, AITracer)
+        redaction_policy = (
+            DefaultRedactor() if self._config.trace_redaction_enabled else None
+        )
+        max_attribute_length = (
+            self._config.trace_max_attribute_length
+            if self._config.trace_max_attribute_length > 0
+            else None
+        )
+        if redaction_policy is None and max_attribute_length is None:
+            container.singleton(AITracer)
+            container.singleton(AITracerProtocol, AITracer)
+        else:
+            tracer_instance = AITracer(
+                redaction_policy=redaction_policy,
+                max_attribute_length=max_attribute_length,
+            )
+            container.singleton(AITracer, tracer_instance)
+            container.singleton(AITracerProtocol, tracer_instance)
         container.singleton(AIHealthMonitor)
         container.singleton(AIHealthMonitorProtocol, AIHealthMonitor)
 
@@ -129,6 +146,11 @@ class ObservabilityProvider(Provider):
                     tracer=tracer,
                     metrics=metrics,
                     audit_store=audit_store,
+                    redaction_policy=(
+                        DefaultRedactor()
+                        if self._config.trace_redaction_enabled
+                        else None
+                    ),
                 )
                 container.bind(LLMClientProtocol, observable_llm)
                 logger.info("observability_llm_wrapped")
