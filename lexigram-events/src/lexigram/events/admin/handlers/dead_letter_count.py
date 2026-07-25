@@ -6,10 +6,13 @@ from typing import TYPE_CHECKING
 
 from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
+from lexigram.logging import get_logger
 from lexigram.result import Ok, Result
 
 if TYPE_CHECKING:
     from lexigram.contracts.events import EventBusProtocol
+
+logger = get_logger(__name__)
 
 
 class DeadLetterCountWidgetHandler:
@@ -25,7 +28,6 @@ class DeadLetterCountWidgetHandler:
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch dead letter queue count and age.
 
-        Returns stub data pending EventBusProtocol dead-letter methods.
         Mirrors the widget template: a non-zero count is a danger signal,
         a clear queue renders as success.
         Infrastructure failures propagate as exceptions.
@@ -36,10 +38,17 @@ class DeadLetterCountWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # TODO: Replace with actual dead-letter queue stats when protocol supports it
+        store = getattr(self._event_bus, "dead_letter_store", None)
         count = 0
-        oldest_age_minutes: int | None = None
-
+        if store is not None:
+            try:
+                entries = await store.list_entries(limit=100)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "events_dead_letter.store_unavailable", error=str(exc)
+                )
+                entries = []
+            count = len(entries)
         stats: list[Stat] = [
             Stat(
                 label="Dead Letters",
@@ -47,9 +56,6 @@ class DeadLetterCountWidgetHandler:
                 tone=Tone.DANGER if count > 0 else Tone.SUCCESS,
             )
         ]
-        if oldest_age_minutes is not None:
-            stats.append(Stat(label="Oldest", value=f"{oldest_age_minutes}m ago"))
-
         return Ok(StatContent(stats=tuple(stats)))
 
 
