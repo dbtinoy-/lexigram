@@ -326,6 +326,23 @@ Verified: lexigram-audit 287 unit tests green (incl. 12 rewritten verifier + 7 n
 
 ---
 
+### 3.18 Monitor health/metrics authz + message sanitization (Round 11, Lane 7) — `plans/2026-08-18-security-monitor-health-metrics-authz.md` `[ ]`
+
+**EXECUTED 2026-08-18 (Lane 7, Area 3; §2 sign-off pending).** Finding §56: raw exception strings (`str(e)`) leaked into `lexigram-monitor` health JSON at five sites, and both raw-ASGI middleware endpoints (`/health`, `/metrics`) had no auth option. D1: new `health/sanitize.py` `safe_error_message(exc)` (exception-type-only message) used at all sites with full `str(e)` kept in structured logs; D2: new `middleware/auth.py` helpers (`bearer_token_from_scope`, `is_authorized` with `hmac.compare_digest`, `send_unauthorized` 401 + `WWW-Authenticate: Bearer`) and opt-in `auth_token: str | None = None` on both middleware constructors (open-by-default per spec §4.1). 8 commits:
+
+- [x] Task 1 (D1a cached) — sanitize `CachedHealthChecker` db/redis branches + leak-regression tests — `683eddf`
+- [x] Task 2 (D1b registry) — sanitize `_check_liveness`/`_check_readiness` (logger.exception retained) — `1f7dee9`
+- [x] Task 3 (D1c provider) — sanitize `MonitorProvider.health_check()` backend-error branch — `591716a`
+- [x] Task 4 (D2a helpers) — `middleware/auth.py` three helpers + 7 tests — `e059a3f`
+- [x] Task 5 (D2b health) — `HealthCheckProvider(auth_token=None)` gate (401/200/404) — `2bb279d`
+- [x] Task 6 (D2c metrics) — `PrometheusMiddleware(auth_token=None)` gate + pass-through test — `e6b0100`
+- [x] Task 7 (docs + verification) — README `## Endpoint protection`, GUIDE examples, full suite 331 passed, ruff/format/mypy clean, grep gates clean — `6c6c118`
+- [x] (beyond plan) — `HealthChecker.run_all()` (checker.py) also had `message=str(e)` — a sixth §56-class site the plan/spec missed, caught by Task 7's own grep gate; sanitized + `logger.warning` detail + test update — `6c69c9c`
+
+Verified: lexigram-monitor 331 unit tests green (6 new/updated files), mypy clean (health 8 + middleware 4 files), ruff/format clean on touched trees, integration suite unchanged. Two-pass review clean (spec §3 D1/D2, §4.1 open-by-default, §4.2 type-name-only; no `AdminAuthorizerProtocol`/`can_execute_action` — grep zero hits; no `lexigram-admin`/`lexigram-auth` dependency added; pyproject + `health/__init__.py` + `middleware/__init__.py` untouched — `safe_error_message` intentionally not re-exported). Deviations: (1) plan's log-spy snippet (`mocker.patch.object(logger, "warning")`) impossible — `_NamedLogger` is `__slots__`-locked read-only — patched the module-level `logger` attribute instead (repo convention, cf. lexigram-cache backend tests); (2) plan's `dict(...)`/`dict-comprehension` in the auth test tripped C402/C416 — used `dict(...)` directly.
+
+---
+
 ## 4. Audit-Correction Register
 
 Agents re-verified every finding against live code; corrections below must
@@ -1099,10 +1116,10 @@ claim, only the most consequential ones.
 | 63 | lexigram-ai-feedback | No tenant/user scoping on feedback records | Medium | `docs/superpowers/specs/2026-08-18-security-ai-feedback-tenant-scoping-design.md` |
 | 64 | lexigram-ai-feedback | `FeedbackSystemWithResultPattern` is a fake-persistence stub — always returns `Ok(...)`, never stores, `get_feedback()` always returns `Ok([])`; publicly exported in `__all__` alongside the real service | High | `docs/superpowers/specs/2026-08-18-quality-ai-feedback-fake-persistence-design.md` |
 | 65 | lexigram-ai-feedback | No-authz endpoint / unenforced `MAX_FEEDBACK_TEXT_LENGTH` and `MAX_CONTEXT_SIZE` constants (declared, never read) | Medium | `docs/superpowers/specs/2026-08-18-security-ai-feedback-authz-limits-design.md` |
-| 66 | lexigram-audit | Tamper-verification is a permanent no-op — `verify_recent()` unconditionally returns `[]`, `verify_entry()` unconditionally returns `True`; admin UI's "verified" flag is therefore always green | Critical | `docs/superpowers/specs/2026-08-18-security-audit-verification-noop-design.md` |
-| 67 | lexigram-audit | `purge_expired()` counts expired entries but never calls any store delete method — retention purge silently doesn't delete anything | High | `docs/superpowers/specs/2026-08-18-security-audit-purge-noop-design.md` |
+| 66 | lexigram-audit | Tamper-verification is a permanent no-op — `verify_recent()` unconditionally returns `[]`, `verify_entry()` unconditionally returns `True`; admin UI's "verified" flag is therefore always green | Critical | `docs/superpowers/specs/2026-08-18-security-audit-verification-noop-design.md` | **EXECUTED 2026-08-18 (Lane 7, Area 2; §2 sign-off pending) — see §3.17** |
+| 67 | lexigram-audit | `purge_expired()` counts expired entries but never calls any store delete method — retention purge silently doesn't delete anything | High | `docs/superpowers/specs/2026-08-18-security-audit-purge-noop-design.md` | **EXECUTED 2026-08-18 (Lane 7, Area 1; §2 sign-off pending) — see §3.16** |
 | 68 | lexigram-audit | Blind `except` in log/query path | Medium | `docs/superpowers/specs/2026-08-18-quality-audit-blind-except-design.md` |
-| 69 | lexigram-events | WebSocket streaming endpoint has no auth check, unconditionally accepts connections, `subscribe_all` has no tenant/event filtering hook | Critical | `docs/superpowers/specs/2026-08-18-security-events-websocket-noauth-design.md` |
+| 69 | lexigram-events | WebSocket streaming endpoint gained an optional `authorize` callback (`21bdf478`) but still defaults to accepting every connection — default-open posture documented (`a54711ec`); `subscribe_all` still has no tenant/event filtering hook | Critical | `docs/superpowers/specs/2026-08-18-security-events-websocket-noauth-design.md` |
 | 70 | lexigram-events | `subscribe()`'s `event_filter` parameter is silently discarded (`_ = event_filter`, explicit "not implemented" comment) — filtering was never built despite the parameter existing in the public API | High | `docs/superpowers/specs/2026-08-18-quality-events-filter-not-implemented-design.md` |
 | 71 | lexigram-events | Unbounded idempotent-decorator cache / unvalidated `table_name` | Medium | `docs/superpowers/specs/2026-08-18-quality-events-cache-tablename-design.md` |
 | 72 | lexigram-queue | Default driver (`InMemoryQueue`) has no backpressure/`max_in_flight` limit, unlike every other backend (Kafka/SQS/Azure/GCP) — unbounded task spawning under load | High | `docs/superpowers/specs/2026-08-18-resilience-queue-memory-backpressure-design.md` |
