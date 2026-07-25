@@ -134,6 +134,7 @@ app.add_provider(MonitorProvider(backend=backend))
 # At the ASGI server level, wrap your web app:
 web_app = container.resolve(WebProvider).app
 app = PrometheusMiddleware(web_app, path="/metrics")
+# Optional: auth_token="..." likewise requires Authorization: Bearer on /metrics
 ```
 
 ### OpenTelemetry tracing
@@ -154,7 +155,9 @@ app.add_provider(MonitorProvider(backend=backend))
 ```python
 from lexigram.monitor.middleware import HealthCheckProvider
 
-app.add_provider(HealthCheckProvider(path="/health"))
+# Optional: require `Authorization: Bearer <token>` on the endpoint.
+# Omit `auth_token` (the default) to keep the endpoint open for k8s probes.
+app.add_provider(HealthCheckProvider(path="/health", auth_token=os.environ.get("HEALTH_TOKEN")))
 ```
 
 ## Common Patterns
