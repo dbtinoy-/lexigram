@@ -7,6 +7,7 @@ from typing import Any, cast
 
 from lexigram.monitor import MetricsCollectorProtocol
 from lexigram.monitor.metrics.prometheus import exporter as prometheus_exporter
+from lexigram.monitor.middleware.auth import is_authorized, send_unauthorized
 
 PROMETHEUS_AVAILABLE = importlib.util.find_spec("prometheus_client") is not None
 
@@ -28,6 +29,9 @@ class PrometheusMiddleware:
         metrics_collector: Optional pre-configured
             :class:`~lexigram.monitor.metrics.collector.MetricsCollectorProtocol`.
             A new default collector is created when ``None`` is passed.
+        auth_token: Optional bearer token.  When set, requests must carry
+            ``Authorization: Bearer <auth_token>`` or receive ``401``.
+            Defaults to ``None`` (endpoint open).
 
     Example::
 
@@ -43,8 +47,10 @@ class PrometheusMiddleware:
         self,
         path: str = "/metrics",
         metrics_collector: MetricsCollectorProtocol | None = None,
+        auth_token: str | None = None,
     ):
         self.path = path
+        self.auth_token = auth_token
         self.metrics_collector = metrics_collector or MetricsCollectorProtocol()
 
         if PROMETHEUS_AVAILABLE:
@@ -95,6 +101,9 @@ class PrometheusMiddleware:
             return
 
         if scope["path"] == self.path and scope["method"] == "GET":
+            if not is_authorized(scope, self.auth_token):
+                await send_unauthorized(send)
+                return
             await self._serve_metrics(send)
             return
 
