@@ -51,6 +51,7 @@ class RedisCacheBackend(CacheBackendProtocol):
         self.config = config or default_cache_config()
         self._store = store
         self._metrics = CacheMetrics()
+        self._evictions = 0
         self._hooks = hooks
 
     def get_underlying_client(self) -> Any | None:
@@ -142,6 +143,7 @@ class RedisCacheBackend(CacheBackendProtocol):
             exists = await self._store.get(prefixed_key) is not None
             if exists:
                 await self._store.delete(prefixed_key)
+                self._evictions += 1
                 await self._metrics.record_delete()
                 await self._emit_action(
                     "cache.evicted",
@@ -321,6 +323,7 @@ class RedisCacheBackend(CacheBackendProtocol):
                         CacheEntryEvictedHook(key=key, backend="redis"),
                     )
 
+            self._evictions += count
             await self._metrics.record_delete(count)
             return Ok(count)
         except (RuntimeError, OSError, ConnectionError, ValueError, TypeError) as e:
@@ -375,12 +378,27 @@ class RedisCacheBackend(CacheBackendProtocol):
                 )
 
             count = len(matching_keys)
+            self._evictions += count
             await self._metrics.record_delete(count)
             return Ok(count)
         except (RuntimeError, OSError, ConnectionError, ValueError, TypeError) as e:
             await self._metrics.record_error()
             logger.warning("Redis delete_pattern failed for '%s': %s", pattern, e)
             return Err(CacheWriteError(pattern, str(e)))
+
+    def get_stats(self) -> dict[str, int | float | str] | None:
+        """Return backend statistics for the admin dashboard.
+
+        Returns:
+            Dict with ``hits``, ``misses``, ``evictions``, and ``entries``
+            counts, or None when statistics are unavailable.
+        """
+        return {
+            "hits": self._metrics.hits,
+            "misses": self._metrics.misses,
+            "evictions": self._evictions,
+            "entries": 0,
+        }
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """

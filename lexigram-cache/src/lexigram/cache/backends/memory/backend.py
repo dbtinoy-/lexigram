@@ -56,6 +56,7 @@ class MemoryCacheBackend(CacheBackendProtocol):
         self.config = config or default_cache_config()
         self._store = MemoryStateStore(max_size=max_size)  # type: ignore[abstract]
         self._metrics = CacheMetrics()
+        self._evictions = 0
         self._hooks = hooks
 
     async def _emit_action(self, hook_name: str, payload: object) -> None:
@@ -151,6 +152,7 @@ class MemoryCacheBackend(CacheBackendProtocol):
             exists = await self._store.get(prefixed_key) is not None
             if exists:
                 await self._store.delete(prefixed_key)
+                self._evictions += 1
                 await self._metrics.record_delete()
                 await self._emit_action(
                     "cache.evicted",
@@ -298,6 +300,7 @@ class MemoryCacheBackend(CacheBackendProtocol):
                 if await self._store.get(prefixed_key) is not None:
                     await self._store.delete(prefixed_key)
                     count += 1
+                    self._evictions += 1
                     await self._emit_action(
                         "cache.evicted",
                         CacheEntryEvictedHook(key=key, backend="memory"),
@@ -341,6 +344,7 @@ class MemoryCacheBackend(CacheBackendProtocol):
             for key in matching:
                 if await self._store.delete(key):
                     count += 1
+                    self._evictions += 1
                     await self._emit_action(
                         "cache.evicted",
                         CacheEntryEvictedHook(
@@ -354,6 +358,20 @@ class MemoryCacheBackend(CacheBackendProtocol):
             await self._metrics.record_error()
             logger.warning("Memory delete_pattern failed for '%s': %s", pattern, e)
             return Err(CacheWriteError(pattern, str(e)))
+
+    def get_stats(self) -> dict[str, int | float | str] | None:
+        """Return backend statistics for the admin dashboard.
+
+        Returns:
+            Dict with ``hits``, ``misses``, ``evictions``, and ``entries``
+            counts, or None when statistics are unavailable.
+        """
+        return {
+            "hits": self._metrics.hits,
+            "misses": self._metrics.misses,
+            "evictions": self._evictions,
+            "entries": len(self._store._data),
+        }
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """

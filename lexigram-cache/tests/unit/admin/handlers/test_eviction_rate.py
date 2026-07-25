@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
 from lexigram.cache.admin.handlers.eviction_rate import EvictionRateWidgetHandler
 from lexigram.contracts.admin import StatContent, Tone, WidgetParams
 
 
-def _fake_cache(total_evictions: int) -> MagicMock:
-    cache = MagicMock()
-    store = MagicMock()
-    store.eviction_count = total_evictions
-    cache._store = store
-    return cache
+class _FakeCache:
+    """Implements CacheStatsProtocol.get_stats."""
+
+    def __init__(self, evictions: int = 0) -> None:
+        self.evictions = evictions
+
+    def get_stats(self) -> dict[str, int] | None:
+        return {"evictions": self.evictions}
 
 
 async def test_eviction_rate_handler_returns_stat_content() -> None:
-    result = await EvictionRateWidgetHandler(cache=_fake_cache(30)).get_data(
+    result = await EvictionRateWidgetHandler(cache=_FakeCache(30)).get_data(
         WidgetParams()
     )
     content = result.unwrap()
@@ -25,8 +25,8 @@ async def test_eviction_rate_handler_returns_stat_content() -> None:
     assert len(content.stats) == 2
 
 
-async def test_eviction_rate_stats_use_static_neutral_tone() -> None:
-    result = await EvictionRateWidgetHandler(cache=_fake_cache(1800)).get_data(
+async def test_eviction_rate_stats_mirror_real_stats() -> None:
+    result = await EvictionRateWidgetHandler(cache=_FakeCache(1800)).get_data(
         WidgetParams(time_window_minutes=60)
     )
     content = result.unwrap()
@@ -37,7 +37,16 @@ async def test_eviction_rate_stats_use_static_neutral_tone() -> None:
     assert total.tone is Tone.DEFAULT
 
 
+async def test_eviction_rate_degrades_without_capability() -> None:
+    result = await EvictionRateWidgetHandler(cache=object()).get_data(
+        WidgetParams(time_window_minutes=60)
+    )
+    content = result.unwrap()
+    assert content.stats[0].value == "Unavailable"
+
+
 __all__ = [
+    "test_eviction_rate_degrades_without_capability",
     "test_eviction_rate_handler_returns_stat_content",
-    "test_eviction_rate_stats_use_static_neutral_tone",
+    "test_eviction_rate_stats_mirror_real_stats",
 ]

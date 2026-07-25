@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
+from lexigram.contracts.admin import (
+    CacheStatsProtocol,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
@@ -25,21 +31,24 @@ class EvictionRateWidgetHandler:
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch cache eviction stats.
 
+        Degrades to "Unavailable" when the backend lacks the stats capability.
+
         Args:
             params: Widget parameters.
 
         Returns:
             Result containing StatContent with eviction metrics.
         """
-        # Try to get metrics from backend, fallback to defaults
-        store = getattr(self._cache, "_store", None)
+        if not isinstance(self._cache, CacheStatsProtocol):
+            return Ok(
+                StatContent(
+                    stats=(Stat(label="Evictions/sec", value="Unavailable"),)
+                )
+            )
+        stats = self._cache.get_stats() or {}
+        total_evictions = int(stats.get("evictions", 0))
 
-        total_evictions = 0
-        if store is not None:
-            # MemoryStateStore tracks evictions
-            total_evictions = getattr(store, "eviction_count", 0)
-
-        # Compute evictions per second (simplified: assume per 60 second window)
+        # Compute evictions per second over the configured window.
         window_seconds = params.time_window_minutes * 60
         evictions_per_second = (
             total_evictions / window_seconds if window_seconds > 0 else 0.0
