@@ -20,15 +20,19 @@ class _SimpleDispatcher:
 
     def __init__(self) -> None:
         self._handlers: dict[str, list[Callable[..., Any]]] = {}
+        self._global_handlers: list[Callable[..., Any]] = []
 
-    def subscribe(self, event_type: str, handler: Callable[..., Any]) -> None:
+    def subscribe(self, event_type: str | None, handler: Callable[..., Any]) -> None:
         """Register a handler for an event type."""
+        if event_type is None:
+            self._global_handlers.append(handler)
+            return
         self._handlers.setdefault(event_type, []).append(handler)
 
     async def publish(self, event: Any) -> None:
         """Dispatch an event to all registered handlers."""
         event_type = type(event).__name__
-        for handler in self._handlers.get(event_type, []):
+        for handler in [*self._global_handlers, *self._handlers.get(event_type, [])]:
             try:
                 result = handler(event)
                 if hasattr(result, "__await__"):
@@ -68,11 +72,12 @@ class AdminEventBusAdapter:
         except Exception:  # noqa: BLE001
             return None
 
-    def subscribe(self, event_type: str, handler: Callable[..., Any]) -> None:
+    def subscribe(self, event_type: str | None, handler: Callable[..., Any]) -> None:
         """Register a handler for a given event type.
 
         Args:
-            event_type: The event type name to subscribe to.
+            event_type: The event type name to subscribe to; ``None``
+                registers a global handler on the fallback dispatcher.
             handler: Callable that accepts the event.
         """
         if self._bus is not None and hasattr(self._bus, "subscribe"):
@@ -94,6 +99,25 @@ class AdminEventBusAdapter:
             result = await self.publish(event)
             results.append(result)
         return results
+
+    def stream(self) -> Any:
+        """Return a hot stream of admin events from the configured bus.
+
+        Returns:
+            An ``EventStream[Any]`` from ``lexigram.reactive`` fed by the
+            bus (or the fallback dispatcher) through a shared Subject.
+            Live events only; use ``lexigram.events.reactive.from_bus``
+            for catchup replay from an event store.
+        """
+        from lexigram.reactive import Subject
+
+        subject = Subject[Any]()
+
+        async def _handler(event: Any) -> None:
+            await subject.publish(event)
+
+        self.subscribe(None, _handler)
+        return subject
 
 
 __all__ = ["AdminEventBusAdapter"]

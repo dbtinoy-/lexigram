@@ -14,6 +14,7 @@ from lexigram.admin.realtime.sse import (
     BulkOperationProgressHandler,
     create_sse_response,
 )
+from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
 from lexigram.admin.realtime.websocket import (
     HAS_WEBSOCKET,
     AdminWebSocketHandler,
@@ -34,6 +35,7 @@ __all__ = [
     "AdminWebSocketManager",
     "BulkOperationProgressHandler",
     "ResourceChangeNotifier",
+    "SubjectAdminEventHub",
     "WSMessage",
     "WSMessageType",
     "create_sse_response",
