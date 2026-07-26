@@ -193,8 +193,18 @@ class UniversalDocumentParser:
     Supports multiple document formats by delegating to appropriate loaders.
     """
 
-    def __init__(self) -> None:
-        """Initialize parser with all supported loaders."""
+    def __init__(self, allowed_root: Path | None = None) -> None:
+        """Initialize parser with all supported loaders.
+
+        Args:
+            allowed_root: Optional directory that every parsed source must
+                resolve inside of. When ``None`` (default), no containment
+                check is performed and behavior is unchanged from earlier
+                versions. When set, ``parse`` and ``extract_metadata`` raise
+                ``RAGError`` for any source whose resolved path (symlinks
+                followed) is not inside ``allowed_root``.
+        """
+        self.allowed_root = allowed_root.resolve() if allowed_root is not None else None
         self._loaders: dict[str, DocumentLoader] = {
             # Text formats
             ".txt": _TextLoader(),
@@ -207,6 +217,26 @@ class UniversalDocumentParser:
             ".htm": _HTMLLoader(),
         }
 
+    def _validate_source_within_root(self, file_path: Path) -> None:
+        """Reject sources that resolve outside the configured allowed root.
+
+        Args:
+            file_path: Source path the caller wants to parse or inspect.
+
+        Raises:
+            RAGError: If ``allowed_root`` is set and the resolved path of
+                ``file_path`` is not inside it.
+        """
+        if self.allowed_root is None:
+            return
+        resolved = file_path.resolve()
+        if not resolved.is_relative_to(self.allowed_root):
+            msg = (
+                f"Access denied: {file_path} is outside the allowed root "
+                f"{self.allowed_root}"
+            )
+            raise RAGError(msg)
+
     async def parse(self, file_path: Path) -> Document:
         """Parse document from file using appropriate loader.
 
@@ -217,8 +247,12 @@ class UniversalDocumentParser:
             Parsed document
 
         Raises:
+            RAGError: If ``allowed_root`` is set and the resolved
+                ``file_path`` is outside it.
             ValueError: If file type is not supported
         """
+        self._validate_source_within_root(file_path)
+
         if not file_path.exists():
             msg = f"Document not found: {file_path}"
             raise FileNotFoundError(msg)
@@ -275,7 +309,13 @@ class UniversalDocumentParser:
 
         Returns:
             Document metadata
+
+        Raises:
+            RAGError: If ``allowed_root`` is set and the resolved
+                ``file_path`` is outside it.
         """
+        self._validate_source_within_root(file_path)
+
         if not file_path.exists():
             msg = f"Document not found: {file_path}"
             raise FileNotFoundError(msg)
