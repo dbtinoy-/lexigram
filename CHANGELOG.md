@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `lexigram.reactive`: native reactive streams — EventStream protocol, pipeable operators (map, filter, scan, distinct, take, skip, merge, catch, retry, debounce, throttle, buffer, window), hot Subject/share with bounded backpressure, and retry with backoff options.
+- `lexigram.events.reactive`: cold/hot bridges from event stores and StreamDispatcher into reactive streams.
+- `lexigram.web.transport.reactive`: `sse_from_stream` responder wiring a reactive stream to an EventSource response.
+- `lexigram.admin.realtime.subject_hub`: Subject-backed admin event hub.
+
 ### Security (2026-08-16 → 2026-08-18 audit series)
 
 - Password hashing hardened: real cost-based `PasswordConfig`, `needs_rehash()` + cost-upgrade on login, single composed hasher (Argon2 + BCrypt legacy fallback) behind one `PasswordHasherProtocol` binding, admin SHA-256 fallback removed with fail-closed setup path.

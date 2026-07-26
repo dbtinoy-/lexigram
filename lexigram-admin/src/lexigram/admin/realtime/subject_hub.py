@@ -75,9 +75,7 @@ class SubjectAdminEventHub:
             Matching AdminEvent objects as they are published.
         """
         stream = self._subject.pipe(
-            ops.filter(
-                lambda te: te.target_users is None or user_id in te.target_users
-            )
+            ops.filter(lambda te: te.target_users is None or user_id in te.target_users)
         )
         if resources:
             stream = stream.pipe(
