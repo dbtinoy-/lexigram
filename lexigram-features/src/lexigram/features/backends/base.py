@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 import hashlib
 from typing import Any
 
+from lexigram.features.constants import DEFAULT_ENABLED
 from lexigram.features.types import (
     Flag,
     FlagContext,
@@ -239,13 +240,17 @@ class AbstractFlagProvider(ABC):
         flag: Flag,
         context: FlagContext,
     ) -> FlagEvaluation:
-        """Evaluate a flag gate by matching all required user attribute pairs."""
+        """Evaluate a flag gate by matching all required user attribute pairs.
+
+        An empty rule set evaluates disabled (fail-closed) because an
+        unconfigured rule is a misconfiguration, not a grant-all.
+        """
         if not flag.user_attributes:
             return FlagEvaluation(
                 flag_name=flag.name,
-                enabled=True,
-                reason="user_attribute_empty_rule",
-                value=True,
+                enabled=DEFAULT_ENABLED,
+                reason="user_attribute_empty_rule_denied",
+                value=DEFAULT_ENABLED,
             )
         attrs = context.user_attributes or {}
         enabled = all(attrs.get(k) == v for k, v in flag.user_attributes.items())

@@ -167,6 +167,16 @@ class TestLocalProviderEvaluation:
         assert not (await provider.evaluate("premium", ctx_no_match)).enabled
 
     @pytest.mark.asyncio
+    async def test_user_attribute_empty_rule_fails_closed(self) -> None:
+        """Empty user_attributes rule evaluates disabled, matching package defaults."""
+        flag = Flag("premium", type=FlagType.USER_ATTRIBUTE)
+        provider = LocalProvider({"premium": flag})
+        result = await provider.evaluate("premium")
+        assert result.enabled is False
+        assert result.reason == "user_attribute_empty_rule_denied"
+        assert result.value is False
+
+    @pytest.mark.asyncio
     async def test_time_based_flag_active_in_window(self) -> None:
         past = datetime(2000, 1, 1, tzinfo=UTC)
         future = datetime(2099, 1, 1, tzinfo=UTC)
