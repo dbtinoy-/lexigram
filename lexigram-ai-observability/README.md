@@ -43,6 +43,25 @@ async with Application.boot(modules=[AppModule]) as app:
     ...
 ```
 
+## Trace Payload Redaction (recommended for production)
+
+`AITracer` exports tool arguments, agent actions/finishes, and retriever queries to trace spans verbatim. To keep
+secret-shaped keys (`token`, `password`, `api_key`, `secret`, `authorization`, ...) and oversized string values out of
+your tracing backend, enable trace redaction — **off by default, strongly recommended in production**:
+
+```python
+config = ObservabilityConfig(
+    enabled=True,
+    trace_redaction_enabled=True,
+    trace_max_attribute_length=4096,
+)
+```
+
+- `trace_redaction_enabled` masks values whose keys match the framework's secret denylist (`"<redacted>"` sentinel,
+  exact case-insensitive key match, recursing nested dicts/lists) in the four callback paths and in LLM audit metadata.
+- `trace_max_attribute_length` truncates any string attribute value beyond the cap (characters), independently of redaction.
+- No behavior changes when disabled: span attributes stay byte-identical to today's output.
+
 ## Configuration
 
 > **Zero-config usage:** Call `ObservabilityModule.configure()` with no arguments to use defaults.
@@ -56,12 +75,16 @@ ai_observability:
   metrics_enabled: true
   tracing_enabled: true
   health_checks_enabled: true
+  trace_redaction_enabled: true
+  trace_max_attribute_length: 4096
 ```
 
 ### Option 2 — Profiles + Environment Variables *(recommended)*
 
 ```bash
 export LEX_AI_OBSERVABILITY__ENABLED=true
+export LEX_AI_OBSERVABILITY__TRACE_REDACTION_ENABLED=true
+export LEX_AI_OBSERVABILITY__TRACE_MAX_ATTRIBUTE_LENGTH=4096
 # Environment variables for each field
 ```
 
@@ -88,6 +111,8 @@ ObservabilityModule.configure(config)
 | `metrics_enabled` | `True` | `LEX_AI_OBSERVABILITY__METRICS_ENABLED` | Enable metrics collection |
 | `tracing_enabled` | `True` | `LEX_AI_OBSERVABILITY__TRACING_ENABLED` | Enable distributed tracing |
 | `health_checks_enabled` | `True` | `LEX_AI_OBSERVABILITY__HEALTH_CHECKS_ENABLED` | Enable background health checking |
+| `trace_redaction_enabled` | `False` | `LEX_AI_OBSERVABILITY__TRACE_REDACTION_ENABLED` | Redact secret-shaped keys from trace span attributes and audit metadata |
+| `trace_max_attribute_length` | `0` | `LEX_AI_OBSERVABILITY__TRACE_MAX_ATTRIBUTE_LENGTH` | Cap on string attribute values written to trace spans (`0` = disabled) |
 
 ## Module Factory Methods
 
