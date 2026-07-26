@@ -25,6 +25,11 @@ from lexigram.features.types import (
     FlagEvaluation,
     FlagType,
 )
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
+
+_warned_empty_user_attribute_rules: set[str] = set()
 
 
 class AbstractFlagProvider(ABC):
@@ -246,6 +251,12 @@ class AbstractFlagProvider(ABC):
         unconfigured rule is a misconfiguration, not a grant-all.
         """
         if not flag.user_attributes:
+            if flag.name not in _warned_empty_user_attribute_rules:
+                _warned_empty_user_attribute_rules.add(flag.name)
+                logger.warning(
+                    "user_attribute_empty_rule_denied",
+                    flag=flag.name,
+                )
             return FlagEvaluation(
                 flag_name=flag.name,
                 enabled=DEFAULT_ENABLED,

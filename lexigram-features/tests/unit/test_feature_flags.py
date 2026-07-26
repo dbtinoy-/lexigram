@@ -16,8 +16,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from pytest_mock import MockerFixture
 
-from lexigram.contracts.feature_flags import FlagProviderProtocol, MutableFlagProviderProtocol
+from lexigram.contracts.feature_flags import (
+    FlagProviderProtocol,
+    MutableFlagProviderProtocol,
+)
+import lexigram.features.backends.base as features_base
 from lexigram.features.backends.local import LocalProvider
 from lexigram.features.backends.testing import MemoryProvider
 from lexigram.features.decorators import (
@@ -175,6 +180,42 @@ class TestLocalProviderEvaluation:
         assert result.enabled is False
         assert result.reason == "user_attribute_empty_rule_denied"
         assert result.value is False
+
+    @pytest.fixture(autouse=True)
+    def _clear_empty_rule_warning_debounce(self) -> None:
+        """Reset the module-level warning debounce so tests are independent."""
+        features_base._warned_empty_user_attribute_rules.clear()
+
+    @pytest.mark.asyncio
+    async def test_user_attribute_empty_rule_warns_once(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Empty-rule evaluation warns once per flag, not on every call."""
+        mock_logger = mocker.patch.object(features_base, "logger")
+        flag = Flag("premium", type=FlagType.USER_ATTRIBUTE)
+        provider = LocalProvider({"premium": flag})
+        await provider.evaluate("premium")
+        await provider.evaluate("premium")
+        await provider.evaluate("premium")
+        mock_logger.warning.assert_called_once_with(
+            "user_attribute_empty_rule_denied",
+            flag="premium",
+        )
+
+    @pytest.mark.asyncio
+    async def test_user_attribute_non_empty_rule_does_not_warn(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Configured attribute rules must not emit the misconfiguration warning."""
+        mock_logger = mocker.patch.object(features_base, "logger")
+        flag = Flag(
+            "premium",
+            type=FlagType.USER_ATTRIBUTE,
+            user_attributes={"tier": "premium"},
+        )
+        provider = LocalProvider({"premium": flag})
+        await provider.evaluate("premium", FlagContext(user_attributes={"tier": "premium"}))
+        mock_logger.warning.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_time_based_flag_active_in_window(self) -> None:
