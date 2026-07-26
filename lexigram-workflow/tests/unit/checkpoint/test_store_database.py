@@ -1,4 +1,5 @@
 """Unit tests for DatabaseContentCheckpointStore."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -91,17 +92,19 @@ class TestDatabaseContentCheckpointStore:
         sample_key: ContentCheckpointKey,
     ):
         provider.execute_query = AsyncMock(
-            return_value=_query_result([
-                {
-                    "key_str": sample_key.as_str(),
-                    "entry_json": (
-                        '{"output":{"result":"ok"},"output_blob_ref":null,'
-                        '"completed_at":"2026-06-03T00:00:00",'
-                        '"stage_handler_version":"v1","output_size_bytes":16,'
-                        '"metadata":{}}'
-                    ),
-                }
-            ])
+            return_value=_query_result(
+                [
+                    {
+                        "key_str": sample_key.as_str(),
+                        "entry_json": (
+                            '{"output":{"result":"ok"},"output_blob_ref":null,'
+                            '"completed_at":"2026-06-03T00:00:00",'
+                            '"stage_handler_version":"v1","output_size_bytes":16,'
+                            '"metadata":{}}'
+                        ),
+                    }
+                ]
+            )
         )
 
         result = await store.get(sample_key)
@@ -162,7 +165,7 @@ class TestDatabaseContentCheckpointStore:
 
         assert "DROP TABLE" not in sql
         assert "DELETE FROM" not in sql
-        assert "'" not in sql[sql.index("VALUES"):]
+        assert "'" not in sql[sql.index("VALUES") :]
         assert any("DROP TABLE" in str(p) for p in params)
         assert any("DELETE FROM" in str(p) for p in params)
 
@@ -179,15 +182,19 @@ class TestDatabaseContentCheckpointStore:
             config_hash=b"\x01" * 32,
         )
         provider.execute_query = AsyncMock(
-            return_value=_query_result([{
-                "key_str": malicious_key.as_str(),
-                "entry_json": (
-                    '{"output":{"result":"ok"},"output_blob_ref":null,'
-                    '"completed_at":"2026-06-03T00:00:00",'
-                    '"stage_handler_version":"v1","output_size_bytes":16,'
-                    '"metadata":{}}'
-                ),
-            }])
+            return_value=_query_result(
+                [
+                    {
+                        "key_str": malicious_key.as_str(),
+                        "entry_json": (
+                            '{"output":{"result":"ok"},"output_blob_ref":null,'
+                            '"completed_at":"2026-06-03T00:00:00",'
+                            '"stage_handler_version":"v1","output_size_bytes":16,'
+                            '"metadata":{}}'
+                        ),
+                    }
+                ]
+            )
         )
 
         await store.get(malicious_key)
@@ -227,10 +234,12 @@ class TestDatabaseContentCheckpointStore:
         provider: MagicMock,
     ):
         provider.execute_query = AsyncMock(
-            return_value=_query_result([
-                {"key_str": "stage-a|t1|aa|bb"},
-                {"key_str": "stage-a|t1|cc|dd"},
-            ])
+            return_value=_query_result(
+                [
+                    {"key_str": "stage-a|t1|aa|bb"},
+                    {"key_str": "stage-a|t1|cc|dd"},
+                ]
+            )
         )
 
         result = await store.list_by_stage("stage-a", tenant_id="t1")
@@ -239,9 +248,68 @@ class TestDatabaseContentCheckpointStore:
         assert result[0].tenant_id == "t1"
 
     @pytest.mark.asyncio
+    async def test_list_by_stage_binds_patterns_and_limit(
+        self,
+        store: DatabaseContentCheckpointStore,
+        provider: MagicMock,
+    ):
+        provider.execute_query = AsyncMock(
+            return_value=_query_result([{"key_str": "stage-a|t1|aa|bb"}])
+        )
+
+        await store.list_by_stage("stage-a", tenant_id="t1", limit=5)
+
+        sql = provider.execute_query.await_args.args[0]
+        params = provider.execute_query.await_args.args[1]
+        assert sql == (
+            "SELECT key_str FROM workflow_content_checkpoints "
+            "WHERE key_str LIKE ? AND key_str LIKE ? LIMIT ?"
+        )
+        assert params == ["stage-a|%", "stage-a|t1|%", 5]
+
+    @pytest.mark.asyncio
+    async def test_list_by_stage_without_tenant_binds_single_pattern(
+        self,
+        store: DatabaseContentCheckpointStore,
+        provider: MagicMock,
+    ):
+        provider.execute_query = AsyncMock(return_value=_query_result([]))
+
+        await store.list_by_stage("stage-a", limit=3)
+
+        sql = provider.execute_query.await_args.args[0]
+        params = provider.execute_query.await_args.args[1]
+        assert sql == (
+            "SELECT key_str FROM workflow_content_checkpoints "
+            "WHERE key_str LIKE ? LIMIT ?"
+        )
+        assert params == ["stage-a|%", 3]
+
+    @pytest.mark.asyncio
+    async def test_list_by_stage_rejects_sql_injection(
+        self,
+        store: DatabaseContentCheckpointStore,
+        provider: MagicMock,
+    ):
+        payload = "'); DROP TABLE workflow_content_checkpoints; --"
+        provider.execute_query = AsyncMock(return_value=_query_result([]))
+
+        result = await store.list_by_stage(payload, tenant_id=payload, limit=10)
+
+        assert result == []
+        sql = provider.execute_query.await_args.args[0]
+        params = provider.execute_query.await_args.args[1]
+        assert sql.count("?") == 3
+        assert "'" not in sql
+        assert "DROP TABLE" not in sql
+        assert params == [f"{payload}|%", f"{payload}|{payload}|%", 10]
+
+    @pytest.mark.asyncio
     async def test_invalid_table_name_is_rejected(self):
         with pytest.raises(ValueError, match="table name"):
-            DatabaseContentCheckpointStore(MagicMock(), table_name="invalid-table-name!")
+            DatabaseContentCheckpointStore(
+                MagicMock(), table_name="invalid-table-name!"
+            )
 
     @pytest.mark.asyncio
     async def test_creates_schema_on_demand(

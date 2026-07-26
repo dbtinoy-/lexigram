@@ -138,13 +138,16 @@ class DatabaseContentCheckpointStore:
         limit: int = 100,
     ) -> Sequence[ContentCheckpointKey]:
         await self._ensure_schema()
-        stage_escaped = stage_id.replace("'", "''")
-        where = f"key_str LIKE '{stage_escaped}|%'"
+        where_parts = ["key_str LIKE ?"]
+        params: list[Any] = [f"{stage_id}|%"]
         if tenant_id is not None:
-            tenant_escaped = tenant_id.replace("'", "''")
-            where += f" AND key_str LIKE '{stage_escaped}|{tenant_escaped}|%'"
+            where_parts.append("key_str LIKE ?")
+            params.append(f"{stage_id}|{tenant_id}|%")
+        where = " AND ".join(where_parts)
+        params.append(limit)
         result = await self._provider.execute_query(
-            f"SELECT key_str FROM {self._table_name} WHERE {where} LIMIT {limit}"
+            f"SELECT key_str FROM {self._table_name} WHERE {where} LIMIT ?",
+            params,
         )
         keys: list[ContentCheckpointKey] = []
         for row in result.rows:
