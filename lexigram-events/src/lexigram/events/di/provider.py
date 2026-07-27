@@ -193,13 +193,16 @@ class EventsProvider(Provider):
     def _register_admin(self, container: BootContainerProtocol) -> None:
         """Register admin widget handlers."""
         from lexigram.contracts.admin.protocols import AdminContributorProtocol
-        from lexigram.contracts.events import EventBusProtocol
+        from lexigram.contracts.events import EventBusProtocol, EventStoreProtocol
         from lexigram.events.admin.contributor import EventsAdminContributor
         from lexigram.events.admin.handlers.dead_letter_count import (
             DeadLetterCountWidgetHandler,
         )
         from lexigram.events.admin.handlers.events_throughput import (
             EventsThroughputWidgetHandler,
+        )
+        from lexigram.events.admin.handlers.live_events import (
+            LiveEventsWidgetHandler,
         )
 
         async def _create_events_throughput_handler() -> EventsThroughputWidgetHandler:
@@ -210,6 +213,10 @@ class EventsProvider(Provider):
             event_bus = await container.resolve(EventBusProtocol)
             return DeadLetterCountWidgetHandler(event_bus=event_bus)
 
+        async def _create_live_events_handler() -> LiveEventsWidgetHandler:
+            event_store = await container.resolve(EventStoreProtocol)
+            return LiveEventsWidgetHandler(event_store=event_store)
+
         container.transient(
             EventsThroughputWidgetHandler,
             _create_events_throughput_handler,
@@ -217,6 +224,10 @@ class EventsProvider(Provider):
         container.transient(
             DeadLetterCountWidgetHandler,
             _create_dead_letter_handler,
+        )
+        container.transient(
+            LiveEventsWidgetHandler,
+            _create_live_events_handler,
         )
         container.singleton(EventsAdminContributor, EventsAdminContributor)
         container.singleton(

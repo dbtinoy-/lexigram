@@ -123,11 +123,11 @@ class TestEventsAdminContributor:
         assert error.widget_name == "nonexistent"
 
     def test_get_dashboard_widgets(self, contributor: EventsAdminContributor) -> None:
-        """Contributor returns two dashboard widgets."""
+        """Contributor returns three dashboard widgets."""
         widgets = contributor.get_dashboard_widgets()
-        assert len(widgets) == 2
+        assert len(widgets) == 3
         names = {w.name for w in widgets}
-        assert names == {"events_throughput", "dead_letter_count"}
+        assert names == {"events_throughput", "dead_letter_count", "live_events"}
 
     def test_get_navigation_items(self, contributor: EventsAdminContributor) -> None:
         """Contributor returns navigation items."""
