@@ -44,17 +44,21 @@ class CompletionProtocol(Protocol):
     protocol.  Implemented concretely by ``lexigram.ai.llm.types.Completion``.
     """
 
-    content: str
-    """The generated completion text."""
+    @property
+    def content(self) -> str:
+        """The generated completion text."""
 
-    model: str
-    """The model that produced this completion."""
+    @property
+    def model(self) -> str:
+        """The model that produced this completion."""
 
-    thinking: ThinkingResult | None
-    """Normalised thinking/reasoning output, or ``None`` when not enabled."""
+    @property
+    def thinking(self) -> ThinkingResult | None:
+        """Normalised thinking/reasoning output, or ``None`` when not enabled."""
 
-    usage: dict[str, int] | None
-    """Token usage statistics (prompt, completion, total tokens) or None."""
+    @property
+    def usage(self) -> dict[str, int] | None:
+        """Token usage statistics (prompt, completion, total tokens) or None."""
 
 
 @runtime_checkable
@@ -521,6 +525,7 @@ class Completion:
     content: str
     model: str
     thinking: ThinkingResult | None = None
+    usage: dict[str, int] | None = None
     finish_reason: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
