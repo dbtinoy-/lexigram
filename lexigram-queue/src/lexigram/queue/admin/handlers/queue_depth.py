@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from lexigram.contracts.admin import Stat, StatContent, WidgetParams
+from lexigram.contracts.admin import (
+    QueueStatsProtocol,
+    Stat,
+    StatContent,
+    Tone,
+    WidgetParams,
+)
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.result import Ok, Result
 
@@ -12,21 +16,18 @@ from lexigram.result import Ok, Result
 class QueueDepthWidgetHandler:
     """Fetches queue depth metric.
 
+    Reads ``pending`` from any injected queue that implements the
+    ``QueueStatsProtocol`` capability; degrades gracefully otherwise.
+
     Args:
-        queue: Injected QueueProtocol.
+        queue: Capability object exposing ``get_stats()``, or ``None``.
     """
 
-    def __init__(
-        self, queue: Any
-    ) -> None:  # TODO: Replace Any with QueueProtocol when available
+    def __init__(self, queue: object | None = None) -> None:
         self._queue = queue
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch queue depth data.
-
-        Mirrors the widget template, which renders the depth value with
-        neutral styling and shows a conditional max-depth readout.
-        Infrastructure failures propagate.
 
         Args:
             params: Widget parameters.
@@ -34,20 +35,31 @@ class QueueDepthWidgetHandler:
         Returns:
             Result containing StatContent or AdminError.
         """
-        # Stub implementation — returns zero depth
-        # In production, would query the queue backend for actual depth
-        depth = 0
-        max_depth: int | None = None
-        queue_name = "default"
-
-        stats: list[Stat] = [
-            Stat(label="Queue", value=queue_name),
-            Stat(label="Depth", value=str(depth)),
-        ]
-        if max_depth is not None:
-            stats.append(Stat(label="Max", value=str(max_depth)))
-
-        return Ok(StatContent(stats=tuple(stats)))
+        if not isinstance(self._queue, QueueStatsProtocol):
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(
+                            label="Queue Depth",
+                            value="Unavailable",
+                            tone=Tone.WARNING,
+                        ),
+                    )
+                )
+            )
+        stats = self._queue.get_stats() or {}
+        pending = int(stats.get("pending", 0))
+        return Ok(
+            StatContent(
+                stats=(
+                    Stat(
+                        label="Queue Depth",
+                        value=str(pending),
+                        tone=Tone.SUCCESS if pending < 100 else Tone.WARNING,
+                    ),
+                )
+            )
+        )
 
 
 __all__ = ["QueueDepthWidgetHandler"]

@@ -2,30 +2,48 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
 from lexigram.contracts.admin import StatContent, Tone, WidgetParams
 from lexigram.queue.admin.handlers.queue_depth import QueueDepthWidgetHandler
 
 
-async def test_queue_depth_handler_returns_stat_content() -> None:
-    result = await QueueDepthWidgetHandler(queue=MagicMock()).get_data(WidgetParams())
-    content = result.unwrap()
-    assert isinstance(content, StatContent)
-    assert content.stats[0].label == "Queue"
-    assert content.stats[0].value == "default"
-    assert content.stats[1].value == "0"
-    assert content.stats[1].tone is Tone.DEFAULT
+class _FakeQueue:
+    def __init__(self, pending: int = 0) -> None:
+        self._pending = pending
+
+    def get_stats(self) -> dict[str, int | float | str] | None:
+        return {"pending": self._pending, "processing": 0}
 
 
-async def test_queue_depth_stub_omits_max_stat_when_max_depth_unset() -> None:
-    result = await QueueDepthWidgetHandler(queue=MagicMock()).get_data(WidgetParams())
+async def test_queue_depth_reads_capability_stats() -> None:
+    handler = QueueDepthWidgetHandler(_FakeQueue(pending=8))
+    result = await handler.get_data(WidgetParams())
     content = result.unwrap()
     assert isinstance(content, StatContent)
-    assert [s.label for s in content.stats] == ["Queue", "Depth"]
+    assert [s.label for s in content.stats] == ["Queue Depth"]
+    assert content.stats[0].value == "8"
+    assert content.stats[0].tone is Tone.SUCCESS
+
+
+async def test_queue_depth_warns_at_high_depth() -> None:
+    handler = QueueDepthWidgetHandler(_FakeQueue(pending=120))
+    result = await handler.get_data(WidgetParams())
+    content = result.unwrap()
+    assert isinstance(content, StatContent)
+    assert content.stats[0].value == "120"
+    assert content.stats[0].tone is Tone.WARNING
+
+
+async def test_queue_depth_degrades_without_capability() -> None:
+    handler = QueueDepthWidgetHandler(object())
+    result = await handler.get_data(WidgetParams())
+    content = result.unwrap()
+    assert isinstance(content, StatContent)
+    assert content.stats[0].value == "Unavailable"
+    assert content.stats[0].tone is Tone.WARNING
 
 
 __all__ = [
-    "test_queue_depth_handler_returns_stat_content",
-    "test_queue_depth_stub_omits_max_stat_when_max_depth_unset",
+    "test_queue_depth_degrades_without_capability",
+    "test_queue_depth_reads_capability_stats",
+    "test_queue_depth_warns_at_high_depth",
 ]

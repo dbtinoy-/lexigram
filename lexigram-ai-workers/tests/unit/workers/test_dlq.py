@@ -172,6 +172,19 @@ class TestDeadLetterQueueWorker:
         assert "job-1" not in worker._items
 
     @pytest.mark.asyncio
+    async def test_dead_letter_count_tracks_failure_cycle(self, worker: DeadLetterQueueWorker) -> None:
+        job = DummyJob("job-1", name="test_job")
+        assert worker.dead_letter_count == 0
+        await worker.add_failed_job(job, "timeout error")
+        assert worker.dead_letter_count == 1
+        await worker.add_failed_job(job, "another timeout")
+        assert worker.dead_letter_count == 1
+        worker._items["job-1"].next_retry = datetime.now(UTC) - timedelta(minutes=1)
+        result = await worker.retry_item("job-1")
+        assert result is True
+        assert worker.dead_letter_count == 0
+
+    @pytest.mark.asyncio
     async def test_get_stats(self, worker: DeadLetterQueueWorker) -> None:
         job1 = DummyJob("1")
         job2 = DummyJob("2")
