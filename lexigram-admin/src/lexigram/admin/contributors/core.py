@@ -5,7 +5,17 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
-from lexigram.contracts.admin import ChartContent, ChartPoint, EmptyContent, Tone
+from lexigram.contracts.admin import (
+    ChartContent,
+    ChartPoint,
+    EmptyContent,
+    HealthOverviewProtocol,
+    MetricsReadbackProtocol,
+    NamedHealthCheckProtocol,
+    Stat,
+    StatContent,
+    Tone,
+)
 from lexigram.contracts.admin.contributor import BaseAdminContributor
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.health_payload import HealthCheckPayload
@@ -21,10 +31,28 @@ from lexigram.contracts.admin.types import (
 )
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.contracts.core.result import Result
+from lexigram.logging import get_logger
 from lexigram.result import Err, Ok
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import ContainerResolverProtocol
+
+logger = get_logger(__name__)
+
+
+def _status_from_value(value: object) -> HealthStatus:
+    """Map a raw status string to a :class:`HealthStatus` member.
+
+    Args:
+        value: Raw status string (any case) or enum.
+
+    Returns:
+        The matching ``HealthStatus``, or ``UNKNOWN`` when unrecognized.
+    """
+    status_value = str(value).lower()
+    if status_value in {"healthy", "degraded", "unhealthy"}:
+        return HealthStatus(status_value)
+    return HealthStatus.UNKNOWN
 
 
 class CoreAdminContributor(BaseAdminContributor):
@@ -40,11 +68,32 @@ class CoreAdminContributor(BaseAdminContributor):
     icon = "layout-dashboard"
     priority = 0
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        health: object | None = None,
+        metrics: object | None = None,
+    ) -> None:
         self._container: ContainerResolverProtocol | None = None
+        self._health = health
+        self._metrics = metrics
 
     async def on_admin_boot(self, container: object) -> None:
         self._container = container  # type: ignore[assignment]
+        if container is None:
+            return
+        typed_container = cast("ContainerResolverProtocol", container)
+        try:
+            if self._health is None:
+                self._health = await typed_container.resolve_optional(  # type: ignore[assignment]
+                    HealthOverviewProtocol
+                )
+            if self._metrics is None:
+                self._metrics = await typed_container.resolve_optional(  # type: ignore[assignment]
+                    MetricsReadbackProtocol
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("admin.core_sources_unavailable", error=str(exc))
 
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         """Return core dashboard widgets: health overview, recent activity, and metrics."""
@@ -133,15 +182,29 @@ class CoreAdminContributor(BaseAdminContributor):
         """
 
         if widget_name == "health":
-            # TODO(admin): wire the health widget to a real aggregated
-            # health data source instead of the empty placeholder.
+            if not isinstance(self._health, HealthOverviewProtocol):
+                return self._empty("Health overview", "No health monitor registered.")
+            _payload, details = await self._health.run_all()
+            checks = [
+                *details.get("liveness", {}).get("checks", []),
+                *details.get("readiness", {}).get("checks", []),
+            ]
+            healthy = sum(
+                1
+                for c in checks
+                if str(c.get("status")).lower() == HealthStatus.HEALTHY.value
+            )
+            total = max(len(checks), 1)
+            status_value = getattr(_payload, "value", "unknown")
             return cast(
                 "Result[WidgetViewModel, AdminError]",
                 Ok(
                     WidgetViewModel(
-                        content=EmptyContent(
-                            title="Health overview",
-                            message="Not yet wired to a data source.",
+                        content=StatContent(
+                            stats=(
+                                Stat(label="Health", value=str(status_value)),
+                                Stat(label="Checks", value=f"{healthy}/{total}"),
+                            )
                         )
                     )
                 ),
@@ -173,14 +236,51 @@ class CoreAdminContributor(BaseAdminContributor):
 
     def _chart_metrics_content(self) -> ChartContent:
         """Return the framework metrics as structured chart content."""
-        return ChartContent(
-            points=(
-                ChartPoint(label="Active Users", value=847, tone=Tone.DEFAULT),
-                ChartPoint(label="Requests/min", value=2341, tone=Tone.SUCCESS),
-                ChartPoint(label="Error Rate", value=1.2, tone=Tone.DANGER),
-                ChartPoint(label="Avg Latency", value=45, tone=Tone.WARNING),
-                ChartPoint(label="Memory %", value=68, tone=Tone.INFO),
+        if not isinstance(self._metrics, MetricsReadbackProtocol):
+            return ChartContent(
+                points=(
+                    ChartPoint(
+                        label="Not measured",
+                        value=0.0,
+                        tone=Tone.WARNING,
+                    ),
+                )
             )
+        points: list[ChartPoint] = []
+        for name, metric in self._metrics.get_all_metrics().items():
+            value = getattr(metric, "get_value", lambda: 0.0)()
+            points.append(
+                ChartPoint(
+                    label=name,
+                    value=float(value),
+                    tone=Tone.SUCCESS if float(value) >= 0 else Tone.DANGER,
+                )
+            )
+        if not points:
+            metric = self._metrics.get_metric("requests_total")
+            if metric is not None:
+                points.append(
+                    ChartPoint(
+                        label="requests_total",
+                        value=float(getattr(metric, "get_value", lambda: 0.0)()),
+                        tone=Tone.DEFAULT,
+                    )
+                )
+        return ChartContent(points=tuple(points))
+
+    def _empty(self, title: str, message: str) -> Result[WidgetViewModel, AdminError]:
+        """Return the empty-content placeholder shape.
+
+        Args:
+            title: Placeholder title.
+            message: Placeholder message.
+
+        Returns:
+            Ok containing a WidgetViewModel with EmptyContent.
+        """
+        return cast(
+            "Result[WidgetViewModel, AdminError]",
+            Ok(WidgetViewModel(content=EmptyContent(title=title, message=message))),
         )
 
     async def render_health_check(
@@ -196,15 +296,39 @@ class CoreAdminContributor(BaseAdminContributor):
             Ok(HealthCheckPayload) with the core status, or
             Err(AdminError) when the check is unknown.
         """
-        if check_name == "admin_core":
+        if not isinstance(self._health, NamedHealthCheckProtocol):
             return Ok(
                 HealthCheckPayload(
-                    status=HealthStatus.HEALTHY,
+                    status=HealthStatus.UNKNOWN,
                     component="Admin Core",
-                    detail="Admin Core Operational",
+                    detail="No health registry registered.",
                 )
             )
-        return Err(AdminError(f"Unknown health check: {check_name}"))
+        if check_name == "admin_core":
+            payload, _details = await self._health.run_all()
+            status = _status_from_value(getattr(payload, "value", "unknown"))
+            return Ok(
+                HealthCheckPayload(
+                    status=status,
+                    component="Admin Core",
+                    detail=(
+                        "Admin Core operational"
+                        if status == HealthStatus.HEALTHY
+                        else "Admin Core degraded"
+                    ),
+                )
+            )
+        result = await self._health.run_check(check_name)
+        status_value = str(result.get("status", "UNKNOWN"))
+        return Ok(
+            HealthCheckPayload(
+                status=_status_from_value(status_value),
+                component=str(result.get("component", check_name)),
+                detail=str(
+                    result.get("error") or f"{result.get('component', check_name)} checked"
+                ),
+            )
+        )
 
 
 __all__ = ["CoreAdminContributor"]
