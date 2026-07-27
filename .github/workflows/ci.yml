@@ -66,4 +66,56 @@ jobs:
             # Scoped runs have no coverage floor (floors apply to
             # aggregate runs from the repo root); pass/fail is the gate.
             uv run pytest -q -m "not integration" --no-cov "$p/tests" ${DESELECT[$p]:-}
-          done
+          done  example:
+    name: Demos fullstack-demo gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install demo app (locked)
+        working-directory: demos/fullstack-demo
+        run: uv sync --locked
+
+      - name: Format check
+        working-directory: demos/fullstack-demo
+        run: uv run ruff format --check src tests
+
+      - name: Lint
+        working-directory: demos/fullstack-demo
+        run: uv run ruff check src tests
+
+      - name: Type check
+        working-directory: demos/fullstack-demo
+        run: uv run mypy
+
+      - name: Tests
+        working-directory: demos/fullstack-demo
+        run: uv run pytest -q -m "not integration"
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install workspace (locked)
+        run: uv sync --all-extras --locked
+
+      - name: pip-audit (known-vulnerability check)
+        run: uv run pip-audit

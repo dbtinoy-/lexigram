@@ -283,7 +283,7 @@ filterwarnings = [
 ]
 addopts = ["--strict-markers", "--strict-config", "--tb=short", "--import-mode=importlib", "-p", "no:cacheprovider", "--ignore=lexigram-testing/src"]
 consider_namespace_packages = true
-norecursedirs = [".worktrees", ".venv", "build", "dist", "example", "lexigram-cli/src/lexigram/cli/templates", "lexigram-testing"]
+norecursedirs = [".worktrees", ".venv", "build", "dist", "demos", "lexigram-cli/src/lexigram/cli/templates", "lexigram-testing"]
 testpaths = [
     "lexigram/tests",
     "lexigram-admin/tests",
