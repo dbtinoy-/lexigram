@@ -51,37 +51,73 @@ class HealthCheckRegistry(Registry[str, HealthCheck]):
         check = FunctionHealthCheck(name, func, critical)
         self._register(check, liveness, readiness)
 
+    async def _run_named(self, name: str, check_names: list[str]) -> dict[str, Any] | None:
+        """Run a single registered check and return its result dict.
+
+        Args:
+            name: Name of the registered check.
+            check_names: The probe list (liveness or readiness) the name
+                must appear in.
+
+        Returns:
+            The check's result dict, or ``None`` when the name is not in
+            ``check_names`` or is not registered.
+        """
+        if name not in check_names:
+            return None
+        check = self.get(name)
+        if not check:
+            return None
+
+        try:
+            start = time.time()
+            result = await check.check()
+            result = replace(result, duration_ms=(time.time() - start) * 1000)
+            return result.to_dict()
+        except (OSError, ConnectionError, RuntimeError, ValueError) as e:
+            logger.exception("Health check %s error", name)
+            result = HealthCheckResult(
+                component=name,
+                status=HealthStatus.UNHEALTHY,
+                message=safe_error_message(e),
+            )
+            return result.to_dict()
+
+    async def run_check(self, name: str) -> dict[str, Any]:
+        """Run a single named check and return its raw result dict.
+
+        Args:
+            name: Name of the registered check.
+
+        Returns:
+            The check's result dict, or an ``UNKNOWN`` dict when the name
+            is not registered in either probe list.
+        """
+        result = None
+        if name in self._liveness_checks:
+            result = await self._run_named(name, self._liveness_checks)
+        elif name in self._readiness_checks:
+            result = await self._run_named(name, self._readiness_checks)
+        if result is None:
+            return {"status": "UNKNOWN", "component": name}
+        return result
+
     async def _check_liveness(self) -> dict[str, Any]:
         results = []
         overall_status = HealthStatus.HEALTHY
 
         for check_name in self._liveness_checks:
-            check = self.get(check_name)
-            if not check:
+            result = await self._run_named(check_name, self._liveness_checks)
+            if result is None:
                 continue
 
-            try:
-                start = time.time()
-                result = await check.check()
-                result = replace(result, duration_ms=(time.time() - start) * 1000)
-                results.append(result)
-
-                if result.status == HealthStatus.UNHEALTHY:
-                    overall_status = HealthStatus.UNHEALTHY
-
-            except (OSError, ConnectionError, RuntimeError, ValueError) as e:
-                logger.exception("Liveness check %s error", check_name)
-                result = HealthCheckResult(
-                    component=check_name,
-                    status=HealthStatus.UNHEALTHY,
-                    message=safe_error_message(e),
-                )
-                results.append(result)
+            results.append(result)
+            if result["status"] == HealthStatus.UNHEALTHY.value:
                 overall_status = HealthStatus.UNHEALTHY
 
         return {
             "status": overall_status.value,
-            "checks": [r.to_dict() for r in results],
+            "checks": results,
             "timestamp": time.time(),
         }
 
@@ -91,39 +127,22 @@ class HealthCheckRegistry(Registry[str, HealthCheck]):
 
         for check_name in self._readiness_checks:
             check = self.get(check_name)
-            if not check:
+            result = await self._run_named(check_name, self._readiness_checks)
+            if result is None:
                 continue
 
-            try:
-                start = time.time()
-                result = await check.check()
-                result = replace(result, duration_ms=(time.time() - start) * 1000)
-                results.append(result)
-
-                if check.critical and result.status != HealthStatus.HEALTHY:
-                    overall_status = HealthStatus.UNHEALTHY
-                elif (
-                    result.status != HealthStatus.HEALTHY
-                    and overall_status == HealthStatus.HEALTHY
-                ):
-                    overall_status = HealthStatus.DEGRADED
-
-            except (OSError, ConnectionError, RuntimeError, ValueError) as e:
-                logger.exception("Readiness check %s error", check_name)
-                result = HealthCheckResult(
-                    component=check_name,
-                    status=HealthStatus.UNHEALTHY,
-                    message=safe_error_message(e),
-                )
-                results.append(result)
-                if check.critical:
-                    overall_status = HealthStatus.UNHEALTHY
-                elif overall_status == HealthStatus.HEALTHY:
-                    overall_status = HealthStatus.DEGRADED
+            results.append(result)
+            if check.critical and result["status"] != HealthStatus.HEALTHY.value:
+                overall_status = HealthStatus.UNHEALTHY
+            elif (
+                result["status"] != HealthStatus.HEALTHY.value
+                and overall_status == HealthStatus.HEALTHY
+            ):
+                overall_status = HealthStatus.DEGRADED
 
         return {
             "status": overall_status.value,
-            "checks": [r.to_dict() for r in results],
+            "checks": results,
             "timestamp": time.time(),
         }
 
