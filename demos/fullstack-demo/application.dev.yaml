@@ -1,0 +1,10 @@
+app:
+  env: development
+
+ai_llm:
+  providers:
+    - name: ollama
+      model: qwen3:30b-a3b
+      base_url: ${OLLAMA_BASE_URL:-http://localhost:11434/v1}
+      timeout: 600
+      enabled: true

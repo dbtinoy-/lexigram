@@ -83,5 +83,10 @@ lexigram*/docs/plans/
 lexigram*/docs/plans/**
 lexigram*/docs/**/
 example*/
+!example/
+!example/**
+demos*/
+!demos/
+!demos/**
 # Editor swap files
 *.swp
