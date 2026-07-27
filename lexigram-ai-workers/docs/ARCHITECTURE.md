@@ -57,6 +57,18 @@ The package implements a **worker pool** pattern with four worker types register
 
 Each worker registers named handlers in a dict (e.g. `{"batch_embed": self._handle_batch_embed}`) at start time. The `TaskWorkerProtocol` implementation resolves these handlers when a matching job arrives from the queue — no `if/elif` chains.
 
+### Path Containment
+
+`UniversalDocumentParser` accepts an optional `allowed_root` constructor
+argument (default `None` = no containment). When set, `parse()` and
+`extract_metadata()` resolve the source with `Path.resolve()` and raise
+`RAGError` unless the result is inside the resolved root — covering `..`
+-relative and symlink escapes. `DocumentIngestionWorker` accepts the same
+option and forwards it to the default parser it constructs. The parser is
+the single enforcement point; the worker option is a passthrough, not a
+second check, and `LoaderWorkerBridge` needs none of its own because it
+submits to the worker rather than opening files.
+
 ### Concurrency
 
 `BatchEmbeddingWorker` and `DocumentIngestionWorker` maintain their own sub-pools of `TaskWorkerProtocol` instances, configurable via `WorkersConfig.batch_embedding_concurrency` and `WorkersConfig.document_ingestion_concurrency` (both default to 3).

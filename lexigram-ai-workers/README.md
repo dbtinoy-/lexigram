@@ -92,6 +92,35 @@ WorkersModule.configure(config)
 | `enable_maintenance` | `True` | `LEX_AI_WORKERS__ENABLE_MAINTENANCE` | Enable vector-store and cache maintenance |
 | `dlq_check_interval` | `60` | `LEX_AI_WORKERS__DLQ_CHECK_INTERVAL` | Seconds between DLQ recovery sweeps |
 
+### Securing document ingestion (path-traversal control)
+
+When a document source path can be influenced by users (an upload filename,
+an API parameter), constrain it with `allowed_root`. Both the worker and the
+underlying parser accept the same opt-in argument:
+
+```python
+from pathlib import Path
+from lexigram.ai.workers.document_ingestion import DocumentIngestionWorker
+
+worker = DocumentIngestionWorker(
+    vector_store=store,
+    queue=queue,
+    allowed_root=Path("/srv/app/documents"),
+)
+```
+
+With `allowed_root` set, every ingested source is resolved — symlinks and
+`..` segments followed — and must land inside that directory, otherwise the
+job fails with `RAGError`. The default (`allowed_root=None`) performs no
+containment and preserves historical behavior, which is appropriate when all
+sources are fully trusted server-local files. A custom `document_parser`
+passed to the worker is responsible for its own path policy; `allowed_root`
+only applies to the built-in `UniversalDocumentParser` the worker constructs.
+The same check applies to `UniversalDocumentParser.parse()` and
+`UniversalDocumentParser.extract_metadata()` when the parser is used directly,
+and to `LoaderWorkerBridge` sources (the bridge submits to the worker, so
+configure `allowed_root` on the worker).
+
 ## Module Factory Methods
 
 | Method | Description |
