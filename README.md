@@ -1,4 +1,4 @@
-# The Python framework that gives AI a pattern to follow
+# Give AI a clear pattern to follow
 
 *Agents, LLMs, RAG, Skills — wired together, no glue code.*
 
