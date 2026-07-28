@@ -32,10 +32,10 @@ maintainers = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram"
+Repository = "https://github.com/dbtinoy-/lexigram-dev"
 Documentation = "https://docs.lexigram.dev"
-Issues = "https://github.com/dbtinoy-/lexigram/issues"
-Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = ["ruff>=0.8.0", "mypy>=1.0.0"]

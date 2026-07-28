@@ -4,7 +4,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/lexigram?color=%2334D058&label=pypi%20package)](https://pypi.org/project/lexigram/)
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram?color=%2334D058)](https://pypi.org/project/lexigram/)
-[![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram-dev/blob/main/LICENSE)
 [![CI](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml)
 
 hey — wanna ship a real app this weekend?
@@ -38,7 +38,7 @@ pip install "lexigram[web]"
 ### from this repository (fresh clone)
 
 ```bash
-git clone https://github.com/dbtinoy-/lexigram.git
+git clone https://github.com/dbtinoy-/lexigram-dev.git
 cd lexigram
 
 # reproducible install (lockfile is committed — uv sync --locked fails
@@ -156,7 +156,7 @@ the full list — including notification, queue, events, auth, observability, an
 
 Lexigram is in 0.1 — which means you can still change it. APIs may shift before 1.0, so pin your versions, and tell us what feels wrong. Shaping a framework is more fun when it's still soft.
 
-→ [github.com/dbtinoy-/lexigram/issues](https://github.com/dbtinoy-/lexigram/issues)
+→ [github.com/dbtinoy-/lexigram-dev/issues](https://github.com/dbtinoy-/lexigram-dev/issues)
 
 ## why it grows with you
 
