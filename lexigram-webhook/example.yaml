@@ -1,0 +1,91 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: webhook:
+# Environment variable prefix: LEX_WEBHOOK__
+
+webhook:
+  # ---------------------------------------------------------------------------
+  # Store backend
+  # ---------------------------------------------------------------------------
+
+  # Persistence backend for subscriptions and delivery attempts.
+  # "memory" — in-process dict store; data lost on restart. Ideal for dev/test.
+  # "sql"    — SQL-backed store; requires lexigram-webhook[sql] and a configured
+  #            lexigram-sql database provider.
+  store_backend: "memory"
+
+  # ---------------------------------------------------------------------------
+  # Retry policy
+  # ---------------------------------------------------------------------------
+
+  # Maximum number of delivery attempts before escalating to dead-letter.
+  retry_max_attempts: 5
+
+  # Initial retry delay in seconds (applied after the first failure).
+  retry_base_delay: 1.0
+
+  # Maximum retry delay ceiling in seconds (backoff is capped at this value).
+  retry_max_delay: 60.0
+
+  # Exponential backoff multiplier applied to the delay after each failure.
+  # Delay sequence: base_delay, base_delay×factor, base_delay×factor², …
+  # up to max_delay.
+  retry_backoff_factor: 2.0
+
+  # ---------------------------------------------------------------------------
+  # Delivery
+  # ---------------------------------------------------------------------------
+
+  # HTTP request timeout in seconds for each delivery attempt.
+  delivery_timeout_seconds: 30.0
+
+  # Number of failed delivery attempts within `failure_window_hours` before
+  # a subscription is automatically deactivated.
+  disable_after_consecutive_failures: 50
+
+  # Rolling window (hours) used to count consecutive failures.
+  failure_window_hours: 24
+
+  # Days to retain delivery attempt logs. Set to 0 for indefinite retention.
+  delivery_log_retention_days: 30
+
+  # ---------------------------------------------------------------------------
+  # HMAC signature
+  # ---------------------------------------------------------------------------
+
+  # HMAC algorithm used to sign payloads. Supported: "sha256", "sha512".
+  # Output format: "<algorithm>=<hex_digest>" — e.g. "sha256=abc123…"
+  signature_algorithm: "sha256"
+
+  # HTTP header that carries the HMAC signature on outbound deliveries.
+  signature_header: "X-Webhook-Signature"
+
+  # HTTP header that carries the event type string (e.g. "order.created").
+  event_type_header: "X-Webhook-Event-Type"
+
+  # HTTP header that carries the unique event UUID.
+  event_id_header: "X-Webhook-Event-ID"
+
+  # HTTP header that carries the ISO-8601 UTC delivery timestamp.
+  timestamp_header: "X-Webhook-Timestamp"
+
+  # ---------------------------------------------------------------------------
+  # Secret management
+  # ---------------------------------------------------------------------------
+
+  # Length in bytes of each generated subscription secret.
+  # The hex-encoded output stored and transmitted is 2× this length.
+  secret_length: 32
+
+  # Grace period (hours) during which both the old and new secrets are valid
+  # after a secret rotation. Allows consumers to update without downtime.
+  secret_rotation_grace_hours: 24
+
+  # ---------------------------------------------------------------------------
+  # Admin panel
+  # ---------------------------------------------------------------------------
+
+  # Register the WebhookAdminContributor with the Lexigram admin panel.
+  # Surfaces subscription management, delivery logs, and dead-letter queue.
+  # Set to false for headless or API-only deployments.
+  enable_admin: true

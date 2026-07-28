@@ -1,0 +1,201 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "lexigram-cache"
+version = "0.1.2"
+description = "Multi-backend caching system for Lexigram Framework - Redis, Memcached, and in-memory caching"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "cache",
+    "caching",
+    "redis",
+    "memcached",
+    "distributed-cache",
+    "ttl",
+    "async",
+    "framework",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.0",
+    "typing-extensions>=4.0.0",
+    "orjson>=3.9.0",
+]
+authors = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+maintainers = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+redis = [
+    "redis>=5.0.0",
+]
+memcached = [
+    "pymemcache>=4.0.0",
+]
+semantic = [
+    "faiss-cpu>=1.7.0",
+    "numpy>=1.24.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "types-redis>=4.6.0",
+]
+all = [
+    "redis>=5.0.0",
+    "pymemcache>=4.0.0",
+    "faiss-cpu>=1.7.0",
+    "numpy>=1.24.0",
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.entry-points."lexigram.admin.contributors"]
+cache = "lexigram.cache.admin.contributor:CacheAdminContributor"
+
+[project.entry-points."lexigram.cli.contributors"]
+cache = "lexigram.cache.cli.contributor:CacheCliContributor"
+
+[project.entry-points."lexigram.modules"]
+CacheModule = "lexigram.cache.module:CacheModule"
+
+[project.entry-points."lexigram.config"]
+cache = "lexigram.cache.config:CacheConfig"
+
+[dependency-groups]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "types-redis>=4.6.0",
+]
+test = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-ignore = [
+    "S301",  # pickle: not used in cache; broad ignore to reduce noise
+    "E501",  # line too long: allow long lines for SQL queries and complex strings
+    "E402",  # module level import not at top: intentional for factory pattern
+    "F822",  # undefined name in __all__: false positives with lazy imports
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F822", "TID252"]
+"src/lexigram/cache/backends/database_bridge.py" = ["E501"]
+"src/lexigram/cache/integration/provider.py" = ["E402", "E501"]
+"src/lexigram/cache/integration/services.py" = ["E501"]
+"src/lexigram/cache/providers.py" = ["F822"]
+"src/lexigram/cache/service/core.py" = ["E501", "F821"]
+"src/lexigram/cache/service/decorators.py" = ["E501"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = "examples.*", ignore_errors = true },
+    { module = "docs.*", ignore_errors = true },
+]
+
+[tool.uv.sources.lexigram]
+workspace = true
+
+[tool.uv.sources.lexigram-admin]
+workspace = true
+
+[tool.uv.sources.lexigram-testing]
+workspace = true
+
+[tool.uv.sources.lexigram-contracts]
+workspace = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = ["--cov=lexigram.cache", "--cov-report=html", "--cov-report=term", "--cov-fail-under=80"]
+testpaths = ["tests"]
+markers = [
+    "integration: mark a test as an integration test",
+    "scenario: marks cross-package scenario integration tests",
+    "requires_redis: marks tests that require a live Redis connection",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/lexigram",
+]

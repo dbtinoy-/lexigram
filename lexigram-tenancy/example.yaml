@@ -1,0 +1,36 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: tenancy:
+# Environment variable prefix: LEX_TENANCY__
+
+tenancy:
+  # Tenant Resolution Chain
+  resolution:
+    # Ordered list of resolvers to try. First match wins.
+    # Available: jwt_claim, header, subdomain, path
+    resolvers:
+      - "jwt_claim"
+      - "header"
+      - "subdomain"
+      - "path"
+    header_name: "x-tenant-id"                  # HTTP header read by HeaderTenantResolver
+    subdomain_pattern: null                      # Base domain for subdomain extraction
+                                                 # e.g. "app.com" → "acme" from "acme.app.com"
+                                                 # null disables subdomain resolver
+    path_pattern: "/tenants/{tenant_id}/"        # Path pattern for PathTenantResolver
+    jwt_claim_key: "tenant_id"                   # JWT claim key for JWTClaimTenantResolver
+    validator_cache_ttl: 300                     # Seconds a validated TenantInfo is cached
+
+  # Tenant Lifecycle and Provisioning
+  lifecycle:
+    isolation_strategy: "row_level"              # row_level, schema, database
+    auto_provision_isolation: true               # Run isolation strategy on tenant creation
+
+  # Per-Tenant Config Override Layer
+  overrides:
+    cache_ttl: 60                                # Seconds a tenant's config dict is cached
+
+  # Cross-Package Integration
+  integration:
+    cache_key_prefix: true     # Prefix cache keys with tenant ID via TenantCacheKeyDecorator
+    sql_context_bridge: true   # Sync TENANT_ID context key into lexigram-sql DB context

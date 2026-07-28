@@ -1,0 +1,173 @@
+"""{{ command_name }} command handler.
+
+This module provides a CQRS command handler for {{ command_name }} operations.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+from uuid import UUID, uuid4
+
+from lexigram.events.handlers.base import CommandHandler
+from lexigram.events.messages.command import Command
+
+
+# =============================================================================
+# Command
+# =============================================================================
+
+@dataclass
+class {{ command_name }}Command(Command):
+    """Command for {{ command_name }} operation.
+    
+    This command represents an intent to perform an action.
+    """
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }}
+{% endfor %}
+    
+    command_type: str = "{{ command_name }}"
+    aggregate_id: UUID | None = None
+    
+    def __post_init__(self):
+        """Set aggregate ID if not provided."""
+        if self.aggregate_id is None:
+            self.aggregate_id = uuid4()
+
+
+# =============================================================================
+# Result
+# =============================================================================
+
+@dataclass
+class {{ command_name }}Result:
+    """Result of {{ command_name }} command execution.
+    
+    Contains the outcome of the command execution.
+    """
+    success: bool
+    aggregate_id: UUID | None = None
+    message: str = ""
+    data: dict[str, Any] | None = None
+    error: str | None = None
+
+
+# =============================================================================
+# Handler
+# =============================================================================
+
+class {{ command_name }}Handler(CommandHandler[{{ command_name }}Command, {{ command_name }}Result]):
+    """Handler for {{ command_name }} commands.
+    
+    Implements the business logic for {{ command_name }} operations.
+    """
+    
+    def __init__(
+        self,
+        repository: Any = None,
+    ):
+        """Initialize the handler.
+        
+        Args:
+            repository: The repository for data persistence.
+        """
+        self.repository = repository
+    
+    async def handle(
+        self,
+        command: {{ command_name }}Command,
+    ) -> {{ command_name }}Result:
+        """Handle the {{ command_name }} command.
+        
+        Args:
+            command: The command to execute.
+            
+        Returns:
+            The result of command execution.
+        """
+        try:
+            # Validate command
+            await self._validate(command)
+            
+            # Execute business logic
+            result = await self._execute(command)
+            
+            return {{ command_name }}Result(
+                success=True,
+                aggregate_id=command.aggregate_id,
+                message="{{ command_name }} executed successfully",
+                data=result,
+            )
+            
+        except Exception as e:  # noqa: BLE001
+            return {{ command_name }}Result(
+                success=False,
+                aggregate_id=command.aggregate_id,
+                error=str(e),
+            )
+    
+    async def _validate(self, command: {{ command_name }}Command) -> None:
+        """Validate the command.
+        
+        Args:
+            command: The command to validate.
+            
+        Raises:
+            ValidationError: If validation fails.
+        """
+        # Add validation logic here
+        # Example:
+        # if not command.name:
+        #     raise ValidationError("Name is required")
+        pass
+    
+    async def _execute(self, command: {{ command_name }}Command) -> dict[str, Any]:
+        """Execute the command business logic.
+        
+        Args:
+            command: The command to execute.
+            
+        Returns:
+            Dictionary with execution results.
+        """
+        # Add execution logic here
+        # Example:
+        # entity = {{ command_name }}Entity(
+        #     name=command.name,
+        #     ...
+        # )
+        # await self.repository.create(entity)
+        
+        return {
+            "id": command.aggregate_id,
+            # Add other result fields here
+        }
+
+
+# =============================================================================
+# Usage Example
+# =============================================================================
+
+# Register the handler:
+#
+# from lexigram.events.buses.command import command_bus
+# from lexigram.events.decorators.handlers import command_handler
+#
+# @command_handler({{ command_name }}Command)
+# class {{ command_name }}HandlerWrapper:
+#     def __init__(self, handler: {{ command_name }}Handler):
+#         self.handler = handler
+#     
+#     async def handle(self, command: {{ command_name }}Command):
+#         return await self.handler.handle(command)
+#
+# command_bus.register({{ command_name }}Command, {{ command_name }}HandlerWrapper)
+#
+# Execute the command:
+#
+# command = {{ command_name }}Command(
+#     name="example",
+#     ...
+# )
+# result = await command_bus.dispatch(command)

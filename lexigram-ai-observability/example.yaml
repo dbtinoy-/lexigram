@@ -1,0 +1,19 @@
+# observability.yaml.example
+# Lexigram AI Observability Configuration Template
+# YAML key: ai_observability:
+# Environment variable prefix: LEX_AI_OBSERVABILITY__
+#
+# NOTE: When using AIConfig (lexigram-ai), this config is nested under the `ai:` key:
+#   ai:
+#     observability:
+#       ...fields...
+
+ai_observability:
+  # Master on/off switch for the AI observability subsystem.
+  enabled: true
+
+  # -- Subsystem Toggles -----------------------------------------------------
+
+  metrics_enabled: true         # Expose Prometheus-compatible metrics for AI operations
+  tracing_enabled: true         # Emit OpenTelemetry spans for AI requests and tool calls
+  health_checks_enabled: true   # Register health-check endpoints for AI providers

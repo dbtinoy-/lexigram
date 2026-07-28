@@ -1,0 +1,124 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+
+monitor:
+  # Environment: development, staging, production
+  env: development
+
+  # Metrics Collection
+  metrics:
+    enabled: true
+    prefix: "lexigram"
+    collection_interval: 60  # Seconds
+    
+    default_labels:
+      environment: "production"
+      service: "lexigram"
+      
+    histogram_buckets:
+      - 0.005
+      - 0.01
+      - 0.025
+      - 0.05
+      - 0.1
+      - 0.25
+      - 0.5
+      - 1.0
+      - 2.5
+      - 5.0
+      - 10.0
+      
+  # Prometheus Exporter
+  prometheus:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+    enable_default_metrics: true
+    
+    # Optional Pushgateway
+    pushgateway_url: null
+    push_interval: 10
+    
+    # Database storage
+    store_in_db: false
+    metrics_table: "metrics_samples"
+    
+  # Distributed Tracing
+  tracing:
+    enabled: true
+    service_name: "lexigram"
+    
+    # Sampling strategy
+    sampler_type: "probability"  # always_on, always_off, probability, rate_limiting
+    sample_rate: 1.0  # For production, use 0.1 or lower
+    
+    # Max traces per second (rate limiting sampler)
+    max_traces_per_second: 100
+    
+    # Context propagation
+    propagation_formats:
+      - "tracecontext"
+      - "baggage"
+      - "b3"
+      
+    # Span limits
+    max_attributes: 128
+    max_events: 128
+    max_links: 128
+    max_spans: 10000  # Keep in memory
+    
+  # OpenTelemetry Backend
+  opentelemetry:
+    enabled: true
+    
+    # OTLP Exporter
+    otlp:
+      endpoint: "http://localhost:4317"
+      timeout: 30
+      compression: "gzip"
+      batch_size: 512
+      export_interval: 5
+      
+      headers:
+        "Authorization": "Bearer ${OTEL_AUTH_TOKEN}"
+        
+    # Tracing exporters
+    tracing_exporters:
+      - type: "otlp"
+        endpoint: "http://localhost:4317"
+        
+    # Metrics exporters
+    metrics_exporters:
+      - type: "otlp"
+        endpoint: "http://localhost:4317"
+        
+  # Health Checks
+  health:
+    enabled: true
+    path: "/health"
+    include_details: true
+    
+    # Component health checks
+    checks:
+      - "database"
+      - "redis"
+      - "external_api"
+      
+    interval: 30  # Seconds
+    timeout: 5
+    
+  # Structured Logging
+  logging:
+    enabled: true
+    level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    format: "json"  # json, text
+    include_trace_context: true
+    
+    # Fields to redact
+    redact_fields:
+      - "password"
+      - "secret"
+      - "token"
+      - "api_key"
+      - "authorization"
+      - "credentials"

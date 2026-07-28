@@ -1,0 +1,20 @@
+"""Exception Filter for {{ name }}."""
+
+from lexigram.web import JSONResponse, Request, Response
+from lexigram.web.filters.base import BaseExceptionFilter
+
+
+class {{ name }}(BaseExceptionFilter):
+    """Exception filter for handling {{ exception_type }}."""
+
+    exception_type = {{ exception_type }}
+
+    async def catch(self, exception: {{ exception_type }}, request: Request) -> Response:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "{{ name }} Error",
+                "message": str(exception),
+                "type": "{{ snake_name }}",
+            },
+        )

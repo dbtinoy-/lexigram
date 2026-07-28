@@ -1,0 +1,33 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+
+graph:
+  enabled: true
+  backend: "memory"  # memory, neo4j  (LEX_GRAPH__BACKEND)
+
+  # Query Behaviour
+  default_traversal_max_depth: 10   # Maximum depth for graph traversals
+  default_query_limit: 100          # Default limit for query results
+  bulk_batch_size: 1000             # Batch size for bulk insert/update operations
+
+  # Retry Policy
+  max_retries: 3
+  retry_delay: 1.0  # Seconds between retries
+
+  # Neo4j Configuration (used when backend='neo4j')
+  neo4j:
+    uri: "bolt://localhost:7687"              # LEX_GRAPH__NEO4J__URI
+    username: "neo4j"
+    password: ""                              # LEX_GRAPH__NEO4J__PASSWORD
+    database: "neo4j"
+    max_connection_pool_size: 100
+    connection_timeout: 30.0                 # Seconds
+    max_transaction_retry_time: 30.0         # Seconds
+    fetch_size: 100
+    encrypted: false                          # Enable SSL/TLS
+    trust: "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"
+
+  # In-Memory Configuration (used when backend='memory', for dev/testing)
+  memory:
+    max_nodes: 1000000
+    max_edges: 5000000

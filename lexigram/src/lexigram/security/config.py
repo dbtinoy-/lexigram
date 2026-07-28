@@ -1,0 +1,57 @@
+"""Configuration for transport-agnostic security primitives.
+
+HTTP-specific configs (``CORSConfig``, ``CSRFConfig``, ``CSPConfig``,
+``HSTSConfig``, ``CrossOriginConfig``, ``SecurityHeadersConfig``) live in
+``lexigram.web.security.config`` and will be migrated there in a later task.
+"""
+
+from __future__ import annotations
+
+from typing import ClassVar
+
+from lexigram.config.base import BaseConfig
+from lexigram.validation import ConfigDict, Field
+
+
+class InputSanitizerConfig(BaseConfig):
+    """Configuration for input sanitization.
+
+    Attributes:
+        allowed_tags: Set of allowed HTML tags when using sanitization.
+            If ``None``, all HTML tags are stripped.
+        strip_comments: Whether to strip HTML comments during sanitization.
+        default_sanitize_mode: Default sanitization mode
+            (``'strip'``, ``'escape'``, or ``'none'``).
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    allowed_tags: set[str] | None = Field(default=None)
+    strip_comments: bool = Field(default=True)
+    default_sanitize_mode: str = "allow"
+
+
+class HashingConfig(BaseConfig):
+    """Configuration for core security hashing services."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    default_hasher: str = Field(default="sha256")
+    algorithm: str = Field(default="pbkdf2_sha256")
+    iterations: int = Field(default=100_000)
+    salt_length: int = Field(default=16)
+    dklen: int = Field(default=32)
+    blake2b_digest_size: int = Field(default=64)
+
+
+class SecurityConfig(BaseConfig):
+    """Configuration for the core security subsystem."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+    config_section: ClassVar[str | None] = "security"
+
+    sanitization: InputSanitizerConfig = Field(default_factory=InputSanitizerConfig)
+    hashing: HashingConfig = Field(default_factory=HashingConfig)
+
+
+__all__ = ["HashingConfig", "InputSanitizerConfig", "SecurityConfig"]

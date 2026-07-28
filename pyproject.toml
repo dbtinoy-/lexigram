@@ -1,0 +1,146 @@
+# Curated PUBLIC workspace root for the open-source mirror.
+# Hand-maintained (NOT a prune of the private root) so no proprietary package
+# paths leak via tool config. Keep in sync with tools/stamp_licenses.sh OPEN list.
+[project]
+name = "lexigram-workspace"
+version = "0.1.2"
+description = "Lexigram Framework Workspace (open source)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "lexigram",
+    "lexigram-contracts",
+    "lexigram-ai",
+    "lexigram-ai-llm",
+    "lexigram-ai-rag",
+    "lexigram-ai-agents",
+    "lexigram-ai-memory",
+    "lexigram-ai-skills",
+    "lexigram-ai-session",
+    "lexigram-ai-mcp",
+    "lexigram-ai-workers",
+    "lexigram-ai-observability",
+    "lexigram-ai-feedback",
+    "lexigram-vector",
+    "lexigram-graph",
+    "lexigram-web",
+    "lexigram-sql",
+    "lexigram-cache",
+    "lexigram-auth",
+    "lexigram-events",
+    "lexigram-queue",
+    "lexigram-tasks",
+    "lexigram-http",
+    "lexigram-resilience",
+    "lexigram-storage",
+    "lexigram-search",
+    "lexigram-notification",
+    "lexigram-monitor",
+    "lexigram-webhook",
+    "lexigram-tenancy",
+    "lexigram-features",
+    "lexigram-audit",
+    "lexigram-graphql",
+    "lexigram-nosql",
+    "lexigram-workflow",
+    "lexigram-testing",
+    "prometheus-client>=0.19.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "redis>=7.1.1",
+    "pymemcache>=4.0.0",
+    "python-dotenv>=1.2.1",
+    "nh3>=0.3.4",
+]
+
+[tool.uv.workspace]
+members = [
+    "lexigram",
+    "lexigram-contracts",
+    "lexigram-ai",
+    "lexigram-ai-llm",
+    "lexigram-ai-rag",
+    "lexigram-ai-agents",
+    "lexigram-ai-memory",
+    "lexigram-ai-skills",
+    "lexigram-ai-session",
+    "lexigram-ai-mcp",
+    "lexigram-ai-workers",
+    "lexigram-ai-observability",
+    "lexigram-ai-feedback",
+    "lexigram-vector",
+    "lexigram-graph",
+    "lexigram-web",
+    "lexigram-sql",
+    "lexigram-cache",
+    "lexigram-auth",
+    "lexigram-events",
+    "lexigram-queue",
+    "lexigram-tasks",
+    "lexigram-http",
+    "lexigram-resilience",
+    "lexigram-storage",
+    "lexigram-search",
+    "lexigram-notification",
+    "lexigram-monitor",
+    "lexigram-webhook",
+    "lexigram-tenancy",
+    "lexigram-features",
+    "lexigram-audit",
+    "lexigram-graphql",
+    "lexigram-nosql",
+    "lexigram-workflow",
+    "lexigram-testing",
+]
+
+[tool.uv.sources]
+lexigram = { workspace = true }
+lexigram-contracts = { workspace = true }
+lexigram-ai = { workspace = true }
+lexigram-ai-llm = { workspace = true }
+lexigram-ai-rag = { workspace = true }
+lexigram-ai-agents = { workspace = true }
+lexigram-ai-memory = { workspace = true }
+lexigram-ai-skills = { workspace = true }
+lexigram-ai-session = { workspace = true }
+lexigram-ai-mcp = { workspace = true }
+lexigram-ai-workers = { workspace = true }
+lexigram-ai-observability = { workspace = true }
+lexigram-ai-feedback = { workspace = true }
+lexigram-vector = { workspace = true }
+lexigram-graph = { workspace = true }
+lexigram-web = { workspace = true }
+lexigram-sql = { workspace = true }
+lexigram-cache = { workspace = true }
+lexigram-auth = { workspace = true }
+lexigram-events = { workspace = true }
+lexigram-queue = { workspace = true }
+lexigram-tasks = { workspace = true }
+lexigram-http = { workspace = true }
+lexigram-resilience = { workspace = true }
+lexigram-storage = { workspace = true }
+lexigram-search = { workspace = true }
+lexigram-notification = { workspace = true }
+lexigram-monitor = { workspace = true }
+lexigram-webhook = { workspace = true }
+lexigram-tenancy = { workspace = true }
+lexigram-features = { workspace = true }
+lexigram-audit = { workspace = true }
+lexigram-graphql = { workspace = true }
+lexigram-nosql = { workspace = true }
+lexigram-workflow = { workspace = true }
+lexigram-testing = { workspace = true }
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.pytest.ini_options]
+# Glob avoids enumerating package paths; only present (open) packages match.
+testpaths = ["lexigram*/tests"]
+asyncio_mode = "auto"
+
+# NOTE: detailed [tool.ruff.lint], [tool.mypy], and [tool.coverage] config from the
+# private root were intentionally omitted here because they enumerate proprietary
+# package paths. Port them with globbed paths if/when needed.

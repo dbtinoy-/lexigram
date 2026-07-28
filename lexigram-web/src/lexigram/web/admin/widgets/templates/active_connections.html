@@ -1,0 +1,29 @@
+<div class="card h-100">
+    <div class="card-header">
+        <h5 class="card-title mb-0">{{ title }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Active Connections</span>
+                <span class="badge bg-primary">{{ active }}</span>
+            </div>
+            <div class="progress">
+                {% set percentage = (active / max_allowed * 100) | round(1) %}
+                <div class="progress-bar" role="progressbar" 
+                     style="width: {{ percentage }}%;" 
+                     aria-valuenow="{{ active }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="{{ max_allowed }}"></div>
+            </div>
+            <small class="text-muted d-block mt-1">{{ active }} / {{ max_allowed }}</small>
+        </div>
+        <hr>
+        <dl class="row">
+            <dt class="col-sm-6">Peak:</dt>
+            <dd class="col-sm-6">{{ peak }}</dd>
+            <dt class="col-sm-6">Max Allowed:</dt>
+            <dd class="col-sm-6">{{ max_allowed }}</dd>
+        </dl>
+    </div>
+</div>

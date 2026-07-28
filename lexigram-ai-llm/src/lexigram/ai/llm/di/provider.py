@@ -1,0 +1,316 @@
+"""LLM Provider for Lexigram Framework dependency injection.
+
+Registers all LLM-layer services (clients, cache, model manager) with
+the container so they can be injected throughout the application.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from lexigram.contracts.ai import LLMClientProtocol
+from lexigram.contracts.ai.providers import ProviderRegistryProtocol
+from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.contracts.exceptions.container import UnresolvableDependencyError
+from lexigram.contracts.exceptions.provider import ModuleVisibilityError
+from lexigram.di.decorators import inject
+from lexigram.di.provider import Provider, ProviderPriority
+from lexigram.logging import (
+    get_logger,
+)
+
+if TYPE_CHECKING:
+    from lexigram.contracts.core.di import (
+        ContainerRegistrarProtocol,
+        ContainerResolverProtocol,
+    )
+    from lexigram.contracts.core.health import HealthCheckResult
+    from lexigram.contracts.infra.cache import CacheBackendProtocol
+
+from lexigram.ai.llm.config import ClientConfig
+from lexigram.ai.llm.di.factories import create_llm_cache, create_llm_client
+from lexigram.ai.llm.model_manager import LLMModelManager
+from lexigram.ai.llm.registry.core import ProviderRegistry
+
+logger = get_logger(__name__)
+
+__all__ = ["LLMProvider"]
+
+
+@inject
+class LLMProvider(Provider):
+    """Provider that registers LLM services with the Lexigram DI container.
+
+    Registers an LLMClientProtocol, optional LLM response cache, and an LLMModelManager
+    so all three are injectable throughout the application.
+
+    Example:
+        >>> from lexigram.ai.llm.di.provider import LLMProvider
+        >>> from lexigram.ai.llm.config import ClientConfig
+        >>>
+        >>> app.use(LLMProvider(ClientConfig(provider="openai", model="gpt-4o")))
+        >>>
+        >>> # LLMClientProtocol is now injectable:
+        >>> class MyService:
+        ...     def __init__(self, llm: LLMClientProtocol) -> None:
+        ...         self.llm = llm
+    """
+
+    name = "llm"
+    priority = ProviderPriority.DOMAIN
+
+    def __init__(
+        self,
+        config: ClientConfig | None = None,
+        enable_model_manager: bool = False,
+        enable_streaming: bool = True,
+        audit_calls: bool = False,
+        name: str = "llm",
+        cache_backend: CacheBackendProtocol | None = None,
+    ) -> None:
+        """Initialize the LLM Provider.
+
+        Args:
+            config: LLM client configuration; defaults to ClientConfig() (reads env).
+            enable_model_manager: Register LLMModelManager for local model control.
+            enable_streaming: Enable streaming response support.
+            audit_calls: Register :class:`~lexigram.ai.llm.audit_bridge.LLMAuditBridge`
+                to emit audit entries per completion.
+            name: Provider name used for identification.
+            cache_backend: Injected cache backend for optional response caching.
+        """
+        super().__init__(name=name)
+        self.config = config or ClientConfig()
+        self.enable_model_manager = enable_model_manager
+        self.enable_streaming = enable_streaming
+        self.audit_calls = audit_calls
+        self.cache_backend = cache_backend
+        self._llm_client: LLMClientProtocol | None = None
+
+    @staticmethod
+    def _instructor_available() -> bool:
+        """Check if the instructor library is available."""
+        import importlib.util
+
+        try:
+            return importlib.util.find_spec("instructor") is not None
+        except (ValueError, AttributeError):
+            return False
+
+    async def register(self, container: ContainerRegistrarProtocol) -> None:
+        """Register LLM services with the DI container.
+
+        Args:
+            container: The Lexigram DI container registrar.
+        """
+        from lexigram.ai.llm.pricing.registry import TokenCounterRegistry
+        from lexigram.contracts.ai.llm import TokenCounterProtocol
+
+        container.singleton(ClientConfig, self.config)
+
+        if not self.config.enabled:
+            logger.info("llm_disabled", reason="ClientConfig.enabled=False")
+            return
+
+        logger.info(
+            "Registering LLM services",
+            provider=self.config.provider,
+            model=self.config.model,
+        )
+
+        registry = ProviderRegistry()
+        container.singleton(ProviderRegistry, registry)
+        container.singleton(ProviderRegistryProtocol, registry)
+
+        # Register TokenCounterRegistry
+        token_registry = TokenCounterRegistry.with_defaults()
+        container.singleton(TokenCounterRegistry, token_registry)
+
+        # Register ParserRegistry with default parsers
+        from lexigram.ai.llm.parsers.registry import ParserRegistry
+
+        parser_registry = ParserRegistry.with_defaults()
+        container.singleton(ParserRegistry, parser_registry)
+        logger.info("Registered ParserRegistry with default parsers")
+
+        try:
+            llm_client = await create_llm_client(self.config, registry)
+        except ImportError as exc:
+            logger.warning(
+                "llm_client_optional_dependency_missing",
+                provider=self.config.provider,
+                model=self.config.model,
+                error=str(exc),
+            )
+            return
+
+        if not isinstance(llm_client, LLMClientProtocol):
+            msg = (
+                f"LLM client for provider {self.config.provider!r} does not satisfy "
+                "the LLMClientProtocol protocol. Ensure the client implements complete(), "
+                "stream_chat(), health_check(), and close()."
+            )
+            raise TypeError(msg)
+
+        # Always enrich completions with provenance (provider, model_revision,
+        # prompt_hash) — innermost wrap so downstream layers see fully-populated
+        # Completion objects.  LXF-003 wiring.
+        from lexigram.ai.llm.wrappers import CompletionEnricher, LLMCacheWrapper
+
+        llm_client = CompletionEnricher.wrap(
+            llm_client,
+            provider=self.config.provider,
+            model=self.config.model,
+            model_revision=getattr(self.config, "model_revision", None),
+        )
+
+        container.singleton(LLMClientProtocol, llm_client)
+        container.singleton("llm", llm_client)
+        self._llm_client = llm_client
+        logger.info(
+            "Registered LLM client",
+            provider=self.config.provider,
+            model=self.config.model,
+        )
+
+        if self.config.enable_cache:
+            llm_cache = await create_llm_cache(self.config, self.cache_backend)
+            container.singleton("llm_cache", llm_cache)
+            logger.info("Registered LLM response cache")
+
+        if self.enable_model_manager:
+            container.singleton(LLMModelManager)
+            container.singleton("llm_model_manager", LLMModelManager)
+            logger.info("Registered LLMModelManager")
+
+        if self.audit_calls:
+            from lexigram.ai.llm.audit_bridge import LLMAuditBridge
+
+            container.singleton(LLMAuditBridge)
+            wrapped_client = LLMAuditBridge.wrap(llm_client, container)
+            container.singleton(LLMClientProtocol, wrapped_client)
+            container.singleton("llm", wrapped_client)
+            self._llm_client = wrapped_client
+            llm_client = wrapped_client  # subsequent wraps build on this
+            logger.info("Registered LLMAuditBridge (audit_calls=True)")
+
+        # Cache wrap sits outermost: cache hits short-circuit before audit
+        # fires (no real LLM call happened, so no audit entry).  LXF-003 wiring
+        # — actually invokes build_llm_cache_key in production paths.
+        if self.config.enable_cache:
+            cache_wrapped = LLMCacheWrapper.wrap(
+                llm_client,
+                cache=await container.resolve("llm_cache"),
+                provider=self.config.provider,
+                model=self.config.model,
+                model_revision=getattr(self.config, "model_revision", None),
+                ttl_seconds=getattr(self.config, "cache_ttl", None),
+            )
+            container.singleton(LLMClientProtocol, cache_wrapped)
+            container.singleton("llm", cache_wrapped)
+            self._llm_client = cache_wrapped
+            logger.info("Registered LLMCacheWrapper (cache hits skip audit)")
+
+        # Register default TokenCounterProtocol
+        default_counter = token_registry.for_model(self.config.model or "gpt-3.5-turbo")
+        container.singleton(TokenCounterProtocol, default_counter)
+
+        # Register InstructorExtractor if instructor is available
+        if self._instructor_available():
+            from lexigram.ai.llm.extraction.extractor import InstructorExtractor
+
+            container.singleton(InstructorExtractor, InstructorExtractor)
+            logger.info("Registered InstructorExtractor")
+
+        logger.info("LLM services registered")
+
+    async def boot(self, container: ContainerResolverProtocol) -> None:
+        """Boot the LLM provider — validates API key presence and format.
+
+        Args:
+            container: The DI container resolver.
+        """
+        from lexigram.contracts.ai.types import ModelProvider
+
+        # Providers that require an API key
+        _REQUIRES_KEY: set[str] = {
+            ModelProvider.OPENAI,
+            ModelProvider.ANTHROPIC,
+            ModelProvider.COHERE,
+            ModelProvider.GROQ,
+            ModelProvider.MISTRAL,
+            ModelProvider.OPENROUTER,
+            ModelProvider.GEMINI,
+            ModelProvider.CLOUDFLARE,
+            ModelProvider.AZURE_OPENAI,
+            ModelProvider.DEEPSEEK,
+            ModelProvider.TOGETHER,
+            ModelProvider.FIREWORKS,
+        }
+
+        provider = str(self.config.provider)
+        if provider in _REQUIRES_KEY:
+            if not self.config.api_key:
+                logger.warning(
+                    "llm_provider_boot_warning",
+                    provider=provider,
+                    reason="API key is not set; requests will likely fail with AuthenticationError",
+                )
+            else:
+                key_val = self.config.api_key.get_secret_value()
+                if len(key_val) < 8:
+                    logger.warning(
+                        "llm_provider_boot_warning",
+                        provider=provider,
+                        reason="API key appears too short; verify the key is correct",
+                    )
+
+        # Optional: register this client in the provider registry
+        if self._llm_client is not None:
+            try:
+                from lexigram.contracts.ai.providers import ProviderRegistryProtocol
+
+                registry = await container.resolve(ProviderRegistryProtocol)
+                await registry.register_provider(
+                    name=str(self.config.provider),
+                    client=self._llm_client,
+                    models=[],
+                )
+                logger.debug(
+                    "llm_registered_in_provider_registry",
+                    provider=self.config.provider,
+                )
+            except (
+                LookupError,
+                RuntimeError,
+                AttributeError,
+                ImportError,
+                ModuleVisibilityError,
+                UnresolvableDependencyError,
+            ):
+                logger.debug("llm_provider_registry_not_available")
+
+    async def shutdown(self) -> None:
+        """Close client connections on application shutdown."""
+        if self._llm_client and hasattr(self._llm_client, "close"):
+            try:
+                await self._llm_client.close()
+            except (ConnectionError, TimeoutError, OSError) as exc:
+                logger.warning("Error closing LLM client", error=str(exc))
+        self._llm_client = None
+        logger.info("LLM provider shutdown complete")
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Return basic health information for the registered LLM client."""
+        from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
+
+        return HealthCheckResult(
+            component=self.name,
+            status=HealthStatus.HEALTHY
+            if self._llm_client is not None
+            else HealthStatus.DEGRADED,
+            details={
+                "provider": str(self.config.provider),
+                "model": self.config.model,
+            },
+        )

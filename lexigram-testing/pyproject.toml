@@ -1,0 +1,225 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "lexigram-testing"
+version = "0.1.2"
+description = "Centralized testing infrastructure for Lexigram Framework - Fixtures, factories, and utilities"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "testing",
+    "pytest",
+    "fixtures",
+    "factories",
+    "mocking",
+    "async",
+    "framework",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Framework :: Pytest",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+]
+dependencies = [
+    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.0",
+    "lexigram-sql>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+authors = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+maintainers = [
+    { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
+]
+
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+db = [
+    "aiosqlite>=0.19.0",
+    "asyncpg>=0.29.0",
+]
+web = [
+    "httpx>=0.26.0",
+    "starlette>=0.28.0",
+]
+auth = [
+    "lexigram-auth>=0.1.0",
+]
+cache = [
+    "lexigram-cache>=0.1.0",
+]
+storage = [
+    "lexigram-storage>=0.1.0",
+]
+ai = [
+    "lexigram-ai>=0.1.0",
+]
+secrets = [
+    "lexigram-secrets>=0.1.0",
+]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+all = [
+    "aiosqlite>=0.19.0",
+    "asyncpg>=0.29.0",
+    "httpx>=0.26.0",
+    "starlette>=0.28.0",
+    "lexigram-auth>=0.1.0",
+    "lexigram-cache>=0.1.0",
+    "lexigram-storage>=0.1.0",
+    "lexigram-ai>=0.1.0",
+    "lexigram-secrets>=0.1.0",
+]
+integration = [
+    "asyncpg>=0.29.0",
+    "aiosqlite>=0.19.0",
+    "redis>=5.0.0",
+    "aiokafka>=0.12.0",
+    "motor>=3.3.0",
+    "qdrant-client>=1.9.0",
+    "neo4j>=5.18.0",
+    "elasticsearch[async]>=8.12.0",
+]
+
+[project.urls]
+Homepage = "https://lexigram.dev"
+Repository = "https://github.com/dbtinoy-/lexigram"
+Documentation = "https://docs.lexigram.dev"
+Issues = "https://github.com/dbtinoy-/lexigram/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+
+[project.entry-points.pytest11]
+lexigram = "lexigram.testing.plugins.pytest"
+
+[dependency-groups]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+]
+secrets = [
+    { include-group = "test" },
+    "lexigram-secrets>=0.1.0",
+]
+integration = [
+    { include-group = "test" },
+    "asyncpg>=0.29.0",
+    "aiosqlite>=0.19.0",
+    "redis>=5.0.0",
+    "aiokafka>=0.12.0",
+    "motor>=3.3.0",
+    "qdrant-client>=1.9.0",
+    "neo4j>=5.18.0",
+    "elasticsearch[async]>=8.12.0",
+]
+
+[tool.ruff]
+extend = "../pyproject.toml"
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "TID252"]
+# Compliance tests intentionally assert isinstance(exc, ...) in except blocks
+# because the test must pass whether or not an exception is raised.
+# pytest.raises() would fail if no exception is raised.
+"src/lexigram/testing/compliance/*.py" = ["PT017"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["lexigram"]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = "examples.*", ignore_errors = true },
+    { module = "docs.*", ignore_errors = true },
+]
+
+[tool.uv.sources.lexigram]
+workspace = true
+
+[tool.uv.sources.lexigram-contracts]
+workspace = true
+
+[tool.uv.sources.lexigram-secrets]
+workspace = true
+
+[tool.uv.sources.lexigram-sql]
+workspace = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = ["--cov=lexigram.testing", "--cov-report=html", "--cov-report=term", "--cov-fail-under=80"]
+filterwarnings = [
+    "ignore::pytest.PytestAssertRewriteWarning",
+]
+testpaths = ["tests"]
+markers = [
+    "integration: mark a test as an integration test",
+    "scenario: marks cross-package scenario integration tests",
+    "requires_redis: mark test as requiring Redis service",
+    "requires_postgres: mark test as requiring PostgreSQL service",
+    "requires_elasticsearch: mark test as requiring Elasticsearch service",
+    "requires_rabbitmq: mark test as requiring RabbitMQ service",
+    "requires_meilisearch: mark test as requiring Meilisearch service",
+    "requires_smtp: mark test as requiring SMTP service",
+    "requires_kafka: mark test as requiring Kafka service",
+    "requires_minio: mark test as requiring MinIO service",
+    "requires_mongodb: mark test as requiring MongoDB service",
+    "requires_qdrant: mark test as requiring Qdrant service",
+    "slow: mark test as slow running",
+    "performance: mark test as a performance test",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/lexigram",
+]

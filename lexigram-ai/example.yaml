@@ -1,0 +1,113 @@
+# Copy to application.yaml and adjust to your deployment. Remove sections you don't use.
+# Full field reference: see the README Configuration section.
+# YAML key: ai:
+# Environment variable prefix: LEX_AI__
+
+ai:
+  # AI Governance & Policies
+  governance:
+    enabled: true
+    monthly_budget: 1000.0  # USD
+    max_tokens_per_request: 8000
+    enforce_budget: true
+    soft_limit_pct: 0.8  # Warn at 80% usage
+    
+    # Model allowlist/denylist
+    model_allowlist:
+      admin: ["gpt-4*", "claude-3-*"]
+      user: ["gpt-3.5-turbo", "claude-3-haiku"]
+    model_denylist:
+      user: ["gpt-4-turbo"]  # Expensive model blocked for regular users
+      
+  # LLM Configuration
+  llm:
+    default_provider: "openai"  # openai, anthropic, azure, local
+    cache_enabled: true
+    cache_ttl: 3600
+    
+    # OpenAI
+    openai:
+      api_key: "${OPENAI_API_KEY}"
+      organization_id: "${OPENAI_ORG_ID}"
+      base_url: "https://api.openai.com/v1"
+      timeout: 30
+      
+    # Anthropic
+    anthropic:
+      api_key: "${ANTHROPIC_API_KEY}"
+      timeout: 30
+      
+    # Azure OpenAI
+    azure_openai:
+      api_key: "${AZURE_OPENAI_API_KEY}"
+      endpoint: "${AZURE_OPENAI_ENDPOINT}"
+      deployment_id: "${AZURE_DEPLOYMENT_ID}"
+      api_version: "2024-02-15-preview"
+      
+    # Local LLM (e.g., Ollama)
+    local:
+      base_url: "http://localhost:11434"
+      model: "llama2"
+      
+    # Model Routing
+    routing:
+      enabled: true
+      strategy: "cost"  # cost, latency, quality, balanced
+      fallback_enabled: true
+      fallback_provider: "anthropic"
+      
+  # Vector Store Configuration
+  vector:
+    backend: "pinecone"  # pinecone, weaviate, milvus, chromadb, qdrant
+    
+    pinecone:
+      api_key: "${PINECONE_API_KEY}"
+      environment: "us-west1-gcp"
+      index_name: "lexigram"
+      dimension: 1536
+      metric: "cosine"
+      
+    weaviate:
+      url: "http://localhost:8080"
+      
+    chromadb:
+      path: "./data/chroma"
+      
+  # RAG (Retrieval-Augmented Generation)
+  rag:
+    enabled: true
+    
+    # Document Chunking
+    chunking:
+      strategy: "semantic"  # semantic, fixed_size, recursive
+      chunk_size: 512
+      chunk_overlap: 100
+      separator: "\n\n"
+      
+    # Retrieval Strategy
+    retrieval:
+      top_k: 5
+      similarity_threshold: 0.7
+      rerank_enabled: false
+      
+    # Indexing
+    indexing:
+      batch_size: 100
+      embedding_model: "text-embedding-3-small"
+      
+  # Observability & Monitoring
+  observability:
+    enabled: true
+    track_costs: true
+    track_latency: true
+    track_tokens: true
+    
+  # Agents & Tools
+  agents:
+    enabled: true
+    tools:
+      - "search"
+      - "calculator"
+      - "web_browse"
+    max_iterations: 10
+    timeout: 60

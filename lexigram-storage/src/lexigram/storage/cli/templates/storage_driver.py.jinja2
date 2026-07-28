@@ -1,0 +1,171 @@
+"""{{ driver_name }} storage driver.
+
+This is a custom storage driver for the Lexigram storage system.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, BinaryIO
+
+from lexigram.storage.backends import AbstractDriver as BaseDriver
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from lexigram.storage.config import StorageConfig
+
+
+class {{ driver_name }}Driver(BaseDriver):
+    """{{ driver_name }} storage driver.
+    
+    This driver provides {{ driver_type }} storage capabilities for the Lexigram
+    storage system. It implements all required methods from BaseDriver.
+    """
+
+    def __init__(self, config: StorageConfig | None = None):
+        """Initialize the {{ driver_name }} driver.
+        
+        Args:
+            config: Optional configuration for the driver.
+        """
+        super().__init__(config)
+        self._initialized = False
+
+    async def initialize(self) -> None:
+        """Initialize the driver and establish connections."""
+        if self._initialized:
+            return
+        
+        # Add initialization logic here
+        # For example: connect to S3, establish database connection, etc.
+        
+        self._initialized = True
+
+    async def shutdown(self) -> None:
+        """Shutdown the driver and close connections."""
+        if not self._initialized:
+            return
+        
+        # Add cleanup logic here
+        # For example: close connections, flush buffers, etc.
+        
+        self._initialized = False
+
+    async def write(self, key: str, data: BinaryIO, metadata: dict[str, Any] | None = None) -> int:
+        """Write data to storage.
+        
+        Args:
+            key: The storage key/path.
+            data: Binary data to write.
+            metadata: Optional metadata to store with the file.
+            
+        Returns:
+            Number of bytes written.
+        """
+        # Implement write logic
+        # This is a placeholder - replace with actual implementation
+        content = data.read()
+        # await self._store(key, content, metadata)
+        return len(content)
+
+    async def read(self, key: str) -> BinaryIO:
+        """Read data from storage.
+        
+        Args:
+            key: The storage key/path.
+            
+        Returns:
+            BinaryIO object with the file data.
+        """
+        # Implement read logic
+        # This is a placeholder - replace with actual implementation
+        from io import BytesIO
+        # data = await self._retrieve(key)
+        return BytesIO(b"")
+
+    async def delete(self, key: str) -> None:
+        """Delete data from storage.
+        
+        Args:
+            key: The storage key/path.
+        """
+        # Implement delete logic
+        # This is a placeholder - replace with actual implementation
+        # await self._remove(key)
+        pass
+
+    async def exists(self, key: str) -> bool:
+        """Check if a key exists in storage.
+        
+        Args:
+            key: The storage key/path.
+            
+        Returns:
+            True if the key exists, False otherwise.
+        """
+        # Implement exists logic
+        # This is a placeholder - replace with actual implementation
+        # return await self._exists(key)
+        return False
+
+    async def list_keys(self, prefix: str = "") -> AsyncIterator[str]:
+        """List all keys in storage, optionally filtered by prefix.
+        
+        Args:
+            prefix: Optional prefix to filter keys.
+            
+        Yields:
+            Storage keys.
+        """
+        # Implement list_keys logic
+        # This is a placeholder - replace with actual implementation
+        # async for key in self._list(prefix):
+        #     yield key
+        return
+        yield  # type: ignore
+
+    async def get_metadata(self, key: str) -> dict[str, Any]:
+        """Get metadata for a stored file.
+        
+        Args:
+            key: The storage key/path.
+            
+        Returns:
+            Dictionary containing file metadata.
+        """
+        # Implement get_metadata logic
+        # This is a placeholder - replace with actual implementation
+        # return await self._get_metadata(key)
+        return {}
+
+    async def copy(self, source_key: str, destination_key: str) -> None:
+        """Copy a file within storage.
+        
+        Args:
+            source_key: Source key/path.
+            destination_key: Destination key/path.
+        """
+        # Implement copy logic
+        # This is a placeholder - replace with actual implementation
+        # data = await self.read(source_key)
+        # await self.write(destination_key, data)
+        pass
+
+    async def move(self, source_key: str, destination_key: str) -> None:
+        """Move a file within storage.
+        
+        Args:
+            source_key: Source key/path.
+            destination_key: Destination key/path.
+        """
+        # Implement move logic
+        # This is a placeholder - replace with actual implementation
+        # await self.copy(source_key, destination_key)
+        # await self.delete(source_key)
+        pass
+
+    # Add custom methods specific to your driver
+    # For example, for S3 you might add:
+    # async def generate_presigned_url(self, key: str, expires_in: int) -> str:
+    #     """Generate a presigned URL for temporary access."""
+    #     pass

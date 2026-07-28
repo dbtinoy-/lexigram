@@ -1,0 +1,192 @@
+"""{{ client_name }} API client.
+
+This module provides a client for interacting with the {{ client_name }} API.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+import httpx
+
+from lexigram.connect.client.http import HTTPClient
+
+if TYPE_CHECKING:
+    from lexigram.resilience.decorators import with_retry, with_circuit_breaker
+
+logger = logging.getLogger(__name__)
+
+
+class {{ client_name }}Client:
+    """Client for the {{ client_name }} API.
+    
+    Provides methods for interacting with the external API with built-in
+    retry logic, circuit breaker patterns, and proper error handling.
+    """
+    
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str | None = None,
+        timeout: float = 30.0,
+        max_retries: int = 3,
+    ):
+        """Initialize the API client.
+        
+        Args:
+            base_url: Base URL for the API.
+            api_key: Optional API key for authentication.
+            timeout: Request timeout in seconds.
+            max_retries: Maximum number of retries for failed requests.
+        """
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.timeout = timeout
+        self.max_retries = max_retries
+        
+        # Initialize HTTP client
+        self._client = HTTPClient(
+            base_url=self.base_url,
+            timeout=timeout,
+        )
+        
+        # Set up authentication
+        self._setup_auth()
+    
+    def _setup_auth(self) -> None:
+        """Set up authentication headers."""
+        if self.api_key:
+            self._client.headers["Authorization"] = f"Bearer {self.api_key}"
+    
+    async def close(self) -> None:
+        """Close the HTTP client and clean up resources."""
+        await self._client.aclose()
+    
+    # =========================================================================
+    # API Methods
+    # =========================================================================
+    # Add your API methods here. Examples:
+    #
+    # async def get_user(self, user_id: str) -> dict[str, Any]:
+    #     """Get a user by ID."""
+    #     response = await self._client.get(f"/users/{user_id}")
+    #     return response.json()
+    #
+    # async def list_users(self, limit: int = 20, offset: int = 0) -> list[dict]:
+    #     """List users with pagination."""
+    #     response = await self._client.get(
+    #         "/users",
+    #         params={"limit": limit, "offset": offset}
+    #     )
+    #     return response.json().get("data", [])
+    #
+    # async def create_user(self, data: dict[str, Any]) -> dict[str, Any]:
+    #     """Create a new user."""
+    #     response = await self._client.post("/users", json=data)
+    #     return response.json()
+    #
+    # async def update_user(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    #     """Update an existing user."""
+    #     response = await self._client.patch(f"/users/{user_id}", json=data)
+    #     return response.json()
+    #
+    # async def delete_user(self, user_id: str) -> None:
+    #     """Delete a user."""
+    #     await self._client.delete(f"/users/{user_id}")
+    
+    # =========================================================================
+    # Helper Methods
+    # =========================================================================
+    
+    async def _request(
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        """Make an HTTP request with error handling.
+        
+        Args:
+            method: HTTP method (GET, POST, PUT, PATCH, DELETE).
+            endpoint: API endpoint path.
+            **kwargs: Additional arguments to pass to httpx.
+            
+        Returns:
+            The HTTP response.
+            
+        Raises:
+            {{ client_name }}APIError: If the API returns an error.
+        """
+        url = f"{self.base_url}{endpoint}"
+        
+        try:
+            response = await self._client.request(method, url, **kwargs)
+            response.raise_for_status()
+            return response
+            
+        except httpx.HTTPStatusError as e:
+            logger.error(f"API error: {e.response.status_code} - {e.response.text}")
+            raise {{ client_name }}APIError(
+                message=f"API request failed: {e.response.status_code}",
+                status_code=e.response.status_code,
+                response=e.response,
+            ) from e
+            
+        except httpx.RequestError as e:
+            logger.error(f"Request error: {e}")
+            raise {{ client_name }}APIError(
+                message=f"Request failed: {str(e)}",
+                status_code=None,
+                response=None,
+            ) from e
+
+
+class {{ client_name }}APIError(Exception):
+    """Exception raised when the {{ client_name }} API returns an error."""
+    
+    def __init__(
+        self,
+        message: str,
+        status_code: int | None,
+        response: httpx.Response | None,
+    ):
+        """Initialize the error.
+        
+        Args:
+            message: Error message.
+            status_code: HTTP status code.
+            response: The response object if available.
+        """
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.response = response
+
+
+# =============================================================================
+# Dependency Injection
+# =============================================================================
+
+def create_{{ client_name_snake }}_client(
+    base_url: str,
+    api_key: str | None = None,
+    timeout: float = 30.0,
+) -> {{ client_name }}Client:
+    """Create a {{ client_name }} client instance.
+    
+    This function can be used with Lexigram's dependency injection.
+    
+    Args:
+        base_url: Base URL for the API.
+        api_key: Optional API key.
+        timeout: Request timeout.
+        
+    Returns:
+        Configured {{ client_name }}Client instance.
+    """
+    return {{ client_name }}Client(
+        base_url=base_url,
+        api_key=api_key,
+        timeout=timeout,
+    )

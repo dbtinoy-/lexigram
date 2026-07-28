@@ -1,0 +1,149 @@
+"""Task backend registry — maps backend type strings to factory functions.
+
+To register a custom backend::
+
+    from lexigram.tasks.backends.registry import TaskBackendRegistry
+
+    registry = TaskBackendRegistry()
+    registry.register("my_backend", lambda cfg: MyTaskQueue(cfg))
+
+    # Inside a Lexigram Application, resolve from the DI container instead:
+    registry = await container.resolve(TaskBackendRegistry)
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
+
+from lexigram.primitives.registry import BackendRegistry as _CoreBackendRegistry
+from lexigram.tasks import constants as tasks_const
+from lexigram.tasks.config import TaskConfig
+
+# Type alias for backend factory functions.
+BackendFactory = Callable[[TaskConfig], Any]
+
+
+class TaskBackendRegistry(_CoreBackendRegistry):
+    """Registry mapping backend type strings to factory callables.
+
+    Extends :class:`lexigram.primitives.registry.BackendRegistry` so that all
+    backend registries share a common hierarchy and introspection API.
+    Backends are registered with a string key (``"memory"``, ``"redis"``, …)
+    and a factory that accepts a :class:`~lexigram.tasks.config.TaskConfig`
+    and returns a ready-to-use queue implementation.
+    """
+
+    def __init__(self) -> None:
+        """Initialise with an empty registry (use ``with_defaults()`` for production)."""
+        super().__init__(name="tasks.backends", allow_overwrite=True)
+
+    @classmethod
+    def with_defaults(cls) -> TaskBackendRegistry:
+        """Create a registry pre-populated with the built-in default backend factories.
+
+        Returns:
+            A new registry instance with all default backend factories registered.
+        """
+        instance = cls()
+        instance._register_defaults()
+        return instance
+
+    def _register_defaults(self) -> None:
+        """Populate the registry with the built-in backend factories."""
+        self.register(tasks_const.BACKEND_MEMORY, _create_memory)
+        self.register(tasks_const.BACKEND_REDIS, _create_redis)
+        self.register(tasks_const.BACKEND_RABBITMQ, _create_rabbitmq)
+        self.register(tasks_const.BACKEND_POSTGRES, _create_postgres)
+
+    def register(self, backend_type: str, factory: BackendFactory) -> None:  # type: ignore[override]
+        """Register a new backend factory under *backend_type*.
+
+        Overwrites any existing factory for the same *backend_type*.
+
+        Args:
+            backend_type: String key used in ``config.backend.type``.
+            factory: Callable that accepts a :class:`TaskConfig` and returns a queue.
+        """
+        super().register(backend_type, factory)
+
+    def available_backends(self) -> list[str]:
+        """Return a sorted list of registered backend type strings."""
+        return sorted(self.keys())
+
+    def create_backend(self, config: TaskConfig) -> Any:
+        """Instantiate a backend for the type declared in *config*.
+
+        Args:
+            config: Root task configuration; ``config.backend.type`` selects
+                the factory.
+
+        Returns:
+            A queue object satisfying
+            :class:`~lexigram.contracts.infra.tasks.TaskQueueProtocol`.
+
+        Raises:
+            ValueError: If ``config.backend.type`` is not registered.
+        """
+        backend_type = config.backend.type or tasks_const.DEFAULT_BACKEND
+        factory = self.get(backend_type)
+        if factory is None:
+            raise ValueError(
+                f"Unknown task backend: {backend_type!r}. "
+                f"Available: {self.available_backends()}"
+            )
+        return factory(config)
+
+
+# ---------------------------------------------------------------------------
+# Built-in factory functions
+# ---------------------------------------------------------------------------
+
+
+def _create_memory(config: TaskConfig) -> Any:
+    """Factory: in-memory task queue (always available; no extras required)."""
+    from lexigram.tasks.backends.memory import MemoryTaskQueue
+
+    return MemoryTaskQueue()  # type: ignore[abstract]
+
+
+def _create_redis(config: TaskConfig) -> Any:
+    """Factory: Redis-backed task queue.
+
+    Requires ``pip install lexigram-tasks[redis]``.
+    """
+    from lexigram.tasks.backends.redis import RedisTaskQueue
+
+    return RedisTaskQueue(  # type: ignore[abstract]
+        redis_url=config.backend.redis_url.get_secret_value(),
+        queue_name=config.backend.queue_name,
+    )
+
+
+def _create_rabbitmq(config: TaskConfig) -> Any:
+    """Factory: RabbitMQ-backed task queue.
+
+    Requires ``pip install lexigram-tasks[rabbitmq]``.
+    """
+    from lexigram.tasks.backends.rabbitmq import RabbitMQTaskQueue
+
+    return RabbitMQTaskQueue(  # type: ignore[abstract]
+        amqp_url=config.backend.amqp_url.get_secret_value(),
+        queue_name=config.backend.queue_name,
+    )
+
+
+def _create_postgres(config: TaskConfig) -> Any:
+    """Factory: Postgres-backed task queue.
+
+    Requires ``pip install lexigram-tasks[postgres]`` and
+    ``config.backend.postgres_dsn`` to be set.
+    """
+    from lexigram.tasks.backends.postgres import PostgresTaskConfig, PostgresTaskQueue
+
+    if not config.backend.postgres_dsn:
+        raise ValueError(
+            "config.backend.postgres_dsn must be set when using the 'postgres' backend."
+        )
+    pg_config = PostgresTaskConfig(dsn=config.backend.postgres_dsn)
+    return PostgresTaskQueue(pg_config)
