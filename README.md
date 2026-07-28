@@ -77,6 +77,31 @@ run_server(app, port=8000)
 
 → [Your First App](docs/lexigram-docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
 
+## example app (fullstack, in-repo)
+
+[`demos/fullstack-demo`](./demos/fullstack-demo/) — **shorts-creator**, an
+end-to-end short-video reel generator built on the framework: LLM script
+generation, Chatterbox TTS narration, stock clip sourcing, caption overlays,
+and ffmpeg compose. It runs against the editable framework packages in this
+repo, so it doubles as a living integration surface — CI gates it with the
+same checks as the framework (format, lint, mypy, tests).
+
+```sh
+cd demos/fullstack-demo
+uv sync --locked
+uv run python -m shorts_creator.main    # serve on :8080
+# or: uv run uvicorn asgi_app:app --port 8080
+```
+
+Verify it like CI does:
+
+```sh
+uv run ruff format --check src tests
+uv run ruff check src tests
+uv run mypy
+uv run pytest -q -m "not integration"
+```
+
 ## what's in the box
 
 this repo ships the main ecosystem — the core, the backend, the contracts:
