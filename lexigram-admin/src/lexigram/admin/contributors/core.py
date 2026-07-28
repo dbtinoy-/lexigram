@@ -103,9 +103,7 @@ class CoreAdminContributor(BaseAdminContributor):
                     MetricsReadbackProtocol
                 )
             if self._hub is None:
-                self._hub = await typed_container.resolve_optional(
-                    SubjectAdminEventHub
-                )
+                self._hub = await typed_container.resolve_optional(SubjectAdminEventHub)
                 self._start_activity_tail()
         except Exception as exc:  # noqa: BLE001
             logger.warning("admin.core_sources_unavailable", error=str(exc))
@@ -256,13 +254,25 @@ class CoreAdminContributor(BaseAdminContributor):
                 ),
             )
         if widget_name == "activity":
+            if self._hub is None and resolver is not None:
+                try:
+                    self._hub = await resolver.resolve(SubjectAdminEventHub)
+                    self._start_activity_tail()
+                except Exception:  # noqa: BLE001 — hub is optional
+                    self._hub = None
             rows: list[tuple[TableCell, TableCell, TableCell]] = []
             for event in list(self._activity_cache):
                 rows.append(
                     (
                         TableCell(text=str(event.event_type)),
                         TableCell(text=str(event.resource_type or "")),
-                        TableCell(text=str(event.resource_id if event.resource_id is not None else "")),
+                        TableCell(
+                            text=str(
+                                event.resource_id
+                                if event.resource_id is not None
+                                else ""
+                            )
+                        ),
                     )
                 )
             if not rows:
@@ -398,7 +408,8 @@ class CoreAdminContributor(BaseAdminContributor):
                 status=_status_from_value(status_value),
                 component=str(result.get("component", check_name)),
                 detail=str(
-                    result.get("error") or f"{result.get('component', check_name)} checked"
+                    result.get("error")
+                    or f"{result.get('component', check_name)} checked"
                 ),
             )
         )
