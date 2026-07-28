@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path.cwd().resolve()
 
 # NOTE: lexigram-admin and lexigram-ai-governance contain internal-IP references —
-# sanitize before ever publishing them to PyPI (the GitHub mirror script does this).
+# sanitize these before publishing to PyPI.
 
 PUBLISH_ORDER: tuple[tuple[str, ...], ...] = (
     ("lexigram-contracts",),

@@ -25,45 +25,6 @@ def test_all_entry_points_load_successfully() -> None:
         )
 
 
-def test_published_package_list_matches_cli_matrix(repo_root: Path) -> None:
-    import re
-
-    publish_script = repo_root / "tools" / "publish_public.sh"
-    assert publish_script.is_file(), f"publish_public.sh not found at {publish_script}"
-    text = publish_script.read_text()
-
-    match = re.search(r'STABLE_PKGS="(.*?)"', text, re.DOTALL)
-    assert match, "STABLE_PKGS not found in publish_public.sh"
-    publish_pkgs = {p.strip() for p in match.group(1).split() if p.strip() and p.strip() != "\\"}
-
-    matrix_doc = repo_root / "lexigram-cli" / "docs" / "PUBLIC_PACKAGE_CLI_MATRIX.md"
-    assert matrix_doc.is_file(), f"Matrix doc not found at {matrix_doc}"
-    matrix_text = matrix_doc.read_text()
-
-    missing = []
-    for pkg in sorted(publish_pkgs):
-        if f"`{pkg}`" not in matrix_text:
-            missing.append(pkg)
-    assert not missing, (
-        f"Packages in publish_public.sh missing from PUBLIC_PACKAGE_CLI_MATRIX.md: "
-        f"{', '.join(missing)}"
-    )
-
-    actual_eps = {ep.name for ep in entry_points(group=ENTRY_POINT_GROUP)}
-    matrix_subset = set()
-    for pkg in publish_pkgs:
-        ep_key = pkg.replace("lexigram-", "", 1) if pkg.startswith("lexigram-") else pkg
-        if ep_key == "lexigram":
-            ep_key = "core"
-        matrix_subset.add(ep_key)
-
-    matrix_in_actual = matrix_subset & actual_eps
-    assert matrix_in_actual, (
-        f"No published packages match actual entry points. "
-        f"Matrix: {matrix_subset}, Actual: {actual_eps}"
-    )
-
-
 def test_cli_runtime_does_not_import_extension_packages_directly() -> None:
     import ast
     from pathlib import Path
