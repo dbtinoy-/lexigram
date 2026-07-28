@@ -1,4 +1,4 @@
-# Give AI a clear pattern to follow
+# Give AI a pattern to follow
 
 *Agents, LLMs, RAG, Skills — wired together, no glue code.*
 
