@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.ai.llm.exceptions import LLMError
 from lexigram.contracts.ai import LLMClientProtocol
 from lexigram.contracts.ai.providers import ProviderRegistryProtocol
 from lexigram.contracts.core.health import HealthCheckResult
@@ -15,9 +16,7 @@ from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 from lexigram.contracts.exceptions.provider import ModuleVisibilityError
 from lexigram.di.decorators import inject
 from lexigram.di.provider import Provider, ProviderPriority
-from lexigram.logging import (
-    get_logger,
-)
+from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -35,6 +34,28 @@ from lexigram.ai.llm.registry.core import ProviderRegistry
 logger = get_logger(__name__)
 
 __all__ = ["LLMProvider"]
+
+
+# Map provider name → pyproject.toml extra name for actionable install hints.
+# Most match the provider name, but some share an extra (e.g. deepseek, azure-openai
+# all bundle under the ``openai`` extra).
+_PROVIDER_EXTRAS: dict[str, str] = {
+    "ollama": "ollama",
+    "openai": "openai",
+    "anthropic": "anthropic",
+    "cohere": "cohere",
+    "groq": "groq",
+    "mistral": "mistral",
+    "deepseek": "openai",
+    "together": "openai",
+    "fireworks": "openai",
+    "openrouter": "openai",
+    "azure-openai": "openai",
+    "cloudflare": "openai",
+    "gemini": "openai",
+    "google-vertex": "openai",
+    "aws-bedrock": "openai",
+}
 
 
 @inject
@@ -136,13 +157,18 @@ class LLMProvider(Provider):
         try:
             llm_client = await create_llm_client(self.config, registry)
         except ImportError as exc:
-            logger.warning(
-                "llm_client_optional_dependency_missing",
-                provider=self.config.provider,
-                model=self.config.model,
-                error=str(exc),
+            extra = _PROVIDER_EXTRAS.get(
+                self.config.provider.value,
+                self.config.provider.value,
             )
-            return
+            msg = (
+                f"Missing SDK for provider {self.config.provider!r}. "
+                f"The SDK package is an optional dependency.\n"
+                f"  Install: uv sync --extra {extra}\n"
+                f"  Or:      pip install lexigram-ai-llm[{extra}]\n"
+                f"  Error:   {exc}"
+            )
+            raise LLMError(msg) from exc
 
         if not isinstance(llm_client, LLMClientProtocol):
             msg = (

@@ -114,9 +114,10 @@ class OpenAIClient(AbstractLLMClient):
             params: dict[str, Any] = {
                 "model": _model,
                 "messages": openai_messages,
-                "max_tokens": _max_tokens,
                 **kwargs,
             }
+            if _max_tokens is not None:
+                params["max_tokens"] = _max_tokens
 
             self._apply_thinking(params)
             if "reasoning_effort" not in params:
@@ -207,10 +208,11 @@ class OpenAIClient(AbstractLLMClient):
             params: dict[str, Any] = {
                 "model": _model,
                 "messages": openai_messages,
-                "max_tokens": _max_tokens,
                 "stream": True,
                 **kwargs,
             }
+            if _max_tokens is not None:
+                params["max_tokens"] = _max_tokens
 
             self._apply_thinking(params)
             if "reasoning_effort" not in params:
@@ -287,9 +289,10 @@ class OpenAIClient(AbstractLLMClient):
             params: dict[str, Any] = {
                 "model": _model,
                 "messages": openai_messages,
-                "max_tokens": _max_tokens,
                 **kwargs,
             }
+            if _max_tokens is not None:
+                params["max_tokens"] = _max_tokens
 
             self._apply_thinking(params)
             if "reasoning_effort" not in params:
