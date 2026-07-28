@@ -5,6 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/lexigram?color=%2334D058&label=pypi%20package)](https://pypi.org/project/lexigram/)
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram?color=%2334D058)](https://pypi.org/project/lexigram/)
 [![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram/blob/main/LICENSE)
+[![CI](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml)
 
 hey — wanna ship a real app this weekend?
 
@@ -33,6 +34,40 @@ pip install "lexigram[web]"
 #   resolved like anything else — constructor-injected by contract, no glue code
 # ... and many more packages available
 ```
+
+### from this repository (fresh clone)
+
+```bash
+git clone https://github.com/dbtinoy-/lexigram.git
+cd lexigram
+
+# reproducible install (lockfile is committed — uv sync --locked fails
+# on drift between uv.lock and pyproject.toml)
+uv sync --all-extras --locked
+
+# optional: start the backing services the test suite expects
+# (postgres on :5432, redis on :6379) — nothing else is required
+docker compose up -d
+
+# environment reference — copy and adjust (every variable is optional;
+# unset values fall back to framework defaults)
+cp .env.example .env
+
+# run the full suite
+uv run pytest
+```
+
+## ci — what runs on every push/pr
+
+`.github/workflows/ci.yml` runs four jobs (the badge at the top shows the
+latest `main` run); each job has a local one-liner:
+
+| job | runs in CI | locally |
+| --- | --- | --- |
+| `quality` | format, lint, tier boundary, mypy (core), per-package tests | `uv run ruff format --check . && uv run ruff check . && uv run mypy lexigram/src/ && uv run pytest -m "not integration" --no-cov` |
+| `coverage` | aggregate tests with a 70% floor | `uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70` |
+| `example` | fullstack-demo gate (format, lint, mypy, tests) | `cd demos/fullstack-demo && uv run pytest -q -m "not integration"` |
+| `audit` | `pip-audit` known-vulnerability check | `uv run pip-audit` |
 
 ```text
 HOOK    agents · llms · rag · mcp · memory
