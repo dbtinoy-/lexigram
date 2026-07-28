@@ -27,7 +27,7 @@ os.environ.setdefault("OPENAI_API_KEY", "dummy-key")
 
 
 # ═══════════════════════════════════════════════════════════
-# STAGE 1: Raw Ollama — the manual way
+# EXAMPLE 1: Raw Ollama — the manual way
 # ═══════════════════════════════════════════════════════════
 # Direct HTTP to Ollama via the `ollama` package.
 # Dict access, no types, no DI, fragile error handling.
@@ -45,7 +45,7 @@ async def stage1_raw_ollama():
 
 
 # ═══════════════════════════════════════════════════════════
-# STAGE 2: Enter Lexigram
+# EXAMPLE 2: Enter Lexigram
 # ═══════════════════════════════════════════════════════════
 # Application.boot() + LLMModule — DI, protocols, Result[T,E].
 # Same LLM call, now clean, testable, provider-agnostic.
@@ -82,7 +82,7 @@ async def stage2_lexigram_llm():
 
 
 # ═══════════════════════════════════════════════════════════
-# STAGE 3: Structured Output
+# EXAMPLE 3: Structured Output
 # ═══════════════════════════════════════════════════════════
 # Typed extraction — dataclasses from the LLM, validated.
 # No string parsing, no fragile regex.
@@ -132,7 +132,7 @@ async def stage3_structured():
 
 
 # ═══════════════════════════════════════════════════════════
-# STAGE 4: Streaming — real-time token output
+# EXAMPLE 4: Streaming — real-time token output
 # ═══════════════════════════════════════════════════════════
 # stream_chat() returns AsyncStream — tokens as they arrive.
 # No waiting for the full response.
@@ -180,7 +180,7 @@ async def stage4_streaming():
 
 
 # ═══════════════════════════════════════════════════════════
-# STAGE 5: Tool Calling — LLM autonomously uses tools
+# EXAMPLE 5: Tool Calling — LLM autonomously uses tools
 # ═══════════════════════════════════════════════════════════
 # @tool decorator + ReAct strategy = agentic AI.
 # The LLM decides when to call a tool, processes the
@@ -244,7 +244,7 @@ async def stage5_tool_calling():
 
 
 # ═══════════════════════════════════════════════════════════
-# STAGE 6: Observe — automatic observability
+# EXAMPLE 6: Observe — automatic observability
 # ═══════════════════════════════════════════════════════════
 # Every call captures model, tokens, timing, and provenance
 # — zero extra code. The framework fills it all in for you.
@@ -286,37 +286,48 @@ async def stage6_observability():
 
 async def main():
     print()
-    print("  ── STAGE 1: Before ── raw library API call to Ollama")
+    print("  ── Example 1: Before ── raw library API call to Ollama")
     print("  ────  fragile dict access, no framework")
     await stage1_raw_ollama()
     print()
+    print("  ----------------")
+    print()
 
-    print("  ── STAGE 2: After ── same call through Lexigram DI")
+    print("  ── Example 2: After ── same call through Lexigram DI")
     print("  ────  contracts, Result types, provider-agnostic")
     await stage2_lexigram_llm()
     print()
+    print("  ----------------")
+    print()
 
-    print("  ── STAGE 3: Extract ── typed output from the LLM")
+    print("  ── Example 3: Extract ── typed output from the LLM")
     print("  ────  dataclass extraction, no fragile string parsing")
     await stage3_structured()
     print()
+    print("  ----------------")
+    print()
 
-    print("  ── STAGE 4: Stream ── real-time token output")
+    print("  ── Example 4: Stream ── real-time token output")
     print("  ────  streaming with thinking normalization via Lexigram")
     await stage4_streaming()
-
     print()
-    print("  ── STAGE 5: Agent ── LLM calls tools autonomously")
+    print("  ----------------")
+    print()
+
+    print("  ── Example 5: Agent ── LLM calls tools autonomously")
     print("  ────  @tool + ReAct strategy")
     await stage5_tool_calling()
-
     print()
-    print("  ── STAGE 6: Observe ── automatic observability")
+    print("  ----------------")
+    print()
+
+    print("  ── Example 6: Observe ── automatic observability")
     print("  ────  model, tokens, latency — zero extra code")
     await stage6_observability()
     print()
-
+    print("  ----------------")
     print()
+    print("  ... and many more")
 
 
 if __name__ == "__main__":
