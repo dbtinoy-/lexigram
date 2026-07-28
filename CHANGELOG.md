@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lexigram.events.reactive`: cold/hot bridges from event stores and StreamDispatcher into reactive streams.
 - `lexigram.web.transport.reactive`: `sse_from_stream` responder wiring a reactive stream to an EventSource response.
 - `lexigram.admin.realtime.subject_hub`: Subject-backed admin event hub.
+- `lexigram-events` admin: throughput, dead-letter-count, and live-events dashboard widgets (live-events tails `StreamDispatcher` events into a bounded cache and subscribes synchronously so no event is missed).
+- `lexigram-admin` core: "Recent Activity" dashboard widget now streams broadcast `SubjectAdminEventHub` events (per-admin targeted notifications stay private); widget `activity` is a structured table.
 
 ### Security (2026-08-16 → 2026-08-18 audit series)
 
