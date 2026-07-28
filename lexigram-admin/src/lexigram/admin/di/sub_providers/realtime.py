@@ -38,6 +38,7 @@ class AdminRealtimeSubProvider:
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register realtime services: WebSocket manager, event hub, SSE manager, collaborative."""
         from lexigram.admin.realtime.sse import AdminEventHub
+        from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
         from lexigram.admin.realtime.ws_handler_registry import WSMessageTypeRegistry
         from lexigram.admin.services.collaborative import CollaborativeEditingService
         from lexigram.admin.services.realtime import RealtimeService
@@ -48,6 +49,7 @@ class AdminRealtimeSubProvider:
         container.singleton(WSMessageTypeRegistry, WSMessageTypeRegistry())
         container.singleton(RealtimeService, realtime_svc)
         container.singleton(AdminEventHub, AdminEventHub())
+        container.singleton(SubjectAdminEventHub, SubjectAdminEventHub())
 
         # Lock store is provided externally through container bindings.
         lock_store: LockStoreProtocol | None = None
