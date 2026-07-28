@@ -1,10 +1,10 @@
 from unittest.mock import AsyncMock
-from jose import jwt as jose_jwt
+
+import jwt
 import pytest
 
 import lexigram.auth as la
 from lexigram.auth.config import AuthConfig, JWTConfig
-from lexigram.auth.exceptions import InvalidTokenError
 
 
 @pytest.fixture
@@ -36,8 +36,8 @@ async def test_verify_token_accepts_valid_hs256_token(mock_cache):
     payload = {"sub": "user-xyz", "type": "access", "aud": None}
     key = secret
 
-    # Generate token using jose_jwt for external verification
-    token = jose_jwt.encode(
+    # Generate token using pyjwt for external verification
+    token = jwt.encode(
         payload,
         key,
         algorithm="HS256",

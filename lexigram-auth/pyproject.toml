@@ -44,7 +44,6 @@ dependencies = [
     "orjson>=3.9.0",
     "passlib[bcrypt]>=1.7.0",
     "pyjwt>=2.0.0",
-    "python-jose>=3.3.0",
     "typing-extensions>=4.0.0",
     "cryptography>=46.0.5",
     "starlette>=0.28.0",
