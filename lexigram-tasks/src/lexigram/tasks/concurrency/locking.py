@@ -1,6 +1,7 @@
-"""Distributed locking for task deduplication.
+"""In-process locking for task deduplication.
 
-Provides distributed locks to prevent duplicate task execution across workers.
+Provides process-local locks to prevent duplicate task execution within a
+single worker process.
 """
 
 from __future__ import annotations
@@ -10,6 +11,9 @@ from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 import time
 from typing import Any, Self
+
+_LOCK_POLL_INITIAL_DELAY = 0.01
+_LOCK_POLL_MAX_DELAY = 0.25
 
 
 class InMemoryLock:
@@ -37,7 +41,9 @@ class InMemoryLock:
 
         Args:
             key: Unique lock key
-            timeout: Lock timeout in seconds (auto-release)
+            timeout: Lock expiry in seconds; the key is considered expired
+                once this many seconds have passed since acquisition and is
+                purged on the next acquire attempt
             locks_dict: Shared locks dictionary (from LockManager)
             locks_lock: Shared lock for accessing locks_dict (from LockManager)
         """
@@ -49,10 +55,13 @@ class InMemoryLock:
         self._locks_lock = locks_lock
 
     async def acquire(self) -> bool:
-        """Acquire the lock.
+        """Try to acquire the lock without waiting.
+
+        Expired lock entries are purged before the ownership check, so an
+        expired key can be re-acquired immediately.
 
         Returns:
-            True if lock was acquired, False if already held
+            True if the lock was acquired, False if the key is already held.
         """
         async with self._locks_lock:
             # Clean up expired locks using monotonic time
@@ -80,18 +89,70 @@ class InMemoryLock:
         """
         return await self.acquire()
 
+    async def acquire_wait(self, timeout: float | None = None) -> bool:
+        """Block until the lock is acquired or *timeout* seconds elapse.
+
+        Polls :meth:`acquire` with capped exponential backoff between
+        attempts, so the caller never busy-waits. Each poll purges expired
+        lock entries, so a timed-out holder loses the key to a waiting
+        caller.
+
+        Args:
+            timeout: Maximum seconds to wait for the lock. When ``None``,
+                wait until the lock is acquired or the calling task is
+                cancelled.
+
+        Returns:
+            True when the lock was acquired, False if *timeout* elapsed
+            without acquiring it.
+
+        Example:
+            ```python
+            lock = lock_manager.acquire("user:123:sync", timeout=60)
+            if await lock.acquire_wait(timeout=30):
+                try:
+                    await sync_user_data(user_id=123)
+                finally:
+                    await lock.release()
+            ```
+        """
+        deadline = time.monotonic() + timeout if timeout is not None else None
+        delay = _LOCK_POLL_INITIAL_DELAY
+        while True:
+            if await self.acquire():
+                return True
+            if deadline is not None and time.monotonic() >= deadline:
+                return False
+            sleep_for = delay
+            if deadline is not None:
+                sleep_for = min(delay, max(deadline - time.monotonic(), 0.0))
+            if sleep_for > 0.0:
+                await asyncio.sleep(sleep_for)
+            delay = min(delay * 2, _LOCK_POLL_MAX_DELAY)
+
     async def release(self) -> None:
-        """Release the lock."""
+        """Release the lock.
+
+        Only the registry entry that still belongs to this instance is
+        removed: a stale release — after this lock's entry expired and the
+        key was re-acquired by a different caller — leaves the current
+        holder's entry untouched and only frees this instance's own
+        ``asyncio.Lock``.
+        """
         if self.acquired and self._lock:
             async with self._locks_lock:
-                if self.key in self._locks:
+                stored = self._locks.get(self.key)
+                if stored is not None and stored[1] is self._lock:
                     del self._locks[self.key]
                 self._lock.release()
             self.acquired = False
 
     async def __aenter__(self) -> Self:
-        """Context manager entry."""
-        await self.acquire()
+        """Enter the lock, blocking until it is acquired.
+
+        Equivalent to :meth:`acquire_wait` with no timeout.
+        """
+        await self.acquire_wait()
         return self
 
     async def __aexit__(
@@ -121,13 +182,16 @@ class LockManager:
 
     **Contention behaviour**
 
-    * When a caller requests a lock that is already held, the internal
-      ``asyncio.Lock`` causes the second caller to *suspend* (not busy-wait)
-      until the first caller releases it.
-    * If the first caller holds the lock past *timeout* seconds, the lock key
-      is still valid until explicitly released — there is no automatic
-      force-release on timeout; the timeout field is informational metadata
-      for external monitoring only.
+    * :meth:`InMemoryLock.acquire` is *non-blocking*: when the key is
+      already held it returns ``False`` immediately, without suspending
+      the caller. To wait for a key to become free, use
+      :meth:`InMemoryLock.acquire_wait` or enter the lock with
+      ``async with``.
+    * The *timeout* value is enforced, not informational: an entry is
+      considered expired once ``acquisition time + timeout`` has passed,
+      and the next :meth:`InMemoryLock.acquire` call purges expired
+      entries — freeing the key for a new acquirer even if the original
+      holder never calls :meth:`InMemoryLock.release`.
 
     **Registration**
 
@@ -166,10 +230,16 @@ class UniqueTask:
 
     Prevents duplicate execution of the same task using in-memory locks.
 
+    By default (``skip_if_locked=True``) a second caller whose lock key is
+    already held returns ``None`` immediately. With
+    ``skip_if_locked=False`` the second caller blocks until the key is free
+    (up to *timeout* seconds), then returns ``None`` if the key is still
+    held.
+
     Example:
         ```python
         lock_manager = LockManager()
-        @unique_task(
+        @UniqueTask(
             lock_manager=lock_manager,
             key_func=lambda user_id: f"sync_user:{user_id}",
             timeout=3600
@@ -191,8 +261,11 @@ class UniqueTask:
         Args:
             lock_manager: LockManager instance for creating locks
             key_func: Function to generate lock key from task args
-            timeout: Lock timeout in seconds
-            skip_if_locked: If True, skip execution if lock held; if False, wait
+            timeout: Lock expiry in seconds; also the maximum time the wait
+                mode (skip_if_locked=False) blocks for the lock
+            skip_if_locked: If True, skip execution (return None) if the
+                lock is held; if False, wait up to *timeout* seconds for
+                the lock, then skip if it is still held
         """
         self.lock_manager = lock_manager
         self.key_func = key_func
@@ -200,7 +273,15 @@ class UniqueTask:
         self.skip_if_locked = skip_if_locked
 
     def __call__(self, func: Callable[..., Any]) -> Callable[..., Any]:
-        """Decorate function with unique task logic."""
+        """Wrap *func* so it runs under the lock for its key.
+
+        Args:
+            func: The async callable to wrap.
+
+        Returns:
+            The wrapped async callable; it returns ``None`` when execution
+            is skipped because the lock could not be acquired.
+        """
 
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Generate lock key
@@ -216,9 +297,13 @@ class UniqueTask:
                 finally:
                     await lock.release()
             else:
-                # Wait for lock
-                async with lock:
+                # Wait for the lock up to the timeout, then skip if still held
+                if not await lock.acquire_wait(timeout=self.timeout):
+                    return None
+                try:
                     return await func(*args, **kwargs)
+                finally:
+                    await lock.release()
 
         return wrapper
 

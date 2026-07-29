@@ -79,6 +79,62 @@ class TestBackgroundTaskManagerTracking:
 
 
 # ---------------------------------------------------------------------------
+# Done-callback cleanup — _names (regression: KeyError for unnamed tasks)
+# ---------------------------------------------------------------------------
+
+
+class TestBackgroundTaskManagerNamesCleanup:
+    """Regression tests for _names cleanup on task completion."""
+
+    @pytest.mark.asyncio
+    async def test_unnamed_task_completion_raises_no_exception_handler_call(
+        self,
+    ) -> None:
+        """Tracked unnamed tasks must not trigger the loop exception handler.
+
+        Regression: the ``self._names.pop`` done-callback raised ``KeyError``
+        for every task created via ``track()`` because those tasks are never
+        inserted into ``self._names``, and ``asyncio`` reports exceptions
+        raised by done-callbacks to the loop's exception handler.
+        """
+        loop = asyncio.get_running_loop()
+        handler_calls: list[BaseException | None] = []
+        original_handler = loop.get_exception_handler()
+        loop.set_exception_handler(
+            lambda _loop, context: handler_calls.append(context.get("exception"))
+        )
+        try:
+            mgr = BackgroundTaskManager()
+            task = mgr.track(_noop())
+            await task
+            await asyncio.sleep(0)  # give the done callbacks a chance to run
+        finally:
+            loop.set_exception_handler(original_handler)
+
+        assert handler_calls == []
+
+    @pytest.mark.asyncio
+    async def test_unnamed_task_never_enters_names(self) -> None:
+        """``track()`` tasks stay out of ``_names`` before and after."""
+        mgr = BackgroundTaskManager()
+        task = mgr.track(_noop())
+        assert task not in mgr._names
+        await task
+        await asyncio.sleep(0)
+        assert task not in mgr._names
+
+    @pytest.mark.asyncio
+    async def test_named_task_name_removed_on_completion(self) -> None:
+        """``track_named()`` entries are removed from ``_names`` on done."""
+        mgr = BackgroundTaskManager()
+        task = mgr.track_named("my-job", _noop())
+        assert mgr._names[task] == "my-job"
+        await task
+        await asyncio.sleep(0)
+        assert task not in mgr._names
+
+
+# ---------------------------------------------------------------------------
 # Shutdown — happy path
 # ---------------------------------------------------------------------------
 

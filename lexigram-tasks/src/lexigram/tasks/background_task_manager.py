@@ -153,7 +153,7 @@ class BackgroundTaskManager(TaskManagerProtocol):
             self._names[task] = name
 
         task.add_done_callback(self._tasks.discard)
-        task.add_done_callback(self._names.pop)
+        task.add_done_callback(lambda t: self._names.pop(t, None))
         task.add_done_callback(_log_task_exception)
 
 
