@@ -16,6 +16,9 @@
 !SECURITY.md
 !GOVERNANCE.md
 !pyproject.toml
+!uv.lock
+!docker-compose.yml
+!.env.example
 !.importlinter
 !Makefile
 !docker-compose.test.yml
