@@ -10,13 +10,13 @@
 - Dependency scan: clean (0 vulnerable package(s))
 - SAST (ruff `S` rules): 609 finding(s) (0 unverified, 305 verified low-risk, 304 low-signal noise)
 - Framework security rules: 1 finding(s)
-- Tracker areas: 99 total, 91 done
+- Tracker areas: 99 total, 92 done
 
 ## Dependency Scan
 
 - Command: `uv run pip-audit --timeout 60`
 - Exit code: `0`
-- Duration: `27911 ms`
+- Duration: `119210 ms`
 - Vulnerable packages: 0
 - Summary: `No known vulnerabilities found`
 
@@ -679,8 +679,8 @@ Each family below was triaged on the 2026-08-18 working tree:
 ## Audit Tracker Status
 
 - Total areas: 99
-- Done: 91
-- Open: 8
+- Done: 92
+- Open: 7
 - Open severity mix: High ×1, Low ×3, Med ×1
 
 ## Verified-Clean Surfaces
@@ -703,5 +703,4 @@ Each family below was triaged on the 2026-08-18 working tree:
 | 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 |
 | 60 | **`lexigram-resilience` database idempotency store's "dialect-aware" placeholder is hardcoded to `?`, breaking Postgres — deeper than reported (naive `.replace()` also can't produce sequential `$1,$2,...` for multi-param queries)** | Low ×1 |
 | 68 | lexigram-audit | Medium |
-| 74 | lexigram-queue | High |
 
