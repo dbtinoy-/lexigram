@@ -1283,25 +1283,29 @@ executed — 0/15 tasks done.
 - Task 7 — `_EXPORTS` dict was missing `"ops"` and `"share"` entries despite the task's own "Produces" line, its own facade test (`lexigram.ops.map(...)`), and the showcase doc all requiring them; both added.
 - **Task 10 (`SubjectAdminEventHub`) — the security-relevant fix.** The plan's original `publish(event, target_users=None)` silently ignored `target_users` (broadcast to everyone regardless) and `subscribe(user_id=None, ...)` never filtered on `user_id` ("kept for API parity" per its own docstring). `action_executor.py`'s `_publish_action_notification`/`_publish_action_failure` rely on `AdminEventHub.publish(event, target_users=[caller_id])` today to keep each admin's own action-result notification private to that admin — the plan's drop-in replacement would have been a confidentiality regression (every admin sees every other admin's action results). Fixed via a `_TargetedEvent` wrapper dataclass carried inside the `Subject`; `publish()` wraps the event with `target_users`, `subscribe()` filters on `target_users is None or user_id in target_users` before the existing resource/event-type filters. Added a regression test (`test_subject_hub_respects_target_users`) and confirmed Task 13's broadcast-only dashboard widget (`hub.subscribe()` with no `user_id`) is correctly compatible — it now sees only broadcast events by construction, never another admin's targeted notification.
 
-### 14.1 Tasks summary (0/15 done, none authorized)
+### 14.1 Tasks summary (13/15 done)
 
-| Task | Area |
-|---|---|
-| 1 | Reactive core — `EventStream` protocol, `Stream`, `pipe`, exceptions |
-| 2 | Transform operators — `map`, `filter`, `scan`, `distinct` |
-| 3 | Control + combine operators — `take`, `skip`, `merge`, `catch` |
-| 4 | Time operators — `debounce`, `throttle`, `buffer`, `window` |
-| 5 | Hot streams — `Subject`, `share` |
-| 6 | `retry` operator with `RetryOptions` |
-| 7 | Core facade exports + docs example |
-| 8 | Events bridges — `from_store`, `from_bus`, resilience adapter |
-| 9 | Web responder — `sse_from_stream` |
-| 10 | Admin adoption — `SubjectAdminEventHub` |
-| 11 | Full CI + boundary verification + CHANGELOG |
-| 12 | lexigram-events admin contribution — live events widget |
-| 13 | lexigram-admin contribution — reactive activity widget |
-| 14 | Full CI, boundary gate, CHANGELOG (contribution surfaces) |
-| 15 | Structured management pages — host renders all page HTML |
+| Task | Area | Status |
+|---|---|---|
+| 1 | Reactive core — `EventStream` protocol, `Stream`, `pipe`, exceptions | done |
+| 2 | Transform operators — `map`, `filter`, `scan`, `distinct` | done |
+| 3 | Control + combine operators — `take`, `skip`, `merge`, `catch` | done |
+| 4 | Time operators — `debounce`, `throttle`, `buffer`, `window` | done |
+| 5 | Hot streams — `Subject`, `share` | done |
+| 6 | `retry` operator with `RetryOptions` | done |
+| 7 | Core facade exports + docs example | done |
+| 8 | Events bridges — `from_store`, `from_bus`, resilience adapter | done |
+| 9 | Web responder — `sse_from_stream` | done |
+| 10 | Admin adoption — `SubjectAdminEventHub` | done |
+| 11 | Full CI + boundary verification + CHANGELOG | done |
+| 12 | lexigram-events admin contribution — live events widget | done `7bc51afc` |
+| 13 | lexigram-admin contribution — reactive activity widget | done `a1531c8` |
+| 14 | Full CI, boundary gate, CHANGELOG (contribution surfaces) | pending |
+| 15 | Structured management pages — host renders all page HTML | pending |
+
+**Execution notes (T12–T13, 2026-08-18):**
+- Task 12 (`live_events` widget): the handler subscribes to the dispatcher **synchronously in `__init__`** (a lazy/background subscribe races the test+real flows because `store.append`/`publish` do not always yield before dispatch); the widget drains into a local cache and reads `from_store(...).pipe(ops.take(10))` at render time with `correlation_id` dedupe. `get_dashboard_widgets` grew from 2 → 3 widgets (test updated).
+- Task 13 (activity widget): the plan's snippet subscribed fresh inside `_render_activity` — on a hot single-pass `Subject` that drops everything published before the subscriber's first `__anext__`, so the plan's own test ordering (publish → render) could never see events, and `hub.subscribe().pipe(...)` is invalid (async generators have no `pipe`). Implemented instead as a **persistent background tail** (`_drain_activity` task, `deque(maxlen=50)` cache, broadcast-only via `hub.subscribe()` with no `user_id`) plus **lazy render-time resolution** — if `self._hub` is `None` and a `resolver` is provided, the hub is resolved and the tail started on first render. DI binding registered in `di/sub_providers/realtime.py` (where `AdminEventHub` lives) rather than `bundle_provider.py`. Tests landed at `tests/unit/contributors/test_reactive_activity_widget.py` (a `StubResolver` implementing the full `ContainerResolverProtocol`); the plan's `== "RESOURCE_UPDATED"` assertion was corrected to the actual `StrEnum` value `"resource.updated"`. Commits `a1531c8` (this task); the two earlier commits `322edaa1`/`77983a19` are superseded by it.
 
 ---
 
