@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from lexigram.events.stores.base import AbstractIdempotencyStore
+from lexigram.events.stores.identifiers import validate_table_name
 from lexigram.primitives import clock as ambient_clock
 
 if TYPE_CHECKING:
@@ -15,6 +16,7 @@ class SqlIdempotencyStore(AbstractIdempotencyStore):
     """SQL implementation of AbstractIdempotencyStore for Postgres and SQLite."""
 
     def __init__(self, connection: Any, table_name: str = "event_idempotency") -> None:
+        validate_table_name(table_name)
         self.connection = connection
         self.table_name = table_name
 
@@ -91,6 +93,9 @@ class SqlIdempotencyStore(AbstractIdempotencyStore):
             await self.connection.commit()
             count: int = cursor.rowcount
             return count
+
+    async def close(self) -> None:
+        """Close the store and release resources."""
 
 
 class InMemoryIdempotencyStore(AbstractIdempotencyStore):

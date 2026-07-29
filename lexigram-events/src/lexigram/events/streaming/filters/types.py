@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
 
-    from lexigram.events.messages.event import Event
+    from lexigram.contracts.domain import DomainEvent
     from lexigram.events.streaming.filters.composite import (
         CompositeFilter,
         NegatedFilter,
@@ -42,9 +42,9 @@ class EventFilter:
     from_version: int | None = None
     to_version: int | None = None
     metadata_match: dict[str, Any] | None = None
-    custom_predicate: Callable[[Event], bool] | None = None
+    custom_predicate: Callable[[DomainEvent], bool] | None = None
 
-    def matches(self, event: Event) -> bool:
+    def matches(self, event: DomainEvent) -> bool:
         """Check if an event matches this filter."""
         # Event type filter
         if self.event_types:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from lexigram.events.constants import FilterOperator
 
 if TYPE_CHECKING:
-    from lexigram.events.messages.event import Event
+    from lexigram.contracts.domain import DomainEvent
     from lexigram.events.streaming.filters.types import EventFilter
 
 
@@ -19,7 +19,7 @@ class CompositeFilter:
     filters: list[EventFilter | CompositeFilter] = field(default_factory=list)
     operator: str = FilterOperator.AND  # "and" or "or"
 
-    def matches(self, event: Event) -> bool:
+    def matches(self, event: DomainEvent) -> bool:
         """Check if event matches the composite filter."""
         if self.operator == FilterOperator.AND:
             return all(f.matches(event) for f in self.filters)
@@ -48,6 +48,6 @@ class NegatedFilter:
 
     inner: EventFilter | CompositeFilter
 
-    def matches(self, event: Event) -> bool:
+    def matches(self, event: DomainEvent) -> bool:
         """Check if event does NOT match the inner filter."""
         return not self.inner.matches(event)

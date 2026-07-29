@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
 
-    from lexigram.events.messages.event import Event
+    from lexigram.contracts.domain import DomainEvent
 
 
 class FilterBuilder:
@@ -30,7 +30,7 @@ class FilterBuilder:
         self._from_version: int | None = None
         self._to_version: int | None = None
         self._metadata_match: dict[str, Any] = {}
-        self._custom_predicate: Callable[[Event], bool] | None = None
+        self._custom_predicate: Callable[[DomainEvent], bool] | None = None
 
     def with_event_types(self, *event_types: str) -> FilterBuilder:
         """Filter by event type names."""
@@ -83,7 +83,7 @@ class FilterBuilder:
         self._metadata_match[key] = value
         return self
 
-    def with_predicate(self, predicate: Callable[[Event], bool]) -> FilterBuilder:
+    def with_predicate(self, predicate: Callable[[DomainEvent], bool]) -> FilterBuilder:
         """Add a custom predicate function."""
         self._custom_predicate = predicate
         return self
