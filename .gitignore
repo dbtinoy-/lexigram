@@ -29,6 +29,8 @@
 !.github/workflows/
 !.github/workflows/**
 !.github/dependabot.yml
+!.devcontainer/
+!.devcontainer/**
 !*example.yaml
 
 # Lexigram Packages

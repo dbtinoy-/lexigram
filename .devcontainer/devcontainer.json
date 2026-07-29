@@ -1,0 +1,20 @@
+{
+  "name": "Lexigram workspace",
+  "dockerComposeFile": ["../docker-compose.yml", "docker-compose.extend.yml"],
+  "service": "dev",
+  "runServices": ["postgres", "redis"],
+  "workspaceFolder": "/workspaces/lexigram-dev",
+  "features": {
+    "ghcr.io/astral-sh/uv:0": {}
+  },
+  "postCreateCommand": "uv sync --all-extras",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.mypy"
+      ]
+    }
+  }
+}

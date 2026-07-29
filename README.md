@@ -6,6 +6,8 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram?color=%2334D058)](https://pypi.org/project/lexigram/)
 [![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram-dev/blob/main/LICENSE)
 [![CI](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot)](https://github.com/dbtinoy-/lexigram-dev/security/dependabot)
+[![Release](https://img.shields.io/github/v/release/dbtinoy-/lexigram-dev?color=%2334D058)](https://github.com/dbtinoy-/lexigram-dev/releases)
 
 hey — wanna ship a real app this weekend?
 
