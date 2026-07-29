@@ -1,0 +1,49 @@
+# Lexigram Framework — one-command development environment.
+#
+# Starts the backing services the framework and its test suite need:
+# PostgreSQL (SQL/vector backends) and Redis (cache/tasks/queue).
+#
+# Usage:
+#   docker compose up -d
+#   cp .env.example .env   # URLs already point at localhost:5432 / 6379
+#   uv run pytest
+#
+# See tests/docker-compose.yml for the full service matrix used by
+# integration test scenarios (Kafka, Elasticsearch, MinIO, ...).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lexigram_dev_postgres
+    environment:
+      POSTGRES_USER: lexigram
+      POSTGRES_PASSWORD: lexigram
+      POSTGRES_DB: lexigram
+    ports:
+      - "5432:5432"
+    volumes:
+      - lexigram_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lexigram -d lexigram"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: lexigram_dev_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - lexigram_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lexigram_pg_data:
+    name: lexigram_dev_pg_data
+  lexigram_redis_data:
+    name: lexigram_dev_redis_data
