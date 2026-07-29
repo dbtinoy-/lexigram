@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
 from lexigram.contracts.queue.types import BusMessage
-from lexigram.queue.core.dlq import DeadLetterEntry, DeadLetterQueue
-from lexigram.queue.core.outbox import OutboxEntry, TransactionalOutbox
+from lexigram.queue.core.batch_publisher import BatchedPublisher
+from lexigram.queue.core.dlq import DeadLetterQueue
 from lexigram.queue.core.pipeline import MessagePipeline, MiddlewareBase
 
 
@@ -122,33 +122,33 @@ class TestDeadLetterQueue:
         assert dlq.size == 0
 
 
-class TestTransactionalOutbox:
-    """Test TransactionalOutbox."""
+class TestBatchedPublisher:
+    """Test BatchedPublisher."""
 
     @pytest.mark.asyncio
     async def test_stage_and_flush(self) -> None:
         """Stage messages and flush them."""
         queue = AsyncMock()
-        outbox = TransactionalOutbox(queue)
+        publisher = BatchedPublisher(queue)
 
         msg = BusMessage(topic="test", payload="data")
-        outbox.stage("test-topic", msg)
+        publisher.stage("test-topic", msg)
 
-        await outbox.flush()
+        await publisher.flush()
         queue.publish.assert_called_once_with("test-topic", msg)
 
     @pytest.mark.asyncio
     async def test_multiple_entries_flush(self) -> None:
         """Flush multiple staged entries."""
         queue = AsyncMock()
-        outbox = TransactionalOutbox(queue)
+        publisher = BatchedPublisher(queue)
 
         msg1 = BusMessage(topic="topic1", payload="data1")
         msg2 = BusMessage(topic="topic2", payload="data2")
-        outbox.stage("topic1", msg1)
-        outbox.stage("topic2", msg2)
+        publisher.stage("topic1", msg1)
+        publisher.stage("topic2", msg2)
 
-        await outbox.flush()
+        await publisher.flush()
         assert queue.publish.call_count == 2
 
     @pytest.mark.asyncio
@@ -156,48 +156,48 @@ class TestTransactionalOutbox:
         """Flush should handle publish failures gracefully."""
         queue = AsyncMock()
         queue.publish.side_effect = [Exception("publish failed"), None]
-        outbox = TransactionalOutbox(queue)
+        publisher = BatchedPublisher(queue)
 
         msg1 = BusMessage(topic="topic1", payload="data1")
         msg2 = BusMessage(topic="topic2", payload="data2")
-        outbox.stage("topic1", msg1)
-        outbox.stage("topic2", msg2)
+        publisher.stage("topic1", msg1)
+        publisher.stage("topic2", msg2)
 
         # Should not raise
-        await outbox.flush()
+        await publisher.flush()
         assert queue.publish.call_count == 2
 
     @pytest.mark.asyncio
     async def test_clear_removes_entries(self) -> None:
         """Clear should remove all entries."""
         queue = AsyncMock()
-        outbox = TransactionalOutbox(queue)
+        publisher = BatchedPublisher(queue)
 
         msg = BusMessage(topic="test", payload="data")
-        outbox.stage("test", msg)
-        assert len(outbox._entries) == 1
+        publisher.stage("test", msg)
+        assert len(publisher._entries) == 1
 
-        outbox.clear()
-        assert len(outbox._entries) == 0
+        publisher.clear()
+        assert len(publisher._entries) == 0
 
     @pytest.mark.asyncio
     async def test_flush_only_unpublished(self) -> None:
         """Flush should only re-publish failed entries."""
         queue = AsyncMock()
         queue.publish.return_value = None
-        outbox = TransactionalOutbox(queue)
+        publisher = BatchedPublisher(queue)
 
         msg1 = BusMessage(topic="topic1", payload="data1")
         msg2 = BusMessage(topic="topic2", payload="data2")
-        outbox.stage("topic1", msg1)
-        outbox.stage("topic2", msg2)
+        publisher.stage("topic1", msg1)
+        publisher.stage("topic2", msg2)
 
-        await outbox.flush()
+        await publisher.flush()
         assert queue.publish.call_count == 2
 
         # Second flush should not republish (all marked published)
-        await outbox.flush()
+        await publisher.flush()
         assert queue.publish.call_count == 2
 
 
-__all__ = ["TestDeadLetterQueue", "TestMessagePipeline", "TestTransactionalOutbox"]
+__all__ = ["TestBatchedPublisher", "TestDeadLetterQueue", "TestMessagePipeline"]

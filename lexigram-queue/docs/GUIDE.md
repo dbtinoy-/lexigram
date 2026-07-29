@@ -108,17 +108,21 @@ class OrderService:
 
 The **primary** backend (marked `primary=True` or the first entry) also gets the unnamed `QueueProtocol` binding.
 
-### Transactional Outbox
+### In-Process Publish Batching
 
-`TransactionalOutbox` guarantees at-least-once delivery by storing messages in-process before publishing:
+`BatchedPublisher` stages messages in memory and publishes them in a single `flush()` call:
 
 ```python
-from lexigram.queue import TransactionalOutbox
+from lexigram.queue import BatchedPublisher
+from lexigram.contracts.queue import BusMessage
 
 
-outbox = TransactionalOutbox(queue, flush_interval=1.0)
-await outbox.enqueue(BusMessage(topic="orders", payload=data))
+publisher = BatchedPublisher(queue)
+publisher.stage("orders.created", BusMessage(topic="orders.created", payload=data))
+await publisher.flush()
 ```
+
+**Note:** `BatchedPublisher` is in-memory only — staged entries are lost if the process restarts or the instance is discarded before `flush()`. For crash-safe publishing alongside database writes, use the durable SQL outbox inside your own database transaction instead: `OutboxStoreProtocol` from `lexigram.contracts.data.outbox`, implemented by `SQLOutboxStore`, with `OutboxPublisher` relaying pending rows after commit.
 
 ### Dead Letter Queue
 

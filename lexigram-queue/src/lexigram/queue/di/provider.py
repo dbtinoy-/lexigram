@@ -34,6 +34,7 @@ from lexigram.queue.config import (
     RedisDriverConfig,
     SQSDriverConfig,
 )
+from lexigram.queue.core.dlq import DeadLetterQueue
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import (
@@ -213,6 +214,9 @@ class QueueProvider(Provider):
             FailedMessagesWidgetHandler,
             _create_failed_messages_handler,
         )
+
+        # Shared in-process dead letter queue for failed-message tracking
+        container.singleton(DeadLetterQueue, DeadLetterQueue())
 
         # Register the contributor under AdminContributorProtocol for discovery
         container.singleton(

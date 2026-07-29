@@ -180,15 +180,29 @@ failed = dlq.drain()   # returns the drained messages
 `DeadLetterQueue` is in-memory by default. In production, pair it with an `AuditStoreProtocol` or a persistent backend so dead-lettered messages survive a process restart.
 :::
 
-For atomic staging of messages alongside database writes, use `TransactionalOutbox`:
+For crash-safe staging of messages in the *same database transaction* as your business data, use the durable SQL outbox — `OutboxStoreProtocol` (from `lexigram.contracts.data.outbox`), implemented by `SQLOutboxStore`, with the background `OutboxPublisher` relaying pending rows to the bus after commit:
 
 ```python
-from lexigram.queue import TransactionalOutbox
+from lexigram.sql.outbox import OutboxPublisher, SQLOutboxStore
 
-outbox = TransactionalOutbox(queue)
-outbox.stage("order.created", BusMessage(topic="order.created", payload=data))
-await outbox.flush()
+store = SQLOutboxStore(db=db_provider)     # writes inside the caller's transaction
+publisher = OutboxPublisher(store=store, event_bus=event_bus)
+await publisher.start()                    # poller relays pending rows every poll_interval
 ```
+
+For same-request fan-out *without* durability requirements, `BatchedPublisher` (from `lexigram.queue`) batches `QueueProtocol.publish` calls in memory within one process:
+
+```python
+from lexigram.queue import BatchedPublisher
+
+publisher = BatchedPublisher(queue)
+publisher.stage("order.created", BusMessage(topic="order.created", payload=data))
+await publisher.flush()
+```
+
+:::caution
+`BatchedPublisher` is in-memory only — staged messages are lost on process restart. Only the SQL outbox above guarantees delivery across crashes.
+:::
 
 ---
 

@@ -148,6 +148,32 @@ QueueModule.configure(
 | `backends[n].rabbitmq.url` | `null` | `LEX_QUEUE__BACKENDS__N__RABBITMQ__URL` | RabbitMQ connection URL |
 | `backends[n].sqs.queue_url` | `null` | `LEX_QUEUE__BACKENDS__N__SQS__QUEUE_URL` | SQS queue URL |
 
+### In-memory backend concurrency
+
+The in-memory backend runs one asyncio task per subscribed handler per
+published message, with **no bound on how many handlers run
+concurrently by default**. A producer that publishes faster than its
+handlers can process will pile up unbounded resource usage (DB
+connections, file handles, ...) in a single-process deployment.
+
+Set `max_concurrency` on `InMemoryQueue` for any non-trivial
+single-process deployment:
+
+```python
+from lexigram.queue.backends.memory import InMemoryQueue
+
+queue = InMemoryQueue(max_concurrency=16)
+await queue.connect()
+```
+
+With a bound set, handler tasks queue behind an internal semaphore once
+the cap is reached — `publish()` still returns immediately, but at most
+`max_concurrency` handlers execute at any instant. Leave the default
+(`None`, unbounded) only when you are certain handler throughput will
+keep up with publish throughput; the parameter is not yet plumbed
+through `QueueConfig` backends, so set it where the backend is
+constructed.
+
 ## Module Factory Methods
 
 | Method | Description |
@@ -161,7 +187,7 @@ QueueModule.configure(
 - **Multi-backend messaging** — Redis Pub/Sub, RabbitMQ, Kafka, AWS SQS, Azure Service Bus, GCP Pub/Sub, and in-memory
 - **Message consumers** — `MessageConsumer` subclasses with per-topic `handle()`, started via `consumer.start()`
 - **Dead-letter queue utility** — `DeadLetterQueue` collects failed messages for inspection and replay
-- **Transactional outbox** — atomic DB transaction + message publish via `TransactionalOutbox`
+- **In-process publish batching** — `BatchedPublisher` stages messages for an atomic in-process `flush()` (in-memory only; pair with the durable SQL outbox — `OutboxStoreProtocol`/`SQLOutboxStore`/`OutboxPublisher` — for crash-safe delivery)
 - **Message pipeline** — `MessagePipeline` with pluggable `MiddlewareBase` middleware
 - **Named DI multi-backend** — `Annotated[QueueProtocol, Named("events")]` for multiple backends
 - **Retry metadata** — `BusMessage` carries `retry_count` / `max_retries` with `should_retry()` / `is_expired()`
@@ -192,7 +218,7 @@ async def test_message_consumer():
 | `src/lexigram/queue/di/provider.py` | `QueueProvider` boot and registration |
 | `src/lexigram/queue/consumers/consumer.py` | `MessageConsumer` base class |
 | `src/lexigram/queue/core/dlq.py` | `DeadLetterQueue` implementation |
-| `src/lexigram/queue/core/outbox.py` | `TransactionalOutbox` implementation |
+| `src/lexigram/queue/core/batch_publisher.py` | `BatchedPublisher` in-memory publish batching |
 | `src/lexigram/queue/core/pipeline.py` | `MessagePipeline` and `MiddlewareBase` |
 | `src/lexigram/queue/backends/kafka.py` | Kafka backend implementation |
 | `src/lexigram/queue/backends/rabbitmq.py` | RabbitMQ backend implementation |

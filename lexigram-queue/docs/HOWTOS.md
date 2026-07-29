@@ -44,21 +44,25 @@ class OrderConsumer:
         await self._queue.subscribe("orders.created", handler)
 ```
 
-## Use the Transactional Outbox
+## Batch Publish Messages In-Process
 
-Publish messages reliably with in-process batching:
+Batch same-request publishes with in-memory staging, flushing them in one call:
 
 ```python
-from lexigram.queue import TransactionalOutbox
+from lexigram.queue import BatchedPublisher
 from lexigram.contracts.queue import BusMessage
 
 
-outbox = TransactionalOutbox(queue, flush_interval=2.0, batch_size=50)
+publisher = BatchedPublisher(queue)
 
-await outbox.enqueue(BusMessage(topic="orders", payload=data))
-await outbox.enqueue(BusMessage(topic="orders", payload=more_data))
-# Messages are flushed every 2 seconds or every 50 messages
+publisher.stage("orders.created", BusMessage(topic="orders.created", payload=data))
+publisher.stage("orders.updated", BusMessage(topic="orders.updated", payload=more_data))
+await publisher.flush()
+# Both messages are published concurrently. Failed publishes are logged and
+# retried on the next flush(); staged entries do not survive a process restart.
 ```
+
+For crash-safe delivery use the durable SQL outbox (`OutboxStoreProtocol` + `SQLOutboxStore` + `OutboxPublisher`) inside your database transaction.
 
 ## Configure a Dead Letter Queue
 

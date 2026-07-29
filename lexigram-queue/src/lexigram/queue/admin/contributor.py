@@ -5,7 +5,8 @@ and failed-message widgets into the Lexigram admin dashboard.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import cast
+from importlib import import_module
+from typing import Any, cast
 
 from lexigram.contracts.admin.contributor import BaseAdminContributor
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
@@ -129,14 +130,20 @@ class QueueAdminContributor(BaseAdminContributor):
     def __init__(self) -> None:
         """Initialize the queue admin contributor with no arguments."""
         self._handlers: dict[str, WidgetHandlerProtocol] = {}
+        self._container: ContainerResolverProtocol | None = None
+        self._action_handlers: dict[str, Any] = {}
 
     async def on_admin_boot(self, container: object) -> None:
         """Resolve queue admin dependencies from the DI container.
+
+        Widget handlers are resolved per name; action handlers are
+        imported from the ``module:attr`` paths declared in ``_ACTIONS``.
 
         Args:
             container: The DI container resolver.
         """
         typed_container = cast("ContainerResolverProtocol", container)
+        self._container = typed_container
         try:
             depth_handler = await typed_container.resolve(QueueDepthWidgetHandler)
             lag_handler = await typed_container.resolve(ConsumerLagWidgetHandler)
@@ -149,6 +156,15 @@ class QueueAdminContributor(BaseAdminContributor):
         except Exception as exc:  # noqa: BLE001
             logger.warning("queue_contributor.handlers_unavailable", error=str(exc))
 
+        self._action_handlers = {}
+        try:
+            for action in _ACTIONS:
+                module_path, _, handler_name = action.handler.partition(":")
+                module = import_module(module_path)
+                self._action_handlers[action.name] = getattr(module, handler_name)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("queue_contributor.actions_unavailable", error=str(exc))
+
     def get_dashboard_widgets(self) -> Sequence[DashboardWidgetDefinition]:
         return list(_WIDGETS)
 
@@ -160,6 +176,34 @@ class QueueAdminContributor(BaseAdminContributor):
 
     def get_actions(self) -> Sequence[AdminActionDefinition]:
         return list(_ACTIONS)
+
+    async def execute_action(
+        self,
+        action_name: str,
+        params: dict[str, object],
+    ) -> object:
+        """Dispatch an action to its boot-resolved handler.
+
+        Handlers run with the container captured at boot; a container is
+        required.
+
+        Args:
+            action_name: Name of the action to execute.
+            params: Parameters forwarded to the action handler.
+
+        Returns:
+            The handler's result mapping.
+
+        Raises:
+            LookupError: Unknown action name.
+            RuntimeError: Contributor booted without a container.
+        """
+        handler = self._action_handlers.get(action_name)
+        if handler is None:
+            raise LookupError(f"unknown queue action {action_name!r}")
+        if self._container is None:
+            raise RuntimeError("contributor has no container; on_admin_boot required")
+        return await handler(self._container, **params)
 
     def get_management_pages(self) -> Sequence[ManagementPageDefinition]:
         return [

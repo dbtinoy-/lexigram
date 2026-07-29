@@ -26,10 +26,31 @@ class InMemoryQueue:
     Stores subscriptions and publishes messages to all subscribers
     of a topic using asyncio tasks. Suitable for development,
     testing, and single-process scenarios.
+
+    By default (``max_concurrency=None``) handler tasks run with no
+    concurrency bound: a producer that publishes faster than its
+    handlers can process spawns an unbounded number of concurrently
+    running handler coroutines, each potentially holding its own
+    resources. Set ``max_concurrency`` to an explicit bound for any
+    non-trivial single-process deployment — handler tasks then queue
+    behind an internal semaphore once the cap is reached, while
+    ``publish()`` continues to return immediately.
     """
 
-    def __init__(self) -> None:
-        """Initialize InMemoryQueue."""
+    def __init__(self, max_concurrency: int | None = None) -> None:
+        """Initialize InMemoryQueue.
+
+        Args:
+            max_concurrency: Maximum number of handler tasks that may run
+                concurrently. Defaults to None (unbounded) for backward
+                compatibility; set an explicit bound for any non-trivial
+                single-process deployment.
+
+        Raises:
+            ValueError: If max_concurrency is provided and less than 1.
+        """
+        if max_concurrency is not None and max_concurrency < 1:
+            raise ValueError("max_concurrency must be >= 1 when provided")
         self._connected: bool = False
         self._subscribers: dict[
             str, list[Callable[[BusMessage], Coroutine[Any, Any, None]]]
@@ -37,6 +58,9 @@ class InMemoryQueue:
         self._tasks: set[asyncio.Task[Any]] = set()
         self._tracer: TracerProtocol | None = None
         self._hooks: HookRegistryProtocol | None = None
+        self._semaphore: asyncio.Semaphore | None = (
+            asyncio.Semaphore(max_concurrency) if max_concurrency is not None else None
+        )
 
     def set_tracer(self, tracer: TracerProtocol | None) -> None:
         """Attach an optional tracer after provider boot wiring.
@@ -116,7 +140,7 @@ class InMemoryQueue:
             handlers = self._subscribers.get(topic, [])
             for i, handler in enumerate(handlers):
                 create_tracked_task(
-                    handler(message),
+                    self._run_handler(handler, message),
                     self._tasks,
                     name=f"mem_queue_msg_{id(message)}_{i}",
                 )
@@ -130,6 +154,26 @@ class InMemoryQueue:
             )
 
             return message
+
+    async def _run_handler(
+        self,
+        handler: Callable[[BusMessage], Coroutine[Any, Any, None]],
+        message: BusMessage,
+    ) -> None:
+        """Run one subscribed handler, bounded by the concurrency cap.
+
+        When a semaphore is configured, the handler executes inside the
+        semaphore's critical section so at most ``max_concurrency``
+        handlers run at any instant; excess calls park on the semaphore
+        until a slot frees. When ``max_concurrency`` is None (the
+        default) the handler runs directly, preserving pre-backpressure
+        behavior.
+        """
+        if self._semaphore is None:
+            await handler(message)
+            return
+        async with self._semaphore:
+            await handler(message)
 
     async def subscribe(
         self,

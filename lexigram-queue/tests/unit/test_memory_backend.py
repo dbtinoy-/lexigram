@@ -154,5 +154,77 @@ class TestInMemoryQueue:
         result = await queue.health_check(timeout=2.0)
         assert result.status == HealthStatus.HEALTHY
 
+    @pytest.mark.asyncio
+    async def test_publish_respects_max_concurrency(self) -> None:
+        """Publish runs at most max_concurrency handlers at any instant."""
+        queue = InMemoryQueue(max_concurrency=2)
+        await queue.connect()
+        try:
+            active: int = 0
+            peak: int = 0
+            started: int = 0
+            release = asyncio.Event()
+
+            async def handler(msg: BusMessage) -> None:
+                nonlocal active, peak, started
+                active += 1
+                peak = max(peak, active)
+                started += 1
+                try:
+                    await release.wait()
+                finally:
+                    active -= 1
+
+            await queue.subscribe("topic", handler)
+            for i in range(5):
+                await queue.publish("topic", BusMessage(topic="topic", payload=i))
+
+            await asyncio.sleep(0.05)
+            assert peak == 2
+            assert started == 2
+
+            release.set()
+            await asyncio.sleep(0.05)
+            assert started == 5
+            assert peak == 2
+        finally:
+            await queue.close()
+
+    @pytest.mark.asyncio
+    async def test_default_max_concurrency_is_unbounded(self) -> None:
+        """Default queue (max_concurrency=None) runs handlers with no cap."""
+        queue = InMemoryQueue()
+        await queue.connect()
+        try:
+            active: int = 0
+            peak: int = 0
+            release = asyncio.Event()
+
+            async def handler(msg: BusMessage) -> None:
+                nonlocal active, peak
+                active += 1
+                peak = max(peak, active)
+                try:
+                    await release.wait()
+                finally:
+                    active -= 1
+
+            await queue.subscribe("topic", handler)
+            for i in range(5):
+                await queue.publish("topic", BusMessage(topic="topic", payload=i))
+
+            await asyncio.sleep(0.05)
+            assert peak == 5
+            release.set()
+            await asyncio.sleep(0.05)
+        finally:
+            await queue.close()
+
+    @pytest.mark.asyncio
+    async def test_max_concurrency_below_one_raises(self) -> None:
+        """max_concurrency below 1 is rejected at construction time."""
+        with pytest.raises(ValueError, match="max_concurrency"):
+            InMemoryQueue(max_concurrency=0)
+
 
 __all__ = []

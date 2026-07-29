@@ -9,10 +9,13 @@ import pytest
 from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError, WidgetNotFoundError
 from lexigram.contracts.admin.types import WidgetViewModel
+from lexigram.contracts.queue.protocols import QueueProtocol
+from lexigram.contracts.queue.types import BusMessage
 from lexigram.queue.admin.contributor import QueueAdminContributor
 from lexigram.queue.admin.handlers.consumer_lag import ConsumerLagWidgetHandler
 from lexigram.queue.admin.handlers.failed_messages import FailedMessagesWidgetHandler
 from lexigram.queue.admin.handlers.queue_depth import QueueDepthWidgetHandler
+from lexigram.queue.core.dlq import DeadLetterQueue
 from lexigram.result import Err, Ok
 
 
@@ -120,6 +123,56 @@ class TestQueueAdminContributor:
         """Test that contributor provides actions."""
         actions = booted_contributor.get_actions()
         assert len(actions) > 0
+
+    @pytest.mark.asyncio
+    async def test_execute_action_retry_failed_dispatches(self) -> None:
+        """execute_action dispatches retry_failed and re-publishes the DLQ."""
+        dlq = DeadLetterQueue()
+        message = BusMessage(topic="orders", payload={"id": 1})
+        await dlq.push(message, "boom")
+        queue = MagicMock()
+        queue.publish = AsyncMock()
+
+        def _resolve_optional(service_type: type[object]) -> object | None:
+            if service_type is DeadLetterQueue:
+                return dlq
+            if service_type is QueueProtocol:
+                return queue
+            return None
+
+        container = MagicMock()
+        resolve_map = {
+            QueueDepthWidgetHandler: object(),
+            ConsumerLagWidgetHandler: object(),
+            FailedMessagesWidgetHandler: object(),
+        }
+        container.resolve = AsyncMock(side_effect=resolve_map.get)
+        container.resolve_optional = AsyncMock(side_effect=_resolve_optional)
+        contributor = QueueAdminContributor()
+        await contributor.on_admin_boot(container)
+
+        result = await contributor.execute_action("retry_failed", {})
+
+        assert result["ok"] is True
+        assert result["echo"] == {"retried": 1, "failed": 0}
+        queue.publish.assert_awaited_once_with("orders", message)
+        assert dlq.size == 0
+
+    @pytest.mark.asyncio
+    async def test_execute_action_unknown_action_raises_lookup_error(
+        self, booted_contributor: QueueAdminContributor
+    ) -> None:
+        """Unknown action names raise LookupError."""
+        with pytest.raises(LookupError):
+            await booted_contributor.execute_action("explode", {})
+
+    def test_on_admin_boot_resolves_action_handlers(
+        self, booted_contributor: QueueAdminContributor
+    ) -> None:
+        """on_admin_boot resolves one handler per declared action."""
+        assert set(booted_contributor._action_handlers) == {"retry_failed"}
+        handler = booted_contributor._action_handlers["retry_failed"]
+        assert callable(handler)
 
     @pytest.mark.asyncio
     async def test_render_widget_queue_depth(

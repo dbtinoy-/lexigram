@@ -8,6 +8,7 @@ import pytest
 
 from lexigram.contracts.queue.protocols import QueueProtocol
 from lexigram.queue.config import KafkaDriverConfig, NamedQueueConfig, QueueConfig
+from lexigram.queue.core.dlq import DeadLetterQueue
 from lexigram.queue.di.provider import QueueProvider
 
 
@@ -113,6 +114,22 @@ class TestQueueProvider:
         ]
         assert len(memory_calls) >= 1
         assert len(kafka_calls) >= 1
+
+    @pytest.mark.asyncio
+    async def test_registers_dead_letter_queue(
+        self, mock_container: MagicMock, memory_config: QueueConfig
+    ) -> None:
+        """register() should bind a shared DeadLetterQueue singleton."""
+        provider = QueueProvider(config=memory_config)
+        await provider.register(mock_container)
+
+        dlq_calls = [
+            c
+            for c in mock_container.singleton.call_args_list
+            if c.args and c.args[0] is DeadLetterQueue
+        ]
+        assert len(dlq_calls) == 1
+        assert isinstance(dlq_calls[0].args[1], DeadLetterQueue)
 
     @pytest.mark.asyncio
     async def test_boot_health_checks(
