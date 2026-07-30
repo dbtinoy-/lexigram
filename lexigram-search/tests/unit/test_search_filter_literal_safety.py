@@ -127,19 +127,19 @@ class TestExactEscapedOutputs:
     """Headline hostile payloads produce exact, locked byte-for-byte output."""
 
     def test_meili_quote_injection_escaped_exactly(self) -> None:
-        rendered = render_meilisearch({'tenant_id': 'a" OR tenant_id != "" OR x="'})
+        rendered = render_meilisearch({"tenant_id": 'a" OR tenant_id != "" OR x="'})
         assert rendered == 'tenant_id = "a\\" OR tenant_id != \\"\\" OR x=\\""'
 
     def test_typesense_quote_injection_escaped_exactly(self) -> None:
-        rendered = render_typesense({'tenant_id': 'a" OR tenant_id != "" OR x="'})
+        rendered = render_typesense({"tenant_id": 'a" OR tenant_id != "" OR x="'})
         assert rendered == 'tenant_id:"a\\" OR tenant_id != \\"\\" OR x=\\""'
 
     def test_meili_paren_injection_escaped_exactly(self) -> None:
-        rendered = render_meilisearch({'tenant_id': '");) || (tenant_id:!='})
+        rendered = render_meilisearch({"tenant_id": '");) || (tenant_id:!='})
         assert rendered == 'tenant_id = "\\");) || (tenant_id:!="'
 
     def test_typesense_paren_injection_escaped_exactly(self) -> None:
-        rendered = render_typesense({'tenant_id': '");) || (tenant_id:!='})
+        rendered = render_typesense({"tenant_id": '");) || (tenant_id:!='})
         assert rendered == 'tenant_id:"\\");) || (tenant_id:!="'
 
 
