@@ -8,7 +8,6 @@ from lexigram.ai.prompt.exceptions import PromptRenderError, PromptValidationErr
 from lexigram.ai.prompt.variables.types import PromptContext, PromptVariable
 from lexigram.ai.prompt.variables.validators import resolve_variables, validate_variable
 
-
 # ---------------------------------------------------------------------------
 # PromptVariable
 # ---------------------------------------------------------------------------
@@ -66,6 +65,22 @@ def test_validate_variable_max_length_exceeded() -> None:
         validate_variable(v, "toolongstring")
 
 
+def test_validate_variable_global_max_length_ok() -> None:
+    v = PromptVariable("msg")
+    validate_variable(v, "hello", max_variable_length=10)
+
+
+def test_validate_variable_global_max_length_exceeded() -> None:
+    v = PromptVariable("msg")
+    with pytest.raises(PromptValidationError, match="exceeds max_variable_length=5"):
+        validate_variable(v, "toolongstring", max_variable_length=5)
+
+
+def test_validate_variable_global_max_length_unlimited_by_default() -> None:
+    v = PromptVariable("msg")
+    validate_variable(v, "x" * 100_000)  # default 0 = unlimited
+
+
 def test_validate_variable_allowed_values_ok() -> None:
     v = PromptVariable("color", allowed_values=["red", "blue"])
     validate_variable(v, "red")
@@ -104,6 +119,30 @@ def test_resolve_passes_through_extra_kwargs() -> None:
     declared = [PromptVariable("name")]
     result = resolve_variables(declared, {"name": "Bob", "extra": "value"})
     assert result["extra"] == "value"
+
+
+def test_resolve_enforces_global_max_length() -> None:
+    declared = [PromptVariable("name", required=True)]
+    with pytest.raises(PromptValidationError, match="exceeds max_variable_length=3"):
+        resolve_variables(declared, {"name": "toolong"}, max_variable_length=3)
+
+
+def test_resolve_permissive_passthrough_enforces_global_max_length() -> None:
+    declared = [PromptVariable("name")]
+    with pytest.raises(PromptValidationError, match="Variable 'extra'"):
+        resolve_variables(
+            declared,
+            {"name": "ok", "extra": "x" * 100},
+            max_variable_length=5,
+        )
+
+
+def test_resolve_permissive_passthrough_under_global_max_length() -> None:
+    declared = [PromptVariable("name")]
+    result = resolve_variables(
+        declared, {"name": "ok", "extra": "short"}, max_variable_length=10
+    )
+    assert result["extra"] == "short"
 
 
 def test_resolve_validates_type() -> None:

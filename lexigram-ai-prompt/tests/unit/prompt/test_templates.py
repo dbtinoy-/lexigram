@@ -6,11 +6,13 @@ import pytest
 
 from lexigram.ai.prompt.exceptions import PromptRenderError, PromptValidationError
 from lexigram.ai.prompt.template.chat import ChatPromptTemplate
-from lexigram.ai.prompt.template.few_shot import FewShotPromptTemplate, InMemoryExampleSelector
+from lexigram.ai.prompt.template.few_shot import (
+    FewShotPromptTemplate,
+    InMemoryExampleSelector,
+)
 from lexigram.ai.prompt.template.partial import PartialPromptTemplate
 from lexigram.ai.prompt.template.string import StringPromptTemplate
 from lexigram.ai.prompt.variables.types import PromptVariable
-
 
 # ---------------------------------------------------------------------------
 # StringPromptTemplate
@@ -53,6 +55,27 @@ def test_string_render_validation_error() -> None:
     )
     with pytest.raises(PromptValidationError):
         tmpl.render(count="not-int")
+
+
+def test_string_render_enforces_max_variable_length() -> None:
+    tmpl = StringPromptTemplate(
+        name="t",
+        template="{name}",
+        variables=[PromptVariable("name", required=True)],
+        max_variable_length=5,
+    )
+    with pytest.raises(PromptValidationError, match="exceeds max_variable_length=5"):
+        tmpl.render(name="toolongname")
+
+
+def test_string_render_under_max_variable_length() -> None:
+    tmpl = StringPromptTemplate(
+        name="t",
+        template="{name}",
+        variables=[PromptVariable("name", required=True)],
+        max_variable_length=5,
+    )
+    assert tmpl.render(name="ok") == "ok"
 
 
 def test_string_get_variables() -> None:
@@ -145,6 +168,17 @@ def test_chat_get_variables() -> None:
     assert tmpl.get_variables() == ["x", "y"]
 
 
+def test_chat_render_enforces_max_variable_length() -> None:
+    tmpl = ChatPromptTemplate(
+        name="chat",
+        system="You are {role}.",
+        variables=[PromptVariable("role", required=True)],
+        max_variable_length=3,
+    )
+    with pytest.raises(PromptValidationError, match="exceeds max_variable_length=3"):
+        tmpl.render(role="helper")
+
+
 # ---------------------------------------------------------------------------
 # FewShotPromptTemplate
 # ---------------------------------------------------------------------------
@@ -192,6 +226,20 @@ def test_inmemory_selector_add() -> None:
     selector = InMemoryExampleSelector(examples=[], k=5)
     selector.add({"input": "a", "output": "b"})
     assert len(selector.select()) == 1
+
+
+def test_few_shot_render_enforces_max_variable_length() -> None:
+    selector = InMemoryExampleSelector(examples=[], k=2)
+    tmpl = FewShotPromptTemplate(
+        name="t",
+        prefix="",
+        suffix="{q}",
+        example_selector=selector,
+        variables=[PromptVariable("q", required=True)],
+        max_variable_length=2,
+    )
+    with pytest.raises(PromptValidationError, match="exceeds max_variable_length=2"):
+        tmpl.render(q="???")
 
 
 # ---------------------------------------------------------------------------

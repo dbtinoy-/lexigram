@@ -25,6 +25,8 @@ class StringPromptTemplate(AbstractPromptTemplate):
                    objects.  Any undeclared variable is passed through as-is.
         format: Rendering format.  Defaults to
                 :attr:`~lexigram.ai.prompt.rendering.engine.RenderFormat.F_STRING`.
+        max_variable_length: Global maximum variable value length in
+                characters.  ``0`` means unlimited.
         description: Optional human-readable description.
 
     Example::
@@ -47,6 +49,7 @@ class StringPromptTemplate(AbstractPromptTemplate):
         template: str,
         variables: list[PromptVariable] | None = None,
         format: RenderFormat = RenderFormat.F_STRING,
+        max_variable_length: int = 0,
         description: str = "",
         version: str = "1.0.0",
     ) -> None:
@@ -54,6 +57,7 @@ class StringPromptTemplate(AbstractPromptTemplate):
         self._template = template
         self._variables: list[PromptVariable] = variables or []
         self._renderer = PromptRenderer(format)
+        self._max_variable_length = max_variable_length
         self.description = description
         self._version = version
 
@@ -100,7 +104,11 @@ class StringPromptTemplate(AbstractPromptTemplate):
             :class:`~lexigram.ai.prompt.exceptions.PromptValidationError`:
                 A variable value fails its constraint.
         """
-        resolved = resolve_variables(self._variables, kwargs)
+        resolved = resolve_variables(
+            self._variables,
+            kwargs,
+            max_variable_length=self._max_variable_length,
+        )
         return self._renderer.render(self._template, resolved)
 
     def partial(self, **kwargs: Any) -> StringPromptTemplate:
@@ -127,6 +135,7 @@ class StringPromptTemplate(AbstractPromptTemplate):
             template=self._template,
             variables=self._variables,
             format=self._renderer.format,
+            max_variable_length=self._max_variable_length,
             description=self.description,
             version=self._version,
         )
@@ -151,6 +160,7 @@ class StringPromptTemplate(AbstractPromptTemplate):
             template=f"{self._template}\n{other._template}",
             variables=merged_vars,
             format=self._renderer.format,
+            max_variable_length=self._max_variable_length,
             version=self._version,
         )
 

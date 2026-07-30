@@ -28,6 +28,8 @@ class ChatPromptTemplate(AbstractPromptTemplate):
         variables: Declared typed variables shared across all slots.
         format: Rendering format.  Defaults to
                 :attr:`~lexigram.ai.prompt.rendering.engine.RenderFormat.F_STRING`.
+        max_variable_length: Global maximum variable value length in
+                characters.  ``0`` means unlimited.
         description: Optional human-readable description.
 
     Example::
@@ -57,6 +59,7 @@ class ChatPromptTemplate(AbstractPromptTemplate):
         assistant: str | None = None,
         variables: list[PromptVariable] | None = None,
         format: RenderFormat = RenderFormat.F_STRING,
+        max_variable_length: int = 0,
         description: str = "",
         version: str = "1.0.0",
     ) -> None:
@@ -66,6 +69,7 @@ class ChatPromptTemplate(AbstractPromptTemplate):
         self._assistant = assistant
         self._variables: list[PromptVariable] = variables or []
         self._renderer = PromptRenderer(format)
+        self._max_variable_length = max_variable_length
         self.description = description
         self._version = version
 
@@ -112,7 +116,11 @@ class ChatPromptTemplate(AbstractPromptTemplate):
             :class:`~lexigram.ai.prompt.exceptions.PromptValidationError`:
                 A variable value fails its constraint.
         """
-        resolved = resolve_variables(self._variables, kwargs)
+        resolved = resolve_variables(
+            self._variables,
+            kwargs,
+            max_variable_length=self._max_variable_length,
+        )
         messages: list[dict[str, str]] = []
 
         for role, template in [
@@ -169,6 +177,7 @@ class ChatPromptTemplate(AbstractPromptTemplate):
             assistant=content if role == "assistant" else self._assistant,
             variables=list(self._variables),
             format=self._renderer.format,
+            max_variable_length=self._max_variable_length,
             description=self.description,
             version=self._version,
         )
