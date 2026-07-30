@@ -55,11 +55,13 @@ class AuditLogger:
                         },
                     )
             await self._store.append(final_entry)
-        except Exception:
+        except Exception as exc:
             logger.warning(
                 "audit.log_failed",
                 action=entry.action,
                 actor_id=entry.actor_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
             )
 
     async def query(self, query: AuditQuery) -> list[AuditEntry]:
@@ -73,6 +75,10 @@ class AuditLogger:
         """
         try:
             return await self._store.query(query)
-        except Exception:
-            logger.warning("audit.query_failed")
+        except Exception as exc:
+            logger.warning(
+                "audit.query_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
             return []
