@@ -69,6 +69,35 @@ jobs:
             uv run pytest -q -m "not integration" --no-cov "$p/tests" ${DESELECT[$p]:-}
           done
 
+  integration:
+    name: Integration scenarios (postgres + redis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: install workspace (locked)
+        run: uv sync --all-extras --locked
+
+      - name: Start backing services (postgres, redis)
+        run: |
+          docker compose -f tests/docker-compose.yml --profile core up -d
+          ./tests/wait-for-services.sh
+
+      - name: integration scenarios
+        shell: bash
+        env:
+          ADMIN_SETUP_TOKEN: ci-integration-token
+        run: |
+          timeout 480 uv run pytest tests/integration/scenarios -m integration --no-cov -q
+
   coverage:
     name: Coverage gate (aggregate)
     runs-on: ubuntu-latest

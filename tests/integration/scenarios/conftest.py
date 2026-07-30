@@ -147,6 +147,8 @@ async def relay_app_factory(relay_fakes):
         from lexigram.di.module import DynamicModule
         from lexigram.http import HTTPModule
         from lexigram.web import WebModule
+        from lexigram.web.config import ServerConfig, WebConfig
+        from lexigram.web.security.config import SecurityConfig
         from tests.integration.scenarios.relay_fakes import (
             RelayAppHarness,
             StubDatabaseProvider,
@@ -154,6 +156,7 @@ async def relay_app_factory(relay_fakes):
         )
 
         config = RelayGatewayConfig(
+            require_auth=False,
             channels=(
                 RelayChannel(
                     name="claude",
@@ -188,7 +191,13 @@ async def relay_app_factory(relay_fakes):
         app = Application(name="relay-scenario")
         app.add_modules(
             [
-                WebModule.configure(host="127.0.0.1"),
+                WebModule.configure(
+                    host="127.0.0.1",
+                    web_config=WebConfig(
+                        server=ServerConfig(host="127.0.0.1"),
+                        security=SecurityConfig(enable_csrf=False),
+                    ),
+                ),
                 HTTPModule.configure(),
                 RelayModule.configure(),
                 gateway_module,

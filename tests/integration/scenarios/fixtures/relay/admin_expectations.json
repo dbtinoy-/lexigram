@@ -8,7 +8,8 @@
       "required_permissions": [
         "relay.read",
         "relay.channel_control",
-        "relay.policy_control"
+        "relay.policy_control",
+        "relay.manage"
       ],
       "widgets": [
         "channel_health",
@@ -20,13 +21,18 @@
       ],
       "actions": [
         "set_channel_state",
-        "force_cancel_stream"
+        "force_cancel_stream",
+        "create_channel",
+        "update_channel",
+        "delete_channel",
+        "test_channel"
       ],
       "pages": [
         "relay_gateway_overview",
         "relay_gateway_routes",
         "relay_gateway_streams",
-        "relay_gateway_settings"
+        "relay_gateway_settings",
+        "relay_gateway_channels"
       ]
     },
     "ai-governance": {
@@ -35,7 +41,9 @@
       "icon": "shield",
       "priority": 58,
       "required_permissions": [
-        "governance.read"
+        "governance.read",
+        "relay.billing",
+        "relay.logs"
       ],
       "widgets": [
         "current_spend",
@@ -46,11 +54,17 @@
       "health_checks": [
         "governance.billing"
       ],
-      "actions": [],
+      "actions": [
+        "settle_topup",
+        "run_checkin"
+      ],
       "pages": [
         "governance_relay_usage",
         "governance_relay_quotas",
-        "governance_relay_settlements"
+        "governance_relay_settlements",
+        "governance_relay_logs",
+        "governance_relay_rankings",
+        "governance_relay_ledger"
       ]
     }
   },
