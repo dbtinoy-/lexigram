@@ -10,13 +10,13 @@
 - Dependency scan: clean (0 vulnerable package(s))
 - SAST (ruff `S` rules): 609 finding(s) (0 unverified, 305 verified low-risk, 304 low-signal noise)
 - Framework security rules: 1 finding(s)
-- Tracker areas: 99 total, 92 done
+- Tracker areas: 99 total, 98 done
 
 ## Dependency Scan
 
 - Command: `uv run pip-audit --timeout 60`
 - Exit code: `0`
-- Duration: `119210 ms`
+- Duration: `43536 ms`
 - Vulnerable packages: 0
 - Summary: `No known vulnerabilities found`
 
@@ -213,7 +213,7 @@ No known vulnerabilities found
 | `lexigram-monitor/src/lexigram/monitor/scheduling/scheduled_worker.py` | 131 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 | `lexigram-multimedia-image/src/lexigram/multimedia/image/providers/comfyui.py` | 181 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
 | `lexigram-multimedia-video/src/lexigram/multimedia/video/providers/comfyui.py` | 198 | `S311` | Standard pseudo-random generators are not suitable for cryptographic purposes |
-| `lexigram-queue/src/lexigram/queue/admin/pages/overview.py` | 34 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
+| `lexigram-queue/src/lexigram/queue/admin/pages/overview.py` | 33 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 | `lexigram-search/src/lexigram/search/backends/mysql/backend.py` | 130 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-search/src/lexigram/search/backends/mysql/backend.py` | 195 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-search/src/lexigram/search/backends/mysql/backend.py` | 213 | `S608` | Possible SQL injection vector through string-based query construction |
@@ -679,9 +679,8 @@ Each family below was triaged on the 2026-08-18 working tree:
 ## Audit Tracker Status
 
 - Total areas: 99
-- Done: 92
-- Open: 7
-- Open severity mix: High ×1, Low ×3, Med ×1
+- Done: 98
+- Open: 1
 
 ## Verified-Clean Surfaces
 
@@ -697,10 +696,4 @@ Each family below was triaged on the 2026-08-18 working tree:
 | # | Area | Severity mix |
 |---|------|--------------|
 | 15 | Structured management pages — host renders all page HTML |  |
-| 40 | **Meilisearch/Typesense filter-expression injection** (`lexigram-search/backends/filters.py`) | High ×1 |
-| 54 | **`lexigram-ai-prompt` `max_variable_length` config flag is defined but never enforced** | Low ×1 |
-| 57 | **`lexigram-monitor` still hard-depends on `lexigram-tasks` at the packaging level** | Low ×1 |
-| 58 | **`lexigram-resilience` `throttle()` decorator is structurally dead — every call raises** | Med ×1 |
-| 60 | **`lexigram-resilience` database idempotency store's "dialect-aware" placeholder is hardcoded to `?`, breaking Postgres — deeper than reported (naive `.replace()` also can't produce sequential `$1,$2,...` for multi-param queries)** | Low ×1 |
-| 68 | lexigram-audit | Medium |
 
