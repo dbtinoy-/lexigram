@@ -133,9 +133,11 @@ async def test_run_ffmpeg_uses_compose_plan_and_writes_output(tmp_path, monkeypa
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -146,9 +148,7 @@ async def test_run_ffmpeg_uses_compose_plan_and_writes_output(tmp_path, monkeypa
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._make_black_base", lambda self, *a: None
     )
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline.generate_outro_clip", lambda *a, **k: None
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", lambda *a, **k: None)
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.stock_video._probe_duration", lambda *a, **k: 3.0
     )
@@ -208,9 +208,11 @@ async def test_run_ffmpeg_generates_fresh_outro_when_text_set(tmp_path, monkeypa
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -238,8 +240,8 @@ async def test_run_ffmpeg_generates_fresh_outro_when_text_set(tmp_path, monkeypa
         with open(dst, "wb") as fh:
             fh.write(b"fitted")
 
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline.generate_outro_clip", fake_generate)
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._fit_clip_to_canvas", fake_fit)
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", fake_generate)
+    monkeypatch.setattr("shorts_creator.pipeline.background._fit_clip_to_canvas", fake_fit)
 
     out_path = str(tmp_path / "out.mp4")
     pipeline = ReelPipeline(output=out_path, progress_callback=recorder, outro_text="Custom outro")
@@ -282,9 +284,11 @@ async def test_run_ffmpeg_overlays_outro_text_on_custom_outro_clip(tmp_path, mon
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -314,10 +318,8 @@ async def test_run_ffmpeg_overlays_outro_text_on_custom_outro_clip(tmp_path, mon
         with open(out_path, "wb") as fh:
             fh.write(b"text-overlay")
 
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._fit_clip_to_canvas", fake_fit)
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_outro_text_clip", fake_text_overlay
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.background._fit_clip_to_canvas", fake_fit)
+    monkeypatch.setattr("shorts_creator.pipeline.outro._render_outro_text_clip", fake_text_overlay)
 
     captured = {}
 
@@ -390,9 +392,11 @@ async def test_run_ffmpeg_skips_text_overlay_for_default_outro(tmp_path, monkeyp
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -425,11 +429,9 @@ async def test_run_ffmpeg_skips_text_overlay_for_default_outro(tmp_path, monkeyp
         with open(out_path, "wb") as fh:
             fh.write(b"text-overlay")
 
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline.generate_outro_clip", fake_generate)
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._fit_clip_to_canvas", fake_fit)
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_outro_text_clip", fake_text_overlay
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", fake_generate)
+    monkeypatch.setattr("shorts_creator.pipeline.background._fit_clip_to_canvas", fake_fit)
+    monkeypatch.setattr("shorts_creator.pipeline.outro._render_outro_text_clip", fake_text_overlay)
 
     captured = {}
 
@@ -498,9 +500,11 @@ async def test_run_ffmpeg_fetches_segment_backgrounds(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -511,9 +515,7 @@ async def test_run_ffmpeg_fetches_segment_backgrounds(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._make_black_base", lambda self, *a: None
     )
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline.generate_outro_clip", lambda *a, **k: None
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", lambda *a, **k: None)
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.stock_video._probe_duration", lambda *a, **k: 3.0
     )
@@ -582,9 +584,11 @@ async def test_background_segment_queries_come_from_line_sentiment(tmp_path, mon
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -595,9 +599,7 @@ async def test_background_segment_queries_come_from_line_sentiment(tmp_path, mon
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._make_black_base", lambda self, *a: None
     )
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline.generate_outro_clip", lambda *a, **k: None
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", lambda *a, **k: None)
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.stock_video._probe_duration", lambda *a, **k: 3.0
     )
@@ -653,9 +655,11 @@ async def test_run_ffmpeg_segment_failures_fall_back_to_full_gradient(tmp_path, 
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -666,17 +670,17 @@ async def test_run_ffmpeg_segment_failures_fall_back_to_full_gradient(tmp_path, 
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._make_black_base", lambda self, *a: None
     )
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline.generate_outro_clip", lambda *a, **k: None
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", lambda *a, **k: None)
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.stock_video._probe_duration", lambda *a, **k: 3.0
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.stock_video.fetch_background_video", fake_fetch
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline.generate_background", fake_generate)
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._looped_gradient_video", lambda *a: None)
+    monkeypatch.setattr("shorts_creator.pipeline.background.generate_background", fake_generate)
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.background._looped_gradient_video", lambda *a: None
+    )
     monkeypatch.setattr("lexigram.multimedia.timeline.Timeline", _FakeTimeline)
     _FakeTimeline.instances = []
 
@@ -741,9 +745,11 @@ async def test_hook_lead_in_prepends_silence_and_shifts_words(tmp_path, monkeypa
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
     monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline._render_caption_clip", lambda *a, **k: None
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", lambda *a, **k: None
     )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
@@ -754,9 +760,7 @@ async def test_hook_lead_in_prepends_silence_and_shifts_words(tmp_path, monkeypa
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._make_black_base", lambda self, *a: None
     )
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline.generate_outro_clip", lambda *a, **k: None
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", lambda *a, **k: None)
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.stock_video._probe_duration", lambda *a, **k: 3.0
     )

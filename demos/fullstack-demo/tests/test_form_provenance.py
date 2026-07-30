@@ -250,7 +250,9 @@ class TestCaptionStyleClearing:
     def test_captionless_format_wizard_emits_clearing_input(self, monkeypatch):
         import shorts_creator.ui.pages.new_project as np
 
-        monkeypatch.setattr(np, "_caption_field_data", lambda fmt: None)
+        monkeypatch.setattr(
+            "shorts_creator.ui.pages.new_project_wizard._caption_field_data", lambda fmt: None
+        )
         profile = _StubProfile(format_name="narrated")
         markup = str(np._wizard_caption_field(profile))
         assert 'name="caption_style"' in markup

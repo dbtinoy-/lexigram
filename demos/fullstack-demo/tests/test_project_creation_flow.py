@@ -392,20 +392,20 @@ class TestPreviewBackground:
     the mirrored content, like the real pipeline's background selection."""
 
     async def test_background_is_video_when_picked(self, controller, monkeypatch):
-        from shorts_creator.ui.pages import new_project as np
 
-        monkeypatch.setattr(np, "_pick_preview_background", lambda: ("video", "/api/preview/clip"))
+        monkeypatch.setattr(
+            "shorts_creator.ui.pages.new_project_preview._pick_preview_background",
+            lambda: ("video", "/api/preview/clip"),
+        )
         body = body_of(await controller.new_project_page())
         assert "<video" in body
         assert 'src="/api/preview/clip"' in body
         assert "object-cover" in body
 
     async def test_background_is_image_when_picked(self, controller, monkeypatch):
-        from shorts_creator.ui.pages import new_project as np
 
         monkeypatch.setattr(
-            np,
-            "_pick_preview_background",
+            "shorts_creator.ui.pages.new_project_preview._pick_preview_background",
             lambda: ("image", "https://picsum.photos/seed/42/540/960"),
         )
         body = body_of(await controller.new_project_page())
@@ -414,11 +414,9 @@ class TestPreviewBackground:
         assert "object-cover" in body
 
     async def test_content_raised_above_background_with_scrim(self, controller, monkeypatch):
-        from shorts_creator.ui.pages import new_project as np
 
         monkeypatch.setattr(
-            np,
-            "_pick_preview_background",
+            "shorts_creator.ui.pages.new_project_preview._pick_preview_background",
             lambda: ("image", "https://picsum.photos/seed/1/540/960"),
         )
         body = body_of(await controller.new_project_page())
@@ -561,7 +559,7 @@ class TestPreviewBackgroundPicker:
         clip_dir = tmp_path / "clip"
         clip_dir.mkdir()
         (clip_dir / "sample_nature_asmr.mp4").touch()
-        monkeypatch.setattr(np, "ASSETS_ROOT", tmp_path)
+        monkeypatch.setattr("shorts_creator.ui.pages.new_project_preview.ASSETS_ROOT", tmp_path)
         assert np._pick_preview_background() == ("video", "/api/preview/clip")
 
     async def test_picker_falls_back_to_remote_image_without_clips(
@@ -569,7 +567,7 @@ class TestPreviewBackgroundPicker:
     ):
         from shorts_creator.ui.pages import new_project as np
 
-        monkeypatch.setattr(np, "ASSETS_ROOT", tmp_path)
+        monkeypatch.setattr("shorts_creator.ui.pages.new_project_preview.ASSETS_ROOT", tmp_path)
         assert np._pick_preview_background()[0] == "image"
 
 

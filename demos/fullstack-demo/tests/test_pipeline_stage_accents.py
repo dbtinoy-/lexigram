@@ -156,8 +156,12 @@ def _patch_render_harness(monkeypatch):
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.captions.group_for_hook_display", fake_hook_group
     )
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_hook_clip", lambda *a, **k: None)
-    monkeypatch.setattr("shorts_creator.pipeline.pipeline._render_caption_clip", fake_caption_clip)
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_hook_clip", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "shorts_creator.pipeline.caption_text._render_caption_clip", fake_caption_clip
+    )
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._extract_screenshots", lambda self: None
     )
@@ -167,9 +171,7 @@ def _patch_render_harness(monkeypatch):
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.ReelPipeline._make_black_base", lambda self, *a: None
     )
-    monkeypatch.setattr(
-        "shorts_creator.pipeline.pipeline.generate_outro_clip", lambda *a, **k: None
-    )
+    monkeypatch.setattr("shorts_creator.pipeline.outro.generate_outro_clip", lambda *a, **k: None)
     monkeypatch.setattr(
         "shorts_creator.pipeline.pipeline.stock_video._probe_duration", lambda *a, **k: 3.0
     )

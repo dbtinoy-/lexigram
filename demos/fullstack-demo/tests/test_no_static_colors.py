@@ -21,6 +21,8 @@ ALLOWED = {
     "pages/new_project.py": {
         "#7C5CFA",
         "rgba(0,0,0,0.75)",
+    },
+    "pages/new_project_preview.py": {
         "#fff",
         "#000",
         "#0a0a32",
