@@ -41,9 +41,7 @@ class EvictionRateWidgetHandler:
         """
         if not isinstance(self._cache, CacheStatsProtocol):
             return Ok(
-                StatContent(
-                    stats=(Stat(label="Evictions/sec", value="Unavailable"),)
-                )
+                StatContent(stats=(Stat(label="Evictions/sec", value="Unavailable"),))
             )
         stats = self._cache.get_stats() or {}
         total_evictions = int(stats.get("evictions", 0))

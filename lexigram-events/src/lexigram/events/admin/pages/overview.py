@@ -82,7 +82,9 @@ class EventsOverviewPage:
                     ),
                     Stat(
                         label="Status",
-                        value="Connected" if self._event_bus is not None else "Unavailable",
+                        value="Connected"
+                        if self._event_bus is not None
+                        else "Unavailable",
                         icon="activity",
                     ),
                     Stat(

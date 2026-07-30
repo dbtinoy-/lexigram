@@ -67,12 +67,28 @@ class TestNotificationAdminContributor:
         resolved = InboxService()
 
         class FakeLoader:
-            async def resolve(self, cls: Any) -> Any:
+            async def resolve_optional(self, cls: Any) -> Any:
                 return resolved
 
         contributor = NotificationAdminContributor()
         await contributor.on_admin_boot(FakeLoader())  # type: ignore[arg-type]
         assert contributor._handlers._service is resolved  # noqa: SLF001
+
+    @pytest.mark.asyncio
+    async def test_boot_falls_back_when_service_unregistered(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Boot without InboxService bound must stay silent and use memory store."""
+
+        class FakeLoader:
+            async def resolve_optional(self, cls: Any) -> None:
+                return None
+
+        contributor = NotificationAdminContributor()
+        with caplog.at_level("WARNING"):
+            await contributor.on_admin_boot(FakeLoader())  # type: ignore[arg-type]
+        assert contributor._handlers._service is None  # noqa: SLF001
+        assert not [r for r in caplog.records if r.levelname == "WARNING"]
 
 
 class FakeUser:

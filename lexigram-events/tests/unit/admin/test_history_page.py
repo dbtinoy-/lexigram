@@ -1,25 +1,30 @@
-"""Tests for the EventsHistoryPage admin page pagination."""
+"""Tests for the EventsHistoryPage admin page structured content."""
 
 from __future__ import annotations
 
-import re
 from types import SimpleNamespace
 
 import pytest
 
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import TableContent
 from lexigram.events.admin.pages import EventsHistoryPage
 
 
-def _plain(html: str) -> str:
-    """Strip tags so summary/pagination text can be asserted simply."""
-    return re.sub(r"<[^>]+>", "", html)
+class FakeUrl:
+    """Minimal URL stand-in exposing ``path`` and a string form."""
+
+    path = "/admin/events/history"
+
+    def __str__(self) -> str:
+        return "http://testserver/admin/events/history"
 
 
 class FakeRequest:
-    """Minimal ASGI request stand-in with a URL path."""
+    """Minimal ASGI request stand-in with a URL."""
 
     query_params: dict[str, str] = {}
-    url = SimpleNamespace(path="/admin/events/history")
+    url = FakeUrl()
 
     @classmethod
     def with_params(cls, **params: str) -> FakeRequest:
@@ -50,27 +55,35 @@ def _event(i: int) -> object:
 
 
 class TestEventsHistoryPage:
-    """Unit tests for the recent-events page renderer."""
+    """Unit tests for the recent-events page structured content."""
 
     @pytest.mark.asyncio
-    async def test_renders_newest_first_with_pagination(self) -> None:
+    async def test_returns_newest_first_rows_with_pagination(self) -> None:
         page = EventsHistoryPage(store=FakeStore([_event(i) for i in range(5)]))
 
-        response = await page.handle(FakeRequest.with_params(per_page="2"))
-        html = response.body.decode()
+        content = await page.handle(FakeRequest.with_params(per_page="2"))
 
-        assert "Showing 1 to 2 of 5 results" in _plain(html)
-        assert 'hx-target="#table-data"' in html
-        assert "event-4" in html
-        assert "event-3" in html
-        assert "event-0" not in html
+        assert isinstance(content, PageContent)
+        assert content.title == "Event History"
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 2
+        assert content.body.rows[0][0].text == "event-4"
+        assert content.body.rows[1][0].text == "event-3"
+        assert content.pagination is not None
+        assert content.pagination.page == 1
+        assert content.pagination.total == 5
+        assert content.pagination.per_page == 2
+        assert content.pagination.base_url == "http://testserver/admin/events/history"
 
     @pytest.mark.asyncio
-    async def test_single_page_renders_summary(self) -> None:
+    async def test_single_page_returns_all_rows(self) -> None:
         page = EventsHistoryPage(store=FakeStore([_event(i) for i in range(2)]))
 
-        response = await page.handle(FakeRequest())
-        html = response.body.decode()
+        content = await page.handle(FakeRequest())
 
-        assert "Showing 1 to 2 of 2 results" in _plain(html)
-        assert "event-1" in html
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 2
+        assert content.body.rows[0][0].text == "event-1"
+        assert content.pagination is not None
+        assert content.pagination.total == 2
+        assert content.pagination.per_page == 20

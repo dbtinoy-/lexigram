@@ -2,20 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from starlette.responses import HTMLResponse
-
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import EmptyContent, Stat, StatContent
 from lexigram.contracts.audit import AuditMismatchReason, AuditVerifierProtocol
 from lexigram.logging import get_logger
-from lexigram.ui import (
-    Card,
-    Divider,
-    EmptyState,
-    Grid,
-    StatCard,
-    el,
-    raw,
-    render_to_string,
-)
 
 logger = get_logger(__name__)
 
@@ -26,16 +16,16 @@ class AuditVerificationPage:
     def __init__(self, verifier: AuditVerifierProtocol | None = None) -> None:
         self._verifier = verifier
 
-    async def handle(self, request: Any) -> HTMLResponse:
+    async def handle(self, request: Any) -> PageContent:
         if self._verifier is None:
-            html = render_to_string(
-                EmptyState(
+            return PageContent(
+                title="Audit Verification",
+                body=EmptyContent(
                     title="Audit Verification Unavailable",
                     message="The audit verifier could not be resolved.",
                     icon="shield",
                 ),
             )
-            return HTMLResponse(html)
         try:
             mismatches = await self._verifier.verify_recent()
         except Exception:
@@ -45,138 +35,24 @@ class AuditVerificationPage:
         tampered = [
             m for m in mismatches if m.reason == AuditMismatchReason.CHECKSUM_MISMATCH
         ]
-        unverifiable_count = len(mismatches) - len(tampered)
 
         if not mismatches:
-            status, status_color, status_icon = "Verified", "green", "shield-check"
-            detail = "All entries verified — no hash chain mismatches detected."
+            status, status_icon = "Verified", "shield-check"
         elif tampered:
-            status, status_color, status_icon = "Compromised", "red", "shield-x"
-            detail = f"{len(mismatches)} hash chain mismatches detected."
+            status, status_icon = "Compromised", "shield-x"
         else:
-            status, status_color, status_icon = "Unverifiable", "amber", "shield-alert"
-            detail = (
-                f"{unverifiable_count} legacy entries lack stored checksums "
-                "and could not be verified."
-            )
+            status, status_icon = "Unverifiable", "shield-alert"
 
-        html = render_to_string(
-            el(
-                "div",
-                el(
-                    "h1",
-                    "Audit Verification",
-                    class_="text-2xl font-bold text-[var(--foreground)]",
-                ),
-                el(
-                    "p",
-                    "Verify the integrity of the audit log chain.",
-                    class_="text-sm text-[var(--muted-foreground)] mt-1 mb-6",
-                ),
-                Divider(),
-                Grid(
-                    StatCard(
-                        label="Integrity Status",
-                        value=status,
-                        delta_color=status_color,
-                        icon=status_icon,
-                    ),
-                    StatCard(
+        return PageContent(
+            title="Audit Verification",
+            body=StatContent(
+                stats=(
+                    Stat(label="Integrity Status", value=status, icon=status_icon),
+                    Stat(
                         label="Mismatches Found",
                         value=str(len(mismatches)),
                         icon="alert-triangle",
                     ),
-                    cols={"default": 1, "lg": 2},
-                    gap=4,
-                ),
-                Card(
-                    title="Verification Details",
-                    content=render_to_string(
-                        el(
-                            "dl",
-                            el(
-                                "dt",
-                                "Status",
-                                class_="text-sm font-semibold text-[var(--muted-foreground)] py-2",
-                            ),
-                            el(
-                                "dd",
-                                detail,
-                                class_="text-sm text-[var(--foreground)] pb-3",
-                            ),
-                            class_="divide-y divide-[var(--border)]",
-                        )
-                    ),
-                ),
-                el(
-                    "div",
-                    el(
-                        "h2",
-                        "Mismatches",
-                        class_="text-lg font-semibold text-[var(--foreground)] mb-3 mt-6",
-                    ),
-                    el(
-                        "div",
-                        el(
-                            "table",
-                            el(
-                                "thead",
-                                el(
-                                    "tr",
-                                    el(
-                                        "th",
-                                        "Expected",
-                                        style="width:50%",
-                                        class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                    ),
-                                    el(
-                                        "th",
-                                        "Actual",
-                                        style="width:50%",
-                                        class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                    ),
-                                ),
-                            ),
-                            el(
-                                "tbody",
-                                raw(
-                                    "".join(
-                                        render_to_string(
-                                            el(
-                                                "tr",
-                                                el(
-                                                    "td",
-                                                    m.expected_checksum[:32] + "...",
-                                                    class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-[var(--foreground)]",
-                                                ),
-                                                el(
-                                                    "td",
-                                                    m.actual_checksum[:32] + "...",
-                                                    class_="px-4 py-3 whitespace-nowrap text-sm font-mono text-red-600",
-                                                ),
-                                            )
-                                        )
-                                        for m in tampered
-                                    )
-                                    if tampered
-                                    else "",
-                                ),
-                                class_="divide-y divide-[var(--border)]",
-                            ),
-                            class_="min-w-full table-fixed divide-y divide-[var(--border)]",
-                        )
-                        if tampered
-                        else el(
-                            "p",
-                            "No mismatches found.",
-                            class_="text-sm text-[var(--muted-foreground)] py-4",
-                        ),
-                        class_="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]",
-                    ),
-                    class_="mt-4",
-                ),
-                class_="p-6",
+                )
             ),
         )
-
-        return HTMLResponse(html)

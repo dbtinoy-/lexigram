@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from lexigram.ai.relay.gateway.admin import actions as relay_actions
 from lexigram.ai.relay.gateway.admin.contributor import (
     RelayGatewayAdminContributor,
@@ -20,6 +18,8 @@ from lexigram.ai.relay.gateway.operations.health import (
     RelayChannelProbeResult,
     RelayHealthService,
 )
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import EmptyContent, TableContent
 from lexigram.contracts.ai.relay import (
     RelayChannel,
     RelayChannelSnapshot,
@@ -34,9 +34,7 @@ MODEL = "gpt-x"
 _ACTION_NAMES = ("create_channel", "update_channel", "delete_channel", "test_channel")
 
 
-def make_channel(
-    name: str, *, priority: int = 1, enabled: bool = True
-) -> RelayChannel:
+def make_channel(name: str, *, priority: int = 1, enabled: bool = True) -> RelayChannel:
     """Build a RelayChannel on a stable test base URL."""
     return RelayChannel(
         name=name,
@@ -172,9 +170,7 @@ class TestCreateChannel:
     async def test_create_channel_persists_and_returns_revision(self) -> None:
         store = FakeChannelStore()
         container = make_container(store)
-        result = await relay_actions.create_channel(
-            container, **default_params("c1")
-        )
+        result = await relay_actions.create_channel(container, **default_params("c1"))
         assert result["ok"] is True
         assert result["echo"]["name"] == "c1"
         assert result["revision"] == 1
@@ -183,12 +179,17 @@ class TestCreateChannel:
 
     async def test_create_channel_rejects_name_collision(self) -> None:
         store = FakeChannelStore(
-            [RelayChannelSnapshot(channel=make_channel("c1"), revision=3, created_at="t", updated_at="t")]
+            [
+                RelayChannelSnapshot(
+                    channel=make_channel("c1"),
+                    revision=3,
+                    created_at="t",
+                    updated_at="t",
+                )
+            ]
         )
         container = make_container(store)
-        result = await relay_actions.create_channel(
-            container, **default_params("c1")
-        )
+        result = await relay_actions.create_channel(container, **default_params("c1"))
         assert result["ok"] is False
         assert "exist" in str(result["message"])
         assert store.rows["c1"].revision == 3
@@ -197,7 +198,14 @@ class TestCreateChannel:
 class TestUpdateChannel:
     async def test_update_channel_returns_concurrency_stale_outcome(self) -> None:
         store = FakeChannelStore(
-            [RelayChannelSnapshot(channel=make_channel("c1"), revision=3, created_at="t", updated_at="t")]
+            [
+                RelayChannelSnapshot(
+                    channel=make_channel("c1"),
+                    revision=3,
+                    created_at="t",
+                    updated_at="t",
+                )
+            ]
         )
         container = make_container(store)
         result = await relay_actions.update_channel(
@@ -209,7 +217,14 @@ class TestUpdateChannel:
 
     async def test_update_channel_bumps_revision(self) -> None:
         store = FakeChannelStore(
-            [RelayChannelSnapshot(channel=make_channel("c1"), revision=3, created_at="t", updated_at="t")]
+            [
+                RelayChannelSnapshot(
+                    channel=make_channel("c1"),
+                    revision=3,
+                    created_at="t",
+                    updated_at="t",
+                )
+            ]
         )
         container = make_container(store)
         result = await relay_actions.update_channel(
@@ -222,16 +237,21 @@ class TestUpdateChannel:
     async def test_update_channel_requires_revision(self) -> None:
         store = FakeChannelStore()
         container = make_container(store)
-        result = await relay_actions.update_channel(
-            container, **default_params("c1")
-        )
+        result = await relay_actions.update_channel(container, **default_params("c1"))
         assert result["ok"] is False
 
 
 class TestDeleteChannel:
     async def test_delete_channel_removes_row(self) -> None:
         store = FakeChannelStore(
-            [RelayChannelSnapshot(channel=make_channel("c1"), revision=2, created_at="t", updated_at="t")]
+            [
+                RelayChannelSnapshot(
+                    channel=make_channel("c1"),
+                    revision=2,
+                    created_at="t",
+                    updated_at="t",
+                )
+            ]
         )
         container = make_container(store)
         result = await relay_actions.delete_channel(
@@ -242,7 +262,14 @@ class TestDeleteChannel:
 
     async def test_delete_channel_stale_or_missing_is_rejected(self) -> None:
         store = FakeChannelStore(
-            [RelayChannelSnapshot(channel=make_channel("c1"), revision=2, created_at="t", updated_at="t")]
+            [
+                RelayChannelSnapshot(
+                    channel=make_channel("c1"),
+                    revision=2,
+                    created_at="t",
+                    updated_at="t",
+                )
+            ]
         )
         container = make_container(store)
         result = await relay_actions.delete_channel(
@@ -262,9 +289,7 @@ class TestTestChannel:
         store = FakeChannelStore()
         health = make_health()
         container = make_container(store, health)
-        result = await relay_actions.test_channel(
-            container, name="c1"
-        )
+        result = await relay_actions.test_channel(container, name="c1")
         assert result["ok"] is True
         assert result["echo"]["verdict"] == "healthy"
         assert result["echo"]["latency_ms"] == 12.0
@@ -296,24 +321,38 @@ class TestChannelsPage:
             ]
         )
         page = RelayGatewayChannelsPage(store=store)
-        response = await page.handle(request=None)
-        text = response.body.decode()
-        assert "main" in text
-        assert "openai_chat" in text
-        assert MODEL in text
-        assert "5" in text
-        assert "7" in text
-        assert "enabled" in text.lower()
+        content = await page.handle(request=None)
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Channels"
+        assert isinstance(content.body, TableContent)
+        assert content.body.columns == (
+            "Name",
+            "Format",
+            "Models",
+            "Priority",
+            "State",
+            "Revision",
+        )
+        assert [cell.text for cell in content.body.rows[0]] == [
+            "main",
+            "openai_chat",
+            MODEL,
+            "5",
+            "enabled",
+            "7",
+        ]
 
     async def test_page_renders_empty_state(self) -> None:
         page = RelayGatewayChannelsPage(store=FakeChannelStore())
-        response = await page.handle(request=None)
-        assert "no channels" in response.body.decode().lower()
+        content = await page.handle(request=None)
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.message == "No channels stored."
 
     async def test_page_renders_unavailable_without_store(self) -> None:
         page = RelayGatewayChannelsPage(store=None)
-        response = await page.handle(request=None)
-        assert "not registered" in response.body.decode().lower()
+        content = await page.handle(request=None)
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.message == "Channel store is not registered."
 
 
 class TestContributorRegistration:

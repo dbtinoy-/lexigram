@@ -8,12 +8,13 @@ renders reference/amount/status only — never keys or headers.
 
 from __future__ import annotations
 
-import pytest
 from starlette.datastructures import QueryParams
 
 from lexigram.ai.governance.admin.contributor import GovernanceAdminContributor
 from lexigram.ai.governance.admin.ledger_actions import run_checkin, settle_topup
 from lexigram.ai.governance.admin.ledger_pages import RelayLedgerPage
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import EmptyContent, TableContent
 from lexigram.contracts.ai.governance import RelayUsageScope
 from lexigram.contracts.ai.relay import (
     RelayCheckinRecord,
@@ -37,15 +38,11 @@ class FakeLedger(RelayLedgerServiceProtocol):
         self.checkin_error: RelayLedgerError | None = None
         self.topups: list[RelayTopUpRecord] = []
 
-    async def credit(
-        self, scope: RelayUsageScope, amount: str, reason: str
-    ) -> object:
+    async def credit(self, scope: RelayUsageScope, amount: str, reason: str) -> object:
         del scope, amount, reason
         return Ok(None)
 
-    async def settle_topup(
-        self, reference_id: str, expected_status: str
-    ) -> object:
+    async def settle_topup(self, reference_id: str, expected_status: str) -> object:
         self.settle_calls.append((reference_id, expected_status))
         if self.settle_error is not None:
             return Err(self.settle_error)
@@ -96,9 +93,9 @@ class _Request:
         self.query_params = QueryParams(params)
 
 
-async def _html(page: object, **params: str) -> str:
-    response = await page.handle(_Request(**params))  # type: ignore[attr-defined]
-    return response.body.decode()
+def _cells(content: PageContent) -> list[str]:
+    assert isinstance(content.body, TableContent)
+    return [cell.text for row in content.body.rows for cell in row]
 
 
 def test_ledger_surfaces_require_relay_billing_scope() -> None:
@@ -179,22 +176,31 @@ async def test_ledger_page_renders_topup_rows() -> None:
     ledger = FakeLedger()
     ledger.topups = [topup("ref-1", "100.00"), topup("ref-2", "25", "pending")]
     page = RelayLedgerPage(service=ledger)
-    html = await _html(page)
-    assert "ref-1" in html
-    assert "ref-2" in html
-    assert "100.00" in html
-    assert "pending" in html
-    assert _CANARY not in html
-    assert "Authorization" not in html
+    content = await page.handle(_Request())
+    assert isinstance(content, PageContent)
+    assert content.title == "Relay Ledger"
+    cells = _cells(content)
+    assert "ref-1" in cells
+    assert "ref-2" in cells
+    assert "100.00" in cells
+    assert "pending" in cells
+    assert _CANARY not in cells
+    assert content.pagination is None
 
 
 async def test_ledger_page_empty_state() -> None:
     page = RelayLedgerPage(service=FakeLedger())
-    html = await _html(page)
-    assert "No top-ups" in html
+    content = await page.handle(_Request())
+    assert isinstance(content, PageContent)
+    assert content.title == "Relay Ledger"
+    assert isinstance(content.body, EmptyContent)
+    assert "No top-ups" in content.body.title
 
 
 async def test_ledger_page_unavailable_without_service() -> None:
     page = RelayLedgerPage(service=None)
-    html = await _html(page)
-    assert "Unavailable" in html
+    content = await page.handle(_Request())
+    assert isinstance(content, PageContent)
+    assert content.title == "Relay Ledger"
+    assert isinstance(content.body, EmptyContent)
+    assert content.body.title == "Unavailable"

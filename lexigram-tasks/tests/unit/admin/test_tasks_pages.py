@@ -1,33 +1,38 @@
-"""Tests for the task admin pages pagination."""
+"""Tests for the task admin pages structured content."""
 
 from __future__ import annotations
 
-import re
-from types import SimpleNamespace
-
 import pytest
 
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import TableContent
 from lexigram.tasks.admin.pages import TasksFailedPage, TasksHistoryPage
 from lexigram.tasks.models import JobResult
 from lexigram.tasks.results import InMemoryResultStore
 
 
-def _plain(html: str) -> str:
-    """Strip tags so summary/pagination text can be asserted simply."""
-    return re.sub(r"<[^>]+>", "", html)
+class FakeUrl:
+    """Minimal URL stand-in exposing ``path`` and a string form."""
+
+    def __init__(self, path: str = "/admin/tasks") -> None:
+        self.path = path
+
+    def __str__(self) -> str:
+        """Return the URL as a string (without query params)."""
+        return f"http://testserver{self.path}"
 
 
 class FakeRequest:
-    """Minimal ASGI request stand-in with a URL path."""
+    """Minimal ASGI request stand-in with a URL."""
 
     query_params: dict[str, str] = {}
-    url = SimpleNamespace(path="/admin/tasks")
+    url = FakeUrl()
 
     @classmethod
     def with_params(cls, path: str, **params: str) -> FakeRequest:
         """Build a request whose path and query params are set explicitly."""
         request = cls()
-        request.url = SimpleNamespace(path=path)
+        request.url = FakeUrl(path)
         request.query_params = params
         return request
 
@@ -46,12 +51,19 @@ class TestTasksHistoryPage:
             )
 
         page = TasksHistoryPage(result_store=store)
-        response = await page.handle(FakeRequest.with_params("/admin/tasks/history"))
-        html = response.body.decode()
+        content = await page.handle(FakeRequest.with_params("/admin/tasks/history"))
 
-        assert "job-2" in html
-        assert "task-0" in html
-        assert "Showing 1 to 3 of 3 results" in _plain(html)
+        assert isinstance(content, PageContent)
+        assert content.title == "Task History"
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 3
+        assert content.body.rows[0][0].text == "job-2"
+        assert any(row[1].text == "task-0" for row in content.body.rows)
+        assert content.pagination is not None
+        assert content.pagination.page == 1
+        assert content.pagination.total == 3
+        assert content.pagination.per_page == 20
+        assert content.pagination.base_url == "http://testserver/admin/tasks/history"
 
     @pytest.mark.asyncio
     async def test_renders_pagination_when_many(self) -> None:
@@ -64,16 +76,18 @@ class TestTasksHistoryPage:
             )
 
         page = TasksHistoryPage(result_store=store)
-        response = await page.handle(
+        content = await page.handle(
             FakeRequest.with_params("/admin/tasks/history", per_page="2")
         )
-        html = response.body.decode()
 
-        assert "Showing 1 to 2 of 5 results" in _plain(html)
-        assert 'hx-target="#table-data"' in html
-        assert "job-4" in html
-        assert "job-3" in html
-        assert "job-0" not in html
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 2
+        assert content.body.rows[0][0].text == "job-4"
+        assert content.body.rows[1][0].text == "job-3"
+        assert content.pagination is not None
+        assert content.pagination.page == 1
+        assert content.pagination.total == 5
+        assert content.pagination.per_page == 2
 
     @pytest.mark.asyncio
     async def test_out_of_range_page_clamps_to_last(self) -> None:
@@ -86,13 +100,16 @@ class TestTasksHistoryPage:
             )
 
         page = TasksHistoryPage(result_store=store)
-        response = await page.handle(
+        content = await page.handle(
             FakeRequest.with_params("/admin/tasks/history", page="99", per_page="2")
         )
-        html = response.body.decode()
 
-        assert "Showing 5 to 5 of 5 results" in _plain(html)
-        assert "job-0" in html
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 1
+        assert content.body.rows[0][0].text == "job-0"
+        assert content.pagination is not None
+        assert content.pagination.page == 3
+        assert content.pagination.total == 5
 
 
 class TestTasksFailedPage:
@@ -114,12 +131,21 @@ class TestTasksFailedPage:
             )
 
         page = TasksFailedPage(result_store=store)
-        response = await page.handle(
+        content = await page.handle(
             FakeRequest.with_params("/admin/tasks/failed", per_page="2")
         )
-        html = response.body.decode()
 
-        assert "Showing 1 to 2 of 5 results" in _plain(html)
-        assert 'hx-target="#table-data"' in html
-        assert "boom-4" in html
-        assert "boom-0" not in html
+        assert isinstance(content, PageContent)
+        assert content.title == "Failed Tasks"
+        assert isinstance(content.body, TableContent)
+        assert len(content.body.rows) == 2
+        assert content.body.rows[0][0].text == "job-4"
+        assert content.body.rows[1][0].text == "job-3"
+        assert content.body.rows[0][3].text == "Failed"
+        assert content.body.rows[0][4].text == "boom-4"
+        assert content.body.rows[1][4].text == "boom-3"
+        assert content.pagination is not None
+        assert content.pagination.page == 1
+        assert content.pagination.total == 5
+        assert content.pagination.per_page == 2
+        assert content.pagination.base_url == "http://testserver/admin/tasks/failed"

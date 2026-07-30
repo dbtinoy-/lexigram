@@ -11,14 +11,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from starlette.responses import HTMLResponse
-
+from lexigram.contracts.admin import PageContent, PaginationContent
+from lexigram.contracts.admin.widget_content import (
+    EmptyContent,
+    TableCell,
+    TableContent,
+)
 from lexigram.contracts.ai.relay import (
     RelayModelRank,
     RelayRequestLogEntry,
 )
 from lexigram.logging import get_logger
-from lexigram.ui import Card, Divider, StatCard, el, render_to_string
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai.relay import RelayUsageServiceProtocol
@@ -30,14 +33,6 @@ logger = get_logger(__name__)
 _DEFAULT_DAYS = 7
 _PAGE_SIZE = 20
 _RANK_LIMIT = 10
-
-_STATUS_COLORS = {
-    "completed": "bg-green-100 text-green-700",
-    "failed": "bg-red-100 text-red-700",
-    "rate_limited": "bg-yellow-100 text-yellow-700",
-    "unauthorized": "bg-orange-100 text-orange-700",
-    "cancelled": "bg-gray-100 text-gray-500",
-}
 
 
 def _as_int(value: object, default: int, *, minimum: int) -> int:
@@ -62,121 +57,48 @@ def _params(request: Any) -> tuple[int, int, int, str | None, str | None]:
     return days, page, page_size, user_id, token_id
 
 
-def _status_badge(status: str) -> Any:
-    """Render a colored status badge for a request-log entry."""
-    return el(
-        "span",
-        status,
-        class_=(
-            f"inline-block px-2 py-0.5 rounded text-xs font-medium "
-            f"{_STATUS_COLORS.get(status, 'bg-gray-100 text-gray-500')}"
+def _unavailable_content(title: str, reason: str) -> PageContent:
+    """Build a page with an explicit unavailable dependency state."""
+    return PageContent(
+        title=title,
+        body=EmptyContent(
+            title="Unavailable",
+            message=reason,
+            icon="alert-triangle",
         ),
     )
 
 
-def _table(headers: list[str], rows: list[Any]) -> Any:
-    """Build a styled table element."""
-    return el(
-        "table",
-        el(
-            "thead",
-            el(
-                "tr",
-                *[
-                    el(
-                        "th",
-                        header,
-                        class_=(
-                            "text-left text-xs font-semibold "
-                            "text-[var(--muted-foreground)] uppercase tracking-wider "
-                            "pb-1 pr-3"
-                        ),
-                        scope_="col",
-                    )
-                    for header in headers
-                ],
-            ),
-        ),
-        el("tbody", *rows, class_="divide-y divide-[var(--border)]"),
-        class_="w-full",
-    )
-
-
-def _unavailable_page(title: str, reason: str) -> HTMLResponse:
-    """Render a full page with an explicit unavailable dependency card."""
-    html = render_to_string(
-        el(
-            "div",
-            el(
-                "h1",
-                title,
-                class_="text-2xl font-bold text-[var(--foreground)]",
-            ),
-            Divider(),
-            Card(
-                title="Unavailable",
-                content=render_to_string(
-                    el(
-                        "p",
-                        reason,
-                        class_="text-sm text-[var(--muted-foreground)] py-4",
-                    )
-                ),
-                class_="border-yellow-300 bg-yellow-50",
-            ),
-        )
-    )
-    return HTMLResponse(html)
-
-
-def _log_rows(entries: list[RelayRequestLogEntry]) -> list[Any]:
+def _log_rows(entries: list[RelayRequestLogEntry]) -> list[tuple[Any, ...]]:
     """Build table rows for request-log entries."""
-    rows: list[Any] = []
+    rows: list[tuple[Any, ...]] = []
     for entry in entries:
         rows.append(
-            el(
-                "tr",
-                el(
-                    "td",
-                    entry.request_id,
-                    class_="py-1.5 pr-3 font-mono text-xs",
-                ),
-                el("td", entry.user_id or "-", class_="py-1.5 pr-3"),
-                el("td", entry.token_id or "-", class_="py-1.5 pr-3"),
-                el("td", entry.model or "-", class_="py-1.5 pr-3"),
-                el(
-                    "td",
-                    f"{entry.prompt_tokens:,} / {entry.completion_tokens:,}",
-                    class_="py-1.5 pr-3",
-                ),
-                el("td", entry.cost, class_="py-1.5 pr-3"),
-                el(
-                    "td",
-                    f"{entry.latency_ms}ms",
-                    class_="py-1.5 pr-3",
-                ),
-                el("td", _status_badge(entry.status), class_="py-1.5 pr-3"),
-                el("td", entry.error_code or "-", class_="py-1.5"),
+            (
+                entry.request_id,
+                entry.user_id or "-",
+                entry.token_id or "-",
+                entry.model or "-",
+                f"{entry.prompt_tokens:,} / {entry.completion_tokens:,}",
+                entry.cost,
+                f"{entry.latency_ms}ms",
+                entry.status,
+                entry.error_code or "-",
             )
         )
     return rows
 
 
-def _rank_rows(ranks: list[RelayModelRank]) -> list[Any]:
+def _rank_rows(ranks: list[RelayModelRank]) -> list[tuple[Any, ...]]:
     """Build table rows for per-model usage rankings."""
-    rows: list[Any] = []
+    rows: list[tuple[Any, ...]] = []
     for rank in ranks:
         rows.append(
-            el(
-                "tr",
-                el("td", rank.model or "-", class_="py-1.5 pr-3"),
-                el(
-                    "td",
-                    f"{rank.completion_tokens:,}",
-                    class_="py-1.5 pr-3",
-                ),
-                el("td", str(rank.request_count), class_="py-1.5 pr-3"),
-                el("td", rank.cost, class_="py-1.5"),
+            (
+                rank.model or "-",
+                f"{rank.completion_tokens:,}",
+                str(rank.request_count),
+                rank.cost,
             )
         )
     return rows
@@ -188,17 +110,17 @@ class RelayRequestLogsPage:
     def __init__(self, service: RelayUsageServiceProtocol | None = None) -> None:
         self._service = service
 
-    async def handle(self, request: Any) -> HTMLResponse:
+    async def handle(self, request: Any) -> PageContent:
         """Render a paginated, filterable request-log list.
 
         Args:
             request: The starlette request.
 
         Returns:
-            The rendered request-log list page HTML.
+            The structured request-log list page content.
         """
         if self._service is None:
-            return _unavailable_page(
+            return _unavailable_content(
                 "Request Logs",
                 "Request logs require the relay usage service.",
             )
@@ -213,14 +135,20 @@ class RelayRequestLogsPage:
             )
         except ValueError as exc:
             logger.warning("governance.logs.window_rejected", error=str(exc))
-            return _unavailable_page("Request Logs", str(exc))
+            return _unavailable_content("Request Logs", str(exc))
 
-        filter_line = "tracking metadata per dispatch"
-        if user_id or token_id:
-            filter_line = f"filtered by {(user_id and f'user {user_id} ') or ''}{(token_id and f'token {token_id}') or ''}".strip()
-        table = (
-            _table(
-                [
+        if not entries:
+            return PageContent(
+                title="Request Logs",
+                body=EmptyContent(
+                    title="No request logs in this window.",
+                    icon="inbox",
+                ),
+            )
+        return PageContent(
+            title="Request Logs",
+            body=TableContent(
+                columns=(
                     "Request",
                     "User",
                     "Token",
@@ -230,41 +158,19 @@ class RelayRequestLogsPage:
                     "Latency",
                     "Status",
                     "Error",
-                ],
-                _log_rows(entries),
-            )
-            if entries
-            else el(
-                "p",
-                "No request logs in this window.",
-                class_="text-sm text-[var(--muted-foreground)] py-4",
-            )
+                ),
+                rows=tuple(
+                    tuple(TableCell(str(cell)) for cell in row)
+                    for row in _log_rows(entries)
+                ),
+            ),
+            pagination=PaginationContent(
+                page=page,
+                total=len(entries),
+                per_page=page_size,
+                base_url=str(request.url).split("?")[0],
+            ),
         )
-        html = render_to_string(
-            el(
-                "div",
-                el(
-                    "h1",
-                    "Request Logs",
-                    class_="text-2xl font-bold text-[var(--foreground)]",
-                ),
-                el(
-                    "p",
-                    (
-                        f"{filter_line} · last {days} days · "
-                        f"page {page} of {page_size}-row pages"
-                    ),
-                    class_="text-sm text-[var(--muted-foreground)] mt-1 mb-6",
-                ),
-                Divider(),
-                Card(
-                    title=f"Dispatches (last {days}d)",
-                    content=render_to_string(table),
-                ),
-                el("div", class_="p-6"),
-            )
-        )
-        return HTMLResponse(html)
 
 
 class RelayUsageRankingsPage:
@@ -273,17 +179,17 @@ class RelayUsageRankingsPage:
     def __init__(self, service: RelayUsageServiceProtocol | None = None) -> None:
         self._service = service
 
-    async def handle(self, request: Any) -> HTMLResponse:
+    async def handle(self, request: Any) -> PageContent:
         """Render per-model token/cost rankings for the window.
 
         Args:
             request: The starlette request.
 
         Returns:
-            The rendered usage rankings page HTML.
+            The structured usage rankings page content.
         """
         if self._service is None:
-            return _unavailable_page(
+            return _unavailable_content(
                 "Usage Rankings",
                 "Rankings require the relay usage service.",
             )
@@ -292,54 +198,23 @@ class RelayUsageRankingsPage:
             ranks = await self._service.model_rank(days=days, limit=_RANK_LIMIT)
         except ValueError as exc:
             logger.warning("governance.rankings.window_rejected", error=str(exc))
-            return _unavailable_page("Usage Rankings", str(exc))
+            return _unavailable_content("Usage Rankings", str(exc))
 
-        total_tokens = sum(rank.completion_tokens for rank in ranks)
-        table = (
-            _table(
-                ["Model", "Completion Tokens", "Requests", "Cost"],
-                _rank_rows(ranks),
+        if not ranks:
+            return PageContent(
+                title="Usage Rankings",
+                body=EmptyContent(
+                    title="No usage in this window.",
+                    icon="inbox",
+                ),
             )
-            if ranks
-            else el(
-                "p",
-                "No usage in this window.",
-                class_="text-sm text-[var(--muted-foreground)] py-4",
-            )
+        return PageContent(
+            title="Usage Rankings",
+            body=TableContent(
+                columns=("Model", "Completion Tokens", "Requests", "Cost"),
+                rows=tuple(
+                    tuple(TableCell(str(cell)) for cell in row)
+                    for row in _rank_rows(ranks)
+                ),
+            ),
         )
-        html = render_to_string(
-            el(
-                "div",
-                el(
-                    "h1",
-                    "Usage Rankings",
-                    class_="text-2xl font-bold text-[var(--foreground)]",
-                ),
-                el(
-                    "p",
-                    f"Per-model completion tokens over the last {days} days.",
-                    class_="text-sm text-[var(--muted-foreground)] mt-1 mb-6",
-                ),
-                Divider(),
-                el(
-                    "div",
-                    StatCard(
-                        label="Models",
-                        value=str(len(ranks)),
-                        icon="bar-chart",
-                    ),
-                    StatCard(
-                        label="Completion Tokens",
-                        value=f"{total_tokens:,}",
-                        icon="cpu",
-                    ),
-                    class_="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6",
-                ),
-                Card(
-                    title=f"Model Rankings (last {days}d)",
-                    content=render_to_string(table),
-                ),
-                el("div", class_="p-6"),
-            )
-        )
-        return HTMLResponse(html)

@@ -17,10 +17,7 @@ from lexigram.contracts.admin.types import (
     WidgetViewModel,
 )
 from lexigram.contracts.admin.widget_content import MessageContent, WidgetKind
-from lexigram.contracts.admin.widget_protocols import (
-    WidgetHandlerProtocol,
-    WidgetRendererProtocol,
-)
+from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
 
 
 class TestWidgetSize:
@@ -224,10 +221,3 @@ class TestWidgetProtocols:
 
         # Can check protocol conformance at runtime
         assert isinstance(FakeHandler(), WidgetHandlerProtocol)
-
-    def test_widget_renderer_protocol_is_runtime_checkable(self) -> None:
-        class FakeRenderer:
-            def render(self, template_name: str, context: dict) -> str:
-                return "<div></div>"
-
-        assert isinstance(FakeRenderer(), WidgetRendererProtocol)

@@ -25,6 +25,7 @@ from lexigram.contracts.admin.operations import (
     TransactionalProtocol,
     ValidatableProtocol,
 )
+from lexigram.contracts.admin.page_content import PageContent, PaginationContent
 from lexigram.contracts.admin.page_handler import (
     AdminPageHandlerProtocol,
     ManagementPageHandler,
@@ -77,10 +78,7 @@ from lexigram.contracts.admin.widget_content import (
     WidgetContent,
     WidgetKind,
 )
-from lexigram.contracts.admin.widget_protocols import (
-    WidgetHandlerProtocol,
-    WidgetRendererProtocol,
-)
+from lexigram.contracts.admin.widget_protocols import WidgetHandlerProtocol
 from lexigram.contracts.data.data_source import DataSourceProtocol
 
 __all__ = [
@@ -127,7 +125,9 @@ __all__ = [
     "NamedHealthCheckProtocol",
     "NavigationContribution",
     "PageCategory",
+    "PageContent",
     "PageFilterField",
+    "PaginationContent",
     "PiiRedactorProtocol",
     "QueueStatsProtocol",
     "RelationLoaderProtocol",
@@ -146,7 +146,6 @@ __all__ = [
     "WidgetKind",
     "WidgetNotFoundError",
     "WidgetParams",
-    "WidgetRendererProtocol",
     "WidgetSize",
     "WidgetViewModel",
 ]

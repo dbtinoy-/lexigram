@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from lexigram.contracts.admin.types import WidgetParams
     from lexigram.contracts.core.result import Result
 
-__all__ = ["WidgetHandlerProtocol", "WidgetRendererProtocol"]
+__all__ = ["WidgetHandlerProtocol"]
 
 
 @runtime_checkable
@@ -41,30 +41,5 @@ class WidgetHandlerProtocol(Protocol):
 
         Raises:
             Any infrastructure exception (DB, network, etc.) — not caught.
-        """
-        ...
-
-
-@runtime_checkable
-class WidgetRendererProtocol(Protocol):
-    """Contract for a package-level Jinja2 widget renderer.
-
-    One renderer instance per package (singleton). Owns one
-    jinja2.Environment with autoescape=True, auto_reload=False.
-    Templates are loaded from the package's widgets/templates/ directory.
-    """
-
-    def render(self, template_name: str, context: dict[str, Any]) -> str:
-        """Render a widget template with a WidgetViewModel context.
-
-        Args:
-            template_name: Filename of the Jinja2 template (e.g. "pool_utilization.html").
-            context: A dict containing template variables.
-
-        Returns:
-            Rendered HTML string.
-
-        Raises:
-            jinja2.TemplateNotFound: If template_name does not exist.
         """
         ...

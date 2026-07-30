@@ -33,8 +33,14 @@ from lexigram.ai.relay.gateway.operations.metrics import (
     RelayRouteEvent,
 )
 from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
+from lexigram.contracts.admin import PageContent
 from lexigram.contracts.admin.types import NavigationContribution
-from lexigram.contracts.admin.widget_content import MessageContent, TableContent
+from lexigram.contracts.admin.widget_content import (
+    EmptyContent,
+    MessageContent,
+    StatContent,
+    TableContent,
+)
 from lexigram.contracts.ai.governance import AIAuditEvent, AIAuditStoreProtocol
 from lexigram.contracts.ai.relay import (
     ConversionQuality,
@@ -81,13 +87,26 @@ def config() -> RelayGatewayConfig:
     )
 
 
-def _request() -> SimpleNamespace:
-    """Build a stand-in starlette request with empty query params."""
-    return SimpleNamespace(
-        query_params={},
-        state=SimpleNamespace(user=None),
-        headers={},
-    )
+class FakeUrl:
+    """Minimal URL stand-in exposing ``path`` and a string form."""
+
+    path = "/admin/relay-gateway/overview"
+
+    def __str__(self) -> str:
+        return "http://testserver/admin/relay-gateway/overview"
+
+
+class FakeRequest:
+    """Minimal ASGI request stand-in with a URL."""
+
+    query_params: dict[str, str] = {}
+    url = FakeUrl()
+
+    @classmethod
+    def with_params(cls, **params: str) -> FakeRequest:
+        request = cls()
+        request.query_params = params
+        return request
 
 
 def _collect_nav_permissions(nav: NavigationContribution) -> set[str]:
@@ -366,44 +385,62 @@ class TestAdminBoot:
 class TestReadOnlyPages:
     async def test_overview_page_renders_without_dependencies(self) -> None:
         page = RelayGatewayOverviewPage()
-        response = await page.handle(_request())
-        assert response.status_code == 200
-        assert "Relay Gateway Overview" in response.body.decode()
+        content = await page.handle(FakeRequest())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Gateway Overview"
+        assert isinstance(content.body, StatContent)
+        stats = {s.label: s.value for s in content.body.stats}
+        assert stats == {
+            "Channels": "N/A",
+            "Healthy": "N/A",
+            "Active Streams": "N/A",
+            "Converter": "N/A",
+        }
 
     async def test_routes_page_renders_without_dependencies(self) -> None:
         page = RelayGatewayRoutesPage()
-        response = await page.handle(_request())
-        assert response.status_code == 200
-        assert "Relay Routes" in response.body.decode()
+        content = await page.handle(FakeRequest())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Routes"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.message == "Route metrics service is not registered."
 
     async def test_streams_page_renders_without_dependencies(self) -> None:
         page = RelayGatewayStreamsPage()
-        response = await page.handle(_request())
-        assert response.status_code == 200
-        assert "Relay Streams" in response.body.decode()
+        content = await page.handle(FakeRequest())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Streams"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.message == "Controls service is not registered."
 
     async def test_settings_page_renders_without_dependencies(self) -> None:
         page = RelayGatewaySettingsPage()
-        response = await page.handle(_request())
-        assert response.status_code == 200
-        assert "Relay Settings" in response.body.decode()
+        content = await page.handle(FakeRequest())
+        assert isinstance(content, PageContent)
+        assert content.title == "Relay Settings"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.message == "Policy store is not registered."
 
 
 class TestPagesWithDependencies:
     async def test_overview_shows_channel_and_stream_data(self) -> None:
         controls, health, _, _ = make_services()
         page = RelayGatewayOverviewPage(health=health, controls=controls)
-        response = await page.handle(_request())
-        body = response.body.decode()
-        assert "claude" in body
-        assert "gemini" in body
+        content = await page.handle(FakeRequest())
+        assert isinstance(content.body, StatContent)
+        stats = {s.label: s.value for s in content.body.stats}
+        assert stats["Channels"] == "2"
+        assert stats["Healthy"] == "0"
+        assert stats["Active Streams"] == "0"
+        assert stats["Converter"] == "N/A"
+        assert all(stat.icon is not None for stat in content.body.stats)
 
     async def test_routes_page_renders_route_table(self) -> None:
         _, _, metrics, _ = make_services()
         page = RelayGatewayRoutesPage(metrics=metrics)
-        response = await page.handle(_request())
-        body = response.body.decode()
-        assert "Route Activity" in body
+        content = await page.handle(FakeRequest())
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.message == "No route activity in this window."
 
     async def test_streams_page_renders_active_streams(self) -> None:
         controls, _, _, _ = make_services()
@@ -411,17 +448,62 @@ class TestPagesWithDependencies:
             channel="claude", model="claude-sonnet", request_id="req-1"
         )
         page = RelayGatewayStreamsPage(controls=controls)
-        response = await page.handle(_request())
-        body = response.body.decode()
-        assert stream_id in body
+        content = await page.handle(FakeRequest())
+        assert isinstance(content.body, TableContent)
+        assert content.body.columns == (
+            "Stream ID",
+            "Channel",
+            "Model",
+            "Request",
+            "Started",
+        )
+        assert any(cell.text == stream_id for row in content.body.rows for cell in row)
 
     async def test_settings_page_lists_policy_channels(self) -> None:
         _, _, _, store = make_services()
         page = RelayGatewaySettingsPage(policy=store)
-        response = await page.handle(_request())
-        body = response.body.decode()
-        assert "gemini" in body
-        assert "max_request_bytes" not in body
+        content = await page.handle(FakeRequest())
+        assert isinstance(content.body, TableContent)
+        first = {row[0].text: row[1].text for row in content.body.rows}
+        assert first["claude"] == "enabled"
+        assert first["gemini"] == "enabled"
+        assert first["Media Schemes"] == "https"
+        assert first["Media Hosts"] == "media.example.com"
+        assert first["Max Request Bytes"] == "4096"
+        assert first["Max Stream Seconds"] == "120"
+
+    async def test_routes_page_paginates_and_builds_base_url(self) -> None:
+        from datetime import timedelta
+
+        class EventsWithActivity:
+            """Route event source reporting one completed request."""
+
+            async def events(self, window: object) -> tuple[RelayRouteEvent, ...]:
+                return (
+                    RelayRouteEvent(
+                        kind="request_completed",
+                        source=RelayFormat.OPENAI_CHAT,
+                        target=RelayFormat.CLAUDE,
+                        occurred_at=window.start + timedelta(minutes=1),
+                    ),
+                )
+
+        metrics = RelayMetricsService(
+            events=EventsWithActivity(), converter=EmptyRegistry()
+        )
+        page = RelayGatewayRoutesPage(metrics=metrics)
+        content = await page.handle(FakeRequest.with_params(page="1", page_size="2"))
+        assert isinstance(content.body, TableContent)
+        assert content.body.columns[0] == "Route"
+        assert len(content.body.rows) == 1
+        assert content.pagination is not None
+        assert content.pagination.page == 1
+        assert content.pagination.total == 1
+        assert content.pagination.per_page == 2
+        assert (
+            content.pagination.base_url
+            == "http://testserver/admin/relay-gateway/overview"
+        )
 
 
 class TestWidgets:

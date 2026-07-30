@@ -2,20 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from starlette.responses import HTMLResponse
-
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import (
+    EmptyContent,
+    TableCell,
+    TableContent,
+    Tone,
+)
 from lexigram.contracts.ai.providers import ProviderRegistryProtocol
 from lexigram.contracts.core.health import HealthStatus
 from lexigram.logging import get_logger
-from lexigram.ui import (
-    Badge,
-    Divider,
-    EmptyState,
-    el,
-    raw,
-    render_to_string,
-)
-from lexigram.ui.atoms.badge import BadgeVariant
 
 logger = get_logger(__name__)
 
@@ -29,16 +25,16 @@ class LlmProvidersPage:
     ) -> None:
         self._registry = registry
 
-    async def handle(self, request: Any) -> HTMLResponse:
+    async def handle(self, request: Any) -> PageContent:
         if self._registry is None:
-            html = render_to_string(
-                EmptyState(
+            return PageContent(
+                title="LLM Providers",
+                body=EmptyContent(
                     title="Provider Registry Unavailable",
                     message="No provider registry is configured. Provider status cannot be displayed.",
                     icon="server",
                 ),
             )
-            return HTMLResponse(html)
 
         provider_names: list[str] = []
         try:
@@ -47,14 +43,14 @@ class LlmProvidersPage:
             provider_names = []
 
         if not provider_names:
-            html = render_to_string(
-                EmptyState(
+            return PageContent(
+                title="LLM Providers",
+                body=EmptyContent(
                     title="No Providers",
                     message="No LLM providers are configured.",
                     icon="server",
                 ),
             )
-            return HTMLResponse(html)
 
         all_models: list[Any] = []
         try:
@@ -67,11 +63,11 @@ class LlmProvidersPage:
             if m.provider not in model_map:
                 model_map[m.provider] = m.model_id
 
-        provider_data: list[tuple[str, str, str, BadgeVariant, str]] = []
+        provider_data: list[tuple[str, str, str, Tone, str]] = []
         for name in provider_names:
             model_name = model_map.get(name, "\u2014")
             status_label = "unknown"
-            status_variant: BadgeVariant = "warning"
+            status_tone = Tone.WARNING
             latency = "\u2014"
 
             try:
@@ -84,13 +80,13 @@ class LlmProvidersPage:
                     result = await client.health_check(timeout=5.0)
                     if result.status == HealthStatus.HEALTHY:
                         status_label = "healthy"
-                        status_variant = "success"
+                        status_tone = Tone.SUCCESS
                     elif result.status == HealthStatus.DEGRADED:
                         status_label = "degraded"
-                        status_variant = "warning"
+                        status_tone = Tone.WARNING
                     else:
                         status_label = result.status.value
-                        status_variant = "danger"
+                        status_tone = Tone.DANGER
                     latency = (
                         f"{result.duration_ms:.0f}ms"
                         if result.duration_ms > 0
@@ -98,103 +94,28 @@ class LlmProvidersPage:
                     )
                 except Exception:
                     status_label = "error"
-                    status_variant = "danger"
+                    status_tone = Tone.DANGER
                     latency = "\u2014"
             else:
                 status_label = "not configured"
-                status_variant = "warning"
+                status_tone = Tone.WARNING
 
-            provider_data.append(
-                (name, model_name, status_label, status_variant, latency)
-            )
+            provider_data.append((name, model_name, status_label, status_tone, latency))
 
-        rows = "".join(
-            render_to_string(
-                el(
-                    "tr",
-                    el(
-                        "td",
-                        name,
-                        class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--foreground)]",
-                    ),
-                    el(
-                        "td",
-                        model_name,
-                        class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--muted-foreground)]",
-                    ),
-                    el(
-                        "td",
-                        Badge(status_label, variant=status_variant),
-                        class_="px-4 py-3 whitespace-nowrap text-sm",
-                    ),
-                    el(
-                        "td",
-                        latency,
-                        class_="px-4 py-3 whitespace-nowrap text-sm text-[var(--muted-foreground)]",
-                    ),
-                )
+        rows = tuple(
+            (
+                TableCell(text=name),
+                TableCell(text=model_name),
+                TableCell(text=status_label, tone=status_tone),
+                TableCell(text=latency),
             )
-            for name, model_name, status_label, status_variant, latency in provider_data
+            for name, model_name, status_label, status_tone, latency in provider_data
         )
 
-        html = render_to_string(
-            el(
-                "div",
-                el(
-                    "h1",
-                    "LLM Providers",
-                    class_="text-2xl font-bold text-[var(--foreground)]",
-                ),
-                el(
-                    "p",
-                    "Configured LLM providers, their models, and health status.",
-                    class_="text-sm text-[var(--muted-foreground)] mt-1 mb-6",
-                ),
-                Divider(),
-                el(
-                    "div",
-                    el(
-                        "table",
-                        el(
-                            "thead",
-                            el(
-                                "tr",
-                                el(
-                                    "th",
-                                    "Provider",
-                                    style="width:20%",
-                                    class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                ),
-                                el(
-                                    "th",
-                                    "Model",
-                                    style="width:25%",
-                                    class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                ),
-                                el(
-                                    "th",
-                                    "Status",
-                                    style="width:25%",
-                                    class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                ),
-                                el(
-                                    "th",
-                                    "Latency",
-                                    style="width:30%",
-                                    class_="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] sticky top-0 z-10",
-                                ),
-                            ),
-                        ),
-                        el(
-                            "tbody",
-                            raw(rows),
-                            class_="divide-y divide-[var(--border)]",
-                        ),
-                        class_="min-w-full table-fixed divide-y divide-[var(--border)]",
-                    ),
-                    class_="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]",
-                ),
-                class_="p-6",
+        return PageContent(
+            title="LLM Providers",
+            body=TableContent(
+                columns=("Provider", "Model", "Status", "Latency"),
+                rows=rows,
             ),
         )
-        return HTMLResponse(html)

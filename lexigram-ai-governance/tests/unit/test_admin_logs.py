@@ -9,14 +9,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-import pytest
-from starlette.datastructures import QueryParams
-
 from lexigram.ai.governance.admin.contributor import GovernanceAdminContributor
 from lexigram.ai.governance.admin.logs_pages import (
     RelayRequestLogsPage,
     RelayUsageRankingsPage,
 )
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import EmptyContent, TableContent
 from lexigram.contracts.ai.relay import (
     RelayDailyUsage,
     RelayModelRank,
@@ -90,56 +89,86 @@ class FakeUsageService(RelayUsageServiceProtocol):
         return self.entries
 
 
-class _Request:
-    """Minimal request stand-in carrying query parameters."""
+class FakeUrl:
+    """Minimal URL stand-in with a string form."""
 
-    def __init__(self, **params: str) -> None:
-        self.query_params = QueryParams(params)
+    path = "/admin/ai-governance/relay-logs"
+
+    def __str__(self) -> str:
+        return "http://testserver/admin/ai-governance/relay-logs"
 
 
-async def _html(page: object, **params: str) -> str:
-    response = await page.handle(_Request(**params))  # type: ignore[attr-defined]
-    return response.body.decode()
+class FakeRequest:
+    """Minimal ASGI request stand-in with query params and a URL."""
+
+    query_params: dict[str, str] = {}
+    url: FakeUrl = FakeUrl()
+
+    @classmethod
+    def with_params(cls, **params: str) -> FakeRequest:
+        request = cls()
+        request.query_params = params
+        return request
+
+
+def _cells(content: PageContent) -> list[str]:
+    assert isinstance(content.body, TableContent)
+    return [cell.text for row in content.body.rows for cell in row]
 
 
 async def test_request_logs_page_renders_rows_without_content() -> None:
     page = RelayRequestLogsPage(service=FakeUsageService())
-    html = await _html(page, token="t1")
-    assert "req-1" in html
-    assert "req-2" in html
-    assert "gpt-4" in html
-    assert "UPSTREAM_5XX" in html
-    assert _CANARY not in html
-    assert "<img" not in html
-    assert "data:image" not in html
-    assert "Authorization" not in html
-    assert "x-api-key" not in html
+    content = await page.handle(FakeRequest.with_params(token="t1"))
+    assert isinstance(content, PageContent)
+    assert content.title == "Request Logs"
+    cells = _cells(content)
+    assert "req-1" in cells
+    assert "req-2" in cells
+    assert "gpt-4" in cells
+    assert "UPSTREAM_5XX" in cells
+    assert _CANARY not in cells
+    assert content.pagination is not None
+    assert content.pagination.page == 1
+    assert content.pagination.total == 2
+    assert content.pagination.per_page == 20
+    assert (
+        content.pagination.base_url
+        == "http://testserver/admin/ai-governance/relay-logs"
+    )
 
 
 async def test_request_logs_page_unavailable_without_service() -> None:
     page = RelayRequestLogsPage(service=None)
-    html = await _html(page)
-    assert "Unavailable" in html
+    content = await page.handle(FakeRequest())
+    assert isinstance(content, PageContent)
+    assert content.title == "Request Logs"
+    assert isinstance(content.body, EmptyContent)
+    assert content.body.title == "Unavailable"
 
 
 async def test_usage_rankings_page_renders_rank_table() -> None:
     page = RelayUsageRankingsPage(service=FakeUsageService())
-    html = await _html(page)
-    assert "gpt-4" in html
-    assert "200" in html
-    assert "4" in html
-    assert "0.5" in html
-    assert _CANARY not in html
-    assert "<img" not in html
+    content = await page.handle(FakeRequest())
+    assert isinstance(content, PageContent)
+    assert content.title == "Usage Rankings"
+    cells = _cells(content)
+    assert "gpt-4" in cells
+    assert "200" in cells
+    assert "4" in cells
+    assert "0.5" in cells
+    assert _CANARY not in cells
+    assert content.pagination is None
 
 
 async def test_usage_rankings_page_unavailable_without_service() -> None:
     page = RelayUsageRankingsPage(service=None)
-    html = await _html(page)
-    assert "Unavailable" in html
+    content = await page.handle(FakeRequest())
+    assert isinstance(content, PageContent)
+    assert content.title == "Usage Rankings"
+    assert isinstance(content.body, EmptyContent)
+    assert content.body.title == "Unavailable"
 
 
-@pytest.mark.asyncio
 async def test_pages_resolve_usage_service_protocol_from_container() -> None:
     container = FakeContainer()
     service = await container.resolve(RelayUsageServiceProtocol)

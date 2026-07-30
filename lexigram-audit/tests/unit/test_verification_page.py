@@ -5,6 +5,12 @@ from __future__ import annotations
 import asyncio
 
 from lexigram.audit.admin.pages.verification import AuditVerificationPage
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import (
+    EmptyContent,
+    Stat,
+    StatContent,
+)
 from lexigram.contracts.audit import AuditMismatch, AuditMismatchReason
 
 
@@ -31,48 +37,61 @@ def _mismatch(reason: AuditMismatchReason, expected: str = "aa" * 32) -> AuditMi
     )
 
 
-def _render(verifier: _FakeVerifier | None) -> str:
+def _render(verifier: _FakeVerifier | None) -> PageContent:
     page = AuditVerificationPage(verifier=verifier)
-    response = asyncio.run(page.handle(_FakeRequest()))
-    return response.body.decode()
+    return asyncio.run(page.handle(_FakeRequest()))
+
+
+def _stats(content: PageContent) -> dict[str, Stat]:
+    assert isinstance(content.body, StatContent)
+    return {s.label: s for s in content.body.stats}
 
 
 class TestAuditVerificationPage:
     def test_no_verifier_unavailable(self) -> None:
-        html = _render(None)
-        assert "Audit Verification Unavailable" in html
+        content = _render(None)
+        assert content.title == "Audit Verification"
+        assert isinstance(content.body, EmptyContent)
+        assert content.body.title == "Audit Verification Unavailable"
+        assert content.body.message == "The audit verifier could not be resolved."
+        assert content.body.icon == "shield"
 
     def test_verifier_failure_treats_as_clean(self) -> None:
-        html = _render(_FakeVerifier(RuntimeError("boom")))
-        assert "Verified" in html
+        stats = _stats(_render(_FakeVerifier(RuntimeError("boom"))))
+        assert stats["Integrity Status"].value == "Verified"
 
     def test_clean_status(self) -> None:
-        html = _render(_FakeVerifier([]))
-        assert "Verified" in html
-        assert "Compromised" not in html
-        assert "Unverifiable" not in html
-        assert "No mismatches found." in html
+        stats = _stats(_render(_FakeVerifier([])))
+        assert stats["Integrity Status"].value == "Verified"
+        assert stats["Integrity Status"].icon == "shield-check"
+        assert stats["Mismatches Found"].value == "0"
 
     def test_compromised_status(self) -> None:
-        html = _render(_FakeVerifier([_mismatch(AuditMismatchReason.CHECKSUM_MISMATCH)]))
-        assert "Compromised" in html
-        assert "Verified" not in html
+        stats = _stats(
+            _render(_FakeVerifier([_mismatch(AuditMismatchReason.CHECKSUM_MISMATCH)]))
+        )
+        assert stats["Integrity Status"].value == "Compromised"
+        assert stats["Integrity Status"].icon == "shield-x"
+        assert stats["Mismatches Found"].value == "1"
 
     def test_unverifiable_status_for_legacy_entries(self) -> None:
-        html = _render(_FakeVerifier([_mismatch(AuditMismatchReason.NO_CHECKSUM_PRESENT)]))
-        assert "Unverifiable" in html
-        assert "Compromised" not in html
-        assert "Verified" not in html
+        stats = _stats(
+            _render(_FakeVerifier([_mismatch(AuditMismatchReason.NO_CHECKSUM_PRESENT)]))
+        )
+        assert stats["Integrity Status"].value == "Unverifiable"
+        assert stats["Integrity Status"].icon == "shield-alert"
+        assert stats["Mismatches Found"].value == "1"
 
-    def test_tampered_rows_render_only_checksum_mismatches(self) -> None:
+    def test_tampered_and_legacy_count(self) -> None:
         tampered = _mismatch(AuditMismatchReason.CHECKSUM_MISMATCH, expected="ab" * 32)
         legacy = _mismatch(AuditMismatchReason.NO_CHECKSUM_PRESENT, expected="")
-        html = _render(_FakeVerifier([legacy, tampered]))
-        assert "Compromised" in html
-        assert "abababab" in html
-        assert html.count("<tr>") == 2  # thead + the single tampered row
+        stats = _stats(_render(_FakeVerifier([legacy, tampered])))
+        assert stats["Integrity Status"].value == "Compromised"
+        assert stats["Mismatches Found"].value == "2"
 
-    def test_legacy_only_shows_no_tampered_rows(self) -> None:
-        html = _render(_FakeVerifier([_mismatch(AuditMismatchReason.NO_CHECKSUM_PRESENT)]))
-        assert "No mismatches found." in html
-        assert "<tr>" not in html
+    def test_legacy_only_is_unverifiable(self) -> None:
+        stats = _stats(
+            _render(_FakeVerifier([_mismatch(AuditMismatchReason.NO_CHECKSUM_PRESENT)]))
+        )
+        assert stats["Integrity Status"].value == "Unverifiable"
+        assert "Compromised" not in stats["Integrity Status"].value

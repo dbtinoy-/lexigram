@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from starlette.responses import HTMLResponse
-
+from lexigram.contracts.admin import PageContent
+from lexigram.contracts.admin.widget_content import Stat, StatContent
 from lexigram.contracts.ai.llm import LLMClientProtocol
 from lexigram.contracts.ai.providers import ProviderRegistryProtocol
 from lexigram.logging import get_logger
-from lexigram.ui import Card, Divider, Grid, StatCard, el, render_to_string
 
 logger = get_logger(__name__)
 
@@ -23,7 +22,7 @@ class LlmOverviewPage:
         self._registry = registry
         self._client = client
 
-    async def handle(self, request: Any) -> HTMLResponse:
+    async def handle(self, request: Any) -> PageContent:
         provider_count: str | int = "N/A"
         active_model: str = "N/A"
         client_status: str = "N/A"
@@ -48,79 +47,25 @@ class LlmOverviewPage:
             except Exception:
                 client_status = "error"
 
-        html = render_to_string(
-            el(
-                "div",
-                el(
-                    "h1",
-                    "AI / LLM",
-                    class_="text-2xl font-bold text-[var(--foreground)]",
-                ),
-                el(
-                    "p",
-                    "LLM provider overview, active models, and client status.",
-                    class_="text-sm text-[var(--muted-foreground)] mt-1 mb-6",
-                ),
-                Divider(),
-                Grid(
-                    StatCard(
+        return PageContent(
+            title="AI / LLM",
+            body=StatContent(
+                stats=(
+                    Stat(
                         label="Providers",
                         value=str(provider_count),
                         icon="server",
                     ),
-                    StatCard(
+                    Stat(
                         label="Active Model",
                         value=str(active_model),
                         icon="cpu",
                     ),
-                    StatCard(
+                    Stat(
                         label="Client Latency",
                         value=str(client_status),
                         icon="activity",
                     ),
-                    cols={"default": 1, "lg": 3},
-                    gap=4,
-                ),
-                Card(
-                    title="Registry Details",
-                    content=render_to_string(
-                        el(
-                            "dl",
-                            el(
-                                "dt",
-                                "Providers Registered",
-                                class_="text-sm font-semibold text-[var(--muted-foreground)] py-2",
-                            ),
-                            el(
-                                "dd",
-                                str(provider_count),
-                                class_="text-sm text-[var(--foreground)] pb-3",
-                            ),
-                            el(
-                                "dt",
-                                "Active Model",
-                                class_="text-sm font-semibold text-[var(--muted-foreground)] py-2",
-                            ),
-                            el(
-                                "dd",
-                                str(active_model),
-                                class_="text-sm text-[var(--foreground)] pb-3",
-                            ),
-                            el(
-                                "dt",
-                                "Client Latency",
-                                class_="text-sm font-semibold text-[var(--muted-foreground)] py-2",
-                            ),
-                            el(
-                                "dd",
-                                str(client_status),
-                                class_="text-sm text-[var(--foreground)] pb-3",
-                            ),
-                            class_="divide-y divide-[var(--border)]",
-                        ),
-                    ),
-                ),
-                class_="p-6",
+                )
             ),
         )
-        return HTMLResponse(html)
