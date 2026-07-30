@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     )
     from lexigram.resilience.retry import RetryPolicy
     from lexigram.resilience.retry.retry import retry
-    from lexigram.resilience.throttle import Throttler, get_throttle_stats, throttle
+    from lexigram.resilience.throttle import Throttler
     from lexigram.resilience.timeout import TimeoutManager
     from lexigram.resilience.types import ResilienceStatus as ResilienceStatus
 
@@ -118,8 +118,6 @@ _LAZY_IMPORTS: dict[str, str] = {
     "ResiliencePipeline": "lexigram.resilience.pipeline.executor",
     "retry": "lexigram.resilience.retry.retry",
     "Throttler": "lexigram.resilience.throttle",
-    "get_throttle_stats": "lexigram.resilience.throttle",
-    "throttle": "lexigram.resilience.throttle.throttle",
     # constants
     "DEFAULT_BULKHEAD_MAX_CONCURRENT": "lexigram.resilience.constants",
     "DEFAULT_CB_FAILURE_THRESHOLD": "lexigram.resilience.constants",
