@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lexigram.contracts.queue.protocols import QueueProtocol
+from lexigram.di.container import Container
+from lexigram.queue.admin.contributor import QueueAdminContributor
 from lexigram.queue.config import KafkaDriverConfig, NamedQueueConfig, QueueConfig
 from lexigram.queue.core.dlq import DeadLetterQueue
 from lexigram.queue.di.provider import QueueProvider
@@ -27,9 +29,7 @@ class TestQueueProvider:
     def memory_config(self) -> QueueConfig:
         """Create a single memory backend config."""
         return QueueConfig(
-            backends=[
-                NamedQueueConfig(name="memory", driver="memory", primary=True)
-            ]
+            backends=[NamedQueueConfig(name="memory", driver="memory", primary=True)]
         )
 
     @pytest.fixture
@@ -60,7 +60,8 @@ class TestQueueProvider:
 
         # Check that QueueConfig was registered
         config_calls = [
-            c for c in mock_container.singleton.call_args_list
+            c
+            for c in mock_container.singleton.call_args_list
             if c.args and c.args[0] is QueueConfig
         ]
         assert len(config_calls) > 0
@@ -75,7 +76,8 @@ class TestQueueProvider:
 
         calls = mock_container.singleton.call_args_list
         named_calls = [
-            c for c in calls
+            c
+            for c in calls
             if c.args and c.args[0] is QueueProtocol and c.kwargs.get("name")
         ]
         assert len(named_calls) >= 1
@@ -90,7 +92,8 @@ class TestQueueProvider:
 
         calls = mock_container.singleton.call_args_list
         unnamed_calls = [
-            c for c in calls
+            c
+            for c in calls
             if c.args and c.args[0] is QueueProtocol and not c.kwargs.get("name")
         ]
         assert len(unnamed_calls) >= 1
@@ -105,11 +108,15 @@ class TestQueueProvider:
 
         calls = mock_container.singleton.call_args_list
         memory_calls = [
-            c for c in calls
-            if c.args and c.args[0] is QueueProtocol and c.kwargs.get("name") == "memory"
+            c
+            for c in calls
+            if c.args
+            and c.args[0] is QueueProtocol
+            and c.kwargs.get("name") == "memory"
         ]
         kafka_calls = [
-            c for c in calls
+            c
+            for c in calls
             if c.args and c.args[0] is QueueProtocol and c.kwargs.get("name") == "kafka"
         ]
         assert len(memory_calls) >= 1
@@ -132,6 +139,24 @@ class TestQueueProvider:
         assert isinstance(dlq_calls[0].args[1], DeadLetterQueue)
 
     @pytest.mark.asyncio
+    async def test_contributor_resolvable_unnamed_after_register(
+        self, memory_config: QueueConfig
+    ) -> None:
+        """Admin boots by resolving the contributor without a ``Named`` key.
+
+        Regression: the contributor was registered under ``name="queue"``,
+        so ``container.resolve(QueueAdminContributor)`` raised
+        ``LEX_ERR_DI_004`` at QueueProvider.boot() in downstream apps.
+        """
+        container = Container()
+        provider = QueueProvider(config=memory_config)
+        await provider.register(container)
+        container.freeze()
+        contributor = await container.resolve(QueueAdminContributor)
+        assert contributor.name == "queue"
+        await provider.shutdown()
+
+    @pytest.mark.asyncio
     async def test_boot_health_checks(
         self, mock_container: MagicMock, memory_config: QueueConfig
     ) -> None:
@@ -146,7 +171,7 @@ class TestQueueProvider:
         self, mock_container: MagicMock, memory_config: QueueConfig
     ) -> None:
         """boot() should resolve optional tracer and wire it into backends.
-        
+
         This test verifies that:
         1. QueueProvider.boot() awaits resolve_optional(TracerProtocol)
         2. The resolved tracer is wired into backends via set_tracer()
@@ -154,25 +179,27 @@ class TestQueueProvider:
         from lexigram.testing.fakes import FakeTracer
 
         tracer = FakeTracer()
-        
+
         # Setup mock_container to return the tracer when resolve_optional is called
         async def mock_resolve_optional(contract_type):
             from lexigram.contracts.observability.tracing import TracerProtocol
+
             if contract_type is TracerProtocol:
                 return tracer
             return None
 
         mock_container.resolve_optional = AsyncMock(side_effect=mock_resolve_optional)
-        
+
         provider = QueueProvider(config=memory_config)
         await provider.register(mock_container)
         await provider.boot(mock_container)
 
         # Verify resolve_optional was called for TracerProtocol
         from lexigram.contracts.observability.tracing import TracerProtocol
-        
+
         resolve_calls = [
-            call for call in mock_container.resolve_optional.call_args_list
+            call
+            for call in mock_container.resolve_optional.call_args_list
             if call.args and call.args[0] is TracerProtocol
         ]
         assert len(resolve_calls) > 0, "resolve_optional(TracerProtocol) was not called"
@@ -180,8 +207,9 @@ class TestQueueProvider:
         # Verify backend received the tracer
         for _name, backend in provider._queue_services:
             if hasattr(backend, "_tracer"):
-                assert backend._tracer is tracer, f"Backend {_name} did not receive tracer"
-
+                assert backend._tracer is tracer, (
+                    f"Backend {_name} did not receive tracer"
+                )
 
     async def test_shutdown(
         self, mock_container: MagicMock, memory_config: QueueConfig
