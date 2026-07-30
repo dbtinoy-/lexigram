@@ -532,6 +532,7 @@ class DatabaseProvider(Provider):
             PoolUtilizationWidgetHandler,
         )
         from lexigram.sql.admin.handlers.query_stats import QueryStatsWidgetHandler
+        from lexigram.sql.migrations.runner import MigrationRunnerAdapter
 
         container.singleton(
             PoolUtilizationWidgetHandler,
@@ -543,7 +544,12 @@ class DatabaseProvider(Provider):
         )
         container.singleton(
             MigrationStatusWidgetHandler,
-            lambda: MigrationStatusWidgetHandler(migration_manager=None),  # type: ignore[arg-type]
+            lambda: MigrationStatusWidgetHandler(
+                migration_manager=self._db_provider.migration_manager,  # type: ignore[arg-type]
+                migration_runner=MigrationRunnerAdapter(
+                    self._db_provider.migration_manager
+                ),
+            ),
         )
         container.singleton(SqlAdminContributor, SqlAdminContributor)
 

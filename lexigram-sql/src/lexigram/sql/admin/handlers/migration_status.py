@@ -5,6 +5,7 @@ from __future__ import annotations
 from lexigram.contracts.admin import Stat, StatContent, Tone, WidgetParams
 from lexigram.contracts.admin.errors import AdminError
 from lexigram.contracts.data import MigrationManagerProtocol
+from lexigram.contracts.data.sql.migrations import MigrationRunnerProtocol
 from lexigram.result import Ok, Result
 
 
@@ -13,15 +14,24 @@ class MigrationStatusWidgetHandler:
 
     Args:
         migration_manager: injected MigrationManagerProtocol.
+        migration_runner: optional MigrationRunnerProtocol used to compute
+            pending migrations from disk; omitted when unavailable.
     """
 
-    def __init__(self, migration_manager: MigrationManagerProtocol) -> None:
+    def __init__(
+        self,
+        migration_manager: MigrationManagerProtocol,
+        migration_runner: MigrationRunnerProtocol | None = None,
+    ) -> None:
         """Initialize the handler.
 
         Args:
             migration_manager: Migration manager protocol.
+            migration_runner: Migration runner protocol, or None when no
+                runner is available (pending reports zero).
         """
         self._migration_manager = migration_manager
+        self._migration_runner = migration_runner
 
     async def get_data(self, params: WidgetParams) -> Result[StatContent, AdminError]:
         """Fetch migration status.
@@ -35,8 +45,20 @@ class MigrationStatusWidgetHandler:
         Returns:
             Result with StatContent or AdminError.
         """
+        if self._migration_manager is None:
+            return Ok(
+                StatContent(
+                    stats=(
+                        Stat(label="Applied", value="Unavailable", tone=Tone.WARNING),
+                        Stat(label="Pending", value="Unavailable", tone=Tone.WARNING),
+                    )
+                )
+            )
         applied = await self._migration_manager.get_applied_migrations()
-        pending = await self._migration_manager.get_pending_migrations()
+        if self._migration_runner is not None:
+            pending = await self._migration_runner.get_pending_migrations()
+        else:
+            pending = []
         return Ok(
             StatContent(
                 stats=(
