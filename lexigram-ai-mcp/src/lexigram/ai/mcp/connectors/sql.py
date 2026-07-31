@@ -263,7 +263,7 @@ class SQLConnector:
             )
 
         params = list(where_params)
-        sql = f"SELECT * FROM {_quote_identifier(table)}"
+        sql = f"SELECT * FROM {_quote_identifier(table)}"  # noqa: S608 -- table allowlisted + quoted via _quote_identifier
         if where_sql:
             sql += f" WHERE {where_sql}"
         sql += f" LIMIT ${len(params) + 1}"
@@ -321,7 +321,7 @@ class SQLConnector:
             try:
                 async with self._db.scoped_context():
                     conn = await self._db.get_scoped_connection()
-                    rows = await conn.fetch(f"SELECT * FROM {safe_table} LIMIT 0")
+                    rows = await conn.fetch(f"SELECT * FROM {safe_table} LIMIT 0")  # noqa: S608 -- table allowlisted + quoted via _quote_identifier
                 columns = list(rows[0].keys()) if rows else []
                 return MCPToolResult.text(dumps_str(columns))
             except (

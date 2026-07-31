@@ -67,7 +67,7 @@ class RetryMiddleware:
                             config.jitter if isinstance(config.jitter, float) else 0.1
                         )
                         actual_delay = delay * (
-                            1.0 + random.uniform(-jitter_scale, jitter_scale)
+                            1.0 + random.uniform(-jitter_scale, jitter_scale)  # noqa: S311 — retry jitter (non-crypto)
                         )
                         actual_delay = max(0.0, actual_delay)
                     await asyncio.sleep(actual_delay)

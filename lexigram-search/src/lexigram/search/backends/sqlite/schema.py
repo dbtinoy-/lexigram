@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
+_FACET_FIELD_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+
 
 class SQLiteSchemaManager:
     """Manages SQLite search schema creation and migrations."""
@@ -48,14 +52,14 @@ class SQLiteSchemaManager:
                 INSERT INTO search_{safe_index}_fts(rowid, id, searchable_text)
                 VALUES (new.rowid, new.id, json_extract(new.document, '$._searchable'));
             END
-            """,
+            """,  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
             # Delete trigger
             f"""
             CREATE TRIGGER IF NOT EXISTS search_{safe_index}_ad AFTER DELETE ON search_{safe_index} BEGIN
                 INSERT INTO search_{safe_index}_fts(search_{safe_index}_fts, rowid, id, searchable_text)
                 VALUES ('delete', old.rowid, old.id, json_extract(old.document, '$._searchable'));
             END
-            """,
+            """,  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
             # Update trigger
             f"""
             CREATE TRIGGER IF NOT EXISTS search_{safe_index}_au AFTER UPDATE ON search_{safe_index} BEGIN
@@ -64,7 +68,7 @@ class SQLiteSchemaManager:
                 INSERT INTO search_{safe_index}_fts(rowid, id, searchable_text)
                 VALUES (new.rowid, new.id, json_extract(new.document, '$._searchable'));
             END
-            """,
+            """,  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
         ]
 
         return triggers
@@ -85,7 +89,7 @@ class SQLiteSchemaManager:
         return f"""
             INSERT OR REPLACE INTO search_{safe_index} (id, document, searchable_text, updated_at)
             VALUES (?, ?, ?, datetime('now'))
-        """
+        """  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
 
     def get_search_sql(self, index_name: str) -> str:
         """Generate SQL for basic text search using FTS5."""
@@ -97,7 +101,7 @@ class SQLiteSchemaManager:
             WHERE search_{safe_index}_fts MATCH ?
             ORDER BY score
             LIMIT ? OFFSET ?
-        """
+        """  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
 
     def get_search_highlight_sql(self, index_name: str) -> str:
         """Generate SQL for search with highlighting."""
@@ -110,7 +114,7 @@ class SQLiteSchemaManager:
             WHERE search_{safe_index}_fts MATCH ?
             ORDER BY score
             LIMIT ? OFFSET ?
-        """
+        """  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
 
     def get_search_snippet_sql(self, index_name: str) -> str:
         """Generate SQL for search with snippets."""
@@ -123,7 +127,7 @@ class SQLiteSchemaManager:
             WHERE search_{safe_index}_fts MATCH ?
             ORDER BY score
             LIMIT ? OFFSET ?
-        """
+        """  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
 
     def get_faceted_search_sql(
         self, index_name: str, facets: list[str]
@@ -137,24 +141,26 @@ class SQLiteSchemaManager:
             WHERE search_{safe_index}_fts MATCH ?
             ORDER BY score
             LIMIT ? OFFSET ?
-        """
+        """  # noqa: S608 -- index sanitized by _sanitize (non-identifier chars replaced)
 
         facet_sqls = []
         for facet in facets:
+            if not _FACET_FIELD_RE.fullmatch(facet):
+                raise ValueError(f"Invalid facet field: {facet!r}")
             facet_sql = f"""
                 SELECT document->>'{facet}' AS facet_value, COUNT(*) AS count
                 FROM search_{safe_index}
                 WHERE search_{safe_index}_fts MATCH ?
                 GROUP BY document->>'{facet}'
                 ORDER BY count DESC
-            """
+            """  # noqa: S608 -- facet validated by _FACET_FIELD_RE; index sanitized
             facet_sqls.append((facet, facet_sql))
 
         return search_sql, facet_sqls
 
     def _sanitize(self, index_name: str) -> str:
         """Sanitize index name for safe SQL usage."""
-        return index_name.replace("-", "_").replace(".", "_").replace(" ", "_")
+        return re.sub(r"[^A-Za-z0-9_]", "_", index_name)
 
 
 __all__ = ["SQLiteSchemaManager"]

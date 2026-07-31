@@ -65,7 +65,7 @@ class JinaEmbeddingAdapter(AbstractEmbeddingAdapter):
 
         dimension = 1024 if "v3" in model else 768
         for _ in texts:
-            vector = [random.random() for _ in range(dimension)]
+            vector = [random.random() for _ in range(dimension)]  # noqa: S311 — mock-dummy vectors (non-secret)
             embeddings.append(vector)
 
         return embeddings

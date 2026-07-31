@@ -63,7 +63,7 @@ class HTMLDocument(ABC):
         # Close HTML
         parts.append("</html>")
 
-        return Markup("\n".join(parts))
+        return Markup("\n".join(parts))  # noqa: S704 — framework-composed trusted HTML
 
     def _render_head(self, title: str, **context: Any) -> str:
         """Render the head section."""

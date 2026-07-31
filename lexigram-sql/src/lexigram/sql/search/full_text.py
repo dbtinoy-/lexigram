@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 from enum import StrEnum
+import re
 from typing import TYPE_CHECKING, Any, SupportsIndex, TypeVar, overload
 
 from lexigram.logging import get_logger
@@ -19,6 +20,25 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 TEntity = TypeVar("TEntity")
+
+_SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_filter_key(key: str) -> str:
+    """Return *key* when it is a plain SQL identifier, else raise.
+
+    ``extra_filters`` keys are interpolated into the WHERE clause, so the
+    key must be a bare column identifier and never a raw SQL fragment.
+
+    Raises:
+        ValueError: When the key is not a valid identifier.
+    """
+
+    if _SAFE_IDENTIFIER.fullmatch(key) is None:
+        raise ValueError(
+            f"extra_filters keys must be column identifiers, got {key!r}"
+        )
+    return key
 
 
 class FTSDialect(StrEnum):
@@ -89,6 +109,11 @@ class PostgresFTSQuery:
         config: str = "english",
         plain: bool = True,
     ) -> None:
+        if _SAFE_IDENTIFIER.fullmatch(table) is None:
+            raise ValueError(f"table must be a plain SQL identifier, got {table!r}")
+        for col in columns:
+            if _SAFE_IDENTIFIER.fullmatch(col) is None:
+                raise ValueError(f"columns must be plain SQL identifiers, got {col!r}")
         self.table = table
         self.columns = columns
         self.config = config
@@ -125,13 +150,13 @@ class PostgresFTSQuery:
         if extra_filters:
             for key, value in extra_filters.items():
                 params.append(value)
-                where_parts.append(f"{key} = ${len(params)}")
+                where_parts.append(f"{_safe_filter_key(key)} = ${len(params)}")
 
         where_clause = " AND ".join(where_parts)
         rank_expr = f"ts_rank(to_tsvector($1, {tsvector_expr}), {ts_fn}($1, $2))"
 
         sql = (
-            f"SELECT *, {rank_expr} AS _fts_rank"
+            f"SELECT *, {rank_expr} AS _fts_rank"  # noqa: S608 -- table/columns validated at construction
             f" FROM {self.table}"
             f" WHERE {where_clause}"
             f" ORDER BY _fts_rank DESC"
@@ -169,6 +194,11 @@ class MySQLFTSQuery:
         columns: list[str],
         boolean_mode: bool = False,
     ) -> None:
+        if _SAFE_IDENTIFIER.fullmatch(table) is None:
+            raise ValueError(f"table must be a plain SQL identifier, got {table!r}")
+        for col in columns:
+            if _SAFE_IDENTIFIER.fullmatch(col) is None:
+                raise ValueError(f"columns must be plain SQL identifiers, got {col!r}")
         self.table = table
         self.columns = columns
         self.boolean_mode = boolean_mode
@@ -201,12 +231,12 @@ class MySQLFTSQuery:
         if extra_filters:
             for key, value in extra_filters.items():
                 params.append(value)
-                where_parts.append(f"{key} = %s")
+                where_parts.append(f"{_safe_filter_key(key)} = %s")
 
         where_clause = " AND ".join(where_parts)
 
         sql = (
-            f"SELECT *, {match_expr} AS _fts_score"
+            f"SELECT *, {match_expr} AS _fts_score"  # noqa: S608 -- table/columns validated at construction
             f" FROM {self.table}"
             f" WHERE {where_clause}"
             f" ORDER BY _fts_score DESC"

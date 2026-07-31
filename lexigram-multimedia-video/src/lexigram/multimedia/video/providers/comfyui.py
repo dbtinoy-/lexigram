@@ -195,7 +195,7 @@ class ComfyUiVideoProvider:
             checkpoint=self._checkpoint,
             fps=self._fps,
             motion_bucket_id=self._motion_bucket_id,
-            seed=random.randint(0, 2**32 - 1),
+            seed=random.randint(0, 2**32 - 1),  # noqa: S311 — generation seed (non-crypto)
         )
 
         try:

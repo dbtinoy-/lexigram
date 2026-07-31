@@ -143,7 +143,7 @@ class MCPConfig(BaseConfig):
 
     enabled: bool = Field(default=True, description="Enable the MCP server subsystem")
 
-    host: str = Field(default="0.0.0.0")
+    host: str = Field(default="0.0.0.0")  # noqa: S104 — config default, operator overridable
     """Host to bind to (for HTTP transport)."""
 
     port: int = Field(default=8080, ge=1, le=65535)

@@ -272,7 +272,7 @@ class AdminPageHandler:
                 primary_color=await _resolve_primary_color(self._container)
             )
             theme_css = service.generate_theme_css()
-        except Exception:  # noqa: BLE001 — non-fatal
+        except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
         from lexigram.admin.navigation.manager import NavigationManager
@@ -310,7 +310,7 @@ class AdminPageHandler:
                     theme_css = AdminThemeService(
                         primary_color=branding["primary_color"]
                     ).generate_theme_css()
-        except Exception:  # noqa: BLE001 — non-fatal
+        except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
         shell = AdminShell(
@@ -339,7 +339,7 @@ class AdminPageHandler:
             request,
             "admin_shell.html",
             context={
-                "content": Markup(shell_html),
+                "content": Markup(shell_html),  # noqa: S704 — framework-composed trusted HTML
                 "title": title,
                 "dark_mode": branding.get("dark_mode", ""),
             },
@@ -464,7 +464,7 @@ async def _placeholder_page(
                 )
             )
             theme_css = service.generate_theme_css()
-        except Exception:  # noqa: BLE001 — non-fatal
+        except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
         shell = AdminShell(

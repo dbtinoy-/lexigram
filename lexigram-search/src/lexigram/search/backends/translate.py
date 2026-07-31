@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
+from lexigram.search.backends.filters import _FIELD_NAME_RE
+
 
 @dataclass
 class TranslatedQuery:
@@ -177,13 +179,15 @@ class PostgresQueryTranslator(QueryTranslator):
         # Build facet queries
         aggregations = {}
         for facet in facets:
+            if not _FIELD_NAME_RE.fullmatch(facet):
+                raise ValueError(f"Invalid facet field: {facet!r}")
             aggregations[facet] = f"""
                 SELECT document->>'{facet}' AS value, COUNT(*) AS count
                 FROM search_{{index}}
                 WHERE search_vector @@ websearch_to_tsquery($1, $2)
                 GROUP BY document->>'{facet}'
                 ORDER BY count DESC
-            """
+            """  # noqa: S608 -- facet validated by _FIELD_NAME_RE
 
         return TranslatedQuery(
             query=search_query.query,

@@ -27,13 +27,13 @@ class SqlCheckpointStore(AbstractCheckpointStore):
             query = f"""
                 SELECT position FROM {self.table_name}
                 WHERE name = $1
-            """
+            """  # noqa: S608 — table name validated at init
             val = await self.connection.fetchval(query, name)
         else:
             query = f"""
                 SELECT position FROM {self.table_name}
                 WHERE name = ?
-            """
+            """  # noqa: S608 — table name validated at init
             cursor = await self.connection.execute(query, (name,))
             row = await cursor.fetchone()
             val = row[0] if row else None
@@ -53,7 +53,7 @@ class SqlCheckpointStore(AbstractCheckpointStore):
                 VALUES ($1, $2, $3)
                 ON CONFLICT (name) DO UPDATE
                 SET position = $2, updated_at = $3
-            """
+            """  # noqa: S608 — table name validated at init
             await self.connection.execute(query, name, position, now)
         else:
             query = f"""
@@ -62,7 +62,7 @@ class SqlCheckpointStore(AbstractCheckpointStore):
                 ON CONFLICT(name) DO UPDATE SET
                 position=excluded.position,
                 updated_at=excluded.updated_at
-            """
+            """  # noqa: S608 — table name validated at init
             await self.connection.execute(query, (name, position, now.isoformat()))
             await self.connection.commit()
 
@@ -72,11 +72,11 @@ class SqlCheckpointStore(AbstractCheckpointStore):
 
         if is_asyncpg:
             rows = await self.connection.fetch(
-                f"SELECT name, position FROM {self.table_name}"
+                f"SELECT name, position FROM {self.table_name}"  # noqa: S608 — table name validated at init
             )
         else:
             cursor = await self.connection.execute(
-                f"SELECT name, position FROM {self.table_name}"
+                f"SELECT name, position FROM {self.table_name}"  # noqa: S608 — table name validated at init
             )
             rows = await cursor.fetchall()
 
@@ -88,11 +88,13 @@ class SqlCheckpointStore(AbstractCheckpointStore):
 
         if is_asyncpg:
             await self.connection.execute(
-                f"DELETE FROM {self.table_name} WHERE name = $1", name
+                f"DELETE FROM {self.table_name} WHERE name = $1",  # noqa: S608
+                name,
             )
         else:
             await self.connection.execute(
-                f"DELETE FROM {self.table_name} WHERE name = ?", (name,)
+                f"DELETE FROM {self.table_name} WHERE name = ?",  # noqa: S608
+                (name,),
             )
             await self.connection.commit()
 
@@ -111,7 +113,7 @@ class SqlCheckpointStore(AbstractCheckpointStore):
                 SET owner = $2, expires_at = $3
                 WHERE {self.table_name}_locks.expires_at < $4 OR {self.table_name}_locks.owner = $2
                 RETURNING name
-            """
+            """  # noqa: S608 — table name validated at init
             val = await self.connection.fetchval(
                 query, name, owner, expires_at, now.timestamp()
             )
@@ -119,7 +121,7 @@ class SqlCheckpointStore(AbstractCheckpointStore):
         # SQLite: manual check and update
         # Note: This is simplified and depends on external transaction handling
         check_query = (
-            f"SELECT owner, expires_at FROM {self.table_name}_locks WHERE name = ?"
+            f"SELECT owner, expires_at FROM {self.table_name}_locks WHERE name = ?"  # noqa: S608 — table name validated at init
         )
         cursor = await self.connection.execute(check_query, (name,))
         row = await cursor.fetchone()
@@ -131,7 +133,7 @@ class SqlCheckpointStore(AbstractCheckpointStore):
                     ON CONFLICT(name) DO UPDATE SET
                     owner=excluded.owner,
                     expires_at=excluded.expires_at
-                """
+                """  # noqa: S608 — table name validated at init
             await self.connection.execute(query, (name, owner, expires_at))
             await self.connection.commit()
             return True
@@ -143,13 +145,13 @@ class SqlCheckpointStore(AbstractCheckpointStore):
 
         if is_asyncpg:
             await self.connection.execute(
-                f"DELETE FROM {self.table_name}_locks WHERE name = $1 AND owner = $2",
+                f"DELETE FROM {self.table_name}_locks WHERE name = $1 AND owner = $2",  # noqa: S608 — table name validated at init
                 name,
                 owner,
             )
         else:
             await self.connection.execute(
-                f"DELETE FROM {self.table_name}_locks WHERE name = ? AND owner = ?",
+                f"DELETE FROM {self.table_name}_locks WHERE name = ? AND owner = ?",  # noqa: S608 — table name validated at init
                 (name, owner),
             )
             await self.connection.commit()

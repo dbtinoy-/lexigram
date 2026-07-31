@@ -168,7 +168,7 @@ class SqlWebhookSubscriptionStore:
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         sql = (
-            f"SELECT * FROM webhook_subscriptions {where} "
+            f"SELECT * FROM webhook_subscriptions {where} "  # noqa: S608 -- WHERE composed of fixed condition strings only
             f"ORDER BY created_at DESC LIMIT ? OFFSET ?"
         )
         params.extend([limit, offset])
@@ -335,7 +335,7 @@ class SqlWebhookDeliveryStore:
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         sql = (
-            f"SELECT * FROM webhook_delivery_attempts {where} "
+            f"SELECT * FROM webhook_delivery_attempts {where} "  # noqa: S608 -- WHERE composed of fixed condition strings only
             f"ORDER BY attempted_at DESC LIMIT ? OFFSET ?"
         )
         params.extend([limit, offset])

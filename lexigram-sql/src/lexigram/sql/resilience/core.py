@@ -222,7 +222,7 @@ async def retry_call(
                     jitter_range = (
                         config.jitter if isinstance(config.jitter, float) else 0.5
                     )
-                    delay = delay * (1.0 + _random.uniform(-jitter_range, jitter_range))
+                    delay = delay * (1.0 + _random.uniform(-jitter_range, jitter_range))  # noqa: S311 — jitter (non-crypto)
                 delay = min(delay, config.max_delay)
                 await _asyncio.sleep(delay)
 

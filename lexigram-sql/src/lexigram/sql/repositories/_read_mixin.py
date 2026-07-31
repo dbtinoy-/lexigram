@@ -42,7 +42,7 @@ class _ReadMixin:
         """
         try:
             fields = ", ".join(str(Column(c)) for c in columns) if columns else "*"
-            query = f"SELECT {fields} FROM {self._table} WHERE {self._key_col} = ?"  # type: ignore[attr-defined]
+            query = f"SELECT {fields} FROM {self._table} WHERE {self._key_col} = ?"  # noqa: S608 -- self._table/_key_col are validated Table()/Column() identifiers  # type: ignore[attr-defined]
             if self.soft_delete_enabled and not include_deleted:  # type: ignore[attr-defined]
                 query += " AND deleted_at IS NULL"
 
@@ -100,7 +100,7 @@ class _ReadMixin:
             RepositoryError: On invalid sort field or database failure.
         """
         fields = ", ".join(str(Column(c)) for c in columns) if columns else "*"
-        base_query = f"SELECT {fields} FROM {self._table}"  # type: ignore[attr-defined]
+        base_query = f"SELECT {fields} FROM {self._table}"  # noqa: S608 -- self._table is a validated Table(); fields are Column()-validated  # type: ignore[attr-defined]
         params: list[Any] = []
 
         initial_filters = dict(filters)
@@ -187,7 +187,7 @@ class _ReadMixin:
         """
         try:
             fields = ", ".join(str(Column(c)) for c in columns) if columns else "*"
-            base_query = f"SELECT {fields} FROM {self._table}"  # type: ignore[attr-defined]
+            base_query = f"SELECT {fields} FROM {self._table}"  # noqa: S608 -- self._table is a validated Table(); fields are Column()-validated  # type: ignore[attr-defined]
             params: list[Any] = []
 
             query = await self._apply_filters_to_query(  # type: ignore[attr-defined]
@@ -237,7 +237,7 @@ class _ReadMixin:
             RepositoryError: On database failure.
         """
         try:
-            base_query = f"SELECT COUNT(*) as count FROM {self._table}"  # type: ignore[attr-defined]
+            base_query = f"SELECT COUNT(*) as count FROM {self._table}"  # noqa: S608 -- self._table is a validated Table() identifier  # type: ignore[attr-defined]
             params: list[Any] = []
 
             query = await self._apply_filters_to_query(  # type: ignore[attr-defined]
@@ -281,7 +281,7 @@ class _ReadMixin:
             RepositoryError: On database failure.
         """
         try:
-            base_query = f"SELECT COUNT(*) as count FROM {self._table}"  # type: ignore[attr-defined]
+            base_query = f"SELECT COUNT(*) as count FROM {self._table}"  # noqa: S608 -- self._table is a validated Table() identifier  # type: ignore[attr-defined]
             params: list[Any] = []
 
             query = await self._apply_filters_to_query(  # type: ignore[attr-defined]

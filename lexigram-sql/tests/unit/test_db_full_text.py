@@ -2,7 +2,12 @@
 
 import pytest
 
-from lexigram.sql.search.full_text import FTSResult, FTSDialect
+from lexigram.sql.search.full_text import (
+    FTSResult,
+    FTSDialect,
+    MySQLFTSQuery,
+    PostgresFTSQuery,
+)
 
 
 class TestFTSDialect:
@@ -17,6 +22,40 @@ class TestFTSDialect:
         """Test FTSDialect has expected members."""
         members = list(FTSDialect)
         assert len(members) == 2
+
+
+class TestFTSQueryIdentifierValidation:
+    """Table/column identifiers are validated before SQL interpolation."""
+
+    @pytest.mark.parametrize(
+        ("table", "column"),
+        [
+            ("docs; DROP TABLE t; --", "title"),
+            ("docs", "title') UNION SELECT 1;--"),
+            ('"docs"', "title"),
+        ],
+    )
+    def test_postgres_rejects_non_identifiers(self, table: str, column: str) -> None:
+        """Invalid table or column names raise ValueError at construction."""
+        with pytest.raises(ValueError, match="identifier"):
+            PostgresFTSQuery(table=table, columns=[column])
+
+        with pytest.raises(ValueError, match="identifier"):
+            MySQLFTSQuery(table=table, columns=[column])
+
+    def test_valid_identifiers_build_sql(self) -> None:
+        """Plain identifiers produce valid interpolated SQL."""
+        query = PostgresFTSQuery(table="articles", columns=["title", "body"])
+        sql, params = query.build("python", limit=5)
+        assert "FROM articles" in sql
+        assert "coalesce(body::text, '')" in sql
+        assert params[1] == "python"
+
+        mysql = MySQLFTSQuery(table="articles", columns=["title", "body"])
+        sql, params = mysql.build("python", limit=5)
+        assert "FROM articles" in sql
+        assert "MATCH(title, body)" in sql
+        assert params[0] == "python"
 
 
 class TestFTSResult:

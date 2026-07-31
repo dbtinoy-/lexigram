@@ -18,7 +18,7 @@ ENV_NESTED_DELIMITER: str = "__"
 
 # -- Default Server Configuration --------------------------------------------
 
-DEFAULT_HOST: str = "0.0.0.0"
+DEFAULT_HOST: str = "0.0.0.0"  # noqa: S104 — config default; runner binds 127.0.0.1
 DEFAULT_PORT: int = 8000
 DEFAULT_WORKERS: int = 1
 DEFAULT_RELOAD: bool = False

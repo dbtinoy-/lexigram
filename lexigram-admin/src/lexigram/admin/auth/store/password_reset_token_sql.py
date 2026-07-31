@@ -90,14 +90,14 @@ class AdminPasswordResetTokenSqlStore:
     async def create(self, email: str, token_hash: str, expires_at: datetime) -> None:
         """Persist a new token record (see protocol docs)."""
         await self._db.execute(
-            f"INSERT INTO {_TABLE} (token_hash, email, expires_at) VALUES (?, ?, ?)",
+            f"INSERT INTO {_TABLE} (token_hash, email, expires_at) VALUES (?, ?, ?)",  # noqa: S608 — table name is module constant "admin_password_reset_tokens", never user input
             [token_hash, email, expires_at],
         )
 
     async def find_by_hash(self, token_hash: str) -> AdminPasswordResetToken | None:
         """Look up a token by sha256 hash (see protocol docs)."""
         result = await self._db.execute_query(
-            f"SELECT token_hash, email, expires_at, consumed_at FROM {_TABLE} WHERE token_hash = ?",
+            f"SELECT token_hash, email, expires_at, consumed_at FROM {_TABLE} WHERE token_hash = ?",  # noqa: S608 — table name is module constant "admin_password_reset_tokens", never user input
             [token_hash],
         )
         row = None
@@ -124,7 +124,7 @@ class AdminPasswordResetTokenSqlStore:
         lookup.
         """
         result = await self._db.execute(
-            f"UPDATE {_TABLE} SET consumed_at = {now_expr(self._db)} "
+            f"UPDATE {_TABLE} SET consumed_at = {now_expr(self._db)} "  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
             "WHERE token_hash = ? AND consumed_at IS NULL "
             f"AND expires_at > {now_expr(self._db)}",
             [token_hash],

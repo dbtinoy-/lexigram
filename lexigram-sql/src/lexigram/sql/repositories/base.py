@@ -174,7 +174,7 @@ class SQLRepository(  # type: ignore[misc]
         )
 
         try:
-            base_query = f"SELECT COUNT(*) as count FROM {self._table}"
+            base_query = f"SELECT COUNT(*) as count FROM {self._table}"  # noqa: S608 -- self._table is a validated, quoted Table() identifier
             params: list[Any] = []
             query = await self._apply_filters_to_query(
                 base_query, params, dict(filters)

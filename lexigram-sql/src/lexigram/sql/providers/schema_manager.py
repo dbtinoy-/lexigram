@@ -48,7 +48,7 @@ class SchemaManager:
             try:
                 safe_name = Table(table_name)
                 await executor.execute_query(
-                    f"SELECT 1 FROM {safe_name} LIMIT 1",
+                    f"SELECT 1 FROM {safe_name} LIMIT 1",  # noqa: S608 -- safe_name is a Table() validated identifier
                 )
             except (OSError, RuntimeError, ValueError):
                 with contextlib.suppress(ImportError, AttributeError, RuntimeError):

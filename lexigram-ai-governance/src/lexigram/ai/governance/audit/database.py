@@ -135,7 +135,7 @@ class DatabaseAuditStore:
         await self._ensure_table()
         sql, params = self._build_where(query)
         full_sql = (
-            f"SELECT * FROM ai_audit_events{sql} "
+            f"SELECT * FROM ai_audit_events{sql} "  # noqa: S608 -- WHERE from fixed condition strings; values parameterized
             f"ORDER BY timestamp DESC "
             f"LIMIT ? OFFSET ?"
         )
@@ -161,7 +161,7 @@ class DatabaseAuditStore:
 
         # -- totals ---------------------------------------------------------
         totals_sql = (
-            "SELECT COUNT(*) AS total_events, "
+            "SELECT COUNT(*) AS total_events, "  # noqa: S608 -- {where} from fixed condition strings; values parameterized
             "COALESCE(SUM(cost), 0.0) AS total_spend, "
             "COALESCE(SUM(tokens), 0) AS total_tokens, "
             "SUM(CASE WHEN status = 'denied' THEN 1 ELSE 0 END) AS denied_count "
@@ -178,7 +178,7 @@ class DatabaseAuditStore:
 
         # -- by model -------------------------------------------------------
         model_result = await self._db.execute_query(
-            f"SELECT COALESCE(model, 'unknown') AS grp, COUNT(*) AS cnt "
+            f"SELECT COALESCE(model, 'unknown') AS grp, COUNT(*) AS cnt "  # noqa: S608 -- {where} from fixed condition strings; values parameterized
             f"FROM ai_audit_events{where} GROUP BY model",
             base_params,
         )
@@ -186,7 +186,7 @@ class DatabaseAuditStore:
 
         # -- by user --------------------------------------------------------
         user_result = await self._db.execute_query(
-            f"SELECT COALESCE(user_id, 'anonymous') AS grp, COUNT(*) AS cnt "
+            f"SELECT COALESCE(user_id, 'anonymous') AS grp, COUNT(*) AS cnt "  # noqa: S608 -- {where} from fixed condition strings; values parameterized
             f"FROM ai_audit_events{where} GROUP BY user_id",
             base_params,
         )
@@ -194,7 +194,7 @@ class DatabaseAuditStore:
 
         # -- by event type --------------------------------------------------
         type_result = await self._db.execute_query(
-            f"SELECT event_type AS grp, COUNT(*) AS cnt "
+            f"SELECT event_type AS grp, COUNT(*) AS cnt "  # noqa: S608 -- {where} from fixed condition strings; values parameterized
             f"FROM ai_audit_events{where} GROUP BY event_type",
             base_params,
         )

@@ -77,7 +77,7 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
     async def get_config(self, tenant_id: str, key: str) -> Any | None:
         await self._ensure_table()
         result = await self._db.execute(
-            f"SELECT value FROM {_TABLE} WHERE tenant_id = ? AND key = ?",
+            f"SELECT value FROM {_TABLE} WHERE tenant_id = ? AND key = ?",  # noqa: S608 — table name is module constant "tenant_configs", never user input
             [tenant_id, key],
         )
         if hasattr(result, "rows") and result.rows:
@@ -88,7 +88,7 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
     async def get_all_config(self, tenant_id: str) -> dict[str, Any]:
         await self._ensure_table()
         result = await self._db.execute(
-            f"SELECT key, value FROM {_TABLE} WHERE tenant_id = ?",
+            f"SELECT key, value FROM {_TABLE} WHERE tenant_id = ?",  # noqa: S608 — table name is module constant "tenant_configs", never user input
             [tenant_id],
         )
         rows: dict[str, Any] = {}
@@ -105,7 +105,7 @@ class AdminSettingsDbProvider(TenantConfigProviderProtocol):
             f"""INSERT INTO {_TABLE} (tenant_id, key, value)
                VALUES (?, ?, ?)
                ON CONFLICT (tenant_id, key)
-               DO UPDATE SET value = excluded.value, updated_at = {now_expr(self._db)}""",
+               DO UPDATE SET value = excluded.value, updated_at = {now_expr(self._db)}""",  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
             [tenant_id, key, dumps_str(value)],
         )
 

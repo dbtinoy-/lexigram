@@ -94,12 +94,12 @@ class DatabaseStatePersistence(StatePersistenceProtocol):
     async def load_transitions(self, machine_id: str) -> list[StateTransitionRecord]:
         """Load transitions ordered by version."""
         await self._ensure_schema()
-        machine_id_sql = machine_id.replace("'", "''")
         result = await self._provider.execute_query(
-            f"SELECT machine_id, version, from_state, event, to_state, transitioned_at "
+            f"SELECT machine_id, version, from_state, event, to_state, transitioned_at "  # noqa: S608 -- table name allowlisted by _TABLE_NAME_RE in __init__
             f"FROM {self._table_name} "
-            f"WHERE machine_id = '{machine_id_sql}' "
-            "ORDER BY version ASC"
+            "WHERE machine_id = ? "
+            "ORDER BY version ASC",
+            [machine_id],
         )
 
         records: list[StateTransitionRecord] = []
@@ -119,11 +119,11 @@ class DatabaseStatePersistence(StatePersistenceProtocol):
     async def get_current_version(self, machine_id: str) -> int:
         """Return latest version for machine, or ``0`` when absent."""
         await self._ensure_schema()
-        machine_id_sql = machine_id.replace("'", "''")
         result = await self._provider.execute_query(
-            f"SELECT COALESCE(MAX(version), 0) AS version "
+            f"SELECT COALESCE(MAX(version), 0) AS version "  # noqa: S608 -- table name allowlisted by _TABLE_NAME_RE in __init__
             f"FROM {self._table_name} "
-            f"WHERE machine_id = '{machine_id_sql}'"
+            "WHERE machine_id = ?",
+            [machine_id],
         )
         if not result.rows:
             return 0

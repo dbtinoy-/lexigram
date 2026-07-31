@@ -78,7 +78,7 @@ class RetryMiddleware(AbstractMiddleware[Message, Any]):
         delay = min(delay, self._backoff_max)
 
         # Add jitter
-        jitter = random.uniform(
+        jitter = random.uniform(  # noqa: S311 — backoff jitter (non-crypto)
             -self._backoff_jitter * delay,
             self._backoff_jitter * delay,
         )

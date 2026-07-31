@@ -281,7 +281,7 @@ class ServerManager:
         env["LEX_ENV"] = "production"
 
         try:
-            subprocess.run(cmd, env=env, check=False)
+            subprocess.run(cmd, env=env, check=False)  # noqa: S603 — registry-built argv list
         except OSError as e:
             raise RuntimeError(f"Failed to start server: {e}") from e
 
@@ -294,7 +294,7 @@ class ServerManager:
         env["LEX_ENV"] = "development"
 
         try:
-            subprocess.run(cmd, env=env, check=False)
+            subprocess.run(cmd, env=env, check=False)  # noqa: S603 — registry-built argv list
         except OSError as e:
             raise RuntimeError(f"Failed to start dev server: {e}") from e
 

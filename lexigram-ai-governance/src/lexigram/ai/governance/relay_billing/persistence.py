@@ -302,7 +302,7 @@ class DatabaseRelayUsageStore(RelayUsageStoreProtocol):
                 clauses.append(f"{column} {operator} ?")
                 params.append(value)
         sql = (
-            f"SELECT * FROM ai_relay_usage WHERE {' AND '.join(clauses)} "
+            f"SELECT * FROM ai_relay_usage WHERE {' AND '.join(clauses)} "  # noqa: S608 -- columns/operators from constant tuples; values parameterized
             "ORDER BY created_at DESC"
         )
         result = await self._db.execute_query(sql, params)

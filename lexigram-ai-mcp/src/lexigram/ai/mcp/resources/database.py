@@ -123,7 +123,7 @@ class DatabaseResourceProvider:
                 async with self._db.scoped_context():
                     conn = await self._db.get_scoped_connection()
                     result = await conn.fetch(
-                        f'SELECT * FROM "{safe_table}" LIMIT $1',
+                        f'SELECT * FROM "{safe_table}" LIMIT $1',  # noqa: S608 -- table allowlisted + double-quote-escaped
                         self._max_list,
                     )
                     return dumps_str(result)
@@ -133,7 +133,7 @@ class DatabaseResourceProvider:
                 async with self._db.scoped_context():
                     conn = await self._db.get_scoped_connection()
                     result = await conn.fetch(
-                        f'SELECT * FROM "{safe_table}" WHERE id = $1',
+                        f'SELECT * FROM "{safe_table}" WHERE id = $1',  # noqa: S608 -- table allowlisted + double-quote-escaped
                         record_id,
                     )
                     if result:

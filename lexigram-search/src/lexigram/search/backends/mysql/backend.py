@@ -8,6 +8,7 @@ internals and belongs here alongside the other search backends.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 from lexigram import serialization as json
@@ -111,6 +112,7 @@ class MySQLDatabaseSearchBackend:
         **kwargs: Any,
     ) -> SearchResponse:
         """Full-text search using MySQL ``MATCH … AGAINST``."""
+        index_name = self._sanitize_index_name(index_name)
         await self._ensure_table(index_name)
 
         mode = self.fulltext_mode
@@ -135,7 +137,7 @@ class MySQLDatabaseSearchBackend:
                 {filter_clause}
                 ORDER BY score DESC
                 LIMIT %s OFFSET %s
-                """,
+                """,  # noqa: S608 -- index sanitized, mode from init config, filters allowlisted
                 params,
             )
             rows = result.rows if hasattr(result, "rows") else []
@@ -185,6 +187,7 @@ class MySQLDatabaseSearchBackend:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Upsert a single document into the MySQL FULLTEXT search table."""
+        index = self._sanitize_index_name(index)
         await self._ensure_table(index)
         doc_id = self._extract_doc_id(document)
         searchable = self._extract_searchable_text(document)
@@ -199,7 +202,7 @@ class MySQLDatabaseSearchBackend:
                     document = VALUES(document),
                     searchable_text = VALUES(searchable_text),
                     updated_at = NOW()
-                """,
+                """,  # noqa: S608 -- index name sanitized by _sanitize_index_name
                 [doc_id, json.dumps(document), searchable],
             )
 
@@ -207,10 +210,11 @@ class MySQLDatabaseSearchBackend:
 
     async def delete_document(self, index: str, doc_id: str, **kwargs: Any) -> bool:
         """Delete a single document by ID."""
+        index = self._sanitize_index_name(index)
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
             await conn.execute(
-                f"DELETE FROM search_{index} WHERE id = %s",
+                f"DELETE FROM search_{index} WHERE id = %s",  # noqa: S608 -- index name sanitized by _sanitize_index_name
                 [doc_id],
             )
         return True
@@ -231,6 +235,7 @@ class MySQLDatabaseSearchBackend:
             return
         if not index:
             raise ValueError("index name is required for MySQLSearchBackend.index_many")
+        index = self._sanitize_index_name(index)
         await self._ensure_table(index)
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
@@ -244,7 +249,7 @@ class MySQLDatabaseSearchBackend:
                         document = VALUES(document),
                         searchable_text = VALUES(searchable_text),
                         updated_at = NOW()
-                    """,
+                    """,  # noqa: S608 -- index sanitized via _sanitize_index_name
                     [doc_id, json.dumps(document), searchable],
                 )
 
@@ -293,7 +298,7 @@ class MySQLDatabaseSearchBackend:
     @staticmethod
     def _sanitize_index_name(name: str) -> str:
         """Return a safe SQL identifier by replacing special characters with underscores."""
-        return name.replace("-", "_").replace(".", "_").replace(" ", "_")
+        return re.sub(r"[^A-Za-z0-9_]", "_", name)
 
     @staticmethod
     def _extract_doc_id(document: dict[str, Any]) -> str:

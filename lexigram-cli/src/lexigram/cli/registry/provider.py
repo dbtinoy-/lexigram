@@ -378,7 +378,7 @@ class WebProvider(Provider):
     description = "Web framework"
     config = {
         "web": {
-            "host": "0.0.0.0",
+            "host": "0.0.0.0",  # noqa: S104 — provider config template default
             "port": 8000,
         },
     }
@@ -541,8 +541,8 @@ class ProviderInstaller:
         """Install a provider package using uv."""
         info = provider.get_info()
         try:
-            result = subprocess.run(
-                ["uv", "add", info.package],
+            result = subprocess.run(  # noqa: S603 — argv list, no shell
+                ["uv", "add", info.package],  # noqa: S607 — static CLI tool on PATH (operator-invoked)
                 check=False,
                 capture_output=True,
                 text=True,

@@ -100,7 +100,7 @@ class DatabaseLockStore:
                 INSERT INTO {self._table_name} (lock_name, owner, expires_at)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (lock_name) DO NOTHING
-                """,
+                """,  # noqa: S608 -- self._table_name set at init, values parameterized
                     lock_name,
                     owner,
                     expires_at,
@@ -112,7 +112,7 @@ class DatabaseLockStore:
 
             # Lock exists — check whether it has expired.
             row = await conn.fetchrow(
-                f"SELECT expires_at FROM {self._table_name} WHERE lock_name = $1",
+                f"SELECT expires_at FROM {self._table_name} WHERE lock_name = $1",  # noqa: S608 -- self._table_name set at init, values parameterized
                 lock_name,
             )
 
@@ -125,7 +125,7 @@ class DatabaseLockStore:
                     UPDATE {self._table_name}
                     SET owner = $2, expires_at = $3
                     WHERE lock_name = $1 AND expires_at < NOW()
-                    """,
+                    """,  # noqa: S608 -- self._table_name set at init, values parameterized
                         lock_name,
                         owner,
                         expires_at,
@@ -152,7 +152,7 @@ class DatabaseLockStore:
                     f"""
                 DELETE FROM {self._table_name}
                 WHERE lock_name = $1 AND owner = $2
-                """,
+                """,  # noqa: S608 -- self._table_name set at init, values parameterized
                     lock_name,
                     owner,
                 ),
@@ -183,7 +183,7 @@ class DatabaseLockStore:
                 UPDATE {self._table_name}
                 SET expires_at = $3
                 WHERE lock_name = $1 AND owner = $2
-                """,
+                """,  # noqa: S608 -- self._table_name set at init, values parameterized
                     lock_name,
                     owner,
                     new_expires_at,

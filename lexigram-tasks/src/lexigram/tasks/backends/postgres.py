@@ -111,7 +111,7 @@ class PostgresTaskQueue:
                 f"""
                 INSERT INTO {table} (id, payload, priority)
                 VALUES ($1, $2::jsonb, $3)
-                """,
+                """,  # noqa: S608 -- dialect-quoted Table identifier from validated config
                 [task_id, dumps(payload), priority],
             )
 
@@ -149,7 +149,7 @@ class PostgresTaskQueue:
                 FROM candidate
                 WHERE t.id = candidate.id
                 RETURNING t.id, t.payload, t.priority
-                """,
+                """,  # noqa: S608 -- dialect-quoted Table identifier from validated config
             )
 
             rows = result.rows if hasattr(result, "rows") else []
@@ -176,7 +176,7 @@ class PostgresTaskQueue:
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
             await conn.execute(
-                f"DELETE FROM {table} WHERE id = $1",
+                f"DELETE FROM {table} WHERE id = $1",  # noqa: S608 -- dialect-quoted Table identifier from validated config
                 [job_id],
             )
 
@@ -199,7 +199,7 @@ class PostgresTaskQueue:
                 UPDATE {table}
                 SET status = 'pending', available_at = NOW() + $2 * INTERVAL '1 second', locked_by = NULL, locked_at = NULL
                 WHERE id = $1
-                """,
+                """,  # noqa: S608 -- dialect-quoted Table identifier from validated config
                 [job_id, delay_seconds],
             )
 
@@ -232,7 +232,7 @@ class PostgresTaskQueue:
                 WHERE status = 'in_progress'
                   AND locked_at <= NOW() - $1 * INTERVAL '1 second'
                   AND attempts > $2
-                """,
+                """,  # noqa: S608 -- dialect-quoted Table identifier from validated config
                 [visibility_timeout_seconds, self.config.max_attempts],
             )
 
@@ -243,7 +243,7 @@ class PostgresTaskQueue:
                 WHERE status = 'in_progress'
                   AND locked_at <= NOW() - $1 * INTERVAL '1 second'
                   AND attempts <= $2
-                """,
+                """,  # noqa: S608 -- dialect-quoted Table identifier from validated config
                 [visibility_timeout_seconds, self.config.max_attempts],
             )
 
@@ -272,7 +272,7 @@ class PostgresTaskQueue:
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
             result = await conn.execute(
-                f"SELECT COUNT(*) FROM {table} WHERE status = 'pending' AND available_at <= NOW()",
+                f"SELECT COUNT(*) FROM {table} WHERE status = 'pending' AND available_at <= NOW()",  # noqa: S608 -- dialect-quoted Table identifier from validated config
             )
             rows = result.rows if hasattr(result, "rows") else []
             return int(rows[0]["count"]) if rows else 0
@@ -289,7 +289,7 @@ class PostgresTaskQueue:
 
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
-            await conn.execute(f"DELETE FROM {table}")
+            await conn.execute(f"DELETE FROM {table}")  # noqa: S608 -- dialect-quoted Table identifier from validated config
 
     async def get_task_status(self, job_id: str) -> str | None:
         """Return the status string for the given job ID, or None if not found."""
@@ -304,7 +304,7 @@ class PostgresTaskQueue:
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
             result = await conn.execute(
-                f"SELECT status FROM {table} WHERE id = $1",
+                f"SELECT status FROM {table} WHERE id = $1",  # noqa: S608 -- dialect-quoted Table identifier from validated config
                 [job_id],
             )
             rows = result.rows if hasattr(result, "rows") else []

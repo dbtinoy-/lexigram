@@ -117,10 +117,11 @@ class PostgresDatabaseSearchBackend:
         **kwargs: Any,
     ) -> SearchResponse:
         """Full-text search using PostgreSQL ``websearch_to_tsquery``."""
+        index_name = self._sanitize_index_name(index_name)
         await self._ensure_table(index_name)
 
         sql = (
-            f"SELECT id, document, "
+            f"SELECT id, document, "  # noqa: S608 -- index name sanitized by _sanitize_index_name
             f"ts_rank(search_vector, websearch_to_tsquery($1, $2)) AS score "
             f"FROM search_{index_name} "
             f"WHERE search_vector @@ websearch_to_tsquery($1, $2)"
@@ -189,6 +190,7 @@ class PostgresDatabaseSearchBackend:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Upsert a single document into the PostgreSQL search table."""
+        index = self._sanitize_index_name(index)
         await self._ensure_table(index)
         doc_id = self._extract_doc_id(document)
         prepared = self._prepare_document(document)
@@ -203,7 +205,7 @@ class PostgresDatabaseSearchBackend:
                     document = EXCLUDED.document,
                     search_vector = to_tsvector($3, EXCLUDED.document::text),
                     updated_at = NOW()
-                """,
+                """,  # noqa: S608 -- index name sanitized by _sanitize_index_name
                 [doc_id, json.dumps(prepared), self.text_search_config],
             )
 
@@ -211,10 +213,11 @@ class PostgresDatabaseSearchBackend:
 
     async def delete_document(self, index: str, doc_id: str, **kwargs: Any) -> bool:
         """Delete a single document by ID."""
+        index = self._sanitize_index_name(index)
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
             result = await conn.execute(
-                f"DELETE FROM search_{index} WHERE id = $1",
+                f"DELETE FROM search_{index} WHERE id = $1",  # noqa: S608 -- index name sanitized by _sanitize_index_name
                 [doc_id],
             )
         return hasattr(result, "row_count") and result.row_count > 0
@@ -237,6 +240,7 @@ class PostgresDatabaseSearchBackend:
             raise ValueError(
                 "index name is required for PostgresSearchBackend.index_many"
             )
+        index = self._sanitize_index_name(index)
         await self._ensure_table(index)
         async with self._provider.scoped_context():
             conn = await self._provider.get_scoped_connection()
@@ -250,7 +254,7 @@ class PostgresDatabaseSearchBackend:
                         document = EXCLUDED.document,
                         search_vector = to_tsvector($3, EXCLUDED.document::text),
                         updated_at = NOW()
-                    """,
+                    """,  # noqa: S608 -- index sanitized via _sanitize_index_name
                     [doc_id, json.dumps(prepared), self.text_search_config],
                 )
 
@@ -301,7 +305,7 @@ class PostgresDatabaseSearchBackend:
             if not _SAFE_JSON_KEY_RE.match(facet_field):
                 raise ValueError(f"Invalid facet field: {facet_field!r}")
         search_sql = (
-            f"SELECT id, document, "
+            f"SELECT id, document, "  # noqa: S608 -- index name sanitized by _sanitize_index_name
             f"ts_rank(search_vector, websearch_to_tsquery($1, $2)) AS score "
             f"FROM search_{safe_index} "
             f"WHERE search_vector @@ websearch_to_tsquery($1, $2)"
@@ -323,7 +327,7 @@ class PostgresDatabaseSearchBackend:
         facet_queries: list[tuple[str, str]] = []
         for facet_field in facets:
             fsql = (
-                f"SELECT document->>'{facet_field}' AS facet_value, COUNT(*) AS count "
+                f"SELECT document->>'{facet_field}' AS facet_value, COUNT(*) AS count "  # noqa: S608 -- facet validated by _SAFE_JSON_KEY_RE; index sanitized
                 f"FROM search_{safe_index} "
                 f"WHERE search_vector @@ websearch_to_tsquery($1, $2)"
             )
@@ -393,7 +397,7 @@ class PostgresDatabaseSearchBackend:
     @staticmethod
     def _sanitize_index_name(name: str) -> str:
         """Return a safe SQL identifier by replacing special characters with underscores."""
-        return name.replace("-", "_").replace(".", "_").replace(" ", "_")
+        return re.sub(r"[^A-Za-z0-9_]", "_", name)
 
     @staticmethod
     def _extract_doc_id(document: dict[str, Any]) -> str:

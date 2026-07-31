@@ -29,13 +29,13 @@ class SqlIdempotencyStore(AbstractIdempotencyStore):
             query = f"""
                 SELECT 1 FROM {self.table_name}
                 WHERE consumer_id = $1 AND message_id = $2
-            """
+            """  # noqa: S608 — table name validated by validate_table_name at init
             val = await self.connection.fetchval(query, consumer_id, msg_id_str)
         else:
             query = f"""
                 SELECT 1 FROM {self.table_name}
                 WHERE consumer_id = ? AND message_id = ?
-            """
+            """  # noqa: S608 — table name validated by validate_table_name at init
             cursor = await self.connection.execute(query, (consumer_id, msg_id_str))
             row = await cursor.fetchone()
             val = row[0] if row else None
@@ -60,13 +60,13 @@ class SqlIdempotencyStore(AbstractIdempotencyStore):
                 INSERT INTO {self.table_name} (consumer_id, message_id, expires_at)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (consumer_id, message_id) DO UPDATE SET expires_at = $3
-            """
+            """  # noqa: S608 — table name validated by validate_table_name at init
             await self.connection.execute(query, consumer_id, msg_id_str, expires_at)
         else:
             query = f"""
                 INSERT OR REPLACE INTO {self.table_name} (consumer_id, message_id, expires_at)
                 VALUES (?, ?, ?)
-            """
+            """  # noqa: S608 — table name validated by validate_table_name at init
             await self.connection.execute(query, (consumer_id, msg_id_str, expires_at))
             await self.connection.commit()
 
@@ -77,7 +77,7 @@ class SqlIdempotencyStore(AbstractIdempotencyStore):
 
         if is_asyncpg:
             res = await self.connection.execute(
-                f"DELETE FROM {self.table_name} WHERE expires_at IS NOT NULL AND expires_at < $1",
+                f"DELETE FROM {self.table_name} WHERE expires_at IS NOT NULL AND expires_at < $1",  # noqa: S608 — table name validated by validate_table_name at init
                 now,
             )
             # asyncpg execute returns a status string like "DELETE 5"
@@ -87,7 +87,7 @@ class SqlIdempotencyStore(AbstractIdempotencyStore):
                 return 0
         else:
             cursor = await self.connection.execute(
-                f"DELETE FROM {self.table_name} WHERE expires_at IS NOT NULL AND expires_at < ?",
+                f"DELETE FROM {self.table_name} WHERE expires_at IS NOT NULL AND expires_at < ?",  # noqa: S608 — table name validated by validate_table_name at init
                 (now,),
             )
             await self.connection.commit()

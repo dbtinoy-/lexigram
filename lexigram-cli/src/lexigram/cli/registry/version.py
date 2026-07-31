@@ -57,7 +57,7 @@ class GitVersionSource(VersionSource):
     def get_version(self) -> str | None:
         try:
             result = subprocess.run(
-                ["git", "describe", "--tags", "--always"],
+                ["git", "describe", "--tags", "--always"],  # noqa: S607 — static CLI tool on PATH (operator-invoked)
                 check=False,
                 capture_output=True,
                 text=True,

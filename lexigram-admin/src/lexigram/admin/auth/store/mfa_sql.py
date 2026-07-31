@@ -104,7 +104,7 @@ class AdminMfaSqlStore:
         re-encrypted on the next ``save_secret``.
         """
         result = await self._db.execute_query(
-            f"SELECT secret FROM {_TABLE} WHERE user_id = ?",
+            f"SELECT secret FROM {_TABLE} WHERE user_id = ?",  # noqa: S608 — table name is module constant "admin_mfa_totp", never user input
             [user_id],
         )
         row = None
@@ -142,14 +142,14 @@ class AdminMfaSqlStore:
             ON CONFLICT (user_id) DO UPDATE SET
                 secret = excluded.secret,
                 updated_at = {now_expr(self._db)}
-            """,
+            """,  # noqa: S608 — table name is module constant, now_expr yields fixed NOW()/CURRENT_TIMESTAMP
             [user_id, stored],
         )
 
     async def disable(self, user_id: str) -> None:
         """Remove the TOTP secret for a user (2FA off)."""
         await self._db.execute(
-            f"DELETE FROM {_TABLE} WHERE user_id = ?",
+            f"DELETE FROM {_TABLE} WHERE user_id = ?",  # noqa: S608 — table name is module constant "admin_mfa_totp", never user input
             [user_id],
         )
 

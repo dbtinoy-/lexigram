@@ -27,7 +27,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from lexigram.contracts.data.identifiers import Table
+from lexigram.contracts.data.identifiers import Column, Table
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
 from lexigram.sql.exceptions import DatabaseConnectionError, DatabaseError, QueryError
@@ -196,7 +196,8 @@ class BatchProcessor:
                 )
 
             sql = (
-                f"INSERT INTO {Table(table)} ({', '.join(columns)}) "
+                f"INSERT INTO {Table(table)} "  # noqa: S608 -- identifiers quoted via Table()/Column()
+                f"({', '.join(Column(c) for c in columns)}) "
                 f"VALUES {', '.join(placeholders_per_row)}"
             )
 

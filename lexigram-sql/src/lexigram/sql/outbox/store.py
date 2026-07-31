@@ -48,7 +48,7 @@ class SQLOutboxStore:
             )
             created_at = ambient_clock.now().isoformat()
             await self._db.execute(
-                f"INSERT INTO {self._table} (id, event_type, payload, status, created_at) "
+                f"INSERT INTO {self._table} (id, event_type, payload, status, created_at) "  # noqa: S608 -- self._table set at init (default "outbox_events"), values parameterized
                 "VALUES (:id, :event_type, :payload, 'pending', :created_at)",
                 {
                     "id": event_id,
@@ -62,7 +62,7 @@ class SQLOutboxStore:
     async def fetch_pending(self, limit: int = 100) -> list[dict[str, Any]]:
         """Fetch undelivered outbox events ordered by creation time."""
         rows = await self._db.fetch_all(
-            f"SELECT id, event_type, payload, status, created_at FROM {self._table} "
+            f"SELECT id, event_type, payload, status, created_at FROM {self._table} "  # noqa: S608 -- self._table set at init (default "outbox_events"), values parameterized
             "WHERE status = 'pending' ORDER BY created_at ASC LIMIT :limit",
             {"limit": limit},
         )
@@ -71,14 +71,14 @@ class SQLOutboxStore:
     async def mark_delivered(self, event_id: str) -> None:
         """Mark an outbox event as delivered."""
         await self._db.execute(
-            f"UPDATE {self._table} SET status = 'delivered' WHERE id = :id",
+            f"UPDATE {self._table} SET status = 'delivered' WHERE id = :id",  # noqa: S608 -- self._table set at init (default "outbox_events"), values parameterized
             {"id": event_id},
         )
 
     async def mark_failed(self, event_id: str, error: str = "") -> None:
         """Mark an outbox event as permanently failed."""
         await self._db.execute(
-            f"UPDATE {self._table} SET status = 'failed', error = :error WHERE id = :id",
+            f"UPDATE {self._table} SET status = 'failed', error = :error WHERE id = :id",  # noqa: S608 -- self._table set at init (default "outbox_events"), values parameterized
             {"id": event_id, "error": error},
         )
 

@@ -30,7 +30,7 @@ class QueueOverviewPage:
                 depth = str(metrics.get("depth", "N/A"))
                 lag = str(metrics.get("consumer_lag", "N/A"))
                 failed = str(metrics.get("failed_count", "N/A"))
-            except Exception:
+            except Exception:  # noqa: S110 — intentional best-effort fallback
                 pass
 
         return PageContent(

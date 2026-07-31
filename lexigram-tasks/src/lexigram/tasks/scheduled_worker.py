@@ -152,7 +152,7 @@ class ScheduledWorker(ABC):
             self._task.cancel()
             try:
                 await self._task
-            except (asyncio.CancelledError, Exception):
+            except (asyncio.CancelledError, Exception):  # noqa: S110 — intentional best-effort fallback
                 pass
 
         logger.info("worker_stopped", worker=type(self).__name__)

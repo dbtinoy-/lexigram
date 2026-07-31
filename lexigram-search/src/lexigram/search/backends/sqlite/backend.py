@@ -8,7 +8,7 @@ from lexigram import serialization as json
 from lexigram.result import Err, Ok, Result
 from lexigram.search.backends.base import SearchBackendBase
 from lexigram.search.backends.base.database import AsyncDatabaseSearchBase
-from lexigram.search.backends.filters import render_sqlite
+from lexigram.search.backends.filters import _FIELD_NAME_RE, render_sqlite
 from lexigram.search.config import SQLiteSearchConfig
 from lexigram.search.exceptions import SearchError
 from lexigram.search.filterset import merge_filters, rule_to_filters
@@ -57,6 +57,7 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Index a document into SQLite FTS5."""
+        index = self._sanitize_index_name(index)
         await self._ensure_tables(index)
 
         # Use base class helper
@@ -68,7 +69,7 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
             f"""
             INSERT OR REPLACE INTO search_{index} (id, document, searchable_text, updated_at)
             VALUES (?, ?, ?, datetime('now'))
-            """,
+            """,  # noqa: S608 -- index name sanitized by _sanitize_index_name
             (doc_id, json.dumps(document), searchable),
         )
         await conn.commit()
@@ -97,7 +98,7 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
                 SELECT id, document, bm25(search_{safe_index}_fts) AS score
                 FROM search_{safe_index}_fts
                 WHERE search_{safe_index}_fts MATCH ?
-            """
+            """  # noqa: S608 -- index name sanitized by _sanitize_index_name
             params = [query]
 
             if filters or rule:
@@ -135,12 +136,13 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
 
     async def delete_document(self, index: str, doc_id: str, **kwargs: Any) -> bool:
         """Delete a document from the index."""
+        index = self._sanitize_index_name(index)
         await self._ensure_tables(index)
 
         conn = await self._get_connection()
 
         await conn.execute(
-            f"DELETE FROM search_{index} WHERE id = ?",
+            f"DELETE FROM search_{index} WHERE id = ?",  # noqa: S608 -- index name sanitized by _sanitize_index_name
             (doc_id,),
         )
         await conn.commit()
@@ -222,7 +224,7 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
             SELECT id, document, bm25(search_{safe_index}_fts) AS score
             FROM search_{safe_index}_fts
             WHERE search_{safe_index}_fts MATCH ?
-        """
+        """  # noqa: S608 -- index name sanitized by _sanitize_index_name
         params = [query]
 
         sql += f" ORDER BY score LIMIT {limit} OFFSET {offset}"
@@ -237,13 +239,15 @@ class SQLiteSearchBackend(AsyncDatabaseSearchBase, SearchBackendBase):
         # Facet queries
         facets_result = {}
         for facet_field in facets:
+            if not _FIELD_NAME_RE.fullmatch(facet_field):
+                raise ValueError(f"Invalid facet field: {facet_field!r}")
             facet_sql = f"""
                 SELECT document->'{facet_field}' AS facet_value, COUNT(*) AS count
                 FROM search_{safe_index}
                 WHERE search_{safe_index}_fts MATCH ?
                 GROUP BY document->'{facet_field}'
                 ORDER BY count DESC
-            """
+            """  # noqa: S608 -- facet validated by _FIELD_NAME_RE; index sanitized
             facet_cursor = await conn.execute(facet_sql, [query])
             facet_rows = await facet_cursor.fetchall()
 

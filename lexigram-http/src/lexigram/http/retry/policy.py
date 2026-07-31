@@ -33,7 +33,7 @@ def _calculate_delay(
     delay = base_delay * (config.backoff_factor**attempt)
     if config.jitter:
         jitter_range = config.jitter if isinstance(config.jitter, float) else 0.5
-        delay = delay * (1 + random.uniform(-jitter_range, jitter_range))
+        delay = delay * (1 + random.uniform(-jitter_range, jitter_range))  # noqa: S311 — retry jitter (non-crypto)
     return min(delay, config.max_delay)
 
 

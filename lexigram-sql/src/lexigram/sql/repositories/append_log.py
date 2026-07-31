@@ -81,7 +81,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
                 INSERT INTO {self.table_name} 
                 (stream_id, stream_version, event_id, event_type, event_data, metadata, timestamp)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
-            """
+            """  # noqa: S608 -- self.table_name set at init from caller config, values parameterized
             await self.provider.execute_query(
                 query,
                 [
@@ -106,7 +106,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
             SELECT event_id, event_type, event_data, metadata, timestamp, stream_version
             FROM {self.table_name}
             WHERE stream_id = $1 AND stream_version >= $2
-        """
+        """  # noqa: S608 -- self.table_name set at init from caller config, values parameterized
         params: list[Any] = [stream_id, from_version]
 
         if to_version is not None:
@@ -154,7 +154,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
             FROM {self.table_name}
             ORDER BY global_sequence ASC
             LIMIT $1 OFFSET $2
-        """
+        """  # noqa: S608 -- self.table_name set at init from caller config, values parameterized
         rows = await self.provider.execute_query(query, [limit, offset])
         if not rows:
             return []
@@ -186,7 +186,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
             SELECT COALESCE(MAX(stream_version), 0)
             FROM {self.table_name}
             WHERE stream_id = $1
-        """
+        """  # noqa: S608 -- self.table_name set at init from caller config, values parameterized
         result = await self.provider.execute_query(query, [stream_id])
         if not result:
             return 0
@@ -195,7 +195,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
 
     async def delete_stream(self, stream_id: str) -> bool:
         """Delete all events in a stream."""
-        query = f"DELETE FROM {self.table_name} WHERE stream_id = $1"
+        query = f"DELETE FROM {self.table_name} WHERE stream_id = $1"  # noqa: S608 -- self.table_name set at init from caller config, values parameterized
         try:
             await self.provider.execute_query(query, [stream_id])
             return True
@@ -208,10 +208,10 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
     async def count(self, stream_id: str | None = None) -> int:
         """Count events."""
         if stream_id:
-            query = f"SELECT COUNT(*) FROM {self.table_name} WHERE stream_id = $1"
+            query = f"SELECT COUNT(*) FROM {self.table_name} WHERE stream_id = $1"  # noqa: S608 -- self.table_name set at init from caller config, values parameterized
             params = [stream_id]
         else:
-            query = f"SELECT COUNT(*) FROM {self.table_name}"
+            query = f"SELECT COUNT(*) FROM {self.table_name}"  # noqa: S608 -- self.table_name set at init from caller config, values parameterized
             params = []
 
         result = await self.provider.execute_query(query, params)

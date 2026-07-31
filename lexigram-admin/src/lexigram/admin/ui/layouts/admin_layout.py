@@ -423,7 +423,7 @@ def admin_layout(
         Complete HTML page markup
     """
     layout = AdminLayout(config=config, context=context)
-    return Markup(layout.render(str(content)))
+    return Markup(layout.render(str(content)))  # noqa: S704 — framework-composed trusted HTML
 
 
 __all__ = [

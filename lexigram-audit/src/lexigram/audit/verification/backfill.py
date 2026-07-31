@@ -49,7 +49,7 @@ async def backfill_checksums(
 
     while True:
         fetch_sql = (
-            f"SELECT * FROM {table} "
+            f"SELECT * FROM {table} "  # noqa: S608 — table name read from SqlAuditStore._table (AuditConfig init-time attr) or fixed default
             f"WHERE checksum IS NULL "
             f"ORDER BY id ASC "
             f"LIMIT ? OFFSET ?"
@@ -79,7 +79,7 @@ async def backfill_checksums(
                 params.append(2)
             params.append(row_dict["id"])
 
-            update_sql = f"UPDATE {table} SET {', '.join(updates)} WHERE id = ?"
+            update_sql = f"UPDATE {table} SET {', '.join(updates)} WHERE id = ?"  # noqa: S608 — table name from AuditConfig attr; updates is fixed list of "? = ?" literals
             await db.execute_query(update_sql, params)
 
         total_updated += len(rows)

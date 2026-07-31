@@ -83,7 +83,7 @@ class PostgresStorage(StorageBackendProtocol):
             SELECT value FROM {self._table}
             WHERE namespace = %s AND key = %s
             AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-        """
+        """  # noqa: S608 -- self._table is a validated, quoted Table() identifier
         result = await self.db.execute_query(sql, (ns, key))
         rows = getattr(result, "rows", result)
         if not rows:
@@ -115,14 +115,14 @@ class PostgresStorage(StorageBackendProtocol):
                 value = EXCLUDED.value,
                 expires_at = EXCLUDED.expires_at,
                 created_at = CURRENT_TIMESTAMP
-        """
+        """  # noqa: S608 -- self._table is a validated, quoted Table() identifier
         val_json = json.dumps(value)
         await self.db.execute_query(sql, (ns, key, val_json, expires_at))
         return True
 
     async def delete(self, key: str, namespace: str | None = None) -> bool:
         ns = namespace or "default"
-        sql = f"DELETE FROM {self._table} WHERE namespace = %s AND key = %s"
+        sql = f"DELETE FROM {self._table} WHERE namespace = %s AND key = %s"  # noqa: S608 -- self._table is a validated, quoted Table() identifier
         await self.db.execute_query(sql, (ns, key))
         return True
 
@@ -142,14 +142,14 @@ class PostgresStorage(StorageBackendProtocol):
                 SELECT key FROM {self._table}
                 WHERE namespace = %s AND key LIKE %s
                 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-            """
+            """  # noqa: S608 -- self._table is a validated, quoted Table() identifier
             result = await self.db.execute_query(sql, (ns, sql_pattern))
         else:
             sql = f"""
                 SELECT key FROM {self._table}
                 WHERE namespace = %s
                 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-            """
+            """  # noqa: S608 -- self._table is a validated, quoted Table() identifier
             result = await self.db.execute_query(sql, (ns,))
 
         rows = getattr(result, "rows", result)
@@ -157,7 +157,7 @@ class PostgresStorage(StorageBackendProtocol):
 
     async def clear(self, namespace: str | None = None) -> bool:
         ns = namespace or "default"
-        sql = f"DELETE FROM {self._table} WHERE namespace = %s"
+        sql = f"DELETE FROM {self._table} WHERE namespace = %s"  # noqa: S608 -- self._table is a validated, quoted Table() identifier
         await self.db.execute_query(sql, (ns,))
         return True
 
@@ -166,6 +166,6 @@ class PostgresStorage(StorageBackendProtocol):
         sql = f"""
             DELETE FROM {self._table}
             WHERE expires_at IS NOT NULL AND expires_at <= CURRENT_TIMESTAMP
-        """
+        """  # noqa: S608 -- self._table is a validated, quoted Table() identifier
         result = await self.db.execute_query(sql)
         return getattr(result, "rowcount", 0)

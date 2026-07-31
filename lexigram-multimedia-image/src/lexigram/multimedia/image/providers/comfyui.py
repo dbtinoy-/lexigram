@@ -178,7 +178,7 @@ class ComfyUiImageProvider:
             checkpoint=self._checkpoint,
             steps=self._steps,
             cfg_scale=self._cfg_scale,
-            seed=random.randint(0, 2**32 - 1),
+            seed=random.randint(0, 2**32 - 1),  # noqa: S311 — generation seed (non-crypto)
         )
 
         try:

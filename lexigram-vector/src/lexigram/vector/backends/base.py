@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import re
 from typing import TYPE_CHECKING
 
 from lexigram.contracts.data.vector import (
@@ -14,6 +15,8 @@ if TYPE_CHECKING:
     from lexigram.contracts.data.vector import (
         DistanceMetric,
     )
+
+_COLLECTION_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class BaseVectorStore(VectorStoreProtocol, ABC):
@@ -37,6 +40,10 @@ class BaseVectorCollection(VectorCollectionProtocol, ABC):
         dimension: int,
         distance_metric: DistanceMetric,
     ):
+        if _COLLECTION_NAME_RE.fullmatch(name) is None:
+            raise ValueError(
+                f"collection name must be a plain SQL identifier, got {name!r}"
+            )
         self._name = name
         self._dimension = dimension
         self._distance_metric = distance_metric

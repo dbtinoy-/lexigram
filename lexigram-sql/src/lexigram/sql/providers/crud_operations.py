@@ -120,7 +120,7 @@ class CrudOperations(ABC):
         placeholders = ", ".join("?" for _ in data)
         values = list(data.values())
 
-        sql = f"INSERT INTO {safe_table} ({columns}) VALUES ({placeholders})"
+        sql = f"INSERT INTO {safe_table} ({columns}) VALUES ({placeholders})"  # noqa: S608 -- safe_table/columns are Table()/Column() quoted identifiers, values parameterized
 
         ctx = DatabaseOperationContext(
             self.connection_manager,
@@ -155,7 +155,7 @@ class CrudOperations(ABC):
         set_clause = ", ".join(f"{Column(k)} = ?" for k in data)
         values = list(data.values())
 
-        sql = f"UPDATE {safe_table} SET {set_clause} WHERE {where_clause}"
+        sql = f"UPDATE {safe_table} SET {set_clause} WHERE {where_clause}"  # noqa: S608 -- safe_table/set_clause are Table()/Column() quoted; where_clause built by repo mixins from validated identifiers
 
         if where_params:
             values.extend(where_params)
@@ -187,7 +187,7 @@ class CrudOperations(ABC):
     ) -> DeleteResult:
         """Execute a DELETE operation"""
         safe_table = Table(table)
-        sql = f"DELETE FROM {safe_table} WHERE {where_clause}"
+        sql = f"DELETE FROM {safe_table} WHERE {where_clause}"  # noqa: S608 -- safe_table is a Table() quoted identifier; where_clause built by repo mixins from validated identifiers
 
         ctx = DatabaseOperationContext(
             self.connection_manager,

@@ -156,3 +156,25 @@ class TestAsyncDatabaseSearchBase:
         
         assert "category" in clause
         assert "status" in clause
+
+    @pytest.mark.asyncio
+    async def test_build_filter_clause_rejects_injection_keys(self):
+        """Filter keys are validated before JSON-path interpolation."""
+        class TestBackend(AsyncDatabaseSearchBase):
+            async def connect(self): pass
+            async def close(self): pass
+            async def _get_client(self): return None
+            async def _get_pool(self): return None
+
+        backend = TestBackend()
+
+        for bad in ("cat' OR 1=1 --", "cat\" OR 1=1", "cat; DROP", "has space"):
+            with pytest.raises(ValueError, match="Invalid filter field"):
+                await backend._build_filter_clause({bad: "x"})
+
+    def test_sanitize_index_name_blocks_breakout_characters(self):
+        """Index names cannot break out of the table-name context."""
+        backend = ConcreteDatabaseSearchBase()
+        assert backend._sanitize_index_name("a; DROP TABLE t; --") == "a__DROP_TABLE_t____"
+        assert backend._sanitize_index_name("x' OR '1'='1") == "x__OR__1___1"
+        assert backend._sanitize_index_name("my-index.v1") == "my_index_v1"

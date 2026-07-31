@@ -85,7 +85,7 @@ class QueryLoggerBase(QueryLoggerProtocol):
         is_error = not entry.success and bool(entry.error_message)
         if is_slow or is_error:
             return True
-        return self.sample_rate >= 1.0 or random.random() <= self.sample_rate
+        return self.sample_rate >= 1.0 or random.random() <= self.sample_rate  # noqa: S311 — sampling (non-crypto)
 
     async def log_query(self, entry: QueryLogEntry) -> None:
         """Log a query execution, honouring the configured sample rate.
