@@ -86,12 +86,27 @@ _STAT_LABEL_CLASS = (
 )
 _STAT_VALUE_CLASS = "text-2xl font-bold tabular-nums"
 _STAT_DELTA_CLASS = "text-xs font-medium text-muted-foreground"
-_TABLE_CLASS = "w-full text-sm border-collapse"
-_TABLE_HEADING_CLASS = (
-    "px-4 py-2 text-left text-xs font-semibold text-muted-foreground uppercase "
-    "tracking-wider border-b border-border"
+_TABLE_CLASS = "min-w-full divide-y divide-border border-separate border-spacing-0"
+_TABLE_STYLE = "table-layout: auto; min-width: 100%; width: max-content;"
+_TABLE_CONTAINER_CLASS = (
+    "overflow-x-auto overflow-y-auto shadow-sm ring-1 ring-border dark:ring-border "
+    "rounded-lg bg-muted-50"
 )
-_TABLE_CELL_CLASS = "px-4 py-2 border-b border-border align-middle"
+_TABLE_CONTAINER_STYLE = (
+    "max-height: min(70vh, calc(100vh - 18rem)); min-height: 200px;"
+)
+_TABLE_HEAD_ROW_CLASS = "bg-muted dark:bg-card-50 border-b border-border"
+_TABLE_ROW_CLASS = (
+    "hover:bg-muted dark:hover:bg-card-80 transition-shadow duration-150 "
+    "border-b border-border last:border-0 group"
+)
+_TABLE_BODY_CLASS = "bg-card divide-y divide-border"
+_TABLE_HEADING_CLASS = (
+    "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider "
+    "text-muted-foreground sticky top-0 z-20 bg-muted dark:bg-background group"
+)
+_TABLE_CELL_CLASS = "px-6 py-4 whitespace-nowrap align-middle"
+_TABLE_ZEBRA_CLASS = "bg-muted-30"
 _HEALTH_BADGE_CLASS = "health-check-badge"
 _HEALTH_DETAIL_CLASS = "text-sm text-muted-foreground"
 
@@ -154,7 +169,10 @@ def _render_table_content(content: TableContent) -> str:
         el("th", column, class_=_TABLE_HEADING_CLASS) for column in content.columns
     ]
     body_rows: list[Any] = []
-    for row in content.rows:
+    for index, row in enumerate(content.rows):
+        row_class = _TABLE_ROW_CLASS
+        if index % 2 == 1:
+            row_class += " " + _TABLE_ZEBRA_CLASS
         cells = [
             el(
                 "td",
@@ -163,13 +181,22 @@ def _render_table_content(content: TableContent) -> str:
             )
             for cell in row
         ]
-        body_rows.append(el("tr", *cells))
+        body_rows.append(el("tr", *cells, class_=row_class))
     return render_to_string(
         el(
-            "table",
-            el("thead", el("tr", *headings)),
-            el("tbody", *body_rows),
-            class_=_TABLE_CLASS,
+            "div",
+            el(
+                "table",
+                el(
+                    "thead",
+                    el("tr", *headings, class_=_TABLE_HEAD_ROW_CLASS),
+                ),
+                el("tbody", *body_rows, class_=_TABLE_BODY_CLASS),
+                class_=_TABLE_CLASS,
+                style=_TABLE_STYLE,
+            ),
+            class_=_TABLE_CONTAINER_CLASS,
+            style=_TABLE_CONTAINER_STYLE,
         )
     )
 
