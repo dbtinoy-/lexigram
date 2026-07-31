@@ -46,7 +46,7 @@ class ServiceProbe:
         try:
             import redis.asyncio as redis
 
-            client = redis.from_url(url, socket_connect_timeout=1)
+            client = cast("Any", redis.from_url(url, socket_connect_timeout=1))
             await client.ping()
             await client.close()
             return True

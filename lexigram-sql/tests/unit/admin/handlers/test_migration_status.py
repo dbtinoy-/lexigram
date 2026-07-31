@@ -46,7 +46,7 @@ async def test_migration_status_no_pending_is_success() -> None:
 
 
 async def test_migration_status_degrades_when_manager_missing() -> None:
-    handler = MigrationStatusWidgetHandler(None)  # type: ignore[arg-type]
+    handler = MigrationStatusWidgetHandler(None)
     result = await handler.get_data(WidgetParams(time_window_minutes=60))
     assert isinstance(result, Ok)
     values = [s.value for s in result.unwrap().stats]

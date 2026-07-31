@@ -23,7 +23,7 @@ class MetricType(StrEnum):
 
     LATENCY = "latency"
     ERROR = "error"
-    TOKEN_USAGE = "token_usage"
+    TOKEN_USAGE = "token_usage"  # noqa: S105  # metric type name, not a credential
     COST = "cost"
     CACHE = "cache"
     RATE_LIMIT = "rate_limit"

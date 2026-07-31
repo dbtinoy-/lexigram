@@ -99,7 +99,7 @@ async def _to_http_response(raw: Any, method: str) -> HttpResponse:
     if "application/json" in content_type or "text/json" in content_type:
         try:
             json_data = await raw.json(content_type=None)
-        except Exception:  # noqa: BLE001 — non-JSON body is not an error
+        except Exception:  # noqa: BLE001, S110 — non-JSON body is not an error
             pass
     return HttpResponse(
         status=raw.status,

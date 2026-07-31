@@ -40,7 +40,7 @@ def _extract_gemma_channel(text: str) -> tuple[str, str | None] | None:
     after_start = text[thinking_start:]
 
     # --- Primary path: canonical <channel|> end token (Google official format) ---
-    end_token = "<channel|>"
+    end_token = "<channel|>"  # noqa: S105  # marker string, not a credential
     end_pos = after_start.find(end_token)
     if end_pos != -1:
         thinking_text = after_start[:end_pos].strip()

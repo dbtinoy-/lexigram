@@ -158,7 +158,7 @@ Response:"""
             else:
                 # Use fallback function
                 llm_fn = self.llm_fn
-                assert llm_fn is not None
+                assert llm_fn is not None  # noqa: S101  # fallback branch entered only when llm_fn set
                 response = await llm_fn(prompt)
 
             # Parse response

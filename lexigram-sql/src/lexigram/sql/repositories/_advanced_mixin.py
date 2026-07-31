@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lexigram.contracts.data.identifiers import Column
+from lexigram.contracts.data.identifiers import Column, Table
 from lexigram.logging import get_logger
 from lexigram.sql.exceptions import (
     DatabaseConnectionError,
@@ -24,6 +24,8 @@ logger = get_logger(__name__)
 
 class _AdvancedMixin:
     """Provides aggregate queries, specs, cursor pagination, streaming, and bulk ops."""
+
+    _table: Table
 
     async def aggregate(
         self,
@@ -88,7 +90,7 @@ class _AdvancedMixin:
                 safe_group_cols = [str(Column(c)) for c in group_cols]
                 select_parts = [*safe_group_cols, *select_parts]
 
-            query = f"SELECT {', '.join(select_parts)} FROM {self._table}"  # noqa: S608 -- self._table Table()-validated; select parts Column()-validated  # type: ignore[attr-defined]
+            query = f"SELECT {', '.join(select_parts)} FROM {self._table}"  # noqa: S608 -- self._table Table()-validated; select parts Column()-validated
             params: list[Any] = []
 
             query = await self._apply_filters_to_query(  # type: ignore[attr-defined]

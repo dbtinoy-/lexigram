@@ -27,8 +27,8 @@ class VideoConfig(BaseConfig):
         "local-http", "runway", "openai", "wan22", "cogvideox", "svd", "comfyui"
     ] = "local-http"
     local_http_base_url: str = "http://localhost:5004"
-    runway_api_key_secret_name: str = "runway_api_key"
-    openai_api_key_secret_name: str = "openai_api_key"
+    runway_api_key_secret_name: str = "runway_api_key"  # noqa: S105  # secret NAME, not a value
+    openai_api_key_secret_name: str = "openai_api_key"  # noqa: S105  # secret NAME, not a value
     openai_model: str = "sora-2"
     openai_base_url: str = "https://api.openai.com"
     wan22_base_url: str = "http://localhost:5200"

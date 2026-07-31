@@ -16,8 +16,8 @@ class TTSConfig(BaseConfig):
     ] = "local-http"
     local_http_base_url: str = "http://localhost:5002"
     elevenlabs_voice_id: str | None = None
-    elevenlabs_api_key_secret_name: str = "elevenlabs_api_key"
-    openai_api_key_secret_name: str = "openai_api_key"
+    elevenlabs_api_key_secret_name: str = "elevenlabs_api_key"  # noqa: S105  # secret NAME, not a value
+    openai_api_key_secret_name: str = "openai_api_key"  # noqa: S105  # secret NAME, not a value
     openai_voice: str = "alloy"
     openai_model: str = "tts-1"
     openai_base_url: str = "https://api.openai.com"

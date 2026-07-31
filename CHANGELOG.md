@@ -5,33 +5,6 @@ All notable changes to the Lexigram Framework are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
-
-## [Unreleased]
-
-### Added
-
-- `lexigram.reactive`: native reactive streams — EventStream protocol, pipeable operators (map, filter, scan, distinct, take, skip, merge, catch, retry, debounce, throttle, buffer, window), hot Subject/share with bounded backpressure, and retry with backoff options.
-- `lexigram.events.reactive`: cold/hot bridges from event stores and StreamDispatcher into reactive streams.
-- `lexigram.web.transport.reactive`: `sse_from_stream` responder wiring a reactive stream to an EventSource response.
-- `lexigram.admin.realtime.subject_hub`: Subject-backed admin event hub.
-- `lexigram.events.admin`: `live_events` dashboard widget (TABLE) rendering the most recent domain events from the event store / dispatcher via reactive streams.
-- `lexigram.admin`: core "Recent Activity" dashboard widget now renders windowed admin events from `SubjectAdminEventHub`.
-- `lexigram.contracts.admin`: structured management pages — `PageContent` / `PaginationContent` contract; the admin host now renders all page HTML (`StructuredPageHandler` boundary enforcer + `page_renderer`), and all in-repo management pages (events, tasks, ai-governance, relay-gateway, auth, cache, queue, sql, web, webhook, audit, ai, ai-guard, ai-llm, notification) return structured content instead of hand-rolled HTML; `get_routes()` remains the sole HTML escape hatch.
-
-### Security (2026-08-16 → 2026-08-18 audit series)
-
-- Password hashing hardened: real cost-based `PasswordConfig`, `needs_rehash()` + cost-upgrade on login, single composed hasher (Argon2 + BCrypt legacy fallback) behind one `PasswordHasherProtocol` binding, admin SHA-256 fallback removed with fail-closed setup path.
-- Web CSRF: signed HMAC-token middleware, host validation, hardened headers/HSTS defaults, `/admin` boundary hygiene; legacy `CSRFProtection` and duplicate `SecurityHeadersMiddleware` removed.
-- Admin authn/authz: MFA/TOTP persisted with AES-256-GCM + lockout/rate-limiting; password-reset/verify tokens single-use with 15-min TTL; OAuth2 email binding gated on `email_verified` (fail-closed); impersonation posture documented (deny-by-default); login `roles` bound to the authenticated principal.
-- Admin surface: SQL identifier allowlist validation in the generic repository; auth-guard segment-boundary validation; Alpine-safe tabular record ids; search snippet/record escaping; fallback-session TTL bounded; settings config-read gates; command-palette per-resource result scoping; relation endpoints authorized; relation panel XSS rendered inert.
-- Export: CSV/Excel formula injection sanitized (`=+-@`, tab, CR stripped) via `lexigram-admin/services/export/sanitize.py`.
-- Earlier audit rounds (pre-2026-08-18): session-secret P0, SQL injection, XSS, SSRF, secrets/credentials, deserialization, plugin sandboxing, AI-guard, GraphQL, media-upload, notification/webhook, rate-limiting, RBAC architecture (7-step), AI-memory isolation, non-SQL query injection, pgvector/vector metadata validation, agent tool-visibility fail-open, relay-gateway auth defaults — all executed and verified (see `docs/AUDIT_TRACKER.md`).
-
-### Changed
-
-- `lexigram-plugins` folded into core `lexigram` (entry-point discovery gated by `lx.discovery.auto_discover` or explicit `PluginsModule.configure()`).
-
 ## [0.1.1] — 2026-04-22
 
 ### Added

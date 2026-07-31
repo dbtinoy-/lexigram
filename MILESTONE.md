@@ -13,9 +13,10 @@ Rounds executed to completion this week, verified and committed:
 - **Round 8:** §37–39 relations XSS/authz/Excel export, §40 Meilisearch/Typesense filter injection, §41–42 settings/command-palette — complete
 - **Round 9:** §45 pgvector, §46 storage KV traversal, §47 MCP handshake, §48 agent tool-visibility, §49 OAuth2 email-verified binding — complete
 - **Deserialization deep-dive (§3.9):** pickle deserializers removed or restricted, `@cacheable` registry-only reconstruction (zero `importlib`), SkillLoader fail-closed sandbox, CLI MySQL backup/restore argv-only — complete
-- **Round 10:** §50–60 (governance, observability, ai-workers, prompt, features, monitor, resilience) — in progress
-- **Round 11:** §61–79 (ai core/evaluation/feedback, audit, events, queue, tasks, workflow) — in progress
+- **Round 10:** §50–60 (governance, observability, ai-workers, prompt, features, monitor, resilience) — complete
+- **Round 11:** §61–79 (ai core/evaluation/feedback, audit, events, queue, tasks, workflow) — complete
+- **Reactive layer** — progressive enhancement: wiring end events — started
 
 ### Next week
-- **Reactive layer** — progressive enhancement: wiring end events
+- **Reactive layer** — progressive enhancement: wiring end events (continuation)
 - **Polish Admin dashboard** — Admin dashboard continuation (open-ended)

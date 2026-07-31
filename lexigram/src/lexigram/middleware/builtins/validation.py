@@ -38,7 +38,7 @@ class ErrorHandlerMiddleware:
         # Validate that catch contains only Exception subclasses
         catch_types = (catch,) if isinstance(catch, type) else catch
         for exc_type in catch_types:
-            assert issubclass(exc_type, Exception), (
+            assert issubclass(exc_type, Exception), (  # noqa: S101  # config-time guard
                 f"catch must contain only Exception subclasses; got {exc_type!r}"
             )
 

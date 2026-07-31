@@ -179,7 +179,7 @@ def _redact_headers(request: Any) -> list[tuple[str, str]]:
         for key, value in request.headers.items():
             display = "[REDACTED]" if key.lower() in _SENSITIVE_HEADERS else value
             rows.append((key, display))
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110
         pass
     return rows
 

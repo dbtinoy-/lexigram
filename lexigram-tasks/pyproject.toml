@@ -175,6 +175,7 @@ show_error_codes = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },
+    { module = "aio_pika.*", ignore_missing_imports = true },  # optional rabbitmq extra
 ]
 
 [tool.uv.sources.lexigram]

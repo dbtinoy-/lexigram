@@ -173,7 +173,7 @@ ERROR_MSG_MEMCACHED_INSTALL: str = (
 )
 ERROR_MSG_PYYAML_INSTALL: str = "PyYAML is required for YAML configuration loading"
 ERROR_MSG_INSECURE_PASSWORD: str = (
-    "CRITICAL SECURITY ERROR: Insecure {backend} password detected in PRODUCTION "
+    "CRITICAL SECURITY ERROR: Insecure {backend} password detected in PRODUCTION "  # noqa: S105  # error message text, not a credential
     "for backend '{name}'.\n"
     "You MUST set a secure password via {env_var}."
 )

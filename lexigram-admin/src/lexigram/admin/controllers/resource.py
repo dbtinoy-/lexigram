@@ -481,7 +481,7 @@ class ResourceController(ABC, Generic[T]):
                     if val:
                         record_label = str(val)
                         break
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass
 
         delete_url = f"{self.meta.prefix}/{self.meta.name}/{item_id}"

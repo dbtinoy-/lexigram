@@ -49,7 +49,7 @@ class ChunkingStrategy(StrEnum):
     RECURSIVE = "recursive"  # Recursive splitting by separators
     SEMANTIC = "semantic"  # Sentence/paragraph boundaries
     SLIDING_WINDOW = "sliding_window"  # Overlapping windows
-    TOKEN = "token"  # Split by token count
+    TOKEN = "token"  # noqa: S105  # chunking strategy name, not a credential
 
 
 @dataclass(init=False)

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class GuardAction(StrEnum):
     """Action to take on a guard result."""
 
-    PASS = "pass"
+    PASS = "pass"  # noqa: S105  # guard verdict enum, not a credential
     """Content is safe — allow through."""
 
     BLOCK = "block"

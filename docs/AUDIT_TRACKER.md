@@ -1436,7 +1436,74 @@ initial review; both re-examined and closed:
 
 ---
 
-## 16. Commands (from AGENTS.md)
+## 16. Architecture — Admin Dashboard Live Widgets, L1 Reactive Delivery (Spec + Plan Written, No Execution Yet)
+
+Distinct from §14 and §15 — a fifth **architectural placement** spec.
+§14 landed the reactive primitive layer (`lexigram.reactive`,
+`SubjectAdminEventHub`) and two widgets (`activity`, `live_events`) built
+on it; §15 wired the remaining dashboard widgets to real data. Despite
+both, every widget — including the two "reactive" ones — is still
+**pull-based**: `activity`/`live_events` maintain a live-updating cache
+but only render a snapshot of it when polled via htmx
+(`hx-trigger="every {N}ms"`); nothing pushes to the browser. This spec
+covers closing that gap for **widget-level delivery only** (L1 of a
+three-level scope: L1 widgets stream live / L2 pages react to events / L3
+full event-sourced admin UI — L2/L3 explicitly rejected, see spec §6).
+
+**Spec:** `docs/superpowers/specs/2026-08-18-architecture-admin-dashboard-live-widgets-design.md`
+**Plan:** `docs/superpowers/plans/2026-08-18-admin-dashboard-live-widgets.md` — 8 tasks across 6 phases, twice reviewed (plan-document-reviewer) with fixes applied each round. Plan-writing review pass surfaced two additional findings beyond the spec's own verification pass: (1) the `live_events` widget cannot be migrated by the same SSE mechanism as `activity` without either a new `lexigram-events`→`lexigram-admin` cross-package import (forbidden by AGENTS.md) or an unspec'd generic bridge — scoped out of the plan, `activity` only for v1; (2) no call site anywhere in `lexigram-admin/src` publishes a resource-typed `AdminEvent` today (`controllers/resource.py` only emits to the audit log, never the hub) — so the plan's `tenant_id` filtering, while real, is currently inert plumbing with nothing tenant-scoped yet to filter; this is a pre-existing gap the plan does not regress (today's legacy hub has identical unscoped exposure), not one it fully closes. Both documented in the plan's header as explicit review-pass findings and Out-of-Scope rows.
+
+**Verification pass (2026-08-19):** the spec's claims were checked
+against live source before writing, not assumed from the prior grounding
+message. Key findings baked into the spec:
+- Two admin event hubs coexist and are **not equivalent**: legacy
+  `AdminEventHub` (`realtime/sse.py`) has an unbounded per-subscriber
+  `asyncio.Queue()` (`except asyncio.QueueFull: pass` is dead code) and no
+  resource-level authorization on its client-supplied `resources` filter;
+  `SubjectAdminEventHub` (`realtime/subject_hub.py`) has real bounded
+  backpressure and correct `target_users` filtering (per §14 Task 10's
+  fix) but the same unchecked `resources` filter gap. The route actually
+  mounted live today (`bundle_provider.py:993-1035`,
+  `/admin/_sse/events`) is backed by the **weaker, legacy** hub via a
+  hand-rolled `StreamingResponse` that bypasses the sanctioned
+  `sse_from_stream`/`create_sse_response` bridge entirely.
+- `Subject.publish()` (`lexigram/reactive/subjects.py`) fans out to
+  subscribers sequentially and, under the class default
+  `on_overflow="block"`, suspends the **entire publish call** on one
+  stalled subscriber — a real head-of-line-blocking risk once a hub is
+  wired into `action_executor.py`'s synchronous
+  `publish_notification()` calls in the write-action request path.
+  Currently latent (grep found no DI site constructing
+  `ActionExecutor(event_hub=...)`), but would go live under this spec's
+  scope.
+- `AdminAuthorizationMiddleware._PUBLIC_PATHS` contains a stale
+  `"/admin/events"` entry that does not prefix-match the real route
+  (`/admin/_sse/events`) — no bypass today, but a latent trap if the
+  route is ever renamed to align with it.
+- `WidgetParams`/`AdminEvent` still carry no `tenant_id` (§15 D3's gap,
+  left open there because nothing consumed it) — a live shared stream is
+  the first concrete consumer that makes this non-speculative; closing it
+  is now in scope rather than deferred again.
+
+**Target design (spec §3-4, summarized — see spec for full rationale):**
+reconcile-on-load contract for every streamed widget (subscribe-before-
+snapshot, full re-snapshot on SSE reconnect); `on_overflow="drop_latest"`
+on widget-facing `Subject`s instead of the blocking default; retire the
+legacy hub/handler/route in favor of a `SubjectAdminEventHub`-backed
+endpoint through the existing `sse_from_stream` bridge (AGENTS.md clean-
+break mandate — no shim/fallback); resource-level authorization added to
+`subscribe(resources=...)` instead of trusting the client-supplied
+filter; `tenant_id` threaded through `AdminEvent`/`WidgetParams`; multi-
+worker delivery scoped as single-worker-only for v1 unless bridged
+through the existing `from_bus` shape (no new transport invented);
+`_PUBLIC_PATHS` stale-entry cleanup.
+
+**Status:** spec and plan written, plan twice-reviewed and approved; no
+execution yet.
+
+---
+
+## 17. Commands (from AGENTS.md)
 
 ```bash
 uv run ruff check . && uv run ruff format --check .   # lint

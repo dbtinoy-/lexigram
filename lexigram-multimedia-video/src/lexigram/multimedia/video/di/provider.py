@@ -203,7 +203,7 @@ class VideoGenerationProvider(Provider):
                 f"Unknown or unimplemented video backend: {self._config.backend!r}"
             )
 
-        assert self._backend is not None
+        assert self._backend is not None  # noqa: S101  # raised via ProviderNotInstalledError above
         container.singleton(VideoProvider, self._backend)
 
         self._task_handler = VideoGenerationTask(backend=self._backend)

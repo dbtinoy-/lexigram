@@ -128,8 +128,8 @@ class RabbitMQTaskQueue(TaskQueueProtocol):
         """
         await self._ensure_connection()
 
-        assert self.channel is not None
-        assert self.queue is not None
+        assert self.channel is not None  # noqa: S101  # set by _ensure_connection
+        assert self.queue is not None  # noqa: S101  # set by _ensure_connection
 
         task_data: Any = dumps(task.to_dict())
         body = task_data.encode() if isinstance(task_data, str) else task_data
@@ -169,7 +169,7 @@ class RabbitMQTaskQueue(TaskQueueProtocol):
         """
         await self._ensure_connection()
 
-        assert self.queue is not None
+        assert self.queue is not None  # noqa: S101  # set by _ensure_connection
 
         try:
             # Get one message with timeout
@@ -227,7 +227,7 @@ class RabbitMQTaskQueue(TaskQueueProtocol):
         """
         await self._ensure_connection()
 
-        assert self.channel is not None
+        assert self.channel is not None  # noqa: S101  # set by _ensure_connection
 
         # Declare queue passively to get info without modifying it
         queue_info = await cast("Any", self.channel).declare_queue(
@@ -242,7 +242,7 @@ class RabbitMQTaskQueue(TaskQueueProtocol):
         Purges all messages from the queue.
         """
         await self._ensure_connection()
-        assert self.queue is not None
+        assert self.queue is not None  # noqa: S101  # set by _ensure_connection
         await cast("Any", self.queue).purge()
 
     async def close(self) -> None:

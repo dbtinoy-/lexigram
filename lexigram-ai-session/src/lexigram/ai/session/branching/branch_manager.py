@@ -90,7 +90,7 @@ class BranchManager:
             if source_state is None:
                 raise SessionNotFoundError(session_id)
 
-        assert source_state is not None
+        assert source_state is not None  # noqa: S101  # raised above when load() returns None
         branched = copy.deepcopy(source_state)
         branched = replace(
             branched,

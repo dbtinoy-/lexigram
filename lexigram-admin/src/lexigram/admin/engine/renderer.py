@@ -153,7 +153,7 @@ class AdminRenderer:
             )
             service = AdminThemeService(primary_color=primary_color)
             theme_css = service.generate_theme_css()
-        except Exception:  # noqa: BLE001 — non-fatal
+        except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
         user_menu_items: list[dict[str, str | None]] = (

@@ -62,7 +62,7 @@ class AdminSecurityHeaders:
 
 
 # Verify structural compliance at import time (zero-cost check via isinstance)
-assert isinstance(AdminSecurityHeaders(), SecurityHeadersProtocol)
+assert isinstance(AdminSecurityHeaders(), SecurityHeadersProtocol)  # noqa: S101  # import-time protocol conformance
 
 
 @inject

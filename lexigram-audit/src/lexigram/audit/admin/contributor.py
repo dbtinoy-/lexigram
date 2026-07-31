@@ -86,7 +86,7 @@ class AuditAdminContributor(BaseAdminContributor):
             )
 
             self._verifier = await container.resolve(_AuditVerifierProtocol)
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, S110
             pass  # verifier is optional
 
     def get_navigation_items(self) -> Sequence[NavigationContribution]:

@@ -488,7 +488,7 @@ class DeadLetterQueueWorker:
             return
 
         # Narrow type for mypy: job_name is Optional[str] on JobProtocol, assert non-None
-        assert job_name is not None
+        assert job_name is not None  # noqa: S101  # type-narrowing only; log branch returned above
 
         priority = (
             item.original_job.priority if item.original_job.priority is not None else 0

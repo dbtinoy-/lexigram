@@ -233,7 +233,7 @@ class TaskProvider(Provider):
         Args:
             container: DI registrar to bind task services into.
         """
-        assert self._config is not None  # guarded by caller
+        assert self._config is not None  # guarded by caller  # noqa: S101
 
         for entry in self._config.backends:
             backend_cfg = TaskConfig.from_named(entry)
@@ -382,7 +382,7 @@ class TaskProvider(Provider):
                     if hasattr(queue, "close"):
                         try:
                             await queue.close()
-                        except Exception:  # noqa: BLE001
+                        except Exception:  # noqa: BLE001, S110
                             pass
                 raise errors[0]
             self.logger.info(
@@ -487,7 +487,7 @@ class TaskProvider(Provider):
                 if hasattr(queue, "close"):
                     try:
                         await queue.close()
-                    except Exception:  # noqa: BLE001
+                    except Exception:  # noqa: BLE001, S110
                         pass
 
         # Close primary queue (always — single-backend and multi-backend both use it

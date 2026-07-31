@@ -27,7 +27,7 @@ from typing import Any
 croniter: Any | None = None
 HAS_CRONITER = False
 try:
-    import croniter as _croniter  # type: ignore[import-untyped]
+    import croniter as _croniter
 except ImportError:
     croniter = None
 else:
@@ -80,7 +80,7 @@ class CronExpression:
         """
         try:
             # Ensure mypy knows croniter is available (guarded by HAS_CRONITER in __init__)
-            assert croniter is not None
+            assert croniter is not None  # noqa: S101  # guarded by HAS_CRONITER import gate
             croniter.croniter(self.expression)
         except Exception as e:
             raise ValueError(f"Invalid cron expression '{self.expression}': {e}") from e
@@ -98,7 +98,7 @@ class CronExpression:
             base_time = time.time()
 
         # Assert to help the type checker that croniter is not None
-        assert croniter is not None
+        assert croniter is not None  # noqa: S101  # guarded by HAS_CRONITER import gate
         cron = croniter.croniter(self.expression, base_time)
         return float(cron.get_next())
 
@@ -115,7 +115,7 @@ class CronExpression:
             base_time = time.time()
 
         # Assert to help the type checker that croniter is not None
-        assert croniter is not None
+        assert croniter is not None  # noqa: S101  # guarded by HAS_CRONITER import gate
         cron = croniter.croniter(self.expression, base_time)
         return float(cron.get_prev())
 

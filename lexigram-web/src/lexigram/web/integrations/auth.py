@@ -51,13 +51,9 @@ class AuthIntegration:
         from lexigram.contracts.exceptions import ContainerError
         from lexigram.web.middleware.auth import AuthenticationMiddleware
 
-        identity_resolver = None
-        try:
-            identity_resolver = await container.resolve(
-                cast("Any", IdentityResolverProtocol)
-            )
-        except (LookupError, RuntimeError, ContainerError) as e:
-            logger.warning("failed_to_resolve_identity_resolver", error=str(e))
+        identity_resolver = await container.resolve_optional(
+            cast("Any", IdentityResolverProtocol)
+        )
 
         authenticators = []
         try:

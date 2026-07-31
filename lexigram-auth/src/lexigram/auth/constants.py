@@ -20,8 +20,8 @@ ENV_NESTED_DELIMITER: str = "__"
 
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-DEFAULT_TOKEN_ALGORITHM: str = "HS256"
-DEFAULT_TOKEN_TYPE: str = "Bearer"
+DEFAULT_TOKEN_ALGORITHM: str = "HS256"  # noqa: S105  # config default, not a credential
+DEFAULT_TOKEN_TYPE: str = "Bearer"  # noqa: S105  # config default, not a credential
 
 # Grace period (seconds) during which tokens signed by a rotated-out key
 # remain accepted. Prevents immediate user logout on rotation.

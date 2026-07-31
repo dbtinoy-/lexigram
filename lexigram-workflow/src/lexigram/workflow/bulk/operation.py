@@ -176,7 +176,7 @@ class BulkOperation(Generic[T, R]):
         start_time = time.monotonic()
 
         try:
-            assert self.processor is not None
+            assert self.processor is not None  # noqa: S101  # created in _start_batch before processing
 
             if self._circuit_breaker:
                 results = await self._circuit_breaker.call(

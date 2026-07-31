@@ -36,7 +36,7 @@ class MetricType(str, Enum):
     # Overall metrics
     HALLUCINATION_RATE = "hallucination_rate"
     LATENCY = "latency"
-    TOKEN_USAGE = "token_usage"
+    TOKEN_USAGE = "token_usage"  # noqa: S105  # metric name, not a credential
     COST = "cost"
 
 

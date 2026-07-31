@@ -142,6 +142,8 @@ target-version = "py311"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "TID252"]
+# RFC 6238 TOTP test vectors — cryptographic constants, by design
+"src/lexigram/auth/mfa/totp_vectors.py" = ["S106"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

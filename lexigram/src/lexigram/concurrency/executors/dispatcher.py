@@ -172,14 +172,14 @@ class DispatcherImpl:
     def cpu_pool(self) -> ThreadPoolExecutor:
         """Get the CPU-bound executor, initializing if needed."""
         self._ensure_pools()
-        assert self._cpu_pool is not None
+        assert self._cpu_pool is not None  # noqa: S101  # _ensure_pools constructs it
         return self._cpu_pool
 
     @property
     def io_pool(self) -> ThreadPoolExecutor:
         """Get the I/O-bound executor, initializing if needed."""
         self._ensure_pools()
-        assert self._io_pool is not None
+        assert self._io_pool is not None  # noqa: S101  # _ensure_pools constructs it
         return self._io_pool
 
     # -- Lifecycle ---------------------------------------------------------

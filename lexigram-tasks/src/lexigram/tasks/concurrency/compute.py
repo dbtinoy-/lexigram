@@ -489,7 +489,7 @@ class Compute:
         if cls._pool is None:
             cls.configure()  # Use defaults
 
-        assert cls._pool is not None
+        assert cls._pool is not None  # noqa: S101  # configure() guarantees pool
         return await cls._pool.submit(func, *args, **kwargs)
 
     @classmethod

@@ -89,7 +89,7 @@ class BeatAnalysisGenerationProvider(Provider):
                 f"{self._config.backend!r}"
             )
 
-        assert self._backend is not None
+        assert self._backend is not None  # noqa: S101  # raised via ProviderNotInstalledError above
         container.singleton(BeatAnalysisProvider, self._backend)
         logger.info("beat_analysis_registered", backend=self._config.backend)
 

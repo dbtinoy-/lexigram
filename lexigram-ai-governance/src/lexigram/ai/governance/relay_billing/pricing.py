@@ -229,13 +229,13 @@ def _tokenize(expression: str) -> Result[list[_Token], RelayBillingError]:
             continue
         if char.isdigit():
             match = _NUMBER_RE.match(expression, index)
-            assert match is not None
+            assert match is not None  # noqa: S101  # regex pre-guaranteed by isdigit() branch
             tokens.append(_Token(kind="NUMBER", value=match.group(0)))
             index = match.end()
             continue
         if char.isalpha() or char == "_":
             match = _NAME_RE.match(expression, index)
-            assert match is not None
+            assert match is not None  # noqa: S101  # regex pre-guaranteed by isalpha() branch
             tokens.append(_Token(kind="NAME", value=match.group(0)))
             index = match.end()
             continue

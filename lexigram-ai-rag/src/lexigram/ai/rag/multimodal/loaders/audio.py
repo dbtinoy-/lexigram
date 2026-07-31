@@ -315,7 +315,7 @@ class AudioLoader:
 
         # Transcribe
         model = self._transcription_model
-        assert model is not None, "transcription model not loaded"
+        assert model is not None, "transcription model not loaded"  # noqa: S101
 
         def _transcribe() -> Any:
             result = model.transcribe(audio, fp16=False)

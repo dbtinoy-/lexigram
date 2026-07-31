@@ -101,7 +101,7 @@ class DynamicFewShotSelector:
             return []
 
         await self._ensure_embeddings()
-        assert self._example_embeddings is not None  # post-condition
+        assert self._example_embeddings is not None  # noqa: S101  # post-condition
 
         query_embedding = await self._embedding_client.embed([query])
         q_vec = query_embedding[0]

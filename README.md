@@ -62,13 +62,13 @@ run_server(app, port=8000)
 
 → http://localhost:8000/hello?name=lexigram
 
-## also available by default
+#### also available by default
 - → http://localhost:8000/health
 - → http://localhost:8000/docs (Swagger UI)
 - → http://localhost:8000/redoc (Redoc)
 
 
-what just happened?
+#### what just happened?
 
 - `Application()` + `add_modules(...)` assembled the web module — the app boots lazily when the server starts.
 - `WebModule.configure(...)` registered the controller — no router setup, no middleware boilerplate.
@@ -107,7 +107,8 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 ## audit
 
 - [Tests](docs/lexigram-docs/audit/AUDIT_TESTS.md) — live test evidence and coverage per package
-- [Quality Gates](docs/lexigram-docs/audit/AUDIT_QUALITY.md) — mypy and ruff quality gates
+- [Quality](docs/lexigram-docs/audit/AUDIT_QUALITY.md) — mypy and ruff quality gates
+- [Security](docs/lexigram-docs/audit/AUDIT_SECURITY.md) — static security analysis
 
 ## reference
 
@@ -122,22 +123,23 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - Test suite runs in local CI across packages
 
 #### short term (Q2 2026)
-- [~] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - in testing
-- [ ] Reactive state and event wiring
-- [ ] Additional backend support
+[~] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - in testing
+[~] Reactive state and event wiring - in testing
+[ ] Additional backend support
 
 #### medium term (Q3-Q4 2026)
-- [ ] Advanced monitoring
-- [~] Enhanced security — audit remediation partially implemented (security lanes in progress)
-- [~] Production-grade Admin dashboard — `lexigram-admin` in active development
-- [~] Full-stack starter template — in progress
-- [ ] Distributed tracing
-- [ ] Performance optimizations
+[ ] Advanced monitoring
+[~] Enhanced security — audit remediation partially implemented (security lanes in progress)
+[~] Production-grade Admin dashboard — `lexigram-admin` in active development
+[~] Full-stack starter template — in progress
+[ ] Distributed tracing
+[ ] Performance optimizations
+[~] Reach 80% overall Tests coverage (now 75% in progress)
 
 #### long term (2027)
-- [ ] Enterprise features
-- [ ] Enhanced observability
-- [ ] Community expansion (if approved)
+[ ] Enterprise features
+[ ] Enhanced observability
+[ ] Community expansion (if approved)
 
 #### → see [MILESTONE.md](./MILESTONE.md) 
 

@@ -60,9 +60,8 @@ class LocalStorage(StorageBackendProtocol):
         if safe_ns in {".", ".."}:
             safe_ns = "default"
         ns_dir = (self.base_path / safe_ns).resolve()
-        assert ns_dir.is_relative_to(self.base_path.resolve()), (
-            f"namespace escapes base path: {namespace!r}"
-        )
+        if not ns_dir.is_relative_to(self.base_path.resolve()):
+            raise ValueError(f"namespace escapes base path: {namespace!r}")
         return ns_dir
 
     def _get_file_path(self, key: str, namespace: str | None) -> Path:

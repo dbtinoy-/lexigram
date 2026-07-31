@@ -412,7 +412,7 @@ def build_compose_argv(
     graph: list[str] = []
     prev = "[0:v]"
     if operation.base_fade_out > 0:
-        assert base_duration is not None
+        assert base_duration is not None  # noqa: S101  # set when fade-out requested
         graph.append(
             f"[0:v]fade=t=out:st={base_duration - operation.base_fade_out}"
             f":d={operation.base_fade_out}[b0]"
@@ -458,7 +458,7 @@ def build_compose_argv(
         if operation.fade_in > 0:
             fades.append(f"fade=t=in:st=0:d={operation.fade_in}")
         if operation.fade_out > 0:
-            assert base_duration is not None
+            assert base_duration is not None  # noqa: S101  # set when fade-out requested
             fades.append(
                 f"fade=t=out:st={base_duration - operation.fade_out}"
                 f":d={operation.fade_out}"

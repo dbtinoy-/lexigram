@@ -67,7 +67,7 @@ def list_generators() -> None:
     """List all available generators."""
     _ensure_assembled(app)
     output = OutputManager()
-    assert _RUNTIME_GENERATOR_REGISTRY is not None  # guaranteed by _ensure_assembled
+    assert _RUNTIME_GENERATOR_REGISTRY is not None  # noqa: S101  # set by _ensure_assembled
     generators = _RUNTIME_GENERATOR_REGISTRY.list_generators()
     if not generators:
         output.info("No generators discovered")

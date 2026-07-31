@@ -220,7 +220,7 @@ class GraphQLProvider(Provider):
                 ):
                     try:
                         modules_to_scan.append(importlib.import_module(modname))
-                    except Exception:  # noqa: BLE001
+                    except Exception:  # noqa: BLE001, S110
                         pass
 
             for module in modules_to_scan:

@@ -268,7 +268,7 @@ class MediaLibrary:
         if self._storage:
             try:
                 await self._storage.delete(item.path)
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001, S110
                 pass
         return True
 

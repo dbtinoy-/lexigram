@@ -120,7 +120,7 @@ class ResiliencePipeline:
                     _inner: Callable[..., Awaitable[T]] = inner,
                     _bulkhead: Bulkhead | None = bulkhead,
                 ) -> T:
-                    assert _bulkhead is not None
+                    assert _bulkhead is not None  # noqa: S101  # closure default captures step arg
                     return cast("T", await _bulkhead.execute(_inner))
 
                 current_func = bulkhead_func
@@ -133,7 +133,7 @@ class ResiliencePipeline:
                     _inner: Callable[..., Awaitable[T]] = inner,
                     _circuit: CircuitBreaker | None = circuit,
                 ) -> T:
-                    assert _circuit is not None
+                    assert _circuit is not None  # noqa: S101  # closure default captures step arg
                     return cast("T", await _circuit.execute(_inner))
 
                 current_func = circuit_func
@@ -146,7 +146,7 @@ class ResiliencePipeline:
                     _inner: Callable[..., Awaitable[T]] = inner,
                     _retry: RetryPolicy | None = retry,
                 ) -> T:
-                    assert _retry is not None
+                    assert _retry is not None  # noqa: S101  # closure default captures step arg
                     return await _retry.execute(_inner)
 
                 current_func = retry_func

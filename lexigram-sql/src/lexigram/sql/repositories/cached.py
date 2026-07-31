@@ -19,9 +19,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from lexigram import hashing  # type: ignore[attr-defined]
 from lexigram import serialization as json
 from lexigram.logging import get_logger
+from lexigram.security.hashing import ambient as hashing
 
 if TYPE_CHECKING:
     from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol

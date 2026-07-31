@@ -81,7 +81,7 @@ class MigrationRunnerAdapter:
         """
         introspector = getattr(self._manager, "introspector", None)
         if introspector is not None:
-            status = await self._manager.get_status()
+            status = await getattr(self._manager, "get_status")()
             return [m.revision for m in status.pending_migrations]
         migrations_dir = self._manager.migrations_dir
         if not migrations_dir.exists():

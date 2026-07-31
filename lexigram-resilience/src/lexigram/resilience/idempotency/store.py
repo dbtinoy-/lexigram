@@ -213,7 +213,7 @@ class InMemoryIdempotencyStore:
 
     async def _cleanup_loop(self) -> None:
         while True:
-            assert self._auto_cleanup_interval is not None
+            assert self._auto_cleanup_interval is not None  # noqa: S101  # loop only started when interval set
             await asyncio.sleep(self._auto_cleanup_interval)
             await self.cleanup_expired()
 

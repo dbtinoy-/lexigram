@@ -30,13 +30,14 @@ class RateLimitIntegration:
         ):
             return
 
-        rate_limiter = None
-        try:
-            # Try to resolve by protocol
-            rate_limiter = await container.resolve(cast("Any", WebRateLimiterProtocol))
-        except Exception as err:  # noqa: BLE001 — optional service; falls back per storage_backend
-            logger.info("RateLimiter not in container (%r); building from config", err)
-            redis_client = None
+        rate_limiter = await container.resolve_optional(
+            cast("Any", WebRateLimiterProtocol)
+        )
+        redis_client = None
+        if rate_limiter is None:
+            # Storage honesty: "memory" (or failed redis) constructs
+            # RateLimiter() which logs the explicit multi-worker warning
+            # (middleware/rate_limit.py) and then enforces in-memory.
             if getattr(web_config.rate_limit, "storage_backend", "memory") == "redis":
                 try:
                     redis_client = await container.resolve("redis_client")
@@ -44,9 +45,6 @@ class RateLimitIntegration:
                     logger.warning(
                         "redis_client unresolvable; using in-memory: %r", redis_err
                     )
-            # Storage honesty: "memory" (or failed redis) constructs
-            # RateLimiter() which logs the explicit multi-worker warning
-            # (middleware/rate_limit.py) and then enforces in-memory.
             rate_limiter = RateLimiter(redis_client)
 
         if rate_limiter:

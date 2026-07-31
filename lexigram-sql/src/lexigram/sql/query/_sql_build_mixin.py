@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.contracts.data.identifiers import Table as SQLTable
 from lexigram.contracts.data.sql.sql_dialect import SQLDialect
 from lexigram.sql.query.sql_types import (
     ConflictAction,
@@ -13,6 +14,8 @@ from lexigram.sql.query.sql_types import (
 
 class _BuildMixin:
     """SQL construction methods for AsyncQueryBuilder."""
+
+    _table: SQLTable
 
     def build(self) -> ParameterizedQuery:
         """Build the final parameterized SQL query.
@@ -84,7 +87,7 @@ class _BuildMixin:
             else:
                 select_clause = f"DISTINCT {select_clause}"
 
-        parts = [f"{cte_prefix}SELECT {select_clause} FROM {self._table}"]  # noqa: S608 -- builder validates all identifiers via Table()/Column() at entry  # type: ignore[attr-defined]
+        parts = [f"{cte_prefix}SELECT {select_clause} FROM {self._table}"]  # noqa: S608 -- builder validates all identifiers via Table()/Column() at entry
 
         # Collect raw select params
         for raw in self._raw_selects:  # type: ignore[attr-defined]
