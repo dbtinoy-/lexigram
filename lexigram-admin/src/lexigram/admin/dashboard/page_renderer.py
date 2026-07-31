@@ -80,8 +80,12 @@ def render_page_content(content: PageContent) -> HTMLResponse:
                 {"class": "text-2xl font-semibold tracking-tight"},
                 content.title,
             ),
-            raw(body_html),
-            raw(pagination_html),
+            el(
+                "div",
+                {"id": "table-data"},
+                raw(body_html),
+                raw(pagination_html),
+            ),
         )
     )
     return HTMLResponse(html)
