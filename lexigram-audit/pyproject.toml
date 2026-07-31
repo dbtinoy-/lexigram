@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-audit"
-version = "0.1.3006"
+version = "0.1.3007"
 description = "Unified audit trail for the Lexigram Framework — append-only, HMAC-verified, retention-managed"
 readme = "README.md"
 requires-python = ">=3.11"

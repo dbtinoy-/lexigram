@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-multimedia-beat"
-version = "0.1.3006"
+version = "0.1.3007"
 description = "Audio tempo/beat analysis for the Lexigram Framework — librosa and madmom backends"
 readme = "README.md"
 requires-python = ">=3.11"
