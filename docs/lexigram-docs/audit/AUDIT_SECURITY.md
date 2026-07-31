@@ -10,13 +10,13 @@
 - Dependency scan: clean (0 vulnerable package(s))
 - SAST (ruff `S` rules): 609 finding(s) (0 unverified, 305 verified low-risk, 304 low-signal noise)
 - Framework security rules: 1 finding(s)
-- Tracker areas: 99 total, 98 done
+- Tracker areas: 99 total, 99 done
 
 ## Dependency Scan
 
 - Command: `uv run pip-audit --timeout 60`
 - Exit code: `0`
-- Duration: `43536 ms`
+- Duration: `47717 ms`
 - Vulnerable packages: 0
 - Summary: `No known vulnerabilities found`
 
@@ -35,7 +35,7 @@ No known vulnerabilities found
 |------|------|------|---------|
 | `(none)` | 0 | `-` | No unverified bandit findings. |
 
-### Verified Low-Risk Families (reviewed 2026-08-18; see notes below)
+### Verified Low-Risk Families (reviewed 2026-08-19; see notes below)
 
 - Count: 305
 
@@ -71,10 +71,10 @@ No known vulnerabilities found
 | `lexigram-admin/src/lexigram/admin/controllers/base.py` | 146 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 | `lexigram-admin/src/lexigram/admin/controllers/base.py` | 165 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 | `lexigram-admin/src/lexigram/admin/controllers/resource.py` | 484 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 260 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 298 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 327 | `S704` | Unsafe use of `markupsafe.Markup` detected |
-| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 452 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
+| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 275 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
+| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 313 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
+| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 342 | `S704` | Unsafe use of `markupsafe.Markup` detected |
+| `lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py` | 467 | `S110` | `try`-`except`-`pass` detected, consider logging the exception |
 | `lexigram-admin/src/lexigram/admin/data/data_source.py` | 238 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-admin/src/lexigram/admin/data/data_source.py` | 251 | `S608` | Possible SQL injection vector through string-based query construction |
 | `lexigram-admin/src/lexigram/admin/data/data_source.py` | 252 | `S608` | Possible SQL injection vector through string-based query construction |
@@ -679,8 +679,8 @@ Each family below was triaged on the 2026-08-18 working tree:
 ## Audit Tracker Status
 
 - Total areas: 99
-- Done: 98
-- Open: 1
+- Done: 99
+- Open: 0
 
 ## Verified-Clean Surfaces
 
@@ -695,5 +695,5 @@ Each family below was triaged on the 2026-08-18 working tree:
 
 | # | Area | Severity mix |
 |---|------|--------------|
-| 15 | Structured management pages — host renders all page HTML |  |
+| - | (none) | - |
 

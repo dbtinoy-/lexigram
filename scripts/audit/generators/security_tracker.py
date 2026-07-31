@@ -13,21 +13,22 @@ _SEVERITY_ALIASES = {"medium": "Med", "med": "Med"}
 
 @dataclass(frozen=True, slots=True)
 class TrackerRow:
-    """One numbered finding row from the audit tracker's markdown tables."""
+    """One numbered area row from the audit tracker's markdown tables."""
 
     number: int
     area: str
     severity_mix: str
-    spec: str
-    plan: str
     status: str
 
 
 def parse_tracker_rows(text: str) -> tuple[TrackerRow, ...]:
-    """Parse numbered finding rows from every table in the tracker markdown.
+    """Parse numbered area rows from every table in the tracker markdown.
 
-    Handles both the 5-column shape (`# | Area | Severity mix | Spec | Plan`)
-    and the 6-column shape (`# | Area | §ref | Severity mix | Spec | Plan`).
+    Table shapes differ: 5-column (`# | Area | Severity mix | Spec | Plan`),
+    6-column with a Doc-section ref (`# | Area | §ref | Severity mix | Spec |
+    Plan`), and 7-column with an explicit Status cell (`... | Spec | Plan |
+    Status`). Spec references are ignored; the row status is read from the
+    trailing Spec/Plan/Status cells.
     """
 
     rows: list[TrackerRow] = []
@@ -38,29 +39,19 @@ def parse_tracker_rows(text: str) -> tuple[TrackerRow, ...]:
             continue
         number = int(data[0])
         area = data[1]
-        severity_mix, spec, plan = "", "", ""
+        severity_mix, status = "", ""
         for cell in data[2:]:
             if re.fullmatch(r"§\d+", cell):
                 continue
             if _looks_like_severity(cell):
                 severity_mix = cell
             elif cell.startswith("`specs/"):
-                spec = cell
+                continue
             else:
-                plan = f"{plan} {cell}".strip()
-        if not severity_mix and not spec and not plan:
+                status = f"{status} {cell}".strip()
+        if not severity_mix and not status:
             continue
-        row = TrackerRow(number, area, severity_mix, spec, plan, "open")
-        rows.append(
-            TrackerRow(
-                number=number,
-                area=area,
-                severity_mix=severity_mix,
-                spec=spec,
-                plan=plan,
-                status="done" if row_is_done(row) else "open",
-            )
-        )
+        rows.append(TrackerRow(number, area, severity_mix, status))
     return tuple(sorted(rows, key=lambda row: row.number))
 
 
@@ -97,9 +88,9 @@ def severity_counts(severity_mix: str) -> dict[str, int]:
 
 
 def row_is_done(row: TrackerRow) -> bool:
-    """Return whether a row's spec/plan text marks it executed or done."""
+    """Return whether the row's status text marks it executed or done."""
 
-    return bool(_DONE_RE.search(f"{row.spec} {row.plan}"))
+    return bool(_DONE_RE.search(row.status))
 
 
 def _looks_like_severity(cell: str) -> bool:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from scripts.audit.generators import security
@@ -26,7 +27,9 @@ PIP_DIRTY = "Found 3 known vulnerabilities in 2 packages\n"
 
 
 def _write_workspace(tmp_path: Path, *, tracker: bool = True) -> None:
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "workspace"\n', encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "workspace"\n', encoding="utf-8"
+    )
     (tmp_path / "lexigram").mkdir()
     (tmp_path / "lexigram" / "pyproject.toml").write_text(
         '[project]\nname = "lexigram"\n', encoding="utf-8"
@@ -37,7 +40,9 @@ def _write_workspace(tmp_path: Path, *, tracker: bool = True) -> None:
         (docs / "AUDIT_TRACKER.md").write_text(TRACKER_FIXTURE, encoding="utf-8")
 
 
-def _evidence(command: tuple[str, ...], stdout: str, exit_code: int = 0) -> CommandEvidence:
+def _evidence(
+    command: tuple[str, ...], stdout: str, exit_code: int = 0
+) -> CommandEvidence:
     return CommandEvidence(
         command=command,
         cwd=None,
@@ -61,9 +66,19 @@ def test_security_generator_verdict_critical_with_open_critical_row(
     _write_workspace(tmp_path)
 
     def fake_run_command(command: tuple[str, ...], *, cwd=None, timeout=None):
-        if command == ("uv", "run", "pip-audit"):
+        if command == ("uv", "run", "pip-audit", "--timeout", "60"):
             return _evidence(command, PIP_CLEAN)
-        if command == ("uv", "run", "ruff", "check", ".", "--select", "S", "--output-format", "concise"):
+        if command == (
+            "uv",
+            "run",
+            "ruff",
+            "check",
+            ".",
+            "--select",
+            "S",
+            "--output-format",
+            "concise",
+        ):
             return _evidence(command, RUFF_CLEAN)
         raise AssertionError(f"unexpected command {command!r}")
 
@@ -71,22 +86,37 @@ def test_security_generator_verdict_critical_with_open_critical_row(
     monkeypatch.setattr(security, "run_rules", _fake_run_rules)
     generator = SecurityAuditGenerator()
     result = generator.run(root=tmp_path)
-    markdown = (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_SECURITY.md").read_text(encoding="utf-8")
+    markdown = (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_SECURITY.md").read_text(
+        encoding="utf-8"
+    )
     assert result.success is True
     assert "**CRITICAL**" in markdown
     assert "## Dependency Scan" in markdown
     assert "## Static Analysis (ruff bandit rules)" in markdown
     assert "## Audit Tracker Status" in markdown
     assert "| 50 |" in markdown
+    assert f"(reviewed {date.today().isoformat()}; see notes below)" in markdown
 
 
-def test_security_generator_parses_ruff_and_pip_evidence(tmp_path: Path, monkeypatch) -> None:
+def test_security_generator_parses_ruff_and_pip_evidence(
+    tmp_path: Path, monkeypatch
+) -> None:
     _write_workspace(tmp_path)
 
     def fake_run_command(command: tuple[str, ...], *, cwd=None, timeout=None):
-        if command == ("uv", "run", "pip-audit"):
+        if command == ("uv", "run", "pip-audit", "--timeout", "60"):
             return _evidence(command, PIP_DIRTY)
-        if command == ("uv", "run", "ruff", "check", ".", "--select", "S", "--output-format", "concise"):
+        if command == (
+            "uv",
+            "run",
+            "ruff",
+            "check",
+            ".",
+            "--select",
+            "S",
+            "--output-format",
+            "concise",
+        ):
             return _evidence(command, RUFF_DIRTY, exit_code=1)
         raise AssertionError(f"unexpected command {command!r}")
 
@@ -126,11 +156,21 @@ def test_security_generator_pip_audit_fallback(tmp_path: Path, monkeypatch) -> N
 
     def fake_run_command(command: tuple[str, ...], *, cwd=None, timeout=None):
         commands.append(command)
-        if command == ("uv", "run", "pip-audit"):
+        if command == ("uv", "run", "pip-audit", "--timeout", "60"):
             return _evidence(command, "No module named pip_audit", exit_code=2)
-        if command == ("uv", "pip", "audit"):
+        if command == ("uvx", "pip-audit"):
             return _evidence(command, PIP_CLEAN)
-        if command == ("uv", "run", "ruff", "check", ".", "--select", "S", "--output-format", "concise"):
+        if command == (
+            "uv",
+            "run",
+            "ruff",
+            "check",
+            ".",
+            "--select",
+            "S",
+            "--output-format",
+            "concise",
+        ):
             return _evidence(command, RUFF_CLEAN)
         raise AssertionError(f"unexpected command {command!r}")
 
@@ -139,16 +179,28 @@ def test_security_generator_pip_audit_fallback(tmp_path: Path, monkeypatch) -> N
     generator = SecurityAuditGenerator()
     result = generator.run(root=tmp_path)
     assert result.success is True
-    assert ("uv", "pip", "audit") in commands
+    assert ("uvx", "pip-audit") in commands
 
 
-def test_security_generator_handles_missing_tracker(tmp_path: Path, monkeypatch) -> None:
+def test_security_generator_handles_missing_tracker(
+    tmp_path: Path, monkeypatch
+) -> None:
     _write_workspace(tmp_path, tracker=False)
 
     def fake_run_command(command: tuple[str, ...], *, cwd=None, timeout=None):
-        if command == ("uv", "run", "pip-audit"):
+        if command == ("uv", "run", "pip-audit", "--timeout", "60"):
             return _evidence(command, PIP_CLEAN)
-        if command == ("uv", "run", "ruff", "check", ".", "--select", "S", "--output-format", "concise"):
+        if command == (
+            "uv",
+            "run",
+            "ruff",
+            "check",
+            ".",
+            "--select",
+            "S",
+            "--output-format",
+            "concise",
+        ):
             return _evidence(command, RUFF_CLEAN)
         raise AssertionError(f"unexpected command {command!r}")
 
