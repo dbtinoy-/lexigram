@@ -2,7 +2,7 @@
 
 import pytest
 
-from lexigram.storage.types import UploadOptions
+from lexigram.contracts.infra.storage import UploadOptions
 
 
 class TestUploadOptions:
@@ -49,7 +49,8 @@ class TestUploadOptions:
         assert private_opts.public is False
 
     def test_types_exported(self) -> None:
-        """Test that models are in __all__."""
-        from lexigram.storage.types import __all__
+        """Test that models are re-exported from the package root."""
+        from lexigram.contracts.infra.storage import UploadOptions as ContractOptions
+        from lexigram.storage import UploadOptions
 
-        assert "UploadOptions" in __all__
+        assert UploadOptions is ContractOptions

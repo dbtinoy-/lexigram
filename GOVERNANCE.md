@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Lexigram Framework is a **dual-licensed** project maintained by Lexigram — most packages are open source under the MIT License, and a few are proprietary (see [`LICENSING.md`](./LICENSING.md)). This document describes the project structure, decision-making process, and roles.
+The Lexigram Framework is an **open-source** project maintained by Lexigram, licensed under the [MIT License](./LICENSE). This document describes the project structure, decision-making process, and roles.
 
 ## Project Leadership
 

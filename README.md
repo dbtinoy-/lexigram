@@ -121,7 +121,7 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - skills for AI coding agents → [lexigram-skills](https://github.com/dbtinoy-/lexigram-framework-skills)
 - contributing → [CONTRIBUTING.md](./CONTRIBUTING.md)
 - security → [SECURITY.md](./SECURITY.md)
-- license → [LICENSE](./LICENSE) and [LICENSING.md](./LICENSING.md)
+- license → [LICENSE](./LICENSE)
 
 ---
 

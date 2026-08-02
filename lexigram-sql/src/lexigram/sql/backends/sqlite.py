@@ -348,6 +348,7 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
         self.database = database
         self.pool_kwargs = kwargs
         self._conn: aiosqlite.Connection | None = None
+        self._file_identity: tuple[int, int] | None = None
         self._is_healthy = False
         self._last_health_check = 0.0
         self._connection_count = 0
@@ -397,6 +398,7 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
         """Internal connection creation with error handling"""
         try:
             self._conn = await aiosqlite.connect(self.database, **self.pool_kwargs)
+            self._file_identity = self._stat_identity()
             self._total_connections_created += 1
             self._is_healthy = True
             logger.info("SQLite connection initialized for %s", self.database)
@@ -406,6 +408,51 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
             logger.exception("Failed to create SQLite connection")
             raise DatabaseConnectionError(f"Connection creation failed: {e}") from e
 
+    def _stat_identity(self) -> tuple[int, int] | None:
+        """Return (st_dev, st_ino) of the database file, or None if missing/empty."""
+        if self.database == ":memory:":
+            return None
+        try:
+            st = Path(self.database).stat()
+        except OSError:
+            return None
+        return (st.st_dev, st.st_ino)
+
+    def _file_state_ok(self) -> bool:
+        """True if the on-disk database file still matches the connected file.
+
+        Detects the deleted-inode case where the database file was unlinked
+        (or replaced) while the connection stays open against the old inode,
+        which would silently serve stale data.
+        """
+        if self.database == ":memory:":
+            return True
+        if self._file_identity is None:
+            # No connection established yet; the file may legitimately not
+            # exist yet (SQLite creates it lazily on first connect).
+            return True
+        current = self._stat_identity()
+        if current is None:
+            return False
+        return current == self._file_identity
+
+    async def _invalidate_stale_connection(self) -> None:
+        """Close and drop a connection whose database file no longer matches."""
+        if self._conn:
+            try:
+                await self._conn.close()
+            except Exception:  # noqa: BLE001 — best-effort close of a stale handle
+                pass
+            self._conn = None
+        self._file_identity = None
+        self._is_healthy = False
+        self._error_count += 1
+        logger.error(
+            "sqlite.db_file_stale",
+            message="SQLite database file missing or replaced; stale connection closed",
+            database=self.database,
+        )
+
     @asynccontextmanager
     async def get_connection(self) -> AsyncGenerator[SQLiteConnection, None]:
         """Get the initialized connection with circuit breaker protection"""
@@ -414,6 +461,13 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
 
         if self._conn is None:
             raise RuntimeError("SQLite connection not initialized")
+
+        if not self._file_state_ok():
+            await self._invalidate_stale_connection()
+            raise DatabaseConnectionError(
+                f"SQLite database file {self.database} is missing or was replaced "
+                "(stale connection refused); restart the application to re-create it",
+            )
 
         # Use circuit breaker if configured
         if self.circuit_breaker:
@@ -471,6 +525,25 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Perform health check on the SQLite connection and return a standard result."""
         current_time = ambient_clock.timestamp()
+
+        if not self._file_state_ok():
+            await self._invalidate_stale_connection()
+            self._last_health_check = current_time
+            details = {
+                "database": self.database,
+                "file_state": "missing_or_replaced",
+                "error_count": self._error_count,
+            }
+            return HealthCheckResult(
+                component="database",
+                status=HealthStatus.UNHEALTHY,
+                message=(
+                    f"SQLite database file {self.database} is missing or was "
+                    "replaced; stale connection closed"
+                ),
+                details=details,
+                checked_at=datetime.fromtimestamp(current_time, UTC),
+            )
 
         # Cache health checks for 30 seconds
         if current_time - self._last_health_check < 30.0 and self._is_healthy:
@@ -571,6 +644,7 @@ class SQLiteConnectionPool(ConnectionPoolProtocol):
             "file_exists": (
                 Path(self.database).exists() if self.database != ":memory:" else True
             ),
+            "file_state_ok": self._file_state_ok(),
             "total_connections_created": self._total_connections_created,
             "active_connection_count": self._connection_count,
             "error_count": self._error_count,

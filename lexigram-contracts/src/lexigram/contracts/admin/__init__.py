@@ -24,7 +24,10 @@ from lexigram.contracts.admin.operations import (
     TransactionalProtocol,
     ValidatableProtocol,
 )
-from lexigram.contracts.admin.page_handler import AdminPageHandlerProtocol, ManagementPageHandler
+from lexigram.contracts.admin.page_handler import (
+    AdminPageHandlerProtocol,
+    ManagementPageHandler,
+)
 from lexigram.contracts.admin.pii_redactor import PiiRedactorProtocol
 from lexigram.contracts.admin.protocols import (
     AdminContributorProtocol,

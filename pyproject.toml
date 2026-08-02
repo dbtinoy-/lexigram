@@ -1,6 +1,6 @@
 # Curated PUBLIC workspace root for the open-source mirror.
 # Hand-maintained (NOT a prune of the private root) so no proprietary package
-# paths leak via tool config. Keep in sync with tools/stamp_licenses.sh OPEN list.
+# paths leak via tool config. Keep in sync with tools/publish_public.sh STABLE_PKGS.
 [project]
 name = "lexigram-workspace"
 version = "0.1.2"
