@@ -544,3 +544,38 @@ class TestRenderedForm:
         assert "<form" in html
         assert 'name="csrf_token"' in html
         assert 'value="tok123"' in html
+
+
+class TestSaveSpecReadonlyEnforcement:
+    """save_spec must never persist a readonly field, even via direct POST."""
+
+    @pytest.mark.asyncio
+    async def test_readonly_field_in_post_is_ignored_and_audited(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec, StringNode
+
+        class _ReadonlySpec(ConfigSpec):
+            namespace = "admin.readonly_post_test"
+            label = "Readonly Post Test"
+            icon = "lock"
+            description = ""
+            locked = StringNode(label="Locked", default="original", readonly=True)
+
+        registry = ConfigRegistry()
+        registry._specs["admin.readonly_post_test"] = _ReadonlySpec
+        audit = AsyncMock()
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        controller = SettingsController(
+            renderer=renderer, audit_service=audit, registry=registry
+        )
+
+        req = _mock_request(
+            method="POST", form_data={"locked": "hacked"}, user=_FakeUser()
+        )
+        req.path_params = {"namespace": "admin.readonly_post_test"}
+        await controller.save_spec(req)
+
+        values = await registry.get_values("admin.readonly_post_test")
+        assert values["locked"] == "original"
+        _, kwargs = audit.log_event.call_args
+        assert kwargs["metadata"]["ignored_readonly"] == ["locked"]
