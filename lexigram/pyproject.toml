@@ -144,6 +144,7 @@ ai = [
     "lexigram-ai-skills>=0.1.2",
     "lexigram-ai-feedback>=0.1.2",
     "lexigram-ai-observability>=0.1.2",
+    "lexigram-ai-prompt>=0.1.2",
     "lexigram-ai-session>=0.1.2",
     "lexigram-ai-workers>=0.1.2",
 ]
@@ -218,6 +219,7 @@ all = [
     "lexigram-ai-skills>=0.1.2",
     "lexigram-ai-feedback>=0.1.2",
     "lexigram-ai-observability>=0.1.2",
+    "lexigram-ai-prompt>=0.1.2",
     "lexigram-ai-session>=0.1.2",
     "lexigram-ai-workers>=0.1.2",
     "lexigram-nosql>=0.1.2",

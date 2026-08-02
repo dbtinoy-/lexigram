@@ -1,6 +1,6 @@
 # Curated PUBLIC workspace root for the open-source mirror.
-# Hand-maintained (NOT a prune of the private root) so no proprietary package
-# paths leak via tool config. Keep in sync with tools/publish_public.sh STABLE_PKGS.
+# Hand-maintained (NOT a prune of the private root) so no private-root paths
+# leak via tool config. Keep in sync with tools/publish_public.sh STABLE_PKGS.
 [project]
 name = "lexigram-workspace"
 version = "0.1.2"
@@ -142,5 +142,5 @@ testpaths = ["lexigram*/tests"]
 asyncio_mode = "auto"
 
 # NOTE: detailed [tool.ruff.lint], [tool.mypy], and [tool.coverage] config from the
-# private root were intentionally omitted here because they enumerate proprietary
-# package paths. Port them with globbed paths if/when needed.
+# private root were intentionally omitted here because they enumerate package
+# paths. Port them with globbed paths if/when needed.
