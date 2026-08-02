@@ -42,6 +42,7 @@ from lexigram.contracts.multimedia.types import (
     TransitionSpec,
     Trim,
     TTSRequest,
+    VideoMode,
     VideoOperation,
     VideoRequest,
 )
@@ -80,6 +81,7 @@ __all__ = [
     "TransitionSpec",
     "Trim",
     "VideoGenerationError",
+    "VideoMode",
     "VideoOperation",
     "VideoProcessor",
     "VideoProvider",
