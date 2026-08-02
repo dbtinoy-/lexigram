@@ -130,7 +130,7 @@ class TestAPIDocsConfig:
         """Test API docs config default values"""
         config = APIDocsConfig()
 
-        assert config.enabled is False
+        assert config.enabled is True
         assert config.provider == "both"
 
     def test_api_docs_get_required_domains_swagger(self):
