@@ -158,3 +158,19 @@ class TestRegistryEdgeCases:
         register_cache_spec(registry)
         values = await registry.get_values("admin.nope")
         assert values == {}
+
+    async def test_save_values_skips_readonly_nodes(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec, StringNode
+
+        class _ReadonlySpec(ConfigSpec):
+            namespace = "admin.readonly_test"
+            label = "Readonly Test"
+            icon = "lock"
+            description = ""
+            locked = StringNode(label="Locked", default="original", readonly=True)
+
+        registry = ConfigRegistry()
+        registry._specs["admin.readonly_test"] = _ReadonlySpec
+        await registry.save_values("admin.readonly_test", {"locked": "hacked"})
+        values = await registry.get_values("admin.readonly_test")
+        assert values["locked"] == "original"
