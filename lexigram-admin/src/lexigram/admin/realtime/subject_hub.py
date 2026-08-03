@@ -33,6 +33,12 @@ class _TargetedEvent:
 class SubjectAdminEventHub:
     """Fan-out hub for admin events over a reactive Subject.
 
+    ``on_overflow="drop_latest"`` is deliberate: the default
+    ``"block"`` mode would suspend ``publish()`` itself — and thus every
+    caller awaiting it, including a write-action HTTP response — on one
+    slow subscriber. A dropped live delta is recoverable by the next
+    reconcile-on-load snapshot; a blocked publisher is not.
+
     Example:
         ```python
         hub = SubjectAdminEventHub()
@@ -48,15 +54,17 @@ class SubjectAdminEventHub:
         """Initialize the hub.
 
         Args:
-            subject: Optional shared Subject; defaults to a private one.
+            subject: Optional shared Subject; defaults to a private one
+                with ``on_overflow="drop_latest"``.
         """
-        self._subject = subject or Subject[_TargetedEvent]()
+        self._subject = subject or Subject[_TargetedEvent](on_overflow="drop_latest")
 
     async def subscribe(
         self,
         user_id: Any | None = None,
         resources: list[str] | None = None,
         event_types: list[AdminEventType] | None = None,
+        tenant_id: str | None = None,
     ) -> AsyncGenerator[AdminEvent, None]:
         """Subscribe to filtered admin events.
 
@@ -68,14 +76,24 @@ class SubjectAdminEventHub:
                 semantics, which ``action_executor.py`` relies on to keep
                 a caller's own action-result notification private to
                 that caller.
-            resources: Optional resource-type filter.
+            resources: Optional resource-type filter. Caller is
+                responsible for authorizing which resources the
+                subscriber may request — this hub applies the filter,
+                it does not authorize it (see the SSE route handler).
             event_types: Optional event-type filter.
+            tenant_id: Restricts delivery to events with no ``tenant_id``
+                (untenanted / framework-level) plus events whose
+                ``tenant_id`` matches. ``None`` sees only untenanted
+                events.
 
         Yields:
             Matching AdminEvent objects as they are published.
         """
         stream = self._subject.pipe(
             ops.filter(lambda te: te.target_users is None or user_id in te.target_users)
+        )
+        stream = stream.pipe(
+            ops.filter(lambda te: te.event.tenant_id is None or te.event.tenant_id == tenant_id)
         )
         if resources:
             stream = stream.pipe(
@@ -112,3 +130,22 @@ class SubjectAdminEventHub:
             )
         )
         return 1
+
+    async def publish_notification(
+        self,
+        title: str,
+        message: str,
+        level: str = "info",
+        target_users: list[Any] | None = None,
+    ) -> int:
+        """Publish a notification event.
+
+        Mirrors ``AdminEventHub.publish_notification``'s signature so
+        callers (the inbox bridge, action-result notifications) can move
+        to this hub with no call-site changes beyond the import.
+        """
+        event = AdminEvent(
+            event_type=AdminEventType.NOTIFICATION,
+            data={"title": title, "message": message, "level": level},
+        )
+        return await self.publish(event, target_users=target_users)
