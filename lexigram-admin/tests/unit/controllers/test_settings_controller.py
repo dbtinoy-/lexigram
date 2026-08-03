@@ -579,3 +579,57 @@ class TestSaveSpecReadonlyEnforcement:
         assert values["locked"] == "original"
         _, kwargs = audit.log_event.call_args
         assert kwargs["metadata"]["ignored_readonly"] == ["locked"]
+
+
+class TestSaveSpecSecretHandling:
+    """Blank secret submissions must not overwrite the stored value."""
+
+    @pytest.mark.asyncio
+    async def test_blank_secret_submission_leaves_stored_value_unchanged(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec, SecretNode
+
+        class _SecretSpec(ConfigSpec):
+            namespace = "admin.secret_test"
+            label = "Secret Test"
+            icon = "key"
+            description = ""
+            api_key = SecretNode(label="API Key", default="")
+
+        registry = ConfigRegistry()
+        registry._specs["admin.secret_test"] = _SecretSpec
+        await registry.save_values("admin.secret_test", {"api_key": "sk-original"})
+
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        controller = SettingsController(renderer=renderer, registry=registry)
+        req = _mock_request(method="POST", form_data={"api_key": ""}, user=_FakeUser())
+        req.path_params = {"namespace": "admin.secret_test"}
+        await controller.save_spec(req)
+
+        values = await registry.get_values("admin.secret_test")
+        assert values["api_key"] == "sk-original"
+
+    @pytest.mark.asyncio
+    async def test_non_blank_secret_submission_overwrites(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec, SecretNode
+
+        class _SecretSpec2(ConfigSpec):
+            namespace = "admin.secret_test2"
+            label = "Secret Test 2"
+            icon = "key"
+            description = ""
+            api_key = SecretNode(label="API Key", default="")
+
+        registry = ConfigRegistry()
+        registry._specs["admin.secret_test2"] = _SecretSpec2
+        await registry.save_values("admin.secret_test2", {"api_key": "sk-original"})
+
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        controller = SettingsController(renderer=renderer, registry=registry)
+        req = _mock_request(method="POST", form_data={"api_key": "sk-new"}, user=_FakeUser())
+        req.path_params = {"namespace": "admin.secret_test2"}
+        await controller.save_spec(req)
+
+        values = await registry.get_values("admin.secret_test2")
+        assert values["api_key"] == "sk-new"
