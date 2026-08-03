@@ -22,4 +22,4 @@ class RateLimitSpec(PydanticConfigSpec):
 
 def register_spec(registry: ConfigRegistry) -> None:
     """Register this spec with the config registry."""
-    registry.register_spec("system", RateLimitSpec)
+    registry.register_spec(RateLimitSpec)
