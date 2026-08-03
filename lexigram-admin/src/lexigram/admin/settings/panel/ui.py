@@ -293,10 +293,14 @@ class ConfigDashboardUI:
                 disabled=readonly,
             )
         elif node_type == "secret":
+            has_value = bool(value)
+            presence_note = "(currently set)" if has_value else "(not set)"
+            help_text = f"{help_text} {presence_note}" if help_text else presence_note
             input_comp = TextInput(
                 name=name,
-                value=value,
+                value="",
                 input_type="password",
+                placeholder="••••••••" if has_value else "",
                 disabled=readonly,
             )
         elif node_type == "color":
