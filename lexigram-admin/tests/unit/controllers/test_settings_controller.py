@@ -107,7 +107,7 @@ class TestSettingsController:
             required_permissions = frozenset({"admin.settings.edit"})
             flag = BooleanNode(label="Flag", default=True)
 
-        registry.register_spec("system", GatedSpec2)
+        registry.register_spec(GatedSpec2)
         req = _mock_request(
             user=_FakeUser(permissions=frozenset(), roles=["superadmin"]),
         )
@@ -126,7 +126,7 @@ class TestSettingsController:
             required_permissions = frozenset({"admin.settings.edit"})
             flag = BooleanNode(label="Flag", default=True)
 
-        registry.register_spec("system", GatedSpec3)
+        registry.register_spec(GatedSpec3)
         req = _mock_request(
             method="POST",
             form_data={"_csrf": "token", "flag": "true"},
@@ -368,7 +368,7 @@ class TestSettingsController:
         from starlette.responses import RedirectResponse
 
         registry = ConfigRegistry.with_defaults()
-        registry.register_spec("system", GatedSpec)
+        registry.register_spec(GatedSpec)
 
         audit = AsyncMock()
         controller = SettingsController(
@@ -447,7 +447,7 @@ class TestSettingsSpecViewPermissionGate:
         self, renderer: MagicMock, audit: MagicMock | None = None
     ) -> tuple[SettingsController, ConfigRegistry]:
         registry = ConfigRegistry.with_defaults()
-        registry.register_spec("system", GatedSpec)
+        registry.register_spec(GatedSpec)
         controller = SettingsController(
             renderer=renderer,
             audit_service=audit,
@@ -505,7 +505,7 @@ class TestSettingsSpecViewPermissionGate:
         self, renderer: MagicMock
     ) -> None:
         registry = ConfigRegistry.with_defaults()
-        registry.register_spec("system", UngatedSpec)
+        registry.register_spec(UngatedSpec)
         controller = SettingsController(renderer=renderer, registry=registry)
         req = _mock_request(user=_FakeUser(permissions=frozenset({"admin.other"})))
         req.path_params = {"namespace": "admin.ungated"}
