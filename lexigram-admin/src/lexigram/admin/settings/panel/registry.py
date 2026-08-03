@@ -19,18 +19,22 @@ __all__ = [
 class StoreBase:
     """Interface for configuration persistence."""
 
-    async def get(self, key: str, default: Any = None) -> Any:
+    async def get(
+        self, key: str, default: Any = None, tenant_id: str | None = None
+    ) -> Any:
         """Retrieve a value by key."""
         return default
 
-    async def set(self, key: str, value: Any) -> None:
+    async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value by key."""
 
 
 class EnvStore(StoreBase):
     """Read-only store for environment variables."""
 
-    async def get(self, key: str, default: Any = None) -> Any:
+    async def get(
+        self, key: str, default: Any = None, tenant_id: str | None = None
+    ) -> Any:
         """Read a value from environment variables.
 
         Converts internal dot-notation keys (e.g. ``app.db.url``) to
@@ -46,11 +50,13 @@ class MemoryStore(StoreBase):
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
 
-    async def get(self, key: str, default: Any = None) -> Any:
+    async def get(
+        self, key: str, default: Any = None, tenant_id: str | None = None
+    ) -> Any:
         """Retrieve a value from the in-memory store."""
         return self._data.get(key, default)
 
-    async def set(self, key: str, value: Any) -> None:
+    async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value to the in-memory store."""
         self._data[key] = value
 
