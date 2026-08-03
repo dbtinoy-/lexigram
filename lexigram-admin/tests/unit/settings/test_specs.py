@@ -141,6 +141,38 @@ class TestSpecs:
         assert values["default_ttl"] == 120
 
 
+class TestPackageSourceGrouping:
+    def test_get_package_sources_returns_distinct_sorted_sources(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec, StringNode
+
+        class _SpecA(ConfigSpec):
+            namespace = "test.a"
+            label = "A"
+            icon = "box"
+            description = ""
+            package_source = "zeta"
+            field = StringNode(label="Field")
+
+        class _SpecB(ConfigSpec):
+            namespace = "test.b"
+            label = "B"
+            icon = "box"
+            description = ""
+            package_source = "alpha"
+            field = StringNode(label="Field")
+
+        registry = ConfigRegistry()
+        registry.register_spec(_SpecA)
+        registry.register_spec(_SpecB)
+        assert registry.get_package_sources() == ["alpha", "zeta"]
+        assert registry.get_specs_by_package("alpha") == [_SpecB]
+
+    def test_default_package_source_is_built_in(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec
+
+        assert ConfigSpec.package_source == "built-in"
+
+
 class TestRegistryEdgeCases:
     """Edge cases for registry lookups and stores."""
 
