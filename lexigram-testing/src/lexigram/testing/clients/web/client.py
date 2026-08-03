@@ -4,7 +4,7 @@ from typing import Any, Self, TypeVar
 
 try:
     from starlette.testclient import TestClient as StarletteTestClient
-except ImportError:
+except (ImportError, RuntimeError):
     StarletteTestClient = None  # type: ignore[assignment]
 
 from lexigram.app.base import Application
