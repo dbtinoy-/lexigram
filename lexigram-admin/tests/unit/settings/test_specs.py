@@ -189,6 +189,35 @@ class TestStoreTenantIdParameter:
         assert await store.get("foo.bar", tenant_id="tenant-a") == "baz"
 
 
+class TestRegistryTenantThreading:
+    async def test_get_values_passes_tenant_id_to_store(self) -> None:
+        from unittest.mock import AsyncMock
+
+        registry = ConfigRegistry()
+        register_cache_spec(registry)
+        store = AsyncMock()
+        store.get.return_value = None
+        registry.register_store("test", store)
+
+        await registry.get_values("admin.cache", store_name="test", tenant_id="tenant-a")
+        for call in store.get.await_args_list:
+            assert call.kwargs.get("tenant_id") == "tenant-a"
+
+    async def test_save_values_passes_tenant_id_to_store(self) -> None:
+        from unittest.mock import AsyncMock
+
+        registry = ConfigRegistry()
+        register_cache_spec(registry)
+        store = AsyncMock()
+        registry.register_store("test", store)
+
+        await registry.save_values(
+            "admin.cache", {"enabled": "true"}, store_name="test", tenant_id="tenant-a"
+        )
+        store.set.assert_awaited_once()
+        assert store.set.await_args.kwargs.get("tenant_id") == "tenant-a"
+
+
 class TestRegistryEdgeCases:
     """Edge cases for registry lookups and stores."""
 

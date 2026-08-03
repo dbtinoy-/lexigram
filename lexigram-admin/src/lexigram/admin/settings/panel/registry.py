@@ -146,6 +146,7 @@ class ConfigRegistry:
         self,
         namespace: str,
         store_name: str = "default",
+        tenant_id: str | None = None,
     ) -> dict[str, Any]:
         """Load current values for a spec from a store."""
         spec = self._specs.get(namespace)
@@ -156,7 +157,7 @@ class ConfigRegistry:
         values = {}
         for key, node in spec.get_nodes().items():
             full_key = f"{namespace}.{key}"
-            raw_val = await store.get(full_key, node.default)
+            raw_val = await store.get(full_key, node.default, tenant_id=tenant_id)
             values[key] = node.validate(raw_val)
         return values
 
@@ -165,6 +166,7 @@ class ConfigRegistry:
         namespace: str,
         values: dict[str, Any],
         store_name: str = "default",
+        tenant_id: str | None = None,
     ) -> None:
         """Save values for a spec to a store, skipping readonly nodes."""
         spec = self._specs.get(namespace)
@@ -177,4 +179,4 @@ class ConfigRegistry:
             if key in nodes and not nodes[key].readonly:
                 full_key = f"{namespace}.{key}"
                 validated = nodes[key].validate(value)
-                await store.set(full_key, validated)
+                await store.set(full_key, validated, tenant_id=tenant_id)
