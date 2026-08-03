@@ -633,3 +633,17 @@ class TestSaveSpecSecretHandling:
 
         values = await registry.get_values("admin.secret_test2")
         assert values["api_key"] == "sk-new"
+
+
+class TestDynamicCategories:
+    @pytest.mark.asyncio
+    async def test_categories_are_grouped_by_package_source(self) -> None:
+        registry = ConfigRegistry.with_defaults()
+        renderer = MagicMock()
+        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
+        controller = SettingsController(renderer=renderer, registry=registry)
+        req = _mock_request(user=_FakeUser())
+        categories, visible = controller._build_categories(req)
+        assert len(categories) == 1
+        assert categories[0].name == "built-in"
+        assert len(visible) == 8
