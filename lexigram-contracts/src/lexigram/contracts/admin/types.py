@@ -223,6 +223,7 @@ class WidgetParams:
     page_size: int = 20
     time_window_minutes: int = 60
     raw: tuple[tuple[str, str], ...] = field(default_factory=tuple)
+    tenant_id: str | None = None
 
 
 __all__ = [
