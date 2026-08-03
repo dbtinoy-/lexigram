@@ -30,11 +30,13 @@ class TenantConfigStore(StoreBase):
         self._service = service
         self._tenant = tenant_id
 
-    async def get(self, key: str, default: Any = None) -> Any:
+    async def get(
+        self, key: str, default: Any = None, tenant_id: str | None = None
+    ) -> Any:
         """Retrieve a value by key, falling back to *default* when unset."""
-        value = await self._service.get(self._tenant, key)
+        value = await self._service.get(tenant_id or self._tenant, key)
         return value if value is not None else default
 
-    async def set(self, key: str, value: Any) -> None:
+    async def set(self, key: str, value: Any, tenant_id: str | None = None) -> None:
         """Persist a value by key."""
-        await self._service.set(self._tenant, key, value)
+        await self._service.set(tenant_id or self._tenant, key, value)
