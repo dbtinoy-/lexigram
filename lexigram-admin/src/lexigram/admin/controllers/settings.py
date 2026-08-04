@@ -14,6 +14,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.controllers.base import AdminController
+from lexigram.admin.multitenancy.adapter import resolve_tenant_id
 from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.admin.settings.panel import BooleanNode, SecretNode
 from lexigram.admin.settings.panel.layout import ConfigLayout
@@ -204,7 +205,14 @@ class SettingsController(AdminController):
             return RedirectResponse(url="/admin/settings", status_code=302)
 
         categories, _ = self._build_categories(request)
-        values = await self._registry.get_values(namespace, self._store_name())
+        tenant_id = (
+            await resolve_tenant_id(request, default="default")
+            if spec.scope == "tenant"
+            else None
+        )
+        values = await self._registry.get_values(
+            namespace, self._store_name(), tenant_id=tenant_id
+        )
 
         ui = ConfigDashboardUI()
         form_content = ui.render_config_form(
@@ -294,7 +302,14 @@ class SettingsController(AdminController):
             for key, value in editable_updates.items()
             if str(nodes[key].validate(value)).lower() != value.lower()
         ]
-        await self._registry.save_values(namespace, editable_updates, self._store_name())
+        tenant_id = (
+            await resolve_tenant_id(request, default="default")
+            if spec.scope == "tenant"
+            else None
+        )
+        await self._registry.save_values(
+            namespace, editable_updates, self._store_name(), tenant_id=tenant_id
+        )
 
         await self._audit(
             request,
@@ -321,7 +336,9 @@ class SettingsController(AdminController):
                 f'<div id="flash-container" hx-swap-oob="true">{toast_html}</div>'
             )
 
-            values = await self._registry.get_values(namespace, self._store_name())
+            values = await self._registry.get_values(
+                namespace, self._store_name(), tenant_id=tenant_id
+            )
             ui = ConfigDashboardUI()
             form_content = ui.render_config_form(
                 spec=spec.to_dict(),
