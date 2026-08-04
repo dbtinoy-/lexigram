@@ -422,7 +422,14 @@ class TestAgentExecutorCostTracking:
                 tracked_costs.append(cost)
 
         class FixedCostEstimator:
-            def estimate_cost(self, model, total_tokens, provider=None):
+            def estimate_cost(
+                self,
+                model,
+                total_tokens,
+                provider=None,
+                prompt_tokens=0,
+                completion_tokens=0,
+            ):
                 return total_tokens * 0.000002
 
         class CountingStrategy:

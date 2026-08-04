@@ -18,14 +18,30 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+from aiohttp import ClientError as AiohttpClientError
+
 from lexigram.ai.llm.http.client import ResilientHTTPClient
 from lexigram.ai.llm.pricing.types import ModelPricing
+from lexigram.contracts.exceptions.base import LexigramError
 from lexigram.logging import (
     get_logger,
 )
 from lexigram.serialization import loads
 
 logger = get_logger(__name__)
+
+# Every pricing source is best-effort: an unreachable or failing endpoint must
+# never propagate (a pricing outage must not abort application startup), so
+# sources degrade to empty pricing.  ``HttpStatusError`` from
+# ``ResilientHTTPClient.raise_for_status`` and the rich aiohttp connection
+# errors are NOT ``OSError`` subclasses and must be caught explicitly.
+_PRICING_FETCH_ERRORS: tuple[type[BaseException], ...] = (
+    OSError,
+    ValueError,
+    TypeError,
+    LexigramError,
+    AiohttpClientError,
+)
 
 
 class AbstractPricingSource(ABC):
@@ -129,7 +145,7 @@ class JSONFilePricingSource(AbstractPricingSource):
                     provider=model_data.get("provider", "unknown"),
                     source=f"json:{self.file_path.name}",
                 )
-        except (OSError, ValueError, TypeError) as e:
+        except _PRICING_FETCH_ERRORS as e:
             logger.warning("Failed to load pricing from JSON %s: %s", self.file_path, e)
             return {}
         else:
@@ -251,7 +267,7 @@ class APIPricingSource(AbstractPricingSource):
                 )
                 return pricing
 
-        except (OSError, ValueError, TypeError) as e:
+        except _PRICING_FETCH_ERRORS as e:
             logger.warning("Failed to fetch pricing from %s: %s", self.endpoint, e)
             return {}
 
@@ -306,6 +322,158 @@ class APIPricingSource(AbstractPricingSource):
     def source_name(self) -> str:
         """Get source name."""
         return f"API ({self.endpoint})"
+
+    def invalidate_cache(self) -> None:
+        """Clear cached pricing data to force refresh."""
+        self._cache = None
+
+
+class OpenRouterPricingSource(AbstractPricingSource):
+    """Pricing source from the OpenRouter models API.
+
+    Fetches ``https://openrouter.ai/api/v1/models`` (no API key required)
+    and maps each model's per-token USD prices to :class:`ModelPricing`.
+    OpenRouter prices reflect what you actually pay for OpenAI, Anthropic,
+    Google, Meta, Cohere, DeepSeek, xAI, and Qwen models and are updated
+    continuously by OpenRouter.
+
+    Each model is indexed under its full slug (e.g. ``openai/gpt-4o``) and,
+    when unambiguous, under its bare name (e.g. ``gpt-4o``) so callers can
+    look up prices by either form.
+
+    Attributes:
+        endpoint: Models API endpoint URL.
+        timeout: Request timeout in seconds.
+        cache: In-memory cache of fetched pricing.
+
+    Example:
+        >>> source = OpenRouterPricingSource()
+        >>> pricing = await source.get_pricing("gpt-4o")
+
+    """
+
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        timeout: float = 10.0,
+    ):
+        """Initialize OpenRouter pricing source.
+
+        Args:
+            endpoint: Models API URL. Defaults to
+                ``https://openrouter.ai/api/v1/models``.
+            timeout: Request timeout in seconds (default: 10).
+        """
+        self.endpoint = endpoint or "https://openrouter.ai/api/v1/models"
+        self.timeout = timeout
+        self._cache: dict[str, ModelPricing] | None = None
+
+    async def _fetch_pricing(self) -> dict[str, ModelPricing]:
+        """Fetch pricing from the OpenRouter models API.
+
+        Returns:
+            Dictionary of model name to pricing.
+
+        """
+        if self._cache is not None:
+            return self._cache
+
+        try:
+            async with ResilientHTTPClient(
+                timeout=self.timeout,
+                name="openrouter-pricing",
+            ) as client:
+                response = await client.get(self.endpoint)
+                response.raise_for_status()
+
+                data: Any = response.json
+                if asyncio.iscoroutine(data):
+                    data = await data
+
+                pricing: dict[str, ModelPricing] = {}
+                for model in (data or {}).get("data", []):
+                    model_id = str(model.get("id") or "").strip().lower()
+                    if not model_id:
+                        continue
+
+                    prices = model.get("pricing") or {}
+                    prompt_per_token = self._to_float(prices.get("prompt"))
+                    completion_per_token = self._to_float(prices.get("completion"))
+                    if prompt_per_token is None and completion_per_token is None:
+                        continue
+
+                    provider = model_id.split("/", 1)[0] or "unknown"
+                    entry = ModelPricing(
+                        model=model_id,
+                        prompt_per_1m=(prompt_per_token or 0.0) * 1_000_000,
+                        completion_per_1m=(completion_per_token or 0.0) * 1_000_000,
+                        provider=provider,
+                        source="api:openrouter",
+                    )
+                    pricing[model_id] = entry
+
+                    # Bare-name alias when unambiguous (e.g. "gpt-4o").
+                    parts = model_id.split("/", 1)
+                    if len(parts) == 2 and parts[1] not in pricing:
+                        pricing[parts[1]] = entry
+
+                self._cache = pricing
+                logger.info(
+                    "Fetched pricing for %d models from %s",
+                    len(pricing),
+                    self.endpoint,
+                )
+                return pricing
+
+        except _PRICING_FETCH_ERRORS as e:
+            logger.warning(
+                "Failed to fetch pricing from %s: %s",
+                self.endpoint,
+                e,
+            )
+            return {}
+
+    @staticmethod
+    def _to_float(value: Any) -> float | None:
+        """Convert a pricing value to float, tolerating None/empty strings.
+
+        Args:
+            value: Raw pricing value (string, number, or None).
+
+        Returns:
+            Float value, or ``None`` when absent or unparseable.
+        """
+        if value is None:
+            return None
+        try:
+            return float(str(value).strip())
+        except (TypeError, ValueError):
+            return None
+
+    async def get_pricing(self, model: str) -> ModelPricing | None:
+        """Get pricing for a specific model.
+
+        Args:
+            model: Model identifier (full slug or bare name).
+
+        Returns:
+            ModelPricing if found, None otherwise.
+        """
+        cache = await self._fetch_pricing()
+        return cache.get(model.lower())
+
+    async def get_all_pricing(self) -> dict[str, ModelPricing]:
+        """Get all pricing data.
+
+        Returns:
+            All pricing data from the OpenRouter API.
+        """
+        return await self._fetch_pricing()
+
+    @property
+    def source_name(self) -> str:
+        """Get source name."""
+        return "OpenRouter API"
 
     def invalidate_cache(self) -> None:
         """Clear cached pricing data to force refresh."""

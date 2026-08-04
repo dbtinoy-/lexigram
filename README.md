@@ -4,6 +4,8 @@
 
 ![Lexigram demo](docs/demos/hero/lexigram-hero.gif)
 
+![Tool calling demo](docs/demos/tools/lexigram-tools.gif)
+
 hey — wanna ship an AI app this weekend?
 
 Lexigram is a python framework that hands you Agents, LLMs, RAG, Skills, and memory already wired up — no glue code, no "and then we add the queue," no 200-line config files. The full async backend is right there too: web, sql, cache, auth, queues, events — all wired through one container, all built around one rule. It's async-native, container-managed, and built so the same patterns that get you to a demo on Sunday still hold up when the weekend project turns into the company. Pick a few packages, boot the application, ship the thing.

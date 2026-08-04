@@ -6,12 +6,13 @@ the container so they can be injected throughout the application.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from lexigram.ai.llm.exceptions import LLMError
 from lexigram.contracts.ai import LLMClientProtocol
 from lexigram.contracts.ai.providers import ProviderRegistryProtocol
 from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.contracts.exceptions.base import LexigramError
 from lexigram.contracts.exceptions.container import UnresolvableDependencyError
 from lexigram.contracts.exceptions.provider import ModuleVisibilityError
 from lexigram.di.decorators import inject
@@ -233,6 +234,30 @@ class LLMProvider(Provider):
         default_counter = token_registry.for_model(self.config.model or "gpt-3.5-turbo")
         container.singleton(TokenCounterProtocol, default_counter)
 
+        # Register pricing manager + cost estimator when pricing is configured
+        if self.config.pricing and self.config.pricing.enabled:
+            from lexigram.ai.llm.pricing.estimator import PricingCostEstimator
+            from lexigram.ai.llm.pricing.manager import PricingManager
+            from lexigram.contracts.ai.llm import CostEstimatorProtocol
+
+            pricing_manager = PricingManager(
+                sources=self.config.pricing.build_sources(),
+                cache_ttl=self.config.pricing.cache_ttl,
+                enable_fuzzy_match=self.config.pricing.enable_fuzzy_match,
+            )
+            container.singleton(PricingManager, pricing_manager)
+            container.singleton(
+                CostEstimatorProtocol,
+                PricingCostEstimator(
+                    {},
+                    enable_fuzzy_match=self.config.pricing.enable_fuzzy_match,
+                ),
+            )
+            logger.info(
+                "Registered pricing manager and cost estimator",
+                sources=[s.source_name for s in pricing_manager.sources],
+            )
+
         # Register InstructorExtractor if instructor is available
         if self._instructor_available():
             from lexigram.ai.llm.extraction.extractor import InstructorExtractor
@@ -282,6 +307,32 @@ class LLMProvider(Provider):
                         provider=provider,
                         reason="API key appears too short; verify the key is correct",
                     )
+
+        # Warm the cost estimator pricing snapshot from configured sources
+        if self.config.pricing and self.config.pricing.enabled:
+            try:
+                from lexigram.ai.llm.pricing.estimator import PricingCostEstimator
+                from lexigram.ai.llm.pricing.manager import PricingManager
+                from lexigram.contracts.ai.llm import CostEstimatorProtocol
+
+                manager = await container.resolve(PricingManager)
+                estimator = await container.resolve(CostEstimatorProtocol)
+                await cast("PricingCostEstimator", estimator).warm(manager)
+            except (
+                OSError,
+                ValueError,
+                TypeError,
+                LookupError,
+                RuntimeError,
+                LexigramError,
+                ModuleVisibilityError,
+                UnresolvableDependencyError,
+            ) as e:
+                logger.warning(
+                    "pricing_preload_failed",
+                    error=str(e),
+                    reason="cost estimates will return 0.0 until sources are reachable",
+                )
 
         # Optional: register this client in the provider registry
         if self._llm_client is not None:

@@ -487,6 +487,8 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                     model=model,
                     total_tokens=response.total_tokens,
                     provider=getattr(self._llm, "provider", None),
+                    prompt_tokens=response.prompt_tokens,
+                    completion_tokens=response.completion_tokens,
                 )
                 await self._governance.track_cost(
                     cost=estimated_cost,
@@ -508,6 +510,9 @@ class AgentExecutorImpl(AgentExecutorProtocol):
                 "steps": response.step_count,
                 "tool_calls": response.tool_call_count,
                 "total_tokens": response.total_tokens,
+                "prompt_tokens": response.prompt_tokens,
+                "completion_tokens": response.completion_tokens,
+                "total_cost": response.total_cost,
                 "duration_ms": response.duration_ms,
             },
         )

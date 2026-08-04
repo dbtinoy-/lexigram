@@ -28,6 +28,7 @@ from lexigram.ai.agents.strategies.parsing import (
     extract_final_answer,
     extract_tool_call,
 )
+from lexigram.ai.agents.strategies.token_utils import count_tokens, token_split
 from lexigram.ai.agents.types import ReasoningStep, ToolExecutionRecord
 from lexigram.contracts.ai.agents import (
     AgentError,
@@ -138,6 +139,8 @@ class FunctionCallingStrategy(AbstractStrategy):
         steps: list[ReasoningStep] = []
         tool_records: list[ToolExecutionRecord] = []
         total_tokens = 0
+        prompt_tokens = 0
+        completion_tokens = 0
         start_time = time.monotonic()
 
         tool_map: dict[str, ToolProtocol] = {t.name: t for t in tools}
@@ -152,6 +155,9 @@ class FunctionCallingStrategy(AbstractStrategy):
             if completion is None:
                 return Err(AgentError(f"LLM failed at iteration {iteration}"))
 
+            step_prompt, step_completion = self._token_split(completion)
+            prompt_tokens += step_prompt
+            completion_tokens += step_completion
             total_tokens += self._count_tokens(completion)
 
             native_calls = getattr(completion, "tool_calls", None) or []
@@ -234,6 +240,8 @@ class FunctionCallingStrategy(AbstractStrategy):
                     steps=steps,
                     tool_calls=tool_records,
                     total_tokens=total_tokens,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
                     duration_ms=elapsed,
                     metadata={
                         "strategy": "function_calling",
@@ -250,6 +258,8 @@ class FunctionCallingStrategy(AbstractStrategy):
                 steps=steps,
                 tool_calls=tool_records,
                 total_tokens=total_tokens,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
                 duration_ms=elapsed,
                 metadata={
                     "strategy": "function_calling",
@@ -350,14 +360,20 @@ class FunctionCallingStrategy(AbstractStrategy):
         return result.unwrap()
 
     def _count_tokens(self, completion: Completion) -> int:
-        """Extract token usage from a completion, if reported."""
-        usage = getattr(completion, "usage", None)
-        if usage:
-            if isinstance(usage, dict):
-                return int(usage.get("total_tokens", 0) or 0)
-            total = getattr(usage, "total_tokens", 0)
-            return int(total or 0)
-        return 0
+        """Extract total token usage from a completion, if reported."""
+        return count_tokens(completion)
+
+    def _token_split(self, completion: Completion) -> tuple[int, int]:
+        """Extract the prompt/completion token split, if reported.
+
+        Args:
+            completion: LLM completion result.
+
+        Returns:
+            Tuple of ``(prompt_tokens, completion_tokens)``.  Both are
+            ``0`` when usage is missing.
+        """
+        return token_split(completion)
 
     # ------------------------------------------------------------------
     # Native tool loop

@@ -32,6 +32,7 @@ from lexigram.ai.agents.strategies.plan_execute_types import (
     PlanStep,
     PlanStepStatus,
 )
+from lexigram.ai.agents.strategies.token_utils import TokenAccumulator
 from lexigram.ai.agents.types import ToolExecutionRecord
 from lexigram.logging import (
     get_logger,
@@ -54,6 +55,7 @@ async def call_llm(
     messages: list[ChatMessage],
     *,
     timeout: float,
+    usage: TokenAccumulator | None = None,
 ) -> str | None:
     """Call the LLM and return text content, or ``None`` on failure.
 
@@ -61,6 +63,7 @@ async def call_llm(
         llm: LLM client implementing ``LLMClientProtocol``.
         messages: Chat messages to send.
         timeout: Maximum seconds to wait for a response.
+        usage: Optional accumulator to count tokens from the completion.
 
     Returns:
         Text content of the completion, or ``None`` if the call failed.
@@ -82,6 +85,8 @@ async def call_llm(
         return None
 
     completion = result.unwrap()
+    if usage is not None:
+        usage.add(completion)
     return completion.content if hasattr(completion, "content") else str(completion)
 
 
@@ -165,10 +170,14 @@ async def execute_tool_step(
     tool_timeout: float,
     llm_timeout: float,
     observation_max_chars: int,
+    usage: TokenAccumulator | None = None,
 ) -> tuple[str, ToolExecutionRecord | None]:
     """Execute a tool-based plan step.
 
     Uses the LLM to determine tool arguments, then executes the tool.
+
+    Args:
+        usage: Optional accumulator to count tokens from the LLM call.
 
     Returns:
         A ``(result_text, tool_record)`` tuple. ``tool_record`` is ``None``
@@ -187,7 +196,7 @@ async def execute_tool_step(
         system_prompt + exec_prompt,
     )
 
-    llm_text = await call_llm(llm, messages, timeout=llm_timeout)
+    llm_text = await call_llm(llm, messages, timeout=llm_timeout, usage=usage)
     if llm_text is None:
         plan_step.status = PlanStepStatus.FAILED
         return "LLM returned empty response", None
@@ -225,11 +234,13 @@ async def execute_reasoning_step(
     *,
     llm_timeout: float,
     observation_max_chars: int,
+    usage: TokenAccumulator | None = None,
 ) -> str:
     """Execute a reasoning-only plan step via the LLM.
 
     Returns the extracted ``STEP_RESULT:`` text, or the raw LLM response
-    truncated to ``observation_max_chars`` if no marker is found.
+    truncated to ``observation_max_chars`` if no marker is found.  Args
+    are the same as :func:`execute_tool_step` plus ``usage``.
     """
     completed = format_completed_steps(plan)
     exec_prompt = EXECUTION_PROMPT.format(
@@ -244,7 +255,7 @@ async def execute_reasoning_step(
         system_prompt + exec_prompt,
     )
 
-    llm_text = await call_llm(llm, messages, timeout=llm_timeout)
+    llm_text = await call_llm(llm, messages, timeout=llm_timeout, usage=usage)
     if llm_text is None:
         return "(LLM returned empty response)"
 
@@ -267,6 +278,7 @@ async def replan(
     system_prompt: str,
     *,
     llm_timeout: float,
+    usage: TokenAccumulator | None = None,
 ) -> list[PlanStep]:
     """Ask the LLM to replan after a step failure.
 
@@ -279,6 +291,7 @@ async def replan(
         history: Conversation history.
         system_prompt: System prompt to prepend.
         llm_timeout: Timeout for the LLM call.
+        usage: Optional accumulator to count tokens from the LLM call.
 
     Returns:
         A list of new ``PlanStep`` objects renumbered from after ``failed_step``.
@@ -304,7 +317,7 @@ async def replan(
         system_prompt + replan_text,
     )
 
-    llm_text = await call_llm(llm, messages, timeout=llm_timeout)
+    llm_text = await call_llm(llm, messages, timeout=llm_timeout, usage=usage)
     if llm_text is None:
         return []
 
@@ -335,11 +348,13 @@ async def synthesize(
     system_prompt: str,
     *,
     llm_timeout: float,
+    usage: TokenAccumulator | None = None,
 ) -> str:
     """Synthesize a final answer from all completed step results.
 
     Calls the LLM with a synthesis prompt. Falls back to concatenating
-    step results if the LLM call fails.
+    step results if the LLM call fails.  ``usage`` is an optional
+    accumulator for counting tokens from the LLM call.
     """
     all_results = "\n".join(
         f"Step {s.number} ({s.status}): {s.description}\n  Result: {s.result or '(no result)'}"
@@ -357,7 +372,7 @@ async def synthesize(
         system_prompt + synthesis_prompt,
     )
 
-    llm_text = await call_llm(llm, messages, timeout=llm_timeout)
+    llm_text = await call_llm(llm, messages, timeout=llm_timeout, usage=usage)
     if llm_text is None:
         return (
             "\n".join(

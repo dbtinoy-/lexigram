@@ -207,6 +207,12 @@ def tool_to_bedrock(tool: Any) -> dict[str, Any]:
         "toolSpec": {
             "name": getattr(tool, "name", str(tool)),
             "description": getattr(tool, "description", ""),
-            "inputSchema": {"json": {}},
+            "inputSchema": {
+                "json": getattr(tool, "parameters", None)
+                or {
+                    "type": "object",
+                    "properties": {},
+                }
+            },
         }
     }

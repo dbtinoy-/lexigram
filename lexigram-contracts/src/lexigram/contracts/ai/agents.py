@@ -144,6 +144,12 @@ class AgentResponse:
     total_tokens: int = 0
     """Total LLM tokens consumed (prompt + completion)."""
 
+    prompt_tokens: int = 0
+    """Input (prompt) LLM tokens consumed. ``0`` when unknown."""
+
+    completion_tokens: int = 0
+    """Output (completion) LLM tokens consumed. ``0`` when unknown."""
+
     total_cost: float = 0.0
     """Estimated cost in USD."""
 
@@ -183,6 +189,8 @@ class AgentResponse:
             "steps": len(self.steps),
             "tool_calls": len(self.tool_calls),
             "total_tokens": self.total_tokens,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
             "total_cost": self.total_cost,
             "duration_ms": self.duration_ms,
             "session_id": self.session_id,

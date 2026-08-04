@@ -40,6 +40,11 @@ from typing import Any, cast
 import aiohttp
 
 from lexigram.ai.llm.clients._message_utils import serialize_content_for_openai
+from lexigram.ai.llm.clients._tools_utils import (
+    parse_openai_tool_calls,
+    serialize_message_for_openai,
+    tool_to_openai_format,
+)
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.exceptions import (
@@ -177,12 +182,7 @@ class GroqClient(AbstractLLMClient):
             message_dicts: list[dict[str, Any]] = []
             for msg in cast("list[ChatMessage | dict[str, Any]]", messages):
                 if isinstance(msg, ChatMessage):
-                    message_dicts.append(
-                        {
-                            "role": msg.role.value,
-                            "content": serialize_content_for_openai(msg.content),
-                        }
-                    )
+                    message_dicts.append(serialize_message_for_openai(msg))
                 else:
                     message_dicts.append(msg)
 
@@ -199,7 +199,11 @@ class GroqClient(AbstractLLMClient):
                 payload["max_tokens"] = max_tokens
 
             if tools:
-                payload["tools"] = tools
+                payload["tools"] = [
+                    converted
+                    for tool in tools
+                    if (converted := tool_to_openai_format(tool)) is not None
+                ]
 
             # Non-streaming request
             response = await client.post("/chat/completions", json=payload)
@@ -211,9 +215,7 @@ class GroqClient(AbstractLLMClient):
             message = choice["message"]
 
             # Handle function calling
-            tool_calls = None
-            if "tool_calls" in message:
-                tool_calls = message["tool_calls"]
+            tool_calls = parse_openai_tool_calls(message.get("tool_calls"))
 
             return Ok(
                 Completion(

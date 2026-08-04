@@ -163,24 +163,21 @@ class PricingManager:
         self,
         model: str,
         force_refresh: bool = False,
-    ) -> ModelPricing:
+    ) -> ModelPricing | None:
         """Get pricing for a specific model.
 
         Queries sources in order:
         1. Cache (if not force_refresh)
         2. Each source in priority order
         3. Fuzzy match if enabled
-        4. Default fallback
+        4. None if not found
 
         Args:
             model: Model identifier (e.g., "gpt-4-turbo").
             force_refresh: Bypass cache and fetch fresh data.
 
         Returns:
-            ModelPricing for the model.
-
-        Raises:
-            ValueError: If model not found in any source.
+            ModelPricing if found, None otherwise.
 
         """
         model_normalized = model.lower().strip()
@@ -208,17 +205,10 @@ class PricingManager:
                 await self.cache.set(model_normalized, fuzzy_match)
                 return fuzzy_match
 
-        # Fallback to default
-        logger.warning("No pricing found for %s, using default", model)
-        default_pricing = ModelPricing(
-            model=model,
-            prompt_per_1m=1.0,
-            completion_per_1m=2.0,
-            provider="unknown",
-            source="default_fallback",
-        )
-        await self.cache.set(model_normalized, default_pricing)
-        return default_pricing
+        # Unknown model: report None (callers skip cost tracking) rather
+        # than fabricate a price — mirrors PricingCostEstimator's 0.0 policy.
+        logger.warning("No pricing found for %s", model)
+        return None
 
     async def _fuzzy_match(self, model: str) -> ModelPricing | None:
         """Try to fuzzy match model name.
@@ -265,6 +255,23 @@ class PricingManager:
         """Clear pricing cache."""
         await self.cache.clear()
         logger.info("Pricing cache cleared")
+
+    async def preload(self) -> dict[str, ModelPricing]:
+        """Load all pricing from all sources into one merged map.
+
+        Earlier sources win on duplicate model names, mirroring
+        :meth:`get_pricing` priority semantics.  Used to build the
+        synchronous snapshot for cost estimators.
+
+        Returns:
+            Merged dictionary of model name to pricing.
+        """
+        merged: dict[str, ModelPricing] = {}
+        for source in self.sources:
+            all_pricing = await source.get_all_pricing()
+            for model_name, pricing in all_pricing.items():
+                merged.setdefault(model_name, pricing)
+        return merged
 
     @classmethod
     def from_defaults(cls) -> PricingManager:
