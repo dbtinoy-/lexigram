@@ -110,6 +110,7 @@ class ConfigRegistry:
         from lexigram.admin.settings.panel import (
             register_branding_spec,
             register_cache_spec,
+            register_deployment_spec,
             register_features_spec,
             register_i18n_spec,
             register_profiler_spec,
@@ -126,6 +127,7 @@ class ConfigRegistry:
         register_profiler_spec(registry)
         register_rate_limit_spec(registry)
         register_rbac_spec(registry)
+        register_deployment_spec(registry)
         return registry
 
     def get_node(self, full_key: str) -> AbstractConfigNode | None:
