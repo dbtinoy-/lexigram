@@ -88,7 +88,10 @@ class _SystemInfoPageHandler:
 
         rows = (
             (TableCell(text="Framework Version"), TableCell(text=_framework_version())),
-            (TableCell(text="Python Version"), TableCell(text=platform.python_version())),
+            (
+                TableCell(text="Python Version"),
+                TableCell(text=platform.python_version()),
+            ),
             (
                 TableCell(text="Environment"),
                 TableCell(text=os.environ.get("ENVIRONMENT", "unknown")),

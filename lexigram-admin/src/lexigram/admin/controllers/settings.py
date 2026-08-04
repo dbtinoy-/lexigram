@@ -65,7 +65,9 @@ class SettingsController(AdminController):
 
     def _store_name(self, spec: type[Any]) -> str:
         """Use the spec's configured store when registered, else the in-memory default."""
-        return spec.store_name if self._registry.has_store(spec.store_name) else "default"
+        return (
+            spec.store_name if self._registry.has_store(spec.store_name) else "default"
+        )
 
     @staticmethod
     def _user_permissions(request: Request) -> frozenset[str]:
