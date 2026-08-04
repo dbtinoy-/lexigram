@@ -699,3 +699,41 @@ class TestTenantScopedSettings:
         req = _mock_request(user=_FakeUser())
         req.path_params = {"namespace": "admin.cache"}
         await controller.spec_view(req)
+
+
+class TestStoreNameResolution:
+    def test_store_name_defaults_to_db_when_registered(self) -> None:
+        from lexigram.admin.settings.panel.registry import MemoryStore
+
+        registry = ConfigRegistry.with_defaults()
+        registry.register_store("db", MemoryStore())
+        renderer = MagicMock()
+        controller = SettingsController(renderer=renderer, registry=registry)
+
+        from lexigram.admin.settings.panel import CacheSpec
+
+        assert controller._store_name(CacheSpec) == "db"
+
+    def test_store_name_falls_back_to_default_when_spec_store_unregistered(self) -> None:
+        registry = ConfigRegistry.with_defaults()
+        renderer = MagicMock()
+        controller = SettingsController(renderer=renderer, registry=registry)
+
+        from lexigram.admin.settings.panel import CacheSpec
+
+        assert controller._store_name(CacheSpec) == "default"
+
+    def test_env_scoped_spec_resolves_to_env_store(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec
+
+        class _EnvSpec(ConfigSpec):
+            namespace = "test.env_spec"
+            label = "Env Spec"
+            icon = "server"
+            description = ""
+            store_name = "env"
+
+        registry = ConfigRegistry.with_defaults()
+        renderer = MagicMock()
+        controller = SettingsController(renderer=renderer, registry=registry)
+        assert controller._store_name(_EnvSpec) == "env"
