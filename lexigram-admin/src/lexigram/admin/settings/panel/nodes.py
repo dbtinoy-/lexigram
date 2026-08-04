@@ -197,6 +197,7 @@ class ConfigSpec(metaclass=ConfigSpecMeta):
     description: str = ""
     required_permissions: frozenset[str] = frozenset()
     package_source: str = "built-in"
+    scope: Literal["global", "tenant"] = "global"
 
     _nodes: dict[str, AbstractConfigNode] = {}
 

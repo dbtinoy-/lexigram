@@ -18,6 +18,7 @@ class FeaturesSpec(PydanticConfigSpec):
     description = "Toggle admin UI and UX features."
     model = AdminFeaturesConfig
     required_permissions = frozenset({"admin.settings.edit"})
+    scope = "tenant"
 
 
 def register_spec(registry: ConfigRegistry) -> None:

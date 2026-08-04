@@ -18,6 +18,7 @@ class I18nSpec(PydanticConfigSpec):
     description = "Default locale and timezone for admin pages."
     model = I18nSettings
     required_permissions = frozenset({"admin.settings.edit"})
+    scope = "tenant"
 
 
 def register_spec(registry: ConfigRegistry) -> None:

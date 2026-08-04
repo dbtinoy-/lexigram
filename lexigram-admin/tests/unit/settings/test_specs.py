@@ -218,6 +218,32 @@ class TestRegistryTenantThreading:
         assert store.set.await_args.kwargs.get("tenant_id") == "tenant-a"
 
 
+class TestSpecScope:
+    def test_default_scope_is_global(self) -> None:
+        from lexigram.admin.settings.panel.nodes import ConfigSpec
+
+        assert ConfigSpec.scope == "global"
+
+    def test_tenant_customizable_specs_are_scoped_to_tenant(self) -> None:
+        from lexigram.admin.settings.panel import BrandingSpec, FeaturesSpec, I18nSpec
+
+        assert BrandingSpec.scope == "tenant"
+        assert FeaturesSpec.scope == "tenant"
+        assert I18nSpec.scope == "tenant"
+
+    def test_operator_only_specs_stay_global(self) -> None:
+        from lexigram.admin.settings.panel import (
+            CacheSpec,
+            ProfilerSpec,
+            RateLimitSpec,
+            RBACSpec,
+            SecuritySpec,
+        )
+
+        for spec in (CacheSpec, SecuritySpec, ProfilerSpec, RateLimitSpec, RBACSpec):
+            assert spec.scope == "global"
+
+
 class TestRegistryEdgeCases:
     """Edge cases for registry lookups and stores."""
 
