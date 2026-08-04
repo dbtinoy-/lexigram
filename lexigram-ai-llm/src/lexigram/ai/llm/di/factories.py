@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.ai import LLMClientProtocol
+from lexigram.contracts.ai.providers import ProviderRegistryProtocol
 from lexigram.logging import (
     get_logger,
 )
@@ -15,8 +17,6 @@ from lexigram.logging import (
 if TYPE_CHECKING:
     from lexigram.ai.llm.config import ClientConfig
     from lexigram.ai.llm.protocols import LLMCacheProtocol
-    from lexigram.contracts.ai import LLMClientProtocol
-    from lexigram.contracts.ai.providers import ProviderRegistryProtocol
     from lexigram.contracts.infra.cache import CacheBackendProtocol
 
 logger = get_logger(__name__)
@@ -46,7 +46,16 @@ async def create_llm_client(
     except KeyError as exc:
         msg = f"Unsupported LLM provider: {config.provider!r}"
         raise ValueError(msg) from exc
-    return provider_info.client_class(config)
+
+    client = provider_info.client_class(config)
+    if not isinstance(client, LLMClientProtocol):
+        msg = (
+            f"LLM client for provider {config.provider!r} does not satisfy "
+            "the LLMClientProtocol protocol. Ensure the client implements complete(), "
+            "stream_chat(), health_check(), and close()."
+        )
+        raise TypeError(msg)
+    return client
 
 
 async def create_llm_cache(

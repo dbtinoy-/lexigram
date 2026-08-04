@@ -21,11 +21,20 @@ audit + cache layers see fully-populated :class:`Completion` provenance.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.llm.caching.types import build_llm_cache_key
-from lexigram.contracts.ai.llm import LLMClientProtocol
+from lexigram.contracts.ai.exceptions import LLMError
+from lexigram.contracts.ai.llm import (
+    ChatMessageProtocol,
+    CompletionProtocol,
+    LLMClientProtocol,
+    StreamChunk,
+)
+from lexigram.contracts.infra import AsyncStream
 from lexigram.logging import get_logger
+from lexigram.result import Result
 from lexigram.security.hashing import ambient as hashing
 
 if TYPE_CHECKING:
@@ -102,12 +111,16 @@ class _CacheWrappedClient:
             prompt_hash=_compute_prompt_hash(messages),
         )
 
-    async def complete(self, messages, **kwargs):  # noqa: ANN201, ANN002, ANN003
+    async def complete(
+        self,
+        messages: Sequence[ChatMessageProtocol],
+        **kwargs: Any,
+    ) -> Result[CompletionProtocol, LLMError]:
         key = self._key(messages, kwargs)
         cached = await self._cache.get(key)
         if cached is not None:
             logger.debug("llm_cache_hit", key_prefix=key[:8])
-            return cached
+            return cast("Result[CompletionProtocol, LLMError]", cached)
 
         result = await self._client.complete(messages, **kwargs)
         if result.is_ok():
@@ -117,7 +130,11 @@ class _CacheWrappedClient:
                 logger.exception("llm_cache_set_failed", key_prefix=key[:8])
         return result
 
-    def stream_chat(self, messages, **kwargs):  # noqa: ANN201, ANN002, ANN003
+    def stream_chat(
+        self,
+        messages: list[ChatMessageProtocol],
+        **kwargs: Any,
+    ) -> AsyncStream[StreamChunk, LLMError]:
         # Streaming is not cached — pass-through.
         return self._client.stream_chat(messages, **kwargs)
 
@@ -201,17 +218,25 @@ class _EnrichedClient:
             completion.prompt_hash = _compute_prompt_hash(messages)
         return completion
 
-    async def complete(self, messages, **kwargs):  # noqa: ANN201, ANN002, ANN003
+    async def complete(
+        self,
+        messages: Sequence[ChatMessageProtocol],
+        **kwargs: Any,
+    ) -> Result[CompletionProtocol, LLMError]:
         result = await self._client.complete(messages, **kwargs)
         if result.is_ok():
             try:
                 completion = result.unwrap()
-                self._enrich(completion, messages)
+                self._enrich(cast("Completion", completion), messages)
             except Exception:
                 logger.exception("completion_enrichment_failed")
         return result
 
-    def stream_chat(self, messages, **kwargs):  # noqa: ANN201, ANN002, ANN003
+    def stream_chat(
+        self,
+        messages: list[ChatMessageProtocol],
+        **kwargs: Any,
+    ) -> AsyncStream[StreamChunk, LLMError]:
         return self._client.stream_chat(messages, **kwargs)
 
     async def health_check(self, timeout: float = 5.0) -> Any:

@@ -59,7 +59,7 @@ class TimingMetrics:
     p99_latency_ms: float = 0.0
     _latencies: list[float] = field(default_factory=list, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.total_requests = self.request_count
 
     def record_latency(self, latency_ms: float) -> None:

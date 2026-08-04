@@ -37,6 +37,13 @@ class ChatMessage(DomainModel):
         default=None,
         description="ID of tool call this message responds to",
     )
+    tool_calls: list[ToolCall] | None = Field(
+        default=None,
+        description=(
+            "Native tool calls for an assistant turn, re-emitted to the model "
+            "before the matching ``tool`` role responses"
+        ),
+    )
     thinking_blocks: list[dict[str, Any]] | None = Field(
         default=None,
         description=(

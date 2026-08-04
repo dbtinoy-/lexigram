@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from lexigram.ai.llm.types import Completion
@@ -47,8 +47,8 @@ class ResponseFormatter:
             if not isinstance(data[0], dict):
                 msg = f"Expected JSON object, got array of {type(data[0])}"
                 raise ParseError(msg)
-            return data[0]
-        return data
+            return cast("dict[str, Any]", data[0])
+        return cast("dict[str, Any]", data)
 
     @staticmethod
     def to_string(completion: Completion, strip: bool = True) -> str:

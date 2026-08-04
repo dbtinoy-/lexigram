@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
     from lexigram.contracts.ai import LLMClientProtocol
@@ -92,7 +92,7 @@ async def complete_with_schema(
     completion = result.unwrap()
 
     parser = StructuredOutputParser(schema)
-    return parser.parse(completion)
+    return cast("T", parser.parse(completion))
 
 
 async def complete_with_json(

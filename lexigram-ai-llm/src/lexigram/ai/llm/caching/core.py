@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 import inspect
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from lexigram.ai.llm.caching.types import CacheEntry, CacheStats
 from lexigram.contracts import (
@@ -82,11 +82,7 @@ class LLMCache:
         """
         if isinstance(key, dict):
             # Sort dict for consistent hashing
-            key_bytes = dumps(key, sort_keys=True)
-            if isinstance(key_bytes, bytes):
-                key_str = key_bytes.decode("utf-8")
-            else:
-                key_str = str(key_bytes)
+            key_str = dumps(key, sort_keys=True).decode("utf-8")
         else:
             key_str = str(key)
 
@@ -104,10 +100,7 @@ class LLMCache:
         """
         try:
             # Convert to JSON for size estimation
-            json_bytes = dumps(value)
-            if isinstance(json_bytes, bytes):
-                return len(json_bytes)
-            return len(str(json_bytes).encode("utf-8"))
+            return len(dumps(value))
         except (TypeError, ValueError):
             # Fallback for non-JSON-serializable objects
             return len(str(value).encode("utf-8"))
@@ -303,7 +296,7 @@ class LLMCache:
             CacheStats object.
 
         """
-        return self._stats.model_copy()
+        return cast("CacheStats", self._stats.model_copy())
 
 
 class RedisLLMCache:
@@ -359,11 +352,7 @@ class RedisLLMCache:
 
         """
         if isinstance(key, dict):
-            key_bytes = dumps(key, sort_keys=True)
-            if isinstance(key_bytes, bytes):
-                key_str = key_bytes.decode("utf-8")
-            else:
-                key_str = str(key_bytes)
+            key_str = dumps(key, sort_keys=True).decode("utf-8")
         else:
             key_str = str(key)
 
@@ -381,7 +370,10 @@ class RedisLLMCache:
 
         """
         redis_key = self._make_key(key)
-        value = await self._backend.get(redis_key)
+        result = await self._backend.get(redis_key)
+        if result.is_err():
+            return None
+        value = result.unwrap()
 
         if value is None:
             self._stats.misses += 1
@@ -468,4 +460,4 @@ class RedisLLMCache:
             CacheStats object.
 
         """
-        return self._stats.model_copy()
+        return cast("CacheStats", self._stats.model_copy())

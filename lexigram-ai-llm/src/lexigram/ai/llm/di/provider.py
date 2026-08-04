@@ -170,14 +170,6 @@ class LLMProvider(Provider):
             )
             raise LLMError(msg) from exc
 
-        if not isinstance(llm_client, LLMClientProtocol):
-            msg = (
-                f"LLM client for provider {self.config.provider!r} does not satisfy "
-                "the LLMClientProtocol protocol. Ensure the client implements complete(), "
-                "stream_chat(), health_check(), and close()."
-            )
-            raise TypeError(msg)
-
         # Always enrich completions with provenance (provider, model_revision,
         # prompt_hash) — innermost wrap so downstream layers see fully-populated
         # Completion objects.  LXF-003 wiring.
@@ -226,7 +218,7 @@ class LLMProvider(Provider):
         if self.config.enable_cache:
             cache_wrapped = LLMCacheWrapper.wrap(
                 llm_client,
-                cache=await container.resolve("llm_cache"),
+                cache=llm_cache,
                 provider=self.config.provider,
                 model=self.config.model,
                 model_revision=getattr(self.config, "model_revision", None),

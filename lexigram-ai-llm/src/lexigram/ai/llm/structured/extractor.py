@@ -30,7 +30,7 @@ Example::
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import Any, TypeVar
 
 from lexigram.ai.llm.exceptions import (
     ExtractionMaxRetriesError,
@@ -43,15 +43,12 @@ from lexigram.ai.llm.structured.parser import (
     extract_json_block,
     validate_against_model,
 )
-from lexigram.contracts.ai.llm import ChatMessage, Role
+from lexigram.contracts.ai.llm import ChatMessage, LLMClientProtocol, Role
 from lexigram.logging import (
     get_logger,
 )
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import JSONDecodeError, dumps_str, loads
-
-if TYPE_CHECKING:
-    from lexigram.contracts.ai.llm import LLMClientProtocol
 
 logger = get_logger(__name__)
 
@@ -262,7 +259,7 @@ class StructuredExtractor:
                     output_model=output_model.__name__,
                 )
 
-            completion_result = await self._client.complete(messages, **kwargs)  # type: ignore[arg-type]
+            completion_result = await self._client.complete(messages, **kwargs)
             if completion_result.is_err():
                 return Err(completion_result.unwrap_err())  # type: ignore[arg-type]
 

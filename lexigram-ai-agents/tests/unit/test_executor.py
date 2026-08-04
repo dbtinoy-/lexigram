@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-from lexigram.ai.agents.executor import AgentExecutorImpl
-from lexigram.ai.agents import AgentBase, tool
-from lexigram.ai.agents.strategies import ReActStrategy
-from lexigram.contracts.ai.agents import AgentError
 from lexigram.ai.agents.exceptions import BudgetExceededError
-from lexigram.contracts.ai.agents import AgentResponse
+from lexigram.ai.agents.executor import AgentExecutorImpl
+from lexigram.ai.agents.executor.executor import AgentObservability, AgentSafetyInfra
+from lexigram.ai.agents.strategies import ReActStrategy
 from lexigram.ai.agents.types import ToolExecutionRecord
+from lexigram.contracts.ai.agents import AgentError, AgentResponse
 
 
 class MockAgent:
@@ -20,7 +18,7 @@ class MockAgent:
     def __init__(
         self,
         name: str = "test_agent",
-        tools: list = None,
+        tools: list | None = None,
         system_prompt: str = "",
     ):
         self.name = name
@@ -75,7 +73,7 @@ class MockGovernance:
         self.allow = allow
         self.check_count = 0
 
-    async def check_request(self, model: str, provider: str, user_id: str = None):
+    async def check_request(self, model: str, provider: str, user_id: str | None = None):
         self.check_count += 1
         return self.allow
 
@@ -83,7 +81,7 @@ class MockGovernance:
 class MockMemory:
     """Mock memory for testing."""
 
-    def __init__(self, messages: list = None):
+    def __init__(self, messages: list | None = None):
         self._messages = messages or []
         self.added = []
 
@@ -124,9 +122,9 @@ class TestAgentExecutorInit:
 
         executor = AgentExecutorImpl(
             llm=mock_llm,
-            governance=mock_gov,
+            safety=AgentSafetyInfra(governance=mock_gov),
             memory=mock_memory,
-            event_bus=mock_event_bus,
+            observability=AgentObservability(event_bus=mock_event_bus),
         )
 
         assert executor._llm is mock_llm
@@ -139,6 +137,7 @@ class TestAgentExecutorInit:
         executor = AgentExecutorImpl()
 
         from lexigram.ai.agents.observability import AgentMetrics
+
         assert isinstance(executor._metrics, AgentMetrics)
 
     def test_executor_initializes_tracer(self):
@@ -146,6 +145,7 @@ class TestAgentExecutorInit:
         executor = AgentExecutorImpl()
 
         from lexigram.ai.agents.observability import AgentTracer
+
         assert isinstance(executor._tracer, AgentTracer)
 
 
@@ -189,7 +189,7 @@ class TestAgentExecutorRun:
     async def test_run_governance_denies(self):
         """Test governance denial."""
         governance = MockGovernance(allow=False)
-        executor = AgentExecutorImpl(governance=governance)
+        executor = AgentExecutorImpl(safety=AgentSafetyInfra(governance=governance))
         agent = MockAgent(name="test", tools=[])
         mock_llm = MockLLM(response="Response")
         executor._llm = mock_llm
@@ -208,7 +208,9 @@ class TestAgentExecutorRun:
             async def check_request(self, **kwargs):
                 raise RuntimeError("Governance service down")
 
-        executor = AgentExecutorImpl(governance=FaultyGovernance())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(governance=FaultyGovernance())
+        )
         agent = MockAgent(name="test", tools=[])
         mock_llm = MockLLM(response="Response")
         executor._llm = mock_llm
@@ -240,7 +242,9 @@ class TestAgentExecutorRun:
     async def test_run_with_event_bus(self):
         """Test events are published."""
         event_bus = MockEventBus()
-        executor = AgentExecutorImpl(event_bus=event_bus)
+        executor = AgentExecutorImpl(
+            observability=AgentObservability(event_bus=event_bus)
+        )
         agent = MockAgent(name="test", tools=[])
         mock_llm = MockLLM(response="Response")
         executor._llm = mock_llm
@@ -277,6 +281,7 @@ class TestAgentExecutorRun:
         class FailingStrategy:
             async def execute(self, **kwargs):
                 from lexigram.result import Err
+
                 return Err(ValueError("Some error"))
 
         agent = MockAgent(name="test", tools=[])
@@ -300,7 +305,9 @@ class TestAgentExecutorGovernance:
         checked_params = {}
 
         class TrackingGovernance:
-            async def check_request(self, model: str, provider: str, user_id: str = None):
+            async def check_request(
+                self, model: str, provider: str, user_id: str | None = None
+            ):
                 checked_params["model"] = model
                 checked_params["provider"] = provider
                 checked_params["user_id"] = user_id
@@ -311,7 +318,7 @@ class TestAgentExecutorGovernance:
             provider = "openai"
 
         executor = AgentExecutorImpl(
-            governance=TrackingGovernance(),
+            safety=AgentSafetyInfra(governance=TrackingGovernance()),
             llm=ModelProviderLLM(),
         )
         agent = MockAgent(name="test", tools=[])
@@ -400,8 +407,8 @@ class TestAgentExecutorCostTracking:
     """Tests for cost tracking."""
 
     @pytest.mark.asyncio
-    async def test_cost_tracked_with_governance(self):
-        """Test cost is tracked via governance."""
+    async def test_cost_tracked_via_estimator(self):
+        """Test cost is tracked via a real cost estimator."""
 
         tracked_costs = []
 
@@ -409,17 +416,76 @@ class TestAgentExecutorCostTracking:
             async def check_request(self, **kwargs):
                 return True
 
-            async def track_cost(self, cost: float, model: str, user_id: str = None):
+            async def track_cost(
+                self, cost: float, model: str, user_id: str | None = None
+            ):
                 tracked_costs.append(cost)
 
-        executor = AgentExecutorImpl(
-            governance=CostTrackingGovernance(),
-            llm=MockLLM(),
-        )
-        agent = MockAgent(name="test", tools=[])
+        class FixedCostEstimator:
+            def estimate_cost(self, model, total_tokens, provider=None):
+                return total_tokens * 0.000002
 
-        # Need response with tokens > 0
-        # This requires mock strategy
+        class CountingStrategy:
+            async def execute(self, message, **kwargs):
+                from lexigram.result import Ok
+
+                return Ok(
+                    AgentResponse(message="done", total_tokens=1000, tool_calls=[])
+                )
+
+        agent = MockAgent(name="test", tools=[])
+        agent.strategy = CountingStrategy()
+
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(governance=CostTrackingGovernance()),
+            llm=MockLLM(),
+            cost_estimator=FixedCostEstimator(),
+        )
+
+        result = await executor.run(agent=agent, message="Hi")
+
+        assert result.is_ok()
+        assert tracked_costs == [0.002]
+        assert result.unwrap().total_cost == 0.002
+
+    @pytest.mark.asyncio
+    async def test_no_cost_fabrication_without_estimator(self):
+        """Test cost is NOT tracked when no estimator is configured."""
+
+        tracked_costs = []
+
+        class CostTrackingGovernance:
+            async def check_request(self, **kwargs):
+                return True
+
+            async def track_cost(
+                self, cost: float, model: str, user_id: str | None = None
+            ):
+                tracked_costs.append(cost)
+
+        class CountingStrategy:
+            async def execute(self, message, **kwargs):
+                from lexigram.result import Ok
+
+                return Ok(
+                    AgentResponse(message="done", total_tokens=1000, tool_calls=[])
+                )
+
+        agent = MockAgent(name="test", tools=[])
+        agent.strategy = CountingStrategy()
+
+        executor = AgentExecutorImpl(
+            llm=MockLLM(),
+            safety=None,
+        )
+        executor._governance = CostTrackingGovernance()
+
+        result = await executor.run(agent=agent, message="Hi")
+
+        assert result.is_ok()
+        assert tracked_costs == []
+        assert result.unwrap().total_cost == 0.0
+
 
 class MockGuardPipeline:
     def __init__(self, input_action="allow", output_action="allow", final_content=None):
@@ -490,22 +556,28 @@ class TestAgentExecutorGuardPipeline:
     @pytest.mark.asyncio
     async def test_input_guard_passes(self):
         pipeline = MockGuardPipeline(input_action="allow")
-        executor = AgentExecutorImpl(guard_pipeline=pipeline, llm=MockLLM())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=pipeline),
+            llm=MockLLM(),
+        )
         agent = MockAgent(name="test")
-        
+
         result = await executor.run(agent=agent, message="Hello")
-        
+
         assert result.is_ok()
         assert pipeline.input_called is True
 
     @pytest.mark.asyncio
     async def test_input_guard_blocks(self):
         pipeline = MockGuardPipeline(input_action="block")
-        executor = AgentExecutorImpl(guard_pipeline=pipeline, llm=MockLLM())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=pipeline),
+            llm=MockLLM(),
+        )
         agent = MockAgent(name="test")
-        
+
         result = await executor.run(agent=agent, message="Hello")
-        
+
         assert result.is_err()
         assert "blocked by security guards" in str(result.unwrap_err())
         assert pipeline.input_called is True
@@ -514,30 +586,37 @@ class TestAgentExecutorGuardPipeline:
     @pytest.mark.asyncio
     async def test_input_guard_redacts(self):
         pipeline = MockGuardPipeline(input_action="allow", final_content="Redacted")
-        executor = AgentExecutorImpl(guard_pipeline=pipeline, llm=MockLLM())
-        
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=pipeline),
+            llm=MockLLM(),
+        )
+
         class EchoStrategy:
             async def execute(self, message, **kwargs):
-                from lexigram.result import Ok
                 from lexigram.contracts.ai.agents import AgentResponse
+                from lexigram.result import Ok
+
                 return Ok(AgentResponse(message=message, total_tokens=0, tool_calls=[]))
 
         agent = MockAgent(name="test")
         agent.strategy = EchoStrategy()
-        
+
         result = await executor.run(agent=agent, message="Hello")
-        
+
         assert result.is_ok()
         assert result.unwrap().message == "Redacted"
 
     @pytest.mark.asyncio
     async def test_output_guard_blocks(self):
         pipeline = MockGuardPipeline(output_action="block")
-        executor = AgentExecutorImpl(guard_pipeline=pipeline, llm=MockLLM())
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=pipeline),
+            llm=MockLLM(),
+        )
         agent = MockAgent(name="test")
-        
+
         result = await executor.run(agent=agent, message="Hello")
-        
+
         assert result.is_err()
         assert "Output blocked" in str(result.unwrap_err())
         assert pipeline.input_called is True
@@ -545,11 +624,16 @@ class TestAgentExecutorGuardPipeline:
 
     @pytest.mark.asyncio
     async def test_output_guard_redacts(self):
-        pipeline = MockGuardPipeline(output_action="allow", final_content="Output Redacted")
-        executor = AgentExecutorImpl(guard_pipeline=pipeline, llm=MockLLM())
+        pipeline = MockGuardPipeline(
+            output_action="allow", final_content="Output Redacted"
+        )
+        executor = AgentExecutorImpl(
+            safety=AgentSafetyInfra(guard_pipeline=pipeline),
+            llm=MockLLM(),
+        )
         agent = MockAgent(name="test")
-        
+
         result = await executor.run(agent=agent, message="Hello")
-        
+
         assert result.is_ok()
         assert result.unwrap().message == "Output Redacted"

@@ -35,7 +35,7 @@ API Documentation: https://docs.mistral.ai
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 
 import aiohttp
 
@@ -141,7 +141,7 @@ class MistralClient(AbstractLLMClient):
             response_format = kwargs.pop("response_format", None)
 
             message_dicts: list[dict[str, Any]] = []
-            for msg in messages:
+            for msg in cast("list[ChatMessage | dict[str, Any]]", messages):
                 if isinstance(msg, ChatMessage):
                     message_dicts.append(
                         {
@@ -218,7 +218,7 @@ class MistralClient(AbstractLLMClient):
             response_format = kwargs.pop("response_format", None)
 
             message_dicts: list[dict[str, Any]] = []
-            for msg in messages:
+            for msg in cast("list[ChatMessage | dict[str, Any]]", messages):
                 if isinstance(msg, ChatMessage):
                     message_dicts.append(
                         {
@@ -344,7 +344,7 @@ class MistralClient(AbstractLLMClient):
         self,
         model: str = "mistral-embed",
         input_texts: list[str] | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> list[list[float]]:
         """Generate embeddings.
 

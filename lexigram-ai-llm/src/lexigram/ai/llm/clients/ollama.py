@@ -13,6 +13,7 @@ from lexigram.ai.llm.clients._message_utils import serialize_text_for_ollama
 from lexigram.ai.llm.clients.base import AbstractLLMClient
 from lexigram.ai.llm.config import ClientConfig
 from lexigram.ai.llm.exceptions import LLMError
+from lexigram.ai.llm.model_manager import LLMModelManager
 from lexigram.ai.llm.multimodal.fetcher import fetch_image_as_base64
 from lexigram.ai.llm.types import (
     AIError,
@@ -61,7 +62,7 @@ class OllamaClient(AbstractLLMClient):
             ImportError: If ollama package is not installed
         """
         super().__init__(config=config)
-        self.model_manager = None
+        self.model_manager: LLMModelManager | None = None
         self.current_model = config.model
 
         try:
@@ -125,7 +126,7 @@ class OllamaClient(AbstractLLMClient):
     async def _do_complete(
         self,
         messages: list[ChatMessage],
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         """Generate completion from messages.
 
@@ -191,7 +192,7 @@ class OllamaClient(AbstractLLMClient):
     async def _do_stream_chat(
         self,
         messages: list[ChatMessage],
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[AsyncIterator[StreamChunk], LLMError]:
         """Start streaming completion (protocol-aligned method).
 
@@ -210,7 +211,7 @@ class OllamaClient(AbstractLLMClient):
     async def _stream_impl(
         self,
         messages: list[ChatMessage],
-        **kwargs,
+        **kwargs: Any,
     ) -> AsyncGenerator[StreamChunk, None]:
         """Internal async generator for streaming.
 
@@ -270,7 +271,7 @@ class OllamaClient(AbstractLLMClient):
         self,
         messages: list[ChatMessage],
         tools: list[ToolCall] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Result[Completion, LLMError]:
         """Generate completion (tools not supported in Ollama yet).
 

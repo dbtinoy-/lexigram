@@ -114,7 +114,7 @@ class DatabaseQuotaBackend:
                 exhausted_until = row["exhausted_until"]
                 if exhausted_until is None:
                     return False
-                return datetime.now(UTC) < exhausted_until
+                return bool(datetime.now(UTC) < exhausted_until)
         except Exception as e:
             logger.exception(
                 "llm.quota.db: is_exhausted query failed for %s", provider, error=str(e)

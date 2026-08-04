@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -480,7 +480,7 @@ class StreamingOrchestrator:
         request: ModelRequest,
         provider: str,
         model_id: str,
-        chunk_callback=None,
+        chunk_callback: Callable[[StreamChunk], Awaitable[None]] | None = None,
     ) -> StreamingResponse:
         """Stream with callback for each chunk (no aggregation).
 

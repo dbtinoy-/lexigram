@@ -7,7 +7,7 @@ automatic message trimming, token counting, and system prompt management.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.ai.llm.types import ChatMessage, Completion, Role
 from lexigram.contracts.ai.llm import TokenCounterProtocol
@@ -187,7 +187,7 @@ class ConversationManager:
         await self._update_token_count()
         self._stats.last_updated = datetime.now(UTC)
 
-        return completion
+        return cast("Completion", completion)
 
     async def add_message(
         self,
@@ -259,7 +259,7 @@ class ConversationManager:
             >>> stats = manager.get_stats()
             >>> print(f"Total tokens: {stats.total_tokens}")
         """
-        return self._stats.model_copy()
+        return cast("ConversationStats", self._stats.model_copy())
 
     def clear_history(self, keep_system: bool = True) -> None:
         """Clear conversation history.

@@ -436,7 +436,7 @@ class ProviderRegistry(Registry[str, ProviderInfo]):
 
     def get_provider(self, name: str) -> ProviderInfo:
         """Get provider information."""
-        info = super().get(name)
+        info = cast("ProviderInfo | None", super().get(name))
         if info is None:
             available = ", ".join(self.list_providers())
             msg = f"Provider '{name}' not found. Available providers: {available}"

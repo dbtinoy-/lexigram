@@ -154,11 +154,7 @@ class FallbackChain:
 
             # Try to execute
             try:
-                complete_messages: list[dict[str, Any]]
-                if isinstance(request, ModelRequest):
-                    complete_messages = [{"role": "user", "content": request.prompt}]
-                else:
-                    complete_messages = messages
+                complete_messages = [{"role": "user", "content": request.prompt}]
                 response = await client.complete(
                     complete_messages,  # type: ignore[arg-type]
                     model=model_id,
