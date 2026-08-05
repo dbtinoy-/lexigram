@@ -93,7 +93,9 @@ class SubjectAdminEventHub:
             ops.filter(lambda te: te.target_users is None or user_id in te.target_users)
         )
         stream = stream.pipe(
-            ops.filter(lambda te: te.event.tenant_id is None or te.event.tenant_id == tenant_id)
+            ops.filter(
+                lambda te: te.event.tenant_id is None or te.event.tenant_id == tenant_id
+            )
         )
         if resources:
             stream = stream.pipe(

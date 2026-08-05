@@ -996,8 +996,12 @@ class AdminProvider(Provider):
             from lexigram.admin.rbac.service import PermissionService
             from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
 
-            widget_hub: SubjectAdminEventHub = await container.resolve(SubjectAdminEventHub)
-            permission_service: PermissionService = await container.resolve(PermissionService)
+            widget_hub: SubjectAdminEventHub = await container.resolve(
+                SubjectAdminEventHub
+            )
+            permission_service: PermissionService = await container.resolve(
+                PermissionService
+            )
 
             router.add_route(
                 "/_sse/widgets",
