@@ -88,6 +88,12 @@ class TestDashboardWidgetDefinition:
         except AttributeError:
             pass
 
+    def test_live_resource_types_defaults_empty(self) -> None:
+        widget = DashboardWidgetDefinition(
+            name="w", title="W", contributor="c", render_endpoint="/x", view_kind=WidgetKind.STAT
+        )
+        assert widget.live_resource_types == ()
+
 
 class TestNavigationContribution:
     def test_creation(self) -> None:

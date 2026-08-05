@@ -99,3 +99,57 @@ class TestWidgetRegistry:
         assert "Widget A" in result
         assert "Widget B" in result
         assert "lg:col-span-2" in result  # MEDIUM size spans 2 columns
+
+    def test_render_contributor_widgets_live_resource_drops_polling(self) -> None:
+        """A live-resource widget gets no hx-trigger poll interval, only load + live-refresh."""
+        registry = WidgetRegistry()
+        widget = DashboardWidgetDefinition(
+            name="live-widget",
+            title="Live Widget",
+            contributor="test",
+            category=WidgetCategory.ACTIVITY,
+            size=WidgetSize.SMALL,
+            render_endpoint="/admin/test/live",
+            refresh_interval_seconds=15,
+            live_resource_types=("*",),
+            view_kind=WidgetKind.TABLE,
+        )
+        result = registry.render_contributor_widgets([widget])
+        assert "every 15000ms" not in result
+        assert "live-refresh" in result
+        assert 'data-live-resources="*"' in result
+
+    def test_render_contributor_widgets_live_resource_emits_shared_script(self) -> None:
+        """Exactly one EventSource script is emitted regardless of widget count."""
+        registry = WidgetRegistry()
+        widgets = [
+            DashboardWidgetDefinition(
+                name=f"live-{i}",
+                title=f"Live {i}",
+                contributor="test",
+                category=WidgetCategory.ACTIVITY,
+                size=WidgetSize.SMALL,
+                render_endpoint=f"/admin/test/live{i}",
+                live_resource_types=("users",),
+                view_kind=WidgetKind.TABLE,
+            )
+            for i in range(3)
+        ]
+        result = registry.render_contributor_widgets(widgets)
+        assert result.count("new EventSource(") == 1
+
+    def test_render_contributor_widgets_no_live_resource_no_script(self) -> None:
+        """A dashboard with only polling widgets emits no EventSource script."""
+        registry = WidgetRegistry()
+        widget = DashboardWidgetDefinition(
+            name="poll-only",
+            title="Poll Only",
+            contributor="test",
+            category=WidgetCategory.METRICS,
+            size=WidgetSize.SMALL,
+            render_endpoint="/admin/test/poll",
+            refresh_interval_seconds=30,
+            view_kind=WidgetKind.STAT,
+        )
+        result = registry.render_contributor_widgets([widget])
+        assert "new EventSource(" not in result

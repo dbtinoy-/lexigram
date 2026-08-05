@@ -67,6 +67,7 @@ class DashboardWidgetDefinition:
     permission: str | None = None
     icon: str | None = None
     description: str = ""
+    live_resource_types: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
