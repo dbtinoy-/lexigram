@@ -646,7 +646,7 @@ class TestDynamicCategories:
         categories, visible = controller._build_categories(req)
         assert len(categories) == 1
         assert categories[0].name == "built-in"
-        assert len(visible) == 8
+        assert len(visible) == 9
 
 
 class TestTenantScopedSettings:
