@@ -95,7 +95,6 @@ class JWTTokenManager(_JWTCreationMixin, _JWTLifecycleMixin):
         binding_config: TokenBindingConfig | None = None,
         required_audience: str | None = None,
         ids: IdGeneratorProtocol | None = None,
-        allow_unverified_dev: bool = False,
     ) -> None:
         """Initialize the JWT token manager.
 
@@ -123,14 +122,6 @@ class JWTTokenManager(_JWTCreationMixin, _JWTLifecycleMixin):
                 enforce that the token's ``aud`` claim matches this value.
                 Pass ``allow_missing_audience=True`` to ``verify_token`` to
                 bypass the check on a per-call basis for trusted internal paths.
-            allow_unverified_dev: When ``True``, ``verify_token`` will decode
-                tokens **without** signature verification.  This is an
-                explicit opt-in reserved for ``DEVELOPMENT`` environments
-                where no real JWT secret is available.  ``TokenProvider``
-                enforces that this flag is never ``True`` in PRODUCTION or
-                STAGING; callers constructing ``JWTTokenManager`` directly
-                are responsible for the same guarantee.  A warning is logged
-                at init time whenever this flag is ``True``.
         """
         if keys is None:
             # Single secret mode for backward compatibility and simple usage
@@ -192,17 +183,6 @@ class JWTTokenManager(_JWTCreationMixin, _JWTLifecycleMixin):
         self._binding_config = binding_config
         self._required_audience: str | None = required_audience
         self._hooks: HookRegistryProtocol | None = None
-
-        # JWT verification policy: allow_unverified_dev is ONLY permitted in
-        # DEVELOPMENT. TokenProvider enforces this at boot; we log here too so
-        # tests that construct JWTTokenManager directly get the warning.
-        self._allow_unverified_dev: bool = allow_unverified_dev
-        if allow_unverified_dev:
-            _logger.warning(
-                "jwt_token_manager_unverified_dev_mode",
-                reason="allow_unverified_dev=True; verify_token will skip signature "
-                "verification. NEVER use in production.",
-            )
 
         # Blacklist — delegates to JWTBlacklist which handles both in-process
         # and cache-backed revocation.

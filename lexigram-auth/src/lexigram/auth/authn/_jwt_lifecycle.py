@@ -47,7 +47,6 @@ class _JWTLifecycleMixin:
     logger: Logger
     _audit_logger: AuditLoggerProtocol | None
     _hooks: HookRegistryProtocol | None
-    _allow_unverified_dev: bool
 
     @property
     def keys(self) -> dict[str, Any]:  # pragma: no cover
@@ -205,46 +204,6 @@ class _JWTLifecycleMixin:
         from lexigram.result import Err, Ok
 
         try:
-            # ── Unverified dev opt-in path ────────────────────────────────────
-            # When allow_unverified_dev=True the token is decoded without any
-            # signature check.  This path is ONLY reachable when explicitly
-            # enabled (see TokenProvider / JWTConfig docs).
-            if self._allow_unverified_dev:
-                try:
-                    payload = jwt.decode(
-                        token,
-                        options={
-                            "verify_signature": False,
-                            "verify_exp": True,
-                            "verify_aud": False,
-                        },
-                    )
-                except jwt.ExpiredSignatureError:
-                    return Err(ContractsExpiredError("Token has expired"))  # type: ignore[arg-type]
-                except (jwt.InvalidTokenError, ValueError) as e:
-                    return Err(
-                        TokenInvalidError(f"Invalid token (unverified path): {e}")  # type: ignore[arg-type]
-                    )
-
-                from datetime import UTC
-
-                return Ok(
-                    VerifiedToken(
-                        user_id=payload.get("sub", ""),
-                        email=payload.get("email", ""),
-                        name=payload.get("name", ""),
-                        roles=payload.get("roles", []),
-                        permissions=payload.get("permissions", []),
-                        expires_at=__import__("datetime").datetime.fromtimestamp(
-                            payload.get("exp", 0), tz=UTC
-                        ),
-                        key_id="unverified",
-                        token_type=token_type,
-                        audience=None,
-                    )
-                )
-            # ── End unverified dev path ───────────────────────────────────────
-
             # Compute a short token hash for the verification cache.
             # 16 hex chars (64 bits) is sufficient for an in-process lookup;
             # the full token is never stored.

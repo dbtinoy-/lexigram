@@ -158,5 +158,5 @@ AuthConfig.from_yaml("production.yaml")
 ```
 
 :::caution
-**Common misconfiguration**: setting `allow_unverified_dev=True` in production. The config validator silently ignores this flag in `PRODUCTION` and `STAGING` environments — but do not rely on it. Set `LEX_AUTH__TOKEN__ALLOW_UNVERIFIED_DEV=false` explicitly.
+**Common misconfiguration is no longer possible**: JWT signature verification is **always** enabled and cannot be disabled. If `DEVELOPMENT` boots without `LEX_AUTH__TOKEN__SECRET_KEY`, an ephemeral secret is generated so verification still runs (tokens invalidated on restart). `PRODUCTION` / `STAGING` raise at boot without a strong, non-default secret.
 :::

@@ -105,20 +105,15 @@ class JWTConfig(BaseConfig):
 
     JWT verification policy
     -----------------------
-    The framework enforces verified-only JWT decoding by default.
+    The framework enforces verified-only JWT decoding. Signature verification
+    is never disabled.
 
-    - ``PRODUCTION`` / ``STAGING``: A secret is **required**. The
-      ``allow_unverified_dev`` flag is silently ignored even if set to
-      ``True``; unverified decode is never permitted.
-    - ``DEVELOPMENT`` with ``allow_unverified_dev=True``: When no secret
-      is configured the service will decode tokens **without** signature
-      verification. A single warning is emitted at boot. This is an explicit
-      opt-in intended only for local development workflows.
-    - ``DEVELOPMENT`` with ``allow_unverified_dev=False`` (default) and a
-      missing secret: raises at boot, same as production.
-
-    Set ``LEX_AUTH__TOKEN__ALLOW_UNVERIFIED_DEV=true`` (or pass the field
-    directly) to enable the development opt-in.
+    - ``PRODUCTION`` / ``STAGING``: A secret is **required** and must meet
+      strength checks (no known default value, >= 32 bytes for HS algorithms).
+    - ``DEVELOPMENT``: A missing secret falls back to a generated ephemeral
+      secret so signature verification **stays enabled**; tokens are
+      invalidated on restart. Set ``LEX_AUTH__TOKEN__SECRET_KEY`` for a
+      stable development secret.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
@@ -157,18 +152,6 @@ class JWTConfig(BaseConfig):
             "audience segregation is not required."
         ),
     )
-    allow_unverified_dev: bool = Field(
-        default=False,
-        description=(
-            "Allow unverified JWT decode when the secret is absent. "
-            "ONLY effective in Environment.DEVELOPMENT. "
-            "Silently overridden to False in PRODUCTION and STAGING regardless "
-            "of what is set here. "
-            "Set to True only for local development workflows where a real JWT "
-            "secret is not available. "
-            "A warning is logged at boot whenever this mode is active."
-        ),
-    )
 
     @model_validator(mode="after")
     def validate_jwt_security(self) -> JWTConfig:
@@ -179,16 +162,6 @@ class JWTConfig(BaseConfig):
         _STRICT_ENVS = {Environment.PRODUCTION, Environment.STAGING}
 
         if env in _STRICT_ENVS:
-            # In production/staging, allow_unverified_dev is always overridden.
-            # We cannot mutate frozen fields here, but we enforce the policy
-            # at boot via TokenProvider; warn if caller explicitly set it.
-            if self.allow_unverified_dev:
-                _logger.warning(
-                    "jwt_allow_unverified_dev_ignored",
-                    environment=env.value,
-                    reason="allow_unverified_dev is not permitted in PRODUCTION/STAGING; "
-                    "flag silently overridden to False",
-                )
             # Validate secret quality in strict environments.
             if self.secret_key.get_secret_value() in ("change-me", "your-secret-key"):
                 raise ValueError(
@@ -208,21 +181,10 @@ class JWTConfig(BaseConfig):
                 )
 
         elif env == Environment.DEVELOPMENT:
-            if self.allow_unverified_dev:
-                # Opt-in is active — emit a single boot-time warning.
-                _logger.warning(
-                    "jwt_unverified_dev_mode_active",
-                    environment=env.value,
-                    reason="allow_unverified_dev=True; tokens will be decoded without "
-                    "signature verification when secret is absent. "
-                    "NEVER enable this in production.",
-                )
             _logger.info(
                 "jwt_verification_policy",
                 environment=env.value,
-                mode="unverified_dev_opt_in"
-                if self.allow_unverified_dev
-                else "verified_only",
+                mode="verified_only",
             )
         return self
 
