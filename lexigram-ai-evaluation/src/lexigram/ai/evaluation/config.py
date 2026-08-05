@@ -47,6 +47,17 @@ class EvaluationConfig(BaseConfig):
         default=True, description="Enable the AI evaluation subsystem"
     )
 
+    experiment_dir: str | None = Field(
+        default=None,
+        description="Base directory for experiment tracking and checkpoint artifacts",
+    )
+
+    default_seed: int | None = Field(
+        default=None,
+        ge=0,
+        description="Default seed for reproducible experiment runs",
+    )
+
     default_threshold: float = Field(
         default=0.8,
         ge=0.0,
