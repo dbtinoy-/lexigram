@@ -19,6 +19,26 @@ from lexigram.admin.services.action_registry import (
 )
 
 
+def test_event_hub_param_typed_for_di_autoresolution() -> None:
+    """event_hub must be a concrete type, not Any, for @inject to auto-resolve it.
+
+    A bare `Any` annotation is invisible to constructor-injection
+    auto-resolution — the container has nothing to look up. Once this
+    is SubjectAdminEventHub, an app that resolves ActionExecutor via
+    the container gets live notifications wired automatically.
+    """
+    import inspect
+
+    from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
+
+    sig = inspect.signature(ActionExecutor.__init__)
+    annotation = sig.parameters["event_hub"].annotation
+    assert annotation in (
+        SubjectAdminEventHub | None,
+        "SubjectAdminEventHub | None",
+    )
+
+
 class RecordingAuthorizer:
     """Fake authorizer recording calls with a configurable decision."""
 
