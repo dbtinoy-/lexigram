@@ -56,12 +56,12 @@
 !docs/demos/**
 
 # Keep demo files for README examples
-!docs/demos/
-!docs/demos/**
+!/demos/
+!/demos/**
 
 # Re-ignore these AFTER negations (last match wins)
 *.tape
-docs/demos/*/runs/
+demos/*/runs/
 __pycache__/
 *.pyc
 *.pyo
