@@ -31,6 +31,7 @@ from lexigram.contracts.exceptions import ConfigurationError
 # ---------------------------------------------------------------------------
 
 _GOOD_SECRET = "a" * 33  # 33-char secret, passes the HS256 ≥32-byte check
+_GOOD_AUDIENCE = "my-service"
 
 
 def _make_token(secret: str, payload: dict[str, Any] | None = None) -> str:
@@ -101,12 +102,13 @@ class TestJWTConfigVerificationPolicy:
 
     def test_allows_valid_secret_in_production(self) -> None:
         with patch.dict(os.environ, {"LEX_ENV": "production"}):
-            cfg = JWTConfig(secret_key=_GOOD_SECRET)
+            cfg = JWTConfig(secret_key=_GOOD_SECRET, required_audience=_GOOD_AUDIENCE)
             assert cfg.secret_key.get_secret_value() == _GOOD_SECRET
+            assert cfg.required_audience == _GOOD_AUDIENCE
 
     def test_allows_valid_secret_in_staging(self) -> None:
         with patch.dict(os.environ, {"LEX_ENV": "staging"}):
-            cfg = JWTConfig(secret_key=_GOOD_SECRET)
+            cfg = JWTConfig(secret_key=_GOOD_SECRET, required_audience=_GOOD_AUDIENCE)
             assert cfg.secret_key.get_secret_value() == _GOOD_SECRET
 
     def test_rejects_default_secret_in_production(self) -> None:
@@ -118,6 +120,21 @@ class TestJWTConfigVerificationPolicy:
         with patch.dict(os.environ, {"LEX_ENV": "staging"}):
             with pytest.raises(ValueError, match="CRITICAL SECURITY ERROR"):
                 JWTConfig(secret_key="change-me")
+
+    def test_rejects_missing_audience_in_production(self) -> None:
+        with patch.dict(os.environ, {"LEX_ENV": "production"}):
+            with pytest.raises(ValueError, match="required_audience"):
+                JWTConfig(secret_key=_GOOD_SECRET)
+
+    def test_rejects_missing_audience_in_staging(self) -> None:
+        with patch.dict(os.environ, {"LEX_ENV": "staging"}):
+            with pytest.raises(ValueError, match="required_audience"):
+                JWTConfig(secret_key=_GOOD_SECRET)
+
+    def test_allows_missing_audience_in_development(self) -> None:
+        with patch.dict(os.environ, {"LEX_ENV": "development"}):
+            cfg = JWTConfig(secret_key=_GOOD_SECRET)
+            assert cfg.required_audience is None
 
 
 # ---------------------------------------------------------------------------

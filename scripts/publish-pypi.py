@@ -2,15 +2,111 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
+import zipfile
 from pathlib import Path
 
 ROOT = Path.cwd().resolve()
 
 # NOTE: lexigram-admin and lexigram-ai-governance contain internal-IP references —
 # sanitize before ever publishing them to PyPI (the GitHub mirror script does this).
+
+# Patterns that must never ship to PyPI. Keyed by descriptive name so scan
+# output explains what tripped: private network addresses, placeholder
+# secrets, and internal-only hostnames.
+SENSITIVE_PATTERNS: dict[str, re.Pattern[str]] = {
+    "private-ipv4": re.compile(
+        r"\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+        r"172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|"
+        r"192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3})\b"
+    ),
+    "weak-placeholder-secret": re.compile(
+        r"\b(change-me(-in-production)?|your-secret-(key|hmac)|"
+        r"replace-this-secret|pypi-[A-Za-z0-9_-]{8,})\b",
+        re.IGNORECASE,
+    ),
+    # Internal-only hostnames: either a URL host (case-insensitive), or a
+    # bare single-label hostname ending in .internal/.corp/.lan. Bare hosts
+    # are matched case-sensitively against lowercase — hostnames surface in
+    # configs as lowercase, while uppercase variants are near-always enum
+    # members (e.g. OTel `SpanKind.INTERNAL`), which are not hostnames.
+    # Bare `.local` is excluded — it is a valid mDNS suffix AND matches
+    # Python module paths (`lexigram.features.backends.local`), the
+    # dominant false-positive class with no leak-signal.
+    "internal-hostname": re.compile(
+        r"(?:(?i:https?://[\w-]+(?:\.[\w-]+)*\.(?:internal|corp|local|lan)"
+        r"(?=[:/?#\s\"']|$))|"
+        r"(?<![\w.])[a-z0-9-]+\.(?:internal|corp|lan)(?![\w-]))"
+    ),
+}
+
+_TEXT_SUFFIXES = (
+    ".py", ".md", ".txt", ".rst", ".toml", ".yaml", ".yml", ".json",
+    ".cfg", ".ini", ".html", ".csv",
+)
+
+# Scoped allowlist for content that must exist inside the codebase by design:
+# values the code itself detects and rejects. Entry format is
+# (file-suffix, pattern-name): file paths are matched by endswith, so a hit is
+# only forgiven when BOTH the file and the pattern are exactly as approved.
+# Adding entries here is a security decision — keep it minimal and documented.
+SENSITIVE_ALLOWLIST: dict[tuple[str, str], str] = {
+    (
+        "lexigram/contracts/security/url_safety.py",
+        "private-ipv4",
+    ): "SSRF guard blocklist — private ranges the code actively blocks",
+    (
+        "lexigram/auth/authn/jwt.py",
+        "weak-placeholder-secret",
+    ): "values JWTTokenManager rejects (change-me-in-production blocklist)",
+    (
+        "lexigram/auth/config.py",
+        "weak-placeholder-secret",
+    ): "values JWTConfig rejects in strict environments",
+    (
+        "lexigram/config/constants.py",
+        "weak-placeholder-secret",
+    ): "values secret validation rejects as weak",
+    (
+        "lexigram/config/secrets.py",
+        "weak-placeholder-secret",
+    ): "values secret validation rejects as weak",
+    (
+        "lexigram/admin/config.py",
+        "weak-placeholder-secret",
+    ): "fail-closed session_secret placeholder + values AdminAuthConfig rejects in production",
+    (
+        "lexigram/admin/di/sub_providers/auth.py",
+        "weak-placeholder-secret",
+    ): "session_secret fallbacks mirror the fail-closed placeholder AdminAuthConfig rejects",
+    (
+        "lexigram/ai/config.py",
+        "weak-placeholder-secret",
+    ): "insecure_defaults list that AI config rejects",
+    (
+        "lexigram/cache/constants.py",
+        "weak-placeholder-secret",
+    ): "values secret validation rejects as weak",
+    (
+        "lexigram/cli/registry/config.py",
+        "weak-placeholder-secret",
+    ): "placeholder values CLI config rejects",
+    (
+        "lexigram/cli/registry/template.py",
+        "weak-placeholder-secret",
+    ): "scaffold template placeholder — strict-mode validation forces replacement",
+    (
+        "lexigram/storage/config.py",
+        "weak-placeholder-secret",
+    ): "docstring of the placeholder-credentials rejection logic",
+    (
+        "lexigram/storage/constants.py",
+        "weak-placeholder-secret",
+    ): "values secret validation rejects as weak",
+}
 
 PUBLISH_ORDER: tuple[tuple[str, ...], ...] = (
     ("lexigram-contracts",),
@@ -87,6 +183,48 @@ def build_package(name: str, *, uv: str) -> Path:
     return matches[-1]
 
 
+def scan_artifact(wheel: Path) -> tuple[list[str], list[str]]:
+    """Scan a built wheel for content that must not ship to PyPI.
+
+    Returns (violations, allowlisted): block on violations; allowlisted
+    matches carry their justification and are reported for transparency.
+    Capped to keep output readable.
+    """
+    violations: list[str] = []
+    allowlisted: list[str] = []
+    try:
+        with zipfile.ZipFile(wheel) as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                suffix = Path(info.filename).suffix.lower()
+                if suffix not in _TEXT_SUFFIXES:
+                    continue
+                try:
+                    data = zf.read(info.filename).decode("utf-8", errors="ignore")
+                except (OSError, zipfile.BadZipFile):
+                    continue
+                for name, pattern in SENSITIVE_PATTERNS.items():
+                    if not pattern.search(data):
+                        continue
+                    reason = SENSITIVE_ALLOWLIST.get((info.filename, name))
+                    if reason:
+                        allowlisted.append(
+                            f"{wheel.name}: {info.filename}: {name} "
+                            f"[allowlisted: {reason}]"
+                        )
+                    else:
+                        violations.append(
+                            f"{wheel.name}: {info.filename}: {name}"
+                        )
+                    break
+                if len(violations) >= 30:
+                    return violations, allowlisted
+    except (OSError, zipfile.BadZipFile) as e:
+        violations.append(f"{wheel.name}: cannot scan: {e}")
+    return violations, allowlisted
+
+
 def already_published(name: str) -> bool:
     result = subprocess.run(
         [sys.executable, "-m", "pip", "index", "versions", name],
@@ -127,6 +265,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="publish-pypi")
     parser.add_argument("--dry-run", action="store_true", help="Build only, do not upload")
     parser.add_argument("--skip-tests", action="store_true", help="Skip tests before publishing")
+    parser.add_argument("--allow-sensitive", action="store_true",
+                        help="Skip the sensitive-content scan (use only when whitelisting is impossible)")
     parser.add_argument("--packages", nargs="+", help="Specific packages to publish (default: all public)")
     args = parser.parse_args()
 
@@ -149,7 +289,7 @@ def main() -> int:
         for f in dist_dir.iterdir():
             f.unlink()
 
-    print(f"Building {len(pkgs)} packages (v0.1.1)...")
+    print(f"Building {len(pkgs)} packages...")
     for pkg in pkgs:
         print(f"  Building {pkg}...", end=" ", flush=True)
         wheel = build_package(pkg, uv=uv)
@@ -157,6 +297,28 @@ def main() -> int:
             return 1
         built[pkg] = wheel
         print(f"{wheel.name}")
+
+    if not args.allow_sensitive:
+        print("Scanning built wheels for sensitive content...")
+        blocked = False
+        for pkg, wheel in built.items():
+            violations, allowlisted = scan_artifact(wheel)
+            for line in allowlisted:
+                print(f"  allowlisted: {line}")
+            if violations:
+                blocked = True
+                print(f"  SENSITIVE CONTENT in {pkg}:")
+                for v in violations:
+                    print(f"    {v}")
+        if blocked:
+            print(
+                "\nABORTING — sensitive content detected in built artifacts. "
+                "Sanitize the sources before publishing (or use --allow-sensitive "
+                "only if the matches are false positives).",
+                file=sys.stderr,
+            )
+            return 1
+        print("  clean: no unallowlisted sensitive content in any built wheel.")
 
     if args.dry_run:
         print(f"\nDry-run complete. {len(built)} packages built successfully.")

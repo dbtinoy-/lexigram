@@ -79,7 +79,7 @@ class TestAuthConfigProductionSecurity:
             with pytest.raises(ValueError) as excinfo:
                 AuthConfig(
                     secret_key="secure-key",
-                    token={"secret_key": "secure-key"},
+                    token={"secret_key": "secure-key", "required_audience": "my-service"},
                     admin_password="password",
                 )
             assert "CRITICAL SECURITY ERROR" in str(excinfo.value)
@@ -90,7 +90,8 @@ class TestAuthConfigProductionSecurity:
         os.environ["LEX_ENV"] = "production"
         try:
             config = AuthConfig(
-                secret_key="secure-key", token={"secret_key": "secure-key"}
+                secret_key="secure-key",
+                token={"secret_key": "secure-key", "required_audience": "my-service"},
             )
             assert config.secret_key == "secure-key"
         finally:
