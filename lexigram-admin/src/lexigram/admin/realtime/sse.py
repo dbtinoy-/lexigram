@@ -200,7 +200,6 @@ class BulkOperationProgressHandler(SSEHandler if HAS_SSE else object):  # type: 
             await asyncio.sleep(0.5)
 
 
-
 __all__ = [
     # Flags
     "HAS_SSE",
@@ -210,4 +209,3 @@ __all__ = [
     # Handlers
     "BulkOperationProgressHandler",
 ]
-
