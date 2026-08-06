@@ -16,6 +16,7 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
+from ops_console.controllers.console import EventsStreamHandler
 from ops_console.controllers.operator import OperatorHandler
 from ops_console.domain import Severity, SystemEvent
 from ops_console.services.event_stream import EventStreamService
@@ -34,12 +35,14 @@ class RealtimeProvider(Provider):
     priority = ProviderPriority.COMMS
 
     def __init__(self, heartbeat_interval: float = 15.0) -> None:
+        super().__init__()
         self.heartbeat_interval = heartbeat_interval
         self.events = EventStreamService()
         self._heartbeat_task: asyncio.Task[None] | None = None
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         container.singleton(EventStreamService, self.events)
+        container.singleton(EventsStreamHandler, EventsStreamHandler(self.events))
         container.singleton(OperatorHandler, OperatorHandler(self.events))
 
     def _make_endpoint(self, container: ContainerResolverProtocol):
