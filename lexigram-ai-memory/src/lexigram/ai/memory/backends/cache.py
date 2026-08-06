@@ -106,9 +106,7 @@ class CacheMemoryBackend:
         ids: list[str] = cast("list[str]", loads(index_raw)) if index_raw else []
         if entry.id not in ids:
             ids.append(entry.id)
-            await self._cache_set_text(
-                self._index_key(entry.owner_id), dumps_str(ids)
-            )
+            await self._cache_set_text(self._index_key(entry.owner_id), dumps_str(ids))
 
     async def retrieve(self, query: MemoryQuery) -> list[MemorySearchResult]:
         index_raw = await self._cache_get_text(self._index_key(query.owner_id))

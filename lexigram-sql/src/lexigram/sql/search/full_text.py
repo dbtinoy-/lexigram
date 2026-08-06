@@ -35,9 +35,7 @@ def _safe_filter_key(key: str) -> str:
     """
 
     if _SAFE_IDENTIFIER.fullmatch(key) is None:
-        raise ValueError(
-            f"extra_filters keys must be column identifiers, got {key!r}"
-        )
+        raise ValueError(f"extra_filters keys must be column identifiers, got {key!r}")
     return key
 
 

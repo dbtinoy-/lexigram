@@ -81,7 +81,9 @@ async def astream(
     # Agent-level pipeline (AgentBuilder.with_guard_pipeline) wins over the
     # DI-provided one; the DI pipeline remains the standard default.
     agent_pipeline = getattr(agent, "guard_pipeline", None)
-    guard_pipeline = agent_pipeline if agent_pipeline is not None else self._guard_pipeline
+    guard_pipeline = (
+        agent_pipeline if agent_pipeline is not None else self._guard_pipeline
+    )
 
     guard_ok = await _check_guard_input(
         self, guard_pipeline, message, session_id, user_id

@@ -51,7 +51,9 @@ class HealthCheckRegistry(Registry[str, HealthCheck]):
         check = FunctionHealthCheck(name, func, critical)
         self._register(check, liveness, readiness)
 
-    async def _run_named(self, name: str, check_names: list[str]) -> dict[str, Any] | None:
+    async def _run_named(
+        self, name: str, check_names: list[str]
+    ) -> dict[str, Any] | None:
         """Run a single registered check and return its result dict.
 
         Args:

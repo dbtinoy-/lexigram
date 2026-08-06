@@ -213,9 +213,7 @@ class EventWebSocketEndpoint:
                 decision = await decision
             if not decision:
                 await send({"type": "websocket.close", "code": 4401})
-                logger.warning(
-                    "ws_client_unauthorized", client=scope.get("client")
-                )
+                logger.warning("ws_client_unauthorized", client=scope.get("client"))
                 return
 
         await send({"type": "websocket.accept"})
