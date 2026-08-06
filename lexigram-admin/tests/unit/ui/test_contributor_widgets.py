@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from lexigram.admin.dashboard.widgets import WidgetRegistry
 from lexigram.contracts.admin import (
     DashboardWidgetDefinition,
@@ -153,3 +151,30 @@ class TestWidgetRegistry:
         )
         result = registry.render_contributor_widgets([widget])
         assert "new EventSource(" not in result
+
+    def test_render_contributor_widgets_live_script_reads_nested_resource_type(
+        self,
+    ) -> None:
+        """The dispatch script reads resource_type from the wire payload shape.
+
+        The SSE frame carries AdminEvent.to_dict() JSON: {event, data:
+        {..., resource_type, resource_id}, id} — resource_type is nested
+        under `data`, so the lookup must be data.data.resource_type.
+        Reading data.resource_type directly is always undefined and
+        silently disables the exact-match branch (only the '*' wildcard
+        would still fire).
+        """
+        registry = WidgetRegistry()
+        widget = DashboardWidgetDefinition(
+            name="live-widget",
+            title="Live Widget",
+            contributor="test",
+            category=WidgetCategory.ACTIVITY,
+            size=WidgetSize.SMALL,
+            render_endpoint="/admin/test/live",
+            live_resource_types=("users",),
+            view_kind=WidgetKind.TABLE,
+        )
+        result = registry.render_contributor_widgets([widget])
+        assert "(data.data||{}).resource_type" in result
+        assert "var resourceType=data.resource_type;" not in result

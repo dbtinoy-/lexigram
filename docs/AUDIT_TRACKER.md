@@ -1512,6 +1512,7 @@ execution yet.
 | 5 | `DashboardWidgetDefinition.live_resource_types` + SSE-triggered refresh in `render_contributor_widgets` (shared page-level `EventSource`, `data-live-resources` dispatch) |
 | 6 | `activity` widget marked `live_resource_types=("*",)` — poll trigger suppressed; push replaces polling |
 | 7 | `ActionExecutor.event_hub: Any | None` → `SubjectAdminEventHub | None` for `@inject` auto-resolution |
+| 8 | CHANGELOG `[Unreleased]` entry, AUDIT_TRACKER §16 execution record, `realtime/sse.py` ruff-format fix |
 
 **Execution (2026-08-19):** all 8 tasks landed. Commits: Task 1 `a8d8eba8`, Task 2 `c807bd4e`, Task 3 `b946700d`, Task 4 `add338bd`, Task 5 `0400fe2b`, Task 6 `d382525d`, Task 7 `f616ee4b`.
 
@@ -1520,6 +1521,12 @@ execution yet.
 - Task 7: `mypy` on `action_executor.py` surfaces one pre-existing `no-any-return` (line 167, handler-validate path) present at HEAD — confirmed by diffing against the HEAD snapshot; not introduced by this task, left untouched per surgical-changes rule (repo-wide mypy debt tracked separately).
 - Task 6 plan step 5 (manual browser verification of poll → push behavior) has not run; needs a human/browser pass before the poll→push switch is observed end-to-end.
 - The `live_events` scope-narrowing finding (cannot be migrated without a forbidden `lexigram-events`→`lexigram-admin` import) stands as documented in the header above — `activity` only for v1.
+
+**Post-execution review fixes (code-reviewer pass, 2026-08-19):** an independent review of the 8 commits against the plan found one real bug and one fail-open gate; both fixed and documented here:
+- **Dispatch contract bug (fix `—` in `dashboard/widgets.py`):** the live-widget script read `data.resource_type`, but the SSE frame carries `AdminEvent.to_dict()` as `ev.data` — i.e. `{event, data: {...}, id}` — so `resource_type` is nested under `data` and the exact-match branch (`live_resource_types=("users",)` etc.) could never fire; only the `"*"` wildcard worked, which is why the shipped `activity` widget hid it. Fixed to `(data.data||{}).resource_type`; regression test in `tests/unit/ui/test_contributor_widgets.py` pins the wire path.
+- **RBAC gate fail-open (fix in `dashboard/widget_stream.py`):** `PermissionService.can_list` returns `True` for resources with no registered schema (management-UI semantics: no permission model = public); on a channel boundary that default is wrong, so `authorized_resources` now requires `get_schema(r) is not None` before consulting `can_list` and strips whitespace/empties from the `resources=` param (tests added). Effective behavior of the shipped page is unchanged (the client sends no `resources` param and subscribes unfiltered + tenant-scoped by design — one shared connection, client-side `data-live-resources` dispatch).
+- Stale `AdminEventHub` cross-references in `subject_hub.py` docstrings (dangling xrefs after Task 4's deletion) rewritten; `SubjectAdminEventHub` imports in `widget_stream.py`/`action_executor.py` moved to the `lexigram.admin.realtime` package `__init__` per AGENTS.md import convention.
+- Spec-D1 "full re-snapshot on SSE reconnect" remains unimplemented (v1 accepted): EventSource auto-reconnect leaves a silent gap until the next event. Self-healing (every event triggers a full snapshot re-render), tracked for v2.
 
 **Verification:** scoped suites green — contracts 1786, admin full non-integration 4478 (7 skipped; one transient other-lane flake in `test_settings_controller.py` each run, passes per-file), contracts+admin combined 6381; integration `test_widget_sse_route.py` 2/2; `ruff check` clean tree-wide (report-only; 9 pre-existing format-flagged files belong to other lanes — `sse.py` reformatted, all others untouched); `mypy lexigram/src/` clean; API boundary gate (`tools/generate_package_api.py -s 25000`) clean.
 

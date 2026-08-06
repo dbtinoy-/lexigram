@@ -13,7 +13,7 @@ from lexigram.admin.exceptions import (
     AdminValidationError,
     PermissionDeniedError,
 )
-from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
+from lexigram.admin.realtime import SubjectAdminEventHub
 from lexigram.admin.services.action_registry import (
     ActionConfig,
     ActionContext,

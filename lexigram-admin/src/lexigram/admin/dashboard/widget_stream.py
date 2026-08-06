@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
+from lexigram.admin.realtime import SubjectAdminEventHub
 from lexigram.reactive import Stream
 from lexigram.serialization import dumps_str
 from lexigram.web.transport.reactive import sse_from_stream
@@ -30,6 +30,12 @@ async def authorized_resources(
 ) -> list[str] | None:
     """Narrow a caller-supplied resources= filter to ones the caller may list.
 
+    Fail-closed on resources with no registered permission schema:
+    ``PermissionService.can_list`` itself returns ``True`` for unknown
+    resources (management-UI semantics: no permission model = public),
+    which is the wrong default on a channel boundary — a name without a
+    schema is treated as unauthorized here.
+
     Args:
         user: The authenticated request user (or None).
         requested: Raw comma-separated `resources` query param value.
@@ -43,8 +49,13 @@ async def authorized_resources(
     """
     if not requested:
         return None
-    candidates = [r for r in requested.split(",") if r]
-    allowed = [r for r in candidates if await permission_service.can_list(user, r)]
+    candidates = [r.strip() for r in requested.split(",") if r.strip()]
+    allowed = [
+        r
+        for r in candidates
+        if permission_service.get_schema(r) is not None
+        and await permission_service.can_list(user, r)
+    ]
     return allowed or None
 
 
