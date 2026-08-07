@@ -37,15 +37,23 @@ for _extra in [
 # freezing their __path__ before our workspace packages were added.
 # We also explicitly import these packages here to force them to be cached correctly
 # in sys.modules BEFORE sub-conftest files (e.g. lexigram/tests/conftest.py) run.
+from typing import TYPE_CHECKING, Any
+
 import lexigram as _lx  # noqa: E402 — must run after sys.path injection
-import lexigram.ai as _lx_ai  # noqa: E402
 import lexigram.contracts as _lx_contracts  # noqa: E402
 
-for _ns, _pkg in (
+_pkg_imports: list[tuple[str, Any]] = [
     ("lexigram", _lx),
-    ("lexigram.ai", _lx_ai),
     ("lexigram.contracts", _lx_contracts),
-):
+]
+try:
+    import lexigram.ai as _lx_ai  # noqa: E402
+
+    _pkg_imports.append(("lexigram.ai", _lx_ai))
+except ImportError:
+    pass  # lexigram-ai is an experimental package; absent from the public mirror
+
+for _ns, _pkg in _pkg_imports:
     if hasattr(_pkg, "__path__"):
         _pkg.__path__ = pkgutil.extend_path(list(_pkg.__path__), _ns)
 # ────────────────────────────────────────────────────────────────────────────
