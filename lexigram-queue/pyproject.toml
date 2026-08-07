@@ -41,20 +41,6 @@ Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-admin    = ["lexigram-admin>=0.1.1"]
-redis    = ["redis[asyncio]>=5.0"]
-rabbitmq = ["aio-pika>=9.0"]
-kafka    = ["aiokafka>=0.10"]
-sqs      = ["aiobotocore>=2.0"]
-azure    = ["azure-servicebus>=7.0.0"]
-gcp      = ["google-cloud-pubsub>=2.0.0"]
-test = [
-    "lexigram-testing>=0.1.1",
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.0.0",
-    "pytest-mock>=3.10.0",
-]
 dev = ["ruff>=0.8.0", "mypy>=1.0.0"]
 
 [dependency-groups]

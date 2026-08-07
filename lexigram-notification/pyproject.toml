@@ -43,9 +43,6 @@ Issues = "https://github.com/dbtinoy-/lexigram/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-admin = [
-    "lexigram-admin>=0.1.1",
-]
 sendgrid = ["sendgrid>=6.0"]
 twilio = ["twilio>=8.0"]
 apns = ["httpx[http2]>=0.27.0", "PyJWT>=2.8.0", "cryptography>=42.0.0"]
