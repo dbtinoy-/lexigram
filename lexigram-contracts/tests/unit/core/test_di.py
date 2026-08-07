@@ -28,6 +28,9 @@ class TestContainerResolverProtocol:
     def test_has_resolve_method(self) -> None:
         assert hasattr(ContainerResolverProtocol, "resolve")
 
+    def test_has_bind_method(self) -> None:
+        assert hasattr(ContainerResolverProtocol, "bind")
+
 
 class TestContainerProtocol:
     """Tests for ContainerProtocol."""

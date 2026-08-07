@@ -192,6 +192,24 @@ class ContainerResolverProtocol(Protocol):
         """Check if a service is registered."""
         ...
 
+    def bind(
+        self,
+        service_type: type[T],
+        instance: T,
+    ) -> None:
+        """Bind a pre-built singleton instance, overwriting any existing binding.
+
+        Works on frozen containers and is designed for updating singleton
+        instances during the boot phase (e.g. wrapping a store with a
+        tenancy decorator).  The service *must* already be registered as a
+        singleton.
+
+        Args:
+            service_type: The registered service type to rebind.
+            instance: The replacement singleton instance.
+        """
+        ...
+
     @overload
     async def resolve_optional(self, service_type: type[T]) -> T | None: ...
 
