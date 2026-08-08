@@ -19,7 +19,7 @@ Thank you for your interest in contributing to the Lexigram Framework!
 
 ```bash
 # Clone the repository
-git clone https://github.com/dbtinoy-/lexigram.git
+git clone https://github.com/dbtinoy-/lexigram-dev.git
 cd lexigram
 
 # Install dependencies

@@ -122,5 +122,5 @@ The AI layer is in 0.1 — which means you can still change it. APIs may shift b
 ## pointers
 
 - full docs → [docs.lexigram.dev](https://docs.lexigram.dev)
-- the stable core → [lexigram](https://github.com/dbtinoy-/lexigram)
+- the stable core → [lexigram](https://github.com/dbtinoy-/lexigram-dev)
 - the AI family → [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental)

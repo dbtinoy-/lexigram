@@ -162,4 +162,4 @@ container.override(ServiceProtocol, FakeService())  # ❌ ContainerError
 
 ## Reporting Issues
 
-Found a security vulnerability? Open an issue on [GitHub](https://github.com/dbtinoy-/lexigram/issues) with the label `security`.
+Found a security vulnerability? Open an issue on [GitHub](https://github.com/dbtinoy-/lexigram-dev/issues) with the label `security`.

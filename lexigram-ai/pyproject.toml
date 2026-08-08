@@ -282,10 +282,10 @@ all = [
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram"
+Repository = "https://github.com/dbtinoy-/lexigram-dev"
 Documentation = "https://docs.lexigram.dev"
-Issues = "https://github.com/dbtinoy-/lexigram/issues"
-Changelog = "https://github.com/dbtinoy-/lexigram/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
+Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
 
 [project.entry-points."lexigram.modules"]
 ai = "lexigram.ai.module:AIModule"
