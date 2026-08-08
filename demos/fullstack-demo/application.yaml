@@ -1,0 +1,44 @@
+app:
+  env: development
+  reel_width: 1080
+  reel_height: 1920
+  default_duration: 30
+
+ai_llm:
+  strategy: sequential
+  defaults:
+    temperature: 0.7
+    max_tokens: null
+  providers:
+    - name: opencode
+      model: deepseek-v4-flash-free
+      api_key: ${OPENCODE_ZEN_API_KEY}
+      base_url: https://opencode.ai/zen/v1
+      timeout: 120
+      enabled: true
+    - name: opencode
+      model: laguna-s-2.1-free
+      api_key: ${OPENCODE_ZEN_API_KEY}
+      base_url: https://opencode.ai/zen/v1
+      timeout: 120
+      enabled: true
+    - name: ollama
+      model: gemma4:12b
+      base_url: ${OLLAMA_BASE_URL:-http://localhost:11434/v1}
+      timeout: 600
+      enabled: true
+    - name: openrouter
+      model: meta-llama/llama-3.1-8b-instruct:free
+      api_key: null
+      enabled: false
+
+web:
+  host: 0.0.0.0
+  port: 8080
+  rate_limit:
+    default_limit: 600
+    default_window: 60
+
+sql:
+  backend:
+    url: sqlite:///data/shorts.db

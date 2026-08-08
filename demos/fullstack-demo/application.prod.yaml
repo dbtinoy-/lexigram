@@ -1,0 +1,24 @@
+app:
+  env: production
+
+ai_llm:
+  strategy: sequential
+  defaults:
+    temperature: 0.3
+  providers:
+    - name: groq
+      model: llama-3.3-70b-versatile
+      api_key: ${GROQ_API_KEYS}
+      enabled: true
+    - name: gemini
+      model: gemini-flash-lite
+      api_key: ${GEMINI_API_KEYS}
+      enabled: true
+    - name: openrouter
+      model: meta-llama/llama-3.1-8b-instruct:free
+      api_key: ${OPENROUTER_API_KEYS}
+      enabled: true
+    - name: claude
+      model: claude-sonnet-5
+      api_key: ${ANTHROPIC_API_KEY}
+      enabled: true

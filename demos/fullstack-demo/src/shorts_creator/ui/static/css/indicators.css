@@ -1,0 +1,5 @@
+.htmx-indicator { opacity: 0; display: none; transition: opacity 0.2s; }
+.htmx-request .htmx-indicator { opacity: 1; display: inline; }
+button.htmx-request .htmx-indicator { opacity: 1; display: inline; }
+button.busy { pointer-events: none; opacity: 0.6; }
+button.busy .htmx-indicator { opacity: 1; display: inline; }

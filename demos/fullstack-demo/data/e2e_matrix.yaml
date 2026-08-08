@@ -1,0 +1,24 @@
+project: "8d50550e-d3fc-4cb0-8cf3-1042a086d4c5"  # override via --project
+ideas: [0, 1]
+timeout_s: 900
+combos:
+  - name: narrated_baseline
+    compose: {format: narrated, caption_style: highlight}
+    idea_index: 0
+  - name: steps_checks
+    compose: {format: steps}
+    idea_index: 0
+  - name: myth_accents
+    compose: {format: myth, caption_style: plain,
+              stage_accents: "{\"message\":\"0xFF00FFFF\"}"}
+    idea_index: 1
+  - name: topn_beats
+    compose: {format: topn}
+    idea_index: 0
+  - name: loudnorm_plain
+    compose: {format: narrated, caption_style: plain,
+              loudness_target_lufs: -14}
+    idea_index: 1
+  - name: motion_zoom
+    compose: {format: narrated, caption_style: highlight, background_motion: zoom}
+    idea_index: 1
