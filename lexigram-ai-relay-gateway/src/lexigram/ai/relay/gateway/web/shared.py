@@ -150,7 +150,7 @@ def _error_response(source: RelayFormat, error: RelayGatewayError) -> Response:
 
 async def auth_guard(
     request: Request,
-    verifier: RelayAuthVerifierProtocol | None | _RequireAuthMisconfigured,
+    verifier: RelayAuthVerifierProtocol | _RequireAuthMisconfigured | None,
     handler: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     """Guard one inbound relay request with the bound verifier, if any.

@@ -1,8 +1,9 @@
 """Relay gateway failover and outbound-model mapping tests.
 
 Covers the channel ``model_map`` through the buffered dispatch path
-(``_outbound_model``), upstream failure/success accounting against a
-real ``RelayFailoverTracker``, and the tracked-error-code boundary.
+(``operations.upstream.outbound_model``), upstream failure/success
+accounting against a real ``RelayFailoverTracker``, and the
+tracked-error-code boundary.
 """
 
 from __future__ import annotations
@@ -14,8 +15,8 @@ import pytest
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.codec import RelayPayloadCodec
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
+from lexigram.ai.relay.gateway.operations import upstream
 from lexigram.ai.relay.gateway.operations.failover import RelayFailoverTracker
-from lexigram.ai.relay.gateway.operations.streams import RelayStreamRegistry
 from lexigram.ai.relay.gateway.service import RelayGatewayService
 from lexigram.contracts.ai.exceptions import RelayError
 from lexigram.contracts.ai.relay import (
@@ -257,7 +258,10 @@ class TestFailoverAccounting:
     @pytest.mark.asyncio
     async def test_upstream_failure_counts_and_bans_channel(self) -> None:
         calls: list[tuple[Any, ...]] = []
-        channels = (make_channel("a", models=(MODEL,)), make_channel("b", models=(MODEL,)))
+        channels = (
+            make_channel("a", models=(MODEL,)),
+            make_channel("b", models=(MODEL,)),
+        )
         registry = RelayChannelRegistry(RelayGatewayConfig(channels=channels))
         tracker = RelayFailoverTracker(registry=registry, threshold=1)
         converter = RecordingConverter(calls)
@@ -281,7 +285,10 @@ class TestFailoverAccounting:
     @pytest.mark.asyncio
     async def test_success_resets_failures_and_restores_channel(self) -> None:
         calls: list[tuple[Any, ...]] = []
-        channels = (make_channel("a", models=(MODEL,)), make_channel("b", models=(MODEL,)))
+        channels = (
+            make_channel("a", models=(MODEL,)),
+            make_channel("b", models=(MODEL,)),
+        )
         registry = RelayChannelRegistry(RelayGatewayConfig(channels=channels))
         tracker = RelayFailoverTracker(registry=registry, threshold=1)
         tracker.record_failure("a")
@@ -322,8 +329,8 @@ class TestTrackedErrorCodes:
 
     def test_transport_failures_are_tracked(self) -> None:
         for code in ("UPSTREAM_ERROR", "UPSTREAM_TIMEOUT", "UPSTREAM_FAILED"):
-            assert RelayGatewayService._should_track_upstream_failure(code)
+            assert upstream.should_track_upstream_failure(code)
 
     def test_client_side_failures_are_not_tracked(self) -> None:
         for code in ("CLIENT_CANCELLED", "CLIENT_TRUNCATED", "INVALID_REQUEST"):
-            assert not RelayGatewayService._should_track_upstream_failure(code)
+            assert not upstream.should_track_upstream_failure(code)

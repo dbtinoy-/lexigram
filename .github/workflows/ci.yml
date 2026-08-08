@@ -13,7 +13,7 @@ jobs:
   quality:
     name: Quality gate (format, lint, types, tests)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,8 +24,8 @@ jobs:
       - name: Set up Python
         run: uv python install 3.11
 
-      - name: Install workspace
-        run: uv sync --all-extras
+      - name: Install workspace (locked)
+        run: uv sync --all-extras --locked
 
       - name: Format check
         run: uv run ruff format --check .
@@ -39,10 +39,18 @@ jobs:
       - name: Type check (core)
         run: uv run mypy lexigram/src/
 
-      - name: Tests (per package)
+      - name: Tests (per workspace member)
         shell: bash
         run: |
           set -euo pipefail
+          # Workspace members are derived from pyproject.toml so the loop
+          # stays in sync as packages are added/removed.
+          MEMBERS=$(uv run python - <<'EOF'
+          import os, tomllib
+          d = tomllib.load(open("pyproject.toml", "rb"))
+          print(" ".join(d["tool"]["uv"]["workspace"]["members"]))
+          EOF
+          )
           declare -A DESELECT
           # Per-package runs root at the package dir, so node ids are
           # package-relative (tests/unit/...).
@@ -51,22 +59,37 @@ jobs:
           # Require the private-only lexigram-cli templates package
           DESELECT[lexigram-nosql]="--deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_creates_file --deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_no_force_skips_existing --deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_with_fields_str"
           DESELECT[lexigram-queue]="--deselect tests/unit/test_message_consumer_generator.py::test_message_consumer_generator_fields"
-          for p in \
-            lexigram lexigram-contracts lexigram-secrets lexigram-vector \
-            lexigram-graph lexigram-web lexigram-sql lexigram-cache \
-            lexigram-auth lexigram-events lexigram-queue lexigram-tasks \
-            lexigram-http lexigram-resilience lexigram-storage \
-            lexigram-search lexigram-notification lexigram-monitor \
-            lexigram-webhook lexigram-tenancy lexigram-features \
-            lexigram-audit lexigram-graphql lexigram-nosql \
-            lexigram-workflow lexigram-testing; do
+          for p in $MEMBERS; do
             if [ ! -d "$p/tests" ]; then
               continue
             fi
             # Scoped runs have no coverage floor (floors apply to
             # aggregate runs from the repo root); pass/fail is the gate.
             uv run pytest -q -m "not integration" --no-cov "$p/tests" ${DESELECT[$p]:-}
-          done  example:
+          done
+
+  coverage:
+    name: Coverage gate (aggregate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install workspace (locked)
+        run: uv sync --all-extras --locked
+
+      - name: Aggregate tests with coverage floor
+        run: |
+          uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70
+
+  example:
     name: Demos fullstack-demo gate
     runs-on: ubuntu-latest
     timeout-minutes: 30

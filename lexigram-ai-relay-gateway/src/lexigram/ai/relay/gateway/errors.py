@@ -18,6 +18,7 @@ __all__ = [
     "auth_denied",
     "billing_error_to_gateway",
     "conversion_error_to_gateway",
+    "unexpected_error",
     "with_request_id",
 ]
 
@@ -132,4 +133,22 @@ def with_request_id(error: RelayGatewayError, request_id: str) -> RelayGatewayEr
         status_code=error.status_code,
         request_id=request_id,
         retryable=error.retryable,
+    )
+
+
+def unexpected_error(request_id: str) -> RelayGatewayError:
+    """Build the generic error for unexpected dependency failures.
+
+    Args:
+        request_id: The gateway request identifier.
+
+    Returns:
+        A non-retryable ``CONVERSION_FAILED`` (500) gateway error.
+    """
+    return RelayGatewayError(
+        code=RelayGatewayErrorCode.CONVERSION_FAILED,
+        message="Unexpected relay gateway failure",
+        status_code=500,
+        request_id=request_id,
+        retryable=False,
     )
