@@ -12,9 +12,13 @@ if TYPE_CHECKING:
     from lexigram.ai.llm.routing.config import LLMConfig
 
 
-@module()
+@module(is_global=True)
 class LLMModule(Module):
     """LLM client and model-management integration.
+
+    Declared global so its exports are visible to every module in the graph
+    without explicit import — the LLM client is cross-cutting infrastructure
+    consumed by agents, RAG, verification, and embedding pipelines.
 
     Call :meth:`configure` to register an :class:`~lexigram.contracts.ai.LLMClientProtocol`
     implementation and optional model manager for injection.

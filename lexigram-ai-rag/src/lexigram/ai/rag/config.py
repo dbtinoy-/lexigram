@@ -387,26 +387,6 @@ class PipelineConfig(BaseConfig):
         }
 
 
-@dataclass(init=False)
-class RAGTenancyConfig(DomainModel):
-    """Optional tenant-aware RAG pipeline configuration.
-
-    When enabled, the RAG provider wraps the ``RAGPipelineProtocol`` binding
-    in a ``TenantScopedRAGPipeline`` that resolves the ``collection_name``
-    from the current tenant context at request time, with per-tenant
-    pipeline instance caching.
-
-    Note:
-        Requires ``lexigram-tenancy`` in the module graph when ``enabled``
-        is ``True`` — the provider resolves ``Context`` at boot.
-    """
-
-    enabled: bool = Field(
-        default=False,
-        description="Enable tenant-aware collection resolution in RAG pipeline",
-    )
-
-
 __all__ = [
     "ContextOptimizationConfig",
     "DocumentFormat",

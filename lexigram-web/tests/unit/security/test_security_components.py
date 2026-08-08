@@ -68,10 +68,40 @@ class TestSecurityHeadersConfig:
         config = SecurityHeadersConfig(csp="default-src 'self'")
         assert "default-src" in (config.csp or "")
 
-    def test_config_xss_protection_default(self) -> None:
+    def test_xss_protection_default(self) -> None:
         """XSS protection header should have a default value."""
         config = SecurityHeadersConfig()
         assert config.xss_protection is not None
+
+
+class TestCSPConfigMerge:
+    """Test CSPConfig merges partial directives with framework defaults."""
+
+    def test_defaults_have_unsafe_inline_on_style_src_elem(self) -> None:
+        """Defaults must include style-src-elem with 'unsafe-inline'."""
+        from lexigram.web.security.config import CSPConfig
+
+        config = CSPConfig()
+        assert "'self'" in config.directives["style-src-elem"]
+        assert "'unsafe-inline'" in config.directives["style-src-elem"]
+
+    def test_partial_directives_fall_back_to_defaults(self) -> None:
+        """A partial directives dict keeps defaults for omitted directives."""
+        from lexigram.web.security.config import CSPConfig
+
+        config = CSPConfig(directives={"style-src": "'self'"})
+        assert config.directives["style-src"] == "'self'"
+        assert "'self'" in config.directives["style-src-elem"]
+        assert "'unsafe-inline'" in config.directives["style-src-elem"]
+        assert config.directives["default-src"] == "'self'"
+
+    def test_user_directives_override_defaults_per_key(self) -> None:
+        """An explicit directive wins over the framework default for that key."""
+        from lexigram.web.security.config import CSPConfig
+
+        config = CSPConfig(directives={"default-src": "'none'"})
+        assert config.directives["default-src"] == "'none'"
+        assert "'unsafe-inline'" in config.directives["style-src-elem"]
 
 
 class TestCORSMiddlewareFactory:

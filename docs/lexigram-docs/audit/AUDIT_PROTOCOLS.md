@@ -6,8 +6,8 @@
 
 ## Summary
 
-- Files with protocol declarations: 141
-- Total protocol declarations: 406
+- Files with protocol declarations: 147
+- Total protocol declarations: 420
 
 ## Protocol Files
 
@@ -18,7 +18,6 @@
 | `lexigram-contracts/src/lexigram/contracts/admin/cache_provider.py` | CacheProviderProtocol |
 | `lexigram-contracts/src/lexigram/contracts/admin/dependencies.py` | ContributorWithDependenciesProtocol |
 | `lexigram-contracts/src/lexigram/contracts/admin/operations.py` | BulkOperationsProtocol, RelationLoaderProtocol, AdminSearchableProtocol, AggregatableProtocol |
-| `lexigram-contracts/src/lexigram/contracts/admin/page_handler.py` | AdminPageHandlerProtocol |
 | `lexigram-contracts/src/lexigram/contracts/admin/pii_redactor.py` | PiiRedactorProtocol |
 | `lexigram-contracts/src/lexigram/contracts/admin/protocols.py` | AdminContributorProtocol, AdminContributorRegistryProtocol, AdminDashboardProtocol |
 | `lexigram-contracts/src/lexigram/contracts/admin/repository.py` | AdminRepositoryProtocol |
@@ -27,15 +26,21 @@
 | `lexigram-contracts/src/lexigram/contracts/ai/callbacks.py` | CallbackHandlerProtocol, CallbackManagerProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/evaluation.py` | EvaluatorProtocol, EvaluationHarnessProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/feedback.py` | FeedbackStoreProtocol, FeedbackProtocol |
-| `lexigram-contracts/src/lexigram/contracts/ai/governance.py` | CostTrackingProtocol, AIGovernanceProtocol, AIAuditStoreProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/governance/__init__.py` | CostTrackingProtocol, AIGovernanceProtocol, AIAuditStoreProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/governance/relay_billing.py` | RelayUsageStoreProtocol, RelayPriceEstimatorProtocol, RelayBillingProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/guards.py` | GuardResultProtocol, InputGuardProtocol, OutputGuardProtocol, GuardPipelineProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/index.py` | IndexProtocol, QueryEngineProtocol |
-| `lexigram-contracts/src/lexigram/contracts/ai/llm.py` | ChatMessageProtocol, CompletionProtocol, LLMClientProtocol, EmbeddingClientProtocol, StructuredExtractorProtocol, PromptTemplateProtocol, PromptRegistryProtocol, TokenCounterProtocol, PromptAssemblerProtocol, PromptRendererProtocol, PromptOptimizerProtocol, SemanticCacheProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/llm.py` | ChatMessageProtocol, CompletionProtocol, LLMClientProtocol, EmbeddingClientProtocol, StructuredExtractorProtocol, PromptTemplateProtocol, PromptRegistryProtocol, TokenCounterProtocol, PromptAssemblerProtocol, PromptRendererProtocol, PromptOptimizerProtocol, SemanticCacheProtocol, CostEstimatorProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/loaders.py` | DocumentLoaderProtocol, LoaderRegistryProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/memory.py` | MemoryStoreProtocol, WorkingMemoryProtocol, EpisodicMemoryProtocol, SemanticMemoryProtocol, MemoryConsolidatorProtocol, MemoryProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/protocols.py` | AIProviderProtocol, AISubsystemProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/providers.py` | ProviderRegistryProtocol, ModelSelectorProtocol, FallbackChainProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/rag.py` | ChunkProtocol, DocumentLoaderProtocol, SynthesizerProtocol, RAGPipelineProtocol, RetrievalStrategyProtocol, RerankingStrategyProtocol, RAGEvaluatorProtocol, PromptCompressorProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/relay/context.py` | MediaResolverProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/relay/gateway.py` | RelayGatewayProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/relay/operations.py` | RelayPolicyStoreProtocol, RelayOperationsProtocol, RelayOperationsControlProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/relay/protocols.py` | RelayConverterProtocol, RelayStreamSessionProtocol, RelayMapperProtocol, RelayRegistryProtocol |
+| `lexigram-contracts/src/lexigram/contracts/ai/relay/transport.py` | RelayUpstreamProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/retrievers.py` | RetrieverProtocol, NodePostprocessorProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/routing.py` | RoutingStrategyProtocol, LLMRouterProtocol, QuotaBackendProtocol, InferenceLoggerProtocol |
 | `lexigram-contracts/src/lexigram/contracts/ai/runnable.py` | RunnableProtocol |
@@ -146,12 +151,13 @@
 | `lexigram-contracts/src/lexigram/contracts/web/protocols.py` | HttpRequestLoggerProtocol, CORSPolicyProtocol, BackgroundTaskRunnerProtocol, CSRFProtectionProtocol, WebRateLimiterProtocol, WebMiddlewareProtocol, ExceptionFilterProtocol, RequestProtocol, ResponseProtocol, ResponseFactoryProtocol, WebProviderProtocol, HTTPApplicationProtocol, CRUDServiceProtocol, ConnectionManagerProtocol, WebContributorProtocol |
 | `lexigram-contracts/src/lexigram/contracts/web/sse.py` | SseResponseFactoryProtocol |
 | `lexigram-contracts/src/lexigram/contracts/webhook/protocols.py` | WebhookSubscriptionStoreProtocol, WebhookDeliveryStoreProtocol, WebhookDeliveryServiceProtocol |
+| `lexigram-contracts/src/lexigram/contracts/workflow/content_checkpoint.py` | ContentCheckpointStoreProtocol |
 | `lexigram-contracts/src/lexigram/contracts/workflow/protocols.py` | WorkflowGraphProtocol, WorkflowNodeProtocol, ApprovalProtocol, ExecutionProtocol, SagaStoreProtocol, PipelineContextProtocol, PipelineStepProtocol, PipelineProtocol, BulkProcessorProtocol, SagaProtocol, SagaManagerProtocol, StateMachineProtocol, StatePersistenceProtocol |
 | `lexigram/src/lexigram/app/protocols.py` | AppLifecycleProtocol |
 | `lexigram/src/lexigram/config/protocols.py` | ConfigSourceProtocol |
 | `lexigram/src/lexigram/config/secrets.py` | SecretsValidatorProtocol |
 | `lexigram/src/lexigram/di/extensions/aop_interceptors.py` | MethodInterceptorProtocol |
-| `lexigram/src/lexigram/di/protocols.py` | ResolverProtocol, TypeHintResolverProtocol, RegistryProtocol, ProtocolValidatorProtocol, InjectorProtocol |
+| `lexigram/src/lexigram/di/protocols.py` | DIResolverProtocol, TypeHintResolverProtocol, DIServiceRegistryProtocol, ProtocolValidatorProtocol, InjectorProtocol |
 | `lexigram/src/lexigram/mapping/protocols.py` | TypeConverterProtocol |
 | `lexigram/src/lexigram/mapping/types.py` | MapperProtocol |
 

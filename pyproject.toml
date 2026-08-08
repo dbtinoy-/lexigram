@@ -11,6 +11,7 @@ license = "MIT"
 dependencies = [
     "lexigram",
     "lexigram-contracts",
+    "lexigram-secrets",
     "lexigram-ai",
     "lexigram-ai-llm",
     "lexigram-ai-rag",
@@ -58,6 +59,7 @@ dependencies = [
 members = [
     "lexigram",
     "lexigram-contracts",
+    "lexigram-secrets",
     "lexigram-ai",
     "lexigram-ai-llm",
     "lexigram-ai-rag",
@@ -97,6 +99,7 @@ members = [
 [tool.uv.sources]
 lexigram = { workspace = true }
 lexigram-contracts = { workspace = true }
+lexigram-secrets = { workspace = true }
 lexigram-ai = { workspace = true }
 lexigram-ai-llm = { workspace = true }
 lexigram-ai-rag = { workspace = true }

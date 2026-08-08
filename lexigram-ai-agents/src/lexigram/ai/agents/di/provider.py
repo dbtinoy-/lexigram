@@ -62,6 +62,7 @@ class AgentsProvider(Provider):
             enable_multi_agent: Enable multi-agent orchestration support.
         """
         super().__init__()
+        self._requested_config = config
         self._config = config or AgentConfig()
         self.enable_multi_agent = enable_multi_agent
 
@@ -77,6 +78,7 @@ class AgentsProvider(Provider):
             ToolRegistryProtocol,
         )
 
+        self._config = self._requested_config or self._config or AgentConfig()
         container.singleton(AgentConfig, self._config)
 
         if not self._config.enabled:
@@ -138,7 +140,7 @@ class AgentsProvider(Provider):
         try:
             from lexigram.contracts.ai.governance import AIGovernanceProtocol
 
-            governance = await resolver.resolve(AIGovernanceProtocol)
+            governance = await resolver.resolve_optional(AIGovernanceProtocol)
             logger.debug("agents_governance_available")
         except (LookupError, RuntimeError, AttributeError, ModuleVisibilityError):
             logger.debug("agents_governance_not_available")
@@ -148,7 +150,7 @@ class AgentsProvider(Provider):
         try:
             from lexigram.contracts.ai.memory import WorkingMemoryProtocol
 
-            memory = await resolver.resolve(WorkingMemoryProtocol)
+            memory = await resolver.resolve_optional(WorkingMemoryProtocol)
             logger.debug("agents_memory_initialized")
         except (
             LookupError,
@@ -165,35 +167,35 @@ class AgentsProvider(Provider):
         try:
             from lexigram.contracts.observability.metrics import MetricsRecorderProtocol
 
-            metrics_recorder = await resolver.resolve(MetricsRecorderProtocol)
+            metrics_recorder = await resolver.resolve_optional(MetricsRecorderProtocol)
             logger.debug("agents_metrics_available")
         except (LookupError, RuntimeError, AttributeError, ModuleVisibilityError):
             logger.debug("agents_metrics_not_available")
 
         agent_metrics = AgentMetrics(recorder=metrics_recorder)
-        if hasattr(resolver, "override"):
-            resolver.override(AgentMetrics, agent_metrics)
+        if hasattr(resolver, "bind"):
+            resolver.bind(AgentMetrics, agent_metrics)
 
         # Optional: tracing
         tracer = None
         try:
             from lexigram.contracts.observability.tracing import TracerProtocol
 
-            tracer = await resolver.resolve(TracerProtocol)
+            tracer = await resolver.resolve_optional(TracerProtocol)
             logger.debug("agents_tracing_available")
         except (LookupError, RuntimeError, AttributeError, ModuleVisibilityError):
             logger.debug("agents_tracing_not_available")
 
         agent_tracer = AgentTracer(tracer=tracer)
-        if hasattr(resolver, "override"):
-            resolver.override(AgentTracer, agent_tracer)
+        if hasattr(resolver, "bind"):
+            resolver.bind(AgentTracer, agent_tracer)
 
         # Optional: event bus
         event_bus = None
         try:
             from lexigram.contracts.events.protocols import EventBusProtocol
 
-            event_bus = await resolver.resolve(EventBusProtocol)
+            event_bus = await resolver.resolve_optional(EventBusProtocol)
             logger.debug("agents_event_bus_available")
         except (LookupError, RuntimeError, AttributeError, ModuleVisibilityError):
             logger.debug("agents_event_bus_not_available")
@@ -203,7 +205,7 @@ class AgentsProvider(Provider):
         try:
             from lexigram.di.module import CompiledModuleGraph
 
-            graph = await resolver.resolve(CompiledModuleGraph)
+            graph = await resolver.resolve_optional(CompiledModuleGraph)
             maybe_set = tool_registry.set_module_graph(graph)
             if hasattr(maybe_set, "__await__"):
                 await maybe_set
@@ -216,7 +218,7 @@ class AgentsProvider(Provider):
         try:
             from lexigram.contracts.ai.memory import WorkingMemoryProtocol
 
-            working_memory = await resolver.resolve(WorkingMemoryProtocol)
+            working_memory = await resolver.resolve_optional(WorkingMemoryProtocol)
             logger.debug("agents_working_memory_available")
         except (
             LookupError,
@@ -232,7 +234,7 @@ class AgentsProvider(Provider):
         try:
             from lexigram.contracts.ai.session import SessionManagerProtocol
 
-            session_manager = await resolver.resolve(SessionManagerProtocol)
+            session_manager = await resolver.resolve_optional(SessionManagerProtocol)
             logger.debug("agents_session_manager_available")
         except (
             LookupError,
@@ -248,7 +250,7 @@ class AgentsProvider(Provider):
         try:
             from lexigram.contracts.ai.skills import SkillExecutorProtocol
 
-            skill_executor = await resolver.resolve(SkillExecutorProtocol)
+            skill_executor = await resolver.resolve_optional(SkillExecutorProtocol)
             logger.debug("agents_skill_executor_available")
         except (
             LookupError,
@@ -264,7 +266,7 @@ class AgentsProvider(Provider):
         try:
             from lexigram.contracts.ai.skills import SkillRegistryProtocol
 
-            skill_registry = await resolver.resolve(SkillRegistryProtocol)
+            skill_registry = await resolver.resolve_optional(SkillRegistryProtocol)
             logger.debug("agents_skill_registry_available")
         except (
             LookupError,
@@ -291,9 +293,9 @@ class AgentsProvider(Provider):
             skill_registry=skill_registry,
         )
 
-        if hasattr(resolver, "override"):
-            resolver.override(AgentExecutorImpl, executor)
-            resolver.override(AgentExecutorProtocol, executor)
+        if hasattr(resolver, "bind"):
+            resolver.bind(AgentExecutorImpl, executor)
+            resolver.bind(AgentExecutorProtocol, executor)
 
         logger.info(
             "agents_provider_booted",

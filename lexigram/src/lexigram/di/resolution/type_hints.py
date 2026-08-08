@@ -13,7 +13,7 @@ import inspect
 import sys
 from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin, get_type_hints
 
-from lexigram.di.markers import Named
+from lexigram.di.markers import Inject, Named, Qualifier
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -109,9 +109,18 @@ class TypeHintResolverImpl:
 
     def get_type_dependencies(self, cls: type | object) -> set[object]:
         """Get all types that cls depends on via constructor injection."""
-        return {
-            param.type_hint for param in self.get_injectable_parameters(cls).values()
-        }
+        deps: set[object] = set()
+        for param in self.get_injectable_parameters(cls).values():
+            dep: object = param.type_hint
+            qualifier = param.qualifier
+            if isinstance(qualifier, Named):
+                dep = (param.type_hint, qualifier.name)
+            elif isinstance(qualifier, Qualifier):
+                dep = qualifier.value
+            elif isinstance(qualifier, Inject) and qualifier.name:
+                dep = (param.type_hint, qualifier.name)
+            deps.add(dep)
+        return deps
 
     def clear_cache(self) -> None:
         """Clear the resolution cache. Useful in testing."""

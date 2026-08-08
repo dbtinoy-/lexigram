@@ -75,6 +75,7 @@ class SkillsProvider(Provider):
         from lexigram.ai.skills.permissions.permission_checker import PermissionChecker
         from lexigram.ai.skills.registry import SkillRegistry
 
+        container.singleton(SkillsConfig, instance=self._config)
         registry = SkillRegistry()
         container.singleton(SkillRegistry, instance=registry)
         logger.debug("skills_provider_registered", service="SkillRegistry")

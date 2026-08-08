@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from lexigram.contracts.infra.tasks.protocols import TaskWorkerProtocol
 from lexigram.di.module import DynamicModule, Module, module
@@ -34,7 +34,6 @@ class WorkersModule(Module):
         cls,
         config: WorkersConfig | None = None,
         enable_scheduler: bool = True,
-        **kwargs: Any,
     ) -> DynamicModule:
         """Create a WorkersModule with explicit configuration.
 
@@ -44,7 +43,6 @@ class WorkersModule(Module):
                 handles DLQ retries and worker health checks. Defaults to
                 ``True``; set to ``False`` to disable all scheduled tasks (e.g.
                 when running in a worker-only process).
-            **kwargs: Additional keyword arguments forwarded to the provider.
 
         Returns:
             A :class:`~lexigram.di.module.DynamicModule` descriptor.
@@ -57,7 +55,6 @@ class WorkersModule(Module):
                 WorkersProvider(
                     config=config,
                     enable_scheduler=enable_scheduler,
-                    **kwargs,
                 )
             ],
             exports=[TaskWorkerProtocol],

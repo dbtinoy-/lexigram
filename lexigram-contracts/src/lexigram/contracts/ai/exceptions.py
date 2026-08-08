@@ -10,6 +10,7 @@ in their respective extension packages and extend these base classes.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 from lexigram.contracts.exceptions.domain import DomainError
@@ -121,6 +122,60 @@ class ExtractionError(AIError):
         super().__init__(message, **kwargs)
 
 
+class RelayErrorCode(StrEnum):
+    """Stable machine-readable codes carried by :class:`RelayError`.
+
+    Attributes:
+        UNSUPPORTED_FORMAT: Unknown or unimplemented wire format.
+        UNSUPPORTED_ROUTE: No mapper exists for the requested route.
+        MALFORMED_PAYLOAD: Wire payload does not match the expected shape.
+        UNSUPPORTED_FEATURE: The source feature cannot be converted.
+        MISSING_REQUIRED_OPTION: A required field or host option is absent.
+        MEDIA_RESOLUTION_REQUIRED: URL media needs a resolver the host did
+            not supply.
+        STREAM_STATE_INVALID: Stream event out of order or from the wrong
+            source format.
+        STREAM_ALREADY_FINALIZED: Event accepted after finalization.
+        SERIALIZATION_ERROR: Payload cannot be serialized or deserialized.
+        DUPLICATE_REGISTRATION: A mapper was registered twice for one format.
+    """
+
+    UNSUPPORTED_FORMAT = "unsupported_format"
+    UNSUPPORTED_ROUTE = "unsupported_route"
+    MALFORMED_PAYLOAD = "malformed_payload"
+    UNSUPPORTED_FEATURE = "unsupported_feature"
+    MISSING_REQUIRED_OPTION = "missing_required_option"
+    MEDIA_RESOLUTION_REQUIRED = "media_resolution_required"
+    STREAM_STATE_INVALID = "stream_state_invalid"
+    STREAM_ALREADY_FINALIZED = "stream_already_finalized"
+    SERIALIZATION_ERROR = "serialization_error"
+    DUPLICATE_REGISTRATION = "duplicate_registration"
+
+
+class RelayError(AIError):
+    """Base for relay conversion and gateway errors.
+
+    Extended in lexigram-ai-llm with specific conversion failures (e.g.
+    unsupported protocol, malformed wire payload).  Live alongside
+    ``LLMError`` and ``RAGError`` as an AI sub-domain base.
+
+    The ``code`` attribute carries a stable machine-readable value from
+    :class:`RelayErrorCode` (or a relaykit-compatible string) so callers
+    can branch without string matching on messages.
+    """
+
+    _code = "LEX_ERR_AI_003"
+
+    def __init__(
+        self,
+        message: str = "Relay error",
+        code: str | RelayErrorCode = "relay_error",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, **kwargs)
+        self.code = str(code)
+
+
 class WorkflowError(AIError):
     """Base for workflow execution errors.
 
@@ -165,6 +220,8 @@ __all__ = [
     "GuardError",
     "LLMError",
     "RAGError",
+    "RelayError",
+    "RelayErrorCode",
     "RetrieverError",
     "RunnableError",
     "SkillError",

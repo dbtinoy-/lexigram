@@ -200,6 +200,26 @@ class CSPConfig(BaseConfig):
         description="CSP directives mapping directive name to source expression(s)",
     )
 
+    @model_validator(mode="after")
+    def _merge_default_directives(self) -> CSPConfig:
+        """Merge the framework default directives into the configured ones.
+
+        User-supplied directives always win per-key; any directive the user
+        omitted falls back to the safe framework default. This prevents a
+        partial ``directives`` dict from silently dropping defaults — e.g. a
+        user configuring only ``style-src`` previously lost the default
+        ``style-src-elem`` with ``'unsafe-inline'``, which then blocked all
+        inline styles (the CSP fallback chain does not apply when the
+        ``-elem`` variant is present).
+
+        Returns:
+            Self with merged directives.
+        """
+        merged = dict(_DEFAULT_DIRECTIVES)
+        merged.update(self.directives)
+        self.directives = merged
+        return self
+
     def build_header(self) -> str:
         """Build the ``Content-Security-Policy`` header value.
 

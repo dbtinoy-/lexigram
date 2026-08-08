@@ -36,10 +36,10 @@ class TestWorkersModule:
         result = WorkersModule.configure()
         assert TaskWorkerProtocol in result.exports
 
-    def test_configure_passes_kwargs_to_provider(self) -> None:
-        """Test configure passes kwargs to provider."""
-        result = WorkersModule.configure(dlq_check_interval=30)
-        assert result.module == WorkersModule
+    def test_configure_rejects_unknown_kwargs(self) -> None:
+        """Test configure rejects unsupported keyword arguments."""
+        with pytest.raises(TypeError):
+            WorkersModule.configure(dlq_check_interval=30)
 
     def test_stub_returns_dynamic_module(self) -> None:
         """Test stub returns DynamicModule."""

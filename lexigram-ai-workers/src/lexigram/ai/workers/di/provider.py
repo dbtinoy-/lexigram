@@ -54,12 +54,10 @@ class WorkersProvider(Provider):
         self,
         config: WorkersConfig | None = None,
         enable_scheduler: bool = True,
-        **kwargs: Any,
     ) -> None:
         super().__init__()
         self._config = config or WorkersConfig()
         self._enable_scheduler = enable_scheduler
-        self._kwargs = kwargs
         self._workers: list[Any] = []
         self._tasks: set[asyncio.Task[None]] = set()
 
