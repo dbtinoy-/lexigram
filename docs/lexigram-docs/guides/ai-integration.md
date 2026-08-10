@@ -21,6 +21,7 @@ The AI layer is composed of focused, independently installable packages:
 | `lexigram-ai-workers` | Background AI work — batch embedding, document ingestion |
 | `lexigram-ai-observability` | Tracing, metrics, and health checks for AI calls |
 | `lexigram-ai-feedback` | Feedback collection and processing |
+| `lexigram-ai-evaluation` | LLM output evaluation (Q&A, string/embedding distance, trajectory, criteria) and reproducible experiment tracking |
 
 ---
 
