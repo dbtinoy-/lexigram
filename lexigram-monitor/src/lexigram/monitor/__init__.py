@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     )
     from lexigram.monitor.config import (
         BackendType,
+        ErrorTrackingConfig,
         HealthCheckConfig,
         LoggingConfig,
         MetricsConfig,
@@ -60,6 +61,12 @@ if TYPE_CHECKING:
         MonitorProvider,
     )
     from lexigram.monitor.di.sub_providers.observability import ObservabilityProvider
+    from lexigram.monitor.error_tracking import (
+        ErrorTrackerProtocol,
+        NullErrorTracker,
+        SentryErrorTracker,
+        setup_error_tracking,
+    )
     from lexigram.monitor.exceptions import (
         BackendNotAvailableError,
         InvalidMetricError,
@@ -155,6 +162,12 @@ _LAZY_IMPORTS = {
     "OpenTelemetryConfig": "lexigram.monitor.config",
     "PrometheusConfig": "lexigram.monitor.config",
     "MonitorConfig": "lexigram.monitor.config",
+    "ErrorTrackingConfig": "lexigram.monitor.config",
+    # Error tracking
+    "ErrorTrackerProtocol": "lexigram.monitor.error_tracking",
+    "NullErrorTracker": "lexigram.monitor.error_tracking",
+    "SentryErrorTracker": "lexigram.monitor.error_tracking",
+    "setup_error_tracking": "lexigram.monitor.error_tracking",
     # Protocols
     "MetricProtocol": "lexigram.contracts.observability",
     "TraceProvider": "lexigram.contracts.observability",

@@ -364,6 +364,8 @@ class MonitorConfig(BaseConfig):
         tracing: Tracing configuration
         health: Health check configuration
         logging: Logging configuration
+        slo: SLO evaluation configuration
+        error_tracking: External error tracking configuration
         opentelemetry: OpenTelemetry configuration
         prometheus: Prometheus configuration
         environment: Environment name
@@ -403,6 +405,10 @@ class MonitorConfig(BaseConfig):
     slo: SLOConfig = Field(
         default_factory=SLOConfig,
         description="SLO evaluation configuration",
+    )
+    error_tracking: ErrorTrackingConfig = Field(
+        default_factory=lambda: ErrorTrackingConfig(),
+        description="External error tracking configuration",
     )
     opentelemetry: OpenTelemetryConfig = Field(
         default_factory=OpenTelemetryConfig,
@@ -495,9 +501,47 @@ class MonitorConfig(BaseConfig):
         return None
 
 
+@dataclass(init=False)
+class ErrorTrackingConfig(BaseConfig):
+    """External error tracking configuration (Sentry).
+
+    When ``dsn`` is unset (the default), error tracking is a no-op so the
+    integration adds no overhead or network traffic unless explicitly
+    enabled (env: ``LEX_MONITOR__ERROR_TRACKING__DSN``).
+
+    Attributes:
+        dsn: Sentry DSN. Unset/empty disables error tracking entirely.
+        environment: Environment tag attached to captured events.
+        traces_sample_rate: Sampling rate for traces (0.0 to 1.0).
+        send_default_pii: Whether to send default PII fields.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
+
+    dsn: str | None = Field(
+        None,
+        description="Sentry DSN; error tracking is a no-op when unset",
+    )
+    environment: str | None = Field(
+        None,
+        description="Environment tag for captured events",
+    )
+    traces_sample_rate: float = Field(
+        1.0,
+        ge=0.0,
+        le=1.0,
+        description="Traces sample rate (0.0 to 1.0)",
+    )
+    send_default_pii: bool = Field(
+        False,
+        description="Send default PII fields to the error tracker",
+    )
+
+
 # Export all config classes
 __all__ = [
     "BackendType",
+    "ErrorTrackingConfig",
     "HealthCheckConfig",
     "LoggingConfig",
     "MetricsConfig",

@@ -64,6 +64,7 @@ from lexigram.monitor.backends.exporters.otel_registry import (
 )
 from lexigram.monitor.config import MonitorConfig
 from lexigram.monitor.constants import DEFAULT_MAX_SPANS
+from lexigram.monitor.error_tracking import ErrorTrackerProtocol
 from lexigram.monitor.health import HealthCheckerRegistry, HealthCheckRegistry
 from lexigram.monitor.health.sanitize import safe_error_message
 from lexigram.monitor.metrics.collector import (
@@ -177,6 +178,7 @@ class MonitorProvider(Provider):
         self._hook_handlers: list[tuple[str, Any]] = []
         self._slo_worker: Any | None = None
         self._digest_worker: Any | None = None
+        self._error_tracker: ErrorTrackerProtocol | None = None
 
     @classmethod
     def from_config(cls, config: MonitorConfig, **context: Any) -> MonitorProvider:
@@ -314,6 +316,22 @@ class MonitorProvider(Provider):
         dependencies such as the database exporter.
         """
         await self.backend.initialize()
+
+        # Optional external error tracking (Sentry). No-op unless a DSN is
+        # configured (LEX_MONITOR__ERROR_TRACKING__DSN).
+        error_tracking_cfg = getattr(self._config, "error_tracking", None)
+        if error_tracking_cfg is not None:
+            from lexigram.monitor.error_tracking import (
+                NullErrorTracker,
+                setup_error_tracking,
+            )
+
+            self._error_tracker = setup_error_tracking(error_tracking_cfg)
+            if not isinstance(self._error_tracker, NullErrorTracker):
+                logger.info(
+                    "error_tracking_enabled",
+                    provider=type(self._error_tracker).__name__,
+                )
 
         # M-05: If the backend exposes a real tracer (e.g. OpenTelemetryBackend after
         # initialize()), use it so @traced decorators go through the real OTel pipeline.
@@ -481,6 +499,11 @@ class MonitorProvider(Provider):
             except (RuntimeError, KeyError, AttributeError, ImportError):
                 # If cleanup fails, skip
                 pass
+
+        # Flush pending error-tracking events on shutdown.
+        if self._error_tracker is not None:
+            with contextlib.suppress(RuntimeError, Exception):
+                self._error_tracker.flush()
 
     def _register_hook_subscriptions(self, hook_registry: HookRegistryProtocol) -> None:
         self._hook_registry = hook_registry
