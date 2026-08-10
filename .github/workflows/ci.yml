@@ -24,22 +24,22 @@ jobs:
       - name: Set up Python
         run: uv python install 3.11
 
-      - name: Install workspace (locked)
+      - name: install workspace (locked)
         run: uv sync --all-extras --locked
 
-      - name: Format check
+      - name: format (ruff check --format)
         run: uv run ruff format --check .
 
-      - name: Lint
+      - name: lint (ruff check)
         run: uv run ruff check .
 
       - name: Tier boundary
         run: uv run python scripts/check_tier_boundary.py --root .
 
-      - name: Type check (core)
+      - name: typecheck (mypy core)
         run: uv run mypy lexigram/src/
 
-      - name: Tests (per workspace member)
+      - name: test (per workspace member)
         shell: bash
         run: |
           set -euo pipefail
@@ -82,10 +82,10 @@ jobs:
       - name: Set up Python
         run: uv python install 3.11
 
-      - name: Install workspace (locked)
+      - name: install workspace (locked)
         run: uv sync --all-extras --locked
 
-      - name: Aggregate tests with coverage floor
+      - name: test coverage (aggregate, floor 70)
         run: |
           uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70
 
@@ -103,23 +103,23 @@ jobs:
       - name: Set up Python
         run: uv python install 3.11
 
-      - name: Install demo app (locked)
+      - name: install demo app (locked)
         working-directory: demos/fullstack-demo
         run: uv sync --locked
 
-      - name: Format check
+      - name: format (ruff check --format)
         working-directory: demos/fullstack-demo
         run: uv run ruff format --check src tests
 
-      - name: Lint
+      - name: lint (ruff check)
         working-directory: demos/fullstack-demo
         run: uv run ruff check src tests
 
-      - name: Type check
+      - name: typecheck (demo)
         working-directory: demos/fullstack-demo
         run: uv run mypy
 
-      - name: Tests
+      - name: test (demo, non-integration)
         working-directory: demos/fullstack-demo
         run: uv run pytest -q -m "not integration"
 
@@ -137,8 +137,8 @@ jobs:
       - name: Set up Python
         run: uv python install 3.11
 
-      - name: Install workspace (locked)
+      - name: install workspace (locked)
         run: uv sync --all-extras --locked
 
-      - name: pip-audit (known-vulnerability check)
+      - name: audit (pip-audit)
         run: uv run pip-audit
