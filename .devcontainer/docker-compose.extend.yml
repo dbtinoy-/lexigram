@@ -1,0 +1,9 @@
+services:
+  dev:
+    image: mcr.microsoft.com/devcontainers/python:3.11
+    environment:
+      LEX_DB__URL: postgresql://lexigram:lexigram@postgres:5432/lexigram
+      LEX_CACHE__REDIS__URL: redis://redis:6379/0
+    volumes:
+      - ..:/workspaces/lexigram-dev
+    command: sleep infinity
