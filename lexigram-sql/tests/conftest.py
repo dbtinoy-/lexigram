@@ -104,6 +104,54 @@ async def test_bed():
         yield bed
 
 
+# --- In-process database fixtures (no live services, no Docker) ---
+# These fixtures let provider/repository tests run against an in-memory
+# SQLite database, with a real PostgreSQL preferred when one is reachable.
+
+
+@pytest.fixture(scope="session")
+def integration_config():
+    """Return integration service configuration from the environment."""
+    from lexigram.testing.integration.config import IntegrationTestConfig
+
+    return IntegrationTestConfig.from_env()
+
+
+@ pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+async def sqlite_provider():
+    """Yield a connected in-memory SQLite provider (no external services)."""
+    from lexigram.sql.providers.sqlite_provider import SQLiteProvider
+
+    provider = SQLiteProvider(":memory:")
+    await provider.connect()
+    try:
+        yield provider
+    finally:
+        await provider.disconnect()
+
+
+@ pytest.fixture if pytest_asyncio is None else pytest_asyncio.fixture
+async def postgres_provider(integration_config):
+    """Yield PostgreSQL when reachable, else an in-process SQLite provider.
+
+    The Docker-free fallback keeps PostgreSQL-flavoured integration tests
+    runnable without a pre-started Docker Compose stack.
+    """
+    from lexigram.sql.providers.postgres_provider import PostgresProvider
+    from lexigram.sql.providers.sqlite_provider import SQLiteProvider
+    from lexigram.testing.integration.probes import ServiceProbe
+
+    if await ServiceProbe.check_postgres(integration_config.postgres_dsn_raw):
+        provider = PostgresProvider(integration_config.postgres_dsn_raw)
+    else:
+        provider = SQLiteProvider(":memory:")
+    await provider.connect()
+    try:
+        yield provider
+    finally:
+        await provider.disconnect()
+
+
 # --- Test utilities for resilience & instrumentation ---
 class _FakeMetrics:
     def __init__(self):

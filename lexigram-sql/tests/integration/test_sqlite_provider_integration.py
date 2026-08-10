@@ -1,8 +1,13 @@
+"""In-process SQLite provider CRUD tests.
+
+Runs entirely against an in-memory SQLite database — no live PostgreSQL or
+Docker Compose stack is required, so this file belongs to the default
+``-m "not integration"`` suite.
+"""
+
 import pytest
 
 from lexigram.sql.providers.sqlite_provider import SQLiteProvider
-
-@pytest.mark.integration
 
 
 @pytest.mark.asyncio
