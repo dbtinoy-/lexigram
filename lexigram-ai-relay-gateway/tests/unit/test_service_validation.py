@@ -15,7 +15,7 @@ from lexigram.ai.relay.gateway.service import (
     validate_gateway_request,
 )
 from lexigram.contracts.ai.relay import RelayGatewayError
-from tests.unit.service_test_helpers import (
+from service_test_helpers import (
     REQUEST_ID,
     happy_service,
     make_request,

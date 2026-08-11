@@ -27,7 +27,7 @@ from lexigram.contracts.ai.relay import (
     UpstreamResponse,
 )
 from lexigram.contracts.core.result import Err, Result
-from tests.unit.service_test_helpers import (
+from service_test_helpers import (
     MODEL,
     REQUEST_ID,
     RecordingAuthorizer,

@@ -13,7 +13,7 @@ import pytest
 
 from lexigram.contracts.ai.exceptions import RelayError, RelayErrorCode
 from lexigram.contracts.core.result import Err
-from tests.unit.service_test_helpers import (
+from service_test_helpers import (
     REQUEST_ID,
     RecordingAuthorizer,
     RecordingBilling,
