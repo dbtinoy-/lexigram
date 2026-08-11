@@ -59,7 +59,7 @@ class TestRenderOutroTextClipUsesFit:
                 "line two",
             ]
 
-        monkeypatch.setattr(pmod, "_fit_outro_text", fake_fit)
+        monkeypatch.setattr("shorts_creator.pipeline.outro._fit_outro_text", fake_fit)
         monkeypatch.setattr(pmod.subprocess, "run", lambda *a, **k: None)
 
         out = str(tmp_path / "outro_text.mov")

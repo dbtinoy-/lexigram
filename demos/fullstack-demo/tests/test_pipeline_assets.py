@@ -272,7 +272,7 @@ class TestBackgroundBundledSample:
             capture_output=True,
             check=True,
         )
-        monkeypatch.setattr(pmod, "SAMPLE_BACKGROUND", sample)
+        monkeypatch.setattr("shorts_creator.pipeline.constants.SAMPLE_BACKGROUND", sample)
         stock_calls = []
 
         async def fake_stock(*args, **kwargs):
@@ -292,7 +292,9 @@ class TestBackgroundBundledSample:
     async def test_fetch_background_falls_through_to_stock_without_sample(
         self, tmp_path, monkeypatch
     ):
-        monkeypatch.setattr(pmod, "SAMPLE_BACKGROUND", tmp_path / "missing.mp4")
+        monkeypatch.setattr(
+            "shorts_creator.pipeline.constants.SAMPLE_BACKGROUND", tmp_path / "missing.mp4"
+        )
         stock_calls = []
 
         async def fake_stock(*args, **kwargs):
@@ -318,7 +320,9 @@ class TestBackgroundImageMode:
             capture_output=True,
             check=True,
         )
-        monkeypatch.setattr(pmod, "SAMPLE_BACKGROUND", tmp_path / "missing.mp4")
+        monkeypatch.setattr(
+            "shorts_creator.pipeline.constants.SAMPLE_BACKGROUND", tmp_path / "missing.mp4"
+        )
         stock_calls = []
 
         async def fake_stock(*args, **kwargs):
@@ -336,7 +340,9 @@ class TestBackgroundImageMode:
     @pytest.mark.asyncio
     @SKIP_NO_FFMPEG
     async def test_image_mode_uses_gradient_without_user_image(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(pmod, "SAMPLE_BACKGROUND", tmp_path / "missing.mp4")
+        monkeypatch.setattr(
+            "shorts_creator.pipeline.constants.SAMPLE_BACKGROUND", tmp_path / "missing.mp4"
+        )
         stock_calls = []
 
         async def fake_stock(*args, **kwargs):
@@ -366,7 +372,9 @@ class TestBackgroundImageMode:
         def fake_loop_image(*args, **kwargs):
             raise subprocess.CalledProcessError(1, "ffmpeg")
 
-        monkeypatch.setattr(pmod, "_looped_image_video", fake_loop_image)
+        monkeypatch.setattr(
+            "shorts_creator.pipeline.background._looped_image_video", fake_loop_image
+        )
         pipeline = pmod.ReelPipeline(assets=AssetBundle(bg_clip_path=src), bg_mode="image")
         pipeline.temp_dir = str(tmp_path)
         result = await pipeline._fetch_background_clip(total_frames=90, fps=30.0)
@@ -398,7 +406,9 @@ class TestBackgroundApiSource:
             capture_output=True,
             check=True,
         )
-        monkeypatch.setattr(pmod, "SAMPLE_BACKGROUND", tmp_path / "missing.mp4")
+        monkeypatch.setattr(
+            "shorts_creator.pipeline.constants.SAMPLE_BACKGROUND", tmp_path / "missing.mp4"
+        )
         loop_calls = []
         stock_kwargs = {}
 
@@ -410,7 +420,7 @@ class TestBackgroundApiSource:
             stock_kwargs.update(kwargs)
             return False
 
-        monkeypatch.setattr(pmod, "_loop_clip_to_duration", fake_loop)
+        monkeypatch.setattr("shorts_creator.pipeline.bake._loop_clip_to_duration", fake_loop)
         monkeypatch.setattr(pmod.stock_video, "fetch_background_video", fake_stock)
         pipeline = pmod.ReelPipeline(
             assets=AssetBundle(bg_clip_path=src),
