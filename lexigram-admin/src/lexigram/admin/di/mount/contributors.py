@@ -1,0 +1,290 @@
+"""Mount phases for contributors, routing, SSE and app-state exposure."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from lexigram.logging import get_logger
+
+if TYPE_CHECKING:
+    from lexigram.admin.di.bundle_provider import AdminProvider
+    from lexigram.admin.di.mount.context import MountContext
+
+_log = get_logger(__name__)
+
+
+class AdminMountContributorsMixin:
+    """Mount phases that wire contributors, the router and app state."""
+
+    async def _mount_contributors(
+        self: AdminProvider, resolver: Any, ctx: MountContext
+    ) -> None:
+        """Discover contributor resources and wire their data sources.
+
+        Contributor discovery is best-effort; failures are recorded in
+        ``_mount_failures`` without aborting the mount.
+
+        Args:
+            resolver: The DI resolver for contributor resolution.
+            ctx: Mount pipeline state (resources/contributors populated).
+        """
+        from lexigram.admin.contributors.registry import ContributorRegistry
+        from lexigram.admin.contributors.resource_collector import ResourceCollector
+        from lexigram.admin.dashboard.naming_policy import NamingPolicy
+
+        contributors: list = []
+        contributor_registry: Any | None = None
+        try:
+            contributor_registry = await resolver.resolve(
+                ContributorRegistry,
+                bypass_visibility=True,
+            )
+            if contributor_registry is None:
+                raise ValueError("Contributor registry unavailable")
+            contributors = list(contributor_registry.get_all())
+        except Exception as exc:
+            _log.warning("admin.contributors_discovery_failed", exc_info=True)
+            self._mount_failures["contributor_discovery"] = str(exc)
+
+        ctx.contributors = contributors
+        ctx.contributor_registry = contributor_registry
+
+        try:
+            naming = NamingPolicy(mode=self._config.contributor_collision_mode)
+            collector = ResourceCollector(naming_policy=naming)
+            contributor_resources = collector.collect(contributors)
+            for resource_cls in contributor_resources:
+                name = (
+                    getattr(resource_cls, "name", None)
+                    or resource_cls.__name__.replace("Resource", "").lower()
+                )
+                try:
+                    ctx.resources[name] = await resolver.resolve(
+                        resource_cls,
+                        bypass_visibility=True,
+                    )
+                except Exception:  # noqa: BLE001 — fall back to direct
+                    try:
+                        ctx.resources[name] = resource_cls()
+                    except Exception as inner:  # noqa: BLE001 — skip, log warning
+                        _log.warning(
+                            "admin.contributor_resource_resolution_failed",
+                            resource=resource_cls.__name__,
+                            contributor=name,
+                            error=str(inner),
+                        )
+                        self._mount_failures[f"contributor_resource:{name}"] = str(
+                            inner
+                        )
+
+            # Wire data sources to resolved resources that declare _data_source_class
+            user_permission_inventory: Any = None
+            user_resource_cls: Any = None
+            try:
+                from lexigram.admin.rbac.inventory import PermissionInventoryService
+                from lexigram.admin.resources.users import UserResource
+
+                user_permission_inventory = await resolver.resolve(
+                    PermissionInventoryService,
+                    bypass_visibility=True,
+                )
+                user_resource_cls = UserResource
+            except Exception:  # noqa: BLE001 — best-effort wiring
+                _log.debug("admin.user_permission_inventory_unavailable")
+
+            for name, resource in list(ctx.resources.items()):
+                if (
+                    user_permission_inventory is not None
+                    and user_resource_cls is not None
+                    and isinstance(resource, user_resource_cls)
+                ):
+                    try:
+                        resource.permission_inventory = user_permission_inventory
+                        _log.debug(
+                            "admin.user_permission_inventory_wired", resource=name
+                        )
+                    except Exception:  # noqa: BLE001 — best-effort wiring
+                        _log.debug(
+                            "admin.user_permission_inventory_wiring_failed",
+                            resource=name,
+                        )
+                dsc = getattr(type(resource), "_data_source_class", None)
+                if dsc is not None and hasattr(resource, "set_data_source"):
+                    try:
+                        ds = await resolver.resolve(dsc, bypass_visibility=True)
+                        resource.set_data_source(ds)
+                        _log.debug("admin.data_source_wired", resource=name)
+                    except Exception:
+                        _log.debug("admin.data_source_wiring_failed", resource=name)
+
+                # Wrap data source with search wrappers when the resource
+                # has a searchable spec and the search engine is available.
+                search_spec = resource.search_spec()
+                if search_spec and search_spec.index_name:
+                    try:
+                        from lexigram.contracts.search import SearchEngineProtocol
+
+                        search_engine = await resolver.resolve(
+                            SearchEngineProtocol,
+                            bypass_visibility=True,
+                        )
+
+                        from lexigram.admin.integrations.search_query import (
+                            SearchQueryDataSourceWrapper,
+                        )
+                        from lexigram.admin.integrations.search_sync import (
+                            SearchSyncDataSourceWrapper,
+                        )
+
+                        fallback_to_like = getattr(
+                            self._config.integrations.search,
+                            "fallback_to_like",
+                            True,
+                        )
+                        query_wrapped = SearchQueryDataSourceWrapper(
+                            ds,
+                            search_engine,
+                            search_spec.index_name,
+                            fallback_to_like=fallback_to_like,
+                        )
+                        wrapped = SearchSyncDataSourceWrapper(
+                            query_wrapped, search_engine, search_spec
+                        )
+                        resource.set_data_source(wrapped)
+                        _log.debug("admin.search_wired", resource=name)
+                    except Exception:
+                        _log.debug("admin.search_wiring_failed", resource=name)
+
+        except Exception:  # noqa: BLE001 — resource collection is non-fatal
+            _log.warning("admin.contributors_resource_collection_failed", exc_info=True)
+
+    async def _mount_integration(
+        self: AdminProvider, container: Any, ctx: MountContext
+    ) -> None:
+        """Build the admin router and integrate contributor routes.
+
+        Args:
+            container: The root DI resolver for route integration.
+            ctx: Mount pipeline state (``router`` populated).
+        """
+        from lexigram.admin.core.routing import AdminRouter
+        from lexigram.admin.dashboard.naming_policy import NamingPolicy
+        from lexigram.admin.dashboard.route_integrator import RouteIntegrator
+
+        router = AdminRouter(
+            config=self._config,
+            resources=ctx.resources,
+            controllers=ctx.controllers,
+            middleware_stack=ctx.middlewares,
+            authorizer=self._authorizer_service,
+        )
+        ctx.router = router
+
+        try:
+            naming = NamingPolicy(mode=self._config.contributor_collision_mode)
+            integrator = RouteIntegrator(
+                router=router,
+                naming_policy=naming,
+                route_prefix=self._config.prefix,
+                container=container,
+            )
+            integrator.register(ctx.contributors)
+        except Exception as exc:  # noqa: BLE001 — route integration is non-fatal
+            _log.warning("admin.contributors_route_integration_failed", exc_info=True)
+            self._mount_failures["route_integrator"] = str(exc)
+
+    async def _mount_sse_widgets(
+        self: AdminProvider, container: Any, ctx: MountContext
+    ) -> None:
+        """Register the SSE endpoint for live widget delivery.
+
+        Args:
+            container: The root DI resolver for hub/permission services.
+            ctx: Mount pipeline state (``router`` read).
+        """
+        router = ctx.router
+        if router is None:
+            return
+        try:
+            from lexigram.admin.dashboard.widget_stream import (
+                build_widget_event_stream_handler,
+            )
+            from lexigram.admin.rbac.service import PermissionService
+            from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
+
+            widget_hub: SubjectAdminEventHub = await container.resolve(
+                SubjectAdminEventHub
+            )
+            permission_service: PermissionService = await container.resolve(
+                PermissionService
+            )
+
+            router.add_route(
+                "/_sse/widgets",
+                "GET",
+                build_widget_event_stream_handler(widget_hub, permission_service),
+                "admin_sse_widgets",
+            )
+            _log.info("admin.sse_widgets_route_registered", path="/admin/_sse/widgets")
+        except Exception as exc:  # noqa: BLE001 — SSE is optional
+            _log.warning("admin.sse_widgets_route_skipped", reason=str(exc))
+
+    async def _mount_app_state(
+        self: AdminProvider, app: Any, ctx: MountContext
+    ) -> None:
+        """Mount the router and expose nav/registry state on both apps.
+
+        The renderer looks up request.app.state.nav_builder; request.app is
+        the *inner* admin sub-app (not the outer Starlette app), so state is
+        set on both.
+
+        Args:
+            app: The outer Starlette application to mount the panel on.
+            ctx: Mount pipeline state (nav/registry state read).
+        """
+        router = ctx.router
+        if router is None:
+            return
+        admin_app = router.mount(app)
+        ctx.admin_app = admin_app
+
+        # Expose nav_builder on app state so AdminRenderer can build the sidebar.
+        if hasattr(app, "state"):
+            app.state.nav_builder = ctx.nav_builder
+        if admin_app is not None and hasattr(admin_app, "state"):
+            admin_app.state.nav_builder = ctx.nav_builder
+
+        # Build NavigationAssembler contributions and expose on app state.
+        assembler_nav_items: list[dict[str, object]] = []
+        assembler_groups: dict[str, list[Any]] | None = None
+        registry = ctx.contributor_registry
+        if registry is not None and ctx.contributors:
+            from lexigram.admin.navigation.assembler import (
+                NavigationAssembler,
+                contributions_to_flat_nav,
+            )
+
+            try:
+                assembler = NavigationAssembler(
+                    contributor_registry=registry,
+                    resource_items=[],
+                )
+                grouped = await assembler.build()
+                assembler_groups = grouped
+                assembler_nav_items = contributions_to_flat_nav(grouped)
+            except Exception:  # noqa: BLE001 — non-fatal
+                _log.warning("admin.navigation_assembler_prebuild_failed")
+        if hasattr(app, "state"):
+            app.state.assembler_nav_items = assembler_nav_items
+            app.state.assembler_groups = assembler_groups or {}
+        if admin_app is not None and hasattr(admin_app, "state"):
+            admin_app.state.assembler_nav_items = assembler_nav_items
+            admin_app.state.assembler_groups = assembler_groups or {}
+
+        # Expose the cluster registry on app state so nav resolution and
+        # cluster centers resolve the active cluster per request.
+        if ctx.cluster_registry is not None:
+            if hasattr(app, "state"):
+                app.state.cluster_registry = ctx.cluster_registry
+            if admin_app is not None and hasattr(admin_app, "state"):
+                admin_app.state.cluster_registry = ctx.cluster_registry
