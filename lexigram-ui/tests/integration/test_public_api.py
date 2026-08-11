@@ -91,7 +91,7 @@ def test_public_api_symbol_resolves(name: str) -> None:
     """Every canonical name must resolve from `lexigram.ui`.
 
     If this test fails, either:
-    1. Add the symbol to `_LAZY_IMPORTS` in `lexigram/ui/__init__.py`, OR
+    1. Add the symbol to `LAZY_IMPORTS` in `lexigram/ui/exports/lazy.py`, OR
     2. Remove it from CANONICAL_API_SYMBOLS if it should not be public.
 
     Never let a downstream package deep-path-import what should be public.
@@ -116,12 +116,14 @@ def test_dir_includes_all_canonical_names() -> None:
 
 
 def _load_lazy_imports() -> set[str]:
-    """Load the set of public symbols from _LAZY_IMPORTS."""
+    """Load the set of public symbols from the lazy import map."""
     repo_root = os.path.join(os.path.dirname(__file__), "..", "..", "..")
-    ui_init = os.path.join(repo_root, "lexigram-ui", "src", "lexigram", "ui", "__init__.py")
+    ui_init = os.path.join(
+        repo_root, "lexigram-ui", "src", "lexigram", "ui", "exports", "lazy.py"
+    )
     with open(ui_init) as f:
         content = f.read()
-    match = re.search(r"_LAZY_IMPORTS.*?=\s*\{", content)
+    match = re.search(r"LAZY_IMPORTS.*?=\s*\{", content)
     assert match, "_LAZY_IMPORTS dict not found"
     start = match.end()
     depth = 1
@@ -187,7 +189,7 @@ def test_no_phantom_deep_imports() -> None:
                                 violations.append(
                                     f"{fpath}:{lineno}: "
                                     f"`{raw}` should come from `from lexigram.ui import ...` "
-                                    f"(in _LAZY_IMPORTS)"
+                                    f"(in LAZY_IMPORTS)"
                                 )
 
     assert not violations, (
