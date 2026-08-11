@@ -7,6 +7,7 @@ Revision ID: schema_010
 Revises: schema_009
 Create Date: 2026-08-06
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa

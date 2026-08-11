@@ -25,18 +25,22 @@ from lexigram.di.module import Module, module
 from lexigram.ai.workers import WorkersModule
 from lexigram.ai.workers.config import WorkersConfig
 
-@module(imports=[
-    WorkersModule.configure(
-        WorkersConfig(
-            batch_embedding_concurrency=3,
-            document_ingestion_concurrency=3,
-            enable_maintenance=True,
-            dlq_check_interval=60,
+
+@module(
+    imports=[
+        WorkersModule.configure(
+            WorkersConfig(
+                batch_embedding_concurrency=3,
+                document_ingestion_concurrency=3,
+                enable_maintenance=True,
+                dlq_check_interval=60,
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

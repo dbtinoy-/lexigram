@@ -11,9 +11,11 @@ Revision ID: schema_007
 Revises: schema_006
 Create Date: 2026-07-31
 """
-from typing import Sequence
-from alembic import op
+
+from collections.abc import Sequence
+
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "schema_007"
 down_revision: str | None = "schema_006"
@@ -39,8 +41,12 @@ def upgrade() -> None:
 def downgrade() -> None:
     with op.batch_alter_table("projects") as batch_op:
         batch_op.add_column(sa.Column("script_json", sa.TEXT, nullable=True))
-        batch_op.add_column(sa.Column("stage_progress", sa.TEXT, nullable=False, server_default="{}"))
-        batch_op.add_column(sa.Column("status", sa.VARCHAR(20), nullable=False, server_default="draft"))
+        batch_op.add_column(
+            sa.Column("stage_progress", sa.TEXT, nullable=False, server_default="{}")
+        )
+        batch_op.add_column(
+            sa.Column("status", sa.VARCHAR(20), nullable=False, server_default="draft")
+        )
         batch_op.add_column(sa.Column("output_path", sa.TEXT, nullable=True))
         batch_op.add_column(sa.Column("duration_s", sa.FLOAT, nullable=True))
         batch_op.add_column(sa.Column("error", sa.TEXT, nullable=True))

@@ -31,17 +31,21 @@ from lexigram import Application
 from lexigram.di.module import Module, module
 from lexigram.events import EventsModule, EventsConfig
 
+
 @module(imports=[EventsModule.configure()])
 class AppModule(Module):
     pass
+
 
 async def main():
     async with Application.boot(modules=[AppModule]) as app:
         # your event sourcing code
         ...
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 

@@ -25,18 +25,22 @@ from lexigram.di.module import Module, module
 from lexigram.ai.mcp import MCPModule
 from lexigram.ai.mcp.config import MCPConfig
 
-@module(imports=[
-    MCPModule.configure(
-        config=MCPConfig(
-            server_name="my-app",
-            server_version="1.0.0",
-            enable_sse=True,
-            stdio_mode=False,
+
+@module(
+    imports=[
+        MCPModule.configure(
+            config=MCPConfig(
+                server_name="my-app",
+                server_version="1.0.0",
+                enable_sse=True,
+                stdio_mode=False,
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

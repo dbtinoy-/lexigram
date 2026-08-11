@@ -41,17 +41,23 @@ OUTRO_DURATION = 3.0
 
 
 def _run(cmd: list[str]) -> str:
-    return subprocess.run(
-        cmd, capture_output=True, text=True, check=True
-    ).stdout
+    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
 
 
 def ffprobe_metrics(path: str | Path) -> dict:
     """Container/stream facts for a render file."""
-    out = _run([
-        "ffprobe", "-v", "error", "-show_streams", "-show_format",
-        "-of", "json", str(path),
-    ])
+    out = _run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_streams",
+            "-show_format",
+            "-of",
+            "json",
+            str(path),
+        ]
+    )
     data = json.loads(out)
     v = next(s for s in data["streams"] if s.get("codec_type") == "video")
     a = next((s for s in data["streams"] if s.get("codec_type") == "audio"), None)
@@ -110,9 +116,19 @@ def faststart_present(path: str | Path) -> bool:
 def silence_events(path: str | Path, noise: str = "-25dB", min_dur: float = 0.3) -> list[dict]:
     """Silence windows from ffmpeg silencedetect (stderr parse)."""
     proc = subprocess.run(
-        ["ffmpeg", "-i", str(path), "-af",
-         f"silencedetect=noise={noise}:d={min_dur}", "-f", "null", "-"],
-        capture_output=True, text=True, check=False,
+        [
+            "ffmpeg",
+            "-i",
+            str(path),
+            "-af",
+            f"silencedetect=noise={noise}:d={min_dur}",
+            "-f",
+            "null",
+            "-",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     events: list[dict] = []
     start = None
@@ -123,8 +139,7 @@ def silence_events(path: str | Path, noise: str = "-25dB", min_dur: float = 0.3)
             continue
         m = re.search(r"silence_end: ([\d.]+) \| silence_duration: ([\d.]+)", line)
         if m and start is not None:
-            events.append({"start": start, "end": float(m.group(1)),
-                           "duration": float(m.group(2))})
+            events.append({"start": start, "end": float(m.group(1)), "duration": float(m.group(2))})
     return events
 
 
@@ -134,9 +149,22 @@ def frame_rgb(path: str | Path, t: float) -> tuple[bytes, int, int]:
     duration = probe["duration"]
     t = max(0.0, min(t, max(duration - 0.05, 0.0)))
     raw = subprocess.run(
-        ["ffmpeg", "-i", str(path), "-ss", str(t), "-frames:v", "1",
-         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-        capture_output=True, check=True,
+        [
+            "ffmpeg",
+            "-i",
+            str(path),
+            "-ss",
+            str(t),
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-",
+        ],
+        capture_output=True,
+        check=True,
     ).stdout
     if len(raw) < probe["width"] * probe["height"] * 3:
         return bytes(probe["width"] * probe["height"] * 3), probe["width"], probe["height"]
@@ -152,9 +180,17 @@ def mean_luminance(raw: bytes, w: int, h: int) -> float:
     return total / (n * 255)
 
 
-def count_pixels(raw: bytes, w: int, h: int, rgb: tuple[int, int, int],
-                 tol: int = 0, x0: int = 0, x1: int | None = None,
-                 y0: int = 0, y1: int | None = None) -> int:
+def count_pixels(
+    raw: bytes,
+    w: int,
+    h: int,
+    rgb: tuple[int, int, int],
+    tol: int = 0,
+    x0: int = 0,
+    x1: int | None = None,
+    y0: int = 0,
+    y1: int | None = None,
+) -> int:
     """Count pixels within tol of rgb in a region (default: full frame)."""
     x1 = x1 if x1 is not None else w
     y1 = y1 if y1 is not None else h
@@ -163,14 +199,18 @@ def count_pixels(raw: bytes, w: int, h: int, rgb: tuple[int, int, int],
         row = y * w * 3
         for x in range(x0, min(x1, w)):
             i = row + x * 3
-            if (abs(raw[i] - rgb[0]) <= tol and abs(raw[i + 1] - rgb[1]) <= tol
-                    and abs(raw[i + 2] - rgb[2]) <= tol):
+            if (
+                abs(raw[i] - rgb[0]) <= tol
+                and abs(raw[i + 1] - rgb[1]) <= tol
+                and abs(raw[i + 2] - rgb[2]) <= tol
+            ):
                 count += 1
     return count
 
 
-def count_white(raw: bytes, w: int, h: int, y0: int, y1: int,
-                threshold: int = WHITE_THRESHOLD) -> int:
+def count_white(
+    raw: bytes, w: int, h: int, y0: int, y1: int, threshold: int = WHITE_THRESHOLD
+) -> int:
     """Count near-white pixels in a horizontal band (caption text)."""
     count = 0
     for y in range(max(y0, 0), min(y1, h)):
@@ -182,8 +222,9 @@ def count_white(raw: bytes, w: int, h: int, y0: int, y1: int,
     return count
 
 
-def count_nonblack_center(raw: bytes, w: int, h: int,
-                          threshold: int = 16, margin: float = 0.2) -> int:
+def count_nonblack_center(
+    raw: bytes, w: int, h: int, threshold: int = 16, margin: float = 0.2
+) -> int:
     """Count pixels brighter than threshold in the center region (outro check)."""
     x0, x1 = int(w * margin), int(w * (1 - margin))
     y0, y1 = int(h * margin), int(h * (1 - margin))
@@ -200,9 +241,10 @@ def count_nonblack_center(raw: bytes, w: int, h: int,
 def psnr(path_a: str | Path, path_b: str | Path) -> float | None:
     """Global PSNR between two files (soft signal)."""
     proc = subprocess.run(
-        ["ffmpeg", "-i", str(path_a), "-i", str(path_b), "-lavfi", "psnr",
-         "-f", "null", "-"],
-        capture_output=True, text=True, check=False,
+        ["ffmpeg", "-i", str(path_a), "-i", str(path_b), "-lavfi", "psnr", "-f", "null", "-"],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     for line in proc.stderr.splitlines():
         m = re.search(r"average:(inf|[\d.]+)", line)
@@ -303,29 +345,49 @@ def compare_metrics(k: dict, f: dict) -> dict:
     checks: list[dict] = []
 
     def _add(name: str, passed: bool, detail: str, kv=None, fv=None) -> None:
-        checks.append({"metric": name, "tolerance": _tolerance(name),
-                       "pass": bool(passed),
-                       "kdenlive": kv if kv is not None else k.get(name),
-                       "ffmpeg": fv if fv is not None else f.get(name),
-                       "detail": detail})
+        checks.append(
+            {
+                "metric": name,
+                "tolerance": _tolerance(name),
+                "pass": bool(passed),
+                "kdenlive": kv if kv is not None else k.get(name),
+                "ffmpeg": fv if fv is not None else f.get(name),
+                "detail": detail,
+            }
+        )
 
-    _add("duration", abs(k["duration"] - f["duration"]) <= DURATION_TOL,
-         f"|{k['duration']:.3f} - {f['duration']:.3f}|s (TTS nondeterminism)",
-         kv=f"{k['duration']:.3f}s", fv=f"{f['duration']:.3f}s")
-    _add("timeline_shape",
-         k["expected_end_delta"] <= 0.25 and f["expected_end_delta"] <= 0.25,
-         f"video end vs position+outro window: k={k['expected_end_delta']:.3f}s "
-         f"f={f['expected_end_delta']:.3f}s",
-         kv=f"{k['position']:.2f}+3.75s", fv=f"{f['position']:.2f}+3.75s")
-    _add("resolution",
-         k["width"] == 1080 and k["height"] == 1920
-         and f["width"] == 1080 and f["height"] == 1920,
-         f"k={k['width']}x{k['height']} f={f['width']}x{f['height']}",
-         kv=f"{k['width']}x{k['height']}", fv=f"{f['width']}x{f['height']}")
-    _add("fps", abs(k["fps"] - 30) <= FPS_TOL and abs(f["fps"] - 30) <= FPS_TOL,
-         f"k={k['fps']:.3f} f={f['fps']:.3f}")
-    _add("codec", k["codec"] in ("hevc", "h265") and f["codec"] in ("hevc", "h265"),
-         f"k={k['codec']} f={f['codec']}")
+    _add(
+        "duration",
+        abs(k["duration"] - f["duration"]) <= DURATION_TOL,
+        f"|{k['duration']:.3f} - {f['duration']:.3f}|s (TTS nondeterminism)",
+        kv=f"{k['duration']:.3f}s",
+        fv=f"{f['duration']:.3f}s",
+    )
+    _add(
+        "timeline_shape",
+        k["expected_end_delta"] <= 0.25 and f["expected_end_delta"] <= 0.25,
+        f"video end vs position+outro window: k={k['expected_end_delta']:.3f}s "
+        f"f={f['expected_end_delta']:.3f}s",
+        kv=f"{k['position']:.2f}+3.75s",
+        fv=f"{f['position']:.2f}+3.75s",
+    )
+    _add(
+        "resolution",
+        k["width"] == 1080 and k["height"] == 1920 and f["width"] == 1080 and f["height"] == 1920,
+        f"k={k['width']}x{k['height']} f={f['width']}x{f['height']}",
+        kv=f"{k['width']}x{k['height']}",
+        fv=f"{f['width']}x{f['height']}",
+    )
+    _add(
+        "fps",
+        abs(k["fps"] - 30) <= FPS_TOL and abs(f["fps"] - 30) <= FPS_TOL,
+        f"k={k['fps']:.3f} f={f['fps']:.3f}",
+    )
+    _add(
+        "codec",
+        k["codec"] in ("hevc", "h265") and f["codec"] in ("hevc", "h265"),
+        f"k={k['codec']} f={f['codec']}",
+    )
     br_ok = True
     br_detail = f"k={k['bit_rate']} f={f['bit_rate']}"
     if k["bit_rate"] and f["bit_rate"]:
@@ -333,13 +395,21 @@ def compare_metrics(k: dict, f: dict) -> dict:
         br_ok = (hi - lo) / lo <= BITRATE_TOL
     _add("bit_rate", br_ok, br_detail)
     # kdenlive's MLT preset never writes faststart; gate only the ffmpeg side.
-    _add("faststart", bool(f["faststart"]),
-         f"k={k['faststart']} (kdenlive preset lacks faststart; not gated) "
-         f"f={f['faststart']}")
-    _add("audio_start", k["audio_start"] < 0.5 and f["audio_start"] < 0.5,
-         f"k={k['audio_start']:.3f}s f={f['audio_start']:.3f}s")
-    _add("tail_silent", bool(k["tail_silent"]) and bool(f["tail_silent"]),
-         f"k={k['tail_silent']} f={f['tail_silent']} (trailing silence covers outro tail)")
+    _add(
+        "faststart",
+        bool(f["faststart"]),
+        f"k={k['faststart']} (kdenlive preset lacks faststart; not gated) f={f['faststart']}",
+    )
+    _add(
+        "audio_start",
+        k["audio_start"] < 0.5 and f["audio_start"] < 0.5,
+        f"k={k['audio_start']:.3f}s f={f['audio_start']:.3f}s",
+    )
+    _add(
+        "tail_silent",
+        bool(k["tail_silent"]) and bool(f["tail_silent"]),
+        f"k={k['tail_silent']} f={f['tail_silent']} (trailing silence covers outro tail)",
+    )
     k_fade = k["fade_late_lum"] > k["fade_early_lum"] and k["fade_early_lum"] > 0
     f_fade = f["fade_late_lum"] > f["fade_early_lum"] and f["fade_early_lum"] > 0
     ratio = 0.0
@@ -347,28 +417,45 @@ def compare_metrics(k: dict, f: dict) -> dict:
         kr = k["fade_late_lum"] / k["fade_early_lum"]
         fr = f["fade_late_lum"] / f["fade_early_lum"]
         ratio = abs(kr - fr) / kr
-    _add("fade_in", k_fade and f_fade and ratio <= FADE_RATIO_TOL,
-         f"k {k['fade_early_lum']:.3f}->{k['fade_late_lum']:.3f} "
-         f"f {f['fade_early_lum']:.3f}->{f['fade_late_lum']:.3f} ratio_drift={ratio:.2f}",
-         kv=f"{k['fade_early_lum']:.3f}->{k['fade_late_lum']:.3f}",
-         fv=f"{f['fade_early_lum']:.3f}->{f['fade_late_lum']:.3f}")
-    bg_ok = (f["bg_before_lum"] > f["bg_after_lum"] and f["bg_after_lum"] < BLACK_LUM)
-    _add("bg_fade_out", bg_ok,
-         f"k {k['bg_before_lum']:.3f}->{k['bg_after_lum']:.3f} "
-         f"f {f['bg_before_lum']:.3f}->{f['bg_after_lum']:.3f} "
-         f"(kdenlive keeps the bg gradient in the outro lead-in; not gated)",
-         kv=f"{k['bg_before_lum']:.3f}->{k['bg_after_lum']:.3f}",
-         fv=f"{f['bg_before_lum']:.3f}->{f['bg_after_lum']:.3f}")
-    _add("hook_visible", k["hook_white_px"] >= HOOK_WHITE_MIN
-         and f["hook_white_px"] >= HOOK_WHITE_MIN,
-         f"k={k['hook_white_px']} f={f['hook_white_px']} white px",
-         kv=str(k["hook_white_px"]), fv=str(f["hook_white_px"]))
-    _add("highlight", k["highlight_pill_px"] >= PILL_PX_MIN and f["highlight_pill_px"] >= PILL_PX_MIN,
-         f"k={k['highlight_pill_px']} f={f['highlight_pill_px']} pill px",
-         kv=str(k["highlight_pill_px"]), fv=str(f["highlight_pill_px"]))
-    _add("outro_visible", k["outro_center_px"] >= OUTRO_PX_MIN and f["outro_center_px"] >= OUTRO_PX_MIN,
-         f"k={k['outro_center_px']} f={f['outro_center_px']} center px",
-         kv=str(k["outro_center_px"]), fv=str(f["outro_center_px"]))
+    _add(
+        "fade_in",
+        k_fade and f_fade and ratio <= FADE_RATIO_TOL,
+        f"k {k['fade_early_lum']:.3f}->{k['fade_late_lum']:.3f} "
+        f"f {f['fade_early_lum']:.3f}->{f['fade_late_lum']:.3f} ratio_drift={ratio:.2f}",
+        kv=f"{k['fade_early_lum']:.3f}->{k['fade_late_lum']:.3f}",
+        fv=f"{f['fade_early_lum']:.3f}->{f['fade_late_lum']:.3f}",
+    )
+    bg_ok = f["bg_before_lum"] > f["bg_after_lum"] and f["bg_after_lum"] < BLACK_LUM
+    _add(
+        "bg_fade_out",
+        bg_ok,
+        f"k {k['bg_before_lum']:.3f}->{k['bg_after_lum']:.3f} "
+        f"f {f['bg_before_lum']:.3f}->{f['bg_after_lum']:.3f} "
+        f"(kdenlive keeps the bg gradient in the outro lead-in; not gated)",
+        kv=f"{k['bg_before_lum']:.3f}->{k['bg_after_lum']:.3f}",
+        fv=f"{f['bg_before_lum']:.3f}->{f['bg_after_lum']:.3f}",
+    )
+    _add(
+        "hook_visible",
+        k["hook_white_px"] >= HOOK_WHITE_MIN and f["hook_white_px"] >= HOOK_WHITE_MIN,
+        f"k={k['hook_white_px']} f={f['hook_white_px']} white px",
+        kv=str(k["hook_white_px"]),
+        fv=str(f["hook_white_px"]),
+    )
+    _add(
+        "highlight",
+        k["highlight_pill_px"] >= PILL_PX_MIN and f["highlight_pill_px"] >= PILL_PX_MIN,
+        f"k={k['highlight_pill_px']} f={f['highlight_pill_px']} pill px",
+        kv=str(k["highlight_pill_px"]),
+        fv=str(f["highlight_pill_px"]),
+    )
+    _add(
+        "outro_visible",
+        k["outro_center_px"] >= OUTRO_PX_MIN and f["outro_center_px"] >= OUTRO_PX_MIN,
+        f"k={k['outro_center_px']} f={f['outro_center_px']} center px",
+        kv=str(k["outro_center_px"]),
+        fv=str(f["outro_center_px"]),
+    )
 
     passed = all(c["pass"] for c in checks)
     return {"overall": bool(passed), "checks": checks}
@@ -388,8 +475,7 @@ def render_one(fixture: str, out_dir: str) -> tuple[bool, str]:
     run_dir.mkdir(exist_ok=True)
 
     async def _main() -> bool:
-        pipeline = ReelPipeline(topic=script.title, output=output,
-                                render_timeout=900)
+        pipeline = ReelPipeline(topic=script.title, output=output, render_timeout=900)
         pipeline.script = script
         pipeline.run_dir = str(run_dir)
         return await pipeline.run()
@@ -439,8 +525,14 @@ def cmd_compare(args: argparse.Namespace) -> int:
     }
     report.update(compare_metrics(k, f))
     _write_report(report, Path(args.out))
-    print(json.dumps({"overall": report["overall"],
-                      "failed": [c["metric"] for c in report["checks"] if not c["pass"]]}))
+    print(
+        json.dumps(
+            {
+                "overall": report["overall"],
+                "failed": [c["metric"] for c in report["checks"] if not c["pass"]],
+            }
+        )
+    )
     return 0 if report["overall"] else 1
 
 

@@ -36,8 +36,12 @@ class AppModule(Module):
 async def main() -> None:
     async with Application.boot(modules=[AppModule]) as app:
         interpolate = await app.container.resolve(InterpolationProvider)
-        frame_a = MediaAsset(mime_type="image/png", provider="local", bytes_data=b"<png>")
-        frame_b = MediaAsset(mime_type="image/png", provider="local", bytes_data=b"<png>")
+        frame_a = MediaAsset(
+            mime_type="image/png", provider="local", bytes_data=b"<png>"
+        )
+        frame_b = MediaAsset(
+            mime_type="image/png", provider="local", bytes_data=b"<png>"
+        )
         result = await interpolate.interpolate(
             InterpolationRequest(frame_a=frame_a, frame_b=frame_b)
         )
@@ -77,9 +81,7 @@ export LEX_MULTIMEDIA__INTERPOLATE__BACKEND=rife
 from lexigram.multimedia.interpolate import InterpolationModule
 from lexigram.multimedia.interpolate.config import InterpolationConfig
 
-InterpolationModule.configure(
-    config=InterpolationConfig()
-)
+InterpolationModule.configure(config=InterpolationConfig())
 ```
 
 > Interpolation is frame-pair based — `InterpolationRequest(frame_a=..., frame_b=...)`. There is no configurable factor; `InterpolationConfig` only carries `backend`, `rife_base_url`, and `timeout`.
@@ -111,6 +113,7 @@ InterpolationModule.configure(
 ```python
 from lexigram import Application
 from lexigram.multimedia.interpolate import InterpolationModule
+
 
 async def test_boot():
     async with Application.boot(modules=[InterpolationModule.stub()]) as app:

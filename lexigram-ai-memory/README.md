@@ -27,13 +27,11 @@ from lexigram.di.module import Module, module
 from lexigram.ai.memory import MemoryModule
 from lexigram.ai.memory.config import MemoryConfig
 
-@module(imports=[
-    MemoryModule.configure(
-        MemoryConfig(default_backend="in_memory")
-    )
-])
+
+@module(imports=[MemoryModule.configure(MemoryConfig(default_backend="in_memory"))])
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

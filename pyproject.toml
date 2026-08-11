@@ -590,6 +590,10 @@ ignore = [
     "COM812",  # trailing comma missing — conflicts with ruff format
     "ISC001",  # single-line implicit string concat — conflicts with ruff format
 
+    # ── Dependency Injection / Framework Constructors ──
+    "PLR0917", # too many positional arguments — DI constructors legitimately
+               # take many services; introduced as an error in ruff 0.16.x
+
     # ── Blind Except (fault-tolerance patterns use broad catches) ──
     "BLE001",  # do not catch blind exception
 

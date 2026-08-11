@@ -29,9 +29,11 @@ from lexigram.di.module import Module, module
 # Import the module from the package
 from lexigram.resilience import ResilienceModule
 
+
 @module(imports=[ResilienceModule.configure()])
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services
@@ -126,7 +128,7 @@ from lexigram.resilience import (
 )
 
 cb = CircuitBreaker(name="test_cb")  # Uses InMemoryCircuitBreakerBackend
-store = InMemoryIdempotencyStore()   # Local-only
+store = InMemoryIdempotencyStore()  # Local-only
 ```
 
 ## Key Source Files

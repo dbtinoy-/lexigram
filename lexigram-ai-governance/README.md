@@ -23,19 +23,23 @@ from lexigram.di.module import Module, module
 from lexigram.ai.governance import GovernanceModule
 from lexigram.ai.governance.config import GovernanceConfig
 
-@module(imports=[
-    GovernanceModule.configure(
-        GovernanceConfig(
-            monthly_budget=50.0,
-            enforce_budget=True,
-            soft_limit_pct=0.8,
-            rpm_limit=60,
-            restricted_models=["gpt-4o"],
+
+@module(
+    imports=[
+        GovernanceModule.configure(
+            GovernanceConfig(
+                monthly_budget=50.0,
+                enforce_budget=True,
+                soft_limit_pct=0.8,
+                rpm_limit=60,
+                restricted_models=["gpt-4o"],
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services
@@ -115,9 +119,9 @@ GovernanceModule.configure(config)
 ## Testing
 
 ```python
-async with Application.boot(modules=[GovernanceModule.stub(
-    GovernanceConfig(restricted_models=["gpt-4o"])
-)]) as app:
+async with Application.boot(
+    modules=[GovernanceModule.stub(GovernanceConfig(restricted_models=["gpt-4o"]))]
+) as app:
     # your test code
     ...
 ```

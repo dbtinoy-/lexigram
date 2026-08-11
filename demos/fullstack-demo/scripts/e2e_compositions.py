@@ -104,9 +104,7 @@ def start_render(client: httpx.Client, project_id: str, idea_index: int) -> tupl
     return match.group(1), ""
 
 
-def wait_terminal(
-    client: httpx.Client, run_id: str, deadline: float
-) -> dict | None:
+def wait_terminal(client: httpx.Client, run_id: str, deadline: float) -> dict | None:
     """Follow the run's SSE stream until a terminal event or the deadline."""
     while time.monotonic() < deadline:
         event_name = None
@@ -128,9 +126,9 @@ def wait_terminal(
                         data_parts = []
                         continue
                     if line.startswith("event: "):
-                        event_name = line[len("event: "):]
+                        event_name = line[len("event: ") :]
                     elif line.startswith("data: "):
-                        data_parts.append(line[len("data: "):])
+                        data_parts.append(line[len("data: ") :])
         except httpx.HTTPError:
             pass
         time.sleep(2.0)
@@ -146,7 +144,7 @@ def cancel_run(client: httpx.Client, run_id: str) -> None:
 
 def local_output_path(output: str) -> Path:
     if output.startswith(CONTAINER_ROOT):
-        return REPO_ROOT / output[len(CONTAINER_ROOT):]
+        return REPO_ROOT / output[len(CONTAINER_ROOT) :]
     path = Path(output)
     if path.is_absolute() or path.exists():
         return path
@@ -159,8 +157,7 @@ def _run(cmd: list[str]) -> str:
 
 def probe_media(path: Path) -> dict:
     out = _run(
-        ["ffprobe", "-v", "error", "-show_streams", "-show_format",
-         "-of", "json", str(path)]
+        ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(path)]
     )
     data = json.loads(out)
     streams = data.get("streams", [])
@@ -173,7 +170,9 @@ def probe_media(path: Path) -> dict:
 def mean_volume_db(path: Path) -> float | None:
     proc = subprocess.run(
         ["ffmpeg", "-i", str(path), "-af", "volumedetect", "-f", "null", "-"],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     match = re.search(r"mean_volume:\s*(-?[\d.]+)\s*dB", proc.stderr or "")
     return float(match.group(1)) if match else None
@@ -190,12 +189,18 @@ def check_output(
         media = probe_media(output)
     except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError):
         return checks, "ffprobe failed on output"
-    checks.append(("video", media["video"],
-                   "video stream present" if media["video"] else "no video stream"))
+    checks.append(
+        ("video", media["video"], "video stream present" if media["video"] else "no video stream")
+    )
     checks.append(("duration", media["duration"] > 0, f"{media['duration']:.2f}s"))
     if expect_audio:
-        checks.append(("audio", media["audio"],
-                       "audio stream present" if media["audio"] else "no audio stream"))
+        checks.append(
+            (
+                "audio",
+                media["audio"],
+                "audio stream present" if media["audio"] else "no audio stream",
+            )
+        )
     if loudness_target is None:
         return checks, ""
     if shutil.which("ffmpeg") is None:
@@ -207,22 +212,30 @@ def check_output(
     else:
         ok = abs(volume - loudness_target) <= LOUDNESS_TOL_DB
         checks.append(
-            ("loudness", ok,
-             f"{volume:.1f} dB vs target {loudness_target} dB (+-{LOUDNESS_TOL_DB})")
+            (
+                "loudness",
+                ok,
+                f"{volume:.1f} dB vs target {loudness_target} dB (+-{LOUDNESS_TOL_DB})",
+            )
         )
     return checks, ""
 
 
-def run_combo(
-    client: httpx.Client, combo: dict, project_id: str, timeout_s: float
-) -> dict:
+def run_combo(client: httpx.Client, combo: dict, project_id: str, timeout_s: float) -> dict:
     name = combo["name"]
     idea_index = combo["idea_index"]
     compose = dict(combo.get("compose") or {})
     expect_audio = bool(combo.get("expect_audio", True))
     loudness_target = compose.get("loudness_target_lufs")
-    base = {"name": name, "idea_index": idea_index, "ok": False,
-            "output": "", "error": "", "note": "", "rows": []}
+    base = {
+        "name": name,
+        "idea_index": idea_index,
+        "ok": False,
+        "output": "",
+        "error": "",
+        "note": "",
+        "rows": [],
+    }
 
     ok, detail = apply_compose(client, project_id, compose)
     if not ok:
@@ -240,8 +253,7 @@ def run_combo(
         base["error"] = f"timed out after {timeout_s:.0f}s"
         return base
     if terminal["event"] != "complete":
-        base["error"] = f"run {terminal['event']}: " \
-                        f"{terminal['data'].get('error') or 'no detail'}"
+        base["error"] = f"run {terminal['event']}: {terminal['data'].get('error') or 'no detail'}"
         return base
 
     output = local_output_path(terminal["data"].get("output", ""))
@@ -260,18 +272,31 @@ def run_combo(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--matrix", default=str(DEFAULT_MATRIX),
-                        help="matrix yaml path (default: data/e2e_matrix.yaml)")
-    parser.add_argument("--url", default=os.environ.get("DSM_URL", DEFAULT_URL),
-                        help="live app base url (default: http://127.0.0.1:18080)")
-    parser.add_argument("--token", default=os.environ.get("DSM_AUTH_TOKEN", ""),
-                        help="auth token for /api/* (default: none)")
-    parser.add_argument("--project", default="",
-                        help="override the matrix project id")
-    parser.add_argument("--combos", default="",
-                        help="comma-separated subset of combo names (default: all)")
-    parser.add_argument("--timeout", type=float, default=0.0,
-                        help="per-run timeout seconds (default: matrix timeout_s)")
+    parser.add_argument(
+        "--matrix",
+        default=str(DEFAULT_MATRIX),
+        help="matrix yaml path (default: data/e2e_matrix.yaml)",
+    )
+    parser.add_argument(
+        "--url",
+        default=os.environ.get("DSM_URL", DEFAULT_URL),
+        help="live app base url (default: http://127.0.0.1:18080)",
+    )
+    parser.add_argument(
+        "--token",
+        default=os.environ.get("DSM_AUTH_TOKEN", ""),
+        help="auth token for /api/* (default: none)",
+    )
+    parser.add_argument("--project", default="", help="override the matrix project id")
+    parser.add_argument(
+        "--combos", default="", help="comma-separated subset of combo names (default: all)"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=0.0,
+        help="per-run timeout seconds (default: matrix timeout_s)",
+    )
     args = parser.parse_args()
 
     matrix = load_matrix(Path(args.matrix))
@@ -280,21 +305,26 @@ def main() -> int:
     combos = select_combos(matrix, args.combos)
     params = {"token": args.token} if args.token else None
 
-    print(f"matrix: {args.matrix}  project: {project_id}  "
-          f"combos: {len(combos)}  timeout: {timeout_s:.0f}s")
+    print(
+        f"matrix: {args.matrix}  project: {project_id}  "
+        f"combos: {len(combos)}  timeout: {timeout_s:.0f}s"
+    )
     with make_client(args.url, args.token, params) as client:
         results = [run_combo(client, combo, project_id, timeout_s) for combo in combos]
 
     for result in results:
         detail = result["error"] or result["note"] or result["output"]
         if not result["error"] and result["rows"]:
-            detail += "  [" + ", ".join(
-                f"{row[0]}={'ok' if row[1] else 'fail' if row[1] is False else 'skip'}"
-                for row in result["rows"]
-            ) + "]"
+            detail += (
+                "  ["
+                + ", ".join(
+                    f"{row[0]}={'ok' if row[1] else 'fail' if row[1] is False else 'skip'}"
+                    for row in result["rows"]
+                )
+                + "]"
+            )
         status = "PASS" if result["ok"] else "FAIL"
-        print(f"  {result['name']:<18} idea {result['idea_index']}  "
-              f"{status}  {detail}")
+        print(f"  {result['name']:<18} idea {result['idea_index']}  {status}  {detail}")
 
     failed = [r for r in results if not r["ok"]]
     print(f"{len(results) - len(failed)}/{len(results)} combos passed")

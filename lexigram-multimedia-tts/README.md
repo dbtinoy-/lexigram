@@ -40,7 +40,9 @@ class AppModule(Module):
 async def main() -> None:
     async with Application.boot(modules=[AppModule]) as app:
         tts = await app.container.resolve(TTSProvider)
-        result = await tts.generate(TTSRequest(text="Hello from Lexigram", voice="alloy"))
+        result = await tts.generate(
+            TTSRequest(text="Hello from Lexigram", voice="alloy")
+        )
         if result.is_ok():
             asset = result.unwrap()  # MediaAsset — audio bytes or URI
 
@@ -126,6 +128,7 @@ AudioTTSModule.configure(
 ```python
 from lexigram import Application
 from lexigram.multimedia.tts import AudioTTSModule
+
 
 async def test_boot():
     async with Application.boot(modules=[AudioTTSModule.stub()]) as app:

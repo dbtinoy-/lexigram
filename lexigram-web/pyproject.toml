@@ -136,6 +136,9 @@ web = "lexigram.web.cli.contributor:WebCliContributor"
 [project.entry-points."lexigram.modules"]
 web = "lexigram.web.module:WebModule"
 
+[project.entry-points."lexigram.servers"]
+web = "lexigram.web.server.runner:run_server"
+
 [project.entry-points."lexigram.web.contributors"]
 # Empty by design — installed packages register here
 

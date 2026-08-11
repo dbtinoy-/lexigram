@@ -57,8 +57,10 @@ class ExecutionHistory:
             A string with one line per node showing its outcome.
         """
         lines: list[str] = [
-            f"Workflow trace  ({self._result.iterations} iterations, "
-            f"{self._result.duration_ms:.1f} ms total)",
+            (
+                f"Workflow trace  ({self._result.iterations} iterations, "
+                f"{self._result.duration_ms:.1f} ms total)"
+            ),
             "-" * 60,
         ]
         for nr in self._result.node_results:

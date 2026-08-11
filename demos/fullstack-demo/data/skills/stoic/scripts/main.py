@@ -20,18 +20,20 @@ def parse_ideas(text: str) -> list[Idea]:
         score_text = fields.get("Quotability Score", "0")
         score_match = re.search(r"[\d.]+", score_text)
         hook = fields.get("Hook Line", "")
-        ideas.append(Idea(
-            title=p["title"],
-            core_message=fields.get("Core Message", ""),
-            hook_line=hook,
-            identity_signal=fields.get("Stoic Principle", ""),
-            permission_given=fields.get("Modern Application", ""),
-            emotional_arc=fields.get("Emotional Arc", ""),
-            target_audience=fields.get("Target Audience", ""),
-            quotability_score=float(score_match.group()) if score_match else 0.0,
-            share_trigger=fields.get("Share Trigger", ""),
-            topic="stoic",
-        ))
+        ideas.append(
+            Idea(
+                title=p["title"],
+                core_message=fields.get("Core Message", ""),
+                hook_line=hook,
+                identity_signal=fields.get("Stoic Principle", ""),
+                permission_given=fields.get("Modern Application", ""),
+                emotional_arc=fields.get("Emotional Arc", ""),
+                target_audience=fields.get("Target Audience", ""),
+                quotability_score=float(score_match.group()) if score_match else 0.0,
+                share_trigger=fields.get("Share Trigger", ""),
+                topic="stoic",
+            )
+        )
     return ideas
 
 
@@ -63,7 +65,13 @@ def parse_script(text: str) -> ParsedScript:
 
     target = float(duration_match.group(1)) if duration_match else word_count / max(pacing_wps, 0.1)
     filled = _backfill_seconds(
-        {"hook": hook_sec, "problem": prob_sec, "principle": prin_sec, "practice": prac_sec, "reflection": refl_sec},
+        {
+            "hook": hook_sec,
+            "problem": prob_sec,
+            "principle": prin_sec,
+            "practice": prac_sec,
+            "reflection": refl_sec,
+        },
         target,
     )
     hook_sec = filled["hook"]
@@ -72,7 +80,11 @@ def parse_script(text: str) -> ParsedScript:
     prac_sec = filled["practice"]
     refl_sec = filled["reflection"]
 
-    total_dur = float(duration_match.group(1)) if duration_match else hook_sec + prob_sec + prin_sec + prac_sec + refl_sec
+    total_dur = (
+        float(duration_match.group(1))
+        if duration_match
+        else hook_sec + prob_sec + prin_sec + prac_sec + refl_sec
+    )
 
     arc_match = re.search(r"EMOTIONAL ARC MAP:\s*\n(.+)", text)
     arcs = [s.strip() for s in re.split(r"->|→", arc_match.group(1))] if arc_match else []
@@ -85,8 +97,11 @@ def parse_script(text: str) -> ParsedScript:
         ScriptSection("reflection", reflection, refl_sec),
     ]
     return ParsedScript(
-        title=title, sections=sections,
-        total_duration=total_dur, word_count=word_count, pacing_wps=pacing_wps,
+        title=title,
+        sections=sections,
+        total_duration=total_dur,
+        word_count=word_count,
+        pacing_wps=pacing_wps,
         emotional_arc=arcs,
     )
 

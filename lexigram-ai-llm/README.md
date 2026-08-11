@@ -27,13 +27,17 @@ from lexigram.di.module import Module, module
 from lexigram.ai.llm import LLMModule
 from lexigram.ai.llm.config import ClientConfig
 
-@module(imports=[
-    LLMModule.configure(
-        ClientConfig(provider="anthropic", model="claude-sonnet-4-6")
-    )
-])
+
+@module(
+    imports=[
+        LLMModule.configure(
+            ClientConfig(provider="anthropic", model="claude-sonnet-4-6")
+        )
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

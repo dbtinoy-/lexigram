@@ -4,11 +4,13 @@ Revision ID: schema_006
 Revises: schema_005
 Create Date: 2026-07-30
 """
-from typing import Sequence
-from alembic import op
-import sqlalchemy as sa
+
 import json
 import uuid
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+from alembic import op
 
 revision: str = "schema_006"
 down_revision: str | None = "schema_005"
@@ -29,14 +31,16 @@ def upgrade() -> None:
     op.add_column("runs", sa.Column("selected_idea_id", sa.VARCHAR(36), nullable=True))
 
     rows = conn.execute(
-        sa.text("SELECT id, project_id, idea_json, script_json, created_at FROM runs WHERE idea_json IS NOT NULL ORDER BY created_at ASC")
+        sa.text(
+            "SELECT id, project_id, idea_json, script_json, created_at FROM runs WHERE idea_json IS NOT NULL ORDER BY created_at ASC"
+        )
     ).fetchall()
 
     project_ideas: dict[str, list] = {}
     project_scripts: dict[str, dict[str, dict]] = {}
 
     for row in rows:
-        rid, pid, idea_json, script_json, _ = row
+        _rid, pid, idea_json, script_json, _ = row
         if pid not in project_ideas:
             project_ideas[pid] = []
             project_scripts[pid] = {}
@@ -71,9 +75,10 @@ def upgrade() -> None:
         for idx_str, script in scripts.items():
             try:
                 idx = int(idx_str)
-                if 0 <= idx < len(ideas):
-                    if "script_json" not in ideas[idx] or not ideas[idx]["script_json"]:
-                        ideas[idx]["script_json"] = json.dumps(script)
+                if 0 <= idx < len(ideas) and (
+                    "script_json" not in ideas[idx] or not ideas[idx]["script_json"]
+                ):
+                    ideas[idx]["script_json"] = json.dumps(script)
             except (ValueError, IndexError):
                 pass
 
@@ -83,9 +88,7 @@ def upgrade() -> None:
             {"json": json.dumps(ideas), "pid": pid},
         )
 
-    conn.execute(
-        sa.text("UPDATE runs SET idea_json = NULL, script_json = NULL")
-    )
+    conn.execute(sa.text("UPDATE runs SET idea_json = NULL, script_json = NULL"))
 
 
 def downgrade() -> None:

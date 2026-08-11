@@ -1,8 +1,11 @@
-"""Integration tests for lexigram-cache package."""
+"""Lifecycle tests for lexigram-cache package.
+
+These tests only exercise in-process provider/config construction — they do
+**not** require a live Redis or any other external service, so they run in
+the default ``-m "not integration"`` suite.
+"""
 
 from __future__ import annotations
-
-import pytest
 
 from lexigram.cache.config import CacheConfig
 from lexigram.cache.di.provider import CacheProvider
@@ -11,34 +14,29 @@ from lexigram.cache.di.provider import CacheProvider
 class TestCacheProviderIntegration:
     """Integration tests for CacheProvider basic functionality."""
 
-    @pytest.mark.integration
     def test_provider_initialization_default(self):
         """Test CacheProvider initialization with default config."""
         provider = CacheProvider()
         assert provider.name == "cache"
 
-    @pytest.mark.integration
     def test_provider_initialization_with_config(self):
         """Test CacheProvider initialization with custom config."""
         config = CacheConfig()
         provider = CacheProvider(config=config)
         assert provider.name == "cache"
 
-    @pytest.mark.integration
     def test_provider_from_config(self):
         """Test CacheProvider from_config factory."""
         config = CacheConfig()
         provider = CacheProvider.from_config(config)
         assert provider.name == "cache"
 
-    @pytest.mark.integration
     def test_provider_has_required_attributes(self):
         """Test provider has required attributes."""
         provider = CacheProvider()
         assert hasattr(provider, "name")
         assert hasattr(provider, "config")
 
-    @pytest.mark.integration
     def test_provider_priority(self):
         """Test provider has correct priority."""
         from lexigram.contracts.core.provider import ProviderPriority
@@ -49,13 +47,11 @@ class TestCacheProviderIntegration:
 class TestCacheConfigIntegration:
     """Integration tests for CacheConfig."""
 
-    @pytest.mark.integration
     def test_cache_config_creation(self):
         """Test CacheConfig can be created."""
         config = CacheConfig()
         assert config is not None
 
-    @pytest.mark.integration
     def test_cache_config_model_dump(self):
         """Test CacheConfig model can be serialized."""
         config = CacheConfig()
@@ -66,7 +62,6 @@ class TestCacheConfigIntegration:
 class TestCacheBackendRegistryIntegration:
     """Integration tests for CacheBackendRegistry."""
 
-    @pytest.mark.integration
     def test_backend_registry_import(self):
         """Test BackendRegistry can be imported."""
         from lexigram.cache.backends.registry import BackendRegistry
@@ -76,7 +71,6 @@ class TestCacheBackendRegistryIntegration:
 class TestCacheModuleIntegration:
     """Integration tests for CacheModule."""
 
-    @pytest.mark.integration
     def test_cache_module_import(self):
         """Test CacheModule can be imported."""
         from lexigram.cache.module import CacheModule

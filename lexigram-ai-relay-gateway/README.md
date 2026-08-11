@@ -26,22 +26,28 @@ from lexigram.di.module import Module, module
 
 from lexigram.ai.relay.gateway import RelayGatewayConfig, RelayGatewayModule
 
-@module(imports=[
-    RelayGatewayModule.configure(
-        RelayGatewayConfig.from_mapping({
-            "channels": [
+
+@module(
+    imports=[
+        RelayGatewayModule.configure(
+            RelayGatewayConfig.from_mapping(
                 {
-                    "name": "primary",
-                    "upstream_base_url": "https://api.anthropic.com",
-                    "target_format": "CLAUDE",
-                    "models": ["claude-3-5-sonnet"],
+                    "channels": [
+                        {
+                            "name": "primary",
+                            "upstream_base_url": "https://api.anthropic.com",
+                            "target_format": "CLAUDE",
+                            "models": ["claude-3-5-sonnet"],
+                        }
+                    ],
                 }
-            ],
-        })
-    )
-])
+            )
+        )
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services
@@ -59,12 +65,14 @@ The gateway registers its inbound routes automatically through the `lexigram.web
 ```python
 from lexigram.ai.relay.gateway import RelayGatewayConfig
 
-config = RelayGatewayConfig.from_mapping({
-    "channels": [...],
-    "auto_test_channels": True,
-    "auto_test_interval_seconds": 300,
-    "require_auth": True,
-})
+config = RelayGatewayConfig.from_mapping(
+    {
+        "channels": [...],
+        "auto_test_channels": True,
+        "auto_test_interval_seconds": 300,
+        "require_auth": True,
+    }
+)
 ```
 
 When a host binds a `RelayChannelStoreProtocol`, the `DurableChannelLoader` reconciles every durable row over the static table by name at boot; an empty store leaves the static table untouched.

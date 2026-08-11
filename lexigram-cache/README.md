@@ -34,22 +34,26 @@ from lexigram.cache.config import CacheBackendConfig
 from lexigram.cache.types import BackendType
 from lexigram.contracts.infra.cache import CacheBackendProtocol
 
-@module(imports=[
-    CacheModule.configure(
-        CacheConfig(
-            backends=[
-                CacheBackendConfig(
-                    name="default",
-                    type=BackendType.REDIS,
-                    default=True,
-                    redis_url="redis://localhost:6379/0",
-                )
-            ]
+
+@module(
+    imports=[
+        CacheModule.configure(
+            CacheConfig(
+                backends=[
+                    CacheBackendConfig(
+                        name="default",
+                        type=BackendType.REDIS,
+                        default=True,
+                        redis_url="redis://localhost:6379/0",
+                    )
+                ]
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async def main():
     async with Application.boot(modules=[AppModule]) as app:
@@ -58,8 +62,10 @@ async def main():
         value = await cache.get("greeting")
         print(value.unwrap())  # "hello"
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 

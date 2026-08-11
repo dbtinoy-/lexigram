@@ -31,14 +31,17 @@ from lexigram import Application
 from lexigram.di.module import Module, module
 from lexigram.auth import AuthModule, AuthConfig, JWTConfig
 
-@module(imports=[
-    AuthModule.configure(
-        config=AuthConfig(
-            secret_key="your-secret-key",
-            token=JWTConfig(secret_key="your-jwt-secret"),
+
+@module(
+    imports=[
+        AuthModule.configure(
+            config=AuthConfig(
+                secret_key="your-secret-key",
+                token=JWTConfig(secret_key="your-jwt-secret"),
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
 

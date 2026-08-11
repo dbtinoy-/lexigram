@@ -60,6 +60,7 @@ async def main() -> None:
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -153,10 +154,9 @@ WebModule.configure(
 from lexigram import Application
 from lexigram.web import WebModule
 
+
 async def test_controller():
-    async with Application.boot(
-        modules=[WebModule.stub()]
-    ) as app:
+    async with Application.boot(modules=[WebModule.stub()]) as app:
         web = await app.container.resolve(WebProvider)
         assert web.starlette is not None
 ```

@@ -35,6 +35,9 @@ from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
 
 
 class _AllowAllPermissionService:
+    def get_schema(self, resource_name: str) -> object | None:
+        return object()
+
     async def can_list(self, user: object, resource_name: str) -> bool:
         return True
 
@@ -54,10 +57,16 @@ class _AttachUserMiddleware(BaseHTTPMiddleware):
 
 
 def _build_app(user: object | None) -> Starlette:
+    from lexigram.web.transport.reactive import sse_from_stream
+
     hub = SubjectAdminEventHub()
-    handler = build_widget_event_stream_handler(hub, _AllowAllPermissionService())
+    handler = build_widget_event_stream_handler(
+        hub, _AllowAllPermissionService(), sse_bridge=sse_from_stream
+    )
     app = Starlette(routes=[Route("/admin/_sse/widgets", handler, methods=["GET"])])
-    app.add_middleware(AdminAuthorizationMiddleware, authorizer=DefaultRequestAuthorizer())
+    app.add_middleware(
+        AdminAuthorizationMiddleware, authorizer=DefaultRequestAuthorizer()
+    )
     app.add_middleware(_AttachUserMiddleware, user=user)
     return app
 
@@ -76,8 +85,12 @@ async def test_widget_sse_route_requires_auth() -> None:
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_widget_sse_route_returns_sse_response_for_authorized_user() -> None:
+    from lexigram.web.transport.reactive import sse_from_stream
+
     hub = SubjectAdminEventHub()
-    handler = build_widget_event_stream_handler(hub, _AllowAllPermissionService())
+    handler = build_widget_event_stream_handler(
+        hub, _AllowAllPermissionService(), sse_bridge=sse_from_stream
+    )
     scope: dict = {
         "type": "http",
         "asgi": {"version": "3.0"},

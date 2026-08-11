@@ -25,17 +25,21 @@ from lexigram.di.module import Module, module
 from lexigram.ai.feedback import FeedbackModule
 from lexigram.ai.feedback.config import FeedbackConfig
 
-@module(imports=[
-    FeedbackModule.configure(
-        FeedbackConfig(
-            enabled=True,
-            async_processing=True,
-            store_raw_payloads=False,
+
+@module(
+    imports=[
+        FeedbackModule.configure(
+            FeedbackConfig(
+                enabled=True,
+                async_processing=True,
+                store_raw_payloads=False,
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services
@@ -126,10 +130,12 @@ enforced control. Pass an authorization callback to gate submissions:
 ```python
 from lexigram.ai.feedback import FeedbackCollector, FeedbackMiddleware
 
+
 def authorize(ctx) -> bool:
     # ctx.context_id is the context being submitted against;
     # ctx.metadata carries what the host framework supplied (e.g. user)
     return ctx.metadata.get("user_id") is not None
+
 
 middleware = FeedbackMiddleware(
     collector=FeedbackCollector(),

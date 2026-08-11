@@ -23,13 +23,11 @@ from lexigram.di.module import Module, module
 from lexigram.ai.evaluation import EvaluationModule
 from lexigram.ai.evaluation.config import EvaluationConfig
 
-@module(imports=[
-    EvaluationModule.configure(
-        EvaluationConfig(default_threshold=0.8)
-    )
-])
+
+@module(imports=[EvaluationModule.configure(EvaluationConfig(default_threshold=0.8))])
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

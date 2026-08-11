@@ -47,18 +47,22 @@ class ChatController(Controller):
 
 
 app = Application()
-app.add_modules([
-    # Local-first. To talk to a hosted provider instead, set
-    # `provider="openai"` (or "anthropic", "groq", ...) and supply
-    # the matching API key.
-    LLMModule.configure(ClientConfig(
-        provider="ollama",
-        model="llama3.2",
-        api_base="http://localhost:11434",
-        api_key="ollama",
-    )),
-    WebModule.configure(controllers=[ChatController]),
-])
+app.add_modules(
+    [
+        # Local-first. To talk to a hosted provider instead, set
+        # `provider="openai"` (or "anthropic", "groq", ...) and supply
+        # the matching API key.
+        LLMModule.configure(
+            ClientConfig(
+                provider="ollama",
+                model="llama3.2",
+                api_base="http://localhost:11434",
+                api_key="ollama",
+            )
+        ),
+        WebModule.configure(controllers=[ChatController]),
+    ]
+)
 
 run_server(app, port=8000)
 ```

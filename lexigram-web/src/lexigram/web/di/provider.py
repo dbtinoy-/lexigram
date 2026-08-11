@@ -190,6 +190,11 @@ class WebProvider(Provider):
         container.singleton(WebProvider, self)
         container.singleton(WebProviderProtocol, self)
 
+        from lexigram.contracts.web.sse import ReactiveSseBridgeProtocol
+        from lexigram.web.transport.reactive import sse_from_stream
+
+        container.singleton(ReactiveSseBridgeProtocol, sse_from_stream)
+
         from lexigram.primitives.context import Context, create_default_context
 
         container.singleton(Context, create_default_context())

@@ -27,9 +27,11 @@ from lexigram.di.module import Module, module
 # Import the module from the package
 from lexigram.workflow import WorkflowModule
 
+
 @module(imports=[WorkflowModule.configure()])
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

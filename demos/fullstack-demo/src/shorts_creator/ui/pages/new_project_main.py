@@ -90,14 +90,25 @@ def _composer_preview_json() -> dict:
     }
 
 
+_PREVIEW_JS_PARTS = (
+    "color-utils.js",
+    "caption-field.js",
+    "preview-render.js",
+    "composer-panels.js",
+    "form-sync.js",
+    "presets.js",
+    "composer-preview.js",
+)
+
+
 def composer_preview_js() -> str:
     """Phone-preview + composer-knob JS shared by the create page and the
     compose page (widgets are initialized from the resolved profile)."""
     payload = json.dumps(_composer_preview_json())
+    tags = "".join(f'<script src="/static/js/{part}"></script>' for part in _PREVIEW_JS_PARTS)
     return Markup(
         f"<script>window.__PREVIEW_JSON__ = {payload}; "
-        f"window.__PREVIEW_DATA_OBJ__ = window.__PREVIEW_JSON__;</script>"
-        '<script src="/static/js/composer-preview.js"></script>'
+        f"window.__PREVIEW_DATA_OBJ__ = window.__PREVIEW_JSON__;</script>{tags}"
     )
 
 

@@ -23,9 +23,36 @@ class _FakeContainer:
 class _FakeTaskProvider:
     def __init__(self) -> None:
         self.handlers: dict[str, object] = {}
+        self.built: list[tuple[str, object]] = []
 
     def register_handler(self, task_name: str, handler: object) -> None:
         self.handlers[task_name] = handler
+
+    def build_idempotency_manager(self, storage: object) -> object:
+        manager = _FakeIdempotencyManager(storage=storage)
+        self.built.append(("idempotency_manager", manager))
+        return manager
+
+    def build_idempotent_task_manager(
+        self, queue_client: object, idempotency_manager: object
+    ) -> object:
+        manager = _FakeIdempotentTaskManager(
+            queue_client=queue_client,
+            idempotency_manager=idempotency_manager,
+        )
+        self.built.append(("idempotent_task_manager", manager))
+        return manager
+
+
+class _FakeIdempotencyManager:
+    def __init__(self, storage: object) -> None:
+        self.storage = storage
+
+
+class _FakeIdempotentTaskManager:
+    def __init__(self, queue_client: object, idempotency_manager: object) -> None:
+        self.queue_client = queue_client
+        self.idempotency_manager = idempotency_manager
 
 
 @pytest.mark.asyncio
@@ -33,9 +60,8 @@ async def test_boot_registers_wrapped_handlers_with_task_provider() -> None:
     from lexigram.contracts.core.result import Ok
     from lexigram.contracts.infra.storage.models import FileInfo
     from lexigram.contracts.infra.storage.protocols import BlobStoreProtocol
-    from lexigram.contracts.infra.tasks import TaskQueueProtocol
+    from lexigram.contracts.infra.tasks import TaskProviderProtocol, TaskQueueProtocol
     from lexigram.contracts.multimedia.types import MediaAsset
-    from lexigram.tasks.di.provider import TaskProvider
 
     provider = MultimediaProvider(config=MultimediaConfig())
     container = _FakeContainer()
@@ -51,13 +77,18 @@ async def test_boot_registers_wrapped_handlers_with_task_provider() -> None:
     container.singleton(BlobStoreProtocol, fake_store)
 
     fake_task_provider = _FakeTaskProvider()
-    container.singleton(TaskProvider, fake_task_provider)
+    container.singleton(TaskProviderProtocol, fake_task_provider)
     container.singleton(TaskQueueProtocol, AsyncMock())
 
     await provider.register(container)
     await provider.boot(container)
 
     assert provider._idempotency_manager is not None
+    assert provider._task_manager is not None
+    assert {name for name, _ in fake_task_provider.built} == {
+        "idempotency_manager",
+        "idempotent_task_manager",
+    }
 
     fake_backend = AsyncMock()
     fake_backend.generate.return_value = Ok(
@@ -78,15 +109,14 @@ async def test_boot_registers_wrapped_handlers_with_task_provider() -> None:
 @pytest.mark.asyncio
 async def test_wrapped_handler_passthrough_without_storage() -> None:
     from lexigram.contracts.core.result import Ok
-    from lexigram.contracts.infra.tasks import TaskQueueProtocol
+    from lexigram.contracts.infra.tasks import TaskProviderProtocol, TaskQueueProtocol
     from lexigram.contracts.multimedia.types import MediaAsset
-    from lexigram.tasks.di.provider import TaskProvider
 
     provider = MultimediaProvider(config=MultimediaConfig())
     container = _FakeContainer()
 
     fake_task_provider = _FakeTaskProvider()
-    container.singleton(TaskProvider, fake_task_provider)
+    container.singleton(TaskProviderProtocol, fake_task_provider)
     container.singleton(TaskQueueProtocol, AsyncMock())
 
     await provider.register(container)
@@ -112,14 +142,13 @@ async def test_wrapped_handler_passthrough_without_storage() -> None:
 
 @pytest.mark.asyncio
 async def test_video_processing_and_timeline_render_tasks_registered() -> None:
-    from lexigram.contracts.infra.tasks import TaskQueueProtocol
-    from lexigram.tasks.di.provider import TaskProvider
+    from lexigram.contracts.infra.tasks import TaskProviderProtocol, TaskQueueProtocol
 
     provider = MultimediaProvider(config=MultimediaConfig())
     container = _FakeContainer()
 
     fake_task_provider = _FakeTaskProvider()
-    container.singleton(TaskProvider, fake_task_provider)
+    container.singleton(TaskProviderProtocol, fake_task_provider)
     container.singleton(TaskQueueProtocol, AsyncMock())
 
     await provider.register(container)
@@ -131,14 +160,13 @@ async def test_video_processing_and_timeline_render_tasks_registered() -> None:
 
 @pytest.mark.asyncio
 async def test_upscale_and_interpolate_tasks_registered() -> None:
-    from lexigram.contracts.infra.tasks import TaskQueueProtocol
-    from lexigram.tasks.di.provider import TaskProvider
+    from lexigram.contracts.infra.tasks import TaskProviderProtocol, TaskQueueProtocol
 
     provider = MultimediaProvider(config=MultimediaConfig())
     container = _FakeContainer()
 
     fake_task_provider = _FakeTaskProvider()
-    container.singleton(TaskProvider, fake_task_provider)
+    container.singleton(TaskProviderProtocol, fake_task_provider)
     container.singleton(TaskQueueProtocol, AsyncMock())
 
     await provider.register(container)

@@ -30,21 +30,26 @@ from lexigram import Application
 from lexigram.di.module import Module, module
 from lexigram.http import HTTPModule, HTTPClientConfig
 
+
 @module(imports=[HTTPModule.configure(HTTPClientConfig())])
 class AppModule(Module):
     pass
 
+
 async def main():
     async with Application.boot(modules=[AppModule]) as app:
         from lexigram.http import HTTPClient
+
         async with HTTPClient.session_context() as client:
             response = await client.get("https://api.example.com/users/123")
             if response.ok:
                 user = await response.json()
                 print(user)
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -124,9 +129,11 @@ HTTPModule.configure(
 ```python
 from lexigram.contracts.web import HTTPClientProtocol, HttpResponse
 
+
 class FakeHTTPClient(HTTPClientProtocol):
     async def get(self, url: str, **kwargs) -> HttpResponse:
         return HttpResponse(status=200, headers={}, body=b'{"id": 123}')
+
 
 # Inject into service under test
 service = UserService(http_client=FakeHTTPClient())

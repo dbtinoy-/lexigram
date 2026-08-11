@@ -25,14 +25,18 @@ from lexigram.di.module import Module, module
 from lexigram.ai.session import SessionModule
 from lexigram.ai.session.config import SessionConfig
 
-@module(imports=[
-    SessionModule.configure(
-        SessionConfig(backend="in_memory"),
-        enable_cleanup_scheduler=True,
-    )
-])
+
+@module(
+    imports=[
+        SessionModule.configure(
+            SessionConfig(backend="in_memory"),
+            enable_cleanup_scheduler=True,
+        )
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

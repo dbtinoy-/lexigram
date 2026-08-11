@@ -58,6 +58,7 @@ async def main() -> None:
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -144,6 +145,7 @@ from lexigram import Application
 from lexigram.tenancy import TenancyModule
 from lexigram.contracts.tenancy.commands import CreateTenantCommand
 from lexigram.tenancy.lifecycle.service import TenantLifecycleService
+
 
 @pytest.mark.asyncio
 async def test_tenant_lifecycle() -> None:

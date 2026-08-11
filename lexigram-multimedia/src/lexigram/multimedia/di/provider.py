@@ -173,18 +173,16 @@ class MultimediaProvider(Provider):
 
     async def _wire_task_manager(self, container: ContainerResolverProtocol) -> None:
         from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
-        from lexigram.contracts.infra.tasks import TaskQueueProtocol
+        from lexigram.contracts.infra.tasks import (
+            TaskProviderProtocol,
+            TaskQueueProtocol,
+        )
         from lexigram.multimedia.stores import (
             InMemoryIdempotencyStoreFallback,
         )
-        from lexigram.tasks.di.provider import TaskProvider
-        from lexigram.tasks.execution.manager import (
-            IdempotencyManager,
-            IdempotentTaskManager,
-        )
 
         try:
-            task_provider = await container.resolve(TaskProvider)
+            task_provider = await container.resolve(TaskProviderProtocol)
             task_queue = await container.resolve(TaskQueueProtocol)
         except (
             LookupError,
@@ -212,10 +210,13 @@ class MultimediaProvider(Provider):
         ):
             idempotency_store = InMemoryIdempotencyStoreFallback()
 
-        idempotency_manager = IdempotencyManager(storage=idempotency_store)
+        idempotency_manager = task_provider.build_idempotency_manager(
+            storage=idempotency_store
+        )
         self._idempotency_manager = idempotency_manager
-        self._task_manager = IdempotentTaskManager(
-            queue_client=task_queue, idempotency_manager=idempotency_manager
+        self._task_manager = task_provider.build_idempotent_task_manager(
+            queue_client=task_queue,
+            idempotency_manager=idempotency_manager,
         )
 
         import uuid

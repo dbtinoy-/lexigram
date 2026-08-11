@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const SRC = path.join(__dirname, '..', '..', 'src', 'shorts_creator', 'ui', 'static', 'js', 'composer-preview.js');
-const src = fs.readFileSync(SRC, 'utf8');
+const JS_DIR = path.join(__dirname, '..', '..', 'src', 'shorts_creator', 'ui', 'static', 'js');
+const PARTS = ['color-utils.js', 'caption-field.js', 'preview-render.js', 'composer-panels.js', 'form-sync.js', 'presets.js', 'composer-preview.js'];
+const src = PARTS.map(f => fs.readFileSync(path.join(JS_DIR, f), 'utf8')).join('\n');
 
 function makeEl(id, value) {
   const el = {

@@ -22,18 +22,20 @@ def parse_ideas(text: str) -> list[Idea]:
         hook = fields.get("Hook Line", "")
         if not hook:
             hook = fields.get("Psychological Concept", "")
-        ideas.append(Idea(
-            title=p["title"],
-            core_message=fields.get("Core Message", ""),
-            hook_line=hook,
-            identity_signal=fields.get("Identity Signal", ""),
-            permission_given=fields.get("Real-World Application", ""),
-            emotional_arc=fields.get("Emotional Arc", ""),
-            target_audience=fields.get("Target Audience", ""),
-            quotability_score=float(score_match.group()) if score_match else 0.0,
-            share_trigger=fields.get("Share Trigger", ""),
-            topic="psychology",
-        ))
+        ideas.append(
+            Idea(
+                title=p["title"],
+                core_message=fields.get("Core Message", ""),
+                hook_line=hook,
+                identity_signal=fields.get("Identity Signal", ""),
+                permission_given=fields.get("Real-World Application", ""),
+                emotional_arc=fields.get("Emotional Arc", ""),
+                target_audience=fields.get("Target Audience", ""),
+                quotability_score=float(score_match.group()) if score_match else 0.0,
+                share_trigger=fields.get("Share Trigger", ""),
+                topic="psychology",
+            )
+        )
     return ideas
 
 
@@ -72,7 +74,13 @@ def parse_script(text: str) -> ParsedScript:
 
     target = float(duration_match.group(1)) if duration_match else word_count / max(pacing_wps, 0.1)
     filled = _backfill_seconds(
-        {"hook": hook_sec, "context": ctx_sec, "explanation": exp_sec, "application": app_sec, "reflection": refl_sec},
+        {
+            "hook": hook_sec,
+            "context": ctx_sec,
+            "explanation": exp_sec,
+            "application": app_sec,
+            "reflection": refl_sec,
+        },
         target,
     )
     hook_sec = filled["hook"]
@@ -81,7 +89,11 @@ def parse_script(text: str) -> ParsedScript:
     app_sec = filled["application"]
     refl_sec = filled["reflection"]
 
-    total_dur = float(duration_match.group(1)) if duration_match else hook_sec + ctx_sec + exp_sec + app_sec + refl_sec
+    total_dur = (
+        float(duration_match.group(1))
+        if duration_match
+        else hook_sec + ctx_sec + exp_sec + app_sec + refl_sec
+    )
 
     arc_match = re.search(r"EMOTIONAL ARC MAP:\s*\n(.+)", text)
     arcs = [s.strip() for s in re.split(r"->|→", arc_match.group(1))] if arc_match else []
@@ -94,8 +106,11 @@ def parse_script(text: str) -> ParsedScript:
         ScriptSection("reflection", reflection, refl_sec),
     ]
     return ParsedScript(
-        title=title, sections=sections,
-        total_duration=total_dur, word_count=word_count, pacing_wps=pacing_wps,
+        title=title,
+        sections=sections,
+        total_duration=total_dur,
+        word_count=word_count,
+        pacing_wps=pacing_wps,
         emotional_arc=arcs,
     )
 

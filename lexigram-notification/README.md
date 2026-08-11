@@ -82,9 +82,9 @@ from lexigram.notification.mailer import MailerModule
                         smtp=SMTPDriverConfig(host="smtp.example.com", port=587),
                     )
                 ]
-)
-    ),
-]
+            )
+        ),
+    ]
 )
 class AppModule(Module):
     pass

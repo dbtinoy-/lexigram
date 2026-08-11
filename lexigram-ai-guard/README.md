@@ -23,18 +23,22 @@ from lexigram.di.module import Module, module
 from lexigram.ai.guard import GuardModule
 from lexigram.ai.guard.config import GuardConfig
 
-@module(imports=[
-    GuardModule.configure(
-        GuardConfig(
-            injection_detection=True,
-            pii_detection=True,
-            pii_action="redact",
-            max_input_chars=8000,
+
+@module(
+    imports=[
+        GuardModule.configure(
+            GuardConfig(
+                injection_detection=True,
+                pii_detection=True,
+                pii_action="redact",
+                max_input_chars=8000,
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services
@@ -118,12 +122,16 @@ GuardModule.configure(config)
 ## Testing
 
 ```python
-async with Application.boot(modules=[GuardModule.stub(
-    GuardConfig(
-        injection_detection=True,
-        injection_action="block",
-    )
-)]) as app:
+async with Application.boot(
+    modules=[
+        GuardModule.stub(
+            GuardConfig(
+                injection_detection=True,
+                injection_action="block",
+            )
+        )
+    ]
+) as app:
     # your test code
     ...
 ```

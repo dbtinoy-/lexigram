@@ -28,7 +28,7 @@ def _handle_task_exception(task: asyncio.Task[Any]) -> None:
         return
     exc = task.exception()
     if exc is not None:
-        logger.exception(
+        logger.error(
             "background_task_failed",
             task_name=task.get_name(),
             exc_info=exc,

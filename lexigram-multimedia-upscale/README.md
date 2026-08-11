@@ -74,9 +74,7 @@ export LEX_MULTIMEDIA__UPSCALE__BACKEND=real-esrgan
 from lexigram.multimedia.upscale import UpscaleModule
 from lexigram.multimedia.upscale.config import UpscaleConfig
 
-UpscaleModule.configure(
-    config=UpscaleConfig(backend="hat")
-)
+UpscaleModule.configure(config=UpscaleConfig(backend="hat"))
 ```
 
 > The upscale factor is a per-request parameter — `UpscaleRequest(asset=..., scale_factor=Literal[2, 4])`, default `4`. It is not part of `UpscaleConfig`.
@@ -109,6 +107,7 @@ UpscaleModule.configure(
 ```python
 from lexigram import Application
 from lexigram.multimedia.upscale import UpscaleModule
+
 
 async def test_boot():
     async with Application.boot(modules=[UpscaleModule.stub()]) as app:

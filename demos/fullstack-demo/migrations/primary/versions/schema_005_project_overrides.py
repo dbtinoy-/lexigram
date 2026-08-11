@@ -4,9 +4,11 @@ Revision ID: schema_005
 Revises: schema_004
 Create Date: 2026-07-29
 """
-from typing import Sequence
-from alembic import op
+
+from collections.abc import Sequence
+
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "schema_005"
 down_revision: str | None = "schema_004"

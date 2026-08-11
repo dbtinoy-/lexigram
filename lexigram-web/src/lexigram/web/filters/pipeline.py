@@ -121,7 +121,7 @@ class FilterPipeline:
                 return cast("Response", await cast("Any", f).handle(exc, request))
 
         # Default: structured 500 response (HTML in debug mode for browsers)
-        logger.exception(
+        logger.error(
             "unhandled_exception_in_filter_pipeline",
             error=str(exc),
             error_type=type(exc).__name__,
