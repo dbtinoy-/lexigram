@@ -132,6 +132,13 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
     ),
     "REALTIME_PORT": ("7071", "demos/realtime-monitor port"),
     "REDIS_URL": ("redis://localhost:6379/0", "queue doctor Redis URL"),
+    "SENTRY_DSN": (
+        "",
+        (
+            "Sentry DSN; error tracking falls back to this when "
+            "LEX_MONITOR__ERROR_TRACKING__DSN is unset"
+        ),
+    ),
     "SHORTS_CREATOR_DATABASE_URL": (
         "postgresql://lexigram:lexigram@localhost:5432/shorts_creator",
         "fullstack-demo database URL",

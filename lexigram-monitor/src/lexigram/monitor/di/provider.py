@@ -179,6 +179,7 @@ class MonitorProvider(Provider):
         self._slo_worker: Any | None = None
         self._digest_worker: Any | None = None
         self._error_tracker: ErrorTrackerProtocol | None = None
+        self._error_hook: Any | None = None
 
     @classmethod
     def from_config(cls, config: MonitorConfig, **context: Any) -> MonitorProvider:
@@ -328,6 +329,11 @@ class MonitorProvider(Provider):
 
             self._error_tracker = setup_error_tracking(error_tracking_cfg)
             if not isinstance(self._error_tracker, NullErrorTracker):
+                from lexigram.monitor.error_tracking import (
+                    install_unhandled_exception_hook,
+                )
+
+                self._error_hook = install_unhandled_exception_hook(self._error_tracker)
                 logger.info(
                     "error_tracking_enabled",
                     provider=type(self._error_tracker).__name__,
@@ -504,6 +510,11 @@ class MonitorProvider(Provider):
         if self._error_tracker is not None:
             with contextlib.suppress(RuntimeError, Exception):
                 self._error_tracker.flush()
+
+        # Uninstall the unhandled-exception hook if one was installed.
+        if self._error_hook is not None:
+            with contextlib.suppress(RuntimeError, Exception):
+                self._error_hook.uninstall()
 
     def _register_hook_subscriptions(self, hook_registry: HookRegistryProtocol) -> None:
         self._hook_registry = hook_registry

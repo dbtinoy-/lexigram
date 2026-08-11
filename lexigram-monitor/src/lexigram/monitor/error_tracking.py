@@ -22,7 +22,11 @@ Example:
 
 from __future__ import annotations
 
+import os
+import sys
 from typing import Any, Protocol, runtime_checkable
+
+import structlog
 
 from lexigram.logging import get_logger
 from lexigram.monitor.config import ErrorTrackingConfig
@@ -63,17 +67,20 @@ class NullErrorTracker:
 class SentryErrorTracker:
     """Sentry-backed tracker used when a DSN is configured."""
 
-    def __init__(self, config: ErrorTrackingConfig, sentry: Any) -> None:
+    def __init__(
+        self, config: ErrorTrackingConfig, sentry: Any, dsn: str | None = None
+    ) -> None:
         """Initialize the Sentry SDK.
 
         Args:
             config: Error tracking config with a non-empty ``dsn``.
             sentry: Imported ``sentry_sdk`` module.
+            dsn: Effective DSN to use; falls back to ``config.dsn`` when unset.
         """
         self._config = config
         self._sentry = sentry
         sentry.init(
-            dsn=config.dsn,
+            dsn=dsn or config.dsn,
             environment=config.environment,
             traces_sample_rate=config.traces_sample_rate,
             send_default_pii=config.send_default_pii,
@@ -109,10 +116,11 @@ def setup_error_tracking(config: ErrorTrackingConfig) -> ErrorTrackerProtocol:
         tracker = setup_error_tracking(MonitorConfig().error_tracking)
         ```
     """
-    if not config.dsn or not config.dsn.strip():
+    dsn = config.dsn or os.getenv("SENTRY_DSN")
+    if not dsn or not dsn.strip():
         return NullErrorTracker()
     try:
-        import sentry_sdk
+        import sentry_sdk  # type: ignore[import-not-found]
     except ImportError:
         logger.warning(
             "error_tracking_skipped",
@@ -120,12 +128,119 @@ def setup_error_tracking(config: ErrorTrackingConfig) -> ErrorTrackerProtocol:
             detail="Install sentry-sdk or lexigram-monitor extras to enable error tracking",
         )
         return NullErrorTracker()
-    return SentryErrorTracker(config, sentry_sdk)
+    return SentryErrorTracker(config, sentry_sdk, dsn=dsn)
+
+
+class UnhandledExceptionHook:
+    """``sys.excepthook`` that captures unhandled exceptions.
+
+    When installed, every unhandled exception reported to the interpreter is
+    forwarded to the configured :class:`ErrorTrackerProtocol` and logged as a
+    structured ``unhandled_exception`` event carrying the active correlation id
+    (``trace_id``/``request_id`` bound via ``structlog.contextvars``), so the
+    log line and the external error report share the same correlation id.
+
+    Attributes:
+        tracker: Error tracker notified for every unhandled exception.
+        logger: Structured logger emitting the local log event.
+    """
+
+    def __init__(
+        self,
+        tracker: ErrorTrackerProtocol,
+        logger: Any | None = None,
+    ) -> None:
+        """Initialize the hook.
+
+        Args:
+            tracker: Error tracker to notify on unhandled exceptions.
+            logger: Structured logger; defaults to the module logger.
+        """
+        self._tracker = tracker
+        self._logger = logger or get_logger(__name__)
+        self._previous: Any = sys.__excepthook__
+
+    def install(self) -> None:
+        """Replace ``sys.excepthook``, chaining the previous hook."""
+        self._previous = sys.excepthook
+        sys.excepthook = self
+
+    def uninstall(self) -> None:
+        """Restore the previously installed hook, if still the active one."""
+        if sys.excepthook is self:
+            sys.excepthook = self._previous
+
+    def __call__(
+        self,
+        exc_type: type[BaseException],
+        exc: BaseException,
+        tb: Any,
+    ) -> None:
+        """Capture the exception, log it with the correlation id, chain on.
+
+        Args:
+            exc_type: Type of the unhandled exception.
+            exc: The unhandled exception instance.
+            tb: Traceback object for the exception.
+        """
+        self._tracker.capture_exception(exc)
+        event: dict[str, str] = {
+            "error_type": exc_type.__name__,
+            "error_message": str(exc) or repr(exc),
+        }
+        try:
+            ctx = structlog.contextvars.get_contextvars()
+        except (ImportError, AttributeError):
+            ctx = {}
+        corr = ctx.get("trace_id") or ctx.get("request_id")
+        if corr is not None:
+            event["correlation_id"] = str(corr)
+            for key in ("trace_id", "request_id", "span_id"):
+                if ctx.get(key) is not None:
+                    event[key] = str(ctx[key])
+        self._logger.error("unhandled_exception", **event)
+        if self._previous is not None:
+            self._previous(exc_type, exc, tb)
+
+
+def install_unhandled_exception_hook(
+    tracker: ErrorTrackerProtocol,
+    logger: Any | None = None,
+) -> UnhandledExceptionHook:
+    """Install an unhandled-exception hook and return it for later uninstall.
+
+    Args:
+        tracker: Error tracker to notify for every unhandled exception.
+        logger: Structured logger for the local log event.
+
+    Returns:
+        The installed hook; call ``hook.uninstall()`` to restore the
+        previously active ``sys.excepthook``.
+
+    Example:
+        ```python
+        from lexigram.monitor.error_tracking import (
+            install_unhandled_exception_hook,
+            setup_error_tracking,
+        )
+
+        hook = install_unhandled_exception_hook(
+            setup_error_tracking(MonitorConfig().error_tracking)
+        )
+        # ... run the application ...
+        hook.uninstall()
+        ```
+    """
+    hook = UnhandledExceptionHook(tracker, logger)
+    hook.install()
+    return hook
 
 
 __all__ = [
     "ErrorTrackerProtocol",
     "NullErrorTracker",
     "SentryErrorTracker",
+    "UnhandledExceptionHook",
+    "install_unhandled_exception_hook",
     "setup_error_tracking",
 ]
