@@ -258,16 +258,11 @@ class TestRelayStreamingRoute:
 
         text = response.text
         frames = [
-            line[6:].strip()
-            for line in text.splitlines()
-            if line.startswith("data: ")
+            line[6:].strip() for line in text.splitlines() if line.startswith("data: ")
         ]
         assert frames, "SSE body carried no data frames"
         assert frames[-1] == "[DONE]"
-        parsed = [
-            json_loads(frame)
-            for frame in frames[:-1]
-        ]
+        parsed = [json_loads(frame) for frame in frames[:-1]]
         assert all(isinstance(item, dict) and "type" in item for item in parsed)
         parsed_types = {item["type"] for item in parsed}
         assert {"message_start", "content_block_delta", "message_stop"} <= parsed_types
@@ -341,9 +336,9 @@ class TestRelayAdminContributor:
             "channel_health", WidgetParams(page=1, page_size=5)
         )
         assert result.is_ok()
-        html = result.unwrap().body
-        assert "claude" in html
-        assert "channel" in html.lower()
+        content = result.unwrap().content
+        assert "claude" in repr(content)
+        assert "channel" in repr(content).lower()
 
     async def test_permitted_operator_can_drain_channel(
         self, relay_app: RelayAppHarness
