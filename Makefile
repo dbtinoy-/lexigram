@@ -295,12 +295,16 @@ audit-docs-imports:
 audit-optional-imports:
 	$(UV) run python -m scripts.cli audit run optional-imports
 
+.PHONY: audit-dependencies
+audit-dependencies:
+	$(UV) run python -m scripts.cli audit run dependencies
+
 .PHONY: audit-files-dry
 audit-package-dry:
 	$(UV) run python -m scripts.cli audit list
 
 .PHONY: audit-package
-audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links audit-docs-imports audit-docs-claims audit-docs-defaults scripts-audit-index
+audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links audit-docs-imports audit-docs-claims audit-docs-defaults audit-dependencies scripts-audit-index
 	@echo "All AUDIT files generated in docs/lexigram-docs/audit"
 
 # All-packages audit targets (write to repo root)

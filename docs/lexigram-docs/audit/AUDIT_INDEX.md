@@ -8,9 +8,9 @@
 
 ## Summary
 
-- Registered audits: 14
-- Reports present: 12
-- Total rows/findings: 2008
+- Registered audits: 15
+- Reports present: 13
+- Total rows/findings: 2076
 - `correct`: 0
 - `incomplete`: 0
 - `suspect`: 0
@@ -46,6 +46,7 @@
 
 | Audit | Report Path | Rows | correct | incomplete | suspect | Status |
 |-------|-------------|-----:|--------:|-----------:|--------:|--------|
+| `dependencies` | `AUDIT_DEPENDENCIES.md` | 68 | 0 | 0 | 0 | present |
 | `docs-claims` | `AUDIT_DOC_CLAIMS.md` | 0 | 0 | 0 | 0 | missing |
 | `docs-defaults` | `AUDIT_DOC_DEFAULTS.md` | 0 | 0 | 0 | 0 | missing |
 | `docs-imports` | `AUDIT_DOC_IMPORTS.md` | 0 | 0 | 0 | 0 | present |

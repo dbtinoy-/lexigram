@@ -9,16 +9,16 @@
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot)](https://github.com/dbtinoy-/lexigram-dev/security/dependabot)
 [![Release](https://img.shields.io/github/v/release/dbtinoy-/lexigram-dev?color=%2334D058)](https://github.com/dbtinoy-/lexigram-dev/releases)
 
-hey — wanna ship a real app this weekend?
+Stop assembling. Start building.
 
 ![Lexigram demo](lexigram/docs/gifs/hero/lexigram-hero.gif)
 
-glue code is the boring 30% of every backend — the session factory, the middleware order, the retry wiring, the dozen init functions that have to boot in exactly the right order. lexigram is the async-first framework that already wrote that part: modules register providers, providers bind contracts, and one container resolves and boots web, sql, cache, auth, queues, events — and the whole ai and multimedia families — in a single call. no glue code, no 200-line config files, and nothing is bolted on: swap redis for in-memory, postgres for sqlite, or openai for ollama with a config line, not a refactor.
+Every backend starts the same way: you wire up SQL, cache, auth, queues, events, middleware — before you write a single line of real code. Lexigram gives you a ready-to-use foundation: the core services are already connected and bootable. You define providers, modules, and controllers. One container boots them all — web, SQL, cache, auth, queues, events, plus the full AI and multimedia families — in one call. Swap Redis for in-memory, Postgres for SQLite, or OpenAI for Ollama with a single config line. No init scripts or config plumbing — just IoC, DI, and contracts, resolved automatically at boot. Just a working base for your logic to run on — and room to implement whatever comes next.
 
-- **the glue, already written.** providers, modules, controllers — one container, one boot call, instead of a hundred lines of init.
-- **swap without ripples.** redis ↔ in-memory, postgres ↔ sqlite, openai ↔ ollama — one contract, a config line away.
-- **async, end to end.** the container, the modules, the controllers — concurrency-safe by construction.
-- **contracts everywhere.** every package talks through protocols, so swapping an implementation never ripples.
+- **One-call startup.** Providers, modules, controllers — assembled and booted in the right order, automatically.
+- **Swappable everything.** Redis ↔ in-memory, Postgres ↔ SQLite, OpenAI ↔ Ollama — same contract, one config line.
+- **Async end to end.** Container, modules, controllers — concurrency-safe by design.
+- **Contracts, not dependencies.** Every package talks through protocols, so implementations change without breaking anything.
 
 → full docs at [docs.lexigram.dev](https://docs.lexigram.dev)
 
