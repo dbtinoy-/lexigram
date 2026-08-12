@@ -12,12 +12,16 @@ import argparse
 import ast
 import os
 import re
+import sys
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from scripts.core.package_inventory import discover_package_paths
+
 REPO_ROOT = Path.cwd()
-PACKAGE_PATTERN = re.compile(r"^(lexigram[-a-z]*|lexigram)$")
 
 EXCLUDED_DIRS = {"__pycache__", ".egg-info", ".git", "node_modules", ".mypy_cache", ".ruff_cache", ".pytest_cache", "templates"}
 
@@ -65,13 +69,12 @@ class ConfigClass:
 
 
 def discover_packages(include_all: bool = False) -> list[Path]:
-    """Discover all lexigram-* packages at repo root."""
+    """Discover src trees of all workspace member packages at repo root."""
     packages: list[Path] = []
-    for entry in sorted(REPO_ROOT.iterdir()):
-        if entry.is_dir() and PACKAGE_PATTERN.match(entry.name):
-            src_dir = entry / "src"
-            if src_dir.exists():
-                packages.append(src_dir)
+    for rel in discover_package_paths(REPO_ROOT):
+        src_dir = REPO_ROOT / rel / "src"
+        if src_dir.exists():
+            packages.append(src_dir)
     return packages
 
 

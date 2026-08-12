@@ -34,6 +34,7 @@ import types
 import typing
 
 from scripts.audit.generators.base import AuditRunResult, MarkdownAuditGenerator
+from scripts.core.package_inventory import discover_package_paths
 
 _ENV_TOKEN_RE = re.compile(r"\bLEX_[A-Z][A-Z0-9_]*\b")
 _PRIORITY_RE = re.compile(r"ProviderPriority\.([A-Z][A-Z0-9_]*)")
@@ -273,12 +274,8 @@ def _build_declared_prefixes() -> set[str]:
     prefix_re = re.compile(
         r'\w*PREFIX\w*\s*(?::\s*\w+\s*)?=\s*["\'](LEX_[A-Z0-9_]+__)["\']'
     )
-    for pkg in root.iterdir():
-        if not (
-            pkg.is_dir()
-            and (pkg.name == "lexigram" or pkg.name.startswith("lexigram-"))
-        ):
-            continue
+    for rel in discover_package_paths(root):
+        pkg = root / rel
         src_dir = pkg / "src"
         if not src_dir.is_dir():
             continue
@@ -308,12 +305,8 @@ def _build_env_validity() -> dict[str, str]:
        package's config classes (e.g. ``LEX_SQL__BACKEND__URL``).
     """
     validity: dict[str, str] = {}
-    packages = sorted(
-        path
-        for path in Path(__file__).resolve().parents[3].iterdir()
-        if path.is_dir()
-        and (path.name == "lexigram" or path.name.startswith("lexigram-"))
-    )
+    root = Path(__file__).resolve().parents[3]
+    packages = sorted(root / p for p in discover_package_paths(root))
     for pkg in packages:
         pkg_mod_name = (
             "lexigram" if pkg.name == "lexigram" else pkg.name.replace("-", ".")
@@ -363,12 +356,8 @@ def _build_direct_reads() -> set[str]:
     root = Path(__file__).resolve().parents[3]
     found: set[str] = set(_DIRECT_READ_ENV_VARS)
     get_re = re.compile(r"os\.environ\.get\(\s*[\"'](LEX_[A-Z0-9_]+)[\"']")
-    for pkg in root.iterdir():
-        if not (
-            pkg.is_dir()
-            and (pkg.name == "lexigram" or pkg.name.startswith("lexigram-"))
-        ):
-            continue
+    for rel in discover_package_paths(root):
+        pkg = root / rel
         src_dir = pkg / "src"
         if not src_dir.is_dir():
             continue

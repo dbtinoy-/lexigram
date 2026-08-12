@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from scripts.core.package_inventory import discover_package_paths
+
 
 @dataclass(frozen=True, slots=True)
 class AuditRunResult:
@@ -98,13 +100,6 @@ class MarkdownAuditGenerator:
         raise NotImplementedError
 
     def iter_package_roots(self, *, root: Path) -> tuple[Path, ...]:
-        """Return Lexigram package directories under the workspace root."""
+        """Return workspace member package directories under the root."""
 
-        return tuple(
-            sorted(
-                path
-                for path in root.iterdir()
-                if path.is_dir()
-                and (path.name == "lexigram" or path.name.startswith("lexigram-"))
-            )
-        )
+        return tuple(root / p for p in discover_package_paths(root))

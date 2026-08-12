@@ -4,7 +4,7 @@ import ast
 from dataclasses import dataclass
 from pathlib import Path
 
-from scripts.core.package_inventory import discover_packages
+from scripts.core.package_inventory import discover_package_paths
 from scripts.core.rules_catalog import (
     SEVERITY_ORDER,
     RuleCatalogContext,
@@ -30,10 +30,20 @@ def run_rules(root: Path | str, packages: tuple[str, ...] | None = None) -> Rule
     """Run the configured Lexigram rules against every discovered package source tree."""
 
     root_path = Path(root).resolve()
-    discovered_packages = tuple(packages if packages is not None else discover_packages(root_path))
-    source_files, syntax_findings = _load_source_files(root=root_path, package_names=discovered_packages)
+    if packages is None:
+        package_paths = discover_package_paths(root_path)
+    else:
+        try:
+            member_paths = discover_package_paths(root_path)
+        except FileNotFoundError:
+            member_paths = ()
+        named = {path.name: path for path in member_paths}
+        package_paths = tuple(named[p] if p in named else Path(p) for p in packages)
+    source_files, syntax_findings = _load_source_files(root=root_path, package_paths=package_paths)
     covered_packages = tuple(sorted({source_file.package_name for source_file in source_files}))
-    coverage = validate_package_coverage(discovered_packages, covered_packages)
+    coverage = validate_package_coverage(
+        tuple(p.name for p in package_paths), covered_packages
+    )
     context = RuleCatalogContext(
         root=root_path,
         module_owners=_build_module_owner_map(source_files),
@@ -68,14 +78,15 @@ def _run_catalog(
 def _load_source_files(
     *,
     root: Path,
-    package_names: tuple[str, ...],
+    package_paths: tuple[Path, ...],
 ) -> tuple[tuple[RuleSourceFile, ...], tuple[RuleFinding, ...]]:
     """Load Python source files from package src trees and capture syntax failures."""
 
     loaded_files: list[RuleSourceFile] = []
     syntax_findings: list[RuleFinding] = []
-    for package_name in package_names:
-        package_root = root / package_name
+    for package_rel in package_paths:
+        package_root = root / package_rel
+        package_name = package_rel.name
         source_root = package_root / "src"
         if not source_root.is_dir():
             continue

@@ -17,7 +17,12 @@ def _write_package(root: Path, name: str) -> Path:
 
 
 def _write_sample_workspace(root: Path) -> None:
-    (root / "pyproject.toml").write_text('[project]\nname = "workspace"\n', encoding="utf-8")
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "workspace"\n\n[tool.uv.workspace]\n'
+        'members = ["lexigram", "lexigram-admin", "lexigram-auth", "lexigram-cache", '
+        '"lexigram-vector", "lexigram-ui"]\n',
+        encoding="utf-8",
+    )
 
     core_root = _write_package(root, "lexigram")
     core_src = core_root / "src" / "lexigram"

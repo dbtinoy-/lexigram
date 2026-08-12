@@ -7,6 +7,7 @@ import re
 
 from scripts.audit.generators.base import MarkdownAuditGenerator
 from scripts.audit.generators.non_config_env_sources import NON_CONFIG_ENV_SOURCES
+from scripts.core.package_inventory import discover_package_paths
 
 
 @dataclass(frozen=True, slots=True)
@@ -354,10 +355,9 @@ def scan_all_configs(root: Path, packages: tuple[str, ...] | None = None) -> dic
     """Scan package config.py files and group environment variables by package."""
 
     grouped: dict[str, list[EnvVarDef]] = {}
-    for package_path in sorted(root.iterdir()):
-        if not package_path.is_dir() or package_path.name.startswith("."):
-            continue
-        if packages is not None and package_path.name not in packages:
+    for rel in discover_package_paths(root):
+        package_path = root / rel
+        if packages is not None and str(rel) not in packages:
             continue
 
         package_prefix = get_package_prefix(package_path)

@@ -40,25 +40,30 @@ import sys
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.core.package_inventory import discover_package_paths
+
 ROOT = Path(__file__).resolve().parent.parent
 PYPI_URL = "https://pypi.org/pypi/{name}/json"
 
 
 def workspace_members() -> list[str]:
-    """All lexigram-* directories with a pyproject.toml, sorted."""
-    return sorted(
-        d.name
-        for d in ROOT.iterdir()
-        if d.is_dir()
-        and d.name.startswith("lexigram")
-        and not d.name.endswith(".egg-info")
-        and (d / "pyproject.toml").is_file()
-    )
+    """All workspace member package names, sorted."""
+    return sorted(p.name for p in discover_package_paths(ROOT))
+
+
+def member_path(name: str) -> Path:
+    """Resolve a package name to its workspace-relative directory."""
+    for p in discover_package_paths(ROOT):
+        if p.name == name:
+            return p
+    return Path(name)
 
 
 def local_version(name: str) -> str | None:
     """Version declared in the package's pyproject.toml."""
-    path = ROOT / name / "pyproject.toml"
+    path = ROOT / member_path(name) / "pyproject.toml"
     if not path.is_file():
         return None
     match = re.search(r'^version\s*=\s*"([^"]+)"', path.read_text(), re.MULTILINE)
@@ -127,7 +132,7 @@ def state_of(local: str | None, pypi: str | None) -> str:
 
 def run_unit_tests(name: str) -> bool:
     """Unit tests for one package only (integration excluded)."""
-    test_dir = ROOT / name / "tests"
+    test_dir = ROOT / member_path(name) / "tests"
     if not test_dir.is_dir():
         print(f"  {name}: no tests directory")
         return True
@@ -157,7 +162,7 @@ def run_unit_tests(name: str) -> bool:
 
 
 def apply_version(name: str, version: str) -> bool:
-    path = ROOT / name / "pyproject.toml"
+    path = ROOT / member_path(name) / "pyproject.toml"
     text = path.read_text()
     new_text = re.sub(
         r'(^version\s*=\s*)"[^"]+"',
