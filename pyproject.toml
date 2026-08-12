@@ -742,7 +742,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F401", "TID252"]  # relative imports allowed in __init__.py re-exports
 # Demo scripts and notebooks are user-facing examples, not production source
-"docs/demos/**" = ["T201", "INP001", "ANN"]
+"demos/**" = ["T201", "INP001", "ANN"]
 "*.ipynb" = ["T201", "ANN", "INP001", "E402", "F401", "S101", "BLE001"]
 # lexigram-contracts has zero external deps — cannot use lexigram.serialization
 "lexigram-contracts/**" = ["TID251"]
