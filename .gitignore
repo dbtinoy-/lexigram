@@ -61,6 +61,7 @@
 
 # Re-ignore these AFTER negations (last match wins)
 *.tape
+docs/demos/*/runs/
 __pycache__/
 *.pyc
 *.pyo
