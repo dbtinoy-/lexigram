@@ -29,7 +29,8 @@ ALLOWED = {
         "rgba(",
         "0x000000C0",
     },
-    "static/js/composer-preview.js": {"0x7C5CFAFF", "#fbbf24", "#000", "0x000000C0"},
+    "static/js/preview-render.js": {"0x7C5CFAFF", "#000"},
+    "static/js/form-sync.js": {"0x7C5CFAFF", "0x000000C0"},
 }
 
 

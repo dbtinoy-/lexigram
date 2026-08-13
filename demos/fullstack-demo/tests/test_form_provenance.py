@@ -6,7 +6,7 @@ built-in defaults were silently persisting style/palette/layout/stages/
 sections overrides the user never touched, reversing provenance and
 drifting from what the settings page resolves.
 
-Payloads mirror what syncComposerHidden (composer-preview.js:762-823)
+Payloads mirror what syncComposerHidden (form-sync.js)
 really submits: every widget is rendered and read unconditionally, so a
 submission always carries the full widget key set (style's 5 keys,
 layout's ~10 keys, the colour widgets' 0xrrggbbFF round-trip form).

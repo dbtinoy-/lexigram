@@ -31,6 +31,20 @@ from shorts_creator.services.settings_store import SettingsStore
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _STATIC_JS = Path(REPO_ROOT) / "src/shorts_creator/ui/static/js"
+_PREVIEW_JS_PARTS = (
+    "color-utils.js",
+    "caption-field.js",
+    "preview-render.js",
+    "composer-panels.js",
+    "form-sync.js",
+    "presets.js",
+    "composer-preview.js",
+)
+
+
+def _preview_js() -> str:
+    """Return the concatenated composer preview JS in page load order."""
+    return "\n".join((_STATIC_JS / p).read_text() for p in _PREVIEW_JS_PARTS)
 
 
 class FakeFormRequest:
@@ -145,7 +159,7 @@ class TestInteractionSemanticsMarkers:
         project = await projects.repo.create(Project(topic="self_improvement"))
         body = _body(await controller.project_settings(request=None, id=project.id))
         assert 'data-dirty="false"' in body
-        preview_js = _STATIC_JS.joinpath("composer-preview.js").read_text()
+        preview_js = _preview_js()
         assert "addEventListener('input', _pvKnobChanged)" in preview_js
         assert "addEventListener('change', _pvKnobChanged)" in preview_js
         assert "getElementById('composer-summary')" in preview_js
@@ -155,7 +169,7 @@ class TestInteractionSemanticsMarkers:
         project = await projects.repo.create(Project(topic="self_improvement"))
         body = _body(await controller.project_settings(request=None, id=project.id))
         assert 'id="composer-summary"' in body
-        preview_js = _STATIC_JS.joinpath("composer-preview.js").read_text()
+        preview_js = _preview_js()
         assert "out.textContent" in preview_js or "summary.textContent" in preview_js
 
     async def test_save_pending_indicator_and_toast_paths_exist(self, flow):

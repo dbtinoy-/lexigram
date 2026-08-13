@@ -100,7 +100,7 @@ _WIDGET_DEFAULTS: dict[str, dict[str, Any]] = {
 def _palette_round_trip(profile, key: str, default_key: str) -> str:
     """The token the colour widget was prefilled from (profile palette
     composite, else pipeline default — mirroring _style_panel), in the
-    ``0xrrggbbFF`` form the composer submits (composer-preview.js:812-814:
+    ``0xrrggbbFF`` form the composer submits (form-sync.js:
     lowercase ``#rrggbb`` widget value becomes ``0x`` + ``FF``)."""
     token = _PIPELINE_DEFAULTS[default_key]
     if profile is not None:
@@ -116,7 +116,7 @@ def _palette_round_trip(profile, key: str, default_key: str) -> str:
 def _json_neutral(data: dict, profile, key: str, value) -> bool:
     """True when the submitted composite equals the composer's untouched
     default for the current format/topic (mirrors syncComposerHidden in
-    composer-preview.js). syncComposerHidden always submits the full widget
+    form-sync.js). syncComposerHidden always submits the full widget
     key set, so style/layout/stages are compared against the widget-default
     composite (the values _style_panel/_layout_panel render into every
     widget) overlaid with the profile-resolved composite the widgets
