@@ -25,6 +25,7 @@ from collections.abc import Awaitable, Callable
 from typing import (
     Any,
     Generic,
+    Protocol,
     TypeVar,
 )
 
@@ -43,6 +44,18 @@ MiddlewareFunc = Callable[
     [TMessage, Callable[[TMessage], Awaitable[TResult]]],
     Awaitable[TResult],
 ]
+
+
+class HandlerLike(Protocol):
+    """Structural type for handler objects exposing a ``handle`` method.
+
+    Buses accept three handler shapes: plain callables, handler classes
+    (instantiated by the bus), and pre-built handler objects. The concrete
+    bus pins the message type (e.g. ``Bus[Command, Any]``), so the protocol
+    stays loose about the handled message.
+    """
+
+    def handle(self, message: Any) -> Any: ...
 
 
 class Bus(ABC, Generic[TMessage, TResult]):
@@ -73,12 +86,17 @@ class Bus(ABC, Generic[TMessage, TResult]):
         self._middlewares: list[MiddlewareFunc] = middlewares or []
         self._handlers: dict[type[TMessage], Any] = {}
 
-    def register(self, message_type: type[TMessage], handler: Callable | type) -> None:
+    def register(
+        self,
+        message_type: type[TMessage],
+        handler: Callable[[TMessage], Any] | type | HandlerLike,
+    ) -> None:
         """Register a handler for a message type.
 
         Args:
             message_type: The message class to handle.
-            handler: Handler function or class.
+            handler: Handler function, handler class, or handler object
+                with a ``handle(message)`` method.
         """
         self._handlers[message_type] = handler
 
