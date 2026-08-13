@@ -37,6 +37,9 @@ jobs:
       - name: Tier boundary
         run: uv run python scripts/check_tier_boundary.py --root .
 
+      - name: env.example coverage
+        run: uv run python scripts/check_env_example.py --root .
+
       - name: typecheck (mypy core)
         run: uv run mypy lexigram/src/
 

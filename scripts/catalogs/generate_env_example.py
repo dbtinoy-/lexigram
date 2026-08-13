@@ -4,16 +4,19 @@
 Usage:
     python scripts/catalogs/generate_env_example.py
 """
+
 from __future__ import annotations
 
-import re
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "docs/lexigram-docs/reference/REF_ENV_VARS.md"
 OUT = ROOT / ".env.example"
 
-ROW = re.compile(r"^\| `([A-Z][A-Z0-9_]*)` \| (\S[^|]*) \| ([^|]*) \| ([^|]*) \| (.*) \|$")
+ROW = re.compile(
+    r"^\| `([A-Z][A-Z0-9_]*)` \| (\S[^|]*) \| ([^|]*) \| ([^|]*) \| (.*) \|$"
+)
 PKG_HEADER = re.compile(r"^### `([^`]+)` \((\d+) vars\)$")
 
 # Prefill sensible values for services the docker-compose provides.
@@ -34,9 +37,95 @@ SERVICE_DEFAULTS = {
 }
 # Vars that should be flagged as required secrets, not left blank.
 SECRET_SUFFIX = (
-    "SECRET", "SECRET_KEY", "API_KEY", "PASSWORD", "TOKEN", "HMAC_KEY",
-    "CREDENTIALS", "PRIVATE_KEY",
+    "SECRET",
+    "SECRET_KEY",
+    "API_KEY",
+    "PASSWORD",
+    "TOKEN",
+    "HMAC_KEY",
+    "CREDENTIALS",
+    "PRIVATE_KEY",
 )
+
+# Env vars read directly in source (os.getenv / os.environ) that are NOT
+# part of the LEX_* config catalog. Kept here so .env.example regeneration
+# is lossless. Name -> (placeholder value, inline comment).
+SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
+    "ADMIN_BASE": ("http://127.0.0.1:9003", "lexigram-admin e2e test base URL"),
+    "ADMIN_SETUP_TOKEN": ("changeme", "lexigram-admin boot token (integration/CI)"),
+    "ANTHROPIC_API_KEY": ("sk-ant-changeme", "Anthropic provider key (AI doctor)"),
+    "APNS_KEY_PATH": ("", "Apple push notification key path"),
+    "APP_AUTH_TOKEN": ("changeme", "fullstack-demo middleware auth token"),
+    "APP_ENV": ("development", "generic app environment read"),
+    "AUDIT_HMAC_KEY": ("changeme", "audit doctor / signing key"),
+    "AUTH_JWT_SECRET": ("changeme", "lexigram-auth JWT secret"),
+    "AUTH_SECRET": ("changeme", "lexigram-cli environment validation"),
+    "OAUTH_CLIENT_SECRET": ("change-me-oauth-client-secret", "app startup secret hook"),
+    "BROKER_URL": ("amqp://guest:guest@localhost:5672//", "queue doctor broker URL"),
+    "DATABASE_URL": (
+        "postgresql://lexigram:lexigram@localhost:5432/lexigram",
+        "SQL doctor / DB URL",
+    ),
+    "DSM_AUTH_TOKEN": ("changeme", "fullstack-demo API auth token"),
+    "DSM_PORT": ("8080", "fullstack-demo server port"),
+    "DSM_URL": ("http://localhost:8080", "fullstack-demo base URL"),
+    "ENVIRONMENT": ("development", "legacy app-environment compatibility reads"),
+    "F5_TTS_REFERENCE_ROOT": ("", "multimedia-tts reference audio root"),
+    "FCM_SERVER_KEY": ("changeme", "Firebase Cloud Messaging key"),
+    "JWT_SECRET": ("changeme", "app startup secret hook (JWT signing)"),
+    "LEXIGRAM_EXPERIMENT_SEED": ("", "demos/llm-experiment seed"),
+    "LEXI_SECRET": ("changeme", "secrets store test fixture"),
+    "LOG_LEVEL": ("info", "SQL logging level read"),
+    "OPENAI_API_KEY": ("sk-changeme", "OpenAI provider key (AI doctor)"),
+    "OTEL_EXPORTER_OTLP_ENDPOINT": (
+        "http://localhost:4318",
+        "OpenTelemetry collector endpoint",
+    ),
+    "PEXELS_API_KEY": ("changeme", "fullstack-demo stock video key"),
+    "PIXABAY_API_KEY": ("changeme", "fullstack-demo stock video key"),
+    "PLAYWRIGHT_SNAPSHOT": ("", "set to 1 to update admin e2e snapshots"),
+    "RABBITMQ_URL": (
+        "amqp://guest:guest@localhost:5672//",
+        "queue doctor RabbitMQ URL",
+    ),
+    "REALTIME_PORT": ("7071", "demos/realtime-monitor port"),
+    "REDIS_URL": ("redis://localhost:6379/0", "queue doctor Redis URL"),
+    "SHORTS_CREATOR_DATABASE_URL": (
+        "postgresql://lexigram:lexigram@localhost:5432/shorts_creator",
+        "fullstack-demo database URL",
+    ),
+    "SMTP_HOST": ("localhost:25", "notification doctor SMTP host"),
+    "TEST_POSTGRES_DSN": (
+        "postgresql://lexigram:lexigram@localhost:5432/lexigram_test",
+        "events/tasks postgres integration tests",
+    ),
+    "UV": ("uv", "uv binary used by publish tooling"),
+    "UV_PUBLISH_TOKEN": ("changeme", "PyPI publish token"),
+    "VECTOR_BACKEND": ("memory", "vector doctor backend name"),
+    "VECTOR_STORE_BACKEND": ("memory", "vector doctor backend name"),
+}
+
+# Comment block emitted above SUPPLEMENTAL_VARS, grouped by what needs them.
+SUPPLEMENTAL_HEADER = [
+    "# ---------------------------------------------------------------------------",
+    "# Variables referenced directly in source (os.getenv / os.environ) — optional;",
+    "# unset values fall back to code defaults. Keep in sync with source usage.",
+    "#",
+    "# Required by demos/fullstack-demo (shorts-creator):",
+    "#   APP_AUTH_TOKEN, DSM_AUTH_TOKEN, DSM_PORT, DSM_URL, PEXELS_API_KEY,",
+    "#   PIXABAY_API_KEY, SHORTS_CREATOR_DATABASE_URL",
+    "# Required by other demos:",
+    "#   LEXIGRAM_EXPERIMENT_SEED (llm-experiment), REALTIME_PORT (realtime-monitor)",
+    "# Referenced by core framework source / doctor CLIs:",
+    "#   ANTHROPIC_API_KEY, APNS_KEY_PATH, APP_ENV, AUDIT_HMAC_KEY, AUTH_JWT_SECRET,",
+    "#   BROKER_URL, DATABASE_URL, F5_TTS_REFERENCE_ROOT, FCM_SERVER_KEY, JWT_SECRET,",
+    "#   OAUTH_CLIENT_SECRET, OPENAI_API_KEY, OTEL_EXPORTER_OTLP_ENDPOINT,",
+    "#   RABBITMQ_URL, REDIS_URL, SMTP_HOST, VECTOR_BACKEND, VECTOR_STORE_BACKEND",
+    "# Test/tooling only:",
+    "#   ADMIN_BASE, ADMIN_SETUP_TOKEN, AUTH_SECRET, ENVIRONMENT, LEXI_SECRET,",
+    "#   LOG_LEVEL, PLAYWRIGHT_SNAPSHOT, TEST_POSTGRES_DSN, UV, UV_PUBLISH_TOKEN",
+    "# ---------------------------------------------------------------------------",
+]
 
 
 def parse(catalog: Path) -> list[tuple[str, list[tuple[str, str, str]]]]:
@@ -91,8 +180,16 @@ def generate() -> None:
                 comment = f"  # {desc} ({typ})" if typ else f"  # {desc}"
             lines.append(f"{name}={val}{comment}")
 
+    lines.append("")
+    lines.extend(SUPPLEMENTAL_HEADER)
+    for name, (value, comment) in SUPPLEMENTAL_VARS.items():
+        suffix = f"  # {comment}" if comment else ""
+        lines.append(f"{name}={value}{suffix}")
+
     OUT.write_text("\n".join(lines) + "\n")
-    print(f"wrote {OUT} with {len(sections)} package sections, {sum(len(r) for _, r in sections)} vars")
+    print(
+        f"wrote {OUT} with {len(sections)} package sections, {sum(len(r) for _, r in sections)} vars"
+    )
 
 
 if __name__ == "__main__":
