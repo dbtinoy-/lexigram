@@ -6,6 +6,10 @@ from typing import TYPE_CHECKING
 
 from lexigram.ai.evaluation.config import EvaluationConfig
 from lexigram.contracts.ai.evaluation import EvaluatorProtocol
+from lexigram.contracts.ai.experiment import (
+    CheckpointStoreProtocol,
+    ExperimentTrackerProtocol,
+)
 from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.di.provider import Provider, ProviderPriority
 from lexigram.logging import get_logger
@@ -67,6 +71,19 @@ class EvaluationProvider(Provider):
             name="embedding_distance",
         )
         container.singleton(EvaluationHarness, EvaluationHarness())
+
+        from lexigram.ai.evaluation.checkpoints import FileCheckpointStore
+        from lexigram.ai.evaluation.tracking import LocalTracker
+
+        experiment_root = self._config.experiment_dir or "runs"
+        container.singleton(
+            ExperimentTrackerProtocol,
+            LocalTracker(root=experiment_root),
+        )
+        container.singleton(
+            CheckpointStoreProtocol,
+            FileCheckpointStore(root=experiment_root),
+        )
 
         logger.info("evaluation_provider_registered")
 

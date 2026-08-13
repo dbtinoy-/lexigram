@@ -8,6 +8,10 @@ from lexigram.contracts.ai.evaluation import (
     EvaluationHarnessProtocol,
     EvaluatorProtocol,
 )
+from lexigram.contracts.ai.experiment import (
+    CheckpointStoreProtocol,
+    ExperimentTrackerProtocol,
+)
 from lexigram.di.module import DynamicModule, Module, module
 
 if TYPE_CHECKING:
@@ -51,6 +55,8 @@ class EvaluationModule(Module):
             exports=[
                 EvaluatorProtocol,
                 EvaluationHarnessProtocol,
+                ExperimentTrackerProtocol,
+                CheckpointStoreProtocol,
             ],
         )
 
@@ -76,6 +82,8 @@ class EvaluationModule(Module):
             exports=[
                 EvaluatorProtocol,
                 EvaluationHarnessProtocol,
+                ExperimentTrackerProtocol,
+                CheckpointStoreProtocol,
             ],
         )
 

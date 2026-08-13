@@ -21,9 +21,29 @@ class HarnessError(BaseEvaluationError):
     """Raised when the evaluation harness encounters an error."""
 
 
+class TrackingError(BaseEvaluationError):
+    """Raised when experiment tracking cannot persist or read run state."""
+
+
+class CheckpointError(BaseEvaluationError):
+    """Raised when a checkpoint is missing or fails digest verification."""
+
+
+class AblationError(BaseEvaluationError):
+    """Raised when an ablation references unknown checkpoints."""
+
+
+class AnalysisError(BaseEvaluationError):
+    """Raised when a run analysis cannot be produced."""
+
+
 __all__ = [
+    "AblationError",
+    "AnalysisError",
+    "CheckpointError",
     "DatasetError",
     "EvaluationConfigError",
     "EvaluatorNotFoundError",
     "HarnessError",
+    "TrackingError",
 ]
