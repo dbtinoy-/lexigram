@@ -71,11 +71,6 @@ latest `main` run); each job has a local one-liner:
 | `example` | fullstack-demo gate (format, lint, mypy, tests) | `cd demos/fullstack-demo && uv run pytest -q -m "not integration"` |
 | `audit` | `pip-audit` known-vulnerability check | `uv run pip-audit` |
 
-```text
-HOOK    agents · llms · rag · mcp · memory
-CORE    web · sql · cache · auth · queue · events
-TRUST   di · contracts · modules · async
-```
 
 ## 60 seconds, end to end
 
@@ -151,6 +146,12 @@ this repo ships the main ecosystem — the core, the backend, the contracts:
 - plus auth, events, queue, tasks, http, resilience, storage, search, notification, monitor, webhook, tenancy, features, audit, graphql, nosql, workflow, and testing
 
 the AI family — agents, llms, rag, memory, skills, mcp, session, workers, observability, feedback, and the guard / governance / evaluation / prompt / relay suite — lives in [lexigram-ai](https://github.com/dbtinoy-/lexigram-ai-experimental). multimedia (tts, music, image, video, beat, interpolate, upscale) lives in [lexigram-multimedia](https://github.com/dbtinoy-/lexigram-multimedia-experimental). same modules, same container, same rules — their own repos and cadence.
+
+```text
+HOOK    agents · llms · rag · mcp · memory
+CORE    web · sql · cache · auth · queue · events
+TRUST   di · contracts · modules · async
+```
 
 the full list — including notification, queue, events, auth, observability, and more — lives in the [docs ecosystem](https://docs.lexigram.dev/ecosystem/).
 
