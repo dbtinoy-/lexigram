@@ -6,6 +6,7 @@ The dashboard page plus the HTTP endpoints that back it:
   dependencies).
 - ``GET /api/events/stream`` — server-sent events: replay recent history then
   stream live events (with heartbeats).
+- ``GET /api/stats`` — live subscriber and history counts for the header chips.
 - ``POST /api/events`` — publish an event from an external tool or curl.
 
 The WebSocket operator channel is owned by :class:`OperatorHandler` and is
@@ -20,13 +21,18 @@ familiar ``Controller`` flow while the handler stays framework-agnostic.
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 
-from lexigram.ui import el, render_to_string
-from lexigram.web import Controller, HTMLContent, get, post
+from lexigram.serialization import dumps_str
+from lexigram.ui import el, raw, render_to_string
+from lexigram.web import Controller, FileResponse, HTMLContent, get, post
 from lexigram.web.sse.handler import AbstractSSEHandler
 from ops_console.domain import Severity, SystemEvent
 from ops_console.services.event_stream import EventStreamService
+
+JAVASCRIPT_PATH = Path(__file__).resolve().parent.parent / "static" / "dashboard.js"
+STYLESHEET_PATH = Path(__file__).resolve().parent.parent / "static" / "style.css"
 
 
 class EventsStreamHandler(AbstractSSEHandler):
@@ -44,47 +50,6 @@ class EventsStreamHandler(AbstractSSEHandler):
             yield {"event": event.kind, "data": event.to_dict()}
 
 
-def _render_event_row(event: SystemEvent) -> str:
-    """Render one event as an HTML table row for the dashboard feed."""
-    return render_to_string(
-        el(
-            "tr",
-            el(
-                "td",
-                event.occurred_at.strftime("%H:%M:%S"),
-                class_="text-slate-400 text-sm",
-            ),
-            el(
-                "td",
-                el(
-                    "span",
-                    event.severity.value.upper(),
-                    class_=(
-                        "font-mono text-xs px-2 py-0.5 rounded "
-                        + {
-                            Severity.CRITICAL: "bg-red-600/20 text-red-300",
-                            Severity.WARN: "bg-amber-500/20 text-amber-300",
-                            Severity.INFO: "bg-sky-500/20 text-sky-300",
-                        }[event.severity]
-                    ),
-                ),
-                class_="pr-4",
-            ),
-            el(
-                "td",
-                f"{event.source} · {event.kind}",
-                class_="font-mono text-sm text-slate-300",
-            ),
-            el(
-                "td",
-                event.message,
-                class_="text-slate-200",
-            ),
-            class_="border-b border-slate-800",
-        )
-    )
-
-
 class ConsoleController(Controller):
     """Dashboard page plus the SSE streaming and publish endpoints."""
 
@@ -100,88 +65,135 @@ class ConsoleController(Controller):
     async def stream(self, request=None) -> Any:
         return await self.sse.handle(request)
 
+    @get("/api/stats")
+    async def stats(self, request=None) -> dict[str, Any]:
+        """Return live subscriber and history counts for the dashboard chips."""
+        stats = self.events.stats()
+        return {"subscribers": stats.subscribers, "history": stats.events}
+
+    @get("/static/dashboard.js")
+    async def dashboard_js(self, request=None) -> FileResponse:
+        """Serve the dashboard client script as a real JavaScript asset."""
+        return FileResponse(path=JAVASCRIPT_PATH, media_type="text/javascript")
+
+    @get("/static/style.css")
+    async def dashboard_css(self, request=None) -> FileResponse:
+        """Serve the dashboard stylesheet as a real CSS asset."""
+        return FileResponse(path=STYLESHEET_PATH, media_type="text/css")
+
     @get("/")
     async def dashboard(self, request=None) -> HTMLContent:
-        rows = "\n".join(_render_event_row(event) for event in self.events.snapshot())
         stats = self.events.stats()
+        history = [event.to_dict() for event in self.events.snapshot()]
+        seed_json = dumps_str(history).replace("</", "<\\/")
         page = render_to_string(
             el(
                 "html",
                 el(
                     "head",
                     el("title", "Realtime Console"),
-                    el(
-                        "style",
-                        "body{font-family:ui-monospace,monospace;background:#0b1120;"
-                        "color:#e2e8f0;margin:0;padding:2rem}"
-                        "table{border-collapse:collapse;width:100%}"
-                        "th{text-align:left;color:#94a3b8;padding-bottom:.5rem}"
-                        "form{display:flex;gap:.5rem;margin:1rem 0}",
-                    ),
+                    el("link", rel="stylesheet", href="/static/style.css"),
                 ),
                 el(
                     "body",
-                    el("h1", "Realtime Console", class_="text-2xl font-bold"),
                     el(
-                        "p",
-                        "Live system events streamed over SSE. Subscribers: ",
-                        el("span", str(stats.subscribers), id="subscribers"),
-                    ),
-                    el(
-                        "table",
+                        "div",
                         el(
-                            "thead",
+                            "div",
+                            el("h1", "Realtime Console", class_="accent"),
                             el(
-                                "tr",
-                                el("th", "Time"),
-                                el("th", "Severity"),
-                                el("th", "Source"),
-                                el("th", "Message"),
+                                "div",
+                                el("span", "", class_="dot", id="conn-dot"),
+                                el("span", "Connecting…", id="conn-label"),
+                                class_="conn",
+                            ),
+                            el(
+                                "span",
+                                "subs: ",
+                                el("b", str(stats.subscribers), id="subs"),
+                                class_="chip",
+                            ),
+                            el(
+                                "span",
+                                "history: ",
+                                el("b", str(stats.events), id="hist"),
+                                class_="chip",
+                            ),
+                            el("span", "♥ ", el("b", "—", id="beat"), class_="chip"),
+                            class_="topbar",
+                        ),
+                        el(
+                            "div",
+                            el(
+                                "input",
+                                placeholder="Search events…",
+                                id="search",
+                                class_="search",
+                                type="search",
+                            ),
+                            el(
+                                "select",
+                                el("option", "All severities", value="all"),
+                                el("option", "Info", value="info"),
+                                el("option", "Warn", value="warn"),
+                                el("option", "Critical", value="critical"),
+                                id="filter-sev",
+                            ),
+                            el("button", "Pause", id="pause"),
+                            el("button", "Clear feed", id="clear"),
+                            class_="toolbar",
+                        ),
+                        el(
+                            "table",
+                            el(
+                                "thead",
+                                el(
+                                    "tr",
+                                    el("th", "Time"),
+                                    el("th", "Severity"),
+                                    el("th", "Source"),
+                                    el("th", "Message"),
+                                ),
+                            ),
+                            el(
+                                "tbody",
+                                el("tr", el("td", "Loading…", colspan="4"), id="empty"),
+                                id="events",
                             ),
                         ),
-                        el("tbody", rows, id="events"),
-                    ),
-                    el(
-                        "form",
-                        el("input", name="message", placeholder="Event message…"),
                         el(
-                            "input",
-                            name="source",
-                            placeholder="source",
-                            value="console",
+                            "script",
+                            raw(seed_json),
+                            type="application/json",
+                            id="feed-data",
                         ),
-                        el("button", "Publish", type="submit"),
-                        el("input", type="hidden", name="severity", value="info"),
-                        id="publish-form",
-                    ),
-                    el(
-                        "script",
-                        """const es = new EventSource('/api/events/stream');
-es.addEventListener('open', () => console.log('connected'));
-es.addEventListener('error', () => es.close());
-es.onmessage = (e) => {
-  const row = document.createElement('tr');
-  row.className = 'border-b border-slate-800';
-  const d = JSON.parse(e.data);
-  row.innerHTML = '<td class="text-slate-400 text-sm">' + d.occurred_at.slice(11, 19) +
-    '</td><td class="font-mono text-xs text-sky-300 pr-4">' + d.severity.toUpperCase() +
-    '</td><td class="font-mono text-sm text-slate-300">' + d.source + ' · ' + d.kind +
-    '</td><td class="text-slate-200">' + d.message + '</td>';
-  document.getElementById('events').prepend(row);
-};
-const form = document.getElementById('publish-form');
-form.addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const data = new FormData(form);
-  const msg = data.get('message');
-  await fetch('/api/events', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({message: msg, severity: 'info', source: data.get('source')})
-  });
-  form.reset();
-});
-""",
+                        el(
+                            "form",
+                            el(
+                                "input",
+                                placeholder="Event message…",
+                                id="msg",
+                                required="",
+                            ),
+                            el(
+                                "input",
+                                placeholder="source",
+                                value="console",
+                                id="src",
+                            ),
+                            el(
+                                "select",
+                                el("option", "info", value="info"),
+                                el("option", "warn", value="warn"),
+                                el("option", "critical", value="critical"),
+                                id="sev",
+                            ),
+                            el("button", "Publish", id="publish-btn", type="submit"),
+                            class_="publish",
+                            id="publish-form",
+                        ),
+                        el("script", src="/static/dashboard.js"),
+                        class_="wrap",
                     ),
                 ),
             )

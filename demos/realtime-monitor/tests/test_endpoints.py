@@ -35,6 +35,17 @@ def build_app() -> Starlette:
 
         return JSONResponse(result)
 
+    async def stats(request) -> None:
+        from starlette.responses import JSONResponse
+
+        return JSONResponse(await controller.stats(request))
+
+    async def dashboard_js(request) -> None:
+        return await controller.dashboard_js(request)
+
+    async def dashboard_css(request) -> None:
+        return await controller.dashboard_css(request)
+
     async def ws_endpoint(starlette_ws) -> None:
         from lexigram.web import WebSocket
 
@@ -45,6 +56,9 @@ def build_app() -> Starlette:
 
     app = Starlette()
     app.add_route("/api/events/stream", controller.stream)
+    app.add_route("/api/stats", stats)
+    app.add_route("/static/dashboard.js", dashboard_js)
+    app.add_route("/static/style.css", dashboard_css)
     app.add_route("/api/events", publish, methods=["POST"])
     app.add_route("/", dashboard)
     app.router.routes.append(WebSocketRoute("/api/ws/operator", ws_endpoint))
@@ -61,7 +75,46 @@ def test_dashboard_page_renders(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "Realtime Console" in response.text
-    assert "EventSource" in response.text
+    assert "src=\"/static/dashboard.js\"" in response.text
+    assert "href=\"/static/style.css\"" in response.text
+    assert "id=\"feed-data\"" in response.text
+
+
+def test_dashboard_seeds_history_json(client: TestClient) -> None:
+    import json
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    json.loads(response.text.split("id=\"feed-data\">")[1].split("</script>")[0])
+
+
+def test_stats_endpoint_reports_live_counts(client: TestClient) -> None:
+    response = client.get("/api/stats")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"subscribers", "history"}
+    assert isinstance(body["subscribers"], int)
+    assert isinstance(body["history"], int)
+
+
+def test_dashboard_js_asset_is_served(client: TestClient) -> None:
+    response = client.get("/static/dashboard.js")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert "new EventSource" in response.text
+    assert "feed-data" in response.text
+
+
+def test_dashboard_css_asset_is_served(client: TestClient) -> None:
+    response = client.get("/static/style.css")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert "--bg" in response.text
+    assert ".topbar" in response.text
 
 
 @pytest.mark.asyncio
