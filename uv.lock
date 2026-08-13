@@ -4343,7 +4343,7 @@ test = [
 [[package]]
 name = "lexigram-ai"
 version = "0.1.3007"
-source = { editable = "lexigram-ai" }
+source = { editable = "experimental/ai/lexigram-ai" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-ai-feedback" },
@@ -4512,18 +4512,18 @@ requires-dist = [
     { name = "jsonschema", marker = "extra == 'all'", specifier = ">=4.0.0" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "lexigram", editable = "core/lexigram" },
-    { name = "lexigram-ai-feedback", editable = "lexigram-ai-feedback" },
-    { name = "lexigram-ai-feedback", marker = "extra == 'all'", editable = "lexigram-ai-feedback" },
-    { name = "lexigram-ai-feedback", marker = "extra == 'feedback'", editable = "lexigram-ai-feedback" },
-    { name = "lexigram-ai-llm", editable = "lexigram-ai-llm" },
-    { name = "lexigram-ai-llm", marker = "extra == 'all'", editable = "lexigram-ai-llm" },
-    { name = "lexigram-ai-llm", marker = "extra == 'llm'", editable = "lexigram-ai-llm" },
-    { name = "lexigram-ai-observability", editable = "lexigram-ai-observability" },
-    { name = "lexigram-ai-observability", marker = "extra == 'all'", editable = "lexigram-ai-observability" },
-    { name = "lexigram-ai-observability", marker = "extra == 'observability'", editable = "lexigram-ai-observability" },
-    { name = "lexigram-ai-rag", editable = "lexigram-ai-rag" },
-    { name = "lexigram-ai-rag", marker = "extra == 'all'", editable = "lexigram-ai-rag" },
-    { name = "lexigram-ai-rag", marker = "extra == 'rag'", editable = "lexigram-ai-rag" },
+    { name = "lexigram-ai-feedback", editable = "experimental/ai/lexigram-ai-feedback" },
+    { name = "lexigram-ai-feedback", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-feedback" },
+    { name = "lexigram-ai-feedback", marker = "extra == 'feedback'", editable = "experimental/ai/lexigram-ai-feedback" },
+    { name = "lexigram-ai-llm", editable = "experimental/ai/lexigram-ai-llm" },
+    { name = "lexigram-ai-llm", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-llm" },
+    { name = "lexigram-ai-llm", marker = "extra == 'llm'", editable = "experimental/ai/lexigram-ai-llm" },
+    { name = "lexigram-ai-observability", editable = "experimental/ai/lexigram-ai-observability" },
+    { name = "lexigram-ai-observability", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-observability" },
+    { name = "lexigram-ai-observability", marker = "extra == 'observability'", editable = "experimental/ai/lexigram-ai-observability" },
+    { name = "lexigram-ai-rag", editable = "experimental/ai/lexigram-ai-rag" },
+    { name = "lexigram-ai-rag", marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-rag" },
+    { name = "lexigram-ai-rag", marker = "extra == 'rag'", editable = "experimental/ai/lexigram-ai-rag" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -4621,7 +4621,7 @@ test = [
 [[package]]
 name = "lexigram-ai-agents"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-agents" }
+source = { editable = "experimental/ai/lexigram-ai-agents" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -4689,7 +4689,7 @@ test = [
 [[package]]
 name = "lexigram-ai-evaluation"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-evaluation" }
+source = { editable = "experimental/ai/lexigram-ai-evaluation" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -4730,7 +4730,7 @@ test = [
 [[package]]
 name = "lexigram-ai-feedback"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-feedback" }
+source = { editable = "experimental/ai/lexigram-ai-feedback" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -4794,7 +4794,7 @@ test = [
 [[package]]
 name = "lexigram-ai-governance"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-governance" }
+source = { editable = "experimental/ai/lexigram-ai-governance" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -4860,7 +4860,7 @@ test = [
 [[package]]
 name = "lexigram-ai-guard"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-guard" }
+source = { editable = "experimental/ai/lexigram-ai-guard" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -4926,7 +4926,7 @@ test = [
 [[package]]
 name = "lexigram-ai-llm"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-llm" }
+source = { editable = "experimental/ai/lexigram-ai-llm" }
 dependencies = [
     { name = "aiohttp" },
     { name = "httpx" },
@@ -5068,7 +5068,7 @@ test = [
 [[package]]
 name = "lexigram-ai-mcp"
 version = "0.1.3008"
-source = { editable = "lexigram-ai-mcp" }
+source = { editable = "experimental/ai/lexigram-ai-mcp" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5134,7 +5134,7 @@ test = [
 [[package]]
 name = "lexigram-ai-memory"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-memory" }
+source = { editable = "experimental/ai/lexigram-ai-memory" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5202,7 +5202,7 @@ test = [
 [[package]]
 name = "lexigram-ai-observability"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-observability" }
+source = { editable = "experimental/ai/lexigram-ai-observability" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5266,7 +5266,7 @@ test = [
 [[package]]
 name = "lexigram-ai-prompt"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-prompt" }
+source = { editable = "experimental/ai/lexigram-ai-prompt" }
 dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
@@ -5332,7 +5332,7 @@ test = [
 [[package]]
 name = "lexigram-ai-rag"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-rag" }
+source = { editable = "experimental/ai/lexigram-ai-rag" }
 dependencies = [
     { name = "aiofiles" },
     { name = "lexigram" },
@@ -5411,7 +5411,7 @@ requires-dist = [
     { name = "beautifulsoup4", marker = "extra == 'web'", specifier = ">=4.12" },
     { name = "flashrank", marker = "extra == 'reranking'", specifier = ">=0.2.0" },
     { name = "lexigram", editable = "core/lexigram" },
-    { name = "lexigram-ai-rag", extras = ["pdf", "web", "clip", "compression", "reranking"], marker = "extra == 'all'", editable = "lexigram-ai-rag" },
+    { name = "lexigram-ai-rag", extras = ["pdf", "web", "clip", "compression", "reranking"], marker = "extra == 'all'", editable = "experimental/ai/lexigram-ai-rag" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "librosa", marker = "extra == 'audio'", specifier = ">=0.10.0" },
@@ -5450,7 +5450,7 @@ test = [
 [[package]]
 name = "lexigram-ai-relay"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-relay" }
+source = { editable = "experimental/ai/lexigram-ai-relay" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5514,7 +5514,7 @@ test = [
 [[package]]
 name = "lexigram-ai-relay-gateway"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-relay-gateway" }
+source = { editable = "experimental/ai/lexigram-ai-relay-gateway" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5584,7 +5584,7 @@ test = [
 [[package]]
 name = "lexigram-ai-session"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-session" }
+source = { editable = "experimental/ai/lexigram-ai-session" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5648,7 +5648,7 @@ test = [
 [[package]]
 name = "lexigram-ai-skills"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-skills" }
+source = { editable = "experimental/ai/lexigram-ai-skills" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5714,7 +5714,7 @@ test = [
 [[package]]
 name = "lexigram-ai-workers"
 version = "0.1.3007"
-source = { editable = "lexigram-ai-workers" }
+source = { editable = "experimental/ai/lexigram-ai-workers" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -9135,23 +9135,23 @@ requires-dist = [
     { name = "jinja2", marker = "extra == 'test'", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-admin", editable = "lexigram-admin" },
-    { name = "lexigram-ai", editable = "lexigram-ai" },
-    { name = "lexigram-ai-agents", editable = "lexigram-ai-agents" },
-    { name = "lexigram-ai-evaluation", editable = "lexigram-ai-evaluation" },
-    { name = "lexigram-ai-feedback", editable = "lexigram-ai-feedback" },
-    { name = "lexigram-ai-governance", editable = "lexigram-ai-governance" },
-    { name = "lexigram-ai-guard", editable = "lexigram-ai-guard" },
-    { name = "lexigram-ai-llm", editable = "lexigram-ai-llm" },
-    { name = "lexigram-ai-mcp", editable = "lexigram-ai-mcp" },
-    { name = "lexigram-ai-memory", editable = "lexigram-ai-memory" },
-    { name = "lexigram-ai-observability", editable = "lexigram-ai-observability" },
-    { name = "lexigram-ai-prompt", editable = "lexigram-ai-prompt" },
-    { name = "lexigram-ai-rag", editable = "lexigram-ai-rag" },
-    { name = "lexigram-ai-relay", editable = "lexigram-ai-relay" },
-    { name = "lexigram-ai-relay-gateway", editable = "lexigram-ai-relay-gateway" },
-    { name = "lexigram-ai-session", editable = "lexigram-ai-session" },
-    { name = "lexigram-ai-skills", editable = "lexigram-ai-skills" },
-    { name = "lexigram-ai-workers", editable = "lexigram-ai-workers" },
+    { name = "lexigram-ai", editable = "experimental/ai/lexigram-ai" },
+    { name = "lexigram-ai-agents", editable = "experimental/ai/lexigram-ai-agents" },
+    { name = "lexigram-ai-evaluation", editable = "experimental/ai/lexigram-ai-evaluation" },
+    { name = "lexigram-ai-feedback", editable = "experimental/ai/lexigram-ai-feedback" },
+    { name = "lexigram-ai-governance", editable = "experimental/ai/lexigram-ai-governance" },
+    { name = "lexigram-ai-guard", editable = "experimental/ai/lexigram-ai-guard" },
+    { name = "lexigram-ai-llm", editable = "experimental/ai/lexigram-ai-llm" },
+    { name = "lexigram-ai-mcp", editable = "experimental/ai/lexigram-ai-mcp" },
+    { name = "lexigram-ai-memory", editable = "experimental/ai/lexigram-ai-memory" },
+    { name = "lexigram-ai-observability", editable = "experimental/ai/lexigram-ai-observability" },
+    { name = "lexigram-ai-prompt", editable = "experimental/ai/lexigram-ai-prompt" },
+    { name = "lexigram-ai-rag", editable = "experimental/ai/lexigram-ai-rag" },
+    { name = "lexigram-ai-relay", editable = "experimental/ai/lexigram-ai-relay" },
+    { name = "lexigram-ai-relay-gateway", editable = "experimental/ai/lexigram-ai-relay-gateway" },
+    { name = "lexigram-ai-session", editable = "experimental/ai/lexigram-ai-session" },
+    { name = "lexigram-ai-skills", editable = "experimental/ai/lexigram-ai-skills" },
+    { name = "lexigram-ai-workers", editable = "experimental/ai/lexigram-ai-workers" },
     { name = "lexigram-audit", editable = "packages/lexigram-audit" },
     { name = "lexigram-auth", editable = "packages/lexigram-auth" },
     { name = "lexigram-cache", editable = "packages/lexigram-cache" },
