@@ -10,8 +10,9 @@ UV         := uv
 PYTEST     := $(UV) run pytest
 RUFF       := $(UV) run ruff
 MYPY       := $(UV) run mypy
-TYPED_PKGS := lexigram-audit lexigram-auth lexigram-cache lexigram-events lexigram-monitor lexigram-notification lexigram-queue lexigram-search lexigram-sql lexigram-testing lexigram-vector lexigram-webhook lexigram-workflow
-WEB_DIR    := lexigram-web
+CORE_SRC   := core/lexigram/src
+TYPED_PKGS := packages/lexigram-audit packages/lexigram-auth packages/lexigram-cache packages/lexigram-events packages/lexigram-monitor packages/lexigram-notification packages/lexigram-queue packages/lexigram-search packages/lexigram-sql packages/lexigram-testing packages/lexigram-vector packages/lexigram-webhook packages/lexigram-workflow
+WEB_DIR    := packages/lexigram-web
 
 # Extension packages that pass mypy with their own per-package config.
 # Add packages here one by one as they are cleaned up (see `make type-pkg`).
@@ -21,11 +22,11 @@ TYPED_PKGS := lexigram-ai-agents lexigram-ai-evaluation lexigram-ai-feedback \
               lexigram-ai-observability lexigram-ai-prompt \
               lexigram-ai-relay-gateway lexigram-ai-session \
               lexigram-ai-skills lexigram-ai-workers \
-              lexigram-audit lexigram-events lexigram-monitor \
-              lexigram-notification lexigram-nosql lexigram-queue \
-              lexigram-ui lexigram-vector lexigram-workflow \
-              lexigram-cache lexigram-auth lexigram-search \
-              lexigram-sql lexigram-testing lexigram-webhook
+              packages/lexigram-audit packages/lexigram-events packages/lexigram-monitor \
+              packages/lexigram-notification packages/lexigram-nosql packages/lexigram-queue \
+              lexigram-ui packages/lexigram-vector packages/lexigram-workflow \
+              packages/lexigram-cache packages/lexigram-auth packages/lexigram-search \
+              packages/lexigram-sql packages/lexigram-testing packages/lexigram-webhook
 
 # ---------------------------------------------------------------------------
 # Targets
