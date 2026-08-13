@@ -1,0 +1,105 @@
+"""Entry point for the event-driven orders demo (CQRS).
+
+Usage::
+
+    uv run python -m orders place "Alice Wonder" --item "SKU-1,2,9.99" --item "SKU-2,1,149.00"
+    uv run python -m orders pay <order-id> 9.99
+    uv run python -m orders ship <order-id>
+    uv run python -m orders list
+    uv run python -m orders outbox
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+from decimal import Decimal
+import sys
+
+from lexigram.app import Application
+from lexigram.contracts.events import EventBusProtocol
+from lexigram.events.buses.command import CommandBusImpl
+from orders.domain import OrderItem
+from orders.events import OrdersView
+from orders.module import OrdersModule
+from orders.outbox import Outbox
+from orders.repositories import OrderRepository
+from orders.services import OrdersApi
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="orders", description="Event-driven orders demo (CQRS)"
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_place = sub.add_parser("place", help="place a new order")
+    p_place.add_argument("customer")
+    p_place.add_argument(
+        "--item", action="append", default=[], help="sku,qty,unit_price"
+    )
+
+    p_pay = sub.add_parser("pay", help="mark an order paid")
+    p_pay.add_argument("order_id")
+    p_pay.add_argument("amount", type=Decimal)
+
+    p_ship = sub.add_parser("ship", help="mark an order shipped")
+    p_ship.add_argument("order_id")
+
+    sub.add_parser("list", help="list projected orders")
+    sub.add_parser("outbox", help="show and flush the outbox")
+    return parser
+
+
+def _parse_item(spec: str) -> OrderItem:
+    parts = spec.split(",")
+    if len(parts) != 3:
+        raise SystemExit(f"invalid --item '{spec}'; expected sku,qty,unit_price")
+    sku, qty, price = parts
+    return OrderItem(sku=sku, name=sku, qty=int(qty), unit_price=Decimal(price))
+
+
+async def _run(args: argparse.Namespace) -> None:
+    async with Application.boot(
+        name="orders", modules=[OrdersModule.configure()]
+    ) as app:
+        api = OrdersApi(
+            command_bus=await app.container.resolve(CommandBusImpl),
+            event_bus=await app.container.resolve(EventBusProtocol),
+            repository=await app.container.resolve(OrderRepository),
+            view=await app.container.resolve(OrdersView),
+            outbox=await app.container.resolve(Outbox),
+        )
+
+        if args.command == "place":
+            items = [_parse_item(spec) for spec in args.item]
+            order_id = await api.place(args.customer, items)
+            print(f"order placed: {order_id}")
+        elif args.command == "pay":
+            await api.pay(args.order_id, args.amount)
+            print(f"order paid: {args.order_id} ({args.amount})")
+        elif args.command == "ship":
+            await api.ship(args.order_id)
+            print(f"order shipped: {args.order_id}")
+        elif args.command == "list":
+            for row in api.list_orders():
+                print(
+                    f"{row['order_id']}\t{row['customer']}\t{row['total']}\t{row['status']}"
+                )
+        elif args.command == "outbox":
+            for record in api.list_outbox():
+                print(f"{record['event_type']}\t{record['status']}")
+            sent = await api.flush_outbox()
+            print(f"flushed: {sent}")
+
+
+def main() -> None:
+    args = _build_parser().parse_args()
+    try:
+        asyncio.run(_run(args))
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+
+if __name__ == "__main__":
+    main()
