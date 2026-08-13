@@ -161,3 +161,22 @@ experimental/*/lexigram*/docs/plans/
 core/lexigram*/docs/**/
 packages/lexigram*/docs/**/
 experimental/*/lexigram*/docs/**/
+
+# Re-exclude tooling artifacts under the tiered paths (the allowlist
+# above re-admits them — last match wins).
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+test.db
+*.tmp
+*.log
+!core/lexigram*/tests/fixtures/test.db
+!packages/lexigram*/tests/fixtures/test.db
+!experimental/*/lexigram*/tests/fixtures/test.db
