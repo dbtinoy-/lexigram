@@ -34,11 +34,25 @@ def _package_names(entries: list[str]) -> set[str]:
     ("label", "entries"),
     [
         ("mypy_path", CONFIG["tool"]["mypy"]["mypy_path"]),
+        # testpaths must stay explicit: pytest rejects `pytest_plugins` in
+        # non-top-level conftests when walking from tier roots (10 members hit).
         ("testpaths", CONFIG["tool"]["pytest"]["ini_options"]["testpaths"]),
-        ("coverage_source", CONFIG["tool"]["coverage"]["run"]["source"]),
     ],
 )
 def test_config_list_covers_every_workspace_member(label: str, entries: list[str]) -> None:
     missing = MEMBERS - _package_names(entries)
 
     assert not missing, f"{label} is missing workspace members: {sorted(missing)}"
+
+
+def test_collapsed_lists_cover_all_tier_roots() -> None:
+    """Collapsed lists must point at the tier roots, not individual packages.
+
+    Coverage `source` is collapsed after Task 14; only `testpaths` and `mypy_path`
+    still enumerate every package (pytest's `pytest_plugins` rule and mypy's lack
+    of glob expansion both require explicit paths).
+    """
+
+    roots = {"core", "packages", "experimental"}
+
+    assert roots <= set(CONFIG["tool"]["coverage"]["run"]["source"])
