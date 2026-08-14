@@ -27,13 +27,17 @@ from lexigram.di.module import Module, module
 from lexigram.ai.prompt import PromptModule
 from lexigram.ai.prompt.config import PromptConfig
 
-@module(imports=[
-    PromptModule.configure(
-        PromptConfig(default_format="f_string", sanitize_inputs=True)
-    )
-])
+
+@module(
+    imports=[
+        PromptModule.configure(
+            PromptConfig(default_format="f_string", sanitize_inputs=True)
+        )
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

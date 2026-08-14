@@ -8,6 +8,7 @@ Revision ID: schema_009
 Revises: schema_008
 Create Date: 2026-08-06
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -21,8 +22,12 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     with op.batch_alter_table("projects") as batch_op:
-        batch_op.add_column(sa.Column("format", sa.VARCHAR(50), nullable=False, server_default="narration"))
-        batch_op.add_column(sa.Column("caption_style", sa.VARCHAR(20), nullable=False, server_default="highlight"))
+        batch_op.add_column(
+            sa.Column("format", sa.VARCHAR(50), nullable=False, server_default="narration")
+        )
+        batch_op.add_column(
+            sa.Column("caption_style", sa.VARCHAR(20), nullable=False, server_default="highlight")
+        )
 
 
 def downgrade() -> None:

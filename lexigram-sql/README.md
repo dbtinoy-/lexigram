@@ -50,12 +50,14 @@ class AppModule(Module):
 async def main() -> None:
     async with Application.boot(modules=[AppModule]) as app:
         from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
+
         db = await app.container.resolve(DatabaseProviderProtocol)
         result = await db.execute_query("SELECT 1")
 
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -135,12 +137,11 @@ from lexigram import Application
 from lexigram.sql import DatabaseModule
 from lexigram.sql.config import DatabaseConfig
 
+
 async def test_repository():
     async with Application.boot(
         modules=[
-            DatabaseModule.stub(
-                DatabaseConfig(url="sqlite+aiosqlite:///:memory:")
-            )
+            DatabaseModule.stub(DatabaseConfig(url="sqlite+aiosqlite:///:memory:"))
         ]
     ) as app:
         db = await app.container.resolve(DatabaseProviderProtocol)

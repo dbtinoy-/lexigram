@@ -40,7 +40,9 @@ async def main() -> None:
         asset = MediaAsset(mime_type="audio/mp3", provider="local", bytes_data=b"<mp3>")
         result = await beat.analyze(BeatAnalysisRequest(asset=asset))
         if result.is_ok():
-            analysis = result.unwrap()  # BeatAnalysisResult — tempo_bpm + beat_timestamps
+            analysis = (
+                result.unwrap()
+            )  # BeatAnalysisResult — tempo_bpm + beat_timestamps
             print(analysis.tempo_bpm)
 
 
@@ -111,6 +113,7 @@ BeatAnalysisModule.configure(
 ```python
 from lexigram import Application
 from lexigram.multimedia.beat import BeatAnalysisModule
+
 
 async def test_boot():
     async with Application.boot(modules=[BeatAnalysisModule.stub()]) as app:

@@ -6,7 +6,6 @@ Prevents duplicate task execution using idempotency keys.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 from datetime import UTC, datetime
 import hashlib
 from typing import Any
@@ -14,6 +13,13 @@ import uuid
 
 from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
 from lexigram.contracts.exceptions import IdempotencyStoreError
+from lexigram.contracts.infra.tasks import (
+    IdempotencyManagerProtocol,
+    IdempotencyResult,
+    IdempotencyResultStatus,
+    IdempotentTaskManagerProtocol,
+    TaskQueueProtocol,
+)
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 from lexigram.result import Result
@@ -23,19 +29,8 @@ from lexigram.tasks.models.job import JobProtocol
 logger = get_logger(__name__)
 
 
-@dataclass
-class IdempotencyResult:
-    """Result of task submission."""
-
-    task_id: str
-    idempotency_key: str
-    status: str  # "submitted", "duplicate", "completed"
-    created_at: datetime
-    result: Any | None = None
-
-
 @inject
-class IdempotencyManager:
+class IdempotencyManager(IdempotencyManagerProtocol):
     """Manages task idempotency keys.
 
     Stores submitted tasks and their results to detect duplicates.
@@ -148,8 +143,8 @@ class IdempotencyManager:
             return IdempotencyResult(
                 task_id=existing["task_id"],
                 idempotency_key=existing["idempotency_key"],
-                status=existing["status"],
-                created_at=existing["created_at"],
+                status=IdempotencyResultStatus(existing["status"]),
+                created_at=datetime.fromisoformat(existing["created_at"]),
                 result=existing.get("result"),
             )
 
@@ -221,13 +216,13 @@ class IdempotencyManager:
 
 
 @inject
-class IdempotentTaskManager:
+class IdempotentTaskManager(IdempotentTaskManagerProtocol):
     """Task manager with idempotency support."""
 
     def __init__(
         self,
-        queue_client: Any,
-        idempotency_manager: IdempotencyManager,
+        queue_client: TaskQueueProtocol,
+        idempotency_manager: IdempotencyManagerProtocol,
     ) -> None:
         """Initialize task manager.
 
@@ -328,7 +323,7 @@ class IdempotentTaskManager:
             return IdempotencyResult(
                 task_id=task_id,
                 idempotency_key=key,
-                status="submitted",
+                status=IdempotencyResultStatus.SUBMITTED,
                 created_at=datetime.now(UTC),
             )
 

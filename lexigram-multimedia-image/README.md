@@ -75,9 +75,7 @@ export LEX_MULTIMEDIA__IMAGE__OPENAI_MODEL=dall-e-3
 from lexigram.multimedia.image import ImageModule
 from lexigram.multimedia.image.config import ImageConfig
 
-ImageModule.configure(
-    config=ImageConfig(backend="openai", openai_model="dall-e-3")
-)
+ImageModule.configure(config=ImageConfig(backend="openai", openai_model="dall-e-3"))
 ```
 
 ### Config reference
@@ -117,6 +115,7 @@ ImageModule.configure(
 ```python
 from lexigram import Application
 from lexigram.multimedia.image import ImageModule
+
 
 async def test_boot():
     async with Application.boot(modules=[ImageModule.stub()]) as app:

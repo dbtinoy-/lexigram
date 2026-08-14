@@ -63,9 +63,7 @@ class AblationRunner:
             Ok(AblationResult) with per-metric deltas, or Err(AblationError)
             when either checkpoint is missing.
         """
-        return await self.compare(
-            knob, run_id, baseline_slug, run_id, ablated_slug
-        )
+        return await self.compare(knob, run_id, baseline_slug, run_id, ablated_slug)
 
     async def compare(
         self,

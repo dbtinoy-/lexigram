@@ -41,7 +41,9 @@ class TestUserService:
         return UserService(cache=cache)
 
     @pytest.mark.asyncio
-    async def test_returns_cached_user(self, service: UserService, cache: FakeCache) -> None:
+    async def test_returns_cached_user(
+        self, service: UserService, cache: FakeCache
+    ) -> None:
         await cache.set("user:123", {"id": "123", "name": "Alice"})
         result = await service.find_cached("123")
         assert result.is_ok()

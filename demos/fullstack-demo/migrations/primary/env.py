@@ -22,7 +22,9 @@ def _get_url() -> str:
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=_get_url(), target_metadata=target_metadata, literal_binds=True,
+        url=_get_url(),
+        target_metadata=target_metadata,
+        literal_binds=True,
         version_table=_VERSION_TABLE,
     )
     with context.begin_transaction():
@@ -30,7 +32,9 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata, version_table=_VERSION_TABLE)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, version_table=_VERSION_TABLE
+    )
     with context.begin_transaction():
         context.run_migrations()
 
@@ -46,4 +50,5 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     import asyncio
+
     asyncio.run(run_migrations_online())

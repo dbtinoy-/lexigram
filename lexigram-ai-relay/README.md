@@ -33,6 +33,7 @@ async def main() -> None:
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -40,7 +41,11 @@ Convert a payload directly with the built-in registry:
 
 ```python
 from lexigram.ai.relay import RelayConverterRegistry, convert_request_by_id
-from lexigram.contracts.ai.relay import OpenAIChatMessage, OpenAIChatRequest, RelayFormat
+from lexigram.contracts.ai.relay import (
+    OpenAIChatMessage,
+    OpenAIChatRequest,
+    RelayFormat,
+)
 from lexigram.contracts.ai.relay.context import RelayConversionContext
 
 registry = RelayConverterRegistry.with_defaults()

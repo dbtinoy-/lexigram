@@ -26,12 +26,16 @@ from lexigram.ai.agents import AgentsModule
 from lexigram.ai.agents.config import AgentConfig
 from lexigram.ai.llm import LLMModule
 
-@module(imports=[
-    LLMModule.stub(),                       # provides LLMClientProtocol
-    AgentsModule.configure(AgentConfig(max_iterations=10)),
-])
+
+@module(
+    imports=[
+        LLMModule.stub(),  # provides LLMClientProtocol
+        AgentsModule.configure(AgentConfig(max_iterations=10)),
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

@@ -47,7 +47,12 @@ uv add openai  # or anthropic, cohere, etc.
 import asyncio
 
 from lexigram import Application
-from lexigram.contracts.data.vector import CollectionConfig, SearchQuery, VectorRecord, VectorStoreProtocol
+from lexigram.contracts.data.vector import (
+    CollectionConfig,
+    SearchQuery,
+    VectorRecord,
+    VectorStoreProtocol,
+)
 from lexigram.vector import VectorModule
 
 
@@ -78,9 +83,7 @@ async def main() -> None:
         )
 
         # Search
-        results = await collection.search(
-            SearchQuery(vector=[0.15] * 1536, top_k=5)
-        )
+        results = await collection.search(SearchQuery(vector=[0.15] * 1536, top_k=5))
 
         for result in results:
             print(f"{result.id}: {result.metadata['title']} (score: {result.score})")
@@ -166,14 +169,16 @@ or when you need multiple module instances with different settings.
 from lexigram.vector import VectorModule
 from lexigram.vector.config import QdrantConfig, VectorConfig
 
-app.add_module(VectorModule.configure(
-    VectorConfig(
-        backend="qdrant",
-        qdrant=QdrantConfig(
-            url="http://localhost:6333",
-        ),
+app.add_module(
+    VectorModule.configure(
+        VectorConfig(
+            backend="qdrant",
+            qdrant=QdrantConfig(
+                url="http://localhost:6333",
+            ),
+        )
     )
-))
+)
 ```
 
 ### Config reference

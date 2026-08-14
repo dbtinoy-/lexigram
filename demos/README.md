@@ -1,9 +1,19 @@
 # Demos
 
 In-repo demo applications built on the Lexigram framework. Each demo runs
-against the editable framework packages in this repository and is gated in CI
-with the same checks as the framework (format, lint, mypy, tests), so the
-demos double as living integration surfaces.
+against the editable framework packages in this repository and is gated for
+reviewers the same way the framework is:
+
+- **Format + lint** — covered by the root `ruff format --check .` / `ruff check .`
+  gates (per-file ignores for demo-specific rules are configured in the root
+  `pyproject.toml`).
+- **Tests** — `demos/event-driven-orders` and `demos/realtime-monitor` run
+  their suites in the workspace env (`make test-demos`);
+  `demos/fullstack-demo` runs its own standalone suite (`uv run pytest`).
+- **Type check** — `demos/fullstack-demo` has its own mypy config; the
+  script-only `demos/llm-experiment` is compile-gated.
+- `make check-demos` runs the pytest-bearing demo suites + compile checks, and
+  is part of `make ci`; GitHub Actions gates all demos in the "Demos gate" job.
 
 ## fullstack-demo
 

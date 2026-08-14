@@ -12,6 +12,7 @@ from lexigram.testing.fakes.governance import FakeResourceUnitTracker
 from lexigram.testing.fakes.lifecycle import FakeUnitOfWork
 from lexigram.testing.fakes.logging import FakeLogger, LogEntry
 from lexigram.testing.fakes.monitoring import FakeMetricsCollector
+from lexigram.testing.fakes.redis import FakeRedisClient
 from lexigram.testing.fakes.secrets import FakeRotatableSecretStore
 from lexigram.testing.fakes.tracing import FakeSpan, FakeTracer
 
@@ -26,6 +27,7 @@ __all__ = [
     "FakeLogger",
     "FakeMetricsCollector",
     "FakeQueryBus",
+    "FakeRedisClient",
     "FakeResourceUnitTracker",
     "FakeRotatableSecretStore",
     "FakeSpan",

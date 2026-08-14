@@ -41,6 +41,7 @@ async def main() -> None:
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -79,6 +80,7 @@ if __name__ == "__main__":
 ```python
 from lexigram.testing.fakes import FakeRotatableSecretStore
 from lexigram.testing.compliance import StoreConformanceSuite
+
 
 class TestMyStore(StoreConformanceSuite):
     @pytest.fixture

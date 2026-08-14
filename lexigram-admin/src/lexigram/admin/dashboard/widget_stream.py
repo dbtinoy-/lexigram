@@ -1,18 +1,19 @@
 """Widget-stream SSE route: live push for dashboard widgets.
 
 Wraps SubjectAdminEventHub in the sanctioned sse_from_stream bridge
-(lexigram-web), narrowing the caller-requested `resources` filter to
+(resolved from the container as ``ReactiveSseBridgeProtocol``, provided by
+lexigram-web), narrowing the caller-requested `resources` filter to
 only resources the caller is authorized to list via PermissionService.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.admin.realtime import SubjectAdminEventHub
+from lexigram.contracts.web.sse import ReactiveSseBridgeProtocol
 from lexigram.reactive import Stream
 from lexigram.serialization import dumps_str
-from lexigram.web.transport.reactive import sse_from_stream
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -62,16 +63,34 @@ async def authorized_resources(
 def build_widget_event_stream_handler(
     widget_hub: SubjectAdminEventHub,
     permission_service: PermissionService,
+    sse_bridge: ReactiveSseBridgeProtocol | None = None,
 ) -> Callable[[Request], Awaitable[Response]]:
     """Build the ASGI route handler for GET /admin/_sse/widgets.
 
     Args:
         widget_hub: Hub to subscribe to for live admin events.
         permission_service: Used to authorize the caller's resources= filter.
+        sse_bridge: Optional :class:`ReactiveSseBridgeProtocol` bridging the
+            reactive stream into an SSE response (resolved from the
+            container by the mount pipeline; provided by lexigram-web).
+            Required to serve requests — when omitted the returned handler
+            raises ``RuntimeError``.
 
     Returns:
         An async Starlette-style route handler.
+
+    Raises:
+        RuntimeError: When a request arrives and no *sse_bridge* was given.
     """
+
+    def _require_bridge() -> ReactiveSseBridgeProtocol:
+        if sse_bridge is None:
+            raise RuntimeError(
+                "no sse_bridge provided; resolve ReactiveSseBridgeProtocol "
+                "from the container (lexigram-web) before building the "
+                "widget stream handler"
+            )
+        return sse_bridge
 
     async def widget_event_stream(request: Request) -> Response:
         user = getattr(request.state, "user", None)
@@ -84,15 +103,18 @@ def build_widget_event_stream_handler(
         def serialize(event: Any) -> str:
             return dumps_str(event.to_dict())
 
-        return sse_from_stream(
-            Stream(
-                widget_hub.subscribe(
-                    user_id=user_id,
-                    resources=resources,
-                    tenant_id=tenant_id,
-                )
+        return cast(
+            "Response",
+            _require_bridge()(
+                Stream(
+                    widget_hub.subscribe(
+                        user_id=user_id,
+                        resources=resources,
+                        tenant_id=tenant_id,
+                    )
+                ),
+                serializer=serialize,
             ),
-            serializer=serialize,
         )
 
     return widget_event_stream

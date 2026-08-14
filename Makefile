@@ -88,6 +88,27 @@ ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 	  && cd $(WEB_DIR) && $(MYPY) src/lexigram/web
 	for p in $(TYPED_PKGS); do (cd $$p && $(MYPY) src) || exit 1; done
 	$(PYTEST) --tb=short --cov-fail-under=80
+	$(MAKE) check-demos
+
+# ---------------------------------------------------------------------------
+# Demos (living integration surfaces — gated like the framework)
+# ---------------------------------------------------------------------------
+# The two pytest-bearing demos run from the repo root in the workspace env;
+# llm-experiment ships scripts + a notebook and is compile-gated. Format
+# and lint already cover demos/ via the root `ruff` invocations above.
+DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests
+DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor
+
+.PHONY: test-demos
+test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor)
+	$(PYTEST) -q -m "not integration" --no-cov $(DEMO_TEST_DIRS)
+
+.PHONY: verify-demos
+verify-demos:  ## Compile-check demo entry points and scripts (incl. llm-experiment)
+	$(UV) run python -m compileall -q $(DEMO_COMPILE_DIRS)
+
+.PHONY: check-demos
+check-demos: test-demos verify-demos  ## Demo gate: tests + compile checks
 
 .PHONY: test-integration
 test-integration:  ## Run integration tests (requires Docker Compose services)

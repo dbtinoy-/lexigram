@@ -16,6 +16,7 @@ This module offers:
 ```python
 from lexigram.testing import TestBed, MockDatabaseProvider, MockCacheProvider
 
+
 async def test_my_feature():
     # Create test bed with mock providers
     bed = TestBed()
@@ -59,9 +60,15 @@ Mock implementations for all Lexigram packages:
 
 ```python
 from lexigram.testing import (
-    MockWebProvider, MockTaskProvider, MockMessagingProvider,
-    MockGraphQLProvider, MockMonitorProvider, MockEventsProvider,
-    MockConnectProvider, MockIntelligenceProvider, MockSearchProvider
+    MockWebProvider,
+    MockTaskProvider,
+    MockMessagingProvider,
+    MockGraphQLProvider,
+    MockMonitorProvider,
+    MockEventsProvider,
+    MockConnectProvider,
+    MockIntelligenceProvider,
+    MockSearchProvider,
 )
 
 # Create specialized mocks
@@ -75,6 +82,7 @@ Mock lexigram Context for request-scoped testing:
 
 ```python
 from lexigram.testing import mock_context
+
 
 async def test_with_context():
     ctx = mock_context()
@@ -147,7 +155,9 @@ print(f"Avg time: {result['avg_time']:.4f}s, Ops/sec: {result['ops_per_sec']:.2f
 from lexigram.testing import HTTPTestingHelper
 
 # Create mock request/response
-request = HTTPTestingHelper.create_mock_request("POST", "/api/users", body='{"name": "John"}')
+request = HTTPTestingHelper.create_mock_request(
+    "POST", "/api/users", body='{"name": "John"}'
+)
 response = HTTPTestingHelper.create_mock_response(201, json_data={"id": 123})
 
 # Assert response
@@ -160,10 +170,9 @@ HTTPTestingHelper.assert_http_response(response, 201, {"id": 123})
 from lexigram.testing import DatabaseTestingHelper
 
 # Create mock query result
-result = DatabaseTestingHelper.create_mock_query_result([
-    {"id": 1, "name": "John"},
-    {"id": 2, "name": "Jane"}
-])
+result = DatabaseTestingHelper.create_mock_query_result(
+    [{"id": 1, "name": "John"}, {"id": 2, "name": "Jane"}]
+)
 
 # Assert result
 DatabaseTestingHelper.assert_query_result(result, expect_success=True)
@@ -182,7 +191,9 @@ tracker = EventTestingHelper.create_event_handler_tracker()
 await tracker["handler"](event)
 
 # Assert handling
-EventTestingHelper.assert_event_handled(tracker, expected_count=1, event_type="user.created")
+EventTestingHelper.assert_event_handled(
+    tracker, expected_count=1, event_type="user.created"
+)
 ```
 
 ### Security Testing
@@ -207,9 +218,7 @@ from lexigram.testing import ConfigurationTestingHelper
 
 # Create nested config
 config = ConfigurationTestingHelper.create_nested_config(
-    "database.host", "localhost",
-    "database.port", 5432,
-    "cache.ttl", 300
+    "database.host", "localhost", "database.port", 5432, "cache.ttl", 300
 )
 
 # Assert config values
@@ -223,6 +232,7 @@ All components work seamlessly with pytest:
 ```python
 import pytest
 from lexigram.testing import test_bed, mock_db, mock_cache, test_context
+
 
 @pytest.mark.asyncio
 async def test_my_service(test_bed, mock_db, mock_cache, test_context):
@@ -263,9 +273,7 @@ from lexigram.testing import ErrorTestingHelper
 
 # Test retry scenarios
 retry_func = ErrorTestingHelper.create_retry_scenario(
-    attempts=3,
-    success_on_attempt=3,
-    exception_class=ConnectionError
+    attempts=3, success_on_attempt=3, exception_class=ConnectionError
 )
 
 # Should fail twice, succeed on third try
@@ -292,6 +300,7 @@ assert len(diffs) == 0
 
 ```python
 from lexigram.testing import IntegrationTester
+
 
 async def test_multi_provider_integration():
     tester = IntegrationTester()

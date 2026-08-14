@@ -104,12 +104,20 @@ def serve_gateway(
 ) -> None:
     """Load the gateway config and serve the composed application.
 
+    The server runner is loaded from the ``lexigram.servers`` entry-point
+    group (name ``"web"``, provided by ``lexigram-web``) — never imported
+    directly, mirroring the module composition in :func:`build_gateway_app`.
+
     Args:
         config_path: Path to the gateway configuration file.
         host: Bind address.
         port: Bind port.
+
+    Raises:
+        ModuleNotFoundError: When no ``lexigram.servers`` runner named
+            ``"web"`` is installed.
     """
-    from lexigram.web.server.runner import run_server
+    run_server = _load_module("lexigram.servers", "web")
 
     config = load_gateway_config(config_path)
     app = build_gateway_app(config, host=host)

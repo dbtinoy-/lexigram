@@ -79,6 +79,7 @@ async def main() -> None:
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -200,10 +201,9 @@ from lexigram import Application
 from lexigram.queue import BusMessage, QueueModule
 from lexigram.contracts.queue.protocols import QueueProtocol
 
+
 async def test_message_consumer():
-    async with Application.boot(
-        modules=[QueueModule.stub()]
-    ) as app:
+    async with Application.boot(modules=[QueueModule.stub()]) as app:
         queue = await app.container.resolve(QueueProtocol)
         await queue.publish("test-topic", BusMessage(payload={"key": "value"}))
         # Test with in-memory backend

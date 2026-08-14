@@ -19,18 +19,20 @@ def parse_ideas(text: str) -> list[Idea]:
         fields = p["fields"]
         score_text = fields.get("Quotability Score", "0")
         score_match = re.search(r"[\d.]+", score_text)
-        ideas.append(Idea(
-            title=p["title"],
-            core_message=fields.get("Core Message", ""),
-            hook_line=fields.get("Hook Line", ""),
-            identity_signal=fields.get("Identity Signal", ""),
-            permission_given=fields.get("Permission Given", ""),
-            emotional_arc=fields.get("Emotional Arc", ""),
-            target_audience=fields.get("Target Audience", ""),
-            quotability_score=float(score_match.group()) if score_match else 0.0,
-            share_trigger=fields.get("Share Trigger", ""),
-            topic="self_improvement",
-        ))
+        ideas.append(
+            Idea(
+                title=p["title"],
+                core_message=fields.get("Core Message", ""),
+                hook_line=fields.get("Hook Line", ""),
+                identity_signal=fields.get("Identity Signal", ""),
+                permission_given=fields.get("Permission Given", ""),
+                emotional_arc=fields.get("Emotional Arc", ""),
+                target_audience=fields.get("Target Audience", ""),
+                quotability_score=float(score_match.group()) if score_match else 0.0,
+                share_trigger=fields.get("Share Trigger", ""),
+                topic="self_improvement",
+            )
+        )
     return ideas
 
 
@@ -69,7 +71,11 @@ def parse_script(text: str) -> ParsedScript:
     meta_sec = filled["metaphor"]
     conc_sec = filled["conclusion"]
 
-    total_dur = float(duration_match.group(1)) if duration_match else hook_sec + msg_sec + meta_sec + conc_sec
+    total_dur = (
+        float(duration_match.group(1))
+        if duration_match
+        else hook_sec + msg_sec + meta_sec + conc_sec
+    )
 
     arc_match = re.search(r"EMOTIONAL ARC MAP:\s*\n(.+)", text)
     arcs = [s.strip() for s in re.split(r"->|→", arc_match.group(1))] if arc_match else []
@@ -82,8 +88,11 @@ def parse_script(text: str) -> ParsedScript:
         ScriptSection("conclusion", conclusion, conc_sec),
     ]
     return ParsedScript(
-        title=title, sections=sections,
-        total_duration=total_dur, word_count=word_count, pacing_wps=pacing_wps,
+        title=title,
+        sections=sections,
+        total_duration=total_dur,
+        word_count=word_count,
+        pacing_wps=pacing_wps,
         emotional_arc=arcs,
     )
 

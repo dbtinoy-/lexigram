@@ -26,9 +26,11 @@ from lexigram.di.module import Module, module
 from lexigram.cli import CLIModule
 from lexigram.cli.config import CLIConfig
 
+
 @module(imports=[CLIModule.configure(CLIConfig())])
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services
@@ -116,6 +118,7 @@ CLIModule.configure(config)
 ```python
 from lexigram import Application
 from lexigram.cli import CLIModule
+
 
 async def test_cli_module():
     async with Application.boot(modules=[CLIModule.stub()]) as app:

@@ -25,18 +25,22 @@ from lexigram.di.module import Module, module
 from lexigram.ai.observability import ObservabilityModule
 from lexigram.ai.observability.config import ObservabilityConfig
 
-@module(imports=[
-    ObservabilityModule.configure(
-        ObservabilityConfig(
-            enabled=True,
-            metrics_enabled=True,
-            tracing_enabled=True,
-            health_checks_enabled=True,
+
+@module(
+    imports=[
+        ObservabilityModule.configure(
+            ObservabilityConfig(
+                enabled=True,
+                metrics_enabled=True,
+                tracing_enabled=True,
+                health_checks_enabled=True,
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

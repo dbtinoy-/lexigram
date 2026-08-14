@@ -211,6 +211,7 @@ class AdminMountContributorsMixin:
             )
             from lexigram.admin.rbac.service import PermissionService
             from lexigram.admin.realtime.subject_hub import SubjectAdminEventHub
+            from lexigram.contracts.web.sse import ReactiveSseBridgeProtocol
 
             widget_hub: SubjectAdminEventHub = await container.resolve(
                 SubjectAdminEventHub
@@ -218,11 +219,14 @@ class AdminMountContributorsMixin:
             permission_service: PermissionService = await container.resolve(
                 PermissionService
             )
+            sse_bridge = await container.resolve(ReactiveSseBridgeProtocol)
 
             router.add_route(
                 "/_sse/widgets",
                 "GET",
-                build_widget_event_stream_handler(widget_hub, permission_service),
+                build_widget_event_stream_handler(
+                    widget_hub, permission_service, sse_bridge=sse_bridge
+                ),
                 "admin_sse_widgets",
             )
             _log.info("admin.sse_widgets_route_registered", path="/admin/_sse/widgets")

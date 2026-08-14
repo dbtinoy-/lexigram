@@ -126,12 +126,14 @@ or when you need multiple module instances with different settings.
 from lexigram.features.module import FeatureFlagsModule
 from lexigram.features.config import FeatureFlagsConfig
 
-app.add_module(FeatureFlagsModule.configure(
-    FeatureFlagsConfig(
-        cache_ttl=60,
-        initial_flags={"beta_dashboard": True},
+app.add_module(
+    FeatureFlagsModule.configure(
+        FeatureFlagsConfig(
+            cache_ttl=60,
+            initial_flags={"beta_dashboard": True},
+        )
     )
-))
+)
 ```
 
 ### Config reference
@@ -207,13 +209,11 @@ from lexigram.features.decorators import feature_flag, require_flag
 
 
 @feature_flag("beta_dashboard", manager=flags, fallback=lambda *_args, **_kwargs: None)
-async def render_beta() -> None:
-    ...
+async def render_beta() -> None: ...
 
 
 @require_flag("admin_reports", manager=flags)
-async def export_report() -> bytes:
-    ...
+async def export_report() -> bytes: ...
 ```
 
 Use the sync variants only when the active backend supports synchronous in-memory evaluation.

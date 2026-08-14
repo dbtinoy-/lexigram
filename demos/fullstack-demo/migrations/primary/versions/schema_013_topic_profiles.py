@@ -8,6 +8,7 @@ Revision ID: schema_013
 Revises: schema_012
 Create Date: 2026-08-09
 """
+
 from collections.abc import Sequence
 
 from alembic import op

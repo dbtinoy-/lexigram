@@ -30,11 +30,13 @@ uv add lexigram-contracts
 ```python
 from lexigram.result import Result, Ok, Err
 
+
 async def find_user(user_id: str) -> Result[User, UserNotFound]:
     user = await db.get(user_id)
     if not user:
         return Err(UserNotFound(user_id))
     return Ok(user)
+
 
 # Safe consumption
 result = await find_user("u-123")
@@ -48,9 +50,11 @@ from lexigram.domain.models import Entity, ValueObject
 from lexigram.domain import AggregateRoot
 from lexigram.contracts.domain.events import DomainEvent
 
+
 class UserCreated(DomainEvent):
     user_id: str
     email: str
+
 
 class User(AggregateRoot):
     email: str

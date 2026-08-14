@@ -66,6 +66,7 @@ async def my_copy_handler(tenant_id: str, ctx: MigrationContext) -> CopyResult:
     # your data migration logic
     return CopyResult(records_copied=100, records_failed=0)
 
+
 strategy = RowToSchemaCopy(copy_handler=my_copy_handler)
 ```
 

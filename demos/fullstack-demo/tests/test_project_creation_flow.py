@@ -13,7 +13,16 @@ from shorts_creator.models.project_profile import (
 from shorts_creator.services.project_service import ProjectService
 
 STATIC_JS = Path(__file__).resolve().parents[1] / "src/shorts_creator/ui/static/js"
-PREVIEW_JS = (STATIC_JS / "composer-preview.js").read_text()
+_PREVIEW_JS_PARTS = (
+    "color-utils.js",
+    "caption-field.js",
+    "preview-render.js",
+    "composer-panels.js",
+    "form-sync.js",
+    "presets.js",
+    "composer-preview.js",
+)
+PREVIEW_JS = "\n".join((STATIC_JS / p).read_text() for p in _PREVIEW_JS_PARTS)
 FORM_JS = (STATIC_JS / "project-form.js").read_text()
 
 

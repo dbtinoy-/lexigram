@@ -26,6 +26,7 @@ Usage::
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -87,7 +88,50 @@ class SseResponseFactoryProtocol(Protocol):
         ...
 
 
+@runtime_checkable
+class ReactiveSseBridgeProtocol(Protocol):
+    """Bridge a reactive event stream into a streaming SSE HTTP response.
+
+    Implementations are provided by ``lexigram-web``
+    (``lexigram.web.transport.reactive.sse_from_stream``) and registered in
+    the DI container during ``WebProvider.register()``.  Consumers such as
+    ``lexigram-admin`` resolve this protocol instead of importing the
+    bridge from ``lexigram-web`` directly.
+
+    Example::
+
+        bridge = await container.resolve(ReactiveSseBridgeProtocol)
+        response = bridge(
+            event_stream,
+            serializer=lambda event: dumps_str(event.to_dict()),
+        )
+    """
+
+    def __call__(
+        self,
+        stream: Any,
+        serializer: Callable[[Any], str] | None = None,
+        event_name: str | None = None,
+        keepalive: float | None = 15.0,
+    ) -> Any:
+        """Expose *stream* as an SSE HTTP response.
+
+        Args:
+            stream: A reactive event stream (``lexigram.reactive``).
+            serializer: Optional item → frame-string serializer; defaults
+                to ``str(item)``.
+            event_name: Optional SSE ``event:`` field value.
+            keepalive: Emit keepalive comments after this many seconds of
+                silence; ``None`` disables.
+
+        Returns:
+            A streaming SSE HTTP response.
+        """
+        ...
+
+
 __all__ = [
+    "ReactiveSseBridgeProtocol",
     "ServerSentEvent",
     "SseResponseFactoryProtocol",
 ]

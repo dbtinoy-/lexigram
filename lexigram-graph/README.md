@@ -26,7 +26,12 @@ uv add "lexigram-graph[neo4j]"
 from lexigram import Application
 from lexigram.di.module import Module, module
 from lexigram.graph import GraphConfig, GraphModule
-from lexigram.contracts.data.graph import GraphStoreProtocol, TraversalQuery, StartSpec, TraversalStep
+from lexigram.contracts.data.graph import (
+    GraphStoreProtocol,
+    TraversalQuery,
+    StartSpec,
+    TraversalStep,
+)
 
 
 @module(imports=[GraphModule.configure(GraphConfig(backend="memory"))])
@@ -54,6 +59,7 @@ async def main() -> None:
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 

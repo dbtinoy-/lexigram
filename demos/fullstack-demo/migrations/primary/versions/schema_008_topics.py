@@ -7,6 +7,7 @@ Revision ID: schema_008
 Revises: schema_007
 Create Date: 2026-08-06
 """
+
 import json
 from collections.abc import Sequence
 
@@ -24,7 +25,9 @@ def upgrade() -> None:
         batch_op.alter_column("script_type", new_column_name="topic")
 
     conn = op.get_bind()
-    rows = conn.execute(sa.text("SELECT id, idea_json FROM projects WHERE idea_json IS NOT NULL")).fetchall()
+    rows = conn.execute(
+        sa.text("SELECT id, idea_json FROM projects WHERE idea_json IS NOT NULL")
+    ).fetchall()
     for pid, raw in rows:
         if not raw:
             continue
@@ -50,7 +53,9 @@ def downgrade() -> None:
         batch_op.alter_column("topic", new_column_name="script_type")
 
     conn = op.get_bind()
-    rows = conn.execute(sa.text("SELECT id, idea_json FROM projects WHERE idea_json IS NOT NULL")).fetchall()
+    rows = conn.execute(
+        sa.text("SELECT id, idea_json FROM projects WHERE idea_json IS NOT NULL")
+    ).fetchall()
     for pid, raw in rows:
         if not raw:
             continue

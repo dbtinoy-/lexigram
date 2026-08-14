@@ -35,6 +35,7 @@ async def main() -> None:
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
 ```
 
@@ -139,6 +140,7 @@ A container-injectable service for fire-and-go tasks that ensures no task handle
 ```python
 from lexigram.tasks import BackgroundTaskManager
 
+
 class MyService:
     def __init__(self, task_manager: BackgroundTaskManager) -> None:
         self._tasks = task_manager
@@ -152,6 +154,7 @@ class MyService:
     async def check_pending(self) -> int:
         return self._tasks.pending_count
 
+
 # In your Provider.shutdown():
 await task_manager.shutdown(timeout=30.0)
 ```
@@ -161,6 +164,7 @@ Register as a singleton in your provider:
 ```python
 from lexigram.tasks import BackgroundTaskManager
 from lexigram.di.provider import Provider
+
 
 class MyProvider(Provider):
     async def register(self, container):
@@ -178,13 +182,15 @@ A base class for services that run a cycle of work on a fixed interval — repla
 ```python
 from lexigram.tasks import BackgroundTaskManager, OnErrorPolicy, ScheduledWorker
 
+
 class RetentionWorker(ScheduledWorker):
-    interval_seconds = 3600.0          # run every hour
-    initial_delay_seconds = 5.0        # wait 5 s before the first cycle
+    interval_seconds = 3600.0  # run every hour
+    initial_delay_seconds = 5.0  # wait 5 s before the first cycle
     on_error_policy = OnErrorPolicy.LOG_AND_CONTINUE  # (default)
 
     async def run_cycle(self) -> None:
         await self._repo.delete_expired_records()
+
 
 # In your provider.boot():
 task_manager = await container.resolve(BackgroundTaskManager)

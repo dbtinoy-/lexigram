@@ -56,7 +56,6 @@ __all__ = [
     "SnapshotResult",
     "TenantActivated",
     "TenantConfigChanged",
-    "TenantConfigChanged",
     "TenantConfigError",
     "TenantConfigProviderProtocol",
     "TenantDeactivated",

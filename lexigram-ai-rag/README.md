@@ -27,18 +27,22 @@ from lexigram.di.module import Module, module
 from lexigram.ai.rag import RAGModule
 from lexigram.ai.rag.config import RAGConfig
 
-@module(imports=[
-    RAGModule.configure(
-        RAGConfig(
-            vector_store_type="pgvector",
-            collection_name="my_docs",
-            top_k=5,
-            enable_citations=True,
+
+@module(
+    imports=[
+        RAGModule.configure(
+            RAGConfig(
+                vector_store_type="pgvector",
+                collection_name="my_docs",
+                top_k=5,
+                enable_citations=True,
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

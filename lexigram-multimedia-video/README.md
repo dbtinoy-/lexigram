@@ -38,7 +38,9 @@ class AppModule(Module):
 async def main() -> None:
     async with Application.boot(modules=[AppModule]) as app:
         video = await app.container.resolve(VideoProvider)
-        result = await video.generate(VideoRequest(prompt="a drone flying over mountains"))
+        result = await video.generate(
+            VideoRequest(prompt="a drone flying over mountains")
+        )
         if result.is_ok():
             asset = result.unwrap()  # MediaAsset — video bytes or URI
 
@@ -132,6 +134,7 @@ VideoModule.configure(
 ```python
 from lexigram import Application
 from lexigram.multimedia.video import VideoModule
+
 
 async def test_boot():
     async with Application.boot(modules=[VideoModule.stub()]) as app:

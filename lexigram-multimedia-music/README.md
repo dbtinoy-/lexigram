@@ -106,6 +106,7 @@ AudioMusicModule.configure(config=MusicConfig(backend="ace-step"))
 from lexigram import Application
 from lexigram.multimedia.music import AudioMusicModule
 
+
 async def test_boot():
     async with Application.boot(modules=[AudioMusicModule.stub()]) as app:
         assert app.container is not None

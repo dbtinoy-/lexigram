@@ -25,18 +25,22 @@ from lexigram.di.module import Module, module
 from lexigram.ai.skills import SkillsModule
 from lexigram.ai.skills.config import SkillsConfig
 
-@module(imports=[
-    SkillsModule.configure(
-        SkillsConfig(
-            enable_builtin=True,
-            builtin_skills=["current_datetime", "math_calculate"],
-            cache_enabled=True,
-            enforce_permissions=False,
+
+@module(
+    imports=[
+        SkillsModule.configure(
+            SkillsConfig(
+                enable_builtin=True,
+                builtin_skills=["current_datetime", "math_calculate"],
+                cache_enabled=True,
+                enforce_permissions=False,
+            )
         )
-    )
-])
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

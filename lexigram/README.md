@@ -31,9 +31,11 @@ from lexigram import Application
 from lexigram.di.module import Module, module
 from lexigram.app.standard import StandardModule
 
+
 @module(imports=[StandardModule.configure()])
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

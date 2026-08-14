@@ -153,9 +153,10 @@ Contracts are Python `Protocol` classes that define **what** a service does — 
 
 from typing import Protocol
 
+
 class CacheBackendProtocol(Protocol):
     """Cache backend contract."""
-    
+
     async def get(self, key: str) -> bytes | None: ...
     async def set(self, key: str, value: bytes, ttl: int | None = None) -> None: ...
     async def delete(self, key: str) -> bool: ...
@@ -225,9 +226,9 @@ container.singleton(UserService, factory=lambda: UserService(deps...))
 ```python
 container.freeze()  # Lock registry, validate dependency graph, enable resolution
 
-service = await container.resolve(UserService)          # Full DI
-optional = await container.resolve_optional(UserService) # Returns None if missing
-all_impls = await container.resolve_all(BaseHandler)     # All subtypes
+service = await container.resolve(UserService)  # Full DI
+optional = await container.resolve_optional(UserService)  # Returns None if missing
+all_impls = await container.resolve_all(BaseHandler)  # All subtypes
 
 # Scoped resolution (per-request)
 async with container.scope() as scoped:
@@ -238,10 +239,10 @@ async with container.scope() as scoped:
 #### Validation & Diagnostics
 
 ```python
-issues = container.validate()         # Missing deps, circular refs, scope violations
+issues = container.validate()  # Missing deps, circular refs, scope violations
 orphans = container.validate_no_orphans()  # Dead-code registrations
-container.dump_registrations()        # JSON snapshot of all registrations
-container.dump_dependency_graph()     # Adjacency map: service → dependencies
+container.dump_registrations()  # JSON snapshot of all registrations
+container.dump_dependency_graph()  # Adjacency map: service → dependencies
 ```
 
 ### 4.3 Provider (The Registration + Lifecycle Unit)
@@ -251,6 +252,7 @@ container.dump_dependency_graph()     # Adjacency map: service → dependencies
 ```python
 from lexigram.di.provider import Provider
 from lexigram.contracts.core import ProviderPriority
+
 
 class CacheProvider(Provider):
     name = "cache"
@@ -268,7 +270,7 @@ class CacheProvider(Provider):
     async def shutdown(self) -> None:
         """Teardown in reverse priority order."""
         await self._cache.disconnect()
-        
+
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Return health status — aggregated by Application.health_check()."""
         return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
@@ -337,13 +339,14 @@ The container inspects `__init__` signatures, resolves each parameter by type an
 class OrderService:
     def __init__(
         self,
-        repo: OrderRepository,     # ← resolved by type
-        events: EventDispatcher,   # ← resolved by type
-        logger: LoggerProtocol,    # ← resolved by type
+        repo: OrderRepository,  # ← resolved by type
+        events: EventDispatcher,  # ← resolved by type
+        logger: LoggerProtocol,  # ← resolved by type
     ):
         self.repo = repo
         self.events = events
         self.logger = logger
+
 
 # You NEVER write:
 order_service = OrderService(repo, events, logger)
@@ -364,13 +367,14 @@ IoC is the governing **principle**: you don't create your dependencies — the f
 class UserService:
     def __init__(self):
         self.cache = RedisCacheBackend("localhost", 6379)  # coupled to Redis
-        self.db = PostgresDB("conn_string")                # coupled to Postgres
+        self.db = PostgresDB("conn_string")  # coupled to Postgres
+
 
 # ✅ WITH IoC — framework controls everything
 class UserService:
     def __init__(self, cache: CacheBackend, db: DatabaseSession):
         self.cache = cache  # could be Redis, Memcached, or InMemory
-        self.db = db        # could be Postgres, SQLite, or a fake
+        self.db = db  # could be Postgres, SQLite, or a fake
 ```
 
 ---
@@ -387,15 +391,20 @@ from lexigram.app import Application
 from lexigram.di.module import Module, module
 from lexigram.web import WebModule
 
-@module(imports=[
-    WebModule.configure(controllers=[UserController], port=8000),
-])
+
+@module(
+    imports=[
+        WebModule.configure(controllers=[UserController], port=8000),
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async def main() -> None:
     async with Application.boot(name="my-app", modules=[AppModule]) as app:
         await asyncio.Event().wait()  # web server already running; block until Ctrl+C
+
 
 asyncio.run(main())
 ```
@@ -407,8 +416,8 @@ app = Application(name="my-app")
 app.add_module(AuthModule.configure(...))
 app.add_module(WebModule.configure(controllers=[UserController]))
 
-await app.start()     # compile modules → register providers → boot → RUNNING
-await app.stop()      # shutdown providers in reverse priority → dispose container
+await app.start()  # compile modules → register providers → boot → RUNNING
+await app.stop()  # shutdown providers in reverse priority → dispose container
 ```
 
 Module-based composition is the primary path. Provider-based bootstrap is available for low-level control.
@@ -416,13 +425,16 @@ Module-based composition is the primary path. Provider-based bootstrap is availa
 ### Module-Based Composition (Production Style)
 
 ```python
-@module(imports=[
-    WebModule.configure(controllers=[UserController, OrderController]),
-    LLMModule.configure(ClientConfig(provider="openai", model="gpt-4o")),
-    EventsModule.configure(handler_modules=["myapp.handlers"]),
-])
+@module(
+    imports=[
+        WebModule.configure(controllers=[UserController, OrderController]),
+        LLMModule.configure(ClientConfig(provider="openai", model="gpt-4o")),
+        EventsModule.configure(handler_modules=["myapp.handlers"]),
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     await asyncio.Event().wait()
@@ -449,11 +461,12 @@ Modules are the **organizational unit** of a Lexigram application. They group pr
 ```python
 from lexigram.di.module import Module, module
 
+
 @module()
 class AuthModule(Module):
     providers = [AuthProvider, TokenProvider, PasswordHasherProvider]
-    imports   = [DatabaseModule]                      # we depend on these
-    exports   = [AuthServiceProtocol, TokenManager]   # we expose these
+    imports = [DatabaseModule]  # we depend on these
+    exports = [AuthServiceProtocol, TokenManager]  # we expose these
 ```
 
 - Services are **private by default** — only `exports` are visible to importing modules
@@ -475,6 +488,7 @@ Many integration modules expose a small factory surface for root composition and
 ```python
 # lexigram-ai-llm/src/lexigram/ai/llm/module.py
 
+
 @module()
 class LLMModule(Module):
     @classmethod
@@ -490,14 +504,16 @@ class LLMModule(Module):
 
 ```python
 # Register handlers for a specific feature without duplicating the module
-@module(imports=[
-    EventsModule.configure(config),
-    EventsModule.scope(
-        CreateOrderHandler,
-        GetOrderHandler,
-        OrderShippedHandler,
-    ),
-])
+@module(
+    imports=[
+        EventsModule.configure(config),
+        EventsModule.scope(
+            CreateOrderHandler,
+            GetOrderHandler,
+            OrderShippedHandler,
+        ),
+    ]
+)
 class OrderFeatureModule(Module):
     pass
 ```
@@ -506,11 +522,13 @@ class OrderFeatureModule(Module):
 
 ```python
 # Tests use in-memory backends, no network calls
-@module(imports=[
-    LLMModule.stub(),          # No-op LLM client
-    EventsModule.stub(),       # In-memory event store
-    WebModule.stub(),          # No real HTTP server
-])
+@module(
+    imports=[
+        LLMModule.stub(),  # No-op LLM client
+        EventsModule.stub(),  # In-memory event store
+        WebModule.stub(),  # No real HTTP server
+    ]
+)
 class TestAppModule(Module):
     pass
 ```
@@ -521,11 +539,11 @@ class TestAppModule(Module):
 
 ```python
 DynamicModule(
-    module=cls,               # The module class (identity token)
-    providers=[MyProvider()], # Provider instances to register
-    exports=[SomeProtocol],   # Contracts to expose
-    imports=[OtherModule],    # Dependencies
-    is_global=False,          # True = exports visible everywhere
+    module=cls,  # The module class (identity token)
+    providers=[MyProvider()],  # Provider instances to register
+    exports=[SomeProtocol],  # Contracts to expose
+    imports=[OtherModule],  # Dependencies
+    is_global=False,  # True = exports visible everywhere
 )
 ```
 
@@ -551,6 +569,7 @@ handler_registry.register("cancel_order", CancelOrderHandler)
 # Resolve by key — raises RegistryKeyError if missing
 handler_cls = handler_registry.resolve("create_order")
 
+
 # Decorator registration
 @handler_registry.register("ship_order")
 class ShipOrderHandler: ...
@@ -573,6 +592,7 @@ class CacheBackendRegistry(BackendRegistry):
         self.register("redis", RedisCacheBackend)
         self.register("memory", MemoryCacheBackend)
 
+
 registry = CacheBackendRegistry()
 backend_cls = registry.select({"type": "redis", "url": "redis://..."})
 # Returns RedisCacheBackend (first whose can_create(config) returns True)
@@ -586,6 +606,7 @@ class ChunkingRegistry(StrategyRegistry):
         super().__init__(name="chunking.strategies")
         self.register("fixed", FixedSizeChunker)
         self.register("semantic", SemanticChunker)
+
 
 registry = ChunkingRegistry()
 chunker = registry.instantiate("fixed", chunk_size=512)
@@ -623,11 +644,13 @@ chunker = registry.instantiate("fixed", chunk_size=512)
 ```python
 from lexigram.result import Result, Ok, Err
 
+
 async def find_user(self, user_id: str) -> Result[User, DomainError]:
     user = await self.repo.get(user_id)
     if not user:
         return Err(UserNotFound(user_id))
     return Ok(user)
+
 
 # Explicit handling:
 result = await service.find_user("user-123")
@@ -643,13 +666,13 @@ Lexigram's `Result` is **async-first**: the plain method names (`map`, `and_then
 
 ```python
 # Async transform — awaitable callable
-profile = await result.map(load_profile)               # async version
-order   = await result.and_then(create_order_for_user) # Result[Order, E]
+profile = await result.map(load_profile)  # async version
+order = await result.and_then(create_order_for_user)  # Result[Order, E]
 fallback = await result.or_else(try_secondary_source)  # recover async
 
 # Sync transform — use _sync suffix
-email = result.map_sync(lambda user: user.email)       # Ok(email) or Err unchanged
-item  = result.and_then_sync(validate_user)            # sync chain
+email = result.map_sync(lambda user: user.email)  # Ok(email) or Err unchanged
+item = result.and_then_sync(validate_user)  # sync chain
 
 # Exhaustive matching
 msg = result.match(
@@ -658,7 +681,7 @@ msg = result.match(
 )
 
 # Safe extraction
-user = result.unwrap_or(guest_user)                    # default on Err
+user = result.unwrap_or(guest_user)  # default on Err
 user = result.unwrap_or_else(lambda e: create_default(e))
 
 # Conditional filter
@@ -692,6 +715,7 @@ The `lexigram-web` package provides a full ASGI web framework with controllers, 
 ```python
 from lexigram.web import Controller, get, post, put, delete, json_response
 from lexigram.result import Result, Ok
+
 
 class UserController(Controller):
     prefix = "/api/v1/users"
@@ -750,12 +774,15 @@ Controllers can return `Result[T, E]` directly. The framework's `ResultResponseM
 from lexigram.contracts.exceptions.domain import DomainError
 from lexigram.web import Controller, error_status
 
+
 class ItemNotFound(DomainError): ...
+
+
 class DuplicateEmail(DomainError): ...
 
+
 @error_status(DuplicateEmail, 409)
-class UserController(Controller):
-    ...
+class UserController(Controller): ...
 ```
 
 ### GenericController — CRUD in 5 Lines
@@ -766,6 +793,7 @@ class ProductController(GenericController[Product]):
 
     def __init__(self, service: CRUDServiceProtocol[Product]) -> None:
         super().__init__(service, resource_name="product")
+
     # Inherits: list_items, get_item, create_item, update_item, delete_item
 ```
 
@@ -830,6 +858,8 @@ Config is registered in the provider and injected via the container:
 
 ```python
 container.singleton(ClientConfig, self.config)
+
+
 # Then any service can receive it:
 class MyService:
     def __init__(self, config: ClientConfig): ...
@@ -875,10 +905,16 @@ Lexigram includes a full **AI/LLM platform**:
 
 ```python
 # Module composition
-@module(imports=[
-    LLMModule.configure(ClientConfig(provider="anthropic", model="claude-3-5-sonnet"))
-])
-class AppModule(Module): pass
+@module(
+    imports=[
+        LLMModule.configure(
+            ClientConfig(provider="anthropic", model="claude-3-5-sonnet")
+        )
+    ]
+)
+class AppModule(Module):
+    pass
+
 
 # Service depends only on the contract
 class AnalysisService:
@@ -909,6 +945,7 @@ class AnalysisService:
 class Money(ValueObject):
     amount: Decimal
     currency: str
+
 
 class Order(AggregateRoot):
     user_id: str
@@ -974,6 +1011,7 @@ LexigramError (contracts)
 from lexigram.contracts.infra.cache import CacheBackendProtocol
 from lexigram.testing import FakeCache, TestEnvironment
 
+
 async def test_user_service():
     env = TestEnvironment("user-service")
     env.override(CacheBackendProtocol, FakeCache())
@@ -988,12 +1026,16 @@ async def test_user_service():
 ### Module-Level Testing with `stub()`
 
 ```python
-@module(imports=[
-    LLMModule.stub(),       # No-op LLM
-    EventsModule.stub(),    # In-memory events
-    DatabaseModule.stub(),  # In-memory DB
-])
-class TestModule(Module): pass
+@module(
+    imports=[
+        LLMModule.stub(),  # No-op LLM
+        EventsModule.stub(),  # In-memory events
+        DatabaseModule.stub(),  # In-memory DB
+    ]
+)
+class TestModule(Module):
+    pass
+
 
 async def test_with_modules():
     async with Application.boot(modules=[TestModule]) as app:
@@ -1018,30 +1060,28 @@ import asyncio
 from lexigram.app import Application
 from lexigram.di.module import Module, module
 
-@module(imports=[
-    # Infrastructure
-    DatabaseModule.configure(url="postgresql://..."),
-    CacheModule.configure(backend="redis", url="redis://..."),
-    
-    # Security
-    AuthModule.configure(jwt_secret="...", providers=["google", "github"]),
-    
-    # Web
-    WebModule.configure(
-        controllers=[UserController, OrderController, ProductController],
-        port=8000,
-    ),
-    
-    # Events / CQRS
-    EventsModule.configure(handler_modules=["myapp.handlers"]),
-    EventsModule.scope(OrderPlacedHandler, PaymentReceivedHandler),
-    
-    # AI
-    LLMModule.configure(ClientConfig(provider="openai", model="gpt-4o")),
-    
-    # Resilience
-    ResilienceModule.configure(circuit_breaker_threshold=5),
-])
+
+@module(
+    imports=[
+        # Infrastructure
+        DatabaseModule.configure(url="postgresql://..."),
+        CacheModule.configure(backend="redis", url="redis://..."),
+        # Security
+        AuthModule.configure(jwt_secret="...", providers=["google", "github"]),
+        # Web
+        WebModule.configure(
+            controllers=[UserController, OrderController, ProductController],
+            port=8000,
+        ),
+        # Events / CQRS
+        EventsModule.configure(handler_modules=["myapp.handlers"]),
+        EventsModule.scope(OrderPlacedHandler, PaymentReceivedHandler),
+        # AI
+        LLMModule.configure(ClientConfig(provider="openai", model="gpt-4o")),
+        # Resilience
+        ResilienceModule.configure(circuit_breaker_threshold=5),
+    ]
+)
 class AppModule(Module):
     pass
 

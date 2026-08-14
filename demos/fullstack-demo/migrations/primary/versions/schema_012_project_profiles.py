@@ -92,9 +92,7 @@ def upgrade() -> None:
         if not values:
             continue
         connection.execute(
-            sa.text(
-                "UPDATE projects SET profile_overrides_json = :payload WHERE id = :id"
-            ),
+            sa.text("UPDATE projects SET profile_overrides_json = :payload WHERE id = :id"),
             {"payload": json.dumps(values, separators=(",", ":")), "id": row.id},
         )
 
@@ -109,14 +107,20 @@ def downgrade() -> None:
         batch_op.add_column(sa.Column("default_duration", sa.INTEGER, nullable=True))
         batch_op.add_column(
             sa.Column(
-                "format", sa.VARCHAR(50), nullable=False,
-                server_default="narration", default="narration",
+                "format",
+                sa.VARCHAR(50),
+                nullable=False,
+                server_default="narration",
+                default="narration",
             )
         )
         batch_op.add_column(
             sa.Column(
-                "caption_style", sa.VARCHAR(20), nullable=False,
-                server_default="highlight", default="highlight",
+                "caption_style",
+                sa.VARCHAR(20),
+                nullable=False,
+                server_default="highlight",
+                default="highlight",
             )
         )
         for column in _ASSET_COLUMNS:

@@ -42,6 +42,10 @@ class ConnectionManager(ABC):
         # coroutines cannot both run queries on the same asyncpg connection
         # simultaneously (which would raise InterfaceError).
         self._connection_lock: asyncio.Lock | None = None
+        # Task that currently holds _connection_lock; enables reentrant
+        # acquisition when a transaction and its inner queries share the
+        # same coroutine (e.g. SQLiteProvider single-connection mode).
+        self._connection_holder: asyncio.Task[Any] | None = None
 
         # Parse connection string for metadata
         parsed = urlparse(connection_string)
@@ -119,6 +123,18 @@ class ConnectionManager(ABC):
             # issue with creating asyncio.Lock() outside of an event loop.
             if self._connection_lock is None:
                 self._connection_lock = asyncio.Lock()
-            async with self._connection_lock:
+            holder = self._connection_holder
+            if holder is not None and holder is asyncio.current_task():
+                # Reentrant acquisition: the active task already holds the
+                # connection (transaction context), so reuse it directly
+                # instead of deadlocking on the non-reentrant lock.
                 await self._emit_connection_acquired()
                 yield self._connection
+                return
+            async with self._connection_lock:
+                self._connection_holder = asyncio.current_task()
+                try:
+                    await self._emit_connection_acquired()
+                    yield self._connection
+                finally:
+                    self._connection_holder = None

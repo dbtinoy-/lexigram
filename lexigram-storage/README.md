@@ -32,11 +32,17 @@ from lexigram.di.module import Module, module
 from lexigram.storage import StorageModule
 from lexigram.storage.config import StorageConfig, StorageLocalConfig
 
-@module(imports=[StorageModule.configure(
-    StorageConfig(drivers={"local": StorageLocalConfig(root_dir="./storage")})
-)])
+
+@module(
+    imports=[
+        StorageModule.configure(
+            StorageConfig(drivers={"local": StorageLocalConfig(root_dir="./storage")})
+        )
+    ]
+)
 class AppModule(Module):
     pass
+
 
 async with Application.boot(modules=[AppModule]) as app:
     # use app.container to resolve services

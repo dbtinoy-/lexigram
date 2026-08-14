@@ -20,7 +20,13 @@ from lexigram.contracts.core import (
     ProviderPriority,
 )
 from lexigram.contracts.core.health import HealthCheckCategory
-from lexigram.contracts.infra.tasks import TaskExecutorProtocol, TaskQueueProtocol
+from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
+from lexigram.contracts.infra.tasks import (
+    IdempotencyManagerProtocol,
+    IdempotentTaskManagerProtocol,
+    TaskExecutorProtocol,
+    TaskQueueProtocol,
+)
 from lexigram.contracts.observability.metrics import (
     HealthCheckRegistryProtocol as _HealthCheckRegistry,
 )
@@ -33,6 +39,10 @@ from lexigram.tasks.backends.registry import TaskBackendRegistry
 from lexigram.tasks.config import TaskConfig
 from lexigram.tasks.exceptions import TaskRegistrationError
 from lexigram.tasks.execution.health import TaskHealth
+from lexigram.tasks.execution.manager import (
+    IdempotencyManager,
+    IdempotentTaskManager,
+)
 from lexigram.tasks.execution.metrics import TaskMetricsCollector
 from lexigram.tasks.execution.pool import WorkerPool
 from lexigram.tasks.execution.registry import HandlerRegistry
@@ -582,6 +592,24 @@ class TaskProvider(Provider):
         """
         self.registry.register(task_name, handler)
         logger.info("Registered handler for task: %s", task_name)
+
+    def build_idempotency_manager(
+        self,
+        storage: IdempotencyStoreProtocol,
+    ) -> IdempotencyManagerProtocol:
+        """Build an idempotency manager over *storage* (see contract)."""
+        return IdempotencyManager(storage=storage)
+
+    def build_idempotent_task_manager(
+        self,
+        queue_client: TaskQueueProtocol,
+        idempotency_manager: IdempotencyManagerProtocol,
+    ) -> IdempotentTaskManagerProtocol:
+        """Build an idempotent task manager (see contract)."""
+        return IdempotentTaskManager(
+            queue_client=queue_client,
+            idempotency_manager=idempotency_manager,
+        )
 
     def register_scheduled_task(self, task_func: Any) -> None:
         """Register a decorated task function for scheduling.
