@@ -4169,7 +4169,7 @@ provides-extras = ["dev", "test", "docs", "security", "web", "db", "cache", "aut
 [[package]]
 name = "lexigram-admin"
 version = "0.1.3010"
-source = { editable = "lexigram-admin" }
+source = { editable = "experimental/apps/lexigram-admin" }
 dependencies = [
     { name = "aiofiles" },
     { name = "cryptography" },
@@ -4295,7 +4295,7 @@ requires-dist = [
     { name = "lexigram-tasks", marker = "extra == 'full'", editable = "packages/lexigram-tasks" },
     { name = "lexigram-tasks", marker = "extra == 'tasks'", editable = "packages/lexigram-tasks" },
     { name = "lexigram-tenancy", marker = "extra == 'tenancy'", editable = "packages/lexigram-tenancy" },
-    { name = "lexigram-ui", editable = "lexigram-ui" },
+    { name = "lexigram-ui", editable = "experimental/apps/lexigram-ui" },
     { name = "lexigram-web", marker = "extra == 'full'", editable = "packages/lexigram-web" },
     { name = "lexigram-web", marker = "extra == 'web'", editable = "packages/lexigram-web" },
     { name = "markupsafe", specifier = ">=2.1.5" },
@@ -5025,7 +5025,7 @@ requires-dist = [
     { name = "jinja2", marker = "extra == 'all'", specifier = ">=3.1.0" },
     { name = "jinja2", marker = "extra == 'prompts'", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
-    { name = "lexigram-admin", marker = "extra == 'admin'", editable = "lexigram-admin" },
+    { name = "lexigram-admin", marker = "extra == 'admin'", editable = "experimental/apps/lexigram-admin" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mistralai", marker = "extra == 'all'", specifier = ">=0.1.0" },
@@ -6084,7 +6084,7 @@ test = [
 [[package]]
 name = "lexigram-cli"
 version = "0.1.3007"
-source = { editable = "lexigram-cli" }
+source = { editable = "experimental/apps/lexigram-cli" }
 dependencies = [
     { name = "aiofiles" },
     { name = "httpx" },
@@ -8524,7 +8524,7 @@ test = [
 [[package]]
 name = "lexigram-ui"
 version = "0.1.3009"
-source = { editable = "lexigram-ui" }
+source = { editable = "experimental/apps/lexigram-ui" }
 dependencies = [
     { name = "htpy" },
     { name = "httpx" },
@@ -9134,7 +9134,7 @@ requires-dist = [
     { name = "itsdangerous", marker = "extra == 'test'", specifier = ">=2.0.0" },
     { name = "jinja2", marker = "extra == 'test'", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
-    { name = "lexigram-admin", editable = "lexigram-admin" },
+    { name = "lexigram-admin", editable = "experimental/apps/lexigram-admin" },
     { name = "lexigram-ai", editable = "experimental/ai/lexigram-ai" },
     { name = "lexigram-ai-agents", editable = "experimental/ai/lexigram-ai-agents" },
     { name = "lexigram-ai-evaluation", editable = "experimental/ai/lexigram-ai-evaluation" },
@@ -9155,7 +9155,7 @@ requires-dist = [
     { name = "lexigram-audit", editable = "packages/lexigram-audit" },
     { name = "lexigram-auth", editable = "packages/lexigram-auth" },
     { name = "lexigram-cache", editable = "packages/lexigram-cache" },
-    { name = "lexigram-cli", editable = "lexigram-cli" },
+    { name = "lexigram-cli", editable = "experimental/apps/lexigram-cli" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-events", editable = "packages/lexigram-events" },
     { name = "lexigram-features", editable = "packages/lexigram-features" },
@@ -9182,7 +9182,7 @@ requires-dist = [
     { name = "lexigram-tasks", editable = "packages/lexigram-tasks" },
     { name = "lexigram-tenancy", editable = "packages/lexigram-tenancy" },
     { name = "lexigram-testing", editable = "packages/lexigram-testing" },
-    { name = "lexigram-ui", editable = "lexigram-ui" },
+    { name = "lexigram-ui", editable = "experimental/apps/lexigram-ui" },
     { name = "lexigram-vector", editable = "packages/lexigram-vector" },
     { name = "lexigram-web", editable = "packages/lexigram-web" },
     { name = "lexigram-webhook", editable = "packages/lexigram-webhook" },

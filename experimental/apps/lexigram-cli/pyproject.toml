@@ -5,18 +5,17 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "lexigram-ui"
-version = "0.1.3009"
-description = "HTMX/htpy component library for Lexigram web applications"
+name = "lexigram-cli"
+version = "0.1.3007"
+description = "Command-line interface for Lexigram Framework - Project scaffolding, code generation, and development tools"
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = [
-    "ui",
-    "htmx",
-    "htpy",
-    "components",
-    "web",
-    "html",
+    "cli",
+    "command-line",
+    "scaffolding",
+    "codegen",
+    "devtools",
     "framework",
 ]
 classifiers = [
@@ -28,19 +27,24 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Topic :: Internet :: WWW/HTTP",
-    "Topic :: Software Development :: User Interfaces",
-    "Framework :: AsyncIO",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Utilities",
+    "Environment :: Console",
     "Typing :: Typed",
 ]
 dependencies = [
+    "typer[all]>=0.9.0",
+    "rich>=13.0.0",
+    "jinja2>=3.1.0",
+    "lexigram>=0.1.0",
     "lexigram-contracts>=0.1.0",
-    "lexigram>=0.1.1",
-    "htpy>=0.9",
-    "markupsafe>=2.1",
-    "starlette>=1.0.0",
-    "httpx>=0.28.1",
-    "typer>=0.9.0",
+    "pyyaml>=6.0",
+    "httpx>=0.25.0",
+    "watchfiles>=0.21.0",
+    "shellingham>=1.5.0",
+    "pydantic>=2.10.0",
+    "aiofiles>=23.0.0",
+    "tomli>=2.0.0",
 ]
 authors = [
     { name = "Lexigram Framework Team", email = "team@lexigram.dev" },
@@ -52,70 +56,70 @@ maintainers = [
 [project.license]
 text = "MIT"
 
+[project.scripts]
+lexigram = "lexigram.cli.runtime.main:app"
+
+[project.entry-points."lexigram.cli.contributors"]
+core = "lexigram.cli.contributors.core:CoreCliContributor"
+
 [project.optional-dependencies]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
-    "pytest-mock>=3.10.0",
 ]
-a11y = [
-    "pytest-playwright>=0.6.0",
-    "playwright>=1.45.0",
-    "httpx>=0.28.1",
-    "starlette>=0.37.0",
-]
-dev = [
-    "ruff>=0.1.0",
-    "mypy>=1.0.0",
+all = [
+    "lexigram-testing>=0.1.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
 ]
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram-ui-experimental"
+Repository = "https://github.com/dbtinoy-/lexigram-cli-experimental"
 Documentation = "https://docs.lexigram.dev"
 Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
 
-[project.scripts]
-lexigram-ui = "lexigram.ui.cli.add:app"
-
 [dependency-groups]
 dev = [
+    "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "tomli>=2.4.1",
+    "tomli-w>=1.2.0",
 ]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
-    "pytest-mock>=3.10.0",
 ]
 
-[tool.uv.sources.lexigram]
-workspace = true
-
-[tool.uv.sources.lexigram-contracts]
-workspace = true
-
-[tool.uv.sources.lexigram-testing]
-workspace = true
-
 [tool.ruff]
-extend = "../pyproject.toml"
+extend = "../../../pyproject.toml"
 line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
 extend-ignore = [
-    "RUF022",  # `__all__` is not sorted
-    "S704",    # markupsafe.Markup used intentionally in template rendering
+    "B025",  # except clause with duplicate exception — CLI catch patterns
+    "PT028",  # pytest.deprecated_call — CLI test patterns
+    "S301",  # pickle: not used in admin; broad ignore to reduce noise
+    "S607",  # start process with partial executable path — subprocess patterns
+    "S701",  # jinja2 with autoescape disabled — template rendering
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "TID252"]
+"**/templates/**/*" = ["N999", "INP001", "ANN", "E", "W"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
@@ -134,26 +138,29 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
+disallow_untyped_decorators = true
 no_implicit_optional = true
 warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
 strict_equality = true
+show_error_codes = true
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = "docs.*", ignore_errors = true },
+]
+
+[tool.uv.sources.lexigram-testing]
+workspace = true
 
 [tool.pytest.ini_options]
-addopts = ["--cov=lexigram.ui", "--cov-report=html", "--cov-report=term", "--cov-fail-under=70"]
-testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "integration: mark a test as an integration test",
     "scenario: marks cross-package scenario integration tests",
 ]
-
-[project.entry-points."lexigram.modules"]
-ui = "lexigram.ui.module:UIModule"
-
-[project.entry-points."lexigram.config"]
-ui = "lexigram.ui.config:UIConfig"
-
-[project.entry-points."lexigram.providers"]
-ui = "lexigram.ui.di.provider:UIProvider"
+addopts = ["--cov=lexigram.cli", "--cov-report=term", "--cov-fail-under=40"]
 
 [tool.hatch.build.targets.wheel]
 packages = [
