@@ -10,9 +10,10 @@ from lexigram.app.config.models import HealthConfig
 from lexigram.config.base import BaseConfig, _redact_dict
 from lexigram.config.constants import SECRET_FIELD_PATTERNS
 from lexigram.config.lib import ConfigRegistry
+from lexigram.config.lib.merge import deep_merge
 from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.logging.config import LoggingConfig
-from lexigram.validation import ConfigDict, Field
+from lexigram.validation import ConfigDict, Field, model_validator
 
 T = TypeVar("T")
 
@@ -44,6 +45,33 @@ class LexigramConfig(BaseConfig):
 
     # Instance-based registry for extensions (Injected by provider)
     _config_registry: ConfigRegistry | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fold_lexigram_env_section(cls, data: Any) -> Any:
+        """Fold the ``lexigram`` env section into root-level fields.
+
+        ``LEX_LEXIGRAM__*`` env vars arrive (via
+        :class:`~lexigram.config.lib.EnvironmentConfigSource`) nested under a
+        ``lexigram`` key in the merged load dict.  This root config validates
+        the whole dict (``config_section=None``), so the section must be
+        deep-merged into the top level for fields such as ``debug`` and
+        ``logging`` to be populated.  Extension sections (``db``, ``cache``,
+        ``monitor``, ...) are left in ``model_extra`` for ``get_section()``.
+
+        Args:
+            data: Raw config dict before field validation.
+
+        Returns:
+            The same dict with the ``lexigram`` section folded into the root.
+        """
+        if not isinstance(data, dict):
+            return data
+        section = data.get("lexigram")
+        if isinstance(section, dict):
+            deep_merge(data, section)
+            data.pop("lexigram", None)
+        return data
 
     @property
     def environment(self) -> Environment:

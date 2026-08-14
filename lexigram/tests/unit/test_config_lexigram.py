@@ -17,6 +17,84 @@ from lexigram.config import (
     EnvironmentConfigSource,
     FileConfigSource,
 )
+from lexigram.config.main import LexigramConfig
+
+
+class TestLexigramConfigEnvSection:
+    """Test folding of the ``LEX_LEXIGRAM__*`` env namespace into the root."""
+
+    def test_folds_lexigram_env_section_into_root(self, tmp_path, monkeypatch):
+        """LEX_LEXIGRAM__* vars populate root fields of LexigramConfig."""
+        monkeypatch.setenv("LEX_LEXIGRAM__DEBUG", "true")
+        monkeypatch.setenv("LEX_LEXIGRAM__LOGGING__JSON_FORMAT", "true")
+
+        config = LexigramConfig.from_yaml(
+            tmp_path / "application.yaml", env_override=True
+        )
+
+        assert config.debug is True
+        assert config.logging.json_format is True
+
+    def test_extension_sections_stay_in_model_extra(self, tmp_path, monkeypatch):
+        """Non-root sections remain available via get_section()."""
+        monkeypatch.setenv("LEX_MONITOR__BACKEND_TYPE", "memory")
+
+        config = LexigramConfig.from_yaml(
+            tmp_path / "application.yaml", env_override=True
+        )
+
+        assert getattr(config, "model_extra", None) is not None
+        assert "monitor" in config.model_extra
+        assert config.get_section("monitor")["backend_type"] == "memory"
+
+    def test_env_overrides_yaml_for_folded_section(self, tmp_path, monkeypatch):
+        """Env values win over YAML values for folded fields."""
+        import yaml
+
+        (tmp_path / "application.yaml").write_text(
+            yaml.safe_dump({"debug": False, "logging": {"json_format": False}})
+        )
+        monkeypatch.setenv("LEX_LEXIGRAM__DEBUG", "true")
+
+        config = LexigramConfig.from_yaml(
+            tmp_path / "application.yaml", env_override=True
+        )
+
+        assert config.debug is True
+        assert config.logging.json_format is False
+
+
+class TestLexigramLoggingJsonFormat:
+    """End-to-end: LEX_LEXIGRAM__LOGGING__JSON_FORMAT produces JSON logs."""
+
+    def test_json_format_env_var_emits_json_on_stdout(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """Setting the env var flows through config into JSON log output."""
+        import json
+
+        from lexigram.logging import get_logger
+        from lexigram.logging.configurator import apply_config, reset_logging
+
+        monkeypatch.setenv("LEX_LEXIGRAM__LOGGING__JSON_FORMAT", "true")
+
+        config = LexigramConfig.from_yaml(
+            tmp_path / "application.yaml", env_override=True
+        )
+        assert config.logging.json_format is True
+
+        try:
+            apply_config(config.logging)
+            get_logger("lexigram.test").info("hello_json", key="value")
+        finally:
+            reset_logging()
+
+        merged = capsys.readouterr()
+        out = (merged.out + merged.err).strip()
+        assert out, "expected log output on stdout/stderr"
+        record = json.loads(out.splitlines()[0])
+        assert record["event"] == "hello_json"
+        assert record["key"] == "value"
 
 
 @dataclass(init=False)

@@ -14,9 +14,51 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "docs/lexigram-docs/reference/REF_ENV_VARS.md"
 OUT = ROOT / ".env.example"
 
-ROW = re.compile(
-    r"^\| `([A-Z][A-Z0-9_]*)` \| (\S[^|]*) \| ([^|]*) \| ([^|]*) \| (.*) \|$"
-)
+ROW = re.compile(r"^`([A-Z][A-Z0-9_]*)`$")
+
+
+def _split_cells(line: str) -> list[str]:
+    """Split a catalog table row into cells, preserving escaped pipes.
+
+    Catalog cells escape literal pipes as ``\\|`` (e.g. ``str \\| None``).
+    A plain ``|`` is always a column separator, so splitting on pipes that are
+    NOT preceded by a backslash is correct.  The backslash escape is then
+    removed so types render as ``str | None``.
+
+    Args:
+        line: A ``| ... |`` table row.
+
+    Returns:
+        The unescaped cell contents with surrounding whitespace removed.
+    """
+    cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+    return [c.replace("\\|", "|") for c in cells]
+
+
+def parse(catalog: Path) -> list[tuple[str, list[tuple[str, str, str]]]]:
+    sections: list[tuple[str, list[tuple[str, str, str]]]] = []
+    current: tuple[str, list[tuple[str, str, str]]] | None = None
+    for line in catalog.read_text().splitlines():
+        if m := PKG_HEADER.match(line):
+            if current:
+                sections.append(current)
+            current = (m.group(1), [])
+        elif current and line.strip().startswith("|") and line.strip().endswith("|"):
+            cells = _split_cells(line)
+            if len(cells) < 5:  # noqa: PLR2004
+                continue
+            name_match = ROW.match(cells[0])
+            if not name_match:
+                continue
+            name = name_match.group(1)
+            typ = cells[1].strip()
+            desc = cells[3].strip()
+            current[1].append((name, typ, desc))
+    if current:
+        sections.append(current)
+    return sections
+
+
 PKG_HEADER = re.compile(r"^### `([^`]+)` \((\d+) vars\)$")
 
 # Prefill sensible values for services the docker-compose provides.
@@ -126,22 +168,6 @@ SUPPLEMENTAL_HEADER = [
     "#   LOG_LEVEL, PLAYWRIGHT_SNAPSHOT, TEST_POSTGRES_DSN, UV, UV_PUBLISH_TOKEN",
     "# ---------------------------------------------------------------------------",
 ]
-
-
-def parse(catalog: Path) -> list[tuple[str, list[tuple[str, str, str]]]]:
-    sections: list[tuple[str, list[tuple[str, str, str]]]] = []
-    current: tuple[str, list[tuple[str, str, str]]] | None = None
-    for line in catalog.read_text().splitlines():
-        if m := PKG_HEADER.match(line):
-            if current:
-                sections.append(current)
-            current = (m.group(1), [])
-        elif current and (m := ROW.match(line)):
-            name, typ, _default, desc, _src = m.groups()
-            current[1].append((name, typ.strip(), desc.strip()))
-    if current:
-        sections.append(current)
-    return sections
 
 
 def generate() -> None:
