@@ -91,7 +91,7 @@ show_error_codes = true
 overrides = [{ module = "tests.*", ignore_errors = true }]
 
 [tool.ruff]
-extend = "../pyproject.toml"
+extend = "../../../pyproject.toml"
 line-length = 88
 target-version = "py311"
 
