@@ -28,7 +28,7 @@ from lexigram.contracts.ai.relay import (
 )
 from lexigram.contracts.ai.relay.dto import OpenAIChatResponse
 from lexigram.contracts.core.result import Err, Result
-from tests.unit.service_test_helpers import (
+from service_test_helpers import (
     MODEL,
     REQUEST_ID,
     SOURCE,

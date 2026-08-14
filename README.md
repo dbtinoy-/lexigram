@@ -47,16 +47,19 @@ cd lexigram
 # on drift between uv.lock and pyproject.toml)
 uv sync --all-extras --locked
 
-# optional: start the backing services the test suite expects
-# (postgres on :5432, redis on :6379) — nothing else is required
-docker compose up -d
-
 # environment reference — copy and adjust (every variable is optional;
 # unset values fall back to framework defaults)
 cp .env.example .env
 
-# run the full suite
-uv run pytest
+# run the default suite — this is the offline gate: it requires ZERO
+# external services. no postgres, no redis, no docker compose needed,
+# even on a fresh clone
+uv run pytest -m "not integration"
+
+# optional: only the separate integration suite exercises live services
+# (postgres on :5432, redis on :6379) — nothing else is required
+docker compose up -d
+uv run pytest -m integration
 ```
 
 ## ci — what runs on every push/pr
@@ -70,6 +73,11 @@ latest `main` run); each job has a local one-liner:
 | `coverage` | aggregate tests with a 70% floor | `uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70` |
 | `example` | fullstack-demo gate (format, lint, mypy, tests) | `cd demos/fullstack-demo && uv run pytest -q -m "not integration"` |
 | `audit` | `pip-audit` known-vulnerability check | `uv run pip-audit` |
+
+> Every `-m "not integration"` run — per-package or aggregate — executes
+> fully offline: zero postgres/redis/docker required. Only the separate
+> `Integration scenarios` CI job starts the backing services (via
+> `tests/docker-compose.yml`, the same `docker compose up -d` flow).
 
 
 ## 60 seconds, end to end
