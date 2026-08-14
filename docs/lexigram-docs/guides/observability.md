@@ -53,6 +53,31 @@ class OrderService:
 
 Keyword arguments become first-class fields in the JSON output. `logger.bind(...)` returns a new logger with permanent context — useful for request-scoped fields like `request_id` or `tenant_id`. Format, level, and `redact_fields` are governed by the `monitor.logging` section below.
 
+### Sentry Error Tracking
+
+`lexigram-monitor` bridges structured logs and an external error tracker (Sentry) so every crash is both logged with a correlation id and reported to Sentry with the same id. Enable it by setting a DSN — either the dedicated config var or the conventional `SENTRY_DSN` fallback:
+
+```bash
+LEX_MONITOR__ERROR_TRACKING__DSN=https://public@sentry.io/1   # or
+SENTRY_DSN=https://public@sentry.io/1
+```
+
+Install the unhandled-exception hook to capture crashes that escape every handler — it forwards them to the tracker and logs an `unhandled_exception` event carrying the active `trace_id`/`request_id` from `structlog.contextvars`:
+
+```python
+from lexigram.monitor.error_tracking import (
+    install_unhandled_exception_hook,
+    setup_error_tracking,
+)
+
+tracker = setup_error_tracking(monitor_config.error_tracking)
+hook = install_unhandled_exception_hook(tracker)
+# ... run your application ...
+hook.uninstall()
+```
+
+When booting through the framework, `MonitorProvider` installs this hook automatically whenever a DSN is configured. Without a DSN — or without `sentry-sdk` installed — both helpers degrade to no-ops and you keep a structured `unhandled_exception` log line.
+
 ---
 
 ## 3. Metrics
