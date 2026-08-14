@@ -1,9 +1,11 @@
-from __future__ import annotations
-
 """PostgreSQL database provider lifecycle integration tests."""
+
+from __future__ import annotations
 
 import pytest
 
+from lexigram.sql.providers.postgres_provider import PostgresProvider
+from lexigram.sql.providers.sqlite_provider import SQLiteProvider
 from lexigram.testing.integration.fixtures import postgres_pool  # noqa: F401
 
 pytestmark = [pytest.mark.integration, pytest.mark.requires_postgres]
@@ -35,7 +37,9 @@ class TestPostgresProviderLifecycle:
         """postgres_pool fixture yields a live asyncpg connection pool."""
         assert postgres_pool is not None
 
-    async def test_postgres_round_trip(self, postgres_pool: object) -> None:
-        """Basic SELECT 1 confirms real PostgreSQL connectivity."""
-        result = await postgres_pool.fetchval("SELECT 1")  # type: ignore[union-attr]
-        assert result == 1
+    async def test_postgres_round_trip(
+        self, postgres_provider: SQLiteProvider | PostgresProvider
+    ) -> None:
+        """Provider executes SQL against PostgreSQL or the in-process fallback."""
+        result = await postgres_provider.execute_query("SELECT 1")
+        assert result.row_count == 1
