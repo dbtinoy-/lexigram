@@ -7,7 +7,7 @@
   "features": {
     "ghcr.io/astral-sh/uv:0": {}
   },
-  "postCreateCommand": "uv sync --all-extras",
+  "postCreateCommand": "uv sync --group tooling --group qa --group security",
   "customizations": {
     "vscode": {
       "extensions": [

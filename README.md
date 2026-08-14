@@ -45,7 +45,7 @@ cd lexigram
 
 # reproducible install (lockfile is committed — uv sync --locked fails
 # on drift between uv.lock and pyproject.toml)
-uv sync --all-extras --locked
+uv sync --group tooling --group qa --group security --locked
 
 # environment reference — copy and adjust (every variable is optional;
 # unset values fall back to framework defaults)

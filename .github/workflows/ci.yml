@@ -26,7 +26,7 @@ jobs:
         run: uv python install 3.11
 
       - name: install workspace (locked)
-        run: uv sync --all-extras --locked
+        run: uv sync --group tooling --group qa --group security --locked
 
       - name: format (ruff check --format)
         run: uv run ruff format --check .
@@ -90,7 +90,7 @@ jobs:
         run: uv python install 3.11
 
       - name: install workspace (locked)
-        run: uv sync --all-extras --locked
+        run: uv sync --group tooling --group qa --group security --locked
 
       - name: Start backing services (postgres, redis)
         run: |
@@ -119,7 +119,7 @@ jobs:
         run: uv python install 3.11
 
       - name: install workspace (locked)
-        run: uv sync --all-extras --locked
+        run: uv sync --group tooling --group qa --group security --locked
 
       - name: test coverage (aggregate, floor 70)
         run: |
@@ -180,7 +180,7 @@ jobs:
         run: uv python install 3.11
 
       - name: install workspace (locked)
-        run: uv sync --all-extras --locked
+        run: uv sync --group tooling --group qa --group security --locked
 
       - name: audit (pip-audit)
         run: uv run pip-audit
