@@ -190,6 +190,8 @@ ignore_imports =
     lexigram.logging.config.sampling -> lexigram.domain
     lexigram.logging.config.sampling -> lexigram.validation
     lexigram.logging.config.models -> lexigram.validation
+    lexigram.logging.config.redaction -> lexigram.domain
+    lexigram.logging.config.redaction -> lexigram.validation
     # StandardApplication batteries-included bundle (tracked: cc-p5-core-module)
     lexigram.app.standard -> lexigram.serialization.di.provider
     lexigram.app.standard -> lexigram.concurrency.di.provider
@@ -301,6 +303,9 @@ ignore_imports =
     # directly.  Refactor target: route through lexigram.contracts.
     # Filed as tech-debt: replace with a contracts-based interface boundary.
     lexigram.web.** -> lexigram.security.**
+    # Tracked violation: ambient hashing (AGENTS.md) used from sql repositories
+    # for cache-key derivation; same refactor target as the web entry.
+    lexigram.sql.** -> lexigram.security.**
     # Owned by 2026-08-15-admin-contributor-refactor.md Phase 2 (WidgetContent),
     # executed before Step 6 of 2026-08-17-architecture-admin-auth-rbac-boundaries-design.md;
     # these entries are REMOVED by that plan's final task — do not remove here.

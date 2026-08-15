@@ -49,6 +49,10 @@ lint:  ## Run ruff check + format check (no writes)
 	$(RUFF) check .
 	$(RUFF) format --check .
 
+.PHONY: lint-boundaries
+lint-boundaries:  ## Run the namespace-aware import-linter contracts
+	$(UV) run python tools/lint_imports.py
+
 .PHONY: lint-fix
 lint-fix:  ## Run ruff check + format (auto-fix)
 	$(RUFF) check . --fix

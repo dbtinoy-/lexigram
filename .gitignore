@@ -31,6 +31,8 @@
 !.github/dependabot.yml
 !.devcontainer/
 !.devcontainer/**
+!tools/
+!tools/**
 !*example.yaml
 
 # Lexigram Packages
