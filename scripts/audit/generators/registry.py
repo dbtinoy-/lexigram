@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from scripts.audit.generators.base import AuditGeneratorProtocol
+from scripts.audit.generators.dependencies import DependenciesAuditGenerator
 from scripts.audit.generators.docs_claims import DocsClaimsAuditGenerator
 from scripts.audit.generators.docs_defaults import DocsDefaultsAuditGenerator
 from scripts.audit.generators.docs_imports import DocsImportsAuditGenerator
@@ -23,6 +24,7 @@ def build_audit_registry() -> GeneratorRegistry[AuditGeneratorProtocol]:
 
     registry = GeneratorRegistry[AuditGeneratorProtocol]()
     for generator in (
+        DependenciesAuditGenerator(),
         DocsClaimsAuditGenerator(),
         DocsDefaultsAuditGenerator(),
         DocsImportsAuditGenerator(),
