@@ -211,7 +211,7 @@ packages = ["src/lexigram"]
 # If a rule fires, we fix the code or justify the exception per-file.
 
 [tool.ruff]
-extend = "../pyproject.toml"
+extend = "../../pyproject.toml"
 line-length = 88
 target-version = "py311"
 
