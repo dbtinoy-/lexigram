@@ -76,8 +76,8 @@ dependencies = [
 
 [tool.uv.workspace]
 members = [
-    "lexigram-contracts",
-    "lexigram",
+    "core/lexigram-contracts",
+    "core/lexigram",
     "lexigram-ai-agents",
     "lexigram-admin",
     "lexigram-ai",
@@ -285,7 +285,7 @@ addopts = ["--strict-markers", "--strict-config", "--tb=short", "--import-mode=i
 consider_namespace_packages = true
 norecursedirs = [".worktrees", ".venv", "build", "dist", "demos", "lexigram-cli/src/lexigram/cli/templates", "lexigram-testing"]
 testpaths = [
-    "lexigram/tests",
+    "core/lexigram/tests",
     "lexigram-admin/tests",
     "lexigram-ai/tests",
     "lexigram-ai-agents/tests",
@@ -306,7 +306,7 @@ testpaths = [
     "lexigram-auth/tests",
     "lexigram-cache/tests",
     "lexigram-cli/tests",
-    "lexigram-contracts/tests",
+    "core/lexigram-contracts/tests",
     "lexigram-events/tests",
     "lexigram-features/tests",
     "lexigram-graphql/tests",
@@ -343,7 +343,7 @@ testpaths = [
 ]
 pythonpath = [
     ".",
-    "lexigram/src",
+    "core/lexigram/src",
     "lexigram-admin/src",
     "lexigram-ai/src",
     "lexigram-ai-agents/src",
@@ -374,7 +374,7 @@ pythonpath = [
     "lexigram-secrets/src",
     "lexigram-secrets/tests",
     "lexigram-testing/src",
-    "lexigram-contracts/src",
+    "core/lexigram-contracts/src",
     "lexigram-ui/src",
     "lexigram-web/src",
     "lexigram-ai-governance/src",
@@ -408,8 +408,8 @@ markers = [
 
 [tool.coverage.run]
 source = [
-    "lexigram",
-    "lexigram-contracts",
+    "core/lexigram",
+    "core/lexigram-contracts",
     "lexigram-admin",
     "lexigram-ai",
     "lexigram-ai-agents",
@@ -749,9 +749,9 @@ ignore = [
 "demos/**" = ["T201", "INP001", "ANN"]
 "*.ipynb" = ["T201", "ANN", "INP001", "E402", "F401", "S101", "BLE001"]
 # lexigram-contracts has zero external deps — cannot use lexigram.serialization
-"lexigram-contracts/**" = ["TID251"]
+"core/lexigram-contracts/**" = ["TID251"]
 # Serialization implementation must use stdlib json directly (it IS the json layer)
-"lexigram/src/lexigram/serialization/**" = ["TID251"]
+"core/lexigram/src/lexigram/serialization/**" = ["TID251"]
 "lexigram-events/src/lexigram/events/webhooks/dispatcher.py" = ["TID251"]
 "lexigram-queue/src/lexigram/queue/backends/**" = ["TID251"]
 "lexigram-queue/tests/unit/test_tracing_queue_backends.py" = ["TID251"]
@@ -806,8 +806,8 @@ python_version = "3.11"
 namespace_packages = true
 explicit_package_bases = true
 mypy_path = [
-    "lexigram/src",
-    "lexigram-contracts/src",
+    "core/lexigram/src",
+    "core/lexigram-contracts/src",
     "lexigram-admin/src",
     "lexigram-ai/src",
     "lexigram-ai-agents/src",
@@ -864,7 +864,7 @@ mypy_path = [
 warn_unused_ignores = true
 exclude = [
     "lexigram-cli/src/lexigram/cli/templates/.*",
-    "lexigram-contracts/src/lexigram/__init__.py",
+    "core/lexigram-contracts/src/lexigram/__init__.py",
     "lexigram-ai/src/lexigram/__init__.py",
     "lexigram-admin/src/lexigram/__init__.py",
     "tests/.*",

@@ -16,12 +16,12 @@ class NonConfigEnvSource:
 
 NON_CONFIG_ENV_SOURCES: tuple[NonConfigEnvSource, ...] = (
     NonConfigEnvSource(
-        source_file="lexigram/src/lexigram/logging/debug.py",
+        source_file="core/lexigram/src/lexigram/logging/debug.py",
         env_var="LEX_DEBUG",
         rationale="Early-boot logging toggle before typed config is available.",
     ),
     NonConfigEnvSource(
-        source_file="lexigram/src/lexigram/app/base.py",
+        source_file="core/lexigram/src/lexigram/app/base.py",
         env_var="LEX_QUIET",
         rationale="Controls startup banner suppression during process bootstrap.",
     ),

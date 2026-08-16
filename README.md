@@ -69,7 +69,7 @@ latest `main` run); each job has a local one-liner:
 
 | job | runs in CI | locally |
 | --- | --- | --- |
-| `quality` | format, lint, tier boundary, mypy (core), per-package tests | `uv run ruff format --check . && uv run ruff check . && uv run mypy lexigram/src/ && uv run pytest -m "not integration" --no-cov` |
+| `quality` | format, lint, tier boundary, mypy (core), per-package tests | `uv run ruff format --check . && uv run ruff check . && uv run mypy core/lexigram/src/ && uv run pytest -m "not integration" --no-cov` |
 | `coverage` | aggregate tests with a 70% floor | `uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70` |
 | `example` | fullstack-demo gate (format, lint, mypy, tests) | `cd demos/fullstack-demo && uv run pytest -q -m "not integration"` |
 | `audit` | `pip-audit` known-vulnerability check | `uv run pip-audit` |
