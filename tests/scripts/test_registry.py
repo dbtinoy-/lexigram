@@ -11,6 +11,7 @@ from scripts.core.models import AuditReport
 from scripts.core.registry import GeneratorRegistry
 
 EXPECTED_GENERATOR_NAMES = (
+    "dependencies",
     "docs-claims",
     "docs-defaults",
     "docs-imports",

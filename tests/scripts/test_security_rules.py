@@ -27,6 +27,10 @@ API_SECRET = "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6"
 
 
 def _write_violations(root: Path) -> None:
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "workspace"\n\n[tool.uv.workspace]\nmembers = ["lexigram-web"]\n',
+        encoding="utf-8",
+    )
     package_root = root / "lexigram-web"
     package_root.mkdir()
     (package_root / "pyproject.toml").write_text(

@@ -37,6 +37,7 @@ from scripts.audit.generators.docs_claims import (
     _union_members,
     _verify_env_var,
 )
+from scripts.core.package_inventory import discover_package_paths
 
 _UNPARSEABLE_CELL = frozenset({"", "—", "-", "*", "n/a", "na"})
 
@@ -269,12 +270,8 @@ def _build_universe() -> dict[str, list[DefaultEntry]]:
     class_index: dict[str, list[DefaultEntry]] = {}
     field_index: dict[str, list[DefaultEntry]] = {}
     root = Path(__file__).resolve().parents[3]
-    for pkg_path in sorted(root.iterdir()):
-        if not (
-            pkg_path.is_dir()
-            and (pkg_path.name == "lexigram" or pkg_path.name.startswith("lexigram-"))
-        ):
-            continue
+    for rel in discover_package_paths(root):
+        pkg_path = root / rel
         pkg_mod_name = (
             "lexigram"
             if pkg_path.name == "lexigram"

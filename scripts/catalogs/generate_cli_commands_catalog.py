@@ -18,6 +18,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from scripts.core.package_inventory import discover_package_paths
+
 REPO_ROOT = Path.cwd()
 
 
@@ -86,7 +90,8 @@ def parse_typer_help(text: str) -> list[dict[str, str]]:
 def scan_contributor_entry_points() -> list[dict[str, str]]:
     """Read lexigram.cli.contributors from all pyproject.toml files."""
     groups: list[dict[str, str]] = []
-    for tf in REPO_ROOT.glob("lexigram-*/pyproject.toml"):
+    for rel in discover_package_paths(REPO_ROOT):
+        tf = REPO_ROOT / rel / "pyproject.toml"
         pkg = tf.parent.name
         try:
             text = tf.read_text(encoding="utf-8")

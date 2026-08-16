@@ -13,7 +13,11 @@ AUTH_PACKAGE_COMMAND = ("uv", "run", "pytest", "lexigram-auth/tests", "-q", "-m"
 
 
 def _write_sample_workspace(root: Path) -> None:
-    (root / "pyproject.toml").write_text('[project]\nname = "workspace"\n', encoding="utf-8")
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "workspace"\n\n[tool.uv.workspace]\n'
+        'members = ["lexigram", "lexigram-auth", "lexigram-contracts"]\n',
+        encoding="utf-8",
+    )
     package_root = root / "lexigram"
     package_root.mkdir()
     (package_root / "pyproject.toml").write_text(

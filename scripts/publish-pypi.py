@@ -7,6 +7,10 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.core.package_inventory import discover_package_paths
+
 ROOT = Path.cwd().resolve()
 
 # NOTE: lexigram-admin and lexigram-ai-governance contain internal-IP references —
@@ -16,31 +20,32 @@ PUBLISH_ORDER: tuple[tuple[str, ...], ...] = (
     ("lexigram-contracts",),
     ("lexigram",),
     tuple(
-        p for p in sorted(
-            d.name for d in ROOT.iterdir()
-            if d.is_dir() and d.name.startswith("lexigram")
-            and d.name not in ("lexigram-contracts", "lexigram")
-            and not d.name.endswith(".egg-info")
-        )
+        p.name
+        for p in discover_package_paths(ROOT)
+        if p.name not in ("lexigram-contracts", "lexigram")
     ),
 )
 
 
 def find_packages(include: list[str] | None = None) -> list[str]:
     pkgs = []
-    for d in sorted(ROOT.iterdir()):
-        if not d.is_dir() or not d.name.startswith("lexigram"):
+    for p in discover_package_paths(ROOT):
+        if include and p.name not in include:
             continue
-        if d.name.endswith(".egg-info"):
-            continue
-        if include and d.name not in include:
-            continue
-        pkgs.append(d.name)
+        pkgs.append(p.name)
     return pkgs
 
 
+def member_path(name: str) -> Path:
+    """Resolve a package name to its workspace-relative directory."""
+    for p in discover_package_paths(ROOT):
+        if p.name == name:
+            return p
+    return Path(name)
+
+
 def test_package(name: str, *, uv: str) -> bool:
-    pkg_dir = ROOT / name
+    pkg_dir = ROOT / member_path(name)
     test_dir = pkg_dir / "tests"
     if not test_dir.is_dir():
         print(f"  no tests directory, skipping")

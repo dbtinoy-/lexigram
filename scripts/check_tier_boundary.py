@@ -13,6 +13,10 @@ from pathlib import Path
 import re
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.core.package_inventory import discover_package_paths
+
 EXPERIMENTAL = {
     "lexigram-admin",
     "lexigram-ai",
@@ -53,7 +57,7 @@ def main() -> int:
 
     root = Path(args.root)
     files = sorted([root / "pyproject.toml"]) + sorted(
-        root.glob("lexigram*/pyproject.toml")
+        root / p / "pyproject.toml" for p in discover_package_paths(root)
     )
     files = [f for f in files if "lexigram-all" not in str(f)]
     bad = []

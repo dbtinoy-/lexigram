@@ -6,7 +6,10 @@ from pathlib import Path
 
 
 def _write_workspace(root: Path) -> None:
-    (root / "pyproject.toml").write_text('[project]\nname = "workspace"\n', encoding="utf-8")
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "workspace"\n\n[tool.uv.workspace]\nmembers = ["lexigram-demo"]\n',
+        encoding="utf-8",
+    )
     package_dir = root / "lexigram-demo"
     package_dir.mkdir()
     (package_dir / "pyproject.toml").write_text(

@@ -12,13 +12,16 @@ import argparse
 import ast
 import os
 import re
+import sys
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-REPO_ROOT = Path.cwd()
-PACKAGE_PATTERN = re.compile(r"^(lexigram[-a-z]*|lexigram)$")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from scripts.core.package_inventory import discover_package_paths
+
+REPO_ROOT = Path.cwd()
 SRC_GLOB = "*/src/**/*.py"
 LEX_ERR_RE = re.compile(r'LEX_ERR_([A-Z0-9_]+)_(\d{3})')
 
@@ -42,13 +45,12 @@ def is_exception_class(class_name: str, parents: list[str]) -> bool:
 
 
 def discover_packages(include_all: bool = False) -> list[Path]:
-    """Discover all lexigram-* packages at repo root."""
+    """Discover src trees of all workspace member packages at repo root."""
     packages: list[Path] = []
-    for entry in sorted(REPO_ROOT.iterdir()):
-        if entry.is_dir() and PACKAGE_PATTERN.match(entry.name):
-            src_dir = entry / "src"
-            if src_dir.exists():
-                packages.append(src_dir)
+    for rel in discover_package_paths(REPO_ROOT):
+        src_dir = REPO_ROOT / rel / "src"
+        if src_dir.exists():
+            packages.append(src_dir)
     return packages
 
 
