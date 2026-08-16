@@ -103,3 +103,61 @@ demos/*/__pycache__/
 demos/*/.ipynb_checkpoints/
 # Editor swap files
 *.swp
+
+# Tiered package layout (core/, packages/, experimental/<family>/)
+!core/
+!packages/
+!experimental/
+!experimental/*/
+!core/lexigram*/
+!packages/lexigram*/
+!experimental/*/lexigram*/
+!core/lexigram*/pyproject.toml
+!packages/lexigram*/pyproject.toml
+!experimental/*/lexigram*/pyproject.toml
+!core/lexigram*/CHANGELOG.md
+!packages/lexigram*/CHANGELOG.md
+!experimental/*/lexigram*/CHANGELOG.md
+!core/lexigram*/README.md
+!packages/lexigram*/README.md
+!experimental/*/lexigram*/README.md
+!core/lexigram*/alembic.ini
+!packages/lexigram*/alembic.ini
+!experimental/*/lexigram*/alembic.ini
+!core/lexigram*/mypy.ini
+!packages/lexigram*/mypy.ini
+!experimental/*/lexigram*/mypy.ini
+!core/lexigram*/*.yaml.example
+!packages/lexigram*/*.yaml.example
+!experimental/*/lexigram*/*.yaml.example
+!core/lexigram*/src/
+!core/lexigram*/src/**
+!packages/lexigram*/src/
+!packages/lexigram*/src/**
+!experimental/*/lexigram*/src/
+!experimental/*/lexigram*/src/**
+!core/lexigram*/tests/
+!core/lexigram*/tests/**
+!packages/lexigram*/tests/
+!packages/lexigram*/tests/**
+!experimental/*/lexigram*/tests/
+!experimental/*/lexigram*/tests/**
+!core/lexigram*/docs/
+!core/lexigram*/docs/**
+!packages/lexigram*/docs/
+!packages/lexigram*/docs/**
+!experimental/*/lexigram*/docs/
+!experimental/*/lexigram*/docs/**
+
+# dev/ (renamed from scripts/ in a later task)
+!dev/
+!dev/**
+
+# Re-exclude private content under the tiered paths.
+# MUST come after the !...docs/** negations above — last match wins.
+core/lexigram*/docs/plans/
+packages/lexigram*/docs/plans/
+experimental/*/lexigram*/docs/plans/
+core/lexigram*/docs/**/
+packages/lexigram*/docs/**/
+experimental/*/lexigram*/docs/**/
