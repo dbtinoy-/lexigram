@@ -18,7 +18,11 @@ import sys
 
 _ROOT = Path(__file__).parent
 _EXCLUDED = {".venv", "build", "dist", "example", "__pycache__"}
-for _src in sorted(_ROOT.glob("*/src")) + sorted(_ROOT.glob("*/*/src")) + sorted(_ROOT.glob("*/*/*/src")):
+for _src in (
+    sorted(_ROOT.glob("*/src"))
+    + sorted(_ROOT.glob("*/*/src"))
+    + sorted(_ROOT.glob("*/*/*/src"))
+):
     if not any(p in _EXCLUDED for p in _src.parts):
         _src_str = str(_src)
         if _src_str not in sys.path:

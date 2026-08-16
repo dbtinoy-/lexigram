@@ -127,7 +127,7 @@ test = [
 ]
 
 [tool.ruff]
-extend = "../pyproject.toml"
+extend = "../../pyproject.toml"
 line-length = 88
 target-version = "py311"
 

@@ -86,7 +86,7 @@ lexigram-contracts = { workspace = true }
 lexigram-testing = { workspace = true }
 
 [tool.ruff]
-extend = "../pyproject.toml"
+extend = "../../pyproject.toml"
 
 [tool.ruff.lint]
 extend-ignore = ["TID251"]

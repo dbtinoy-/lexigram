@@ -4137,19 +4137,19 @@ web = [
 requires-dist = [
     { name = "cryptography", marker = "extra == 'security'", specifier = ">=41.0.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
-    { name = "lexigram-audit", marker = "extra == 'auth'", editable = "lexigram-audit" },
-    { name = "lexigram-auth", marker = "extra == 'auth'", editable = "lexigram-auth" },
-    { name = "lexigram-cache", marker = "extra == 'cache'", editable = "lexigram-cache" },
+    { name = "lexigram-audit", marker = "extra == 'auth'", editable = "packages/lexigram-audit" },
+    { name = "lexigram-auth", marker = "extra == 'auth'", editable = "packages/lexigram-auth" },
+    { name = "lexigram-cache", marker = "extra == 'cache'", editable = "packages/lexigram-cache" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-events", marker = "extra == 'events'", editable = "lexigram-events" },
-    { name = "lexigram-graphql", marker = "extra == 'graphql'", editable = "lexigram-graphql" },
-    { name = "lexigram-monitor", marker = "extra == 'monitor'", editable = "lexigram-monitor" },
-    { name = "lexigram-monitor", marker = "extra == 'test'", editable = "lexigram-monitor" },
-    { name = "lexigram-nosql", marker = "extra == 'db'", editable = "lexigram-nosql" },
-    { name = "lexigram-search", marker = "extra == 'db'", editable = "lexigram-search" },
-    { name = "lexigram-storage", marker = "extra == 'db'", editable = "lexigram-storage" },
-    { name = "lexigram-tasks", marker = "extra == 'tasks'", editable = "lexigram-tasks" },
-    { name = "lexigram-web", extras = ["uvicorn"], marker = "extra == 'web'", editable = "lexigram-web" },
+    { name = "lexigram-events", marker = "extra == 'events'", editable = "packages/lexigram-events" },
+    { name = "lexigram-graphql", marker = "extra == 'graphql'", editable = "packages/lexigram-graphql" },
+    { name = "lexigram-monitor", marker = "extra == 'monitor'", editable = "packages/lexigram-monitor" },
+    { name = "lexigram-monitor", marker = "extra == 'test'", editable = "packages/lexigram-monitor" },
+    { name = "lexigram-nosql", marker = "extra == 'db'", editable = "packages/lexigram-nosql" },
+    { name = "lexigram-search", marker = "extra == 'db'", editable = "packages/lexigram-search" },
+    { name = "lexigram-storage", marker = "extra == 'db'", editable = "packages/lexigram-storage" },
+    { name = "lexigram-tasks", marker = "extra == 'tasks'", editable = "packages/lexigram-tasks" },
+    { name = "lexigram-web", extras = ["uvicorn"], marker = "extra == 'web'", editable = "packages/lexigram-web" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.4.0" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -4283,21 +4283,21 @@ requires-dist = [
     { name = "ldap3", marker = "extra == 'full'", specifier = ">=2.9.0" },
     { name = "ldap3", marker = "extra == 'ldap'", specifier = ">=2.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
-    { name = "lexigram-auth", marker = "extra == 'auth'", editable = "lexigram-auth" },
-    { name = "lexigram-auth", marker = "extra == 'full'", editable = "lexigram-auth" },
-    { name = "lexigram-cache", marker = "extra == 'cache'", editable = "lexigram-cache" },
-    { name = "lexigram-cache", marker = "extra == 'full'", editable = "lexigram-cache" },
+    { name = "lexigram-auth", marker = "extra == 'auth'", editable = "packages/lexigram-auth" },
+    { name = "lexigram-auth", marker = "extra == 'full'", editable = "packages/lexigram-auth" },
+    { name = "lexigram-cache", marker = "extra == 'cache'", editable = "packages/lexigram-cache" },
+    { name = "lexigram-cache", marker = "extra == 'full'", editable = "packages/lexigram-cache" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-events", marker = "extra == 'events'", editable = "lexigram-events" },
-    { name = "lexigram-events", marker = "extra == 'full'", editable = "lexigram-events" },
-    { name = "lexigram-monitor", marker = "extra == 'monitor'", editable = "lexigram-monitor" },
-    { name = "lexigram-search", marker = "extra == 'search'", editable = "lexigram-search" },
-    { name = "lexigram-tasks", marker = "extra == 'full'", editable = "lexigram-tasks" },
-    { name = "lexigram-tasks", marker = "extra == 'tasks'", editable = "lexigram-tasks" },
-    { name = "lexigram-tenancy", marker = "extra == 'tenancy'", editable = "lexigram-tenancy" },
+    { name = "lexigram-events", marker = "extra == 'events'", editable = "packages/lexigram-events" },
+    { name = "lexigram-events", marker = "extra == 'full'", editable = "packages/lexigram-events" },
+    { name = "lexigram-monitor", marker = "extra == 'monitor'", editable = "packages/lexigram-monitor" },
+    { name = "lexigram-search", marker = "extra == 'search'", editable = "packages/lexigram-search" },
+    { name = "lexigram-tasks", marker = "extra == 'full'", editable = "packages/lexigram-tasks" },
+    { name = "lexigram-tasks", marker = "extra == 'tasks'", editable = "packages/lexigram-tasks" },
+    { name = "lexigram-tenancy", marker = "extra == 'tenancy'", editable = "packages/lexigram-tenancy" },
     { name = "lexigram-ui", editable = "lexigram-ui" },
-    { name = "lexigram-web", marker = "extra == 'full'", editable = "lexigram-web" },
-    { name = "lexigram-web", marker = "extra == 'web'", editable = "lexigram-web" },
+    { name = "lexigram-web", marker = "extra == 'full'", editable = "packages/lexigram-web" },
+    { name = "lexigram-web", marker = "extra == 'web'", editable = "packages/lexigram-web" },
     { name = "markupsafe", specifier = ">=2.1.5" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "openpyxl", marker = "extra == 'export'", specifier = ">=3.0.0" },
@@ -4333,7 +4333,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -4525,10 +4525,10 @@ requires-dist = [
     { name = "lexigram-ai-rag", marker = "extra == 'all'", editable = "lexigram-ai-rag" },
     { name = "lexigram-ai-rag", marker = "extra == 'rag'", editable = "lexigram-ai-rag" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
-    { name = "lexigram-vector", marker = "extra == 'all'", editable = "lexigram-vector" },
-    { name = "lexigram-vector", marker = "extra == 'vector'", editable = "lexigram-vector" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-vector", marker = "extra == 'all'", editable = "packages/lexigram-vector" },
+    { name = "lexigram-vector", marker = "extra == 'vector'", editable = "packages/lexigram-vector" },
     { name = "markdown", marker = "extra == 'all'", specifier = ">=3.5.0" },
     { name = "markdown", marker = "extra == 'rag'", specifier = ">=3.5.0" },
     { name = "milvus", marker = "extra == 'all'", specifier = ">=2.3.0" },
@@ -4610,7 +4610,7 @@ dev = [
 ]
 test = [
     { name = "jsonschema", specifier = ">=4.0.0" },
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -4661,7 +4661,7 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0" },
@@ -4679,7 +4679,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -4720,7 +4720,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -4767,7 +4767,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -4784,7 +4784,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -4832,7 +4832,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -4850,7 +4850,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -4898,7 +4898,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -4916,7 +4916,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5027,7 +5027,7 @@ requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-admin", marker = "extra == 'admin'", editable = "lexigram-admin" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mistralai", marker = "extra == 'all'", specifier = ">=0.1.0" },
     { name = "mistralai", marker = "extra == 'mistral'", specifier = ">=0.1.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -5058,7 +5058,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5106,7 +5106,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5124,7 +5124,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5174,7 +5174,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5192,7 +5192,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5239,7 +5239,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5256,7 +5256,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5305,7 +5305,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5322,7 +5322,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5413,7 +5413,7 @@ requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-ai-rag", extras = ["pdf", "web", "clip", "compression", "reranking"], marker = "extra == 'all'", editable = "lexigram-ai-rag" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "librosa", marker = "extra == 'audio'", specifier = ">=0.10.0" },
     { name = "llmlingua", marker = "extra == 'compression'", specifier = ">=0.2.0" },
     { name = "mutagen", marker = "extra == 'audio'", specifier = ">=1.47.0" },
@@ -5440,7 +5440,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5487,7 +5487,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5504,7 +5504,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5555,7 +5555,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "orjson", specifier = ">=3.9.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
@@ -5574,7 +5574,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5621,7 +5621,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5638,7 +5638,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5686,7 +5686,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5704,7 +5704,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5751,7 +5751,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5768,7 +5768,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5778,7 +5778,7 @@ test = [
 [[package]]
 name = "lexigram-audit"
 version = "0.1.3007"
-source = { editable = "lexigram-audit" }
+source = { editable = "packages/lexigram-audit" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -5819,8 +5819,8 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-sql", marker = "extra == 'sql'", editable = "lexigram-sql" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-sql", marker = "extra == 'sql'", editable = "packages/lexigram-sql" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -5838,7 +5838,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5848,7 +5848,7 @@ test = [
 [[package]]
 name = "lexigram-auth"
 version = "0.1.3007"
-source = { editable = "lexigram-auth" }
+source = { editable = "packages/lexigram-auth" }
 dependencies = [
     { name = "argon2-cffi" },
     { name = "cryptography" },
@@ -5925,8 +5925,8 @@ requires-dist = [
     { name = "ldap3", marker = "extra == 'ldap'", specifier = ">=2.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "orjson", specifier = ">=3.9.0" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.0" },
@@ -5958,7 +5958,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -5968,7 +5968,7 @@ test = [
 [[package]]
 name = "lexigram-cache"
 version = "0.1.3007"
-source = { editable = "lexigram-cache" }
+source = { editable = "packages/lexigram-cache" }
 dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
@@ -6040,8 +6040,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "numpy", marker = "extra == 'all'", specifier = ">=1.24.0" },
     { name = "numpy", marker = "extra == 'semantic'", specifier = ">=1.24.0" },
@@ -6074,7 +6074,7 @@ dev = [
     { name = "types-redis", specifier = ">=4.6.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6142,8 +6142,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pytest", marker = "extra == 'all'", specifier = ">=8.0.0" },
@@ -6171,7 +6171,7 @@ dev = [
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6238,7 +6238,7 @@ test = [
 [[package]]
 name = "lexigram-events"
 version = "0.1.3007"
-source = { editable = "lexigram-events" }
+source = { editable = "packages/lexigram-events" }
 dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
@@ -6331,8 +6331,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "motor", marker = "extra == 'all'", specifier = ">=3.0.0" },
     { name = "motor", marker = "extra == 'mongo'", specifier = ">=3.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -6358,7 +6358,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6368,7 +6368,7 @@ test = [
 [[package]]
 name = "lexigram-features"
 version = "0.1.3007"
-source = { editable = "lexigram-features" }
+source = { editable = "packages/lexigram-features" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -6408,7 +6408,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -6426,7 +6426,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6436,7 +6436,7 @@ test = [
 [[package]]
 name = "lexigram-graph"
 version = "0.1.3007"
-source = { editable = "lexigram-graph" }
+source = { editable = "packages/lexigram-graph" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -6478,8 +6478,8 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-graph", extras = ["neo4j"], marker = "extra == 'all'", editable = "lexigram-graph" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-graph", extras = ["neo4j"], marker = "extra == 'all'", editable = "packages/lexigram-graph" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "neo4j", marker = "extra == 'neo4j'", specifier = ">=5.20.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
@@ -6496,7 +6496,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6506,7 +6506,7 @@ test = [
 [[package]]
 name = "lexigram-graphql"
 version = "0.1.3007"
-source = { editable = "lexigram-graphql" }
+source = { editable = "packages/lexigram-graphql" }
 dependencies = [
     { name = "graphql-core" },
     { name = "jinja2" },
@@ -6567,8 +6567,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'all'", specifier = ">=8.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
@@ -6596,7 +6596,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6606,7 +6606,7 @@ test = [
 [[package]]
 name = "lexigram-http"
 version = "0.1.3007"
-source = { editable = "lexigram-http" }
+source = { editable = "packages/lexigram-http" }
 dependencies = [
     { name = "aiohttp" },
     { name = "jinja2" },
@@ -6648,7 +6648,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-aiohttp", marker = "extra == 'test'", specifier = ">=1.0.0" },
@@ -6665,7 +6665,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-aiohttp", specifier = ">=1.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
@@ -6676,7 +6676,7 @@ test = [
 [[package]]
 name = "lexigram-monitor"
 version = "0.1.3007"
-source = { editable = "lexigram-monitor" }
+source = { editable = "packages/lexigram-monitor" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -6743,9 +6743,9 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-tasks", marker = "extra == 'test'", editable = "lexigram-tasks" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-tasks", marker = "extra == 'test'", editable = "packages/lexigram-tasks" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "opentelemetry-distro", marker = "extra == 'all'", specifier = ">=0.43b0" },
     { name = "opentelemetry-distro", marker = "extra == 'otel'", specifier = ">=0.43b0" },
@@ -6779,8 +6779,8 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-tasks", editable = "lexigram-tasks" },
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-tasks", editable = "packages/lexigram-tasks" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6842,9 +6842,9 @@ requires-dist = [
     { name = "lexigram-multimedia-tts", editable = "lexigram-multimedia-tts" },
     { name = "lexigram-multimedia-upscale", editable = "lexigram-multimedia-upscale" },
     { name = "lexigram-multimedia-video", editable = "lexigram-multimedia-video" },
-    { name = "lexigram-storage", editable = "lexigram-storage" },
-    { name = "lexigram-tasks", editable = "lexigram-tasks" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-storage", editable = "packages/lexigram-storage" },
+    { name = "lexigram-tasks", editable = "packages/lexigram-tasks" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -6860,7 +6860,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -6924,7 +6924,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "librosa", marker = "extra == 'librosa'", specifier = ">=0.10.0" },
     { name = "librosa", marker = "extra == 'test'", specifier = ">=0.10.0" },
     { name = "madmom", marker = "extra == 'madmom-server'" },
@@ -6947,7 +6947,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "librosa", specifier = ">=0.10.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "pytest", specifier = ">=8.0.0" },
@@ -6999,7 +6999,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -7016,7 +7016,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7068,7 +7068,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -7086,7 +7086,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7144,7 +7144,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -7164,7 +7164,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7234,7 +7234,7 @@ requires-dist = [
     { name = "kokoro", marker = "extra == 'kokoro-server'" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "piper-tts", marker = "extra == 'piper-server'" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
@@ -7257,7 +7257,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7306,7 +7306,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -7323,7 +7323,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7383,7 +7383,7 @@ requires-dist = [
     { name = "diffusers", marker = "extra == 'svd-server'" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -7403,7 +7403,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7413,7 +7413,7 @@ test = [
 [[package]]
 name = "lexigram-nosql"
 version = "0.1.3007"
-source = { editable = "lexigram-nosql" }
+source = { editable = "packages/lexigram-nosql" }
 dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
@@ -7469,10 +7469,10 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-nosql", extras = ["dynamodb"], marker = "extra == 'all'", editable = "lexigram-nosql" },
-    { name = "lexigram-nosql", extras = ["firestore"], marker = "extra == 'all'", editable = "lexigram-nosql" },
-    { name = "lexigram-nosql", extras = ["mongodb"], marker = "extra == 'all'", editable = "lexigram-nosql" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-nosql", extras = ["dynamodb"], marker = "extra == 'all'", editable = "packages/lexigram-nosql" },
+    { name = "lexigram-nosql", extras = ["firestore"], marker = "extra == 'all'", editable = "packages/lexigram-nosql" },
+    { name = "lexigram-nosql", extras = ["mongodb"], marker = "extra == 'all'", editable = "packages/lexigram-nosql" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "motor", marker = "extra == 'mongodb'", specifier = ">=3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pymongo", marker = "extra == 'mongodb'", specifier = ">=4.6.0" },
@@ -7490,7 +7490,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7500,7 +7500,7 @@ test = [
 [[package]]
 name = "lexigram-notification"
 version = "0.1.3007"
-source = { editable = "lexigram-notification" }
+source = { editable = "packages/lexigram-notification" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },
@@ -7568,7 +7568,7 @@ requires-dist = [
     { name = "httpx", extras = ["http2"], marker = "extra == 'apns'", specifier = ">=0.27.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pyjwt", marker = "extra == 'apns'", specifier = ">=2.8.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
@@ -7592,7 +7592,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7602,7 +7602,7 @@ test = [
 [[package]]
 name = "lexigram-queue"
 version = "0.1.3007"
-source = { editable = "lexigram-queue" }
+source = { editable = "packages/lexigram-queue" }
 dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
@@ -7646,7 +7646,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7656,7 +7656,7 @@ test = [
 [[package]]
 name = "lexigram-resilience"
 version = "0.1.3007"
-source = { editable = "lexigram-resilience" }
+source = { editable = "packages/lexigram-resilience" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -7697,10 +7697,10 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
-    { name = "lexigram-cache", marker = "extra == 'idempotency-redis'", editable = "lexigram-cache" },
+    { name = "lexigram-cache", marker = "extra == 'idempotency-redis'", editable = "packages/lexigram-cache" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-sql", marker = "extra == 'idempotency-database'", editable = "lexigram-sql" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-sql", marker = "extra == 'idempotency-database'", editable = "packages/lexigram-sql" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0" },
@@ -7716,7 +7716,7 @@ dev = [
     { name = "ruff", specifier = ">=0.11.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7726,7 +7726,7 @@ test = [
 [[package]]
 name = "lexigram-search"
 version = "0.1.3007"
-source = { editable = "lexigram-search" }
+source = { editable = "packages/lexigram-search" }
 dependencies = [
     { name = "jinja2" },
     { name = "lexigram" },
@@ -7828,8 +7828,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "meilisearch", marker = "extra == 'all'", specifier = ">=0.28.0" },
     { name = "meilisearch", marker = "extra == 'meilisearch'", specifier = ">=0.28.0" },
     { name = "meilisearch", marker = "extra == 'search-all'", specifier = ">=0.28.0" },
@@ -7856,7 +7856,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7866,7 +7866,7 @@ test = [
 [[package]]
 name = "lexigram-secrets"
 version = "0.1.3007"
-source = { editable = "lexigram-secrets" }
+source = { editable = "packages/lexigram-secrets" }
 dependencies = [
     { name = "botocore" },
     { name = "lexigram" },
@@ -7930,8 +7930,8 @@ requires-dist = [
     { name = "hvac", marker = "extra == 'vault'", specifier = ">=2.0.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-secrets", extras = ["vault", "aws", "gcp", "azure"], marker = "extra == 'all'", editable = "lexigram-secrets" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-secrets", extras = ["vault", "aws", "gcp", "azure"], marker = "extra == 'all'", editable = "packages/lexigram-secrets" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0" },
@@ -7948,7 +7948,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -7958,7 +7958,7 @@ test = [
 [[package]]
 name = "lexigram-sql"
 version = "0.1.3007"
-source = { editable = "lexigram-sql" }
+source = { editable = "packages/lexigram-sql" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
@@ -8034,8 +8034,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'all'", specifier = ">=8.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
@@ -8056,7 +8056,7 @@ provides-extras = ["postgres", "mysql", "sqlite", "test", "dev", "all"]
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=23.0.0" },
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "mypy", specifier = ">=1.0.0" },
     { name = "ruff", specifier = ">=0.1.0" },
 ]
@@ -8070,7 +8070,7 @@ test = [
 [[package]]
 name = "lexigram-storage"
 version = "0.1.3007"
-source = { editable = "lexigram-storage" }
+source = { editable = "packages/lexigram-storage" }
 dependencies = [
     { name = "aiofiles" },
     { name = "jinja2" },
@@ -8141,8 +8141,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'all'", specifier = ">=8.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
@@ -8166,7 +8166,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -8176,7 +8176,7 @@ test = [
 [[package]]
 name = "lexigram-tasks"
 version = "0.1.3007"
-source = { editable = "lexigram-tasks" }
+source = { editable = "packages/lexigram-tasks" }
 dependencies = [
     { name = "croniter" },
     { name = "jinja2" },
@@ -8246,8 +8246,8 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pika", marker = "extra == 'all'", specifier = ">=1.3.0" },
     { name = "pika", marker = "extra == 'rabbitmq'", specifier = ">=1.3.0" },
@@ -8280,7 +8280,7 @@ dev = [
     { name = "types-croniter", specifier = ">=2.0.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -8290,7 +8290,7 @@ test = [
 [[package]]
 name = "lexigram-tenancy"
 version = "0.1.3007"
-source = { editable = "lexigram-tenancy" }
+source = { editable = "packages/lexigram-tenancy" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -8344,10 +8344,10 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-sql", marker = "extra == 'sql'", editable = "lexigram-sql" },
-    { name = "lexigram-tenancy", extras = ["sql", "test", "dev"], marker = "extra == 'all'", editable = "lexigram-tenancy" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
-    { name = "lexigram-workflow", marker = "extra == 'test'", editable = "lexigram-workflow" },
+    { name = "lexigram-sql", marker = "extra == 'sql'", editable = "packages/lexigram-sql" },
+    { name = "lexigram-tenancy", extras = ["sql", "test", "dev"], marker = "extra == 'all'", editable = "packages/lexigram-tenancy" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-workflow", marker = "extra == 'test'", editable = "packages/lexigram-workflow" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -8365,8 +8365,8 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
-    { name = "lexigram-workflow", editable = "lexigram-workflow" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
+    { name = "lexigram-workflow", editable = "packages/lexigram-workflow" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -8376,7 +8376,7 @@ test = [
 [[package]]
 name = "lexigram-testing"
 version = "0.1.3007"
-source = { editable = "lexigram-testing" }
+source = { editable = "packages/lexigram-testing" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -8473,14 +8473,14 @@ requires-dist = [
     { name = "httpx2", marker = "extra == 'all'", specifier = ">=2.0.0" },
     { name = "httpx2", marker = "extra == 'web'", specifier = ">=2.0.0" },
     { name = "lexigram", editable = "core/lexigram" },
-    { name = "lexigram-auth", marker = "extra == 'all'", editable = "lexigram-auth" },
-    { name = "lexigram-auth", marker = "extra == 'auth'", editable = "lexigram-auth" },
-    { name = "lexigram-cache", marker = "extra == 'all'", editable = "lexigram-cache" },
-    { name = "lexigram-cache", marker = "extra == 'cache'", editable = "lexigram-cache" },
+    { name = "lexigram-auth", marker = "extra == 'all'", editable = "packages/lexigram-auth" },
+    { name = "lexigram-auth", marker = "extra == 'auth'", editable = "packages/lexigram-auth" },
+    { name = "lexigram-cache", marker = "extra == 'all'", editable = "packages/lexigram-cache" },
+    { name = "lexigram-cache", marker = "extra == 'cache'", editable = "packages/lexigram-cache" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-sql", editable = "lexigram-sql" },
-    { name = "lexigram-storage", marker = "extra == 'all'", editable = "lexigram-storage" },
-    { name = "lexigram-storage", marker = "extra == 'storage'", editable = "lexigram-storage" },
+    { name = "lexigram-sql", editable = "packages/lexigram-sql" },
+    { name = "lexigram-storage", marker = "extra == 'all'", editable = "packages/lexigram-storage" },
+    { name = "lexigram-storage", marker = "extra == 'storage'", editable = "packages/lexigram-storage" },
     { name = "motor", marker = "extra == 'integration'", specifier = ">=3.3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "neo4j", marker = "extra == 'integration'", specifier = ">=5.18.0" },
@@ -8574,7 +8574,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'a11y'", specifier = ">=0.28.1" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "markupsafe", specifier = ">=2.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "playwright", marker = "extra == 'a11y'", specifier = ">=1.45.0" },
@@ -8596,7 +8596,7 @@ dev = [
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -8606,7 +8606,7 @@ test = [
 [[package]]
 name = "lexigram-vector"
 version = "0.1.3007"
-source = { editable = "lexigram-vector" }
+source = { editable = "packages/lexigram-vector" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -8678,13 +8678,13 @@ requires-dist = [
     { name = "chromadb", marker = "extra == 'chroma'", specifier = ">=0.4.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
-    { name = "lexigram-vector", extras = ["chroma"], marker = "extra == 'all'", editable = "lexigram-vector" },
-    { name = "lexigram-vector", extras = ["embed"], marker = "extra == 'all'", editable = "lexigram-vector" },
-    { name = "lexigram-vector", extras = ["pgvector"], marker = "extra == 'all'", editable = "lexigram-vector" },
-    { name = "lexigram-vector", extras = ["pinecone"], marker = "extra == 'all'", editable = "lexigram-vector" },
-    { name = "lexigram-vector", extras = ["qdrant"], marker = "extra == 'all'", editable = "lexigram-vector" },
-    { name = "lexigram-vector", extras = ["weaviate"], marker = "extra == 'all'", editable = "lexigram-vector" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-vector", extras = ["chroma"], marker = "extra == 'all'", editable = "packages/lexigram-vector" },
+    { name = "lexigram-vector", extras = ["embed"], marker = "extra == 'all'", editable = "packages/lexigram-vector" },
+    { name = "lexigram-vector", extras = ["pgvector"], marker = "extra == 'all'", editable = "packages/lexigram-vector" },
+    { name = "lexigram-vector", extras = ["pinecone"], marker = "extra == 'all'", editable = "packages/lexigram-vector" },
+    { name = "lexigram-vector", extras = ["qdrant"], marker = "extra == 'all'", editable = "packages/lexigram-vector" },
+    { name = "lexigram-vector", extras = ["weaviate"], marker = "extra == 'all'", editable = "packages/lexigram-vector" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "numpy", marker = "extra == 'test'", specifier = ">=1.24.0" },
     { name = "pinecone-client", marker = "extra == 'pinecone'", specifier = ">=3.0.0" },
@@ -8705,7 +8705,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
@@ -8716,7 +8716,7 @@ test = [
 [[package]]
 name = "lexigram-web"
 version = "0.1.3007"
-source = { editable = "lexigram-web" }
+source = { editable = "packages/lexigram-web" }
 dependencies = [
     { name = "aiofiles" },
     { name = "jinja2" },
@@ -8822,8 +8822,8 @@ requires-dist = [
     { name = "jinja2", marker = "extra == 'templates'", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'all'", editable = "lexigram-testing" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'all'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "markupsafe", specifier = ">=2.1.5" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "orjson", specifier = ">=3.9.0" },
@@ -8858,7 +8858,7 @@ dev = [
 test = [
     { name = "httpx", specifier = ">=0.26.0" },
     { name = "httpx2", specifier = ">=2.0.0" },
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -8868,7 +8868,7 @@ test = [
 [[package]]
 name = "lexigram-webhook"
 version = "0.1.3007"
-source = { editable = "lexigram-webhook" }
+source = { editable = "packages/lexigram-webhook" }
 dependencies = [
     { name = "httpx" },
     { name = "lexigram" },
@@ -8899,7 +8899,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-sql", marker = "extra == 'sql'", editable = "lexigram-sql" },
+    { name = "lexigram-sql", marker = "extra == 'sql'", editable = "packages/lexigram-sql" },
     { name = "starlette", specifier = ">=0.28.0" },
 ]
 provides-extras = ["sql"]
@@ -8910,7 +8910,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -8920,7 +8920,7 @@ test = [
 [[package]]
 name = "lexigram-workflow"
 version = "0.1.3007"
-source = { editable = "lexigram-workflow" }
+source = { editable = "packages/lexigram-workflow" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -8958,7 +8958,7 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-testing", marker = "extra == 'test'", editable = "lexigram-testing" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.23.0" },
@@ -8976,7 +8976,7 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
 ]
 test = [
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
@@ -9152,17 +9152,17 @@ requires-dist = [
     { name = "lexigram-ai-session", editable = "lexigram-ai-session" },
     { name = "lexigram-ai-skills", editable = "lexigram-ai-skills" },
     { name = "lexigram-ai-workers", editable = "lexigram-ai-workers" },
-    { name = "lexigram-audit", editable = "lexigram-audit" },
-    { name = "lexigram-auth", editable = "lexigram-auth" },
-    { name = "lexigram-cache", editable = "lexigram-cache" },
+    { name = "lexigram-audit", editable = "packages/lexigram-audit" },
+    { name = "lexigram-auth", editable = "packages/lexigram-auth" },
+    { name = "lexigram-cache", editable = "packages/lexigram-cache" },
     { name = "lexigram-cli", editable = "lexigram-cli" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-events", editable = "lexigram-events" },
-    { name = "lexigram-features", editable = "lexigram-features" },
-    { name = "lexigram-graph", editable = "lexigram-graph" },
-    { name = "lexigram-graphql", editable = "lexigram-graphql" },
-    { name = "lexigram-http", editable = "lexigram-http" },
-    { name = "lexigram-monitor", editable = "lexigram-monitor" },
+    { name = "lexigram-events", editable = "packages/lexigram-events" },
+    { name = "lexigram-features", editable = "packages/lexigram-features" },
+    { name = "lexigram-graph", editable = "packages/lexigram-graph" },
+    { name = "lexigram-graphql", editable = "packages/lexigram-graphql" },
+    { name = "lexigram-http", editable = "packages/lexigram-http" },
+    { name = "lexigram-monitor", editable = "packages/lexigram-monitor" },
     { name = "lexigram-multimedia", editable = "lexigram-multimedia" },
     { name = "lexigram-multimedia-beat", editable = "lexigram-multimedia-beat" },
     { name = "lexigram-multimedia-image", editable = "lexigram-multimedia-image" },
@@ -9171,22 +9171,22 @@ requires-dist = [
     { name = "lexigram-multimedia-tts", editable = "lexigram-multimedia-tts" },
     { name = "lexigram-multimedia-upscale", editable = "lexigram-multimedia-upscale" },
     { name = "lexigram-multimedia-video", editable = "lexigram-multimedia-video" },
-    { name = "lexigram-nosql", editable = "lexigram-nosql" },
-    { name = "lexigram-notification", editable = "lexigram-notification" },
-    { name = "lexigram-queue", editable = "lexigram-queue" },
-    { name = "lexigram-resilience", editable = "lexigram-resilience" },
-    { name = "lexigram-search", editable = "lexigram-search" },
-    { name = "lexigram-secrets", editable = "lexigram-secrets" },
-    { name = "lexigram-sql", editable = "lexigram-sql" },
-    { name = "lexigram-storage", editable = "lexigram-storage" },
-    { name = "lexigram-tasks", editable = "lexigram-tasks" },
-    { name = "lexigram-tenancy", editable = "lexigram-tenancy" },
-    { name = "lexigram-testing", editable = "lexigram-testing" },
+    { name = "lexigram-nosql", editable = "packages/lexigram-nosql" },
+    { name = "lexigram-notification", editable = "packages/lexigram-notification" },
+    { name = "lexigram-queue", editable = "packages/lexigram-queue" },
+    { name = "lexigram-resilience", editable = "packages/lexigram-resilience" },
+    { name = "lexigram-search", editable = "packages/lexigram-search" },
+    { name = "lexigram-secrets", editable = "packages/lexigram-secrets" },
+    { name = "lexigram-sql", editable = "packages/lexigram-sql" },
+    { name = "lexigram-storage", editable = "packages/lexigram-storage" },
+    { name = "lexigram-tasks", editable = "packages/lexigram-tasks" },
+    { name = "lexigram-tenancy", editable = "packages/lexigram-tenancy" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
     { name = "lexigram-ui", editable = "lexigram-ui" },
-    { name = "lexigram-vector", editable = "lexigram-vector" },
-    { name = "lexigram-web", editable = "lexigram-web" },
-    { name = "lexigram-webhook", editable = "lexigram-webhook" },
-    { name = "lexigram-workflow", editable = "lexigram-workflow" },
+    { name = "lexigram-vector", editable = "packages/lexigram-vector" },
+    { name = "lexigram-web", editable = "packages/lexigram-web" },
+    { name = "lexigram-webhook", editable = "packages/lexigram-webhook" },
+    { name = "lexigram-workflow", editable = "packages/lexigram-workflow" },
     { name = "motor", marker = "extra == 'test'", specifier = ">=3.3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "nh3", specifier = ">=0.3.4" },
@@ -9222,7 +9222,7 @@ dev = [
     { name = "import-linter", specifier = ">=2.1.0" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "joblib", specifier = ">=1.5.3" },
-    { name = "lexigram-nosql", editable = "lexigram-nosql" },
+    { name = "lexigram-nosql", editable = "packages/lexigram-nosql" },
     { name = "motor", specifier = ">=3.3.0" },
     { name = "mypy", specifier = ">=1.0.0" },
     { name = "pillow", specifier = ">=12.1.1" },
