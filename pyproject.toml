@@ -79,7 +79,7 @@ members = [
     "core/lexigram-contracts",
     "core/lexigram",
     "experimental/ai/lexigram-ai-agents",
-    "lexigram-admin",
+    "experimental/apps/lexigram-admin",
     "experimental/ai/lexigram-ai",
     "experimental/ai/lexigram-ai-llm",
     "experimental/ai/lexigram-ai-rag",
@@ -87,7 +87,7 @@ members = [
     "experimental/ai/lexigram-ai-relay-gateway",
     "packages/lexigram-auth",
     "packages/lexigram-cache",
-    "lexigram-cli",
+    "experimental/apps/lexigram-cli",
     "packages/lexigram-sql",
     "packages/lexigram-events",
     "packages/lexigram-graphql",
@@ -114,7 +114,7 @@ members = [
     "experimental/ai/lexigram-ai-governance",
     "experimental/ai/lexigram-ai-guard",
     "experimental/ai/lexigram-ai-evaluation",
-    "lexigram-ui",
+    "experimental/apps/lexigram-ui",
     "packages/lexigram-web",
     "packages/lexigram-nosql",
     "packages/lexigram-vector",
@@ -283,10 +283,10 @@ filterwarnings = [
 ]
 addopts = ["--strict-markers", "--strict-config", "--tb=short", "--import-mode=importlib", "-p", "no:cacheprovider", "--ignore=lexigram-testing/src"]
 consider_namespace_packages = true
-norecursedirs = [".worktrees", ".venv", "build", "dist", "demos", "lexigram-cli/src/lexigram/cli/templates", "packages/lexigram-testing"]
+norecursedirs = [".worktrees", ".venv", "build", "dist", "demos", "experimental/apps/lexigram-cli/src/lexigram/cli/templates", "packages/lexigram-testing"]
 testpaths = [
     "core/lexigram/tests",
-    "lexigram-admin/tests",
+    "experimental/apps/lexigram-admin/tests",
     "experimental/ai/lexigram-ai/tests",
     "experimental/ai/lexigram-ai-agents/tests",
     "experimental/ai/lexigram-ai-feedback/tests",
@@ -305,7 +305,7 @@ testpaths = [
     "experimental/ai/lexigram-ai-relay-gateway/tests",
     "packages/lexigram-auth/tests",
     "packages/lexigram-cache/tests",
-    "lexigram-cli/tests",
+    "experimental/apps/lexigram-cli/tests",
     "core/lexigram-contracts/tests",
     "packages/lexigram-events/tests",
     "packages/lexigram-features/tests",
@@ -333,7 +333,7 @@ testpaths = [
     "experimental/multimedia/lexigram-multimedia-upscale/tests",
     "experimental/multimedia/lexigram-multimedia-interpolate/tests",
     "experimental/multimedia/lexigram-multimedia-beat/tests",
-    "lexigram-ui/tests",
+    "experimental/apps/lexigram-ui/tests",
     "packages/lexigram-vector/tests",
     "packages/lexigram-web/tests",
     "packages/lexigram-workflow/tests",
@@ -344,7 +344,7 @@ testpaths = [
 pythonpath = [
     ".",
     "core/lexigram/src",
-    "lexigram-admin/src",
+    "experimental/apps/lexigram-admin/src",
     "experimental/ai/lexigram-ai/src",
     "experimental/ai/lexigram-ai-agents/src",
     "experimental/ai/lexigram-ai-feedback/src",
@@ -359,7 +359,7 @@ pythonpath = [
     "experimental/ai/lexigram-ai-relay-gateway/src",
     "packages/lexigram-auth/src",
     "packages/lexigram-cache/src",
-    "lexigram-cli/src",
+    "experimental/apps/lexigram-cli/src",
     "packages/lexigram-sql/src",
     "packages/lexigram-events/src",
     "packages/lexigram-graphql/src",
@@ -375,7 +375,7 @@ pythonpath = [
     "packages/lexigram-secrets/tests",
     "packages/lexigram-testing/src",
     "core/lexigram-contracts/src",
-    "lexigram-ui/src",
+    "experimental/apps/lexigram-ui/src",
     "packages/lexigram-web/src",
     "experimental/ai/lexigram-ai-governance/src",
     "experimental/ai/lexigram-ai-observability/src",
@@ -410,7 +410,7 @@ markers = [
 source = [
     "core/lexigram",
     "core/lexigram-contracts",
-    "lexigram-admin",
+    "experimental/apps/lexigram-admin",
     "experimental/ai/lexigram-ai",
     "experimental/ai/lexigram-ai-agents",
     "experimental/ai/lexigram-ai-feedback",
@@ -429,7 +429,7 @@ source = [
     "experimental/ai/lexigram-ai-relay-gateway",
     "packages/lexigram-auth",
     "packages/lexigram-cache",
-    "lexigram-cli",
+    "experimental/apps/lexigram-cli",
     "packages/lexigram-events",
     "packages/lexigram-features",
     "packages/lexigram-graphql",
@@ -445,7 +445,7 @@ source = [
     "packages/lexigram-storage",
     "packages/lexigram-tasks",
     "packages/lexigram-testing",
-    "lexigram-ui",
+    "experimental/apps/lexigram-ui",
     "packages/lexigram-vector",
     "packages/lexigram-web",
     "packages/lexigram-workflow",
@@ -761,7 +761,7 @@ ignore = [
 "packages/lexigram-testing/src/lexigram/testing/snapshots.py" = ["TID251"]
 "experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/audit.py" = ["TID251"]
 "packages/lexigram-audit/src/lexigram/audit/verification/checksum.py" = ["TID251"]
-"lexigram-cli/src/lexigram/cli/commands/mcp.py" = ["TID251"]
+"experimental/apps/lexigram-cli/src/lexigram/cli/commands/mcp.py" = ["TID251"]
 "packages/lexigram-tasks/src/lexigram/tasks/scheduling/persistence.py" = ["TID251"]
 "packages/lexigram-tasks/src/lexigram/tasks/workflows/state.py" = ["TID251"]
 # Utility scripts — broader exception patterns are expected
@@ -808,7 +808,7 @@ explicit_package_bases = true
 mypy_path = [
     "core/lexigram/src",
     "core/lexigram-contracts/src",
-    "lexigram-admin/src",
+    "experimental/apps/lexigram-admin/src",
     "experimental/ai/lexigram-ai/src",
     "experimental/ai/lexigram-ai-agents/src",
     "experimental/ai/lexigram-ai-evaluation/src",
@@ -828,7 +828,7 @@ mypy_path = [
     "experimental/ai/lexigram-ai-mcp/src",
     "packages/lexigram-auth/src",
     "packages/lexigram-cache/src",
-    "lexigram-cli/src",
+    "experimental/apps/lexigram-cli/src",
     "packages/lexigram-events/src",
     "packages/lexigram-features/src",
     "packages/lexigram-graphql/src",
@@ -845,7 +845,7 @@ mypy_path = [
     "packages/lexigram-sql/src",
     "packages/lexigram-tenancy/src",
     "packages/lexigram-testing/src",
-    "lexigram-ui/src",
+    "experimental/apps/lexigram-ui/src",
     "packages/lexigram-vector/src",
     "packages/lexigram-web/src",
     "packages/lexigram-workflow/src",
@@ -863,10 +863,10 @@ mypy_path = [
 ]
 warn_unused_ignores = true
 exclude = [
-    "lexigram-cli/src/lexigram/cli/templates/.*",
+    "experimental/apps/lexigram-cli/src/lexigram/cli/templates/.*",
     "core/lexigram-contracts/src/lexigram/__init__.py",
     "experimental/ai/lexigram-ai/src/lexigram/__init__.py",
-    "lexigram-admin/src/lexigram/__init__.py",
+    "experimental/apps/lexigram-admin/src/lexigram/__init__.py",
     "tests/.*",
     "docs/.*",
     "alembic/.*",

@@ -24,7 +24,7 @@ TYPED_PKGS := experimental/ai/lexigram-ai-agents experimental/ai/lexigram-ai-eva
               experimental/ai/lexigram-ai-skills experimental/ai/lexigram-ai-workers \
               packages/lexigram-audit packages/lexigram-events packages/lexigram-monitor \
               packages/lexigram-notification packages/lexigram-nosql packages/lexigram-queue \
-              lexigram-ui packages/lexigram-vector packages/lexigram-workflow \
+              experimental/apps/lexigram-ui packages/lexigram-vector packages/lexigram-workflow \
               packages/lexigram-cache packages/lexigram-auth packages/lexigram-search \
               packages/lexigram-sql packages/lexigram-testing packages/lexigram-webhook
 

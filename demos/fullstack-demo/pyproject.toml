@@ -45,18 +45,18 @@ tts = [
 ]
 
 [tool.uv.sources]
-lexigram = { path = "../../lexigram", editable = true }
-lexigram-web = { path = "../../lexigram-web", editable = true }
-lexigram-ui = { path = "../../lexigram-ui", editable = true }
-lexigram-ai-llm = { path = "../../lexigram-ai-llm", editable = true }
-lexigram-cli = { path = "../../lexigram-cli", editable = true }
-lexigram-sql = { path = "../../lexigram-sql", editable = true }
-lexigram-tasks = { path = "../../lexigram-tasks", editable = true }
-lexigram-ai-agents = { path = "../../lexigram-ai-agents", editable = true }
-lexigram-contracts = { path = "../../lexigram-contracts", editable = true }
-lexigram-multimedia = { path = "../../lexigram-multimedia", editable = true }
-lexigram-multimedia-video = { path = "../../lexigram-multimedia-video", editable = true }
-lexigram-multimedia-beat = { path = "../../lexigram-multimedia-beat", editable = true }
+lexigram = { path = "../../core/lexigram", editable = true }
+lexigram-web = { path = "../../packages/lexigram-web", editable = true }
+lexigram-ui = { path = "../../experimental/apps/lexigram-ui", editable = true }
+lexigram-ai-llm = { path = "../../experimental/ai/lexigram-ai-llm", editable = true }
+lexigram-cli = { path = "../../experimental/apps/lexigram-cli", editable = true }
+lexigram-sql = { path = "../../packages/lexigram-sql", editable = true }
+lexigram-tasks = { path = "../../packages/lexigram-tasks", editable = true }
+lexigram-ai-agents = { path = "../../experimental/ai/lexigram-ai-agents", editable = true }
+lexigram-contracts = { path = "../../core/lexigram-contracts", editable = true }
+lexigram-multimedia = { path = "../../experimental/multimedia/lexigram-multimedia", editable = true }
+lexigram-multimedia-video = { path = "../../experimental/multimedia/lexigram-multimedia-video", editable = true }
+lexigram-multimedia-beat = { path = "../../experimental/multimedia/lexigram-multimedia-beat", editable = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
