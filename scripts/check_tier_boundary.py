@@ -1,53 +1,66 @@
-"""Enforce the stable/experimental tier boundary in the lexigram core repository.
+"""Enforce the stable/experimental tier boundary as a path rule.
 
-Fails if any stable package (or the root workspace) references an experimental-tier
-package in its declared project metadata: dependencies, optional-dependencies, or
-dependency-groups.
+A package under ``core/`` or ``packages/`` must not depend on one under
+``experimental/``. The tier is derived from the member's path, never from a
+name list; the root workspace pyproject is not scanned.
+
+Only ``[project].dependencies`` counts — optional dependencies are opt-in
+(``lexigram[all]`` deliberately fans out to experimental packages), and
+dependency groups are developer-local.
 
 Usage:
     python check_tier_boundary.py [--root PATH]
 """
 
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 import re
 import sys
+import tomllib
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.core.package_inventory import discover_package_paths
 
-EXPERIMENTAL = {
-    "lexigram-admin",
-    "lexigram-ai",
-    "lexigram-ai-agents",
-    "lexigram-ai-evaluation",
-    "lexigram-ai-feedback",
-    "lexigram-ai-governance",
-    "lexigram-ai-guard",
-    "lexigram-ai-llm",
-    "lexigram-ai-mcp",
-    "lexigram-ai-memory",
-    "lexigram-ai-observability",
-    "lexigram-ai-prompt",
-    "lexigram-ai-rag",
-    "lexigram-ai-relay",
-    "lexigram-ai-relay-gateway",
-    "lexigram-ai-session",
-    "lexigram-ai-skills",
-    "lexigram-ai-workers",
-    "lexigram-all",
-    "lexigram-cli",
-    "lexigram-multimedia",
-    "lexigram-multimedia-beat",
-    "lexigram-multimedia-image",
-    "lexigram-multimedia-interpolate",
-    "lexigram-multimedia-music",
-    "lexigram-multimedia-tts",
-    "lexigram-multimedia-upscale",
-    "lexigram-multimedia-video",
-    "lexigram-ui",
-}
+_REQ_NAME = re.compile(r"^([A-Za-z0-9._-]+)")
+
+
+def tier_of(rel_dir: Path) -> str:
+    """Tier of a member package: ``experimental`` or ``stable``, from its path."""
+
+    if rel_dir.parts and rel_dir.parts[0] == "experimental":
+        return "experimental"
+    return "stable"
+
+
+def _requirement_names(deps: list[str]) -> set[str]:
+    """Requirement names from a ``[project].dependencies`` list."""
+
+    names = set()
+    for req in deps:
+        match = _REQ_NAME.match(req.split(";")[0].strip())
+        if match:
+            names.add(match.group(1))
+    return names
+
+
+def violations(root: Path) -> list[tuple[str, str]]:
+    """Tier violations as ``(relative package dir, dependency name)`` pairs."""
+
+    experimental = {
+        rel.name: rel for rel in discover_package_paths(root) if tier_of(rel) == "experimental"
+    }
+    bad: list[tuple[str, str]] = []
+    for rel in discover_package_paths(root):
+        if tier_of(rel) != "stable":
+            continue
+        config = tomllib.loads((root / rel / "pyproject.toml").read_text())
+        deps = config.get("project", {}).get("dependencies", [])
+        for name in sorted(_requirement_names(deps) & experimental.keys()):
+            bad.append((str(rel), name))
+    return bad
 
 
 def main() -> int:
@@ -56,23 +69,12 @@ def main() -> int:
     args = ap.parse_args()
 
     root = Path(args.root)
-    files = sorted([root / "pyproject.toml"]) + sorted(
-        root / p / "pyproject.toml" for p in discover_package_paths(root)
-    )
-    files = [f for f in files if "lexigram-all" not in str(f)]
-    bad = []
-    for f in files:
-        with open(f) as fh:
-            text = fh.read()
-        block = re.sub(r"^\s*#.*$", "", text, flags=re.M)
-        for name in sorted(EXPERIMENTAL):
-            if re.search(rf'"{name}(?:[\[>=<]|")', block):
-                bad.append((f, name))
+    bad = violations(root)
     if bad:
-        for f, name in bad:
-            print(f"TIER VIOLATION: {f} references experimental {name}")
+        for pkg, name in bad:
+            print(f"TIER VIOLATION: {pkg} depends on experimental {name}")
         return 1
-    print(f"tier boundary OK ({len(files)} pyproject files)")
+    print(f"tier boundary OK ({len(discover_package_paths(root))} pyproject files)")
     return 0
 
 
