@@ -6790,7 +6790,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia" }
+source = { editable = "experimental/multimedia/lexigram-multimedia" }
 dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
@@ -6835,13 +6835,13 @@ test = [
 requires-dist = [
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
-    { name = "lexigram-multimedia-beat", editable = "lexigram-multimedia-beat" },
-    { name = "lexigram-multimedia-image", editable = "lexigram-multimedia-image" },
-    { name = "lexigram-multimedia-interpolate", editable = "lexigram-multimedia-interpolate" },
-    { name = "lexigram-multimedia-music", editable = "lexigram-multimedia-music" },
-    { name = "lexigram-multimedia-tts", editable = "lexigram-multimedia-tts" },
-    { name = "lexigram-multimedia-upscale", editable = "lexigram-multimedia-upscale" },
-    { name = "lexigram-multimedia-video", editable = "lexigram-multimedia-video" },
+    { name = "lexigram-multimedia-beat", editable = "experimental/multimedia/lexigram-multimedia-beat" },
+    { name = "lexigram-multimedia-image", editable = "experimental/multimedia/lexigram-multimedia-image" },
+    { name = "lexigram-multimedia-interpolate", editable = "experimental/multimedia/lexigram-multimedia-interpolate" },
+    { name = "lexigram-multimedia-music", editable = "experimental/multimedia/lexigram-multimedia-music" },
+    { name = "lexigram-multimedia-tts", editable = "experimental/multimedia/lexigram-multimedia-tts" },
+    { name = "lexigram-multimedia-upscale", editable = "experimental/multimedia/lexigram-multimedia-upscale" },
+    { name = "lexigram-multimedia-video", editable = "experimental/multimedia/lexigram-multimedia-video" },
     { name = "lexigram-storage", editable = "packages/lexigram-storage" },
     { name = "lexigram-tasks", editable = "packages/lexigram-tasks" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -6870,7 +6870,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia-beat"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia-beat" }
+source = { editable = "experimental/multimedia/lexigram-multimedia-beat" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -6960,7 +6960,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia-image"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia-image" }
+source = { editable = "experimental/multimedia/lexigram-multimedia-image" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -7026,7 +7026,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia-interpolate"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia-interpolate" }
+source = { editable = "experimental/multimedia/lexigram-multimedia-interpolate" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -7096,7 +7096,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia-music"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia-music" }
+source = { editable = "experimental/multimedia/lexigram-multimedia-music" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -7174,7 +7174,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia-tts"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia-tts" }
+source = { editable = "experimental/multimedia/lexigram-multimedia-tts" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -7267,7 +7267,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia-upscale"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia-upscale" }
+source = { editable = "experimental/multimedia/lexigram-multimedia-upscale" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -7333,7 +7333,7 @@ test = [
 [[package]]
 name = "lexigram-multimedia-video"
 version = "0.1.3007"
-source = { editable = "lexigram-multimedia-video" }
+source = { editable = "experimental/multimedia/lexigram-multimedia-video" }
 dependencies = [
     { name = "aiohttp" },
     { name = "lexigram" },
@@ -9163,14 +9163,14 @@ requires-dist = [
     { name = "lexigram-graphql", editable = "packages/lexigram-graphql" },
     { name = "lexigram-http", editable = "packages/lexigram-http" },
     { name = "lexigram-monitor", editable = "packages/lexigram-monitor" },
-    { name = "lexigram-multimedia", editable = "lexigram-multimedia" },
-    { name = "lexigram-multimedia-beat", editable = "lexigram-multimedia-beat" },
-    { name = "lexigram-multimedia-image", editable = "lexigram-multimedia-image" },
-    { name = "lexigram-multimedia-interpolate", editable = "lexigram-multimedia-interpolate" },
-    { name = "lexigram-multimedia-music", editable = "lexigram-multimedia-music" },
-    { name = "lexigram-multimedia-tts", editable = "lexigram-multimedia-tts" },
-    { name = "lexigram-multimedia-upscale", editable = "lexigram-multimedia-upscale" },
-    { name = "lexigram-multimedia-video", editable = "lexigram-multimedia-video" },
+    { name = "lexigram-multimedia", editable = "experimental/multimedia/lexigram-multimedia" },
+    { name = "lexigram-multimedia-beat", editable = "experimental/multimedia/lexigram-multimedia-beat" },
+    { name = "lexigram-multimedia-image", editable = "experimental/multimedia/lexigram-multimedia-image" },
+    { name = "lexigram-multimedia-interpolate", editable = "experimental/multimedia/lexigram-multimedia-interpolate" },
+    { name = "lexigram-multimedia-music", editable = "experimental/multimedia/lexigram-multimedia-music" },
+    { name = "lexigram-multimedia-tts", editable = "experimental/multimedia/lexigram-multimedia-tts" },
+    { name = "lexigram-multimedia-upscale", editable = "experimental/multimedia/lexigram-multimedia-upscale" },
+    { name = "lexigram-multimedia-video", editable = "experimental/multimedia/lexigram-multimedia-video" },
     { name = "lexigram-nosql", editable = "packages/lexigram-nosql" },
     { name = "lexigram-notification", editable = "packages/lexigram-notification" },
     { name = "lexigram-queue", editable = "packages/lexigram-queue" },

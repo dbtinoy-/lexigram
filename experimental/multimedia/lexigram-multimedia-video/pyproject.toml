@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lexigram-multimedia-upscale"
+name = "lexigram-multimedia-video"
 version = "0.1.3007"
-description = "Image and video super-resolution for the Lexigram Framework — Real-ESRGAN and HAT backends"
+description = "Video generation for the Lexigram Framework — local and API-based backends"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-keywords = ["lexigram", "multimedia", "upscale", "super-resolution", "ai", "framework"]
+keywords = ["lexigram", "multimedia", "video", "ai", "framework"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -39,8 +39,10 @@ Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-real-esrgan-server = []
-hat-server = []
+runway = []
+openai = []
+cogvideox-server = ["torch", "diffusers", "transformers"]
+svd-server = ["torch", "diffusers"]
 test = [
     "lexigram-testing>=0.1.1",
     "pytest>=8.0.0",
@@ -61,14 +63,14 @@ test = [
 ]
 
 [project.scripts]
-lexigram-upscale-real-esrgan-serve = "lexigram.multimedia.upscale.servers.real_esrgan_server:main"
-lexigram-upscale-hat-serve = "lexigram.multimedia.upscale.servers.hat_server:main"
+lexigram-video-cogvideox-serve = "lexigram.multimedia.video.servers.cogvideox_server:main"
+lexigram-video-svd-serve = "lexigram.multimedia.video.servers.svd_server:main"
 
 [project.entry-points."lexigram.multimedia.subsystems"]
-upscale = "lexigram.multimedia.upscale.di.provider:UpscaleGenerationProvider"
+video = "lexigram.multimedia.video.di.provider:VideoGenerationProvider"
 
 [project.entry-points."lexigram.multimedia.modules"]
-upscale = "lexigram.multimedia.upscale.module:UpscaleModule"
+video = "lexigram.multimedia.video.module:VideoModule"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lexigram"]
@@ -78,7 +80,7 @@ python_version = "3.11"
 namespace_packages = true
 explicit_package_bases = true
 mypy_path = ["src"]
-ignore_missing_imports = true
+ignore_missing_imports = false
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -92,10 +94,62 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 show_error_codes = true
-overrides = [{ module = "tests.*", ignore_errors = true }]
+overrides = [
+    { module = "tests.*", ignore_errors = true },
+    { module = [
+        "structlog.*",
+        "asyncpg.*",
+        "aioredis.*",
+        "aiomysql.*",
+        "qdrant_client.*",
+        "chromadb.*",
+        "anthropic.*",
+        "openai.*",
+        "cohere.*",
+        "groq.*",
+        "mistralai.*",
+        "ollama.*",
+        "pinecone.*",
+        "meilisearch.*",
+        "boto3.*",
+        "botocore.*",
+        "google.cloud.*",
+        "authlib.*",
+        "strawberry.*",
+        "mkdocs.*",
+        "aiohttp.*",
+        "aiofiles.*",
+        "alembic.*",
+        "sqlalchemy.*",
+        "pydantic.*",
+        "pydantic_settings.*",
+        "redis.*",
+        "celery.*",
+        "kafka.*",
+        "aiokafka.*",
+        "aio_pika.*",
+        "uvicorn.*",
+        "starlette.*",
+        "httpx.*",
+        "tenacity.*",
+        "cachetools.*",
+        "importlib_metadata.*",
+        "pkg_resources.*",
+        "cryptography.*",
+        "jwt.*",
+        "passlib.*",
+        "bcrypt.*",
+        "yaml.*",
+        "toml.*",
+        "dotenv.*",
+        "orjson.*",
+        "msgpack.*",
+    ], ignore_missing_imports = true },
+]
+
 
 [tool.ruff]
-extend = "../pyproject.toml"
+extend = "../../../pyproject.toml"
 line-length = 88
 target-version = "py311"
 
@@ -121,7 +175,7 @@ markers = [
     "requires_postgres: marks tests that require a live PostgreSQL connection",
 ]
 addopts = [
-    "--cov=lexigram.multimedia.upscale",
+    "--cov=lexigram.multimedia.video",
     "--cov-report=term",
     "--cov-report=html",
     "--cov-fail-under=40",
