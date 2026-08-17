@@ -29,7 +29,7 @@ for _src in (
             sys.path.insert(0, _src_str)
 # Also add special test helpers paths
 for _extra in [
-    _ROOT / "lexigram-ai-memory" / "tests" / "unit",
+    _ROOT / "experimental" / "ai" / "lexigram-ai-memory" / "tests" / "unit",
 ]:
     _extra_str = str(_extra)
     if _extra.exists() and _extra_str not in sys.path:

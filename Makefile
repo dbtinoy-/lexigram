@@ -16,12 +16,12 @@ WEB_DIR    := packages/lexigram-web
 
 # Extension packages that pass mypy with their own per-package config.
 # Add packages here one by one as they are cleaned up (see `make type-pkg`).
-TYPED_PKGS := lexigram-ai-agents lexigram-ai-evaluation lexigram-ai-feedback \
-              lexigram-ai-guard lexigram-ai-llm lexigram-ai-mcp \
-              lexigram-ai-memory \
-              lexigram-ai-observability lexigram-ai-prompt \
-              lexigram-ai-relay-gateway lexigram-ai-session \
-              lexigram-ai-skills lexigram-ai-workers \
+TYPED_PKGS := experimental/ai/lexigram-ai-agents experimental/ai/lexigram-ai-evaluation experimental/ai/lexigram-ai-feedback \
+              experimental/ai/lexigram-ai-guard experimental/ai/lexigram-ai-llm experimental/ai/lexigram-ai-mcp \
+              experimental/ai/lexigram-ai-memory \
+              experimental/ai/lexigram-ai-observability experimental/ai/lexigram-ai-prompt \
+              experimental/ai/lexigram-ai-relay-gateway experimental/ai/lexigram-ai-session \
+              experimental/ai/lexigram-ai-skills experimental/ai/lexigram-ai-workers \
               packages/lexigram-audit packages/lexigram-events packages/lexigram-monitor \
               packages/lexigram-notification packages/lexigram-nosql packages/lexigram-queue \
               lexigram-ui packages/lexigram-vector packages/lexigram-workflow \
