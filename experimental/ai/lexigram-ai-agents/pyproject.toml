@@ -101,7 +101,7 @@ plan-execute = "lexigram.ai.agents.strategies.plan_execute:PlanAndExecuteStrateg
 reflexion = "lexigram.ai.agents.strategies.reflexion:ReflexionStrategy"
 
 [tool.ruff]
-extend = "../pyproject.toml"
+extend = "../../../pyproject.toml"
 line-length = 88
 target-version = "py311"
 
