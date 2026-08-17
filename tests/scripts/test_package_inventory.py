@@ -35,7 +35,7 @@ def test_discover_packages_excludes_non_members() -> None:
 
     assert "lexigram_workspace.egg-info" not in packages
     assert all(not package.startswith(".") for package in packages)
-    # lexigram-all is a directory but not a workspace member
+    # stray top-level package dirs are never member-detected
     assert "lexigram-all" not in packages
 
 
