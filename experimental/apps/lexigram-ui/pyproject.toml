@@ -73,7 +73,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram-ui-experimental"
+Repository = "https://github.com/dbtinoy-/lexigram-dev"
 Documentation = "https://docs.lexigram.dev"
 Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
