@@ -15,12 +15,7 @@ jobs:
     name: Detect changed groups
     runs-on: ubuntu-latest
     outputs:
-      core: ${{ steps.filter.outputs.core }}
-      packages: ${{ steps.filter.outputs.packages }}
-      ai: ${{ steps.filter.outputs.ai }}
-      multimedia: ${{ steps.filter.outputs.multimedia }}
-      apps: ${{ steps.filter.outputs.apps }}
-      shared: ${{ steps.filter.outputs.shared }}
+      groups: ${{ steps.groups.outputs.groups }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,6 +31,39 @@ jobs:
             multimedia: 'experimental/multimedia/**'
             apps: 'experimental/apps/**'
             shared: 'pyproject.toml|uv.lock|Makefile|dev/**|.github/**'
+
+      - name: Compute affected groups
+        id: groups
+        shell: bash
+        env:
+          CORE: ${{ steps.filter.outputs.core }}
+          PACKAGES: ${{ steps.filter.outputs.packages }}
+          AI: ${{ steps.filter.outputs.ai }}
+          MULTIMEDIA: ${{ steps.filter.outputs.multimedia }}
+          APPS: ${{ steps.filter.outputs.apps }}
+          SHARED: ${{ steps.filter.outputs.shared }}
+          DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          # core is depended on by every other package, so core or shared
+          # changing runs the full matrix; workflow_dispatch has no base
+          # diff, so it always runs everything. Otherwise each group runs
+          # on its own filter.
+          run_all="false"
+          [ "$CORE" = "true" ] && run_all="true"
+          [ "$SHARED" = "true" ] && run_all="true"
+          [ "$DISPATCH" = "true" ] && run_all="true"
+          groups=""
+          for g in core packages ai multimedia apps; do
+            flag="${g^^}"
+            if [ "$run_all" = "true" ] || [ "${!flag}" = "true" ]; then
+              groups="$groups,$g"
+            fi
+          done
+          if [ -z "$groups" ]; then
+            echo "groups=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "groups=[\"${groups#,}\"]" | sed 's/,/","/g' >> "$GITHUB_OUTPUT"
+          done
 
   quality:
     name: Quality gate (format, lint, types)
@@ -75,16 +103,13 @@ jobs:
   tests:
     name: tests (${{ matrix.group }})
     needs: changes
-    # core or shared changing runs the full matrix (core is depended on by
-    # every other package); otherwise each group runs on its own filter.
-    # workflow_dispatch has no base diff, so it always runs everything.
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs[matrix.group] == 'true' }}
+    if: needs.changes.outputs.groups != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        group: [core, packages, ai, multimedia, apps]
+        group: ${{ fromJson(needs.changes.outputs.groups) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
