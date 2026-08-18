@@ -23,8 +23,6 @@
 !Makefile
 !docker-compose.test.yml
 !lexigram.yaml.example
-!scripts
-!scripts/**
 !.github/
 !.github/workflows/
 !.github/workflows/**
@@ -149,7 +147,7 @@ demos/*/.ipynb_checkpoints/
 !experimental/*/lexigram*/docs/
 !experimental/*/lexigram*/docs/**
 
-# dev/ (renamed from scripts/ in a later task)
+# dev/ (was scripts/ until Task 18)
 !dev/
 !dev/**
 
