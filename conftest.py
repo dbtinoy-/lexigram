@@ -69,7 +69,7 @@ import pytest
 # integration test directories. Must be declared here (root conftest) — not in
 # sub-package conftests — to avoid "Plugin already registered" errors when
 # pytest collects multiple packages in a single run.
-# pytest_plugins = ["lexigram.testing.integration.fixtures"]
+pytest_plugins = ["lexigram.testing.integration.fixtures", "pytest_asyncio"]
 
 
 def pytest_configure(config: pytest.Config) -> None:

@@ -8,7 +8,6 @@ from lexigram.audit.logging.logger import AuditLogger
 from lexigram.audit.store.memory import InMemoryAuditStore
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity
 
-pytest_plugins = ["lexigram.testing.integration.fixtures"]
 
 
 @pytest.fixture

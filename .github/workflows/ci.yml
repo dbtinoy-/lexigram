@@ -11,8 +11,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed groups
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.filter.outputs.core }}
+      packages: ${{ steps.filter.outputs.packages }}
+      ai: ${{ steps.filter.outputs.ai }}
+      multimedia: ${{ steps.filter.outputs.multimedia }}
+      apps: ${{ steps.filter.outputs.apps }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changes by group
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core: 'core/**'
+            packages: 'packages/**'
+            ai: 'experimental/ai/**'
+            multimedia: 'experimental/multimedia/**'
+            apps: 'experimental/apps/**'
+            shared: 'pyproject.toml|uv.lock|Makefile|dev/**|.github/**'
+
   quality:
-    name: Quality gate (format, lint, types, tests)
+    name: Quality gate (format, lint, types)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -44,36 +70,51 @@ jobs:
         run: uv run python dev/check_env_example.py --root .
 
       - name: typecheck (mypy core)
-        run: uv run mypy lexigram/src/
+        run: uv run mypy core/lexigram/src/
 
-      - name: test (per workspace member)
+  tests:
+    name: tests (${{ matrix.group }})
+    needs: changes
+    # core or shared changing runs the full matrix (core is depended on by
+    # every other package); otherwise each group runs on its own filter.
+    # workflow_dispatch has no base diff, so it always runs everything.
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.core == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs[matrix.group] == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [core, packages, ai, multimedia, apps]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: install workspace (locked)
+        run: uv sync --group tooling --group qa --group security --locked
+
+      - name: test (${{ matrix.group }})
         shell: bash
         run: |
           set -euo pipefail
-          # Workspace members are derived from the shared inventory helper so CI
-          # and the scripts agree on one definition of "what is a package".
-          MEMBERS=$(uv run python -c "
-          from pathlib import Path
-          from dev.core.package_inventory import discover_package_paths
-          print(' '.join(str(p) for p in discover_package_paths(Path('.'))))
-          ")
-          declare -A DESELECT
-          # Per-package runs root at the package dir, so node ids are
-          # package-relative (tests/unit/...).
-          # Time-of-day dependent: fail only during the 23:00 UTC business-hours window
-          DESELECT[lexigram-monitor]="--deselect tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_queues_outside_business_hours --deselect tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_flush_queue_sends_queued"
-          # Require the private-only lexigram-cli templates package
-          DESELECT[lexigram-nosql]="--deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_creates_file --deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_no_force_skips_existing --deselect tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_with_fields_str"
-          DESELECT[lexigram-queue]="--deselect tests/unit/test_message_consumer_generator.py::test_message_consumer_generator_fields"
-          for p in $MEMBERS; do
-            if [ ! -d "$p/tests" ]; then
-              continue
-            fi
-            key="$(basename "$p")"
-            # Scoped runs have no coverage floor (floors apply to
-            # aggregate runs from the repo root); pass/fail is the gate.
-            uv run pytest -q -m "not integration" --no-cov "$p/tests" ${DESELECT[$key]:-}
-          done
+          # DESELECT, re-keyed on tier-root paths: runs root at the tier root,
+          # so node ids are <tier>/<package>/tests/...
+          case "${{ matrix.group }}" in
+            packages)
+              # Time-of-day dependent: fail only during the 23:00 UTC
+              # business-hours window
+              DESELECT="--deselect packages/lexigram-monitor/tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_queues_outside_business_hours --deselect packages/lexigram-monitor/tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_flush_queue_sends_queued --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_creates_file --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_no_force_skips_existing --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_with_fields_str --deselect packages/lexigram-queue/tests/unit/test_message_consumer_generator.py::test_message_consumer_generator_fields"
+              ;;
+            *)
+              DESELECT=""
+              ;;
+          esac
+          uv run pytest -q -m "not integration" --no-cov "${{ matrix.group }}" $DESELECT
 
   integration:
     name: Integration scenarios (postgres + redis)

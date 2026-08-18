@@ -23,7 +23,6 @@ except ImportError:
     pass
 
 # Load integration fixtures for infrastructure services
-pytest_plugins = ["lexigram.testing.integration.fixtures"]
 
 from lexigram.testing import TestEnvironment
 

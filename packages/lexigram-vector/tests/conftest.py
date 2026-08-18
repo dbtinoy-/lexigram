@@ -19,7 +19,6 @@ from lexigram.contracts.data.vector.types import (
 )
 from lexigram.vector.backends.memory import MemoryVectorStore as InMemoryVectorStore
 
-pytest_plugins = ["lexigram.testing.integration.fixtures"]
 
 
 @pytest.fixture

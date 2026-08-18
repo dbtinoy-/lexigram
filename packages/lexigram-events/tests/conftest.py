@@ -28,7 +28,6 @@ except ImportError:
     pass
 
 # Load integration fixtures for infrastructure services
-pytest_plugins = ["lexigram.testing.integration.fixtures"]
 
 # Ensure optional external dependencies used in tests are present as minimal
 # stubs so tests can patch their members without requiring installation.
