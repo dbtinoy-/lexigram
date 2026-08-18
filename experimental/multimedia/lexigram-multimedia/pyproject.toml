@@ -41,8 +41,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://lexigram.dev"
-Repository = "https://github.com/dbtinoy-/lexigram-multimedia-experimental"
-Issues = "https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues"
+Repository = "https://github.com/dbtinoy-/lexigram-dev"
+Issues = "https://github.com/dbtinoy-/lexigram-dev/issues"
 Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
