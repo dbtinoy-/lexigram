@@ -230,22 +230,22 @@ audit:  ## Run dependency vulnerability scan
 
 .PHONY: catalog
 catalog:  ## Regenerate docs/lexigram-docs/reference/REF_ERROR_CODES.md from source
-	$(UV) run python scripts/catalogs/generate_error_catalog.py
+	$(UV) run python dev/catalogs/generate_error_catalog.py
 
 .PHONY: catalog-package
 catalog-package:  ## Run all standalone catalog generators
-	$(UV) run python scripts/catalogs/generate_cli_commands_catalog.py
-	$(UV) run python scripts/catalogs/generate_env_vars_catalog.py
-	$(UV) run python scripts/catalogs/generate_error_catalog.py
+	$(UV) run python dev/catalogs/generate_cli_commands_catalog.py
+	$(UV) run python dev/catalogs/generate_env_vars_catalog.py
+	$(UV) run python dev/catalogs/generate_error_catalog.py
 
 version-check:  ## Compare local versions vs PyPI (exit 1 if bumps needed)
-	$(UV) run python scripts/check_version.py check
+	$(UV) run python dev/check_version.py check
 
 version-bump:  ## Show next version for PKG (add APPLY=--apply to write); all packages if PKG unset
-	$(UV) run python scripts/check_version.py bump $(if $(PKG),--pkg $(PKG),) $(APPLY)
+	$(UV) run python dev/check_version.py bump $(if $(PKG),--pkg $(PKG),) $(APPLY)
 
 version-bump-all:  ## Show next version for all packages
-	$(UV) run python scripts/check_version.py bump
+	$(UV) run python dev/check_version.py bump
 
 # ---------------------------------------------------------------------------
 # AUDIT File Generation (Test/Doc Audits)
@@ -254,59 +254,59 @@ version-bump-all:  ## Show next version for all packages
 # Public audit targets (write to docs/lexigram-docs/audit)
 .PHONY: audit-overview
 audit-overview:
-	$(UV) run python -m scripts.cli audit run overview
+	$(UV) run python -m dev.cli audit run overview
 
 .PHONY: audit-integrations
 audit-integrations:
-	$(UV) run python -m scripts.cli audit run integrations
+	$(UV) run python -m dev.cli audit run integrations
 
 .PHONY: audit-protocols
 audit-protocols:
-	$(UV) run python -m scripts.cli audit run protocols
+	$(UV) run python -m dev.cli audit run protocols
 
 .PHONY: audit-security
 audit-security:
-	$(UV) run python -m scripts.cli audit run security
+	$(UV) run python -m dev.cli audit run security
 
 .PHONY: audit-quality
 audit-quality:
-	$(UV) run python -m scripts.cli audit run quality
+	$(UV) run python -m dev.cli audit run quality
 
 .PHONY: audit-rules
 audit-rules:
-	$(UV) run python -m scripts.cli audit run rules
+	$(UV) run python -m dev.cli audit run rules
 
 .PHONY: audit-tests
 audit-tests:
-	$(UV) run python -m scripts.cli audit run tests
+	$(UV) run python -m dev.cli audit run tests
 
 .PHONY: audit-docs-links
 audit-docs-links:
-	$(UV) run python -m scripts.cli audit run docs-links
+	$(UV) run python -m dev.cli audit run docs-links
 
 .PHONY: audit-docs-claims
 audit-docs-claims:
-	$(UV) run python -m scripts.cli audit run docs-claims
+	$(UV) run python -m dev.cli audit run docs-claims
 
 .PHONY: audit-docs-defaults
 audit-docs-defaults:
-	$(UV) run python -m scripts.cli audit run docs-defaults
+	$(UV) run python -m dev.cli audit run docs-defaults
 
 .PHONY: audit-docs-imports
 audit-docs-imports:
-	$(UV) run python -m scripts.cli audit run docs-imports
+	$(UV) run python -m dev.cli audit run docs-imports
 
 .PHONY: audit-optional-imports
 audit-optional-imports:
-	$(UV) run python -m scripts.cli audit run optional-imports
+	$(UV) run python -m dev.cli audit run optional-imports
 
 .PHONY: audit-dependencies
 audit-dependencies:
-	$(UV) run python -m scripts.cli audit run dependencies
+	$(UV) run python -m dev.cli audit run dependencies
 
 .PHONY: audit-files-dry
 audit-package-dry:
-	$(UV) run python -m scripts.cli audit list
+	$(UV) run python -m dev.cli audit list
 
 .PHONY: audit-package
 audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links audit-docs-imports audit-docs-claims audit-docs-defaults audit-dependencies scripts-audit-index
@@ -314,62 +314,62 @@ audit-package: audit-overview audit-integrations audit-protocols audit-security 
 
 # All-packages audit targets (write to repo root)
 audit-overview-all:
-	$(UV) run python -m scripts.cli audit run overview --all
+	$(UV) run python -m dev.cli audit run overview --all
 
 audit-integrations-all:
-	$(UV) run python -m scripts.cli audit run integrations --all
+	$(UV) run python -m dev.cli audit run integrations --all
 
 audit-protocols-all:
-	$(UV) run python -m scripts.cli audit run protocols --all
+	$(UV) run python -m dev.cli audit run protocols --all
 
 audit-security-all:
-	$(UV) run python -m scripts.cli audit run security --all
+	$(UV) run python -m dev.cli audit run security --all
 
 audit-quality-all:
-	$(UV) run python -m scripts.cli audit run quality --all
+	$(UV) run python -m dev.cli audit run quality --all
 
 audit-rules-all:
-	$(UV) run python -m scripts.cli audit run rules --all
+	$(UV) run python -m dev.cli audit run rules --all
 
 audit-tests-all:
-	$(UV) run python -m scripts.cli audit run tests --all
+	$(UV) run python -m dev.cli audit run tests --all
 
 audit-optional-imports-all:
-	$(UV) run python -m scripts.cli audit run optional-imports --all
+	$(UV) run python -m dev.cli audit run optional-imports --all
 
 audit-docs-links-all:
-	$(UV) run python -m scripts.cli audit run docs-links --all
+	$(UV) run python -m dev.cli audit run docs-links --all
 
 audit-docs-claims-all:
-	$(UV) run python -m scripts.cli audit run docs-claims --all
+	$(UV) run python -m dev.cli audit run docs-claims --all
 
 audit-docs-defaults-all:
-	$(UV) run python -m scripts.cli audit run docs-defaults --all
+	$(UV) run python -m dev.cli audit run docs-defaults --all
 
 audit-docs-imports-all:
-	$(UV) run python -m scripts.cli audit run docs-imports --all
+	$(UV) run python -m dev.cli audit run docs-imports --all
 
 audit-package-all: audit-overview-all audit-integrations-all audit-protocols-all audit-security-all audit-quality-all audit-rules-all audit-tests-all audit-optional-imports-all audit-docs-links-all audit-docs-imports-all audit-docs-claims-all audit-docs-defaults-all scripts-audit-index-all
 	@echo "All AUDIT files generated at repo root"
 
 .PHONY: scripts-audit
 scripts-audit:
-	$(UV) run python -m scripts.cli audit run all
+	$(UV) run python -m dev.cli audit run all
 
 scripts-audit-all:
-	$(UV) run python -m scripts.cli audit run all --all
+	$(UV) run python -m dev.cli audit run all --all
 
 .PHONY: scripts-audit-index
 scripts-audit-index:
-	$(UV) run python -m scripts.cli audit run index
+	$(UV) run python -m dev.cli audit run index
 
 scripts-audit-index-all:
-	$(UV) run python -m scripts.cli audit run index --all
+	$(UV) run python -m dev.cli audit run index --all
 
 .PHONY: scripts-audit-validate
 scripts-audit-validate:
-	$(UV) run python -m scripts.cli audit validate
+	$(UV) run python -m dev.cli audit validate
 
 .PHONY: scripts-audit-rules
 scripts-audit-rules:
-	$(UV) run python -m scripts.cli audit run rules
+	$(UV) run python -m dev.cli audit run rules

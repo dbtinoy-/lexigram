@@ -35,13 +35,13 @@ jobs:
         run: uv run ruff check .
 
       - name: Tier boundary
-        run: uv run python scripts/check_tier_boundary.py --root .
+        run: uv run python dev/check_tier_boundary.py --root .
 
       - name: Dependency pin guard
-        run: uv run python scripts/check_dep_pins.py --root .
+        run: uv run python dev/check_dep_pins.py --root .
 
       - name: env.example coverage
-        run: uv run python scripts/check_env_example.py --root .
+        run: uv run python dev/check_env_example.py --root .
 
       - name: typecheck (mypy core)
         run: uv run mypy lexigram/src/
@@ -54,7 +54,7 @@ jobs:
           # and the scripts agree on one definition of "what is a package".
           MEMBERS=$(uv run python -c "
           from pathlib import Path
-          from scripts.core.package_inventory import discover_package_paths
+          from dev.core.package_inventory import discover_package_paths
           print(' '.join(str(p) for p in discover_package_paths(Path('.'))))
           ")
           declare -A DESELECT

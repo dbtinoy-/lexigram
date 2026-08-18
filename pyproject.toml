@@ -321,9 +321,9 @@ extend-exclude = [
     "**/migrations/**",
     "**/alembic/**",
     "**/templates/**",
-    # Root-level helper directories: dev scripts, not production code
-    "scripts",
-    "scripts/**",
+    # Root-level helper directories: dev tooling, not production code
+    "dev",
+    "dev/**",
     "tools",
     "tools/**",
     # Generated scaffold example files from `lexigram new` command
@@ -583,9 +583,9 @@ ignore = [
 "experimental/apps/lexigram-cli/src/lexigram/cli/commands/mcp.py" = ["TID251"]
 "packages/lexigram-tasks/src/lexigram/tasks/scheduling/persistence.py" = ["TID251"]
 "packages/lexigram-tasks/src/lexigram/tasks/workflows/state.py" = ["TID251"]
-# Utility scripts — broader exception patterns are expected
+# Utility scripts under dev/ — broader exception patterns are expected
 "tools/**" = ["T201", "S", "ERA001", "ANN", "INP001"]
-"scripts/**" = ["T201", "S", "ERA001", "INP001", "ANN"]
+"dev/**" = ["T201", "S", "ERA001", "INP001", "ANN"]
 "benchmarks/**" = ["T201", "ANN", "INP001"]
 # Root-level migration/patch scripts
 "patch_*.py" = ["ERA001", "T201", "S", "INP001", "ANN", "F821"]
