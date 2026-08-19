@@ -1,9 +1,9 @@
 # REF_ERROR_CODES.md — Lexigram Framework Error Code Registry
 
-**Date:** 2026-05-31
-**Total registered codes:** 533
-**Total domains:** 65
-**Total packages contributing codes:** 36
+**Date:** 2026-08-20
+**Total registered codes:** 611
+**Total domains:** 75
+**Total packages contributing codes:** 47
 
 > This is the **authoritative registry** of all `LEX_ERR_*` error codes in the
 > Lexigram Framework monorepo. Every exception class carrying a `_code` attribute
@@ -16,7 +16,8 @@
 
 | Domain Tag | Count | Gaps | Package(s) |
 |:-----------|------:|:-----|:-----------|
-| `ADMIN` | 1 | — | lexigram-contracts |
+| `ADMIN` | 30 | — | lexigram-admin, lexigram-contracts |
+| `ADMIN_ACTION` | 2 | — | lexigram-admin |
 | `AGT` | 11 | — | lexigram-ai-agents, lexigram-contracts |
 | `AI` | 5 | — | lexigram-ai, lexigram-contracts |
 | `AIWORK` | 3 | — | lexigram-ai-workers |
@@ -34,12 +35,12 @@
 | `EVAL` | 1 | — | lexigram-contracts |
 | `EVT` | 23 | — | lexigram-contracts, lexigram-events |
 | `FEAT` | 4 | — | lexigram-contracts, lexigram-features |
-| `FEED` | 3 | — | lexigram-ai-feedback |
-| `GOV` | 3 | — | lexigram-contracts |
+| `FEED` | 5 | — | lexigram-ai-feedback |
+| `GOV` | 7 | 004, 005, 009 | lexigram-ai-governance, lexigram-contracts |
 | `GQL` | 15 | — | lexigram-graphql |
 | `GRAPH` | 12 | — | lexigram-graph |
-| `GUARD` | 3 | — | lexigram-contracts |
-| `HTTP` | 7 | — | lexigram-http |
+| `GUARD` | 6 | — | lexigram-ai-guard, lexigram-contracts |
+| `HTTP` | 8 | — | lexigram-http |
 | `IDEM` | 6 | — | lexigram-contracts, lexigram-resilience |
 | `IDX` | 1 | — | lexigram-contracts |
 | `INFRA` | 11 | — | lexigram-contracts |
@@ -49,13 +50,21 @@
 | `MAP` | 4 | — | lexigram, lexigram-contracts |
 | `MCP` | 8 | — | lexigram-contracts |
 | `MEM` | 8 | 004, 007 | lexigram-ai-memory, lexigram-contracts |
-| `MOD` | 7 | — | lexigram, lexigram-contracts |
+| `MM` | 8 | — | lexigram-contracts |
+| `MM_BEAT` | 1 | 001, 002 | lexigram-multimedia-beat |
+| `MM_IMAGE` | 2 | — | lexigram-multimedia-image |
+| `MM_MUSIC` | 1 | — | lexigram-multimedia-music |
+| `MM_TTS` | 1 | 001 | lexigram-multimedia-tts |
+| `MM_UPSCALE` | 3 | — | lexigram-multimedia-upscale |
+| `MM_VIDEO` | 6 | — | lexigram-multimedia-video |
+| `MOD` | 6 | — | lexigram-contracts |
 | `MONITOR` | 8 | — | lexigram-monitor |
 | `MW` | 10 | — | lexigram, lexigram-contracts |
-| `NOSQL` | 6 | — | lexigram-nosql |
+| `NOSQL` | 7 | — | lexigram-nosql |
 | `NOTIF` | 14 | — | lexigram-contracts, lexigram-notification |
 | `OBS` | 4 | — | lexigram-ai-observability |
 | `PIPE` | 2 | — | lexigram-contracts |
+| `PROMPT` | 7 | — | lexigram-ai-prompt |
 | `PROV` | 1 | — | lexigram-contracts |
 | `QE` | 1 | — | lexigram-contracts |
 | `QUEUE` | 7 | — | lexigram-contracts, lexigram-queue |
@@ -66,824 +75,1062 @@
 | `RET` | 1 | — | lexigram-contracts |
 | `RUN` | 1 | — | lexigram-contracts |
 | `SEARCH` | 10 | — | lexigram-search |
-| `SEC` | 12 | — | lexigram, lexigram-auth, lexigram-contracts |
+| `SEC` | 11 | 007 | lexigram, lexigram-auth, lexigram-contracts |
+| `SECRET` | 7 | — | lexigram-secrets |
 | `SERIAL` | 4 | — | lexigram, lexigram-contracts |
 | `SES` | 12 | — | lexigram-ai-session, lexigram-contracts |
 | `SKILL` | 8 | — | lexigram-ai-skills, lexigram-contracts |
-| `SQL` | 37 | — | lexigram-sql |
-| `STORE` | 8 | — | lexigram-storage |
+| `SQL` | 38 | — | lexigram-sql |
+| `STORE` | 8 | — | lexigram-contracts, lexigram-storage |
 | `TASK` | 11 | — | lexigram-contracts, lexigram-tasks |
-| `TENANT` | 8 | — | lexigram-contracts |
+| `TENANT` | 9 | — | lexigram-contracts |
 | `TEST` | 12 | — | lexigram-testing |
 | `UI` | 1 | — | lexigram-ui |
 | `VAL` | 4 | — | lexigram, lexigram-contracts |
 | `VEC` | 15 | — | lexigram-contracts, lexigram-vector |
 | `WEB` | 14 | — | lexigram-contracts, lexigram-web |
 | `WEBHOOK` | 6 | — | lexigram-contracts, lexigram-webhook |
-| `WF` | 22 | — | lexigram-contracts, lexigram-workflow |
+| `WF` | 22 | — | lexigram, lexigram-contracts, lexigram-workflow |
 
 ---
 
 ## 2. Full Registry (by Package)
 
-### `lexigram-contracts` (149 codes)
+### `lexigram-contracts` (162 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_ADMIN_001` | `AdminError` | Base exception for all admin-domain errors. Extended by leaf exceptions in lexigram-admin. | `lexigram-contracts/src/lexigram/contracts/admin/errors.py` | LexigramError |
-| `LEX_ERR_AGT_001` | `AgentError` | Base exception for all agent errors. | `lexigram-contracts/src/lexigram/contracts/ai/agents.py` | LexigramError |
-| `LEX_ERR_AGT_002` | `ToolError` | Base exception for tool errors. | `lexigram-contracts/src/lexigram/contracts/ai/agents.py` | AgentError |
-| `LEX_ERR_AGT_003` | `StrategyError` | Reasoning strategy failed. Raised when the agent's strategy encounters an error during reasoning ... | `lexigram-contracts/src/lexigram/contracts/ai/agents.py` | AgentError |
-| `LEX_ERR_AI_001` | `AIError` | Base exception for all AI-domain errors. This is the catch-all for AI operations that fail in exp... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | DomainError |
-| `LEX_ERR_AI_002` | `ExtractionError` | Base for structured extraction errors. Used in ``StructuredExtractorProtocol.extract()`` return t... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_AI_003` | `MetricsCollectionError` | Error raised during metrics collection. | `lexigram-contracts/src/lexigram/contracts/observability/ai.py` | LexigramError |
-| `LEX_ERR_AI_004` | `TracingError` | Error raised during tracing operations. | `lexigram-contracts/src/lexigram/contracts/observability/ai.py` | LexigramError |
-| `LEX_ERR_AUTH_001` | `AuthError` | Base exception for all auth-domain errors. This is the catch-all for authentication and authoriza... | `lexigram-contracts/src/lexigram/contracts/auth/exceptions.py` | DomainError |
-| `LEX_ERR_AUTH_002` | `TokenError` | Base class for expected, recoverable token domain failures. All subtypes indicate situations the ... | `lexigram-contracts/src/lexigram/contracts/auth/exceptions.py` | DomainError |
-| `LEX_ERR_AUTH_003` | `VerificationError` | Base class for expected, recoverable account-verification failures. All subtypes signal situation... | `lexigram-contracts/src/lexigram/contracts/auth/exceptions.py` | DomainError |
-| `LEX_ERR_CACHE_001` | `CacheError` | Base exception for all cache-domain errors. This is an expected, recoverable error that cache cli... | `lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | DomainError |
-| `LEX_ERR_CACHE_002` | `CacheKeyNotFoundError` | Raised when cache key is not found. | `lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_003` | `CacheWriteError` | Raised when cache write fails. | `lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CFG_001` | `ConfigurationError` | Developer configuration or runtime misconfiguration errors. Supports optional structured validati... | `lexigram-contracts/src/lexigram/contracts/exceptions/config.py` | LexigramError |
-| `LEX_ERR_CORE_001` | `LexigramError` | Root exception for the entire Lexigram ecosystem. All Lexigram exceptions inherit from this class... | `lexigram-contracts/src/lexigram/contracts/exceptions/base.py` | Exception |
-| `LEX_ERR_DB_001` | `DatabaseError` | Database-related error (infrastructure-level). | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
-| `LEX_ERR_DB_002` | `MigrationError` | Database migration error. | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
-| `LEX_ERR_DB_003` | `IntegrityError` | Raised when a database integrity constraint is violated. | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | DatabaseError |
-| `LEX_ERR_DB_004` | `ConstraintError` | Raised when a generic database constraint is violated. | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | IntegrityError |
-| `LEX_ERR_DB_005` | `DuplicateKeyError` | Raised when a unique-key constraint is violated (duplicate record). | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | ConstraintError |
-| `LEX_ERR_DB_006` | `UnitOfWorkError` | Raised when a unit-of-work operation fails or is used incorrectly. | `lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | LexigramError |
-| `LEX_ERR_DB_007` | `DataError` | Base exception for all data-domain errors. This is an expected, recoverable error that data clien... | `lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | DomainError |
-| `LEX_ERR_DB_008` | `DataNotFoundError` | Raised when data item is not found. | `lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | DataError |
-| `LEX_ERR_DB_009` | `DataValidationError` | Raised when data validation fails. | `lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | DataError |
-| `LEX_ERR_DB_010` | `InvalidIdentifierError` | Raised when an SQL identifier fails validation. Attributes: identifier: The offending identifier ... | `lexigram-contracts/src/lexigram/contracts/data/sql/sql.py` | ValidationError |
-| `LEX_ERR_DB_011` | `NoPrimaryBackendError` | Raised when a multi-backend setup has no backend marked as primary. For multi-backend SQL configu... | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | DatabaseError |
-| `LEX_ERR_DI_001` | `ContainerError` | Base container error. | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | LexigramError |
-| `LEX_ERR_DI_002` | `DependencyError` | Dependency resolution error. | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
-| `LEX_ERR_DI_003` | `CircularDependencyError` | Circular dependency detected. | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | DependencyError |
-| `LEX_ERR_DI_004` | `UnresolvableDependencyError` | Cannot resolve dependency. | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | DependencyError |
-| `LEX_ERR_DI_005` | `RegistrationError` | Service registration error. | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
-| `LEX_ERR_DI_006` | `ContainerBuildError` | Container build/configuration error. | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
-| `LEX_ERR_DI_007` | `ProtocolValidationError` | Protocol validation error. | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
-| `LEX_ERR_DI_008` | `ContainerValidationError` | Container dependency graph validation failed before boot. Raised when ``Container.validate()`` di... | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerBuildError |
-| `LEX_ERR_DI_009` | `ScopedResolutionError` | Attempted to resolve a scoped service outside of an active scope. Raised when a service registere... | `lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | UnresolvableDependencyError |
-| `LEX_ERR_DOM_001` | `DomainError` | Business/domain-level errors (validation failures, not found, auth). | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | LexigramError |
-| `LEX_ERR_DOM_002` | `NotFoundError` | Resource not found error (domain-level). | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_DOM_003` | `PermissionDeniedError` | Permission denied error (domain-level). | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_DOM_004` | `AuthenticationError` | Authentication error (domain-level). | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_DOM_005` | `AuthorizationError` | Authorization/permission error (domain-level). | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_DOM_006` | `RateLimitError` | Rate limiting error. | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_DOM_007` | `ConflictError` | Resource conflict error. | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_EVAL_001` | `EvaluationError` | Base for evaluation system errors. Extended in the AI evaluation layer with specific failures lik... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_EVT_001` | `EventError` | Base events/messaging error. | `lexigram-contracts/src/lexigram/contracts/exceptions/events.py` | LexigramError |
-| `LEX_ERR_EVT_002` | `HandlerNotFoundError` | Event/command handler not found. Raised when no handler is registered for a specific event or com... | `lexigram-contracts/src/lexigram/contracts/exceptions/events.py` | EventError |
-| `LEX_ERR_EVT_003` | `DuplicateHandlerError` | Duplicate handler registration. Raised when attempting to register a handler for a type that alre... | `lexigram-contracts/src/lexigram/contracts/exceptions/events.py` | EventError |
-| `LEX_ERR_FEAT_001` | `FeatureFlagError` | Base error for the feature flag subsystem. | `lexigram-contracts/src/lexigram/contracts/exceptions/feature_flags.py` | LexigramError |
-| `LEX_ERR_GOV_001` | `GovernanceError` | Base class for governance-related errors. | `lexigram-contracts/src/lexigram/contracts/ai/governance.py` | LexigramError |
-| `LEX_ERR_GOV_002` | `BudgetExceededError` | Error raised when budget is exceeded. | `lexigram-contracts/src/lexigram/contracts/ai/governance.py` | GovernanceError |
-| `LEX_ERR_GOV_003` | `PolicyViolationError` | Error raised when policy is violated. | `lexigram-contracts/src/lexigram/contracts/ai/governance.py` | GovernanceError |
-| `LEX_ERR_GUARD_001` | `GuardError` | Base for AI guard/policy enforcement errors. Extended in the AI guard layer with specific failure... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_GUARD_002` | `InputGuardError` | Error raised during input guard validation. | `lexigram-contracts/src/lexigram/contracts/ai/guards.py` | GuardError |
-| `LEX_ERR_GUARD_003` | `OutputGuardError` | Error raised during output guard validation. | `lexigram-contracts/src/lexigram/contracts/ai/guards.py` | GuardError |
-| `LEX_ERR_IDEM_001` | `IdempotencyError` | Base exception for idempotency flows. | `lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | LexigramError |
-| `LEX_ERR_IDEM_002` | `DuplicateRequestError` | Raised when an idempotent key is reused before completion. | `lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | IdempotencyError |
-| `LEX_ERR_IDEM_003` | `IdempotencyStoreError` | Raised on unexpected failures inside the idempotency store. | `lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | IdempotencyError |
-| `LEX_ERR_IDEM_004` | `IdempotencyConflictError` | Raised when an idempotency key is already claimed (PENDING). | `lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | IdempotencyError |
-| `LEX_ERR_IDX_001` | `IndexError` | Raised when index operations fail in an expected, recoverable way. | `lexigram-contracts/src/lexigram/contracts/ai/index.py` | RAGError |
-| `LEX_ERR_INFRA_001` | `InfrastructureError` | System-level failures (DB down, network timeouts). | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | LexigramError |
-| `LEX_ERR_INFRA_002` | `LockError` | Distributed lock error. | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
-| `LEX_ERR_INFRA_003` | `LockConflictError` | Raised when a lock conflict occurs (resource already locked). | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | LockError |
-| `LEX_ERR_INFRA_004` | `ComponentError` | Base exception for all component-related errors. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | LexigramError |
-| `LEX_ERR_INFRA_005` | `ComponentConnectionError` | Raised when a connection to an external service fails. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | InfrastructureError, ComponentError |
-| `LEX_ERR_INFRA_006` | `KeyNotFoundError` | Raised when a requested key does not exist. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | NotFoundError, ComponentError |
-| `LEX_ERR_INFRA_007` | `KeyExistsError` | Raised when trying to create a key that already exists. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | ConflictError, ComponentError |
-| `LEX_ERR_INFRA_008` | `PubSubError` | Base exception for pub/sub operations. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | InfrastructureError, ComponentError |
-| `LEX_ERR_INFRA_009` | `SecretNotFoundError` | Raised when a requested secret does not exist. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | NotFoundError, ComponentError |
-| `LEX_ERR_INFRA_010` | `DriverNotAvailableError` | Raised when a driver is not available (dependency not installed). | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | ComponentError |
-| `LEX_ERR_INFRA_011` | `_StoredStreamError` | Internal carrier for propagating typed stream failures. | `lexigram-contracts/src/lexigram/contracts/infra/streams.py` | Exception, Generic[E] |
-| `LEX_ERR_LLM_001` | `LLMError` | Base for LLM client errors. Extended in lexigram-ai-llm with specific failures like rate limiting... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_LOAD_001` | `LoaderError` | Raised when document loading fails in an expected, recoverable way. Extended in lexigram-ai-rag w... | `lexigram-contracts/src/lexigram/contracts/ai/loaders.py` | RAGError |
-| `LEX_ERR_LOCK_001` | `LockAcquisitionError` | Raised when acquiring a lock fails. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | LockError, ComponentError |
-| `LEX_ERR_LOCK_002` | `LockNotHeldError` | Raised when trying to operate on a lock that is not held. | `lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | LockError, ComponentError |
-| `LEX_ERR_MAP_001` | `MappingError` | Object mapping error. | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | LexigramError |
-| `LEX_ERR_MCP_001` | `MCPError` | Base exception for all MCP errors. | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | LexigramError |
-| `LEX_ERR_MCP_002` | `MCPTransportError` | Transport-level error (connection, I/O). Raised when the MCP transport layer encounters errors su... | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
-| `LEX_ERR_MCP_003` | `MCPToolCallError` | Tool call failed during MCP execution. Raised when a tool invocation fails, either due to the too... | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
-| `LEX_ERR_MCP_004` | `MCPResourceError` | Resource read or list failed. Raised when a resource operation fails, such as when a resource is ... | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
-| `LEX_ERR_MCP_005` | `MCPProtocolError` | Protocol violation (malformed message, invalid state). Raised when an MCP message violates the pr... | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
-| `LEX_ERR_MCP_006` | `MCPMethodNotFoundError` | Unknown MCP method requested by client. Raised when the client requests an MCP method that the se... | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
-| `LEX_ERR_MCP_007` | `MCPPromptError` | Prompt retrieval or list failed. Raised when a prompt operation fails, such as when a prompt is n... | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
-| `LEX_ERR_MCP_008` | `MCPInitializationError` | MCP server initialization failed. Raised when the MCP server cannot be initialized, usually due t... | `lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
-| `LEX_ERR_MEM_001` | `AIMemoryError` | Base for AI memory system errors. Extended in lexigram-ai-memory with specific failures like cons... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_MEM_002` | `ConsolidationError` | Error raised during memory consolidation. | `lexigram-contracts/src/lexigram/contracts/ai/memory.py` | AIMemoryError |
-| `LEX_ERR_MEM_003` | `StorageError` | Error raised during memory storage operations. | `lexigram-contracts/src/lexigram/contracts/ai/memory.py` | AIMemoryError |
-| `LEX_ERR_MOD_001` | `ModuleError` | Module configuration or lifecycle error. | `lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | LexigramError |
-| `LEX_ERR_MOD_002` | `ModuleImportError` | A module imports a module that does not exist in the graph. Raised during module compilation when... | `lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
-| `LEX_ERR_MOD_003` | `ModuleExportError` | A module exports a type not provided by its providers. Raised during post-registration validation... | `lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
-| `LEX_ERR_MOD_004` | `ModuleCycleError` | Circular dependency detected in the module import graph. Raised during module compilation when a ... | `lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
-| `LEX_ERR_MOD_005` | `ModuleVisibilityError` | A provider depends on a service not visible to its module. Raised when a provider in module A tri... | `lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
-| `LEX_ERR_MOD_006` | `ModuleDuplicateError` | The same module appears twice with conflicting configurations. Raised when two :class:`DynamicMod... | `lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
-| `LEX_ERR_MW_001` | `MiddlewareGuardError` | Raised when a middleware guard denies access. | `lexigram-contracts/src/lexigram/contracts/exceptions/middleware.py` | LexigramError |
-| `LEX_ERR_NOTIF_001` | `NotificationError` | Base for expected, recoverable notification delivery failures. Attributes: channel: Notification ... | `lexigram-contracts/src/lexigram/contracts/notification/errors.py` | DomainError |
-| `LEX_ERR_NOTIF_002` | `MailerError` | Base mailer/email notification error. | `lexigram-contracts/src/lexigram/contracts/mailer/errors.py` | DomainError |
-| `LEX_ERR_PIPE_001` | `PipelineExecutionError` | Error raised during pipeline execution. | `lexigram-contracts/src/lexigram/contracts/exceptions/execution.py` | LexigramError |
-| `LEX_ERR_PIPE_002` | `PipelineStepError` | Error raised by a pipeline step. | `lexigram-contracts/src/lexigram/contracts/exceptions/execution.py` | LexigramError |
-| `LEX_ERR_PROV_001` | `ProviderError` | Provider configuration or lifecycle error. | `lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | LexigramError |
-| `LEX_ERR_QE_001` | `QueryEngineError` | Raised when query engine operations fail in an expected, recoverable way. | `lexigram-contracts/src/lexigram/contracts/ai/index.py` | RAGError |
-| `LEX_ERR_QUEUE_001` | `QueueError` | Base for expected, recoverable queue / bus failures. Attributes: backend: Name of the queue backe... | `lexigram-contracts/src/lexigram/contracts/queue/errors.py` | DomainError |
-| `LEX_ERR_RAG_001` | `RAGError` | Base for RAG pipeline errors. Extended in lexigram-ai-rag with specific failures like retrieval, ... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_RAG_002` | `RetrievalError` | Error raised during document retrieval. | `lexigram-contracts/src/lexigram/contracts/ai/rag.py` | RAGError |
-| `LEX_ERR_RAG_003` | `SynthesisError` | Error raised during response synthesis. | `lexigram-contracts/src/lexigram/contracts/ai/rag.py` | RAGError |
-| `LEX_ERR_RAG_004` | `ChunkingError` | Error raised during document chunking. | `lexigram-contracts/src/lexigram/contracts/ai/rag.py` | RAGError |
-| `LEX_ERR_REG_001` | `RegistryError` | Base exception for registry errors. | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | LexigramError |
-| `LEX_ERR_REG_002` | `RegistryKeyError` | Raised when a key is not found in a registry. | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | RegistryError, KeyError |
-| `LEX_ERR_REG_003` | `RegistryAlreadyExistsError` | Raised when attempting to register a duplicate key in a registry. | `lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | RegistryError |
-| `LEX_ERR_RESULT_002` | `UnwrapError` | Raised when unwrap() or unwrap_err() is called on the wrong variant. Provides a clearer error typ... | `lexigram-contracts/src/lexigram/contracts/core/result.py` | Exception |
-| `LEX_ERR_RES_001` | `ResilienceError` | Base resilience error. | `lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | LexigramError |
-| `LEX_ERR_RES_002` | `RetryError` | Retry operation error. | `lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
-| `LEX_ERR_RES_003` | `CircuitBreakerError` | Circuit breaker error. | `lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
-| `LEX_ERR_RES_004` | `BulkheadError` | Bulkhead/rejection error. | `lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
-| `LEX_ERR_RES_005` | `FallbackError` | Fallback execution error. | `lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
-| `LEX_ERR_RES_006` | `RetryExhaustedError` | All retry attempts have been exhausted. | `lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | RetryError |
-| `LEX_ERR_RES_007` | `CircuitOpenError` | Circuit breaker is open and rejecting requests. | `lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | CircuitBreakerError |
-| `LEX_ERR_RET_001` | `RetrieverError` | Base for retriever errors. Raised when document retrieval fails in an expected, recoverable way (... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_RUN_001` | `RunnableError` | Recoverable composition failure (input shape, parser error, retry budget exceeded). | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_SEC_001` | `SecurityError` | Base security error for the Lexigram security subsystem. | `lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | LexigramError |
-| `LEX_ERR_SEC_002` | `GuardDeniedError` | Raised when a GuardChain denies the request. Attributes: guard: The name or type of the guard tha... | `lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
-| `LEX_ERR_SEC_003` | `InputSanitizationError` | Raised when sanitization fails due to unrecoverable input structure. | `lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
-| `LEX_ERR_SEC_004` | `CORSViolationError` | Raised when a request violates the configured CORS policy. Attributes: origin: The request origin... | `lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
-| `LEX_ERR_SEC_005` | `SecretAccessError` | Raised when the caller lacks permission to access or modify a secret. Attributes: secret_name: Na... | `lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
-| `LEX_ERR_SERIAL_001` | `SerializationError` | Serialization/deserialization error. | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | LexigramError |
-| `LEX_ERR_SES_001` | `SessionError` | Base class for session-related errors. | `lexigram-contracts/src/lexigram/contracts/ai/session.py` | LexigramError |
-| `LEX_ERR_SES_002` | `TaskCancelledError` | Error raised when a task is cancelled. | `lexigram-contracts/src/lexigram/contracts/ai/session.py` | LexigramError |
-| `LEX_ERR_SES_003` | `TaskError` | Base class for task execution errors. | `lexigram-contracts/src/lexigram/contracts/ai/session.py` | LexigramError |
-| `LEX_ERR_SES_004` | `TaskTimeoutError` | Error raised when a task times out. | `lexigram-contracts/src/lexigram/contracts/ai/session.py` | TaskError |
-| `LEX_ERR_SES_005` | `TaskValidationError` | Error raised when task input validation fails. | `lexigram-contracts/src/lexigram/contracts/ai/session.py` | TaskError |
-| `LEX_ERR_SKILL_001` | `SkillError` | Base for skill execution errors. Extended in lexigram-ai-skills with specific failures like skill... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_TASK_001` | `TaskQueueError` | Base class for expected, recoverable task queue failures. All subtypes indicate situations the ca... | `lexigram-contracts/src/lexigram/contracts/infra/tasks/exceptions.py` | DomainError |
-| `LEX_ERR_TENANT_001` | `TenantError` | Base class for all tenancy-related domain errors. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | DomainError |
-| `LEX_ERR_TENANT_002` | `TenantNotFoundError` | Raised when a requested tenant does not exist. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
-| `LEX_ERR_TENANT_003` | `TenantInactiveError` | Raised when an operation is attempted on an inactive tenant. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
-| `LEX_ERR_TENANT_004` | `TenantProvisioningError` | Raised when tenant provisioning (isolation setup) fails. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
-| `LEX_ERR_TENANT_005` | `TenantResolutionError` | Raised when tenant resolution fails unexpectedly. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
-| `LEX_ERR_TENANT_006` | `TenantConfigError` | Raised when per-tenant configuration access or mutation fails. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
-| `LEX_ERR_TENANT_007` | `TenantSlugConflictError` | Raised when a tenant slug is already in use. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
-| `LEX_ERR_TENANT_008` | `TenantSuspendedError` | Raised when an operation is attempted on a suspended tenant. | `lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
-| `LEX_ERR_VAL_001` | `FieldError` | A single field-level validation error. Used to represent validation failures for individual field... | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_VAL_002` | `ValidationError` | Data validation error. | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_VEC_001` | `VectorError` | Base exception for vector store errors. Extends InfrastructureError because vector operations inv... | `lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | InfrastructureError |
-| `LEX_ERR_VEC_002` | `VectorStoreError` | Exception raised during vector store operations (CRUD, search). | `lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_003` | `EmbeddingError` | Exception raised during embedding generation or retrieval. | `lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_004` | `VectorIndexError` | Exception raised during vector index creation or management. | `lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | VectorError |
-| `LEX_ERR_WEBHOOK_001` | `WebhookError` | Base exception for webhook domain operations. | `lexigram-contracts/src/lexigram/contracts/webhook/exceptions.py` | DomainError |
-| `LEX_ERR_WEB_001` | `WebError` | Web layer error. | `lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
-| `LEX_ERR_WEB_002` | `HttpStatusError` | Raised by :meth:`HttpResponse.raise_for_status` for 4xx/5xx responses. Attributes: status: HTTP s... | `lexigram-contracts/src/lexigram/contracts/web/http_models.py` | InfrastructureError |
-| `LEX_ERR_WF_001` | `WorkflowError` | Base for workflow execution errors. Raised when a workflow graph execution fails in an expected, ... | `lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
-| `LEX_ERR_WF_002` | `SagaStepError` | Represents a recoverable failure from a single saga step action. SagaProtocol step actions must r... | `lexigram-contracts/src/lexigram/contracts/workflow/steps.py` | Exception |
+| `LEX_ERR_ADMIN_001` | `AdminError` | Base exception for all admin-domain errors. Extended by leaf exceptions in lexigram-admin. | `core/lexigram-contracts/src/lexigram/contracts/admin/errors.py` | LexigramError |
+| `LEX_ERR_AGT_001` | `AgentError` | Base exception for all agent errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/agents.py` | LexigramError |
+| `LEX_ERR_AGT_002` | `ToolError` | Base exception for tool errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/agents.py` | AgentError |
+| `LEX_ERR_AGT_003` | `StrategyError` | Reasoning strategy failed. Raised when the agent's strategy encounters an error during reasoning ... | `core/lexigram-contracts/src/lexigram/contracts/ai/agents.py` | AgentError |
+| `LEX_ERR_AI_001` | `AIError` | Base exception for all AI-domain errors. This is the catch-all for AI operations that fail in exp... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | DomainError |
+| `LEX_ERR_AI_002` | `ExtractionError` | Base for structured extraction errors. Used in ``StructuredExtractorProtocol.extract()`` return t... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_AI_003` | `MetricsCollectionError` | Error raised during metrics collection. | `core/lexigram-contracts/src/lexigram/contracts/observability/ai.py` | MonitoringError |
+| `LEX_ERR_AI_004` | `TracingError` | Error raised during tracing operations. | `core/lexigram-contracts/src/lexigram/contracts/observability/ai.py` | LexigramError |
+| `LEX_ERR_AUTH_001` | `AuthError` | Base exception for all auth-domain errors. This is the catch-all for authentication and authoriza... | `core/lexigram-contracts/src/lexigram/contracts/auth/exceptions.py` | DomainError |
+| `LEX_ERR_AUTH_002` | `TokenError` | Base class for expected, recoverable token domain failures. All subtypes indicate situations the ... | `core/lexigram-contracts/src/lexigram/contracts/auth/exceptions.py` | DomainError |
+| `LEX_ERR_AUTH_003` | `VerificationError` | Base class for expected, recoverable account-verification failures. All subtypes signal situation... | `core/lexigram-contracts/src/lexigram/contracts/auth/exceptions.py` | DomainError |
+| `LEX_ERR_CACHE_001` | `CacheError` | Base exception for all cache-domain errors. This is an expected, recoverable error that cache cli... | `core/lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | DomainError |
+| `LEX_ERR_CACHE_002` | `CacheKeyNotFoundError` | Raised when cache key is not found. | `core/lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_003` | `CacheWriteError` | Raised when cache write fails. | `core/lexigram-contracts/src/lexigram/contracts/infra/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CFG_001` | `ConfigurationError` | Developer configuration or runtime misconfiguration errors. Supports optional structured validati... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/config.py` | LexigramError |
+| `LEX_ERR_CORE_001` | `LexigramError` | Root exception for the entire Lexigram ecosystem. All Lexigram exceptions inherit from this class... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/base.py` | Exception |
+| `LEX_ERR_DB_001` | `DatabaseError` | Database-related error (infrastructure-level). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
+| `LEX_ERR_DB_002` | `MigrationError` | Database migration error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
+| `LEX_ERR_DB_003` | `IntegrityError` | Raised when a database integrity constraint is violated. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | DatabaseError |
+| `LEX_ERR_DB_004` | `ConstraintError` | Raised when a generic database constraint is violated. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | IntegrityError |
+| `LEX_ERR_DB_005` | `DuplicateKeyError` | Raised when a unique-key constraint is violated (duplicate record). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | ConstraintError |
+| `LEX_ERR_DB_006` | `UnitOfWorkError` | Raised when a unit-of-work operation fails or is used incorrectly. | `core/lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | LexigramError |
+| `LEX_ERR_DB_007` | `DataError` | Base exception for all data-domain errors. This is an expected, recoverable error that data clien... | `core/lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | DomainError |
+| `LEX_ERR_DB_008` | `DataNotFoundError` | Raised when data item is not found. | `core/lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | DataError |
+| `LEX_ERR_DB_009` | `DataValidationError` | Raised when data validation fails. | `core/lexigram-contracts/src/lexigram/contracts/data/exceptions.py` | DataError |
+| `LEX_ERR_DB_010` | `InvalidIdentifierError` | Raised when an SQL identifier fails validation. Attributes: identifier: The offending identifier ... | `core/lexigram-contracts/src/lexigram/contracts/data/sql/sql.py` | ValidationError |
+| `LEX_ERR_DB_011` | `NoPrimaryBackendError` | Raised when a multi-backend setup has no backend marked as primary. For multi-backend SQL configu... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | DatabaseError |
+| `LEX_ERR_DI_001` | `ContainerError` | Base container error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | LexigramError |
+| `LEX_ERR_DI_002` | `DependencyError` | Dependency resolution error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
+| `LEX_ERR_DI_003` | `CircularDependencyError` | Circular dependency detected. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | DependencyError |
+| `LEX_ERR_DI_004` | `UnresolvableDependencyError` | Cannot resolve dependency. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | DependencyError |
+| `LEX_ERR_DI_005` | `RegistrationError` | Service registration error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
+| `LEX_ERR_DI_006` | `ContainerBuildError` | Container build/configuration error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
+| `LEX_ERR_DI_007` | `ProtocolValidationError` | Protocol validation error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerError |
+| `LEX_ERR_DI_008` | `ContainerValidationError` | Container dependency graph validation failed before boot. Raised when ``Container.validate()`` di... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | ContainerBuildError |
+| `LEX_ERR_DI_009` | `ScopedResolutionError` | Attempted to resolve a scoped service outside of an active scope. Raised when a service registere... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/container.py` | UnresolvableDependencyError |
+| `LEX_ERR_DOM_001` | `DomainError` | Business/domain-level errors (validation failures, not found, auth). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | LexigramError |
+| `LEX_ERR_DOM_002` | `NotFoundError` | Resource not found error (domain-level). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_DOM_003` | `PermissionDeniedError` | Permission denied error (domain-level). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_DOM_004` | `AuthenticationError` | Authentication error (domain-level). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_DOM_005` | `AuthorizationError` | Authorization/permission error (domain-level). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_DOM_006` | `RateLimitError` | Rate limiting error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_DOM_007` | `ConflictError` | Resource conflict error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_EVAL_001` | `EvaluationError` | Base for evaluation system errors. Extended in the AI evaluation layer with specific failures lik... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_EVT_001` | `EventError` | Base events/messaging error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/events.py` | LexigramError |
+| `LEX_ERR_EVT_002` | `HandlerNotFoundError` | Event/command handler not found. Raised when no handler is registered for a specific event or com... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/events.py` | EventError |
+| `LEX_ERR_EVT_003` | `DuplicateHandlerError` | Duplicate handler registration. Raised when attempting to register a handler for a type that alre... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/events.py` | EventError |
+| `LEX_ERR_FEAT_001` | `FeatureFlagError` | Base error for the feature flag subsystem. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/feature_flags.py` | LexigramError |
+| `LEX_ERR_GOV_001` | `GovernanceError` | Base class for governance-related errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/governance/errors.py` | LexigramError |
+| `LEX_ERR_GOV_002` | `BudgetExceededError` | Error raised when budget is exceeded. | `core/lexigram-contracts/src/lexigram/contracts/ai/governance/errors.py` | GovernanceError |
+| `LEX_ERR_GOV_003` | `PolicyViolationError` | Error raised when policy is violated. | `core/lexigram-contracts/src/lexigram/contracts/ai/governance/errors.py` | GovernanceError |
+| `LEX_ERR_GOV_010` | `ResourceExhaustedError` | Raised when a resource quota is exhausted. | `core/lexigram-contracts/src/lexigram/contracts/ai/governance/resource_unit.py` | GovernanceError |
+| `LEX_ERR_GUARD_001` | `GuardError` | Base for AI guard/policy enforcement errors. Extended in the AI guard layer with specific failure... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_GUARD_002` | `InputGuardError` | Error raised during input guard validation. | `core/lexigram-contracts/src/lexigram/contracts/ai/guards.py` | GuardError |
+| `LEX_ERR_GUARD_003` | `OutputGuardError` | Error raised during output guard validation. | `core/lexigram-contracts/src/lexigram/contracts/ai/guards.py` | GuardError |
+| `LEX_ERR_IDEM_001` | `IdempotencyError` | Base exception for idempotency flows. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | LexigramError |
+| `LEX_ERR_IDEM_002` | `DuplicateRequestError` | Raised when an idempotent key is reused before completion. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | IdempotencyError |
+| `LEX_ERR_IDEM_003` | `IdempotencyStoreError` | Raised on unexpected failures inside the idempotency store. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | IdempotencyError |
+| `LEX_ERR_IDEM_004` | `IdempotencyConflictError` | Raised when an idempotency key is already claimed (PENDING). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/idempotency.py` | IdempotencyError |
+| `LEX_ERR_IDX_001` | `IndexError` | Raised when index operations fail in an expected, recoverable way. | `core/lexigram-contracts/src/lexigram/contracts/ai/index.py` | RAGError |
+| `LEX_ERR_INFRA_001` | `InfrastructureError` | System-level failures (DB down, network timeouts). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | LexigramError |
+| `LEX_ERR_INFRA_002` | `LockError` | Distributed lock error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | InfrastructureError |
+| `LEX_ERR_INFRA_003` | `LockConflictError` | Raised when a lock conflict occurs (resource already locked). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | LockError |
+| `LEX_ERR_INFRA_004` | `ComponentError` | Base exception for all component-related errors. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | LexigramError |
+| `LEX_ERR_INFRA_005` | `ComponentConnectionError` | Raised when a connection to an external service fails. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | InfrastructureError, ComponentError |
+| `LEX_ERR_INFRA_006` | `KeyNotFoundError` | Raised when a requested key does not exist. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | NotFoundError, ComponentError |
+| `LEX_ERR_INFRA_007` | `KeyExistsError` | Raised when trying to create a key that already exists. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | ConflictError, ComponentError |
+| `LEX_ERR_INFRA_008` | `PubSubError` | Base exception for pub/sub operations. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | InfrastructureError, ComponentError |
+| `LEX_ERR_INFRA_009` | `SecretNotFoundError` | Raised when a requested secret does not exist. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | NotFoundError, ComponentError |
+| `LEX_ERR_INFRA_010` | `DriverNotAvailableError` | Raised when a driver is not available (dependency not installed). | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | ComponentError |
+| `LEX_ERR_INFRA_011` | `_StoredStreamError` | Internal carrier for propagating typed stream failures. | `core/lexigram-contracts/src/lexigram/contracts/infra/streams.py` | Exception, Generic[E] |
+| `LEX_ERR_LLM_001` | `LLMError` | Base for LLM client errors. Extended in lexigram-ai-llm with specific failures like rate limiting... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_LOAD_001` | `LoaderError` | Raised when document loading fails in an expected, recoverable way. Extended in lexigram-ai-rag w... | `core/lexigram-contracts/src/lexigram/contracts/ai/loaders.py` | RAGError |
+| `LEX_ERR_LOCK_001` | `LockAcquisitionError` | Raised when acquiring a lock fails. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | LockError, ComponentError |
+| `LEX_ERR_LOCK_002` | `LockNotHeldError` | Raised when trying to operate on a lock that is not held. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/components.py` | LockError, ComponentError |
+| `LEX_ERR_MAP_001` | `MappingError` | Object mapping error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | LexigramError |
+| `LEX_ERR_MCP_001` | `MCPError` | Base exception for all MCP errors. | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | LexigramError |
+| `LEX_ERR_MCP_002` | `MCPTransportError` | Transport-level error (connection, I/O). Raised when the MCP transport layer encounters errors su... | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
+| `LEX_ERR_MCP_003` | `MCPToolCallError` | Tool call failed during MCP execution. Raised when a tool invocation fails, either due to the too... | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
+| `LEX_ERR_MCP_004` | `MCPResourceError` | Resource read or list failed. Raised when a resource operation fails, such as when a resource is ... | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
+| `LEX_ERR_MCP_005` | `MCPProtocolError` | Protocol violation (malformed message, invalid state). Raised when an MCP message violates the pr... | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
+| `LEX_ERR_MCP_006` | `MCPMethodNotFoundError` | Unknown MCP method requested by client. Raised when the client requests an MCP method that the se... | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
+| `LEX_ERR_MCP_007` | `MCPPromptError` | Prompt retrieval or list failed. Raised when a prompt operation fails, such as when a prompt is n... | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
+| `LEX_ERR_MCP_008` | `MCPInitializationError` | MCP server initialization failed. Raised when the MCP server cannot be initialized, usually due t... | `core/lexigram-contracts/src/lexigram/contracts/mcp/exceptions.py` | MCPError |
+| `LEX_ERR_MEM_001` | `AIMemoryError` | Base for AI memory system errors. Extended in lexigram-ai-memory with specific failures like cons... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_MEM_002` | `ConsolidationError` | Error raised during memory consolidation. | `core/lexigram-contracts/src/lexigram/contracts/ai/memory.py` | AIMemoryError |
+| `LEX_ERR_MEM_003` | `StorageError` | Error raised during memory storage operations. | `core/lexigram-contracts/src/lexigram/contracts/ai/memory.py` | AIMemoryError |
+| `LEX_ERR_MM_001` | `MultimediaError` | Base exception for all multimedia-generation errors. Mirrors ``AIError(DomainError)`` — recoverab... | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | DomainError |
+| `LEX_ERR_MM_002` | `TTSError` | Base for text-to-speech generation errors. | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | MultimediaError |
+| `LEX_ERR_MM_003` | `MusicGenerationError` | Base for music/sound generation errors. | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | MultimediaError |
+| `LEX_ERR_MM_004` | `VideoGenerationError` | Base for video generation errors. | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | MultimediaError |
+| `LEX_ERR_MM_005` | `ImageGenerationError` | Base for still-image generation errors. | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | MultimediaError |
+| `LEX_ERR_MM_006` | `ProviderNotInstalledError` | Raised eagerly at DI-resolution time when a configured provider's optional extra is not installed... | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | MultimediaError |
+| `LEX_ERR_MM_007` | `UpscaleError` | Base for image/video super-resolution errors. | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | MultimediaError |
+| `LEX_ERR_MM_008` | `BeatAnalysisError` | Base for tempo/beat-detection errors. | `core/lexigram-contracts/src/lexigram/contracts/multimedia/exceptions.py` | MultimediaError |
+| `LEX_ERR_MOD_001` | `ModuleError` | Module configuration or lifecycle error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | LexigramError |
+| `LEX_ERR_MOD_002` | `ModuleImportError` | A module imports a module that does not exist in the graph. Raised during module compilation when... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
+| `LEX_ERR_MOD_003` | `ModuleExportError` | A module exports a type not provided by its providers. Raised during post-registration validation... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
+| `LEX_ERR_MOD_004` | `ModuleCycleError` | Circular dependency detected in the module import graph. Raised during module compilation when a ... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
+| `LEX_ERR_MOD_005` | `ModuleVisibilityError` | A provider depends on a service not visible to its module. Raised when a provider in module A tri... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
+| `LEX_ERR_MOD_006` | `ModuleDuplicateError` | The same module appears twice with conflicting configurations. Raised when two :class:`DynamicMod... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | ModuleError |
+| `LEX_ERR_MW_001` | `MiddlewareGuardError` | Raised when a middleware guard denies access. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/middleware.py` | LexigramError |
+| `LEX_ERR_NOTIF_001` | `NotificationError` | Base for expected, recoverable notification delivery failures. Attributes: channel: Notification ... | `core/lexigram-contracts/src/lexigram/contracts/notification/errors.py` | DomainError |
+| `LEX_ERR_NOTIF_002` | `MailerError` | Base mailer/email notification error. | `core/lexigram-contracts/src/lexigram/contracts/mailer/errors.py` | DomainError |
+| `LEX_ERR_PIPE_001` | `PipelineExecutionError` | Error raised during pipeline execution. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/execution.py` | LexigramError |
+| `LEX_ERR_PIPE_002` | `PipelineStepError` | Error raised by a pipeline step. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/execution.py` | LexigramError |
+| `LEX_ERR_PROV_001` | `ProviderError` | Provider configuration or lifecycle error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/provider.py` | LexigramError |
+| `LEX_ERR_QE_001` | `QueryEngineError` | Raised when query engine operations fail in an expected, recoverable way. | `core/lexigram-contracts/src/lexigram/contracts/ai/index.py` | RAGError |
+| `LEX_ERR_QUEUE_001` | `QueueError` | Base for expected, recoverable queue / bus failures. Attributes: backend: Name of the queue backe... | `core/lexigram-contracts/src/lexigram/contracts/queue/errors.py` | DomainError |
+| `LEX_ERR_RAG_001` | `RAGError` | Base for RAG pipeline errors. Extended in lexigram-ai-rag with specific failures like retrieval, ... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_RAG_002` | `RetrievalError` | Error raised during document retrieval. | `core/lexigram-contracts/src/lexigram/contracts/ai/rag.py` | RAGError |
+| `LEX_ERR_RAG_003` | `SynthesisError` | Error raised during response synthesis. | `core/lexigram-contracts/src/lexigram/contracts/ai/rag.py` | RAGError |
+| `LEX_ERR_RAG_004` | `ChunkingError` | Error raised during document chunking. | `core/lexigram-contracts/src/lexigram/contracts/ai/rag.py` | RAGError |
+| `LEX_ERR_REG_001` | `RegistryError` | Base exception for registry errors. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | LexigramError |
+| `LEX_ERR_REG_002` | `RegistryKeyError` | Raised when a key is not found in a registry. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | RegistryError, KeyError |
+| `LEX_ERR_REG_003` | `RegistryAlreadyExistsError` | Raised when attempting to register a duplicate key in a registry. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/infra.py` | RegistryError |
+| `LEX_ERR_RESULT_002` | `UnwrapError` | Raised when unwrap() or unwrap_err() is called on the wrong variant. Provides a clearer error typ... | `core/lexigram-contracts/src/lexigram/contracts/core/result.py` | Exception |
+| `LEX_ERR_RES_001` | `ResilienceError` | Base resilience error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | LexigramError |
+| `LEX_ERR_RES_002` | `RetryError` | Retry operation error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
+| `LEX_ERR_RES_003` | `CircuitBreakerError` | Circuit breaker error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
+| `LEX_ERR_RES_004` | `BulkheadError` | Bulkhead/rejection error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
+| `LEX_ERR_RES_005` | `FallbackError` | Fallback execution error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | ResilienceError |
+| `LEX_ERR_RES_006` | `RetryExhaustedError` | All retry attempts have been exhausted. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | RetryError |
+| `LEX_ERR_RES_007` | `CircuitOpenError` | Circuit breaker is open and rejecting requests. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/resilience.py` | CircuitBreakerError |
+| `LEX_ERR_RET_001` | `RetrieverError` | Base for retriever errors. Raised when document retrieval fails in an expected, recoverable way (... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_RUN_001` | `RunnableError` | Recoverable composition failure (input shape, parser error, retry budget exceeded). | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_SEC_001` | `SecurityError` | Base security error for the Lexigram security subsystem. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | LexigramError |
+| `LEX_ERR_SEC_002` | `GuardDeniedError` | Raised when a GuardChain denies the request. Attributes: guard: The name or type of the guard tha... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
+| `LEX_ERR_SEC_003` | `InputSanitizationError` | Raised when sanitization fails due to unrecoverable input structure. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
+| `LEX_ERR_SEC_004` | `CORSViolationError` | Raised when a request violates the configured CORS policy. Attributes: origin: The request origin... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
+| `LEX_ERR_SEC_005` | `SecretAccessError` | Raised when the caller lacks permission to access or modify a secret. Attributes: secret_name: Na... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/security.py` | SecurityError |
+| `LEX_ERR_SERIAL_001` | `SerializationError` | Serialization/deserialization error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | LexigramError |
+| `LEX_ERR_SES_001` | `SessionError` | Base class for session-related errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/session.py` | LexigramError |
+| `LEX_ERR_SES_002` | `TaskCancelledError` | Error raised when a task is cancelled. | `core/lexigram-contracts/src/lexigram/contracts/ai/session.py` | LexigramError |
+| `LEX_ERR_SES_003` | `TaskError` | Base class for task execution errors. | `core/lexigram-contracts/src/lexigram/contracts/ai/session.py` | LexigramError |
+| `LEX_ERR_SES_004` | `TaskTimeoutError` | Error raised when a task times out. | `core/lexigram-contracts/src/lexigram/contracts/ai/session.py` | TaskError |
+| `LEX_ERR_SES_005` | `TaskValidationError` | Error raised when task input validation fails. | `core/lexigram-contracts/src/lexigram/contracts/ai/session.py` | TaskError |
+| `LEX_ERR_SKILL_001` | `SkillError` | Base for skill execution errors. Extended in lexigram-ai-skills with specific failures like skill... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_STORE_001` | `StorageError` | Base exception for storage errors. | `core/lexigram-contracts/src/lexigram/contracts/infra/storage/exceptions.py` | LexigramError |
+| `LEX_ERR_STORE_003` | `StorageUnsupportedOperationError` | Raised when the requested operation is not supported by the storage driver. | `core/lexigram-contracts/src/lexigram/contracts/infra/storage/exceptions.py` | StorageError |
+| `LEX_ERR_TASK_001` | `TaskQueueError` | Base class for expected, recoverable task queue failures. All subtypes indicate situations the ca... | `core/lexigram-contracts/src/lexigram/contracts/infra/tasks/exceptions.py` | DomainError |
+| `LEX_ERR_TENANT_001` | `TenantError` | Base class for all tenancy-related domain errors. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | DomainError |
+| `LEX_ERR_TENANT_002` | `TenantNotFoundError` | Raised when a requested tenant does not exist. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_TENANT_003` | `TenantInactiveError` | Raised when an operation is attempted on an inactive tenant. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_TENANT_004` | `TenantProvisioningError` | Raised when tenant provisioning (isolation setup) fails. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_TENANT_005` | `TenantResolutionError` | Raised when tenant resolution fails unexpectedly. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_TENANT_006` | `TenantConfigError` | Raised when per-tenant configuration access or mutation fails. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_TENANT_007` | `TenantSlugConflictError` | Raised when a tenant slug is already in use. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_TENANT_008` | `TenantSuspendedError` | Raised when an operation is attempted on a suspended tenant. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_TENANT_009` | `MigrationError` | Raised when a tenant tier migration fails. | `core/lexigram-contracts/src/lexigram/contracts/tenancy/errors.py` | TenantError |
+| `LEX_ERR_VAL_001` | `FieldError` | A single field-level validation error. Used to represent validation failures for individual field... | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_VAL_002` | `ValidationError` | Data validation error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_VEC_001` | `VectorError` | Base exception for vector store errors. Extends InfrastructureError because vector operations inv... | `core/lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | InfrastructureError |
+| `LEX_ERR_VEC_002` | `VectorStoreError` | Exception raised during vector store operations (CRUD, search). | `core/lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_003` | `EmbeddingError` | Exception raised during embedding generation or retrieval. | `core/lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_004` | `VectorIndexError` | Exception raised during vector index creation or management. | `core/lexigram-contracts/src/lexigram/contracts/data/vector/exceptions.py` | VectorError |
+| `LEX_ERR_WEBHOOK_001` | `WebhookError` | Base exception for webhook domain operations. | `core/lexigram-contracts/src/lexigram/contracts/webhook/exceptions.py` | DomainError |
+| `LEX_ERR_WEB_001` | `WebError` | Web layer error. | `core/lexigram-contracts/src/lexigram/contracts/exceptions/domain.py` | DomainError |
+| `LEX_ERR_WEB_002` | `HttpStatusError` | Raised by :meth:`HttpResponse.raise_for_status` for 4xx/5xx responses. Attributes: status: HTTP s... | `core/lexigram-contracts/src/lexigram/contracts/web/http_models.py` | InfrastructureError |
+| `LEX_ERR_WF_001` | `WorkflowError` | Base for workflow execution errors. Raised when a workflow graph execution fails in an expected, ... | `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py` | AIError |
+| `LEX_ERR_WF_002` | `SagaStepError` | Represents a recoverable failure from a single saga step action. SagaProtocol step actions must r... | `core/lexigram-contracts/src/lexigram/contracts/workflow/steps.py` | Exception |
+| `LEX_ERR_WF_009` | `SagaVersionMismatchError` | Raised when a persisted saga state version is incompatible with the current code. Attributes: sag... | `core/lexigram-contracts/src/lexigram/contracts/workflow/errors.py` | LexigramError |
 
-### `lexigram` (45 codes)
+### `lexigram` (44 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_APP_001` | `AppError` | Base exception for all app errors. | `lexigram/src/lexigram/app/exceptions.py` | LexigramError |
-| `LEX_ERR_APP_002` | `AppStartupError` | Raised when the application fails to start or a provider fails during boot. | `lexigram/src/lexigram/app/exceptions.py` | AppError |
-| `LEX_ERR_APP_003` | `AppShutdownError` | Raised when the application cannot complete a graceful shutdown. | `lexigram/src/lexigram/app/exceptions.py` | AppError |
-| `LEX_ERR_CFG_002` | `ConfigurationError` | Configuration loading, parsing, or validation failed. Raised by: - ``ConfigProvider`` during init... | `lexigram/src/lexigram/exceptions.py` | LexigramException |
-| `LEX_ERR_CFG_003` | `ConfigSourceError` | Raised when a configuration source fails to load its values. | `lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
-| `LEX_ERR_CFG_004` | `ConfigReloadError` | Raised when a live-reload attempt fails. | `lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
-| `LEX_ERR_CFG_005` | `ConfigSectionNotFoundError` | Raised when a required config section is absent from the loaded config. | `lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
-| `LEX_ERR_CONC_001` | `ConcurrencyError` | Base exception for all concurrency errors. | `lexigram/src/lexigram/concurrency/exceptions.py` | LexigramError |
-| `LEX_ERR_CONC_002` | `AsyncError` | Exception raised for errors in asynchronous operations or concurrency control. | `lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
-| `LEX_ERR_CONC_003` | `ChannelClosedError` | Raised when an operation is attempted on a closed channel. | `lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
-| `LEX_ERR_CONC_004` | `ChannelFullError` | Raised when sending to a channel that is at capacity. | `lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
-| `LEX_ERR_CONC_005` | `DispatcherError` | Error in dispatcher execution. | `lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
-| `LEX_ERR_CONC_006` | `StructuredParallelismError` | Base exception for parallel execution errors. | `lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
-| `LEX_ERR_CONC_007` | `TaskGroupError` | Raised when a task group encounters an error. | `lexigram/src/lexigram/concurrency/exceptions.py` | StructuredParallelismError |
-| `LEX_ERR_CONC_008` | `CancellationScopeError` | Raised when a cancellation scope encounters an error. | `lexigram/src/lexigram/concurrency/exceptions.py` | StructuredParallelismError |
-| `LEX_ERR_CORE_002` | `LexigramException` | Base exception for all lexigram domain errors. Extends :class:`~lexigram.contracts.exceptions.bas... | `lexigram/src/lexigram/exceptions.py` | LexigramError |
-| `LEX_ERR_CORE_005` | `CoreError` | Base exception for all core errors. | `lexigram/src/lexigram/primitives/exceptions.py` | LexigramError |
-| `LEX_ERR_DI_010` | `InjectionError` | Dependency injection or container resolution failed. Raised by: - ``Container.resolve()`` when a ... | `lexigram/src/lexigram/exceptions.py` | LexigramException |
-| `LEX_ERR_DI_011` | `InterceptorTimeoutError` | Raised when a ``MethodInterceptorProtocol`` exceeds its configured timeout. | `lexigram/src/lexigram/di/extensions/aop_interceptors.py` | RuntimeError |
-| `LEX_ERR_DOM_008` | `DomainModelError` | Domain model invariant violated or business rule broken. Raised by: - Domain event handlers - Agg... | `lexigram/src/lexigram/exceptions.py` | LexigramException |
-| `LEX_ERR_DOM_009` | `PolicyViolationError` | Raised when a domain policy evaluation fails. Distinct from ``PolicyViolationProtocol`` (the Resu... | `lexigram/src/lexigram/domain/exceptions.py` | LexigramError |
-| `LEX_ERR_MAP_002` | `MappingError` | Base exception for all object-mapping errors. | `lexigram/src/lexigram/mapping/exceptions.py` | LexigramError |
-| `LEX_ERR_MAP_003` | `MappingNotFoundError` | Raised when no mapper is registered for a (source, destination) type pair. | `lexigram/src/lexigram/mapping/exceptions.py` | MappingError |
-| `LEX_ERR_MAP_004` | `MappingExecutionError` | Raised when a registered mapper raises an unexpected error during execution. | `lexigram/src/lexigram/mapping/exceptions.py` | MappingError |
-| `LEX_ERR_MOD_007` | `ModuleError` | Module system error (registration, visibility, exports). Raised by: - Module decorators - Module ... | `lexigram/src/lexigram/exceptions.py` | LexigramException |
-| `LEX_ERR_MW_002` | `MiddlewareError` | Base exception for infrastructure-level middleware errors. | `lexigram/src/lexigram/middleware/exceptions.py` | InfrastructureError |
-| `LEX_ERR_MW_003` | `MiddlewarePolicyError` | Base exception for policy-level middleware rejections. Raised when middleware rejects a request b... | `lexigram/src/lexigram/middleware/exceptions.py` | DomainError |
-| `LEX_ERR_MW_004` | `MiddlewareExecutionError` | Raised when a middleware raises an unexpected error during execution. | `lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
-| `LEX_ERR_MW_005` | `MiddlewareConfigurationError` | Raised when middleware is configured incorrectly. | `lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
-| `LEX_ERR_MW_006` | `MiddlewareChainError` | Raised when the middleware chain cannot be assembled or traversed. | `lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
-| `LEX_ERR_MW_007` | `MiddlewareTimeoutError` | Raised when a middleware exceeds its configured timeout. | `lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
-| `LEX_ERR_MW_008` | `MiddlewareAuthError` | Raised when middleware-level authentication/authorization fails. | `lexigram/src/lexigram/middleware/exceptions.py` | MiddlewarePolicyError |
-| `LEX_ERR_MW_009` | `MiddlewareRateLimitError` | Raised when middleware-level rate limiting is exceeded. | `lexigram/src/lexigram/middleware/exceptions.py` | MiddlewarePolicyError |
-| `LEX_ERR_MW_010` | `MiddlewareCircuitOpenError` | Raised when the circuit breaker in middleware is open. | `lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
-| `LEX_ERR_SEC_006` | `SecurityError` | Base exception for all security-module errors. | `lexigram/src/lexigram/security/exceptions.py` | LexigramError |
-| `LEX_ERR_SEC_007` | `SecretNotFoundError` | Raised when a requested secret does not exist. | `lexigram/src/lexigram/security/exceptions.py` | SecretError |
-| `LEX_ERR_SEC_008` | `SecretAccessError` | Raised when access to a secret is denied. | `lexigram/src/lexigram/security/exceptions.py` | SecretError |
-| `LEX_ERR_SEC_009` | `EncryptionError` | Raised when field-level encryption fails. | `lexigram/src/lexigram/security/exceptions.py` | SecurityError |
-| `LEX_ERR_SEC_010` | `DecryptionError` | Raised when field-level decryption fails. | `lexigram/src/lexigram/security/exceptions.py` | SecurityError |
-| `LEX_ERR_SEC_011` | `SecretError` | Base exception for secret store errors. | `lexigram/src/lexigram/security/exceptions.py` | SecurityError |
-| `LEX_ERR_SERIAL_002` | `SerializationError` | JSON serialisation or deserialisation failed. Raised by: - ``JsonSerializer`` implementations - D... | `lexigram/src/lexigram/exceptions.py` | LexigramException |
-| `LEX_ERR_SERIAL_003` | `SerializationError` | Base exception for serialization and deserialization failures. Extensions should subclass this fo... | `lexigram/src/lexigram/serialization/exceptions.py` | LexigramError |
-| `LEX_ERR_SERIAL_004` | `NegotiationError` | Raised when no serializer can be negotiated for a given Accept header. | `lexigram/src/lexigram/serialization/exceptions.py` | SerializationError |
-| `LEX_ERR_VAL_003` | `ValidationError` | Input validation against rules failed. Raised by: - ``ValidatorImpl.validate()`` when rules do no... | `lexigram/src/lexigram/exceptions.py` | LexigramException |
-| `LEX_ERR_VAL_004` | `ValidationSystemError` | Base exception for validation system/pipeline failures. Distinct from :class:`~lexigram.contracts... | `lexigram/src/lexigram/validation/exceptions.py` | LexigramError |
+| `LEX_ERR_APP_001` | `AppError` | Base exception for all app errors. | `core/lexigram/src/lexigram/app/exceptions.py` | LexigramError |
+| `LEX_ERR_APP_002` | `AppStartupError` | Raised when the application fails to start or a provider fails during boot. | `core/lexigram/src/lexigram/app/exceptions.py` | AppError |
+| `LEX_ERR_APP_003` | `AppShutdownError` | Raised when the application cannot complete a graceful shutdown. | `core/lexigram/src/lexigram/app/exceptions.py` | AppError |
+| `LEX_ERR_CFG_002` | `ConfigurationError` | Configuration loading, parsing, or validation failed. Raised by: - ``ConfigProvider`` during init... | `core/lexigram/src/lexigram/exceptions.py` | LexigramException |
+| `LEX_ERR_CFG_003` | `ConfigSourceError` | Raised when a configuration source fails to load its values. | `core/lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
+| `LEX_ERR_CFG_004` | `ConfigReloadError` | Raised when a live-reload attempt fails. | `core/lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
+| `LEX_ERR_CFG_005` | `ConfigSectionNotFoundError` | Raised when a required config section is absent from the loaded config. | `core/lexigram/src/lexigram/config/exceptions.py` | ConfigurationError |
+| `LEX_ERR_CONC_001` | `ConcurrencyError` | Base exception for all concurrency errors. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | LexigramError |
+| `LEX_ERR_CONC_002` | `AsyncError` | Exception raised for errors in asynchronous operations or concurrency control. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
+| `LEX_ERR_CONC_003` | `ChannelClosedError` | Raised when an operation is attempted on a closed channel. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
+| `LEX_ERR_CONC_004` | `ChannelFullError` | Raised when sending to a channel that is at capacity. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
+| `LEX_ERR_CONC_005` | `DispatcherError` | Error in dispatcher execution. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
+| `LEX_ERR_CONC_006` | `StructuredParallelismError` | Base exception for parallel execution errors. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | ConcurrencyError |
+| `LEX_ERR_CONC_007` | `TaskGroupError` | Raised when a task group encounters an error. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | StructuredParallelismError |
+| `LEX_ERR_CONC_008` | `CancellationScopeError` | Raised when a cancellation scope encounters an error. | `core/lexigram/src/lexigram/concurrency/exceptions.py` | StructuredParallelismError |
+| `LEX_ERR_CORE_002` | `LexigramException` | Base exception for all lexigram domain errors. Extends :class:`~lexigram.contracts.exceptions.bas... | `core/lexigram/src/lexigram/exceptions.py` | LexigramError |
+| `LEX_ERR_CORE_005` | `CoreError` | Base exception for all core errors. | `core/lexigram/src/lexigram/primitives/exceptions.py` | LexigramError |
+| `LEX_ERR_DI_010` | `InjectionError` | Dependency injection or container resolution failed. Raised by: - ``Container.resolve()`` when a ... | `core/lexigram/src/lexigram/exceptions.py` | LexigramException |
+| `LEX_ERR_DI_011` | `InterceptorTimeoutError` | Raised when a ``MethodInterceptorProtocol`` exceeds its configured timeout. | `core/lexigram/src/lexigram/di/extensions/aop_interceptors.py` | RuntimeError |
+| `LEX_ERR_DOM_008` | `DomainModelError` | Domain model invariant violated or business rule broken. Raised by: - Domain event handlers - Agg... | `core/lexigram/src/lexigram/exceptions.py` | LexigramException |
+| `LEX_ERR_DOM_009` | `DomainPolicyViolationError` | Raised when a domain policy evaluation fails. Distinct from ``PolicyViolationProtocol`` (the Resu... | `core/lexigram/src/lexigram/domain/exceptions.py` | LexigramError |
+| `LEX_ERR_MAP_002` | `MappingError` | Base exception for all object-mapping errors. | `core/lexigram/src/lexigram/mapping/exceptions.py` | LexigramError |
+| `LEX_ERR_MAP_003` | `MappingNotFoundError` | Raised when no mapper is registered for a (source, destination) type pair. | `core/lexigram/src/lexigram/mapping/exceptions.py` | MappingError |
+| `LEX_ERR_MAP_004` | `MappingExecutionError` | Raised when a registered mapper raises an unexpected error during execution. | `core/lexigram/src/lexigram/mapping/exceptions.py` | MappingError |
+| `LEX_ERR_MW_002` | `MiddlewareError` | Base exception for infrastructure-level middleware errors. | `core/lexigram/src/lexigram/middleware/exceptions.py` | InfrastructureError |
+| `LEX_ERR_MW_003` | `MiddlewarePolicyError` | Base exception for policy-level middleware rejections. Raised when middleware rejects a request b... | `core/lexigram/src/lexigram/middleware/exceptions.py` | DomainError |
+| `LEX_ERR_MW_004` | `MiddlewareExecutionError` | Raised when a middleware raises an unexpected error during execution. | `core/lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
+| `LEX_ERR_MW_005` | `MiddlewareConfigurationError` | Raised when middleware is configured incorrectly. | `core/lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
+| `LEX_ERR_MW_006` | `MiddlewareChainError` | Raised when the middleware chain cannot be assembled or traversed. | `core/lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
+| `LEX_ERR_MW_007` | `MiddlewareTimeoutError` | Raised when a middleware exceeds its configured timeout. | `core/lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
+| `LEX_ERR_MW_008` | `MiddlewareAuthError` | Raised when middleware-level authentication/authorization fails. | `core/lexigram/src/lexigram/middleware/exceptions.py` | MiddlewarePolicyError |
+| `LEX_ERR_MW_009` | `MiddlewareRateLimitError` | Raised when middleware-level rate limiting is exceeded. | `core/lexigram/src/lexigram/middleware/exceptions.py` | MiddlewarePolicyError |
+| `LEX_ERR_MW_010` | `MiddlewareCircuitOpenError` | Raised when the circuit breaker in middleware is open. | `core/lexigram/src/lexigram/middleware/exceptions.py` | MiddlewareError |
+| `LEX_ERR_SEC_006` | `SecurityError` | Base exception for all security-module errors. | `core/lexigram/src/lexigram/security/exceptions.py` | LexigramError |
+| `LEX_ERR_SEC_008` | `SecretAccessError` | Raised when access to a secret is denied. | `core/lexigram/src/lexigram/security/exceptions.py` | SecretError |
+| `LEX_ERR_SEC_009` | `EncryptionError` | Raised when field-level encryption fails. | `core/lexigram/src/lexigram/security/exceptions.py` | SecurityError |
+| `LEX_ERR_SEC_010` | `DecryptionError` | Raised when field-level decryption fails. | `core/lexigram/src/lexigram/security/exceptions.py` | SecurityError |
+| `LEX_ERR_SEC_011` | `SecretError` | Base exception for secret store errors. | `core/lexigram/src/lexigram/security/exceptions.py` | SecurityError |
+| `LEX_ERR_SERIAL_002` | `SerializationError` | JSON serialisation or deserialisation failed. Raised by: - ``JsonSerializer`` implementations - D... | `core/lexigram/src/lexigram/exceptions.py` | LexigramException |
+| `LEX_ERR_SERIAL_003` | `SerializationError` | Base exception for serialization and deserialization failures. Extensions should subclass this fo... | `core/lexigram/src/lexigram/serialization/exceptions.py` | LexigramError |
+| `LEX_ERR_SERIAL_004` | `NegotiationError` | Raised when no serializer can be negotiated for a given Accept header. | `core/lexigram/src/lexigram/serialization/exceptions.py` | SerializationError |
+| `LEX_ERR_VAL_003` | `ValidationError` | Input validation against rules failed. Raised by: - ``ValidatorImpl.validate()`` when rules do no... | `core/lexigram/src/lexigram/exceptions.py` | LexigramException |
+| `LEX_ERR_VAL_004` | `ValidationSystemError` | Base exception for validation system/pipeline failures. Distinct from :class:`~lexigram.contracts... | `core/lexigram/src/lexigram/validation/exceptions.py` | LexigramError |
+| `LEX_ERR_WF_019` | `SagaError` | Raised when a saga step fails after compensation has been attempted. Attributes: step_name: Name ... | `core/lexigram/src/lexigram/saga/base.py` | LexigramError |
+
+### `lexigram-admin` (31 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_ADMIN_002` | `AdminError` | Base exception for all admin errors. | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | LexigramError |
+| `LEX_ERR_ADMIN_003` | `NotFoundError` | Raised when a resource is not found. | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | DomainError |
+| `LEX_ERR_ADMIN_004` | `PermissionDeniedError` | Raised when permission is denied. | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | DomainError |
+| `LEX_ERR_ADMIN_005` | `ConflictError` | Raised when a resource conflict occurs. | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | DomainError |
+| `LEX_ERR_ADMIN_006` | `AdminValidationError` | Raised when validation fails. | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | BaseValidationError |
+| `LEX_ERR_ADMIN_007` | `DataError` | Raised when a data source or database error occurs in admin. | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | DomainError |
+| `LEX_ERR_ADMIN_008` | `AdminDataError` | Raised when a storage/database operation fails. Translates low-level database exceptions to a dom... | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | AdminError |
+| `LEX_ERR_ADMIN_009` | `NotificationError` | Raised when a notification fails to send. | `experimental/apps/lexigram-admin/src/lexigram/admin/exceptions.py` | DomainError |
+| `LEX_ERR_ADMIN_010` | `AdminAuthError` | Base exception for all admin authentication errors. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | DomainError |
+| `LEX_ERR_ADMIN_011` | `InvalidCredentialsError` | Raised when email/password combination is incorrect. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_012` | `AccountLockedError` | Raised when an account is temporarily or permanently locked. Args: message: Human-readable descri... | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_013` | `RateLimitExceededError` | Raised when the IP-based rate limit is exceeded. Args: message: Human-readable description. retry... | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_014` | `SessionNotFoundError` | Raised when the requested session does not exist. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_015` | `SessionExpiredError` | Raised when the session has exceeded its idle or absolute timeout. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_016` | `CsrfValidationError` | Raised when CSRF token is missing, invalid, or expired. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_017` | `PasswordPolicyError` | Raised when a password does not meet policy requirements. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_018` | `SetupAlreadyCompletedError` | Raised when setup is attempted after an admin account already exists. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_019` | `SetupTokenInvalidError` | Raised when the ADMIN_SETUP_TOKEN env var is set and the provided token doesn't match. | `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py` | AdminAuthError |
+| `LEX_ERR_ADMIN_020` | `ContributorPermissionError` | Raised when a user lacks required permissions to execute a contributor action. Contains the contr... | `experimental/apps/lexigram-admin/src/lexigram/admin/contributors/exceptions.py` | AdminError |
+| `LEX_ERR_ADMIN_021` | `ContributorNotFoundError` | Raised when a contributor ID cannot be found in the assembled dashboard. Args: contributor_id: Th... | `experimental/apps/lexigram-admin/src/lexigram/admin/contributors/exceptions.py` | AdminError |
+| `LEX_ERR_ADMIN_022` | `AdminError` | Admin operation error with structured response. | `experimental/apps/lexigram-admin/src/lexigram/admin/core/middleware.py` | CoreAdminError |
+| `LEX_ERR_ADMIN_023` | `LockError` | Base lock error. | `experimental/apps/lexigram-admin/src/lexigram/admin/core/distributed_lock.py` | CoreLockError |
+| `LEX_ERR_ADMIN_024` | `LockAcquisitionError` | Could not acquire lock — another process holds it. | `experimental/apps/lexigram-admin/src/lexigram/admin/core/distributed_lock.py` | LockError |
+| `LEX_ERR_ADMIN_025` | `LockTimeoutError` | Lock acquisition timed out waiting for the lock to be released. | `experimental/apps/lexigram-admin/src/lexigram/admin/core/distributed_lock.py` | LockError |
+| `LEX_ERR_ADMIN_026` | `LockConflictError` | Raised when trying to acquire a lock already held by another user. | `experimental/apps/lexigram-admin/src/lexigram/admin/services/collaborative.py` | RuntimeError |
+| `LEX_ERR_ADMIN_027` | `FeatureDisabledError` | Raised when a required admin feature is disabled. | `experimental/apps/lexigram-admin/src/lexigram/admin/services/feature_flags.py` | ConfigurationError |
+| `LEX_ERR_ADMIN_028` | `JobNotFoundError` | Raised when a job_id is not found in the queue. | `experimental/apps/lexigram-admin/src/lexigram/admin/services/background_jobs.py` | KeyError |
+| `LEX_ERR_ADMIN_029` | `AsyncValidationError` | Raised when async validation fails. | `experimental/apps/lexigram-admin/src/lexigram/admin/forms/async_validation.py` | CoreValidationError |
+| `LEX_ERR_ADMIN_030` | `TenantNotFoundError` | Raised when a tenant is not found in the registry. | `experimental/apps/lexigram-admin/src/lexigram/admin/multitenancy/models.py` | KeyError |
+| `LEX_ERR_ADMIN_ACTION_001` | `ActionError` | Base exception for all action-related errors. | `experimental/apps/lexigram-admin/src/lexigram/admin/actions/exceptions.py` | AdminError |
+| `LEX_ERR_ADMIN_ACTION_002` | `PermissionDenied` | Raised when a user lacks permission to execute an action. | `experimental/apps/lexigram-admin/src/lexigram/admin/actions/exceptions.py` | ActionError |
 
 ### `lexigram-ai` (1 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_AI_005` | `AIError` | Base exception for lexigram-ai. | `lexigram-ai/src/lexigram/ai/exceptions.py` | _ContractsAIError |
+| `LEX_ERR_AI_005` | `AIError` | Base exception for lexigram-ai. | `experimental/ai/lexigram-ai/src/lexigram/ai/exceptions.py` | _ContractsAIError |
 
 ### `lexigram-ai-agents` (8 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_AGT_004` | `AgentConfigurationError` | Invalid agent configuration. Raised when an agent is constructed with invalid parameters (no tool... | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | AgentError |
-| `LEX_ERR_AGT_005` | `AgentExecutionError` | Agent execution failed. Raised when the agent's reasoning loop encounters an unrecoverable error ... | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | AgentError |
-| `LEX_ERR_AGT_006` | `ToolNotFoundError` | Tool not found in registry. Raised when the agent tries to call a tool that is not registered in ... | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
-| `LEX_ERR_AGT_007` | `ToolExecutionError` | Tool execution failed. Raised when a tool raises an exception during execution. | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
-| `LEX_ERR_AGT_008` | `ToolAccessDeniedError` | Agent does not have access to this tool. Raised when module visibility controls prevent an agent ... | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
-| `LEX_ERR_AGT_009` | `MaxIterationsExceededError` | Agent exceeded maximum reasoning iterations. Raised when the agent reaches max_iterations without... | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | StrategyError |
-| `LEX_ERR_AGT_010` | `BudgetExceededError` | Agent exceeded its AI governance budget. Raised when token usage or cost exceeds configured limit... | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | AgentError |
-| `LEX_ERR_AGT_011` | `ToolValidationError` | Tool input validation failed. Raised when the arguments provided to a tool fail schema validation... | `lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
+| `LEX_ERR_AGT_004` | `AgentConfigurationError` | Invalid agent configuration. Raised when an agent is constructed with invalid parameters (no tool... | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | AgentError |
+| `LEX_ERR_AGT_005` | `AgentExecutionError` | Agent execution failed. Raised when the agent's reasoning loop encounters an unrecoverable error ... | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | AgentError |
+| `LEX_ERR_AGT_006` | `ToolNotFoundError` | Tool not found in registry. Raised when the agent tries to call a tool that is not registered in ... | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
+| `LEX_ERR_AGT_007` | `ToolExecutionError` | Tool execution failed. Raised when a tool raises an exception during execution. | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
+| `LEX_ERR_AGT_008` | `ToolAccessDeniedError` | Agent does not have access to this tool. Raised when module visibility controls prevent an agent ... | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
+| `LEX_ERR_AGT_009` | `MaxIterationsExceededError` | Agent exceeded maximum reasoning iterations. Raised when the agent reaches max_iterations without... | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | StrategyError |
+| `LEX_ERR_AGT_010` | `BudgetExceededError` | Agent exceeded its AI governance budget. Raised when token usage or cost exceeds configured limit... | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | AgentError |
+| `LEX_ERR_AGT_011` | `ToolValidationError` | Tool input validation failed. Raised when the arguments provided to a tool fail schema validation... | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/exceptions.py` | ToolError |
 
-### `lexigram-ai-feedback` (3 codes)
+### `lexigram-ai-feedback` (5 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_FEED_001` | `FeedbackError` | Base exception for all feedback-related errors. | `lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | AIError |
-| `LEX_ERR_FEED_002` | `FeedbackProcessingError` | Raised when a feedback processor fails. | `lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | FeedbackError |
-| `LEX_ERR_FEED_003` | `FeedbackValidationError` | Raised when feedback data fails validation. | `lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | FeedbackError |
+| `LEX_ERR_FEED_001` | `FeedbackError` | Base exception for all feedback-related errors. | `experimental/ai/lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | AIError |
+| `LEX_ERR_FEED_002` | `FeedbackProcessingError` | Raised when a feedback processor fails. | `experimental/ai/lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | FeedbackError |
+| `LEX_ERR_FEED_003` | `FeedbackValidationError` | Raised when feedback data fails validation. | `experimental/ai/lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | FeedbackError |
+| `LEX_ERR_FEED_004` | `FeedbackAuthorizationError` | Raised when the endpoint's authorization callback denies a submission. | `experimental/ai/lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | FeedbackError |
+| `LEX_ERR_FEED_005` | `FeedbackTooLargeError` | Raised when a payload exceeds MAX_FEEDBACK_TEXT_LENGTH or MAX_CONTEXT_SIZE. | `experimental/ai/lexigram-ai-feedback/src/lexigram/ai/feedback/exceptions.py` | FeedbackValidationError |
+
+### `lexigram-ai-governance` (3 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_GOV_006` | `RateLimitExceededError` | Raised when RPM or TPM limits are exceeded. Attributes: limit: Configured limit value. current: C... | `experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/exceptions.py` | GovernanceError |
+| `LEX_ERR_GOV_007` | `ModelAccessDeniedError` | Raised when a user is denied access to a model by policy. Attributes: model: Model identifier tha... | `experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/exceptions.py` | GovernanceError |
+| `LEX_ERR_GOV_008` | `GovernancePersistenceError` | Raised when a governance persistence backend is unavailable. Raised by :class:`~lexigram.ai.gover... | `experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/exceptions.py` | GovernanceError |
+
+### `lexigram-ai-guard` (3 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_GUARD_004` | `GuardError` | Base exception for all guard-related errors. | `experimental/ai/lexigram-ai-guard/src/lexigram/ai/guard/exceptions.py` | _ContractsGuardError |
+| `LEX_ERR_GUARD_005` | `GuardConfigurationError` | Raised when a guard is misconfigured at boot time. | `experimental/ai/lexigram-ai-guard/src/lexigram/ai/guard/exceptions.py` | GuardError |
+| `LEX_ERR_GUARD_006` | `GuardPipelineError` | Raised when the guard pipeline encounters an unrecoverable error. | `experimental/ai/lexigram-ai-guard/src/lexigram/ai/guard/exceptions.py` | GuardError |
 
 ### `lexigram-ai-llm` (25 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_LLM_002` | `LLMError` | Base exception for all LLM-domain errors in lexigram-ai-llm. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | _ContractsLLMError |
-| `LEX_ERR_LLM_003` | `LLMAuthenticationError` | Invalid API key or credentials — infrastructure error, raised not wrapped. Raised as an exception... | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_004` | `InvalidRequestError` | Error raised when a request to an LLM provider is invalid. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_005` | `ModelNotFoundError` | Model unavailable or not found — recoverable via fallback routing. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_006` | `LLMModelNotFoundError` | Model unavailable or not found — recoverable via fallback routing. Returned as ``Err`` from ``LLM... | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ModelNotFoundError |
-| `LEX_ERR_LLM_007` | `LLMRateLimitError` | Rate limit exceeded — recoverable via backoff/retry. Returned as ``Err`` from ``LLMClientProtocol... | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_008` | `LLMQuotaExceededError` | API quota or billing limit exceeded — recoverable by routing elsewhere. Returned as ``Err`` from ... | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_009` | `LLMContentFilterError` | Content blocked by provider safety filter — recoverable via reformulation. Returned as ``Err`` fr... | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_010` | `TokenLimitError` | Error raised when the token limit for a request is exceeded. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_011` | `ProviderConnectionError` | Error raised when connection to an LLM provider fails. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_012` | `StreamError` | Error raised during LLM response streaming. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
-| `LEX_ERR_LLM_013` | `ExtractionError` | Base class for structured extraction errors in lexigram-ai-llm. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | _ContractsExtractionError |
-| `LEX_ERR_LLM_014` | `ExtractionParseError` | Error raised when extraction response cannot be parsed as JSON. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ExtractionError |
-| `LEX_ERR_LLM_015` | `ExtractionValidationError` | Error raised when parsed extraction response fails schema validation. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ExtractionError |
-| `LEX_ERR_LLM_016` | `ExtractionMaxRetriesError` | Error raised when extraction max retries are exhausted. | `lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ExtractionError |
-| `LEX_ERR_LLM_017` | `StructuredOutputError` | Base exception for structured output errors. | `lexigram-ai-llm/src/lexigram/ai/llm/structured/exceptions.py` | ExtractionError |
-| `LEX_ERR_LLM_018` | `ParseError` | Raised when response cannot be parsed. | `lexigram-ai-llm/src/lexigram/ai/llm/structured/exceptions.py` | StructuredOutputError |
-| `LEX_ERR_LLM_019` | `SchemaValidationError` | Raised when parsed response fails validation. | `lexigram-ai-llm/src/lexigram/ai/llm/structured/exceptions.py` | StructuredOutputError |
-| `LEX_ERR_LLM_020` | `ModelManagerError` | Base exception for model manager errors. | `lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | LLMError |
-| `LEX_ERR_LLM_021` | `ModelNotFoundError` | Raised when a requested model is not found. | `lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError, BaseModelNotFoundError |
-| `LEX_ERR_LLM_022` | `ModelLoadError` | Raised when a model fails to load. | `lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError |
-| `LEX_ERR_LLM_023` | `ModelUnloadError` | Raised when a model fails to unload. | `lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError |
-| `LEX_ERR_LLM_024` | `ProviderConnectionError` | Raised when connection to provider fails. | `lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError, BaseProviderConnectionError |
-| `LEX_ERR_LLM_025` | `OrchestratorError` | Base orchestration error. | `lexigram-ai-llm/src/lexigram/ai/llm/routing/orchestrator.py` | LLMError |
-| `LEX_ERR_LLM_026` | `NoSuitableModelError` | No model found that meets the requirements. | `lexigram-ai-llm/src/lexigram/ai/llm/routing/orchestrator.py` | OrchestratorError |
+| `LEX_ERR_LLM_002` | `LLMError` | Base exception for all LLM-domain errors in lexigram-ai-llm. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | _ContractsLLMError |
+| `LEX_ERR_LLM_003` | `LLMAuthenticationError` | Invalid API key or credentials — infrastructure error, raised not wrapped. Raised as an exception... | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_004` | `InvalidRequestError` | Error raised when a request to an LLM provider is invalid. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_005` | `ModelNotFoundError` | Model unavailable or not found — recoverable via fallback routing. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_006` | `LLMModelNotFoundError` | Model unavailable or not found — recoverable via fallback routing. Returned as ``Err`` from ``LLM... | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ModelNotFoundError |
+| `LEX_ERR_LLM_007` | `LLMRateLimitError` | Rate limit exceeded — recoverable via backoff/retry. Returned as ``Err`` from ``LLMClientProtocol... | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_008` | `LLMQuotaExceededError` | API quota or billing limit exceeded — recoverable by routing elsewhere. Returned as ``Err`` from ... | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_009` | `LLMContentFilterError` | Content blocked by provider safety filter — recoverable via reformulation. Returned as ``Err`` fr... | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_010` | `TokenLimitError` | Error raised when the token limit for a request is exceeded. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_011` | `ProviderConnectionError` | Error raised when connection to an LLM provider fails. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_012` | `StreamError` | Error raised during LLM response streaming. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_013` | `ExtractionError` | Base class for structured extraction errors in lexigram-ai-llm. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | _ContractsExtractionError |
+| `LEX_ERR_LLM_014` | `ExtractionParseError` | Error raised when extraction response cannot be parsed as JSON. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ExtractionError |
+| `LEX_ERR_LLM_015` | `ExtractionValidationError` | Error raised when parsed extraction response fails schema validation. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ExtractionError |
+| `LEX_ERR_LLM_016` | `ExtractionMaxRetriesError` | Error raised when extraction max retries are exhausted. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | ExtractionError |
+| `LEX_ERR_LLM_017` | `ModelRevisionMismatchError` | Raised when the provider returns a model revision that violates the pin policy. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_018` | `LLMTimeoutError` | Request exceeded the client timeout — recoverable by routing elsewhere. Returned as ``Err`` from ... | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py` | LLMError |
+| `LEX_ERR_LLM_019` | `SchemaValidationError` | Raised when parsed response fails validation. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/structured/exceptions.py` | StructuredOutputError |
+| `LEX_ERR_LLM_020` | `ModelManagerError` | Base exception for model manager errors. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | LLMError |
+| `LEX_ERR_LLM_021` | `ModelNotFoundError` | Raised when a requested model is not found. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError, BaseModelNotFoundError |
+| `LEX_ERR_LLM_022` | `ModelLoadError` | Raised when a model fails to load. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError |
+| `LEX_ERR_LLM_023` | `ModelUnloadError` | Raised when a model fails to unload. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError |
+| `LEX_ERR_LLM_024` | `ProviderConnectionError` | Raised when connection to provider fails. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/model_manager/types.py` | ModelManagerError, BaseProviderConnectionError |
+| `LEX_ERR_LLM_025` | `OrchestratorError` | Base orchestration error. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/routing/orchestrator.py` | LLMError |
+| `LEX_ERR_LLM_026` | `NoSuitableModelError` | No model found that meets the requirements. | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/routing/orchestrator.py` | OrchestratorError |
 
 ### `lexigram-ai-memory` (5 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_MEM_005` | `MemorySystemError` | Base exception for memory operations. | `lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | _ContractsAIMemoryError |
-| `LEX_ERR_MEM_006` | `MemoryStoreError` | Raised when a backend store operation fails. | `lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
-| `LEX_ERR_MEM_008` | `MemoryCapacityError` | Raised when a memory store is at capacity and cannot accept new entries. | `lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
-| `LEX_ERR_MEM_009` | `EmbeddingError` | Raised when generating or storing an embedding fails. | `lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
-| `LEX_ERR_MEM_010` | `FactExtractionError` | Raised when entity/fact extraction from text fails. | `lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
+| `LEX_ERR_MEM_005` | `MemorySystemError` | Base exception for memory operations. | `experimental/ai/lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | _ContractsAIMemoryError |
+| `LEX_ERR_MEM_006` | `MemoryStoreError` | Raised when a backend store operation fails. | `experimental/ai/lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
+| `LEX_ERR_MEM_008` | `MemoryCapacityError` | Raised when a memory store is at capacity and cannot accept new entries. | `experimental/ai/lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
+| `LEX_ERR_MEM_009` | `EmbeddingError` | Raised when generating or storing an embedding fails. | `experimental/ai/lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
+| `LEX_ERR_MEM_010` | `FactExtractionError` | Raised when entity/fact extraction from text fails. | `experimental/ai/lexigram-ai-memory/src/lexigram/ai/memory/exceptions.py` | MemorySystemError |
 
 ### `lexigram-ai-observability` (4 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_OBS_001` | `ObservabilityError` | Base exception for all observability-related errors. | `lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | AIError |
-| `LEX_ERR_OBS_002` | `HealthCheckError` | Raised when a health check infrastructure operation fails. | `lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | ObservabilityError |
-| `LEX_ERR_OBS_003` | `MetricsError` | Raised when a metrics recording or retrieval operation fails. | `lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | ObservabilityError |
-| `LEX_ERR_OBS_004` | `TracingError` | Raised when a tracing operation fails. | `lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | ObservabilityError |
+| `LEX_ERR_OBS_001` | `ObservabilityError` | Base exception for all observability-related errors. | `experimental/ai/lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | AIError |
+| `LEX_ERR_OBS_002` | `HealthCheckError` | Raised when a health check infrastructure operation fails. | `experimental/ai/lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | ObservabilityError |
+| `LEX_ERR_OBS_003` | `MetricsError` | Raised when a metrics recording or retrieval operation fails. | `experimental/ai/lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | ObservabilityError |
+| `LEX_ERR_OBS_004` | `TracingError` | Raised when a tracing operation fails. | `experimental/ai/lexigram-ai-observability/src/lexigram/ai/observability/exceptions.py` | ObservabilityError |
+
+### `lexigram-ai-prompt` (7 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_PROMPT_001` | `PromptError` | Base exception for all prompt-related errors. | `experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/exceptions.py` | _ContractsAIError |
+| `LEX_ERR_PROMPT_002` | `PromptRenderError` | Raised when a template cannot be rendered. Common causes: missing required variable, type mismatc... | `experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/exceptions.py` | PromptError |
+| `LEX_ERR_PROMPT_003` | `PromptValidationError` | Raised when a variable fails validation (type, length, allowed values). | `experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/exceptions.py` | PromptError |
+| `LEX_ERR_PROMPT_004` | `PromptNotFoundError` | Raised when a named template is not found in the registry. | `experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/exceptions.py` | PromptError |
+| `LEX_ERR_PROMPT_005` | `PromptVersionError` | Raised on version conflicts or invalid rollback targets. | `experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/exceptions.py` | PromptError |
+| `LEX_ERR_PROMPT_006` | `PromptConfigError` | Raised when the prompt configuration is invalid. | `experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/exceptions.py` | PromptError |
+| `LEX_ERR_PROMPT_007` | `OptimizationError` | Raised when prompt optimization fails. | `experimental/ai/lexigram-ai-prompt/src/lexigram/ai/prompt/exceptions.py` | PromptError |
 
 ### `lexigram-ai-rag` (10 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_RAG_005` | `RAGError` | Base exception for RAG errors. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | _ContractsRAGError |
-| `LEX_ERR_RAG_006` | `PreprocessingError` | Raised when document preprocessing fails. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | RAGError |
-| `LEX_ERR_RAG_010` | `MultimodalError` | Base exception for multimodal processing errors. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | RAGError |
-| `LEX_ERR_RAG_011` | `AudioLoaderError` | Raised when audio loading fails. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
-| `LEX_ERR_RAG_012` | `VideoLoaderError` | Raised when video loading fails. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
-| `LEX_ERR_RAG_013` | `ImageLoaderError` | Raised when image loading fails. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
-| `LEX_ERR_RAG_014` | `CLIPEmbeddingError` | Raised when CLIP embedding computation fails. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
-| `LEX_ERR_RAG_015` | `MissingCitationsError` | Raised when a pipeline with ``require_citations=True`` produces no citations. | `lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | RAGError |
-| `LEX_ERR_RAG_016` | `UnsupportedFormatError` | Raised when no loader is registered for the given file format or URL. | `lexigram-ai-rag/src/lexigram/ai/rag/loaders/registry.py` | RAGError |
-| `LEX_ERR_RAG_017` | `MissingOptionalDependencyError` | — | `lexigram-ai-rag/src/lexigram/ai/rag/deps/optional.py` | ImportError |
+| `LEX_ERR_RAG_005` | `RAGError` | Base exception for RAG errors. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | _ContractsRAGError |
+| `LEX_ERR_RAG_006` | `PreprocessingError` | Raised when document preprocessing fails. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | RAGError |
+| `LEX_ERR_RAG_010` | `MultimodalError` | Base exception for multimodal processing errors. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | RAGError |
+| `LEX_ERR_RAG_011` | `AudioLoaderError` | Raised when audio loading fails. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
+| `LEX_ERR_RAG_012` | `VideoLoaderError` | Raised when video loading fails. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
+| `LEX_ERR_RAG_013` | `ImageLoaderError` | Raised when image loading fails. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
+| `LEX_ERR_RAG_014` | `CLIPEmbeddingError` | Raised when CLIP embedding computation fails. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | MultimodalError |
+| `LEX_ERR_RAG_015` | `MissingCitationsError` | Raised when a pipeline with ``require_citations=True`` produces no citations. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/exceptions.py` | RAGError |
+| `LEX_ERR_RAG_016` | `UnsupportedFormatError` | Raised when no loader is registered for the given file format or URL. | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/loaders/registry.py` | RAGError |
+| `LEX_ERR_RAG_017` | `MissingOptionalDependencyError` | — | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/deps/optional.py` | ImportError |
 
 ### `lexigram-ai-session` (7 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_SES_006` | `SessionError` | Base error for all session operations. All session-specific exceptions inherit from this class. | `lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | _ContractsSessionError |
-| `LEX_ERR_SES_007` | `SessionNotFoundError` | Raised when a session cannot be found by its ID. Args: session_id: The ID of the session that was... | `lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
-| `LEX_ERR_SES_008` | `SessionClosedError` | Raised when an operation is attempted on a closed session. Args: session_id: The ID of the closed... | `lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
-| `LEX_ERR_SES_009` | `SessionExpiredError` | Raised when an operation is attempted on an expired session. Args: session_id: The ID of the expi... | `lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
-| `LEX_ERR_SES_010` | `CheckpointNotFoundError` | Raised when a checkpoint cannot be found by its ID. Args: checkpoint_id: The ID of the checkpoint... | `lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
-| `LEX_ERR_SES_011` | `SessionTransitionError` | Raised when an invalid state transition is attempted. Args: session_id: The session ID. from_stat... | `lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
-| `LEX_ERR_SES_012` | `SessionCapacityError` | Raised when a session limit is exceeded. Args: detail: Human-readable description of the exceeded... | `lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
+| `LEX_ERR_SES_006` | `SessionError` | Base error for all session operations. All session-specific exceptions inherit from this class. | `experimental/ai/lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | _ContractsSessionError |
+| `LEX_ERR_SES_007` | `SessionNotFoundError` | Raised when a session cannot be found by its ID. Args: session_id: The ID of the session that was... | `experimental/ai/lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
+| `LEX_ERR_SES_008` | `SessionClosedError` | Raised when an operation is attempted on a closed session. Args: session_id: The ID of the closed... | `experimental/ai/lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
+| `LEX_ERR_SES_009` | `SessionExpiredError` | Raised when an operation is attempted on an expired session. Args: session_id: The ID of the expi... | `experimental/ai/lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
+| `LEX_ERR_SES_010` | `CheckpointNotFoundError` | Raised when a checkpoint cannot be found by its ID. Args: checkpoint_id: The ID of the checkpoint... | `experimental/ai/lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
+| `LEX_ERR_SES_011` | `SessionTransitionError` | Raised when an invalid state transition is attempted. Args: session_id: The session ID. from_stat... | `experimental/ai/lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
+| `LEX_ERR_SES_012` | `SessionCapacityError` | Raised when a session limit is exceeded. Args: detail: Human-readable description of the exceeded... | `experimental/ai/lexigram-ai-session/src/lexigram/ai/session/exceptions.py` | SessionError |
 
 ### `lexigram-ai-skills` (7 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_SKILL_002` | `SkillNotFoundError` | Raised when a requested skill is not registered. | `lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
-| `LEX_ERR_SKILL_003` | `SkillAlreadyRegisteredError` | Raised when a skill is registered under a name that already exists. | `lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
-| `LEX_ERR_SKILL_004` | `SkillValidationError` | Raised when skill parameter validation fails. | `lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
-| `LEX_ERR_SKILL_005` | `SkillPermissionDeniedError` | Raised when the caller lacks required permissions for a skill. | `lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
-| `LEX_ERR_SKILL_006` | `SkillTimeoutError` | Raised when skill execution exceeds the configured timeout. | `lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
-| `LEX_ERR_SKILL_007` | `SkillRoutingError` | Raised when a SkillRouter finds no matching route. | `lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
-| `LEX_ERR_SKILL_008` | `SkillExecutionError` | Raised when a skill execution fails after all retry attempts. | `lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
+| `LEX_ERR_SKILL_002` | `SkillNotFoundError` | Raised when a requested skill is not registered. | `experimental/ai/lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
+| `LEX_ERR_SKILL_003` | `SkillAlreadyRegisteredError` | Raised when a skill is registered under a name that already exists. | `experimental/ai/lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
+| `LEX_ERR_SKILL_004` | `SkillValidationError` | Raised when skill parameter validation fails. | `experimental/ai/lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
+| `LEX_ERR_SKILL_005` | `SkillPermissionDeniedError` | Raised when the caller lacks required permissions for a skill. | `experimental/ai/lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
+| `LEX_ERR_SKILL_006` | `SkillTimeoutError` | Raised when skill execution exceeds the configured timeout. | `experimental/ai/lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
+| `LEX_ERR_SKILL_007` | `SkillRoutingError` | Raised when a SkillRouter finds no matching route. | `experimental/ai/lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
+| `LEX_ERR_SKILL_008` | `SkillExecutionError` | Raised when a skill execution fails after all retry attempts. | `experimental/ai/lexigram-ai-skills/src/lexigram/ai/skills/exceptions.py` | SkillError |
 
 ### `lexigram-ai-workers` (3 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_AIWORK_001` | `WorkerError` | Base exception for all worker-related errors. | `lexigram-ai-workers/src/lexigram/ai/workers/exceptions.py` | AIError |
-| `LEX_ERR_AIWORK_002` | `DLQError` | Raised when a Dead Letter Queue operation fails. | `lexigram-ai-workers/src/lexigram/ai/workers/exceptions.py` | WorkerError |
-| `LEX_ERR_AIWORK_003` | `MaintenanceError` | Raised when a maintenance task operation fails. | `lexigram-ai-workers/src/lexigram/ai/workers/exceptions.py` | WorkerError |
+| `LEX_ERR_AIWORK_001` | `WorkerError` | Base exception for all worker-related errors. | `experimental/ai/lexigram-ai-workers/src/lexigram/ai/workers/exceptions.py` | AIError |
+| `LEX_ERR_AIWORK_002` | `DLQError` | Raised when a Dead Letter Queue operation fails. | `experimental/ai/lexigram-ai-workers/src/lexigram/ai/workers/exceptions.py` | WorkerError |
+| `LEX_ERR_AIWORK_003` | `MaintenanceError` | Raised when a maintenance task operation fails. | `experimental/ai/lexigram-ai-workers/src/lexigram/ai/workers/exceptions.py` | WorkerError |
 
 ### `lexigram-audit` (4 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_AUDIT_001` | `AuditError` | Base exception for all audit-domain errors. | `lexigram-audit/src/lexigram/audit/exceptions.py` | DomainError |
-| `LEX_ERR_AUDIT_002` | `AuditStoreError` | Raised when the audit store fails to persist or query entries. | `lexigram-audit/src/lexigram/audit/exceptions.py` | AuditError |
-| `LEX_ERR_AUDIT_003` | `AuditVerificationError` | Raised when audit trail verification encounters an unexpected failure. | `lexigram-audit/src/lexigram/audit/exceptions.py` | AuditError |
-| `LEX_ERR_AUDIT_004` | `AuditRetentionError` | Raised when a retention purge fails. | `lexigram-audit/src/lexigram/audit/exceptions.py` | AuditError |
+| `LEX_ERR_AUDIT_001` | `AuditError` | Base exception for all audit-domain errors. | `packages/lexigram-audit/src/lexigram/audit/exceptions.py` | DomainError |
+| `LEX_ERR_AUDIT_002` | `AuditStoreError` | Raised when the audit store fails to persist or query entries. | `packages/lexigram-audit/src/lexigram/audit/exceptions.py` | AuditError |
+| `LEX_ERR_AUDIT_003` | `AuditVerificationError` | Raised when audit trail verification encounters an unexpected failure. | `packages/lexigram-audit/src/lexigram/audit/exceptions.py` | AuditError |
+| `LEX_ERR_AUDIT_004` | `AuditRetentionError` | Raised when a retention purge fails. | `packages/lexigram-audit/src/lexigram/audit/exceptions.py` | AuditError |
 
 ### `lexigram-auth` (26 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_AUTH_004` | `AuthError` | Base exception for all auth errors. | `lexigram-auth/src/lexigram/auth/exceptions.py` | ContractsAuthError |
-| `LEX_ERR_AUTH_005` | `AuthenticationError` | Raised when authentication fails. | `lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramAuthenticationError, AuthError |
-| `LEX_ERR_AUTH_006` | `AuthorizationError` | Raised when user lacks required permissions. | `lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramAuthorizationError, AuthError |
-| `LEX_ERR_AUTH_007` | `InvalidCredentialsError` | Raised when credentials are invalid. | `lexigram-auth/src/lexigram/auth/exceptions.py` | AuthenticationError |
-| `LEX_ERR_AUTH_008` | `AccountLockedError` | Raised when an account is locked due to too many failed login attempts. Accounts are locked autom... | `lexigram-auth/src/lexigram/auth/exceptions.py` | AuthenticationError |
-| `LEX_ERR_AUTH_009` | `UserNotFoundError` | Raised when user is not found. | `lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramNotFoundError, AuthError |
-| `LEX_ERR_AUTH_010` | `TokenError` | Base exception for token-related errors. | `lexigram-auth/src/lexigram/auth/exceptions.py` | InvalidCredentialsError |
-| `LEX_ERR_AUTH_011` | `InvalidTokenError` | Raised when a token is malformed or invalid. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_012` | `TokenExpiredError` | Raised when a token has expired. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_013` | `TokenBlacklistedError` | Token has been explicitly revoked. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_014` | `TokenInvalidError` | Token is structurally invalid or has wrong type. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_015` | `TokenAudienceError` | Token audience claim does not match expected. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_016` | `TokenNotFoundError` | Token record does not exist. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_017` | `InvalidAudienceError` | Raised when a token audience is invalid. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_018` | `InvalidScopeError` | Raised when a token lacks required scope. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_019` | `BlacklistedTokenError` | Raised when a token has been blacklisted. | `lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
-| `LEX_ERR_AUTH_020` | `TokenExpiredVerificationError` | Account verification has expired. | `lexigram-auth/src/lexigram/auth/exceptions.py` | VerificationError |
-| `LEX_ERR_AUTH_021` | `AlreadyVerifiedError` | Account is already verified. | `lexigram-auth/src/lexigram/auth/exceptions.py` | VerificationError |
-| `LEX_ERR_AUTH_022` | `EmailExistsError` | Raised when email is already taken. | `lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError, ConflictError |
-| `LEX_ERR_AUTH_023` | `UsernameExistsError` | Raised when username is already taken. | `lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError, ConflictError |
-| `LEX_ERR_AUTH_024` | `PasswordPolicyError` | Raised when password doesn't meet requirements. | `lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError |
-| `LEX_ERR_AUTH_025` | `OAuth2Error` | Base exception for OAuth2 errors. | `lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError |
-| `LEX_ERR_AUTH_026` | `SessionNotFoundError` | Raised when a session cannot be found in the store. | `lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramNotFoundError, AuthError |
-| `LEX_ERR_AUTH_027` | `AccountVerificationError` | Error during account verification operations. | `lexigram-auth/src/lexigram/auth/authn/account_verification.py` | Exception |
-| `LEX_ERR_AUTH_028` | `PasswordResetTokenError` | Error during password reset token operations. | `lexigram-auth/src/lexigram/auth/authn/password_reset.py` | Exception |
-| `LEX_ERR_SEC_012` | `RateLimitExceededError` | Raised when a client has exceeded the configured rate limit. Carries ``retry_after`` (seconds) so... | `lexigram-auth/src/lexigram/auth/web/middleware/throttle.py` | Exception |
+| `LEX_ERR_AUTH_004` | `AuthError` | Base exception for all auth errors. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | ContractsAuthError |
+| `LEX_ERR_AUTH_005` | `AuthenticationError` | Raised when authentication fails. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramAuthenticationError, AuthError |
+| `LEX_ERR_AUTH_006` | `AuthorizationError` | Raised when user lacks required permissions. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramAuthorizationError, AuthError |
+| `LEX_ERR_AUTH_007` | `InvalidCredentialsError` | Raised when credentials are invalid. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | AuthenticationError |
+| `LEX_ERR_AUTH_008` | `AccountLockedError` | Raised when an account is locked due to too many failed login attempts. Accounts are locked autom... | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | AuthenticationError |
+| `LEX_ERR_AUTH_009` | `UserNotFoundError` | Raised when user is not found. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramNotFoundError, AuthError |
+| `LEX_ERR_AUTH_010` | `TokenError` | Base exception for token-related errors. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | InvalidCredentialsError |
+| `LEX_ERR_AUTH_011` | `InvalidTokenError` | Raised when a token is malformed or invalid. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_012` | `TokenExpiredError` | Raised when a token has expired. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_013` | `TokenBlacklistedError` | Token has been explicitly revoked. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_014` | `TokenInvalidError` | Token is structurally invalid or has wrong type. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_015` | `TokenAudienceError` | Token audience claim does not match expected. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_016` | `TokenNotFoundError` | Token record does not exist. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_017` | `InvalidAudienceError` | Raised when a token audience is invalid. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_018` | `InvalidScopeError` | Raised when a token lacks required scope. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_019` | `BlacklistedTokenError` | Raised when a token has been blacklisted. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | TokenError |
+| `LEX_ERR_AUTH_020` | `TokenExpiredVerificationError` | Account verification has expired. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | VerificationError |
+| `LEX_ERR_AUTH_021` | `AlreadyVerifiedError` | Account is already verified. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | VerificationError |
+| `LEX_ERR_AUTH_022` | `EmailExistsError` | Raised when email is already taken. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError, ConflictError |
+| `LEX_ERR_AUTH_023` | `UsernameExistsError` | Raised when username is already taken. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError, ConflictError |
+| `LEX_ERR_AUTH_024` | `PasswordPolicyError` | Raised when password doesn't meet requirements. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError |
+| `LEX_ERR_AUTH_025` | `OAuth2Error` | Base exception for OAuth2 errors. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | AuthError |
+| `LEX_ERR_AUTH_026` | `SessionNotFoundError` | Raised when a session cannot be found in the store. | `packages/lexigram-auth/src/lexigram/auth/exceptions.py` | LexigramNotFoundError, AuthError |
+| `LEX_ERR_AUTH_027` | `AccountVerificationError` | Error during account verification operations. | `packages/lexigram-auth/src/lexigram/auth/authn/account_verification.py` | Exception |
+| `LEX_ERR_AUTH_028` | `PasswordResetTokenError` | Error during password reset token operations. | `packages/lexigram-auth/src/lexigram/auth/authn/password_reset.py` | Exception |
+| `LEX_ERR_SEC_012` | `RateLimitExceededError` | Raised when a client has exceeded the configured rate limit. Carries ``retry_after`` (seconds) so... | `packages/lexigram-auth/src/lexigram/auth/web/middleware/throttle.py` | Exception |
 
 ### `lexigram-cache` (12 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_CACHE_004` | `CacheError` | Base exception for cache errors. | `lexigram-cache/src/lexigram/cache/exceptions.py` | LexigramError |
-| `LEX_ERR_CACHE_005` | `CacheBackendError` | Raised when the cache backend (Redis/Memcached) fails. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_006` | `CacheConnectionError` | Raised when the cache connection fails. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheBackendError |
-| `LEX_ERR_CACHE_007` | `CacheTimeoutError` | Raised when a cache operation times out. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_008` | `CacheKeyError` | Raised when a cache key is invalid or for key-specific errors. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_009` | `CacheConfigurationError` | Raised when cache configuration is invalid. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_010` | `CacheStampedeError` | Raised when cache stampede protection fails. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_011` | `CacheInvalidationError` | Raised when cache invalidation fails. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_012` | `LockAcquisitionError` | Raised when a distributed lock cannot be acquired. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_013` | `CacheSerializationError` | Raised when serialization/deserialization fails. | `lexigram-cache/src/lexigram/cache/exceptions.py` | SerializationError, CacheError |
-| `LEX_ERR_CACHE_014` | `CacheCapacityError` | Raised when the cache is at capacity. | `lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
-| `LEX_ERR_CACHE_015` | `CacheSerializationError` | Raised when cache serialization or deserialization fails. This is a cache-specific subclass of th... | `lexigram-cache/src/lexigram/cache/serialization/base.py` | SerializationError |
+| `LEX_ERR_CACHE_004` | `CacheError` | Base exception for cache errors. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | LexigramError |
+| `LEX_ERR_CACHE_005` | `CacheBackendError` | Raised when the cache backend (Redis/Memcached) fails. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_006` | `CacheConnectionError` | Raised when the cache connection fails. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheBackendError |
+| `LEX_ERR_CACHE_007` | `CacheTimeoutError` | Raised when a cache operation times out. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_008` | `CacheKeyError` | Raised when a cache key is invalid or for key-specific errors. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_009` | `CacheConfigurationError` | Raised when cache configuration is invalid. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_010` | `CacheStampedeError` | Raised when cache stampede protection fails. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_011` | `CacheInvalidationError` | Raised when cache invalidation fails. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_012` | `LockAcquisitionError` | Raised when a distributed lock cannot be acquired. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_013` | `CacheSerializationError` | Raised when serialization/deserialization fails. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | SerializationError, CacheError |
+| `LEX_ERR_CACHE_014` | `CacheCapacityError` | Raised when the cache is at capacity. | `packages/lexigram-cache/src/lexigram/cache/exceptions.py` | CacheError |
+| `LEX_ERR_CACHE_015` | `CacheSerializationError` | Raised when cache serialization or deserialization fails. This is a cache-specific subclass of th... | `packages/lexigram-cache/src/lexigram/cache/serialization/base.py` | SerializationError |
 
 ### `lexigram-cli` (3 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_CLI_001` | `CliError` | Base exception for lexigram-cli operations. | `lexigram-cli/src/lexigram/cli/exceptions.py` | LexigramError |
-| `LEX_ERR_CLI_002` | `ConfigNotFoundError` | Raised when application.yaml configuration file is not found. | `lexigram-cli/src/lexigram/cli/exceptions.py` | CliError |
-| `LEX_ERR_CLI_003` | `ProviderNotInstalledError` | Raised when a required provider package is not installed. | `lexigram-cli/src/lexigram/cli/exceptions.py` | CliError |
+| `LEX_ERR_CLI_001` | `CliError` | Base exception for lexigram-cli operations. | `experimental/apps/lexigram-cli/src/lexigram/cli/exceptions.py` | LexigramError |
+| `LEX_ERR_CLI_002` | `ConfigNotFoundError` | Raised when application.yaml configuration file is not found. | `experimental/apps/lexigram-cli/src/lexigram/cli/exceptions.py` | CliError |
+| `LEX_ERR_CLI_003` | `ProviderNotInstalledError` | Raised when a required provider package is not installed. | `experimental/apps/lexigram-cli/src/lexigram/cli/exceptions.py` | CliError |
 
 ### `lexigram-events` (20 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_EVT_004` | `ConcurrencyError` | Concurrency/optimistic locking error. Raised when event version conflicts indicate concurrent mod... | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_005` | `CommandExecutionError` | Command execution error. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_006` | `QueryExecutionError` | Query execution error. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_007` | `StreamNotFoundError` | Raised when stream is not found. Parameters mirror the helper used in tests: (stream_type, stream... | `lexigram-events/src/lexigram/events/exceptions.py` | DomainError |
-| `LEX_ERR_EVT_008` | `EventHandlerError` | Raised when event handling fails. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_009` | `AggregateNotFoundError` | Raised when aggregate is not found. | `lexigram-events/src/lexigram/events/exceptions.py` | NotFoundError |
-| `LEX_ERR_EVT_010` | `AdapterConnectionError` | Raised when adapter connection fails. | `lexigram-events/src/lexigram/events/exceptions.py` | InfrastructureError |
-| `LEX_ERR_EVT_011` | `EventLoadError` | Raised when event loading fails. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_012` | `EventPersistenceError` | Raised when event persistence fails. | `lexigram-events/src/lexigram/events/exceptions.py` | InfrastructureError, EventError |
-| `LEX_ERR_EVT_013` | `EventStoreError` | Raised for event store errors. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_014` | `EventStoreConnectionError` | Raised when event store connection fails. | `lexigram-events/src/lexigram/events/exceptions.py` | EventStoreError, AdapterConnectionError |
-| `LEX_ERR_EVT_015` | `ProjectionBuildError` | Raised when projection building fails. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_016` | `ProjectionRebuildError` | Raised when projection rebuilding fails (alias for collection stability). | `lexigram-events/src/lexigram/events/exceptions.py` | ProjectionBuildError |
-| `LEX_ERR_EVT_017` | `ProjectionNotFoundError` | Raised when a projection is not found. | `lexigram-events/src/lexigram/events/exceptions.py` | NotFoundError |
-| `LEX_ERR_EVT_018` | `WebhookDeliveryError` | Raised when an outbound webhook delivery fails after all retry attempts. Carries the target *url*... | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_019` | `SchemaError` | Raised for schema-related errors. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_020` | `SecurityError` | Raised for security-related errors. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_021` | `StreamingError` | Raised for streaming-related errors. | `lexigram-events/src/lexigram/events/exceptions.py` | EventError |
-| `LEX_ERR_EVT_022` | `SchemaIncompatibleError` | Raised when a schema is not compatible with previous version. | `lexigram-events/src/lexigram/events/schema/models.py` | EventError |
-| `LEX_ERR_EVT_023` | `SchemaNotFoundError` | Raised when a schema is not found. | `lexigram-events/src/lexigram/events/schema/models.py` | EventError |
+| `LEX_ERR_EVT_004` | `ConcurrencyError` | Concurrency/optimistic locking error. Raised when event version conflicts indicate concurrent mod... | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_005` | `CommandExecutionError` | Command execution error. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_006` | `QueryExecutionError` | Query execution error. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_007` | `StreamNotFoundError` | Raised when stream is not found. Parameters mirror the helper used in tests: (stream_type, stream... | `packages/lexigram-events/src/lexigram/events/exceptions.py` | DomainError |
+| `LEX_ERR_EVT_008` | `EventHandlerError` | Raised when event handling fails. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_009` | `AggregateNotFoundError` | Raised when aggregate is not found. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | NotFoundError |
+| `LEX_ERR_EVT_010` | `AdapterConnectionError` | Raised when adapter connection fails. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | InfrastructureError |
+| `LEX_ERR_EVT_011` | `EventLoadError` | Raised when event loading fails. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_012` | `EventPersistenceError` | Raised when event persistence fails. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | InfrastructureError, EventError |
+| `LEX_ERR_EVT_013` | `EventStoreError` | Raised for event store errors. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_014` | `EventStoreConnectionError` | Raised when event store connection fails. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventStoreError, AdapterConnectionError |
+| `LEX_ERR_EVT_015` | `ProjectionBuildError` | Raised when projection building fails. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_016` | `ProjectionRebuildError` | Raised when projection rebuilding fails (alias for collection stability). | `packages/lexigram-events/src/lexigram/events/exceptions.py` | ProjectionBuildError |
+| `LEX_ERR_EVT_017` | `ProjectionNotFoundError` | Raised when a projection is not found. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | NotFoundError |
+| `LEX_ERR_EVT_018` | `WebhookDeliveryError` | Raised when an outbound webhook delivery fails after all retry attempts. Carries the target *url*... | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_019` | `SchemaError` | Raised for schema-related errors. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_020` | `SecurityError` | Raised for security-related errors. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_021` | `StreamingError` | Raised for streaming-related errors. | `packages/lexigram-events/src/lexigram/events/exceptions.py` | EventError |
+| `LEX_ERR_EVT_022` | `SchemaIncompatibleError` | Raised when a schema is not compatible with previous version. | `packages/lexigram-events/src/lexigram/events/schema/models.py` | EventError |
+| `LEX_ERR_EVT_023` | `SchemaNotFoundError` | Raised when a schema is not found. | `packages/lexigram-events/src/lexigram/events/schema/models.py` | EventError |
 
 ### `lexigram-features` (3 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_FEAT_002` | `FlagNotFoundError` | Raised when a requested feature flag does not exist in any provider. Attributes: flag_key: The ke... | `lexigram-features/src/lexigram/features/exceptions.py` | FeatureFlagError |
-| `LEX_ERR_FEAT_003` | `FlagEvaluationError` | Raised when a flag provider fails during evaluation. Attributes: flag_key: The key of the flag th... | `lexigram-features/src/lexigram/features/exceptions.py` | FeatureFlagError |
-| `LEX_ERR_FEAT_004` | `FeatureFlagDisabledError` | Raised when a feature-guarded path is called with the flag disabled. | `lexigram-features/src/lexigram/features/exceptions.py` | FeatureFlagError |
+| `LEX_ERR_FEAT_002` | `FlagNotFoundError` | Raised when a requested feature flag does not exist in any provider. Attributes: flag_key: The ke... | `packages/lexigram-features/src/lexigram/features/exceptions.py` | FeatureFlagError |
+| `LEX_ERR_FEAT_003` | `FlagEvaluationError` | Raised when a flag provider fails during evaluation. Attributes: flag_key: The key of the flag th... | `packages/lexigram-features/src/lexigram/features/exceptions.py` | FeatureFlagError |
+| `LEX_ERR_FEAT_004` | `FeatureFlagDisabledError` | Raised when a feature-guarded path is called with the flag disabled. | `packages/lexigram-features/src/lexigram/features/exceptions.py` | FeatureFlagError |
 
 ### `lexigram-graph` (12 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_GRAPH_001` | `GraphError` | Base exception for all graph store operations. | `lexigram-graph/src/lexigram/graph/exceptions.py` | InfrastructureError |
-| `LEX_ERR_GRAPH_002` | `GraphConnectionError` | Failed to connect to the graph store. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_003` | `GraphNotFoundError` | Requested graph database does not exist. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_004` | `GraphAlreadyExistsError` | Attempted to create a graph that already exists. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_005` | `GraphNodeNotFoundError` | Referenced node does not exist. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_006` | `GraphEdgeNotFoundError` | Referenced edge does not exist. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_007` | `DetachRequiredError` | Node has edges and detach=False was specified. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_008` | `TraversalError` | Traversal query failed. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_009` | `CypherCompilationError` | Failed to compile a traversal query to Cypher. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_010` | `GraphSchemaError` | Schema operation (index, constraint) failed. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_011` | `GraphTransactionError` | Graph transaction failed. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
-| `LEX_ERR_GRAPH_012` | `GraphQueryError` | Raw query execution failed. | `lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_001` | `GraphError` | Base exception for all graph store operations. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | InfrastructureError |
+| `LEX_ERR_GRAPH_002` | `GraphConnectionError` | Failed to connect to the graph store. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_003` | `GraphNotFoundError` | Requested graph database does not exist. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_004` | `GraphAlreadyExistsError` | Attempted to create a graph that already exists. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_005` | `GraphNodeNotFoundError` | Referenced node does not exist. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_006` | `GraphEdgeNotFoundError` | Referenced edge does not exist. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_007` | `DetachRequiredError` | Node has edges and detach=False was specified. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_008` | `TraversalError` | Traversal query failed. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_009` | `CypherCompilationError` | Failed to compile a traversal query to Cypher. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_010` | `GraphSchemaError` | Schema operation (index, constraint) failed. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_011` | `GraphTransactionError` | Graph transaction failed. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
+| `LEX_ERR_GRAPH_012` | `GraphQueryError` | Raw query execution failed. | `packages/lexigram-graph/src/lexigram/graph/exceptions.py` | GraphError |
 
 ### `lexigram-graphql` (15 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_GQL_001` | `GraphQLError` | Base exception for all GraphQL errors. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | LexigramError |
-| `LEX_ERR_GQL_002` | `ExecutionError` | Raised when execution fails. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_003` | `GraphQLTimeoutError` | Raised when execution times out. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | ExecutionError |
-| `LEX_ERR_GQL_004` | `QueryTooDeepError` | Raised when a GraphQL query exceeds the maximum depth. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_005` | `InputGraphQLError` | Raised for invalid user input. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_006` | `ParseError` | Raised when query parsing fails. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_007` | `QueryTooComplexError` | Raised when query exceeds complexity limit. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_008` | `ResolverError` | Raised when a resolver fails. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_009` | `AuthenticationError` | Raised when authentication is required but missing. Also satisfies ``lexigram.contracts.exception... | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError, _ContractsAuthenticationError |
-| `LEX_ERR_GQL_010` | `AuthorizationError` | Raised when user is authenticated but lacks permissions. Also satisfies ``lexigram.contracts.exce... | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError, _ContractsAuthorizationError |
-| `LEX_ERR_GQL_011` | `ForbiddenError` | Raised when access is forbidden. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_012` | `NotFoundError` | Raised when a requested resource is not found. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_013` | `RateLimitError` | Raised when rate limit is exceeded. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_014` | `SubscriptionError` | Raised for subscription-related errors. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
-| `LEX_ERR_GQL_015` | `GraphQLConnectionError` | Raised when a network connection error occurs during GraphQL execution. | `lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_001` | `GraphQLError` | Base exception for all GraphQL errors. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | LexigramError |
+| `LEX_ERR_GQL_002` | `ExecutionError` | Raised when execution fails. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_003` | `GraphQLTimeoutError` | Raised when execution times out. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | ExecutionError |
+| `LEX_ERR_GQL_004` | `QueryTooDeepError` | Raised when a GraphQL query exceeds the maximum depth. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_005` | `InputGraphQLError` | Raised for invalid user input. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_006` | `ParseError` | Raised when query parsing fails. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_007` | `QueryTooComplexError` | Raised when query exceeds complexity limit. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_008` | `ResolverError` | Raised when a resolver fails. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_009` | `AuthenticationError` | Raised when authentication is required but missing. Also satisfies ``lexigram.contracts.exception... | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError, _ContractsAuthenticationError |
+| `LEX_ERR_GQL_010` | `AuthorizationError` | Raised when user is authenticated but lacks permissions. Also satisfies ``lexigram.contracts.exce... | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError, _ContractsAuthorizationError |
+| `LEX_ERR_GQL_011` | `ForbiddenError` | Raised when access is forbidden. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_012` | `NotFoundError` | Raised when a requested resource is not found. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_013` | `RateLimitError` | Raised when rate limit is exceeded. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_014` | `SubscriptionError` | Raised for subscription-related errors. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
+| `LEX_ERR_GQL_015` | `GraphQLConnectionError` | Raised when a network connection error occurs during GraphQL execution. | `packages/lexigram-graphql/src/lexigram/graphql/exceptions.py` | GraphQLError |
 
-### `lexigram-http` (7 codes)
+### `lexigram-http` (8 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_HTTP_001` | `HTTPClientError` | Base exception for all HTTP client errors. | `lexigram-http/src/lexigram/http/exceptions.py` | InfrastructureError |
-| `LEX_ERR_HTTP_002` | `HTTPConnectionError` | Raised when a connection to a remote host fails. | `lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
-| `LEX_ERR_HTTP_003` | `HTTPTimeoutError` | Raised when a connection or request times out. | `lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
-| `LEX_ERR_HTTP_004` | `HTTPInterceptorError` | Raised when a request/response interceptor fails. | `lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
-| `LEX_ERR_HTTP_005` | `HTTPCircuitOpenError` | Raised when the circuit breaker is open and requests are rejected. | `lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
-| `LEX_ERR_HTTP_006` | `HTTPRetryExhaustedError` | Raised when all retry attempts for a request have been exhausted. | `lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
-| `LEX_ERR_HTTP_007` | `HTTPStatusError` | Raised (or returned as an Err) when the server responds with 4xx/5xx. Callers using the Result-ba... | `lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
+| `LEX_ERR_HTTP_001` | `HTTPClientError` | Base exception for all HTTP client errors. | `packages/lexigram-http/src/lexigram/http/exceptions.py` | InfrastructureError |
+| `LEX_ERR_HTTP_002` | `HTTPConnectionError` | Raised when a connection to a remote host fails. | `packages/lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
+| `LEX_ERR_HTTP_003` | `HTTPTimeoutError` | Raised when a connection or request times out. | `packages/lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
+| `LEX_ERR_HTTP_004` | `HTTPInterceptorError` | Raised when a request/response interceptor fails. | `packages/lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
+| `LEX_ERR_HTTP_005` | `HTTPCircuitOpenError` | Raised when the circuit breaker is open and requests are rejected. | `packages/lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
+| `LEX_ERR_HTTP_006` | `HTTPRetryExhaustedError` | Raised when all retry attempts for a request have been exhausted. | `packages/lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
+| `LEX_ERR_HTTP_007` | `HTTPStatusError` | Raised (or returned as an Err) when the server responds with 4xx/5xx. Callers using the Result-ba... | `packages/lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
+| `LEX_ERR_HTTP_008` | `HTTPUnsafeURLError` | Raised when a request URL fails the SSRF safety gate. | `packages/lexigram-http/src/lexigram/http/exceptions.py` | HTTPClientError |
 
 ### `lexigram-monitor` (8 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_MONITOR_001` | `MonitorError` | Base exception for monitoring errors. | `lexigram-monitor/src/lexigram/monitor/exceptions.py` | LexigramError |
-| `LEX_ERR_MONITOR_002` | `BackendNotAvailableError` | Raised when a required monitoring backend is not available. | `lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
-| `LEX_ERR_MONITOR_003` | `MetricNotFoundError` | Raised when a requested metric is not found. | `lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
-| `LEX_ERR_MONITOR_004` | `InvalidMetricError` | Raised when metric parameters are invalid. | `lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
-| `LEX_ERR_MONITOR_005` | `SpanError` | Base exception for span-related errors. | `lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
-| `LEX_ERR_MONITOR_006` | `SpanNotFoundError` | Raised when a requested span is not found. | `lexigram-monitor/src/lexigram/monitor/exceptions.py` | SpanError |
-| `LEX_ERR_MONITOR_007` | `MonitorConfigurationError` | Raised when monitoring configuration is invalid. | `lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError, _ConfigurationError |
-| `LEX_ERR_MONITOR_008` | `PerformanceMonitorError` | Base exception for performance monitoring errors. | `lexigram-monitor/src/lexigram/monitor/profiling/models.py` | MonitorError |
+| `LEX_ERR_MONITOR_001` | `MonitorError` | Base exception for monitoring errors. | `packages/lexigram-monitor/src/lexigram/monitor/exceptions.py` | LexigramError |
+| `LEX_ERR_MONITOR_002` | `BackendNotAvailableError` | Raised when a required monitoring backend is not available. | `packages/lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
+| `LEX_ERR_MONITOR_003` | `MetricNotFoundError` | Raised when a requested metric is not found. | `packages/lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
+| `LEX_ERR_MONITOR_004` | `InvalidMetricError` | Raised when metric parameters are invalid. | `packages/lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
+| `LEX_ERR_MONITOR_005` | `SpanError` | Base exception for span-related errors. | `packages/lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError |
+| `LEX_ERR_MONITOR_006` | `SpanNotFoundError` | Raised when a requested span is not found. | `packages/lexigram-monitor/src/lexigram/monitor/exceptions.py` | SpanError |
+| `LEX_ERR_MONITOR_007` | `MonitorConfigurationError` | Raised when monitoring configuration is invalid. | `packages/lexigram-monitor/src/lexigram/monitor/exceptions.py` | MonitorError, _ConfigurationError |
+| `LEX_ERR_MONITOR_008` | `PerformanceMonitorError` | Base exception for performance monitoring errors. | `packages/lexigram-monitor/src/lexigram/monitor/profiling/models.py` | MonitorError |
 
-### `lexigram-nosql` (6 codes)
+### `lexigram-multimedia-beat` (1 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_NOSQL_001` | `NoSQLError` | Base exception for all NoSQL operations. | `lexigram-nosql/src/lexigram/nosql/exceptions.py` | LexigramError |
-| `LEX_ERR_NOSQL_002` | `NoSQLConnectionError` | Failed to connect to the document store. | `lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
-| `LEX_ERR_NOSQL_003` | `DocumentNotFoundError` | Requested document does not exist. | `lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
-| `LEX_ERR_NOSQL_004` | `DuplicateKeyError` | Insert/update violated a unique constraint. | `lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
-| `LEX_ERR_NOSQL_005` | `DocumentValidationError` | Document failed schema validation. | `lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
-| `LEX_ERR_NOSQL_006` | `TransactionError` | Multi-document transaction failed. | `lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
+| `LEX_ERR_MM_BEAT_003` | `BeatAnalysisDecodeError` | Audio could not be decoded, or was rejected before decoding. Covers undecodable files, unsafe ass... | `experimental/multimedia/lexigram-multimedia-beat/src/lexigram/multimedia/beat/exceptions.py` | BeatAnalysisError |
+
+### `lexigram-multimedia-image` (2 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_MM_IMAGE_001` | `ImageTimeoutError` | Raised when an image generation operation exceeds its timeout. | `experimental/multimedia/lexigram-multimedia-image/src/lexigram/multimedia/image/exceptions.py` | ImageGenerationError |
+| `LEX_ERR_MM_IMAGE_002` | `ImageGenerationAuthenticationError` | Raised when the image backend rejects the configured API credentials. | `experimental/multimedia/lexigram-multimedia-image/src/lexigram/multimedia/image/exceptions.py` | ImageGenerationError |
+
+### `lexigram-multimedia-music` (1 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_MM_MUSIC_001` | `MusicGenerationAuthenticationError` | Raised when the music backend rejects the configured API credentials. | `experimental/multimedia/lexigram-multimedia-music/src/lexigram/multimedia/music/exceptions.py` | MusicGenerationError |
+
+### `lexigram-multimedia-tts` (1 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_MM_TTS_002` | `TTSAuthenticationError` | Invalid API key or credentials — infrastructure error, raised not wrapped. | `experimental/multimedia/lexigram-multimedia-tts/src/lexigram/multimedia/tts/exceptions.py` | TTSError |
+
+### `lexigram-multimedia-upscale` (3 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_MM_UPSCALE_001` | `UpscaleAssetTooLargeError` | Raised when an upscale source asset exceeds the byte cap. Also a ``ValueError`` so callers and te... | `experimental/multimedia/lexigram-multimedia-upscale/src/lexigram/multimedia/upscale/exceptions.py` | UpscaleError, ValueError |
+| `LEX_ERR_MM_UPSCALE_002` | `UpscaleUnsafeAssetURLError` | Raised when an upscale source asset URI is not safe to request. Also a ``ValueError`` so callers ... | `experimental/multimedia/lexigram-multimedia-upscale/src/lexigram/multimedia/upscale/exceptions.py` | UpscaleError, ValueError |
+| `LEX_ERR_MM_UPSCALE_003` | `UpscaleAssetDownloadError` | Raised when an upscale source asset fetch returns a non-200 response. Also a ``ValueError`` so ca... | `experimental/multimedia/lexigram-multimedia-upscale/src/lexigram/multimedia/upscale/exceptions.py` | UpscaleError, ValueError |
+
+### `lexigram-multimedia-video` (6 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_MM_VIDEO_001` | `VideoTimeoutError` | Raised when a video generation operation exceeds its timeout. | `experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/exceptions.py` | VideoGenerationError |
+| `LEX_ERR_MM_VIDEO_002` | `VideoGenerationAuthenticationError` | Raised when the video backend rejects the configured API credentials. | `experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/exceptions.py` | VideoGenerationError |
+| `LEX_ERR_MM_VIDEO_003` | `VideoProcessingError` | Raised when an ffmpeg processing operation fails. | `experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/exceptions.py` | VideoGenerationError |
+| `LEX_ERR_MM_VIDEO_004` | `VideoAssetTooLargeError` | Raised when a materialized asset exceeds the byte cap. Also a ``ValueError`` so the processor's e... | `experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/exceptions.py` | VideoProcessingError, ValueError |
+| `LEX_ERR_MM_VIDEO_005` | `VideoUnsafeAssetURLError` | Raised when an asset URI is not safe to request. Also a ``ValueError`` so the processor's existin... | `experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/exceptions.py` | VideoProcessingError, ValueError |
+| `LEX_ERR_MM_VIDEO_006` | `VideoAssetDownloadError` | Raised when a remote asset download returns a non-200 response. Also a ``ValueError`` so the proc... | `experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/exceptions.py` | VideoProcessingError, ValueError |
+
+### `lexigram-nosql` (7 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_NOSQL_001` | `NoSQLError` | Base exception for all NoSQL operations. | `packages/lexigram-nosql/src/lexigram/nosql/exceptions.py` | LexigramError |
+| `LEX_ERR_NOSQL_002` | `NoSQLConnectionError` | Failed to connect to the document store. | `packages/lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
+| `LEX_ERR_NOSQL_003` | `DocumentNotFoundError` | Requested document does not exist. | `packages/lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
+| `LEX_ERR_NOSQL_004` | `DuplicateKeyError` | Insert/update violated a unique constraint. | `packages/lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
+| `LEX_ERR_NOSQL_005` | `DocumentValidationError` | Document failed schema validation. | `packages/lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
+| `LEX_ERR_NOSQL_006` | `TransactionError` | Multi-document transaction failed. | `packages/lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
+| `LEX_ERR_NOSQL_007` | `NoSQLFilterError` | Filter rejected by the operator/identifier validation guard. | `packages/lexigram-nosql/src/lexigram/nosql/exceptions.py` | NoSQLError |
 
 ### `lexigram-notification` (12 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_NOTIF_003` | `TwilioNotificationError` | Twilio SMS delivery failure. | `lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
-| `LEX_ERR_NOTIF_004` | `FCMNotificationError` | FCM push notification delivery failure. | `lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
-| `LEX_ERR_NOTIF_005` | `APNsNotificationError` | APNs push notification delivery failure. | `lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
-| `LEX_ERR_NOTIF_006` | `SMTPMailerError` | SMTP-specific delivery failure (rejection, auth error, etc.). | `lexigram-notification/src/lexigram/notification/exceptions.py` | MailerError |
-| `LEX_ERR_NOTIF_007` | `SendGridMailerError` | SendGrid API delivery failure. | `lexigram-notification/src/lexigram/notification/exceptions.py` | MailerError |
-| `LEX_ERR_NOTIF_008` | `InboxError` | Base exception for all inbox submodule errors. | `lexigram-notification/src/lexigram/notification/exceptions.py` | DomainError |
-| `LEX_ERR_NOTIF_009` | `InboxMessageNotFoundError` | Raised when a requested inbox message does not exist. | `lexigram-notification/src/lexigram/notification/exceptions.py` | InboxError |
-| `LEX_ERR_NOTIF_010` | `InboxPermissionError` | Raised when a user attempts to access another user's inbox messages. | `lexigram-notification/src/lexigram/notification/exceptions.py` | InboxError |
-| `LEX_ERR_NOTIF_011` | `WebPushNotificationError` | Web Push notification delivery failure. | `lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
-| `LEX_ERR_NOTIF_012` | `WhatsAppNotificationError` | WhatsApp delivery failure via Twilio provider. | `lexigram-notification/src/lexigram/notification/backends/sms/whatsapp.py` | TwilioNotificationError |
-| `LEX_ERR_NOTIF_013` | `WhatsAppMetaNotificationError` | WhatsApp delivery failure via Meta provider. | `lexigram-notification/src/lexigram/notification/backends/sms/whatsapp.py` | TwilioNotificationError |
-| `LEX_ERR_NOTIF_014` | `SlackNotificationError` | Slack notification delivery failure. | `lexigram-notification/src/lexigram/notification/backends/slack/slack_notifier.py` | NotificationError |
+| `LEX_ERR_NOTIF_003` | `TwilioNotificationError` | Twilio SMS delivery failure. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
+| `LEX_ERR_NOTIF_004` | `FCMNotificationError` | FCM push notification delivery failure. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
+| `LEX_ERR_NOTIF_005` | `APNsNotificationError` | APNs push notification delivery failure. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
+| `LEX_ERR_NOTIF_006` | `SMTPMailerError` | SMTP-specific delivery failure (rejection, auth error, etc.). | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | MailerError |
+| `LEX_ERR_NOTIF_007` | `SendGridMailerError` | SendGrid API delivery failure. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | MailerError |
+| `LEX_ERR_NOTIF_008` | `InboxError` | Base exception for all inbox submodule errors. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | DomainError |
+| `LEX_ERR_NOTIF_009` | `InboxMessageNotFoundError` | Raised when a requested inbox message does not exist. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | InboxError |
+| `LEX_ERR_NOTIF_010` | `InboxPermissionError` | Raised when a user attempts to access another user's inbox messages. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | InboxError |
+| `LEX_ERR_NOTIF_011` | `WebPushNotificationError` | Web Push notification delivery failure. | `packages/lexigram-notification/src/lexigram/notification/exceptions.py` | NotificationError |
+| `LEX_ERR_NOTIF_012` | `WhatsAppNotificationError` | WhatsApp delivery failure via Twilio provider. | `packages/lexigram-notification/src/lexigram/notification/backends/sms/whatsapp.py` | TwilioNotificationError |
+| `LEX_ERR_NOTIF_013` | `WhatsAppMetaNotificationError` | WhatsApp delivery failure via Meta provider. | `packages/lexigram-notification/src/lexigram/notification/backends/sms/whatsapp.py` | TwilioNotificationError |
+| `LEX_ERR_NOTIF_014` | `SlackNotificationError` | Slack notification delivery failure. | `packages/lexigram-notification/src/lexigram/notification/backends/slack/slack_notifier.py` | NotificationError |
 
 ### `lexigram-queue` (6 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_QUEUE_002` | `RedisQueueError` | Redis queue failure. | `lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
-| `LEX_ERR_QUEUE_003` | `RabbitMQQueueError` | RabbitMQ queue failure. | `lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
-| `LEX_ERR_QUEUE_004` | `KafkaQueueError` | Kafka queue failure. | `lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
-| `LEX_ERR_QUEUE_005` | `SQSQueueError` | SQS queue failure. | `lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
-| `LEX_ERR_QUEUE_006` | `AzureServiceBusQueueError` | Azure Service Bus queue failure. | `lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
-| `LEX_ERR_QUEUE_007` | `GCPPubSubQueueError` | GCP Pub/Sub queue failure. | `lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
+| `LEX_ERR_QUEUE_002` | `RedisQueueError` | Redis queue failure. | `packages/lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
+| `LEX_ERR_QUEUE_003` | `RabbitMQQueueError` | RabbitMQ queue failure. | `packages/lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
+| `LEX_ERR_QUEUE_004` | `KafkaQueueError` | Kafka queue failure. | `packages/lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
+| `LEX_ERR_QUEUE_005` | `SQSQueueError` | SQS queue failure. | `packages/lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
+| `LEX_ERR_QUEUE_006` | `AzureServiceBusQueueError` | Azure Service Bus queue failure. | `packages/lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
+| `LEX_ERR_QUEUE_007` | `GCPPubSubQueueError` | GCP Pub/Sub queue failure. | `packages/lexigram-queue/src/lexigram/queue/exceptions.py` | QueueError |
 
 ### `lexigram-resilience` (6 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_IDEM_005` | `IdempotencyBackendError` | Raised when a Redis or database backend connection fails. This exception is raised when the under... | `lexigram-resilience/src/lexigram/resilience/exceptions.py` | IdempotencyError |
-| `LEX_ERR_IDEM_006` | `IdempotencyConfigurationError` | Raised when the idempotency store is misconfigured. This exception is raised when required config... | `lexigram-resilience/src/lexigram/resilience/exceptions.py` | IdempotencyError |
-| `LEX_ERR_RES_008` | `RetryExhaustedError` | All retry attempts exhausted. | `lexigram-resilience/src/lexigram/resilience/exceptions.py` | RetryError |
-| `LEX_ERR_RES_009` | `CircuitOpenError` | Circuit breaker is open. | `lexigram-resilience/src/lexigram/resilience/exceptions.py` | CircuitBreakerError |
-| `LEX_ERR_RES_010` | `BulkheadRejectedError` | Bulkhead rejected due to capacity limits. | `lexigram-resilience/src/lexigram/resilience/exceptions.py` | BulkheadError |
-| `LEX_ERR_RES_011` | `ResilienceTimeoutError` | Resilience operation timed out. Inherits from both ResilienceError and built-in TimeoutError so t... | `lexigram-resilience/src/lexigram/resilience/exceptions.py` | ResilienceError, TimeoutError |
+| `LEX_ERR_IDEM_005` | `IdempotencyBackendError` | Raised when a Redis or database backend connection fails. This exception is raised when the under... | `packages/lexigram-resilience/src/lexigram/resilience/exceptions.py` | IdempotencyError |
+| `LEX_ERR_IDEM_006` | `IdempotencyConfigurationError` | Raised when the idempotency store is misconfigured. This exception is raised when required config... | `packages/lexigram-resilience/src/lexigram/resilience/exceptions.py` | IdempotencyError |
+| `LEX_ERR_RES_008` | `RetryExhaustedError` | All retry attempts exhausted. | `packages/lexigram-resilience/src/lexigram/resilience/exceptions.py` | RetryError |
+| `LEX_ERR_RES_009` | `CircuitOpenError` | Circuit breaker is open. | `packages/lexigram-resilience/src/lexigram/resilience/exceptions.py` | CircuitBreakerError |
+| `LEX_ERR_RES_010` | `BulkheadRejectedError` | Bulkhead rejected due to capacity limits. | `packages/lexigram-resilience/src/lexigram/resilience/exceptions.py` | BulkheadError |
+| `LEX_ERR_RES_011` | `ResilienceTimeoutError` | Resilience operation timed out. Inherits from both ResilienceError and built-in TimeoutError so t... | `packages/lexigram-resilience/src/lexigram/resilience/exceptions.py` | ResilienceError, TimeoutError |
 
 ### `lexigram-search` (10 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_SEARCH_001` | `SearchError` | Base exception for search operations. | `lexigram-search/src/lexigram/search/exceptions.py` | LexigramError |
-| `LEX_ERR_SEARCH_002` | `IndexNotFoundError` | Raised when index is not found. | `lexigram-search/src/lexigram/search/exceptions.py` | DomainError |
-| `LEX_ERR_SEARCH_003` | `BackendError` | Raised when search backend encounters an error. | `lexigram-search/src/lexigram/search/exceptions.py` | InfrastructureError |
-| `LEX_ERR_SEARCH_004` | `SearchValidationError` | Raised when search query validation fails. | `lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
-| `LEX_ERR_SEARCH_005` | `TransformationError` | Raised when document transformation fails. | `lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
-| `LEX_ERR_SEARCH_006` | `CacheError` | Raised when search cache operation fails. | `lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
-| `LEX_ERR_SEARCH_007` | `QueryError` | Raised when search query execution fails. | `lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
-| `LEX_ERR_SEARCH_008` | `ConfigurationError` | Raised when search configuration is invalid. | `lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
-| `LEX_ERR_SEARCH_009` | `SearchIndexError` | Raised when search index operation fails. | `lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
-| `LEX_ERR_SEARCH_010` | `SchedulerError` | Raised when search scheduler operation fails. | `lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
+| `LEX_ERR_SEARCH_001` | `SearchError` | Base exception for search operations. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | LexigramError |
+| `LEX_ERR_SEARCH_002` | `IndexNotFoundError` | Raised when index is not found. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | DomainError |
+| `LEX_ERR_SEARCH_003` | `BackendError` | Raised when search backend encounters an error. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | InfrastructureError |
+| `LEX_ERR_SEARCH_004` | `SearchValidationError` | Raised when search query validation fails. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
+| `LEX_ERR_SEARCH_005` | `TransformationError` | Raised when document transformation fails. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
+| `LEX_ERR_SEARCH_006` | `CacheError` | Raised when search cache operation fails. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
+| `LEX_ERR_SEARCH_007` | `QueryError` | Raised when search query execution fails. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
+| `LEX_ERR_SEARCH_008` | `ConfigurationError` | Raised when search configuration is invalid. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
+| `LEX_ERR_SEARCH_009` | `SearchIndexError` | Raised when search index operation fails. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
+| `LEX_ERR_SEARCH_010` | `SchedulerError` | Raised when search scheduler operation fails. | `packages/lexigram-search/src/lexigram/search/exceptions.py` | SearchError |
 
-### `lexigram-sql` (37 codes)
-
-| Code | Class | Description | File | Inherits From |
-|:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_SQL_001` | `DatabaseConnectionError` | Base for all connection-related failures. Attributes: host: The database host that was targeted. ... | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_002` | `ConnectionRefusedError` | Server actively refused the connection. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseConnectionError |
-| `LEX_ERR_SQL_003` | `ConnectionTimeoutError` | Connection attempt timed out. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseConnectionError |
-| `LEX_ERR_SQL_004` | `ConnectionPoolError` | Connection pool exhausted — no connections available within timeout. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseConnectionError |
-| `LEX_ERR_SQL_005` | `QueryError` | Base for query execution failures. Attributes: sql: The SQL query that failed. params: The parame... | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_006` | `QuerySyntaxError` | The SQL query has a syntax error. | `lexigram-sql/src/lexigram/sql/exceptions.py` | QueryError |
-| `LEX_ERR_SQL_007` | `ParameterBindingError` | Failed to bind parameters to a query. | `lexigram-sql/src/lexigram/sql/exceptions.py` | QueryError |
-| `LEX_ERR_SQL_008` | `IntegrityError` | Base for constraint violation errors. Attributes: constraint: The constraint name that was violat... | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_009` | `DuplicateKeyError` | Unique constraint or primary key violated. | `lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
-| `LEX_ERR_SQL_010` | `ForeignKeyError` | Foreign key constraint violated. | `lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
-| `LEX_ERR_SQL_011` | `NotNullViolationError` | NOT NULL constraint violated. Attributes: column: The column that triggered the violation. | `lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
-| `LEX_ERR_SQL_012` | `CheckConstraintError` | CHECK constraint violated. | `lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
-| `LEX_ERR_SQL_013` | `TransactionError` | Base for transaction-related failures. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_014` | `SerializationError` | Serialization failure (optimistic concurrency conflict). | `lexigram-sql/src/lexigram/sql/exceptions.py` | TransactionError |
-| `LEX_ERR_SQL_015` | `OptimisticLockError` | Raised when an optimistic lock check fails on UPDATE. Indicates a concurrent modification was det... | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_016` | `TransactionRollbackError` | Transaction was rolled back (not by the application). | `lexigram-sql/src/lexigram/sql/exceptions.py` | TransactionError |
-| `LEX_ERR_SQL_017` | `LockError` | Raised when a database lock cannot be acquired. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_018` | `DeadlockError` | Database deadlock detected. Inherits from :class:`TransactionError` because deadlocks are resolve... | `lexigram-sql/src/lexigram/sql/exceptions.py` | TransactionError |
-| `LEX_ERR_SQL_019` | `SchemaError` | Base for schema-related errors. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_020` | `TableNotFoundError` | Referenced table does not exist. | `lexigram-sql/src/lexigram/sql/exceptions.py` | SchemaError |
-| `LEX_ERR_SQL_021` | `ColumnNotFoundError` | Referenced column does not exist. | `lexigram-sql/src/lexigram/sql/exceptions.py` | SchemaError |
-| `LEX_ERR_SQL_022` | `DatabaseTimeoutError` | Database operation timed out. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_023` | `RepositoryError` | RepositoryProtocol-level operation failure. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_024` | `UnitOfWorkError` | Raised when unit of work operation fails. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_025` | `DriverError` | Wraps underlying database driver exceptions. Preserves the original exception as ``__cause__`` an... | `lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
-| `LEX_ERR_SQL_026` | `DataError` | Base exception for data access layer failures. | `lexigram-sql/src/lexigram/sql/exceptions.py` | LexigramError |
-| `LEX_ERR_SQL_027` | `DataQueryError` | Raised when a query cannot be built or compiled. Args: message: Explanation of the query error. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
-| `LEX_ERR_SQL_028` | `PaginationError` | Raised when pagination parameters are invalid. Args: message: Explanation of the pagination error. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
-| `LEX_ERR_SQL_029` | `EntityNotFoundError` | Signals that a required entity does not exist. RepositoryProtocol implementations that cannot fin... | `lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
-| `LEX_ERR_SQL_030` | `DataRepositoryError` | Raised when a repository operation fails unexpectedly. Args: message: Explanation of the reposito... | `lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
-| `LEX_ERR_SQL_031` | `CursorError` | Raised when a cursor cannot be encoded or decoded. Args: message: Explanation of the cursor error. | `lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
-| `LEX_ERR_SQL_032` | `MigrationDependencyError` | Raised when migration dependencies are not satisfied. | `lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
-| `LEX_ERR_SQL_033` | `MigrationExecutionError` | Raised when migration execution fails. | `lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
-| `LEX_ERR_SQL_034` | `MigrationNotFoundError` | Raised when a migration is not found. | `lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
-| `LEX_ERR_SQL_035` | `MigrationValidationError` | Raised when migration validation fails. | `lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
-| `LEX_ERR_SQL_036` | `ProtocolValidationError` | Raised when object doesn't implement protocol. | `lexigram-sql/src/lexigram/sql/validation/protocols.py` | ConfigurationError |
-| `LEX_ERR_SQL_037` | `MappingError` | Exception raised when entity mapping fails. | `lexigram-sql/src/lexigram/sql/mappers/base.py` | CoreMappingError |
-
-### `lexigram-storage` (8 codes)
+### `lexigram-secrets` (7 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_STORE_001` | `StorageError` | Base exception for storage errors. | `lexigram-storage/src/lexigram/storage/exceptions.py` | LexigramError |
-| `LEX_ERR_STORE_002` | `StorageFileNotFoundError` | Raised when file is not found. | `lexigram-storage/src/lexigram/storage/exceptions.py` | DomainError |
-| `LEX_ERR_STORE_003` | `StorageUnsupportedOperationError` | Raised when the requested operation is not supported by the storage driver. | `lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
-| `LEX_ERR_STORE_004` | `TransactionError` | Raised when a transaction operation fails. | `lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
-| `LEX_ERR_STORE_005` | `QuotaExceededError` | Raised when a storage quota or size limit is exceeded. | `lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
-| `LEX_ERR_STORE_006` | `InvalidPathError` | Raised when a path is invalid or attempts directory traversal. | `lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
-| `LEX_ERR_STORE_007` | `StorageUnavailableError` | Raised when the storage backend is not reachable or unavailable. | `lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
-| `LEX_ERR_STORE_008` | `ChecksumMismatchError` | Raised when a file's checksum does not match the expected value. | `lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
+| `LEX_ERR_SECRET_001` | `SecretsError` | Base exception for all secrets-domain errors. | `packages/lexigram-secrets/src/lexigram/secrets/exceptions.py` | LexigramError |
+| `LEX_ERR_SECRET_002` | `SecretNotFoundError` | Raised when a requested secret does not exist. | `packages/lexigram-secrets/src/lexigram/secrets/exceptions.py` | SecretsError |
+| `LEX_ERR_SECRET_003` | `SecretAccessError` | Raised when access to a secret is denied. | `packages/lexigram-secrets/src/lexigram/secrets/exceptions.py` | SecretsError |
+| `LEX_ERR_SECRET_004` | `SecretRotationError` | Raised when automatic rotation of a secret fails. | `packages/lexigram-secrets/src/lexigram/secrets/exceptions.py` | SecretsError |
+| `LEX_ERR_SECRET_005` | `SecretBackendError` | Raised when the underlying secret backend (e.g. Vault) fails. | `packages/lexigram-secrets/src/lexigram/secrets/exceptions.py` | SecretsError |
+| `LEX_ERR_SECRET_006` | `SecretConfigError` | Raised when secrets subsystem configuration is invalid. | `packages/lexigram-secrets/src/lexigram/secrets/exceptions.py` | SecretsError |
+| `LEX_ERR_SECRET_007` | `SecretBackendUnavailableError` | Backend auth/network/permission failure — distinct from secret-not-found. | `packages/lexigram-secrets/src/lexigram/secrets/exceptions.py` | InfrastructureError |
+
+### `lexigram-sql` (38 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_SQL_001` | `DatabaseConnectionError` | Base for all connection-related failures. Attributes: host: The database host that was targeted. ... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_002` | `ConnectionRefusedError` | Server actively refused the connection. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseConnectionError |
+| `LEX_ERR_SQL_003` | `ConnectionTimeoutError` | Connection attempt timed out. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseConnectionError |
+| `LEX_ERR_SQL_004` | `ConnectionPoolError` | Connection pool exhausted — no connections available within timeout. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseConnectionError |
+| `LEX_ERR_SQL_005` | `QueryError` | Base for query execution failures. Attributes: sql: The SQL query that failed. params: The parame... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_006` | `QuerySyntaxError` | The SQL query has a syntax error. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | QueryError |
+| `LEX_ERR_SQL_007` | `ParameterBindingError` | Failed to bind parameters to a query. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | QueryError |
+| `LEX_ERR_SQL_008` | `IntegrityError` | Base for constraint violation errors. Attributes: constraint: The constraint name that was violat... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_009` | `DuplicateKeyError` | Unique constraint or primary key violated. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
+| `LEX_ERR_SQL_010` | `ForeignKeyError` | Foreign key constraint violated. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
+| `LEX_ERR_SQL_011` | `NotNullViolationError` | NOT NULL constraint violated. Attributes: column: The column that triggered the violation. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
+| `LEX_ERR_SQL_012` | `CheckConstraintError` | CHECK constraint violated. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | IntegrityError |
+| `LEX_ERR_SQL_013` | `TransactionError` | Base for transaction-related failures. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_014` | `SerializationError` | Serialization failure (optimistic concurrency conflict). | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | TransactionError |
+| `LEX_ERR_SQL_015` | `OptimisticLockError` | Raised when an optimistic lock check fails on UPDATE. Indicates a concurrent modification was det... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_016` | `TransactionRollbackError` | Transaction was rolled back (not by the application). | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | TransactionError |
+| `LEX_ERR_SQL_017` | `LockError` | Raised when a database lock cannot be acquired. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_018` | `DeadlockError` | Database deadlock detected. Inherits from :class:`TransactionError` because deadlocks are resolve... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | TransactionError |
+| `LEX_ERR_SQL_019` | `SchemaError` | Base for schema-related errors. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_020` | `TableNotFoundError` | Referenced table does not exist. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | SchemaError |
+| `LEX_ERR_SQL_021` | `ColumnNotFoundError` | Referenced column does not exist. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | SchemaError |
+| `LEX_ERR_SQL_022` | `DatabaseTimeoutError` | Database operation timed out. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_023` | `RepositoryError` | RepositoryProtocol-level operation failure. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_024` | `UnitOfWorkError` | Raised when unit of work operation fails. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_025` | `DriverError` | Wraps underlying database driver exceptions. Preserves the original exception as ``__cause__`` an... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+| `LEX_ERR_SQL_026` | `DataError` | Base exception for data access layer failures. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | LexigramError |
+| `LEX_ERR_SQL_027` | `DataQueryError` | Raised when a query cannot be built or compiled. Args: message: Explanation of the query error. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
+| `LEX_ERR_SQL_028` | `PaginationError` | Raised when pagination parameters are invalid. Args: message: Explanation of the pagination error. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
+| `LEX_ERR_SQL_029` | `EntityNotFoundError` | Signals that a required entity does not exist. RepositoryProtocol implementations that cannot fin... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
+| `LEX_ERR_SQL_030` | `DataRepositoryError` | Raised when a repository operation fails unexpectedly. Args: message: Explanation of the reposito... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
+| `LEX_ERR_SQL_031` | `CursorError` | Raised when a cursor cannot be encoded or decoded. Args: message: Explanation of the cursor error. | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DataError |
+| `LEX_ERR_SQL_032` | `MigrationDependencyError` | Raised when migration dependencies are not satisfied. | `packages/lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
+| `LEX_ERR_SQL_033` | `MigrationExecutionError` | Raised when migration execution fails. | `packages/lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
+| `LEX_ERR_SQL_034` | `MigrationNotFoundError` | Raised when a migration is not found. | `packages/lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
+| `LEX_ERR_SQL_035` | `MigrationValidationError` | Raised when migration validation fails. | `packages/lexigram-sql/src/lexigram/sql/migrations/base.py` | MigrationError |
+| `LEX_ERR_SQL_036` | `ProtocolValidationError` | Raised when object doesn't implement protocol. | `packages/lexigram-sql/src/lexigram/sql/validation/protocols.py` | ConfigurationError |
+| `LEX_ERR_SQL_037` | `MappingError` | Exception raised when entity mapping fails. | `packages/lexigram-sql/src/lexigram/sql/mappers/base.py` | CoreMappingError |
+| `LEX_ERR_SQL_038` | `TenantScopingError` | Raised when a tenant-scoped operation runs without an active tenant. Mirrors :class:`~lexigram.sq... | `packages/lexigram-sql/src/lexigram/sql/exceptions.py` | DatabaseError |
+
+### `lexigram-storage` (6 codes)
+
+| Code | Class | Description | File | Inherits From |
+|:-----|:------|:------------|:-----|:--------------|
+| `LEX_ERR_STORE_002` | `StorageFileNotFoundError` | Raised when file is not found. | `packages/lexigram-storage/src/lexigram/storage/exceptions.py` | DomainError |
+| `LEX_ERR_STORE_004` | `TransactionError` | Raised when a transaction operation fails. | `packages/lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
+| `LEX_ERR_STORE_005` | `QuotaExceededError` | Raised when a storage quota or size limit is exceeded. | `packages/lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
+| `LEX_ERR_STORE_006` | `InvalidPathError` | Raised when a path is invalid or attempts directory traversal. | `packages/lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
+| `LEX_ERR_STORE_007` | `StorageUnavailableError` | Raised when the storage backend is not reachable or unavailable. | `packages/lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
+| `LEX_ERR_STORE_008` | `ChecksumMismatchError` | Raised when a file's checksum does not match the expected value. | `packages/lexigram-storage/src/lexigram/storage/exceptions.py` | StorageError |
 
 ### `lexigram-tasks` (10 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_TASK_002` | `QueueFullError` | The queue has reached its maximum capacity and cannot accept new tasks. The caller should back of... | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskQueueError |
-| `LEX_ERR_TASK_003` | `TaskError` | Base exception for all task-related errors | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskQueueError |
-| `LEX_ERR_TASK_004` | `TaskNotFoundError` | Raised when a task cannot be found | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
-| `LEX_ERR_TASK_005` | `TaskTimeoutError` | Raised when a task execution exceeds timeout | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
-| `LEX_ERR_TASK_006` | `TaskCancelledError` | Raised when a task is cancelled | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
-| `LEX_ERR_TASK_007` | `TaskExecutionError` | Raised when a task execution fails | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
-| `LEX_ERR_TASK_008` | `TaskValidationError` | Raised when task parameters are invalid | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
-| `LEX_ERR_TASK_009` | `DuplicateTaskError` | Raised when a duplicate task is detected | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
-| `LEX_ERR_TASK_010` | `TaskDependencyCycleError` | Raised at registration time when a dependency cycle is detected. The scheduler validates the depe... | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
-| `LEX_ERR_TASK_011` | `TaskRegistrationError` | Raised when a scheduled or handler task fails to register. | `lexigram-tasks/src/lexigram/tasks/exceptions.py` | LexigramError |
+| `LEX_ERR_TASK_002` | `QueueFullError` | The queue has reached its maximum capacity and cannot accept new tasks. The caller should back of... | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskQueueError |
+| `LEX_ERR_TASK_003` | `TaskError` | Base exception for all task-related errors | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskQueueError |
+| `LEX_ERR_TASK_004` | `TaskNotFoundError` | Raised when a task cannot be found | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
+| `LEX_ERR_TASK_005` | `TaskTimeoutError` | Raised when a task execution exceeds timeout | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
+| `LEX_ERR_TASK_006` | `TaskCancelledError` | Raised when a task is cancelled | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
+| `LEX_ERR_TASK_007` | `TaskExecutionError` | Raised when a task execution fails | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
+| `LEX_ERR_TASK_008` | `TaskValidationError` | Raised when task parameters are invalid | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
+| `LEX_ERR_TASK_009` | `DuplicateTaskError` | Raised when a duplicate task is detected | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
+| `LEX_ERR_TASK_010` | `TaskDependencyCycleError` | Raised at registration time when a dependency cycle is detected. The scheduler validates the depe... | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | TaskError |
+| `LEX_ERR_TASK_011` | `TaskRegistrationError` | Raised when a scheduled or handler task fails to register. | `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py` | LexigramError |
 
 ### `lexigram-testing` (12 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_TEST_001` | `TestingError` | Base exception for lexigram-testing operations. | `lexigram-testing/src/lexigram/testing/exceptions.py` | LexigramError |
-| `LEX_ERR_TEST_002` | `TokenBudgetExceededError` | Raised when an AITestClient operation would exceed the configured token budget. Prevents runaway ... | `lexigram-testing/src/lexigram/testing/exceptions.py` | TestingError |
-| `LEX_ERR_TEST_003` | `MemoryBackendError` | Base exception for all memory backend errors. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | LexigramError |
-| `LEX_ERR_TEST_004` | `CommandBusError` | Raised when a command bus operation fails. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | EventError |
-| `LEX_ERR_TEST_005` | `CommandHandlerNotFoundError` | Raised when no handler is registered for a specific command type. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | CommandBusError, HandlerNotFoundError |
-| `LEX_ERR_TEST_006` | `DuplicateHandlerError` | Raised when a handler is already registered for a command type. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | CommandBusError, ContractDuplicateHandlerError |
-| `LEX_ERR_TEST_007` | `CommandError` | Wraps a handler exception for Result-based command dispatch. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | CommandBusError |
-| `LEX_ERR_TEST_008` | `QueryBusError` | Raised when a query bus operation fails. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | EventError |
-| `LEX_ERR_TEST_009` | `QueryHandlerNotFoundError` | Raised when no handler is registered for a specific query type. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | QueryBusError, HandlerNotFoundError |
-| `LEX_ERR_TEST_010` | `QueryDuplicateHandlerError` | Raised when a handler is already registered for a query type. | `lexigram-testing/src/lexigram/testing/memory/exceptions.py` | QueryBusError, ContractDuplicateHandlerError |
-| `LEX_ERR_TEST_011` | `ConfigurationError` | Raised when a require_stub module is loaded via configure() in test mode. This exception indicate... | `lexigram-testing/src/lexigram/testing/lib/stubs.py` | Exception |
-| `LEX_ERR_TEST_012` | `SnapshotMismatchError` | Raised when a value does not match the stored snapshot. | `lexigram-testing/src/lexigram/testing/lib/snapshots.py` | AssertionError |
+| `LEX_ERR_TEST_001` | `TestingError` | Base exception for lexigram-testing operations. | `packages/lexigram-testing/src/lexigram/testing/exceptions.py` | LexigramError |
+| `LEX_ERR_TEST_002` | `TokenBudgetExceededError` | Raised when an AITestClient operation would exceed the configured token budget. Prevents runaway ... | `packages/lexigram-testing/src/lexigram/testing/exceptions.py` | TestingError |
+| `LEX_ERR_TEST_003` | `MemoryBackendError` | Base exception for all memory backend errors. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | LexigramError |
+| `LEX_ERR_TEST_004` | `CommandBusError` | Raised when a command bus operation fails. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | EventError |
+| `LEX_ERR_TEST_005` | `CommandHandlerNotFoundError` | Raised when no handler is registered for a specific command type. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | CommandBusError, HandlerNotFoundError |
+| `LEX_ERR_TEST_006` | `DuplicateHandlerError` | Raised when a handler is already registered for a command type. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | CommandBusError, ContractDuplicateHandlerError |
+| `LEX_ERR_TEST_007` | `CommandError` | Wraps a handler exception for Result-based command dispatch. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | CommandBusError |
+| `LEX_ERR_TEST_008` | `QueryBusError` | Raised when a query bus operation fails. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | EventError |
+| `LEX_ERR_TEST_009` | `QueryHandlerNotFoundError` | Raised when no handler is registered for a specific query type. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | QueryBusError, HandlerNotFoundError |
+| `LEX_ERR_TEST_010` | `QueryDuplicateHandlerError` | Raised when a handler is already registered for a query type. | `packages/lexigram-testing/src/lexigram/testing/memory/exceptions.py` | QueryBusError, ContractDuplicateHandlerError |
+| `LEX_ERR_TEST_011` | `ConfigurationError` | Raised when a require_stub module is loaded via configure() in test mode. This exception indicate... | `packages/lexigram-testing/src/lexigram/testing/lib/stubs.py` | Exception |
+| `LEX_ERR_TEST_012` | `SnapshotMismatchError` | Raised when a value does not match the stored snapshot. | `packages/lexigram-testing/src/lexigram/testing/lib/snapshots.py` | AssertionError |
 
 ### `lexigram-ui` (1 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_UI_001` | `UIError` | Base exception for all UI-domain errors. | `lexigram-ui/src/lexigram/ui/exceptions.py` | LexigramError |
+| `LEX_ERR_UI_001` | `UIError` | Base exception for all UI-domain errors. | `experimental/apps/lexigram-ui/src/lexigram/ui/exceptions.py` | LexigramError |
 
 ### `lexigram-vector` (11 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_VEC_005` | `VectorError` | Base exception for all vector store operations. | `lexigram-vector/src/lexigram/vector/exceptions.py` | InfrastructureError |
-| `LEX_ERR_VEC_006` | `VectorConnectionError` | Failed to connect to the vector store. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_007` | `CollectionNotFoundError` | Requested collection does not exist. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_008` | `CollectionAlreadyExistsError` | Attempted to create a collection that already exists. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_009` | `DimensionMismatchError` | Vector dimensionality does not match the collection. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_010` | `VectorConfigError` | Invalid vector store configuration. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_011` | `FilterCompilationError` | Failed to compile a metadata filter for the target backend. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_012` | `VectorUpsertError` | Failed to upsert vectors. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_013` | `VectorSearchError` | Failed to execute similarity search. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_014` | `VectorDeleteError` | Failed to delete vectors. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
-| `LEX_ERR_VEC_015` | `VectorTimeoutError` | Vector store operation timed out. | `lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_005` | `VectorError` | Base exception for all vector store operations. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | InfrastructureError |
+| `LEX_ERR_VEC_006` | `VectorConnectionError` | Failed to connect to the vector store. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_007` | `CollectionNotFoundError` | Requested collection does not exist. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_008` | `CollectionAlreadyExistsError` | Attempted to create a collection that already exists. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_009` | `DimensionMismatchError` | Vector dimensionality does not match the collection. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_010` | `VectorConfigError` | Invalid vector store configuration. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_011` | `FilterCompilationError` | Failed to compile a metadata filter for the target backend. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_012` | `VectorUpsertError` | Failed to upsert vectors. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_013` | `VectorSearchError` | Failed to execute similarity search. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_014` | `VectorDeleteError` | Failed to delete vectors. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
+| `LEX_ERR_VEC_015` | `VectorTimeoutError` | Vector store operation timed out. | `packages/lexigram-vector/src/lexigram/vector/exceptions.py` | VectorError |
 
 ### `lexigram-web` (12 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_WEB_003` | `NotFoundError` | 404 Not Found. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_004` | `BadRequestError` | 400 Bad Request. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_005` | `UnauthorizedError` | 401 Unauthorized. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_006` | `ForbiddenError` | 403 Forbidden. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_007` | `MethodNotAllowedError` | 405 Method Not Allowed. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_008` | `ConflictError` | 409 Conflict. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_009` | `UnprocessableEntityError` | 422 Unprocessable Entity. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_010` | `InternalServerError` | 500 Internal Server Error. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_011` | `DependencyResolutionError` | 500 Dependency Resolution Error. | `lexigram-web/src/lexigram/web/exceptions.py` | InternalServerError |
-| `LEX_ERR_WEB_012` | `RateLimitError` | 429 Too Many Requests. | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_013` | `TooManyConnectionsError` | 503 Service Unavailable — connection limit reached. Raised when a streaming endpoint (e.g. SSE) h... | `lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
-| `LEX_ERR_WEB_014` | `HTTPError` | Base HTTP error, compatible with LexigramError. | `lexigram-web/src/lexigram/web/exceptions.py` | LexigramError |
+| `LEX_ERR_WEB_003` | `NotFoundError` | 404 Not Found. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_004` | `BadRequestError` | 400 Bad Request. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_005` | `UnauthorizedError` | 401 Unauthorized. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_006` | `ForbiddenError` | 403 Forbidden. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_007` | `MethodNotAllowedError` | 405 Method Not Allowed. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_008` | `ConflictError` | 409 Conflict. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_009` | `UnprocessableEntityError` | 422 Unprocessable Entity. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_010` | `InternalServerError` | 500 Internal Server Error. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_011` | `DependencyResolutionError` | 500 Dependency Resolution Error. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | InternalServerError |
+| `LEX_ERR_WEB_012` | `RateLimitError` | 429 Too Many Requests. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_013` | `TooManyConnectionsError` | 503 Service Unavailable — connection limit reached. Raised when a streaming endpoint (e.g. SSE) h... | `packages/lexigram-web/src/lexigram/web/exceptions.py` | HTTPError |
+| `LEX_ERR_WEB_014` | `HTTPError` | Base HTTP error, compatible with LexigramError. | `packages/lexigram-web/src/lexigram/web/exceptions.py` | LexigramError |
 
 ### `lexigram-webhook` (5 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_WEBHOOK_002` | `SubscriptionNotFoundError` | Raised when a subscription ID is not found. | `lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
-| `LEX_ERR_WEBHOOK_003` | `SubscriptionInactiveError` | Raised when attempting to deliver to a deactivated subscription. | `lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
-| `LEX_ERR_WEBHOOK_004` | `InvalidWebhookURLError` | Raised when a subscription URL fails validation. | `lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
-| `LEX_ERR_WEBHOOK_005` | `DeliveryAttemptNotFoundError` | Raised when a delivery attempt ID is not found. | `lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
-| `LEX_ERR_WEBHOOK_006` | `SecretRotationError` | Raised when secret rotation fails. | `lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
+| `LEX_ERR_WEBHOOK_002` | `SubscriptionNotFoundError` | Raised when a subscription ID is not found. | `packages/lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
+| `LEX_ERR_WEBHOOK_003` | `SubscriptionInactiveError` | Raised when attempting to deliver to a deactivated subscription. | `packages/lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
+| `LEX_ERR_WEBHOOK_004` | `InvalidWebhookURLError` | Raised when a subscription URL fails validation. | `packages/lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
+| `LEX_ERR_WEBHOOK_005` | `DeliveryAttemptNotFoundError` | Raised when a delivery attempt ID is not found. | `packages/lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
+| `LEX_ERR_WEBHOOK_006` | `SecretRotationError` | Raised when secret rotation fails. | `packages/lexigram-webhook/src/lexigram/webhook/exceptions.py` | WebhookError |
 
-### `lexigram-workflow` (20 codes)
+### `lexigram-workflow` (18 codes)
 
 | Code | Class | Description | File | Inherits From |
 |:-----|:------|:------------|:-----|:--------------|
-| `LEX_ERR_WF_003` | `WorkflowError` | Base exception for workflow orchestration errors. | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | PipelineExecutionError |
-| `LEX_ERR_WF_004` | `WorkflowNotFoundError` | Raised when a workflow definition cannot be found. | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
-| `LEX_ERR_WF_005` | `WorkflowStateError` | Raised when a workflow is in an invalid state for the requested operation. | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
-| `LEX_ERR_WF_006` | `WorkflowStepError` | Raised when a workflow step fails to execute. | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
-| `LEX_ERR_WF_007` | `WorkflowTimeoutError` | Raised when a workflow or step exceeds its timeout. | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
-| `LEX_ERR_WF_008` | `WorkflowCompensationError` | Raised when workflow compensation/rollback fails. | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
-| `LEX_ERR_WF_009` | `SagaVersionMismatchError` | Raised when a persisted saga state version is incompatible with the current code. Args: saga_id: ... | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
-| `LEX_ERR_WF_010` | `WorkflowVersionMismatchError` | Raised when resuming a workflow instance with a mismatched definition version. Resuming an in-fli... | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
-| `LEX_ERR_WF_011` | `GraphExecutionError` | Base exception for graph workflow engine operations. Args: message: Human-readable error descript... | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | LexigramError |
-| `LEX_ERR_WF_012` | `NodeExecutionError` | A graph node's execute() method failed. Args: message: Human-readable error description. node: Na... | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
-| `LEX_ERR_WF_013` | `CycleDetectedError` | Graph engine exceeded max_iterations (likely cycle). Args: iterations: Number of iterations compl... | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
-| `LEX_ERR_WF_014` | `GraphTimeoutError` | Graph workflow execution exceeded total timeout. Args: timeout: The configured timeout value in s... | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
-| `LEX_ERR_WF_015` | `GraphValidationError` | Graph structure validation failed. | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
-| `LEX_ERR_WF_016` | `HumanInputRequiredError` | Raised by HumanNode to pause execution awaiting human input. Args: prompt: Text/question to displ... | `lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
-| `LEX_ERR_WF_017` | `StateError` | Raised when an invalid state transition is attempted. Attributes: event: The event that was not p... | `lexigram-workflow/src/lexigram/workflow/state/exceptions.py` | LexigramError |
-| `LEX_ERR_WF_018` | `StateConcurrencyError` | Raised when optimistic version checks fail during a transition. | `lexigram-workflow/src/lexigram/workflow/state/exceptions.py` | StateError |
-| `LEX_ERR_WF_019` | `SagaError` | Raised when a saga step fails after compensation has been attempted. Attributes: step_name: Name ... | `lexigram-workflow/src/lexigram/workflow/saga/base.py` | LexigramError |
-| `LEX_ERR_WF_020` | `BulkOperationError` | Base exception for bulk operation errors. | `lexigram-workflow/src/lexigram/workflow/bulk/models.py` | LexigramError |
-| `LEX_ERR_WF_021` | `BulkOperationTimeoutError` | Raised when a bulk operation times out. | `lexigram-workflow/src/lexigram/workflow/bulk/models.py` | BulkOperationError |
-| `LEX_ERR_WF_022` | `BulkOperationCancelledError` | Raised when a bulk operation is cancelled. | `lexigram-workflow/src/lexigram/workflow/bulk/models.py` | BulkOperationError |
+| `LEX_ERR_WF_003` | `WorkflowError` | Base exception for workflow orchestration errors. | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | PipelineExecutionError |
+| `LEX_ERR_WF_004` | `WorkflowNotFoundError` | Raised when a workflow definition cannot be found. | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
+| `LEX_ERR_WF_005` | `WorkflowStateError` | Raised when a workflow is in an invalid state for the requested operation. | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
+| `LEX_ERR_WF_006` | `WorkflowStepError` | Raised when a workflow step fails to execute. | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
+| `LEX_ERR_WF_007` | `WorkflowTimeoutError` | Raised when a workflow or step exceeds its timeout. | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
+| `LEX_ERR_WF_008` | `WorkflowCompensationError` | Raised when workflow compensation/rollback fails. | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
+| `LEX_ERR_WF_010` | `WorkflowVersionMismatchError` | Raised when resuming a workflow instance with a mismatched definition version. Resuming an in-fli... | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | WorkflowError |
+| `LEX_ERR_WF_011` | `GraphExecutionError` | Base exception for graph workflow engine operations. Args: message: Human-readable error descript... | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | LexigramError |
+| `LEX_ERR_WF_012` | `NodeExecutionError` | A graph node's execute() method failed. Args: message: Human-readable error description. node: Na... | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
+| `LEX_ERR_WF_013` | `CycleDetectedError` | Graph engine exceeded max_iterations (likely cycle). Args: iterations: Number of iterations compl... | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
+| `LEX_ERR_WF_014` | `GraphTimeoutError` | Graph workflow execution exceeded total timeout. Args: timeout: The configured timeout value in s... | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
+| `LEX_ERR_WF_015` | `GraphValidationError` | Graph structure validation failed. | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
+| `LEX_ERR_WF_016` | `HumanInputRequiredError` | Raised by HumanNode to pause execution awaiting human input. Args: prompt: Text/question to displ... | `packages/lexigram-workflow/src/lexigram/workflow/exceptions.py` | GraphExecutionError |
+| `LEX_ERR_WF_017` | `StateError` | Raised when an invalid state transition is attempted. Attributes: event: The event that was not p... | `packages/lexigram-workflow/src/lexigram/workflow/state/exceptions.py` | LexigramError |
+| `LEX_ERR_WF_018` | `StateConcurrencyError` | Raised when optimistic version checks fail during a transition. | `packages/lexigram-workflow/src/lexigram/workflow/state/exceptions.py` | StateError |
+| `LEX_ERR_WF_020` | `BulkOperationError` | Base exception for bulk operation errors. | `packages/lexigram-workflow/src/lexigram/workflow/bulk/models.py` | LexigramError |
+| `LEX_ERR_WF_021` | `BulkOperationTimeoutError` | Raised when a bulk operation times out. | `packages/lexigram-workflow/src/lexigram/workflow/bulk/models.py` | BulkOperationError |
+| `LEX_ERR_WF_022` | `BulkOperationCancelledError` | Raised when a bulk operation is cancelled. | `packages/lexigram-workflow/src/lexigram/workflow/bulk/models.py` | BulkOperationError |
 
 ---
 
 ## 3. Code Gaps by Domain
 
 - **CORE**: missing codes 003, 004
+- **GOV**: missing codes 004, 005, 009
 - **MEM**: missing codes 004, 007
+- **MM_BEAT**: missing codes 001, 002
+- **MM_TTS**: missing codes 001
 - **RAG**: missing codes 007, 008, 009
 - **RESULT**: missing codes 001
+- **SEC**: missing codes 007
 
 ## 4. Exception Classes Without `_code`
 
 These exception classes were found in `src/` trees but their containing
 file has **no `_code` assignment**. They are candidates for registration.
 
-**Total:** 11 classes across 8 packages
+**Total:** 36 classes across 14 packages
 
-### `lexigram-contracts` (3 classes)
+### `lexigram-contracts` (7 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `ContributorDependencyError` | ValueError | `lexigram-contracts/src/lexigram/contracts/admin/dependencies.py` |
-| `HealthCheckNotFoundError` | — | `lexigram-contracts/src/lexigram/contracts/admin/errors.py` |
-| `WidgetNotFoundError` | — | `lexigram-contracts/src/lexigram/contracts/admin/errors.py` |
+| `ContributorDependencyError` | ValueError | `core/lexigram-contracts/src/lexigram/contracts/admin/dependencies.py` |
+| `HealthCheckNotFoundError` | — | `core/lexigram-contracts/src/lexigram/contracts/admin/errors.py` |
+| `RelayAuthError` | — | `core/lexigram-contracts/src/lexigram/contracts/ai/relay/auth.py` |
+| `RelayBillingError` | — | `core/lexigram-contracts/src/lexigram/contracts/ai/governance/relay_billing.py` |
+| `RelayGatewayError` | Exception | `core/lexigram-contracts/src/lexigram/contracts/ai/relay/gateway.py` |
+| `RelayLedgerError` | — | `core/lexigram-contracts/src/lexigram/contracts/ai/relay/ledger.py` |
+| `WidgetNotFoundError` | — | `core/lexigram-contracts/src/lexigram/contracts/admin/errors.py` |
+
+### `lexigram` (3 classes)
+
+| Class | Inherits From | File |
+|:------|:--------------|:-----|
+| `BackpressureError` | ReactiveError | `core/lexigram/src/lexigram/reactive/exceptions.py` |
+| `PluginStateError` | InfrastructureError | `core/lexigram/src/lexigram/plugins/exceptions.py` |
+| `ReactiveError` | LexigramError | `core/lexigram/src/lexigram/reactive/exceptions.py` |
+
+### `lexigram-admin` (5 classes)
+
+| Class | Inherits From | File |
+|:------|:--------------|:-----|
+| `AdminQueryTimeoutError` | TimeoutError | `experimental/apps/lexigram-admin/src/lexigram/admin/data/timeout.py` |
+| `ImportRowError` | — | `experimental/apps/lexigram-admin/src/lexigram/admin/services/import_/service.py` |
+| `NameCollisionError` | Exception | `experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/naming_policy.py` |
+| `ReadOnlyError` | Exception | `experimental/apps/lexigram-admin/src/lexigram/admin/data/read_only.py` |
+| `RelationPersistenceError` | DomainError | `experimental/apps/lexigram-admin/src/lexigram/admin/relations/errors.py` |
+
+### `lexigram-ai-agents` (2 classes)
+
+| Class | Inherits From | File |
+|:------|:--------------|:-----|
+| `ToolObservationBlockedError` | AgentExecutionError | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/guard_hook.py` |
+| `ToolObservationGuardError` | AgentExecutionError | `experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/guard_hook.py` |
+
+### `lexigram-ai-evaluation` (8 classes)
+
+| Class | Inherits From | File |
+|:------|:--------------|:-----|
+| `AblationError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+| `AnalysisError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+| `CheckpointError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+| `DatasetError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+| `EvaluationConfigError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+| `EvaluatorNotFoundError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+| `HarnessError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+| `TrackingError` | BaseEvaluationError | `experimental/ai/lexigram-ai-evaluation/src/lexigram/ai/evaluation/exceptions.py` |
+
+### `lexigram-ai-governance` (1 classes)
+
+| Class | Inherits From | File |
+|:------|:--------------|:-----|
+| `_ExpressionError` | Exception | `experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/relay_billing/pricing.py` |
 
 ### `lexigram-ai-llm` (1 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `InferenceError` | DomainModel | `lexigram-ai-llm/src/lexigram/ai/llm/routing/types.py` |
+| `InferenceError` | DomainModel | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/routing/types.py` |
 
 ### `lexigram-ai-rag` (1 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `PipelineError` | — | `lexigram-ai-rag/src/lexigram/ai/rag/pipeline/types.py` |
+| `PipelineError` | — | `experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/pipeline/types.py` |
 
 ### `lexigram-ai-workers` (1 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `IngestionError` | — | `lexigram-ai-workers/src/lexigram/ai/workers/adapters/rag_adapter.py` |
+| `IngestionError` | — | `experimental/ai/lexigram-ai-workers/src/lexigram/ai/workers/adapters/rag_adapter.py` |
 
 ### `lexigram-cli` (1 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `LoadError` | — | `lexigram-cli/src/lexigram/cli/contributors/runtime.py` |
+| `LoadError` | — | `experimental/apps/lexigram-cli/src/lexigram/cli/contributors/runtime.py` |
+
+### `lexigram-search` (2 classes)
+
+| Class | Inherits From | File |
+|:------|:--------------|:-----|
+| `FilterRenderError` | ValueError | `packages/lexigram-search/src/lexigram/search/backends/filters.py` |
+| `UnsupportedOperatorError` | ValueError | `packages/lexigram-search/src/lexigram/search/filterset/block_translator.py` |
 
 ### `lexigram-sql` (1 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `NoSecurityPolicyError` | Exception | `lexigram-sql/src/lexigram/sql/row_level_security.py` |
+| `NoSecurityPolicyError` | Exception | `packages/lexigram-sql/src/lexigram/sql/row_level_security.py` |
 
 ### `lexigram-web` (2 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `FileValidationError` | — | `lexigram-web/src/lexigram/web/uploads/pipeline.py` |
-| `RoomError` | — | `lexigram-web/src/lexigram/web/websocket/rooms.py` |
+| `FileValidationError` | — | `packages/lexigram-web/src/lexigram/web/uploads/pipeline.py` |
+| `RoomError` | — | `packages/lexigram-web/src/lexigram/web/websocket/rooms.py` |
 
 ### `lexigram-workflow` (1 classes)
 
 | Class | Inherits From | File |
 |:------|:--------------|:-----|
-| `BulkItemError` | — | `lexigram-workflow/src/lexigram/workflow/bulk/models.py` |
+| `BulkItemError` | — | `packages/lexigram-workflow/src/lexigram/workflow/bulk/models.py` |
 
 
 ## 5. Duplicate Codes
 
 ⚠️ **Duplicate codes found:**
+- `LEX_ERR_ADMIN_020` appears 2 times:
+  - `ContributorPermissionError` in `experimental/apps/lexigram-admin/src/lexigram/admin/contributors/exceptions.py`
+  - `PasswordResetTokenInvalidError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+- `LEX_ERR_ADMIN_021` appears 2 times:
+  - `ContributorNotFoundError` in `experimental/apps/lexigram-admin/src/lexigram/admin/contributors/exceptions.py`
+  - `PasswordResetTokenExpiredError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+- `LEX_ERR_ADMIN_022` appears 3 times:
+  - `AdminError` in `experimental/apps/lexigram-admin/src/lexigram/admin/core/middleware.py`
+  - `MfaNotEnabledError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+  - `AdminRoleError` in `experimental/apps/lexigram-admin/src/lexigram/admin/rbac/errors.py`
+- `LEX_ERR_ADMIN_023` appears 3 times:
+  - `LockError` in `experimental/apps/lexigram-admin/src/lexigram/admin/core/distributed_lock.py`
+  - `MfaVerificationFailedError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+  - `RoleDuplicateError` in `experimental/apps/lexigram-admin/src/lexigram/admin/rbac/errors.py`
+- `LEX_ERR_ADMIN_024` appears 3 times:
+  - `LockAcquisitionError` in `experimental/apps/lexigram-admin/src/lexigram/admin/core/distributed_lock.py`
+  - `EmailVerificationRequiredError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+  - `RoleNotFoundError` in `experimental/apps/lexigram-admin/src/lexigram/admin/rbac/errors.py`
+- `LEX_ERR_ADMIN_025` appears 3 times:
+  - `LockTimeoutError` in `experimental/apps/lexigram-admin/src/lexigram/admin/core/distributed_lock.py`
+  - `EmailVerificationTokenInvalidError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+  - `SystemRoleError` in `experimental/apps/lexigram-admin/src/lexigram/admin/rbac/errors.py`
+- `LEX_ERR_ADMIN_026` appears 2 times:
+  - `LockConflictError` in `experimental/apps/lexigram-admin/src/lexigram/admin/services/collaborative.py`
+  - `EmailOtpDeliveryError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+- `LEX_ERR_ADMIN_027` appears 2 times:
+  - `FeatureDisabledError` in `experimental/apps/lexigram-admin/src/lexigram/admin/services/feature_flags.py`
+  - `EmailOtpCooldownError` in `experimental/apps/lexigram-admin/src/lexigram/admin/auth/errors.py`
+- `LEX_ERR_AI_003` appears 2 times:
+  - `MetricsCollectionError` in `core/lexigram-contracts/src/lexigram/contracts/observability/ai.py`
+  - `RelayError` in `core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py`
+- `LEX_ERR_AI_005` appears 2 times:
+  - `AIError` in `experimental/ai/lexigram-ai/src/lexigram/ai/exceptions.py`
+  - `MonitoringError` in `core/lexigram-contracts/src/lexigram/contracts/observability/ai.py`
+- `LEX_ERR_LLM_017` appears 2 times:
+  - `ModelRevisionMismatchError` in `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py`
+  - `StructuredOutputError` in `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/structured/exceptions.py`
+- `LEX_ERR_LLM_018` appears 2 times:
+  - `LLMTimeoutError` in `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/exceptions.py`
+  - `ParseError` in `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/structured/exceptions.py`
 - `LEX_ERR_NOTIF_011` appears 2 times:
-  - `WebPushNotificationError` in `lexigram-notification/src/lexigram/notification/exceptions.py`
-  - `PermanentDeliveryFailure` in `lexigram-notification/src/lexigram/notification/delivery/exceptions.py`
+  - `WebPushNotificationError` in `packages/lexigram-notification/src/lexigram/notification/exceptions.py`
+  - `PermanentDeliveryFailure` in `packages/lexigram-notification/src/lexigram/notification/delivery/exceptions.py`
 - `LEX_ERR_TASK_011` appears 2 times:
-  - `TaskRegistrationError` in `lexigram-tasks/src/lexigram/tasks/exceptions.py`
-  - `WorkflowError` in `lexigram-tasks/src/lexigram/tasks/workflows/core.py`
+  - `TaskRegistrationError` in `packages/lexigram-tasks/src/lexigram/tasks/exceptions.py`
+  - `WorkflowError` in `packages/lexigram-tasks/src/lexigram/tasks/workflows/core.py`
 
 ## 6. Packages Without Registered Codes
 
 These packages have source files but **no `LEX_ERR_*` codes** registered.
 
-**Total:** 2 packages
+**Total:** 7 packages
 
+- `lexigram-ai-evaluation`
 - `lexigram-ai-mcp`
+- `lexigram-ai-relay`
+- `lexigram-ai-relay-gateway`
+- `lexigram-multimedia`
+- `lexigram-multimedia-interpolate`
 - `lexigram-tenancy`
 
 ## 7. Suspicious Exception Classes (Potential Leftovers)
@@ -893,17 +1140,53 @@ may be leftover scaffolding that was never cleaned up.
 
 | Class | File | Package |
 |:------|:-----|:--------|
-| `WidgetNotFoundError` | `lexigram-contracts/src/lexigram/contracts/admin/errors.py` | `lexigram-contracts` |
+| `WidgetNotFoundError` | `core/lexigram-contracts/src/lexigram/contracts/admin/errors.py` | `lexigram-contracts` |
 
 ## 8. Full Index by Domain
 
 Complete alphabetical listing of all codes grouped by domain tag.
 
-### `ADMIN` (1 codes)
+### `ADMIN` (30 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
 | `LEX_ERR_ADMIN_001` | `AdminError` | Base exception for all admin-domain errors. Extended by leaf exceptions in le... | `lexigram-contracts` |
+| `LEX_ERR_ADMIN_002` | `AdminError` | Base exception for all admin errors. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_003` | `NotFoundError` | Raised when a resource is not found. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_004` | `PermissionDeniedError` | Raised when permission is denied. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_005` | `ConflictError` | Raised when a resource conflict occurs. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_006` | `AdminValidationError` | Raised when validation fails. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_007` | `DataError` | Raised when a data source or database error occurs in admin. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_008` | `AdminDataError` | Raised when a storage/database operation fails. Translates low-level database... | `lexigram-admin` |
+| `LEX_ERR_ADMIN_009` | `NotificationError` | Raised when a notification fails to send. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_010` | `AdminAuthError` | Base exception for all admin authentication errors. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_011` | `InvalidCredentialsError` | Raised when email/password combination is incorrect. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_012` | `AccountLockedError` | Raised when an account is temporarily or permanently locked. Args: message: H... | `lexigram-admin` |
+| `LEX_ERR_ADMIN_013` | `RateLimitExceededError` | Raised when the IP-based rate limit is exceeded. Args: message: Human-readabl... | `lexigram-admin` |
+| `LEX_ERR_ADMIN_014` | `SessionNotFoundError` | Raised when the requested session does not exist. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_015` | `SessionExpiredError` | Raised when the session has exceeded its idle or absolute timeout. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_016` | `CsrfValidationError` | Raised when CSRF token is missing, invalid, or expired. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_017` | `PasswordPolicyError` | Raised when a password does not meet policy requirements. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_018` | `SetupAlreadyCompletedError` | Raised when setup is attempted after an admin account already exists. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_019` | `SetupTokenInvalidError` | Raised when the ADMIN_SETUP_TOKEN env var is set and the provided token doesn... | `lexigram-admin` |
+| `LEX_ERR_ADMIN_020` | `ContributorPermissionError` | Raised when a user lacks required permissions to execute a contributor action... | `lexigram-admin` |
+| `LEX_ERR_ADMIN_021` | `ContributorNotFoundError` | Raised when a contributor ID cannot be found in the assembled dashboard. Args... | `lexigram-admin` |
+| `LEX_ERR_ADMIN_022` | `AdminError` | Admin operation error with structured response. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_023` | `LockError` | Base lock error. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_024` | `LockAcquisitionError` | Could not acquire lock — another process holds it. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_025` | `LockTimeoutError` | Lock acquisition timed out waiting for the lock to be released. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_026` | `LockConflictError` | Raised when trying to acquire a lock already held by another user. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_027` | `FeatureDisabledError` | Raised when a required admin feature is disabled. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_028` | `JobNotFoundError` | Raised when a job_id is not found in the queue. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_029` | `AsyncValidationError` | Raised when async validation fails. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_030` | `TenantNotFoundError` | Raised when a tenant is not found in the registry. | `lexigram-admin` |
+
+### `ADMIN_ACTION` (2 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_ADMIN_ACTION_001` | `ActionError` | Base exception for all action-related errors. | `lexigram-admin` |
+| `LEX_ERR_ADMIN_ACTION_002` | `PermissionDenied` | Raised when a user lacks permission to execute an action. | `lexigram-admin` |
 
 ### `AGT` (11 codes)
 
@@ -1092,7 +1375,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_DOM_006` | `RateLimitError` | Rate limiting error. | `lexigram-contracts` |
 | `LEX_ERR_DOM_007` | `ConflictError` | Resource conflict error. | `lexigram-contracts` |
 | `LEX_ERR_DOM_008` | `DomainModelError` | Domain model invariant violated or business rule broken. Raised by: - Domain ... | `lexigram` |
-| `LEX_ERR_DOM_009` | `PolicyViolationError` | Raised when a domain policy evaluation fails. Distinct from ``PolicyViolation... | `lexigram` |
+| `LEX_ERR_DOM_009` | `DomainPolicyViolationError` | Raised when a domain policy evaluation fails. Distinct from ``PolicyViolation... | `lexigram` |
 
 ### `EVAL` (1 codes)
 
@@ -1137,21 +1420,27 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_FEAT_003` | `FlagEvaluationError` | Raised when a flag provider fails during evaluation. Attributes: flag_key: Th... | `lexigram-features` |
 | `LEX_ERR_FEAT_004` | `FeatureFlagDisabledError` | Raised when a feature-guarded path is called with the flag disabled. | `lexigram-features` |
 
-### `FEED` (3 codes)
+### `FEED` (5 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
 | `LEX_ERR_FEED_001` | `FeedbackError` | Base exception for all feedback-related errors. | `lexigram-ai-feedback` |
 | `LEX_ERR_FEED_002` | `FeedbackProcessingError` | Raised when a feedback processor fails. | `lexigram-ai-feedback` |
 | `LEX_ERR_FEED_003` | `FeedbackValidationError` | Raised when feedback data fails validation. | `lexigram-ai-feedback` |
+| `LEX_ERR_FEED_004` | `FeedbackAuthorizationError` | Raised when the endpoint's authorization callback denies a submission. | `lexigram-ai-feedback` |
+| `LEX_ERR_FEED_005` | `FeedbackTooLargeError` | Raised when a payload exceeds MAX_FEEDBACK_TEXT_LENGTH or MAX_CONTEXT_SIZE. | `lexigram-ai-feedback` |
 
-### `GOV` (3 codes)
+### `GOV` (7 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
 | `LEX_ERR_GOV_001` | `GovernanceError` | Base class for governance-related errors. | `lexigram-contracts` |
 | `LEX_ERR_GOV_002` | `BudgetExceededError` | Error raised when budget is exceeded. | `lexigram-contracts` |
 | `LEX_ERR_GOV_003` | `PolicyViolationError` | Error raised when policy is violated. | `lexigram-contracts` |
+| `LEX_ERR_GOV_006` | `RateLimitExceededError` | Raised when RPM or TPM limits are exceeded. Attributes: limit: Configured lim... | `lexigram-ai-governance` |
+| `LEX_ERR_GOV_007` | `ModelAccessDeniedError` | Raised when a user is denied access to a model by policy. Attributes: model: ... | `lexigram-ai-governance` |
+| `LEX_ERR_GOV_008` | `GovernancePersistenceError` | Raised when a governance persistence backend is unavailable. Raised by :class... | `lexigram-ai-governance` |
+| `LEX_ERR_GOV_010` | `ResourceExhaustedError` | Raised when a resource quota is exhausted. | `lexigram-contracts` |
 
 ### `GQL` (15 codes)
 
@@ -1190,15 +1479,18 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_GRAPH_011` | `GraphTransactionError` | Graph transaction failed. | `lexigram-graph` |
 | `LEX_ERR_GRAPH_012` | `GraphQueryError` | Raw query execution failed. | `lexigram-graph` |
 
-### `GUARD` (3 codes)
+### `GUARD` (6 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
 | `LEX_ERR_GUARD_001` | `GuardError` | Base for AI guard/policy enforcement errors. Extended in the AI guard layer w... | `lexigram-contracts` |
 | `LEX_ERR_GUARD_002` | `InputGuardError` | Error raised during input guard validation. | `lexigram-contracts` |
 | `LEX_ERR_GUARD_003` | `OutputGuardError` | Error raised during output guard validation. | `lexigram-contracts` |
+| `LEX_ERR_GUARD_004` | `GuardError` | Base exception for all guard-related errors. | `lexigram-ai-guard` |
+| `LEX_ERR_GUARD_005` | `GuardConfigurationError` | Raised when a guard is misconfigured at boot time. | `lexigram-ai-guard` |
+| `LEX_ERR_GUARD_006` | `GuardPipelineError` | Raised when the guard pipeline encounters an unrecoverable error. | `lexigram-ai-guard` |
 
-### `HTTP` (7 codes)
+### `HTTP` (8 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
@@ -1209,6 +1501,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_HTTP_005` | `HTTPCircuitOpenError` | Raised when the circuit breaker is open and requests are rejected. | `lexigram-http` |
 | `LEX_ERR_HTTP_006` | `HTTPRetryExhaustedError` | Raised when all retry attempts for a request have been exhausted. | `lexigram-http` |
 | `LEX_ERR_HTTP_007` | `HTTPStatusError` | Raised (or returned as an Err) when the server responds with 4xx/5xx. Callers... | `lexigram-http` |
+| `LEX_ERR_HTTP_008` | `HTTPUnsafeURLError` | Raised when a request URL fails the SSRF safety gate. | `lexigram-http` |
 
 ### `IDEM` (6 codes)
 
@@ -1263,8 +1556,8 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_LLM_014` | `ExtractionParseError` | Error raised when extraction response cannot be parsed as JSON. | `lexigram-ai-llm` |
 | `LEX_ERR_LLM_015` | `ExtractionValidationError` | Error raised when parsed extraction response fails schema validation. | `lexigram-ai-llm` |
 | `LEX_ERR_LLM_016` | `ExtractionMaxRetriesError` | Error raised when extraction max retries are exhausted. | `lexigram-ai-llm` |
-| `LEX_ERR_LLM_017` | `StructuredOutputError` | Base exception for structured output errors. | `lexigram-ai-llm` |
-| `LEX_ERR_LLM_018` | `ParseError` | Raised when response cannot be parsed. | `lexigram-ai-llm` |
+| `LEX_ERR_LLM_017` | `ModelRevisionMismatchError` | Raised when the provider returns a model revision that violates the pin policy. | `lexigram-ai-llm` |
+| `LEX_ERR_LLM_018` | `LLMTimeoutError` | Request exceeded the client timeout — recoverable by routing elsewhere. Retur... | `lexigram-ai-llm` |
 | `LEX_ERR_LLM_019` | `SchemaValidationError` | Raised when parsed response fails validation. | `lexigram-ai-llm` |
 | `LEX_ERR_LLM_020` | `ModelManagerError` | Base exception for model manager errors. | `lexigram-ai-llm` |
 | `LEX_ERR_LLM_021` | `ModelNotFoundError` | Raised when a requested model is not found. | `lexigram-ai-llm` |
@@ -1322,7 +1615,64 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_MEM_009` | `EmbeddingError` | Raised when generating or storing an embedding fails. | `lexigram-ai-memory` |
 | `LEX_ERR_MEM_010` | `FactExtractionError` | Raised when entity/fact extraction from text fails. | `lexigram-ai-memory` |
 
-### `MOD` (7 codes)
+### `MM` (8 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_MM_001` | `MultimediaError` | Base exception for all multimedia-generation errors. Mirrors ``AIError(Domain... | `lexigram-contracts` |
+| `LEX_ERR_MM_002` | `TTSError` | Base for text-to-speech generation errors. | `lexigram-contracts` |
+| `LEX_ERR_MM_003` | `MusicGenerationError` | Base for music/sound generation errors. | `lexigram-contracts` |
+| `LEX_ERR_MM_004` | `VideoGenerationError` | Base for video generation errors. | `lexigram-contracts` |
+| `LEX_ERR_MM_005` | `ImageGenerationError` | Base for still-image generation errors. | `lexigram-contracts` |
+| `LEX_ERR_MM_006` | `ProviderNotInstalledError` | Raised eagerly at DI-resolution time when a configured provider's optional ex... | `lexigram-contracts` |
+| `LEX_ERR_MM_007` | `UpscaleError` | Base for image/video super-resolution errors. | `lexigram-contracts` |
+| `LEX_ERR_MM_008` | `BeatAnalysisError` | Base for tempo/beat-detection errors. | `lexigram-contracts` |
+
+### `MM_BEAT` (1 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_MM_BEAT_003` | `BeatAnalysisDecodeError` | Audio could not be decoded, or was rejected before decoding. Covers undecodab... | `lexigram-multimedia-beat` |
+
+### `MM_IMAGE` (2 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_MM_IMAGE_001` | `ImageTimeoutError` | Raised when an image generation operation exceeds its timeout. | `lexigram-multimedia-image` |
+| `LEX_ERR_MM_IMAGE_002` | `ImageGenerationAuthenticationError` | Raised when the image backend rejects the configured API credentials. | `lexigram-multimedia-image` |
+
+### `MM_MUSIC` (1 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_MM_MUSIC_001` | `MusicGenerationAuthenticationError` | Raised when the music backend rejects the configured API credentials. | `lexigram-multimedia-music` |
+
+### `MM_TTS` (1 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_MM_TTS_002` | `TTSAuthenticationError` | Invalid API key or credentials — infrastructure error, raised not wrapped. | `lexigram-multimedia-tts` |
+
+### `MM_UPSCALE` (3 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_MM_UPSCALE_001` | `UpscaleAssetTooLargeError` | Raised when an upscale source asset exceeds the byte cap. Also a ``ValueError... | `lexigram-multimedia-upscale` |
+| `LEX_ERR_MM_UPSCALE_002` | `UpscaleUnsafeAssetURLError` | Raised when an upscale source asset URI is not safe to request. Also a ``Valu... | `lexigram-multimedia-upscale` |
+| `LEX_ERR_MM_UPSCALE_003` | `UpscaleAssetDownloadError` | Raised when an upscale source asset fetch returns a non-200 response. Also a ... | `lexigram-multimedia-upscale` |
+
+### `MM_VIDEO` (6 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_MM_VIDEO_001` | `VideoTimeoutError` | Raised when a video generation operation exceeds its timeout. | `lexigram-multimedia-video` |
+| `LEX_ERR_MM_VIDEO_002` | `VideoGenerationAuthenticationError` | Raised when the video backend rejects the configured API credentials. | `lexigram-multimedia-video` |
+| `LEX_ERR_MM_VIDEO_003` | `VideoProcessingError` | Raised when an ffmpeg processing operation fails. | `lexigram-multimedia-video` |
+| `LEX_ERR_MM_VIDEO_004` | `VideoAssetTooLargeError` | Raised when a materialized asset exceeds the byte cap. Also a ``ValueError`` ... | `lexigram-multimedia-video` |
+| `LEX_ERR_MM_VIDEO_005` | `VideoUnsafeAssetURLError` | Raised when an asset URI is not safe to request. Also a ``ValueError`` so the... | `lexigram-multimedia-video` |
+| `LEX_ERR_MM_VIDEO_006` | `VideoAssetDownloadError` | Raised when a remote asset download returns a non-200 response. Also a ``Valu... | `lexigram-multimedia-video` |
+
+### `MOD` (6 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
@@ -1332,7 +1682,6 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_MOD_004` | `ModuleCycleError` | Circular dependency detected in the module import graph. Raised during module... | `lexigram-contracts` |
 | `LEX_ERR_MOD_005` | `ModuleVisibilityError` | A provider depends on a service not visible to its module. Raised when a prov... | `lexigram-contracts` |
 | `LEX_ERR_MOD_006` | `ModuleDuplicateError` | The same module appears twice with conflicting configurations. Raised when tw... | `lexigram-contracts` |
-| `LEX_ERR_MOD_007` | `ModuleError` | Module system error (registration, visibility, exports). Raised by: - Module ... | `lexigram` |
 
 ### `MONITOR` (8 codes)
 
@@ -1362,7 +1711,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_MW_009` | `MiddlewareRateLimitError` | Raised when middleware-level rate limiting is exceeded. | `lexigram` |
 | `LEX_ERR_MW_010` | `MiddlewareCircuitOpenError` | Raised when the circuit breaker in middleware is open. | `lexigram` |
 
-### `NOSQL` (6 codes)
+### `NOSQL` (7 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
@@ -1372,6 +1721,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_NOSQL_004` | `DuplicateKeyError` | Insert/update violated a unique constraint. | `lexigram-nosql` |
 | `LEX_ERR_NOSQL_005` | `DocumentValidationError` | Document failed schema validation. | `lexigram-nosql` |
 | `LEX_ERR_NOSQL_006` | `TransactionError` | Multi-document transaction failed. | `lexigram-nosql` |
+| `LEX_ERR_NOSQL_007` | `NoSQLFilterError` | Filter rejected by the operator/identifier validation guard. | `lexigram-nosql` |
 
 ### `NOTIF` (14 codes)
 
@@ -1407,6 +1757,18 @@ Complete alphabetical listing of all codes grouped by domain tag.
 |:-----|:------|:------------|:--------|
 | `LEX_ERR_PIPE_001` | `PipelineExecutionError` | Error raised during pipeline execution. | `lexigram-contracts` |
 | `LEX_ERR_PIPE_002` | `PipelineStepError` | Error raised by a pipeline step. | `lexigram-contracts` |
+
+### `PROMPT` (7 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_PROMPT_001` | `PromptError` | Base exception for all prompt-related errors. | `lexigram-ai-prompt` |
+| `LEX_ERR_PROMPT_002` | `PromptRenderError` | Raised when a template cannot be rendered. Common causes: missing required va... | `lexigram-ai-prompt` |
+| `LEX_ERR_PROMPT_003` | `PromptValidationError` | Raised when a variable fails validation (type, length, allowed values). | `lexigram-ai-prompt` |
+| `LEX_ERR_PROMPT_004` | `PromptNotFoundError` | Raised when a named template is not found in the registry. | `lexigram-ai-prompt` |
+| `LEX_ERR_PROMPT_005` | `PromptVersionError` | Raised on version conflicts or invalid rollback targets. | `lexigram-ai-prompt` |
+| `LEX_ERR_PROMPT_006` | `PromptConfigError` | Raised when the prompt configuration is invalid. | `lexigram-ai-prompt` |
+| `LEX_ERR_PROMPT_007` | `OptimizationError` | Raised when prompt optimization fails. | `lexigram-ai-prompt` |
 
 ### `PROV` (1 codes)
 
@@ -1508,7 +1870,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_SEARCH_009` | `SearchIndexError` | Raised when search index operation fails. | `lexigram-search` |
 | `LEX_ERR_SEARCH_010` | `SchedulerError` | Raised when search scheduler operation fails. | `lexigram-search` |
 
-### `SEC` (12 codes)
+### `SEC` (11 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
@@ -1518,12 +1880,23 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_SEC_004` | `CORSViolationError` | Raised when a request violates the configured CORS policy. Attributes: origin... | `lexigram-contracts` |
 | `LEX_ERR_SEC_005` | `SecretAccessError` | Raised when the caller lacks permission to access or modify a secret. Attribu... | `lexigram-contracts` |
 | `LEX_ERR_SEC_006` | `SecurityError` | Base exception for all security-module errors. | `lexigram` |
-| `LEX_ERR_SEC_007` | `SecretNotFoundError` | Raised when a requested secret does not exist. | `lexigram` |
 | `LEX_ERR_SEC_008` | `SecretAccessError` | Raised when access to a secret is denied. | `lexigram` |
 | `LEX_ERR_SEC_009` | `EncryptionError` | Raised when field-level encryption fails. | `lexigram` |
 | `LEX_ERR_SEC_010` | `DecryptionError` | Raised when field-level decryption fails. | `lexigram` |
 | `LEX_ERR_SEC_011` | `SecretError` | Base exception for secret store errors. | `lexigram` |
 | `LEX_ERR_SEC_012` | `RateLimitExceededError` | Raised when a client has exceeded the configured rate limit. Carries ``retry_... | `lexigram-auth` |
+
+### `SECRET` (7 codes)
+
+| Code | Class | Description | Package |
+|:-----|:------|:------------|:--------|
+| `LEX_ERR_SECRET_001` | `SecretsError` | Base exception for all secrets-domain errors. | `lexigram-secrets` |
+| `LEX_ERR_SECRET_002` | `SecretNotFoundError` | Raised when a requested secret does not exist. | `lexigram-secrets` |
+| `LEX_ERR_SECRET_003` | `SecretAccessError` | Raised when access to a secret is denied. | `lexigram-secrets` |
+| `LEX_ERR_SECRET_004` | `SecretRotationError` | Raised when automatic rotation of a secret fails. | `lexigram-secrets` |
+| `LEX_ERR_SECRET_005` | `SecretBackendError` | Raised when the underlying secret backend (e.g. Vault) fails. | `lexigram-secrets` |
+| `LEX_ERR_SECRET_006` | `SecretConfigError` | Raised when secrets subsystem configuration is invalid. | `lexigram-secrets` |
+| `LEX_ERR_SECRET_007` | `SecretBackendUnavailableError` | Backend auth/network/permission failure — distinct from secret-not-found. | `lexigram-secrets` |
 
 ### `SERIAL` (4 codes)
 
@@ -1564,7 +1937,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_SKILL_007` | `SkillRoutingError` | Raised when a SkillRouter finds no matching route. | `lexigram-ai-skills` |
 | `LEX_ERR_SKILL_008` | `SkillExecutionError` | Raised when a skill execution fails after all retry attempts. | `lexigram-ai-skills` |
 
-### `SQL` (37 codes)
+### `SQL` (38 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
@@ -1605,14 +1978,15 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_SQL_035` | `MigrationValidationError` | Raised when migration validation fails. | `lexigram-sql` |
 | `LEX_ERR_SQL_036` | `ProtocolValidationError` | Raised when object doesn't implement protocol. | `lexigram-sql` |
 | `LEX_ERR_SQL_037` | `MappingError` | Exception raised when entity mapping fails. | `lexigram-sql` |
+| `LEX_ERR_SQL_038` | `TenantScopingError` | Raised when a tenant-scoped operation runs without an active tenant. Mirrors ... | `lexigram-sql` |
 
 ### `STORE` (8 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
-| `LEX_ERR_STORE_001` | `StorageError` | Base exception for storage errors. | `lexigram-storage` |
+| `LEX_ERR_STORE_001` | `StorageError` | Base exception for storage errors. | `lexigram-contracts` |
 | `LEX_ERR_STORE_002` | `StorageFileNotFoundError` | Raised when file is not found. | `lexigram-storage` |
-| `LEX_ERR_STORE_003` | `StorageUnsupportedOperationError` | Raised when the requested operation is not supported by the storage driver. | `lexigram-storage` |
+| `LEX_ERR_STORE_003` | `StorageUnsupportedOperationError` | Raised when the requested operation is not supported by the storage driver. | `lexigram-contracts` |
 | `LEX_ERR_STORE_004` | `TransactionError` | Raised when a transaction operation fails. | `lexigram-storage` |
 | `LEX_ERR_STORE_005` | `QuotaExceededError` | Raised when a storage quota or size limit is exceeded. | `lexigram-storage` |
 | `LEX_ERR_STORE_006` | `InvalidPathError` | Raised when a path is invalid or attempts directory traversal. | `lexigram-storage` |
@@ -1635,7 +2009,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_TASK_010` | `TaskDependencyCycleError` | Raised at registration time when a dependency cycle is detected. The schedule... | `lexigram-tasks` |
 | `LEX_ERR_TASK_011` | `TaskRegistrationError` | Raised when a scheduled or handler task fails to register. | `lexigram-tasks` |
 
-### `TENANT` (8 codes)
+### `TENANT` (9 codes)
 
 | Code | Class | Description | Package |
 |:-----|:------|:------------|:--------|
@@ -1647,6 +2021,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_TENANT_006` | `TenantConfigError` | Raised when per-tenant configuration access or mutation fails. | `lexigram-contracts` |
 | `LEX_ERR_TENANT_007` | `TenantSlugConflictError` | Raised when a tenant slug is already in use. | `lexigram-contracts` |
 | `LEX_ERR_TENANT_008` | `TenantSuspendedError` | Raised when an operation is attempted on a suspended tenant. | `lexigram-contracts` |
+| `LEX_ERR_TENANT_009` | `MigrationError` | Raised when a tenant tier migration fails. | `lexigram-contracts` |
 
 ### `TEST` (12 codes)
 
@@ -1742,7 +2117,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_WF_006` | `WorkflowStepError` | Raised when a workflow step fails to execute. | `lexigram-workflow` |
 | `LEX_ERR_WF_007` | `WorkflowTimeoutError` | Raised when a workflow or step exceeds its timeout. | `lexigram-workflow` |
 | `LEX_ERR_WF_008` | `WorkflowCompensationError` | Raised when workflow compensation/rollback fails. | `lexigram-workflow` |
-| `LEX_ERR_WF_009` | `SagaVersionMismatchError` | Raised when a persisted saga state version is incompatible with the current c... | `lexigram-workflow` |
+| `LEX_ERR_WF_009` | `SagaVersionMismatchError` | Raised when a persisted saga state version is incompatible with the current c... | `lexigram-contracts` |
 | `LEX_ERR_WF_010` | `WorkflowVersionMismatchError` | Raised when resuming a workflow instance with a mismatched definition version... | `lexigram-workflow` |
 | `LEX_ERR_WF_011` | `GraphExecutionError` | Base exception for graph workflow engine operations. Args: message: Human-rea... | `lexigram-workflow` |
 | `LEX_ERR_WF_012` | `NodeExecutionError` | A graph node's execute() method failed. Args: message: Human-readable error d... | `lexigram-workflow` |
@@ -1752,7 +2127,7 @@ Complete alphabetical listing of all codes grouped by domain tag.
 | `LEX_ERR_WF_016` | `HumanInputRequiredError` | Raised by HumanNode to pause execution awaiting human input. Args: prompt: Te... | `lexigram-workflow` |
 | `LEX_ERR_WF_017` | `StateError` | Raised when an invalid state transition is attempted. Attributes: event: The ... | `lexigram-workflow` |
 | `LEX_ERR_WF_018` | `StateConcurrencyError` | Raised when optimistic version checks fail during a transition. | `lexigram-workflow` |
-| `LEX_ERR_WF_019` | `SagaError` | Raised when a saga step fails after compensation has been attempted. Attribut... | `lexigram-workflow` |
+| `LEX_ERR_WF_019` | `SagaError` | Raised when a saga step fails after compensation has been attempted. Attribut... | `lexigram` |
 | `LEX_ERR_WF_020` | `BulkOperationError` | Base exception for bulk operation errors. | `lexigram-workflow` |
 | `LEX_ERR_WF_021` | `BulkOperationTimeoutError` | Raised when a bulk operation times out. | `lexigram-workflow` |
 | `LEX_ERR_WF_022` | `BulkOperationCancelledError` | Raised when a bulk operation is cancelled. | `lexigram-workflow` |

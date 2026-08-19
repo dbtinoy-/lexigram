@@ -1,38 +1,38 @@
 # AUDIT_DEPENDENCIES.md — Lexigram Framework Dependency Freshness Snapshot
 
 > **Source**: Live command evidence from `uv pip list --outdated` and workspace
-> manifest scans against `scripts/check_dep_pins.py`.
+> manifest scans against `dev/check_dep_pins.py`.
 
 ---
 
 ## Summary
 
 - Outdated packages detected: 11
-- Workspace members with own pyproject.toml: 55
+- Workspace members with own pyproject.toml: 54
 - Unbounded third-party pins (baseline debt): 807
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `uv pip list --outdated` | **PASS** | 0 | 1216 ms | `uv pip list --outdated` |
-| `check_dep_pins.py` | **PASS** | 0 | 300 ms | `uv run python scripts/check_dep_pins.py` |
+| `uv pip list --outdated` | **PASS** | 0 | 1152 ms | `uv pip list --outdated` |
+| `check_dep_pins.py` | **PASS** | 0 | 291 ms | `uv run python dev/check_dep_pins.py` |
 
 ## Outdated Packages
 
 | Package | Installed | Latest | Type |
 |---------|-----------|--------|------|
+| `argon2-cffi-bindings` | 25.1.0 | 26.1.0 | wheel |
 | `botocore` | 1.40.61 | 1.43.75 | wheel |
 | `grimp` | 3.13 | 3.15 | wheel |
 | `import-linter` | 2.6 | 2.13 | wheel |
 | `jiter` | 0.14.0 | 0.16.0 | wheel |
-| `lexigram-contracts` | 0.1.3007 | 0.1.3010 | wheel /home/admin/Documents/AI/applications/lexigram-dev/lexigram-contracts |
+| `lexigram-contracts` | 0.1.3007 | 0.1.3010 | workspace (editable) |
 | `openai` | 2.54.0 | 3.3.1 | wheel |
 | `pydantic-core` | 2.46.4 | 2.48.0 | wheel |
 | `pyee` | 13.0.1 | 14.0.0 | wheel |
 | `rich` | 13.9.4 | 15.0.0 | wheel |
 | `tqdm` | 4.67.1 | 4.70.0 | wheel |
-| `uvicorn` | 0.52.3 | 0.52.4 | wheel |
 
 ## Direct Dependency Manifest
 
@@ -57,7 +57,6 @@
 | `lexigram-ai-session` | yes | 7 |
 | `lexigram-ai-skills` | yes | 8 |
 | `lexigram-ai-workers` | yes | 7 |
-| `lexigram-all` | yes | 0 |
 | `lexigram-audit` | yes | 8 |
 | `lexigram-auth` | yes | 29 |
 | `lexigram-cache` | yes | 25 |
@@ -94,4 +93,4 @@
 | `lexigram-webhook` | yes | 2 |
 | `lexigram-workflow` | yes | 8 |
 
-Baseline guard: `scripts/check_dep_pins.py` fails CI on unbounded third-party pins not covered by `scripts/dep_pins_baseline.json`; regenerate deliberately with `--write-baseline`.
+Baseline guard: `dev/check_dep_pins.py` fails CI on unbounded third-party pins not covered by `dev/dep_pins_baseline.json`; regenerate deliberately with `--write-baseline`.

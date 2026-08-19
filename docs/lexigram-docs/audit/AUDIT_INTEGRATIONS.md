@@ -6,7 +6,7 @@
 
 ## Packages With Integration Signals
 
-- Packages with integration signals: 22
+- Packages with integration signals: 23
 
 | Package | Implementations | External Services |
 |---------|-----------------|-------------------|
@@ -16,6 +16,7 @@
 | `lexigram-ai-llm` | anthropic, aws_bedrock, azure_openai, base, cloudflare_workers, cohere, database, gemini, gemini_helpers, groq, memory, mistral, noop, ollama, openai, openai_compatible, openrouter, vertex_ai | Anthropic, OpenAI, Redis |
 | `lexigram-ai-mcp` | agent_tools, skill_adapter, tool_adapter | - |
 | `lexigram-ai-memory` | cache, database, in_memory, vector | Redis |
+| `lexigram-ai-relay-gateway` | - | Redis |
 | `lexigram-ai-workers` | loader_worker, rag_adapter, tasks_adapter | - |
 | `lexigram-cache` | factory, hash, memcached, memory, memory_lock, memory_secrets, memory_state, redis, registry | Redis |
 | `lexigram-events` | adapter_wirers, azure_servicebus, base, kafka, rabbitmq, registry, retry | Kafka, PostgreSQL, SQLite |
@@ -24,9 +25,9 @@
 | `lexigram-monitor` | db_exporter, exporters, opentelemetry, prometheus, registry | - |
 | `lexigram-nosql` | base, dynamodb, firestore, mongodb | MongoDB |
 | `lexigram-notification` | push, slack, sms | - |
-| `lexigram-queue` | azure_servicebus, gcp_pubsub, kafka, memory, rabbitmq, redis, sqs | Kafka, Redis |
+| `lexigram-queue` | azure_servicebus, gcp_pubsub, kafka, memory, rabbitmq, redis, sqs | - |
 | `lexigram-search` | base, cached, elasticsearch, factory, filters, meilisearch, mongodb, mysql, null, opensearch, postgres, sqlite, translate, typesense | MySQL, PostgreSQL, SQLite |
-| `lexigram-secrets` | aws, azure, gcp, vault | - |
+| `lexigram-secrets` | aws, azure, gcp, memory, vault | - |
 | `lexigram-sql` | cockroachdb, mysql, postgres, sqlite | MySQL, PostgreSQL, SQLite |
 | `lexigram-storage` | azure, base, gcs, local, memory, protocols, registry, s3, unavailable | S3 |
 | `lexigram-tasks` | memory, postgres, rabbitmq, redis, registry | Redis |

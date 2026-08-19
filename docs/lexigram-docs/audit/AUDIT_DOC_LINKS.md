@@ -7,7 +7,7 @@
 
 ## Summary
 
-- Internal links scanned: 266
+- Internal links scanned: 269
 - Dead links: 0
 
 No dead internal links detected.
