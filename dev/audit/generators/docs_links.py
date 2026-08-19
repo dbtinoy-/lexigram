@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 
 from dev.audit.generators.base import AuditRunResult, MarkdownAuditGenerator
+from dev.core.package_inventory import discover_package_paths
 
 # Internal link forms: ](/section/name/) or ](/section/name/#anchor)
 _LINK_RE = re.compile(r"\]\((/[^)\s]+?)\)")
@@ -56,9 +57,11 @@ def _resolve_target(target: str, *, docs_root: Path, repo_root: Path) -> bool:
 
     # /packages/<package>/ routes to the package's own docs/ folder.
     if parts and parts[0] == "packages":
+        if len(parts) == 1:
+            return True  # /packages/ is a virtual site index, not a file
         package_name = parts[1] if len(parts) > 1 else ""
-        package_dir = repo_root / package_name
-        return package_dir.is_dir() and (package_dir / "docs").is_dir()
+        package_dir = _find_package_dir(package_name, repo_root)
+        return package_dir is not None and (package_dir / "docs").is_dir()
 
     if not parts:
         return False
@@ -72,6 +75,15 @@ def _resolve_target(target: str, *, docs_root: Path, repo_root: Path) -> bool:
         docs_root / section / "index.md",
     )
     return any(candidate.is_file() for candidate in candidates)
+
+
+def _find_package_dir(package_name: str, repo_root: Path) -> Path | None:
+    """Locate a workspace member package directory, anywhere in the tree."""
+
+    for relative in discover_package_paths(repo_root):
+        if relative.name == package_name:
+            return repo_root / relative
+    return None
 
 
 def _resolve_anchor(target_path: Path | None, anchor: str | None) -> bool:
@@ -106,8 +118,13 @@ def _target_path(target: str, *, docs_root: Path, repo_root: Path) -> Path | Non
     if not parts:
         return None
     if parts[0] == "packages":
+        if len(parts) == 1:
+            return None  # virtual site index — no file to anchor-check
         package_name = parts[1] if len(parts) > 1 else ""
-        index = repo_root / package_name / "docs" / "index.md"
+        package_dir = _find_package_dir(package_name, repo_root)
+        if package_dir is None:
+            return None
+        index = package_dir / "docs" / "index.md"
         return index if index.is_file() else None
     section = parts[0]
     page = parts[1] if len(parts) > 1 else "index"
@@ -197,7 +214,7 @@ class DocsLinksAuditGenerator(MarkdownAuditGenerator):
             lines.append("")
             lines.append("| Source | Line | Target | Problem |")
             lines.append("|--------|-----:|--------|---------|")
-            for finding, target_exists, anchor_exists in sorted(
+            for finding, target_exists, _anchor_exists in sorted(
                 dead, key=lambda row: (row[0].target, row[0].source_file)
             ):
                 problem = (

@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import argparse
 import ast
-import os
-import re
-import sys
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
+import re
+import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -190,9 +189,7 @@ def get_base_names(bases: list[ast.expr]) -> list[str]:
     for base in bases:
         if isinstance(base, ast.Name):
             result.append(base.id)
-        elif isinstance(base, ast.Attribute):
-            result.append(ast.unparse(base))
-        elif isinstance(base, ast.Subscript):
+        elif isinstance(base, ast.Attribute) or isinstance(base, ast.Subscript):
             result.append(ast.unparse(base))
     return result
 
@@ -477,7 +474,7 @@ def main() -> None:
                     env_var = f"{prefix}{upper_path}"
                     source = f"{Path(file_path).relative_to(REPO_ROOT)}:{node.name}.{dotted}"
                     if len(source) > 100:
-                        source = "..." + source[-97:]
+                        source = source[:55] + "..." + source[-40:]
 
                     pkg_entries[pkg_name].append({
                         "env_var": env_var,

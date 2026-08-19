@@ -26,7 +26,7 @@ NON_CONFIG_ENV_SOURCES: tuple[NonConfigEnvSource, ...] = (
         rationale="Controls startup banner suppression during process bootstrap.",
     ),
     NonConfigEnvSource(
-        source_file="lexigram-cli/src/lexigram/cli/lib/config_loader.py",
+        source_file="experimental/apps/lexigram-cli/src/lexigram/cli/lib/config_loader.py",
         env_var="LEX_CONFIG",
         rationale="CLI override for explicit configuration file path.",
     ),
