@@ -144,4 +144,4 @@ network and reports `HEALTHY` whenever it constructed successfully.
 
 - Read the [Guide](./GUIDE.md) for the two-backend mental model.
 - See [Configuration](./CONFIGURATION.md) for backend/timeout/URL knobs.
-- Open an issue at https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues.
+- Open an issue at https://github.com/dbtinoy-/lexigram/issues

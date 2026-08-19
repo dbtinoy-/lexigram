@@ -75,7 +75,7 @@ expectations and is verified by boundary tests.
 
 ## Conflict Policy
 
-1. **Built-in commands** (registered in `lexigram-cli/src/.../runtime/main.py`) always win.
+1. **Built-in commands** (registered in `experimental/apps/lexigram-cli/src/.../runtime/main.py`) always win.
 2. **Scope-dist contributors** (public packages listed above with status `active`) win over non-scope contributors for same command name.
 3. **First-registered wins** for scope-vs-scope conflicts (stable by entry-point discovery order).
 4. All conflicts are recorded in `LexigramRuntime.command_conflicts` and inspectable via `lexigram contrib list`.
@@ -84,6 +84,6 @@ expectations and is verified by boundary tests.
 
 This matrix is verified by:
 
-- `tests/scripts/test_cli_public_surface.py` — checks every public package has a documented CLI decision
-- `lexigram-cli/tests/unit/test_cli_contribution_system.py` — verifies contributor registration
+- `tests/dev/test_cli_public_surface.py` — checks every public package has a documented CLI decision
+- `experimental/apps/lexigram-cli/tests/unit/test_cli_contribution_system.py` — verifies contributor registration
 - `tools/publish_public.sh` — package list must agree with this matrix

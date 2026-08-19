@@ -1,15 +1,15 @@
 # Audit Generators
 
-Audit generators are implemented as modules under `scripts/audit/generators/` and executed through the unified CLI.
+Audit generators are implemented as modules under `dev/audit/generators/` and executed through the unified CLI.
 
 ## Commands
 
 ```bash
-uv run python -m scripts.cli audit list
-uv run python -m scripts.cli audit run rules
-uv run python -m scripts.cli audit run env_vars
-uv run python -m scripts.cli audit run all
-uv run python -m scripts.cli audit validate
+uv run python -m dev.cli audit list
+uv run python -m dev.cli audit run rules
+uv run python -m dev.cli audit run env_vars
+uv run python -m dev.cli audit run all
+uv run python -m dev.cli audit validate
 ```
 
 ## Available Generators
@@ -32,7 +32,7 @@ uv run python -m scripts.cli audit validate
 
 ## Validation Note
 
-`uv run python -m scripts.cli audit validate` currently exits non-zero because the rules audit reports critical violations above the strict threshold of `0`.
+`uv run python -m dev.cli audit validate` currently exits non-zero because the rules audit reports critical violations above the strict threshold of `0`.
 
 ## Clean Break Policy
 

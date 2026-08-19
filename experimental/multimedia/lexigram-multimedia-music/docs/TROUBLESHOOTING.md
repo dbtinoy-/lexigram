@@ -154,4 +154,4 @@ provider = AceStepMusicProvider(
 
 - Review the config section: [Configuration](./CONFIGURATION.md)
 - Trace the flow: [Architecture](./ARCHITECTURE.md)
-- Check the [lexigram-multimedia-music](https://github.com/dbtinoy-/lexigram-multimedia-experimental) repository and open an issue with the full error text, `MusicConfig.backend`, and your server's `/health` response.
+- Check the [lexigram-multimedia-music](https://github.com/dbtinoy-/lexigram) repository and open an issue with the full error text, `MusicConfig.backend`, and your server's `/health` response.

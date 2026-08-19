@@ -165,4 +165,4 @@ print(await prov.health_check())
 
 - Re-read [Configuration](./CONFIGURATION.md) and confirm base URLs match your servers.
 - Exercise the wire by hand against a reference server with `curl`.
-- Open an issue at the `lexigram-multimedia-experimental` repository with the provider, backend, and the exact `UpscaleError` message.
+- Open an issue at [lexigram](https://github.com/dbtinoy-/lexigram/issues) with the provider, backend, and the exact `UpscaleError` message.

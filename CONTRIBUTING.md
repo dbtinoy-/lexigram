@@ -19,7 +19,7 @@ Thank you for your interest in contributing to the Lexigram Framework!
 
 ```bash
 # Clone the repository
-git clone https://github.com/dbtinoy-/lexigram-dev.git
+git clone https://github.com/dbtinoy-/lexigram.git
 cd lexigram
 
 # Install dependencies
@@ -155,7 +155,7 @@ make integration-stop
 ### Run Specific Tests
 ```bash
 make test-pkg PKG=lexigram-web
-uv run pytest lexigram-web/tests/unit/ -v
+uv run pytest packages/lexigram-web/tests/unit/ -v
 ```
 
 ## Linting & Formatting
@@ -195,9 +195,8 @@ This regenerates the API surface files from source.
 ## Release Process
 
 ### Version Management
-- Versions follow semantic versioning: `MAJOR.MINOR.PATCH`
-- Current: `0.1.1`
-- Pre-release: `0.1.1b1`, `0.1.1rc1`
+- Versions follow `0.<minor>.<patch><build>` (see `core/lexigram/pyproject.toml` for the current value)
+- Pre-release: `0.1.3008rc1` style
 
 ### Creating a Release
 1. Update version in all `pyproject.toml` files
@@ -227,11 +226,14 @@ This regenerates the API surface files from source.
 
 ### Add a New Package
 ```bash
-# Create the package structure
-mkdir lexigram-newfeature
-cd lexigram-newfeature
-cp -r ../lexigram-example/. .
-# Edit pyproject.toml, README.md, etc.
+# Create the package structure under the right tier:
+#   core/            lexigram, lexigram-contracts
+#   packages/        backend packages (web, sql, cache, ...)
+#   experimental/    ai/, apps/, multimedia/ families
+mkdir -p packages/lexigram-newfeature/src/lexigram/newfeature
+cd packages/lexigram-newfeature
+# copy pyproject.toml / README.md skeletons from a sibling package
+# (e.g. packages/lexigram-http), then edit them for the new package
 ```
 
 ### Add a Dependency

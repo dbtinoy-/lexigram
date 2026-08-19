@@ -152,4 +152,4 @@ await provider.health_check(timeout=5.0)   # -> HealthCheckResult
 
 - Review the config section: [Configuration](./CONFIGURATION.md)
 - Trace the flow: [Architecture](./ARCHITECTURE.md)
-- Check the [lexigram-multimedia-tts](https://github.com/dbtinoy-/lexigram-multimedia-experimental) repository and open an issue with the backend name, full error text, and your server's `/health` response.
+- Check the [lexigram-multimedia-tts](https://github.com/dbtinoy-/lexigram) repository and open an issue with the backend name, full error text, and your server's `/health` response.

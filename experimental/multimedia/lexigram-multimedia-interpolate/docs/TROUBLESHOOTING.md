@@ -216,4 +216,4 @@ files in one call.
 - Confirm which layer failed: the client (request error) vs the server
   process (import/startup error) vs storage (URI-only frames).
 - Open an issue at
-  https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues
+  https://github.com/dbtinoy-/lexigram/issues

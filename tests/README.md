@@ -47,16 +47,16 @@ uv run pytest -m integration
 
 ```bash
 # SQL tests
-uv run pytest lexigram-sql/tests -m integration
+uv run pytest packages/lexigram-sql/tests -m integration
 
 # Cache tests
-uv run pytest lexigram-cache/tests -m integration
+uv run pytest packages/lexigram-cache/tests -m integration
 
 # Queue tests
-uv run pytest lexigram-queue/tests -m integration
+uv run pytest packages/lexigram-queue/tests -m integration
 
 # Storage tests
-uv run pytest lexigram-storage/tests -m integration
+uv run pytest packages/lexigram-storage/tests -m integration
 ```
 
 ### With Coverage

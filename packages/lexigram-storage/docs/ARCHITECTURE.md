@@ -257,7 +257,7 @@ class StorageModule(Module):
 ## Source Layout
 
 ```
-lexigram-storage/src/lexigram/storage/
+packages/lexigram-storage/src/lexigram/storage/
 ├── __init__.py              # Lazy-exported public API
 ├── config.py                # StorageConfig, driver-specific configs
 ├── constants.py             # Env prefix, driver names, defaults

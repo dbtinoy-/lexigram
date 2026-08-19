@@ -41,7 +41,7 @@ flowchart LR
 | Database | SQLite via lexigram-sql + Alembic migrations (version table `alembic_primary`) |
 | HTTP port | 8080 in container, mapped to `DSM_PORT` (default `18080`) on host |
 | Rendering | ffmpeg timeline (`lexigram.multimedia`), 1080×1920 @ 30 fps, HEVC master + H.264 720p companion |
-| TTS | Chatterbox, own venv (`dsm/chatterbox-venv`), one process per run for all lines |
+| TTS | Chatterbox, own venv (`chatterbox-venv`), one process per run for all lines |
 | Speech timing | Whisper `tiny.en` (`--word_timestamps`, `--device cpu`), timings only — text never used for captions |
 | Backgrounds | Stock video (Pixabay / Pexels, randomized provider order), gradient fallback |
 | Content model | `topic` (idea source) + `format` (presentation container with `caption_style`) |
@@ -454,11 +454,11 @@ flowchart LR
     DC --> CT["container shorts-creator-shorts-creator-1<br/>python:3.12-slim + ffmpeg<br/>runtime: nvidia (GPU 0)"]
     CT -->|"port ${DSM_PORT:-18080} → 8080"| WEB["Browser :18080"]
     CT -->|"bind mounts"| M1["src/ , templates/ , migrations/ ,<br/>application.yaml , asgi_app.py , data/"]
-    CT -->|"framework context"| FX["../../framework/lexigram"]
+    CT -->|"framework context"| FX["../../core/lexigram"]
     CT -->|"tools context"| TL["../tools"]
-    CT -->|"TTS venv"| VB["../dsm/chatterbox-venv<br/>(Python 3.11 + torch + chatterbox)"]
-    CT -->|"HF cache"| HF["chatterbox model weights<br/>/root/.cache/huggingface/hub"]
-    CT -->|"whisper cache"| WC["/root/.cache/whisper/tiny.en.pt"]
+    CT -->|"TTS venv"| VB["chatterbox-venv<br/>(Python 3.11 + torch + chatterbox)"]
+    CT -->|"HF cache"| HF["chatterbox model weights<br/>~/.cache/huggingface/hub"]
+    CT -->|"whisper cache"| WC["~/.cache/whisper/tiny.en.pt"]
     CT -->|"OLLAMA_BASE_URL"| OL["host.docker.internal:11434"]
 ```
 
@@ -481,7 +481,7 @@ fails stale runs.
 | `PIXABAY_API_KEY`, `PEXELS_API_KEY` | stock-video providers |
 
 **Local-media gotchas (container-local, recreated on rebuild):**
-- Whisper model `tiny.en.pt` in `/root/.cache/whisper` — a corrupt copy breaks
+- Whisper model `tiny.en.pt` in `~/.cache/whisper` — a corrupt copy breaks
   every render (SHA256 mismatch); restore from a valid cache.
 - `templates/outro_default.mp4` is generated automatically when missing; the
   compose stage fails only if the generated outro cannot be created in the

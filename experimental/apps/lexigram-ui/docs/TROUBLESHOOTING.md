@@ -152,4 +152,4 @@ print(html)
 
 - Check the [Guide](./GUIDE.md) for usage patterns
 - Review [Configuration](./CONFIGURATION.md) for all options
-- Open an issue at https://github.com/dbtinoy-/lexigram-dev/issues
+- Open an issue at https://github.com/dbtinoy-/lexigram/issues

@@ -18,7 +18,7 @@ The Lexigram Framework is an **open-source** project maintained by Lexigram, lic
 - Guide technical direction
 
 ### Contributors
-- Authorized company members and partners
+- Community members and partners
 - Submit changes via pull requests
 - Follow contributing guidelines
 
@@ -33,7 +33,7 @@ The Lexigram Framework is an **open-source** project maintained by Lexigram, lic
 ### Architecture Changes
 - Require approval from 2+ project leads
 - Should be documented in `docs/adr/`
-- Must consider impact on all 42 packages
+- Must consider impact on all workspace packages
 
 ### Breaking Changes
 - Require explicit approval from project leadership
@@ -111,9 +111,9 @@ See `.importlinter` for enforced contracts.
 ## Contributing Requirements
 
 ### Eligibility
-- Authorized company members
-- Signed partners with agreements
-- Contractors with approval
+- Open to all contributors
+- Must follow the [Code of Conduct](./CODE_OF_CONDUCT.md)
+- Must follow contributing guidelines
 
 ### Process
 1. Create feature branch: `git checkout -b feat/feature-name`
@@ -149,18 +149,14 @@ See `.importlinter` for enforced contracts.
 
 ## Communication Channels
 
-### Internal
-- **Slack**: #lexigram-dev (discussions)
-- **Email**: [project-lead@lexigram.dev]
-- **Meetings**: Weekly architecture review (Fridays 2pm)
+### Public
+- **GitHub Issues**: Bugs, feature requests, discussions
+- **GitHub Discussions**: Open technical discussions
+- **Pull Requests**: Code contributions and review
 
 ### Security
-- **Vulnerabilities**: security@lexigram.dev
+- **Vulnerabilities**: Report privately via GitHub (see [SECURITY.md](./SECURITY.md))
 - **Response time**: < 24 hours for critical
-
-### External
-- **PyPI**: Package distribution
-- **Documentation**: Public docs site (no sensitive info)
 
 ## Code Review Standards
 
@@ -202,21 +198,19 @@ See `.importlinter` for enforced contracts.
 
 For decisions or conflicts:
 
-1. **Team Lead** — Day-to-day decisions
-2. **Project Lead** — Architectural decisions, conflicts
-3. **Engineering Manager** — Process/governance issues
-4. **Company Leadership** — Strategic direction
+1. **Reviewer** — Code-level decisions in pull request review
+2. **Maintainers** — Review disputes, process questions
+3. **Project Leads** — Architectural decisions, unresolved conflicts
 
 ---
 
 ## Questions?
 
-- **Governance questions**: Contact project lead
-- **Technical questions**: Post in #lexigram-dev
-- **Security concerns**: Email security@lexigram.dev
+- **Governance questions**: Open a GitHub issue or discussion
+- **Technical questions**: Discuss in GitHub Discussions
+- **Security concerns**: Report via GitHub (see [SECURITY.md](./SECURITY.md))
 
 ---
 
-**Last Updated**: 2026-04-22  
-**Framework Version**: 0.1.1  
+**Last Updated**: 2026-08-21  
 **Status**: Active
