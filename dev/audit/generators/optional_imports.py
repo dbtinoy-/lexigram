@@ -78,6 +78,7 @@ class PackageAudit:
     """Audit result for a single package."""
 
     name: str
+    relpath: str
     declarations: DependencyDeclarations
     findings: tuple[ImportFinding, ...]
     unused_extras: tuple[str, ...]
@@ -366,6 +367,7 @@ class OptionalImportsAuditGenerator(MarkdownAuditGenerator):
             audits.append(
                 PackageAudit(
                     name=package_dir.name,
+                    relpath=str(package_dir.relative_to(root)).replace("\\", "/"),
                     declarations=declarations,
                     findings=tuple(findings),
                     unused_extras=_unused_extras(declarations, roots),
@@ -419,7 +421,7 @@ class OptionalImportsAuditGenerator(MarkdownAuditGenerator):
                 )
                 lines.append(
                     f"| `{finding.module}` | {_status(finding, audit.declarations)} | "
-                    f"{guard} | {audit.name}/{finding.file}:{finding.line} |"
+                    f"{guard} | {audit.relpath}/{finding.file}:{finding.line} |"
                 )
             if audit.unused_extras:
                 lines.append("")

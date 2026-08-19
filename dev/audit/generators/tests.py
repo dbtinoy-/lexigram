@@ -118,7 +118,8 @@ class TestsAuditGenerator(MarkdownAuditGenerator):
             markdown += "```text\n"
             markdown += f"{result['snippet']}\n"
             markdown += "```\n\n"
-        return markdown
+        root_prefix = f"{root.as_posix()}/"
+        return re.sub(root_prefix, "", markdown)
 
 
 def _tests_row(package_path: Path, root: Path) -> dict[str, int | str]:
