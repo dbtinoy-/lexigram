@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scripts.audit.generators import env_vars as env_vars_audit
+from dev.audit.generators import env_vars as env_vars_audit
 
 
 def test_env_audit_includes_non_config_sources_appendix() -> None:
