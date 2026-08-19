@@ -22,7 +22,7 @@
 | `lexigram-ai-governance` | 0.1.3007 | yes | AI governance for the Lexigram Framework — policy enforcement, audit trails, budget tracking |
 | `lexigram-ai-guard` | 0.1.3007 | yes | AI input/output guard pipeline for the Lexigram Framework — LLM safety and content filtering |
 | `lexigram-ai-llm` | 0.1.3007 | yes | LLM client layer for the Lexigram Framework — OpenAI, Anthropic, Ollama, Cohere, Groq, Mistral |
-| `lexigram-ai-mcp` | 0.1.3007 | yes | MCP Server for Lexigram Framework - Model Context Protocol server for AI agents |
+| `lexigram-ai-mcp` | 0.1.3008 | yes | MCP Server for Lexigram Framework - Model Context Protocol server for AI agents |
 | `lexigram-ai-memory` | 0.1.3007 | yes | AI memory system for the Lexigram Framework — episodic, semantic, and working memory |
 | `lexigram-ai-observability` | 0.1.3007 | yes | AI observability for the Lexigram Framework — tracing, metrics, and monitoring |
 | `lexigram-ai-prompt` | 0.1.3007 | yes | AI prompt management for the Lexigram Framework — templates, composition, optimization |

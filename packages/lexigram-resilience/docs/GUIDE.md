@@ -152,12 +152,13 @@ async def handle_request() -> None:
 
 ### Throttle
 
-Sliding-window throttler with configurable max requests per window:
+Sliding-window throttler with configurable call count per period:
 
 ```python
-from lexigram.resilience import throttle, get_throttle_stats
+from lexigram.resilience import Throttler
 
-@throttle(max_requests=100, window_seconds=60.0)
+throttler = Throttler(calls=100, period=60.0)
+
 async def api_handler() -> dict:
     ...
 ```

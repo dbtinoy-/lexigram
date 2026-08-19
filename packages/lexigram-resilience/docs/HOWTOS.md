@@ -72,14 +72,12 @@ async def handler(request: dict) -> dict:
 ## Throttle a Traffic Spike
 
 ```python
-from lexigram.resilience import throttle, get_throttle_stats
+from lexigram.resilience import Throttler
 
-@throttle(max_requests=200, window_seconds=60.0)
+throttler = Throttler(calls=200, period=60.0)
+
 async def webhook_handler(payload: dict) -> dict:
     ...
-
-# Check throttle stats
-stats = get_throttle_stats("webhook_handler")
 ```
 
 ## Ensure Idempotent Order Creation
