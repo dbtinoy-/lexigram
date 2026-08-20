@@ -537,6 +537,40 @@ async def test_registered_config_is_configured() -> None:
     assert resolved.channels[0].name == CHANNEL_NAME
 
 
+async def test_config_parsed_from_string_boots_di_offline() -> None:
+    """A config passed directly as a JSON string wires the provider.
+
+    Config parsing and DI registration make no network, file, or store
+    access: the whole boot is driven by one string.
+    """
+    config_doc = dumps(
+        {
+            "channels": [
+                {
+                    "name": CHANNEL_NAME,
+                    "upstream_base_url": BASE_URL,
+                    "target_format": "CLAUDE",
+                    "models": [MODEL],
+                    "priority": 1,
+                }
+            ]
+        }
+    )
+    cfg = RelayGatewayConfig.from_string(config_doc)
+    provider = RelayGatewayProvider(
+        config=cfg,
+        converter=FakeConverter(),
+        http_client=FakeHTTPClient(),
+    )
+    container = Container()
+    await provider.register(container)
+    resolved = await container.resolve(RelayGatewayConfig)
+    registry = await container.resolve(RelayChannelRegistry)
+    assert resolved is cfg
+    assert resolved.channels[0].name == CHANNEL_NAME
+    assert registry.select(RelayFormat.OPENAI_CHAT, MODEL).is_ok()
+
+
 async def test_missing_converter_startup_diagnostic() -> None:
     """Register without a converter logs the diagnostic and skips the gateway."""
     provider = RelayGatewayProvider(config=make_config(), http_client=FakeHTTPClient())

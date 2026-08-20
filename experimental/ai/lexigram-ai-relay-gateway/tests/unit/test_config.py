@@ -10,6 +10,7 @@ import pytest
 
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.contracts.ai.relay import RelayFormat
+from lexigram.serialization import dumps
 
 
 def full_mapping() -> dict[str, object]:
@@ -151,3 +152,29 @@ def test_non_positive_failover_threshold_rejected() -> None:
             auto_disable_on_failures=True,
             failover_failure_threshold=0,
         )
+
+
+class TestFromString:
+    """Config parsing from a JSON string passed directly (no network)."""
+
+    def test_from_string_matches_from_mapping(self) -> None:
+        cfg = RelayGatewayConfig.from_string(dumps(full_mapping()))
+        assert cfg == RelayGatewayConfig.from_mapping(full_mapping())
+
+    def test_from_string_minimal_empty_document(self) -> None:
+        cfg = RelayGatewayConfig.from_string("{}")
+        assert cfg.channels == ()
+        assert cfg.require_auth is True
+        assert cfg.max_upstream_retries == 0
+
+    def test_from_string_malformed_json_rejected(self) -> None:
+        with pytest.raises(ValueError, match="not valid JSON"):
+            RelayGatewayConfig.from_string("not json")
+
+    def test_from_string_non_object_rejected(self) -> None:
+        with pytest.raises(TypeError, match="must be a JSON object"):
+            RelayGatewayConfig.from_string("[1, 2, 3]")
+
+    def test_from_string_invalid_content_still_validated(self) -> None:
+        with pytest.raises(ValueError, match="unknown gateway config keys"):
+            RelayGatewayConfig.from_string('{"billing_url": "https://up.example"}')

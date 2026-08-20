@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from lexigram.contracts.ai.relay import JsonValue, RelayChannel, RelayFormat
+from lexigram.serialization import loads
 
 __all__ = ["RelayGatewayConfig"]
 
@@ -111,6 +112,36 @@ class RelayGatewayConfig:
             raise ValueError("job_ttl_seconds must be a positive integer")
         if self.failover_failure_threshold < 1:
             raise ValueError("failover_failure_threshold must be a positive integer")
+
+    @classmethod
+    def from_string(cls, config_str: str) -> RelayGatewayConfig:
+        """Build the configuration from a JSON document passed directly.
+
+        Parsing is fully local — no network, file, or store access — so
+        unit tests and embedded hosts can hand the gateway its whole
+        configuration as text (the same document shape as
+        :meth:`from_mapping`).
+
+        Args:
+            config_str: JSON document with a ``"channels"`` list and
+                optional gateway fields.
+
+        Returns:
+            A validated ``RelayGatewayConfig``.
+
+        Raises:
+            TypeError: When the document is valid JSON but not an
+                object.
+            ValueError: When the document is malformed JSON or contains
+                invalid keys/values (same as :meth:`from_mapping`).
+        """
+        try:
+            data = loads(config_str)
+        except ValueError as exc:
+            raise ValueError("gateway config is not valid JSON") from exc
+        if not isinstance(data, Mapping):
+            raise TypeError("gateway config must be a JSON object")
+        return cls.from_mapping(data)
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> RelayGatewayConfig:
