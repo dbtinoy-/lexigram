@@ -2,6 +2,8 @@ from __future__ import annotations
 
 """Model-catalog endpoints for the relay gateway's list and detail routes."""
 
+from typing import Any
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
