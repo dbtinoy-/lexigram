@@ -4,14 +4,14 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/lexigram?color=%2334D058&label=pypi%20package)](https://pypi.org/project/lexigram/)
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram?color=%2334D058)](https://pypi.org/project/lexigram/)
-[![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram-dev/blob/main/LICENSE)
-[![CI](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dbtinoy-/lexigram-dev/actions/workflows/ci.yml)
-[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot)](https://github.com/dbtinoy-/lexigram-dev/security/dependabot)
-[![Release](https://img.shields.io/github/v/release/dbtinoy-/lexigram-dev?color=%2334D058)](https://github.com/dbtinoy-/lexigram-dev/releases)
+[![License](https://img.shields.io/pypi/l/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram/blob/main/LICENSE)
+[![CI](https://github.com/dbtinoy-/lexigram/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dbtinoy-/lexigram/actions/workflows/ci.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot)](https://github.com/dbtinoy-/lexigram/security/dependabot)
+[![Release](https://img.shields.io/github/v/release/dbtinoy-/lexigram?color=%2334D058)](https://github.com/dbtinoy-/lexigram/releases)
 
 Stop assembling. Start building.
 
-![Lexigram demo](lexigram/docs/gifs/hero/lexigram-hero.gif)
+![Lexigram demo](core/lexigram/docs/gifs/hero/lexigram-hero.gif)
 
 Every backend starts the same way: you wire up SQL, cache, auth, queues, events, middleware — before you write a single line of real code. Lexigram gives you a ready-to-use foundation: the core services are already connected and bootable. You define providers, modules, and controllers. One container boots them all — web, SQL, cache, auth, queues, events, plus the full AI and multimedia families — in one call. Swap Redis for in-memory, Postgres for SQLite, or OpenAI for Ollama with a single config line. No init scripts or config plumbing — just IoC, DI, and contracts, resolved automatically at boot. Just a working base for your logic to run on — and room to implement whatever comes next.
 
@@ -40,7 +40,7 @@ pip install "lexigram[web]"
 ### from this repository (fresh clone)
 
 ```bash
-git clone https://github.com/dbtinoy-/lexigram-dev.git
+git clone https://github.com/dbtinoy-/lexigram.git
 cd lexigram
 
 # reproducible install (lockfile is committed — uv sync --locked fails
@@ -153,7 +153,7 @@ this repo ships the main ecosystem — the core, the backend, the contracts:
 - **`lexigram-vector`** / **`lexigram-graph`** — storage for the ai layer
 - plus auth, events, queue, tasks, http, resilience, storage, search, notification, monitor, webhook, tenancy, features, audit, graphql, nosql, workflow, and testing
 
-the AI family — agents, llms, rag, memory, skills, mcp, session, workers, observability, feedback, and the guard / governance / evaluation / prompt / relay suite — lives in [lexigram-ai](https://github.com/dbtinoy-/lexigram-ai-experimental). multimedia (tts, music, image, video, beat, interpolate, upscale) lives in [lexigram-multimedia](https://github.com/dbtinoy-/lexigram-multimedia-experimental). same modules, same container, same rules — their own repos and cadence.
+the AI family — agents, llms, rag, memory, skills, mcp, session, workers, observability, feedback, and the guard / governance / evaluation / prompt / relay suite — lives in [experimental/ai](./experimental/ai/). multimedia (tts, music, image, video, beat, interpolate, upscale) lives in [experimental/multimedia](./experimental/multimedia/). same modules, same container, same rules.
 
 ```text
 HOOK    agents · llms · rag · mcp · memory
@@ -167,7 +167,7 @@ the full list — including notification, queue, events, auth, observability, an
 
 Lexigram is in 0.1 — which means you can still change it. APIs may shift before 1.0, so pin your versions, and tell us what feels wrong. Shaping a framework is more fun when it's still soft.
 
-→ [github.com/dbtinoy-/lexigram-dev/issues](https://github.com/dbtinoy-/lexigram-dev/issues)
+→ [github.com/dbtinoy-/lexigram/issues](https://github.com/dbtinoy-/lexigram/issues)
 
 ## why it grows with you
 
@@ -217,11 +217,11 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 
 ## interesting subsystems and packages
 
-- CLI → [lexigram-cli](https://github.com/dbtinoy-/lexigram-cli-experimental)
-- Admin → [lexigram-admin](https://github.com/dbtinoy-/lexigram-admin-experimental)
-- UI → [lexigram-ui](https://github.com/dbtinoy-/lexigram-ui-experimental)
-- AI subsystems → [lexigram-ai](https://github.com/dbtinoy-/lexigram-ai-experimental)
-- Multimedia subsystems → [lexigram-multimedia](https://github.com/dbtinoy-/lexigram-multimedia-experimental)
+- CLI → [experimental/apps/lexigram-cli](./experimental/apps/lexigram-cli/)
+- Admin → [experimental/apps/lexigram-admin](./experimental/apps/lexigram-admin/)
+- UI → [experimental/apps/lexigram-ui](./experimental/apps/lexigram-ui/)
+- AI subsystems → [experimental/ai](./experimental/ai/)
+- Multimedia subsystems → [experimental/multimedia](./experimental/multimedia/)
 
 ## pointers
 

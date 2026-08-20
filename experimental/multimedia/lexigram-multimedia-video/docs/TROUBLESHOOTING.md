@@ -203,4 +203,4 @@ print(await video_provider.health_check())
 
 - Confirm the backend server is up: `curl <base_url>/generate` should 404 (not refuse connection) on a healthy server.
 - Re-read [Configuration](./CONFIGURATION.md) — most issues are a wrong base URL or a missing secret name.
-- Open an issue at the `lexigram-multimedia-experimental` repository with the backend, the exact error text (stderr included), and your `VideoConfig`.
+- Open an issue at [lexigram](https://github.com/dbtinoy-/lexigram/issues) with the backend, the exact error text (stderr included), and your `VideoConfig`.

@@ -170,4 +170,4 @@ from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
 
 - Read the [Guide](./GUIDE.md) for the accessor / submit model.
 - Check the sibling package docs for backend-specific errors.
-- Open an issue at https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues.
+- Open an issue at https://github.com/dbtinoy-/lexigram/issues

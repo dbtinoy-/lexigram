@@ -217,7 +217,7 @@ If a name exists in `lexigram-contracts`, no extension package may redefine it. 
 Canonical source tree layout:
 
 ```
-lexigram-contracts/src/lexigram/contracts/
+core/lexigram-contracts/src/lexigram/contracts/
 ├── __init__.py              # Lazy imports, all public API
 ├── core/                    # DI, Result, provider, health, clock, identity, locks
 │   ├── constants.py         # ENV_PREFIX, __version__, EP_* discovery groups

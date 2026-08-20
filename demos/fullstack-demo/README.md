@@ -16,19 +16,21 @@ overlay rendering, and ffmpeg compose.
 ## Chatterbox TTS venv
 
 The pipeline resolves `CHATTERBOX_VENV_PYTHON` from
-`narration.CHATTERBOX_VENV_CANDIDATES`, defaulting to
-`/home/admin/Documents/AI/applications/chatterbox-venv/bin/python3`. That venv
-was lost once and rebuilt as follows (network to PyPI is flaky; most wheels
-come from the local uv cache or the pytorch index):
+`narration.CHATTERBOX_VENV_CANDIDATES`. Point it at a Python 3.11+ venv with
+`chatterbox-tts` and its dependencies installed (the default candidates list
+includes a local `chatterbox-venv`). That venv was lost once and rebuilt as
+follows (network to PyPI is flaky; most wheels come from the local uv cache or
+the pytorch index):
 
 ```sh
-/usr/bin/python3.12 -m venv --system-site-packages /home/admin/Documents/AI/applications/chatterbox-venv
+/usr/bin/python3.12 -m venv --system-site-packages ./chatterbox-venv
 ```
 
 Notes:
 
-- Use the system `/usr/bin/python3.12`, NOT the uv-managed `python3.12` on PATH
-  (broken `/install` prefix — `init_fs_encoding` fails).
+- Use the system `python3.12`, NOT a uv-managed `python3.12` on PATH
+  (broken `/install` prefix — `init_fs_encoding` fails) — adjust the path if
+  your system Python lives elsewhere.
 - System user-site supplies `torch 2.4.0+cu124`, `numba 0.66`, `numpy 1.26.4`,
   `transformers`, `diffusers` — then install into the venv:
 
@@ -43,6 +45,7 @@ venv/bin/pip install --retries 25 --timeout 180 \
   audioread resampy resemble-perth onnxruntime 'antlr4-python3-runtime==4.9.3' \
   numpy==1.26.4
 ```
+(Replace `venv` with the actual venv path.)
 
 Pitfalls encountered:
 

@@ -4,7 +4,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/lexigram-ai?color=%2334D058&label=pypi%20package)](https://pypi.org/project/lexigram-ai/)
 [![Python versions](https://img.shields.io/pypi/pyversions/lexigram-ai?color=%2334D058)](https://pypi.org/project/lexigram-ai/)
-[![License](https://img.shields.io/pypi/l/lexigram-ai?color=%2334D058)](https://github.com/dbtinoy-/lexigram-ai-experimental/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/lexigram-ai?color=%2334D058)](https://github.com/dbtinoy-/lexigram/blob/main/LICENSE)
 
 ![Lexigram AI demo](docs/gifs/hero/lexigram-hero.gif)
 
@@ -99,7 +99,7 @@ lexigram-ai
 
 ## what's in the box
 
-the whole family lives in [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental) — experimental tier, API stability is not guaranteed between releases. same container, same contracts, same rules as the stable core.
+the whole family lives in this repository under [`experimental/ai/`](../../../experimental/ai/) — experimental tier, API stability is not guaranteed between releases. same container, same contracts, same rules as the stable core.
 
 - **`lexigram-ai`** — the coordinator (this package)
 - **`lexigram-ai-llm`** — provider-agnostic clients for Ollama, OpenAI, Anthropic, Groq, Mistral, and more
@@ -126,5 +126,5 @@ The AI layer is in 0.1 — which means you can still change it. APIs may shift b
 ## pointers
 
 - full docs → [docs.lexigram.dev](https://docs.lexigram.dev)
-- the stable core → [lexigram](https://github.com/dbtinoy-/lexigram-dev)
-- the AI family → [lexigram-ai-experimental](https://github.com/dbtinoy-/lexigram-ai-experimental)
+- the stable core → [lexigram](https://github.com/dbtinoy-/lexigram)
+- the AI family → [experimental/ai](../../../experimental/ai/) in this repository

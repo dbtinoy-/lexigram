@@ -303,7 +303,7 @@ All contracts come from `lexigram.contracts.data.graph`:
 ## Source Layout
 
 ```
-lexigram-graph/src/lexigram/graph/
+packages/lexigram-graph/src/lexigram/graph/
 ├── __init__.py              # Lazy-exported public API
 ├── config.py                # GraphConfig, Neo4jConfig, MemoryConfig
 ├── constants.py             # ENV_PREFIX, BACKEND_*, defaults

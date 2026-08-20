@@ -152,7 +152,7 @@ This ensures callers can catch `AIError` and get all AI subsystem errors without
 
 3. **Verify no cross-imports:**
    ```bash
-   grep -rn "from lexigram\." lexigram-contracts/src/ --include="*.py" | grep -v "contracts" | grep -v "^Binary"
+   grep -rn "from lexigram\." core/lexigram-contracts/src/ --include="*.py" | grep -v "contracts" | grep -v "^Binary"
    ```
    Should return no results (contracts only imports from itself).
 

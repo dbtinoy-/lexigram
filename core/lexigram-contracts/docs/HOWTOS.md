@@ -69,7 +69,7 @@ Use `@dataclass(frozen=True)` for value types that cross package boundaries.
 Add the **base exception** in contracts, then extend it in the extension package:
 
 ```python
-# lexigram-contracts/src/lexigram/contracts/ai/exceptions.py
+# core/lexigram-contracts/src/lexigram/contracts/ai/exceptions.py
 class AIMemoryError(AIError):
     """Base for AI memory system errors. Extended in lexigram-ai-memory."""
 

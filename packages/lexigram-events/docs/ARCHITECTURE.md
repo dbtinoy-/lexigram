@@ -43,7 +43,7 @@ flowchart BT
 ```
 
 ```
-lexigram-events/src/lexigram/events/
+packages/lexigram-events/src/lexigram/events/
 ├── config.py             # EventsConfig + sub-configs
 ├── module.py             # EventsModule (IoC entry point)
 ├── constants.py          # Enums, env-var prefixes

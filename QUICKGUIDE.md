@@ -149,7 +149,7 @@ lexigram-<name>/
 Contracts are Python `Protocol` classes that define **what** a service does — never **how**. They live exclusively in `lexigram-contracts`.
 
 ```python
-# lexigram-contracts/src/lexigram/contracts/infra/cache/protocols.py
+# core/lexigram-contracts/src/lexigram/contracts/infra/cache/protocols.py
 
 from typing import Protocol
 
@@ -165,7 +165,7 @@ class CacheBackendProtocol(Protocol):
 **Where things live in contracts** — organized by domain:
 
 ```
-lexigram-contracts/src/lexigram/contracts/
+core/lexigram-contracts/src/lexigram/contracts/
 ├── core/           ← DI, config, health, lifecycle, logging, modules, registry
 ├── ai/             ← LLM, RAG, memory, agents, routing, governance, guards
 ├── auth/           ← identities, tokens, policies, auth contracts
@@ -189,7 +189,7 @@ lexigram-contracts/src/lexigram/contracts/
 
 The `Container` manages the full dependency graph:
 
-**Source:** `lexigram/src/lexigram/di/container/container.py`
+**Source:** `core/lexigram/src/lexigram/di/container/container.py`
 
 #### Three-Phase Lifecycle
 
@@ -247,7 +247,7 @@ container.dump_dependency_graph()  # Adjacency map: service → dependencies
 
 ### 4.3 Provider (The Registration + Lifecycle Unit)
 
-**Source:** `lexigram/src/lexigram/di/provider.py`
+**Source:** `core/lexigram/src/lexigram/di/provider.py`
 
 ```python
 from lexigram.di.provider import Provider
@@ -299,7 +299,7 @@ class CacheProvider(Provider):
 
 #### Real Extension Example: LLM Provider
 
-**Source:** `lexigram-ai-llm/src/lexigram/ai/llm/di/provider.py`
+**Source:** `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/di/provider.py`
 
 ```python
 @inject
@@ -381,7 +381,7 @@ class UserService:
 
 ## 5. The Application — Composition Root
 
-**Source:** `lexigram/src/lexigram/app/base.py`
+**Source:** `core/lexigram/src/lexigram/app/base.py`
 
 ### Quick Start (Module-Based)
 
@@ -452,7 +452,7 @@ Each transition is irreversible. Providers/modules can only be added in `CREATED
 
 ## 6. The Module System — Encapsulation Boundaries
 
-**Source:** `lexigram/src/lexigram/di/module/base.py`
+**Source:** `core/lexigram/src/lexigram/di/module/base.py`
 
 Modules are the **organizational unit** of a Lexigram application. They group providers and define visibility boundaries.
 
@@ -486,7 +486,7 @@ Many integration modules expose a small factory surface for root composition and
 #### `configure()` — Production Configuration
 
 ```python
-# lexigram-ai-llm/src/lexigram/ai/llm/module.py
+# experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/module.py
 
 
 @module()
@@ -551,7 +551,7 @@ DynamicModule(
 
 ## 7. The Registry Pattern — Extensible Dispatch
 
-**Source:** `lexigram/src/lexigram/primitives/registry/core.py`
+**Source:** `core/lexigram/src/lexigram/primitives/registry/core.py`
 
 The `Registry` replaces `if/elif` chains with a data-driven, extensible collection:
 
@@ -624,7 +624,7 @@ chunker = registry.instantiate("fixed", chunk_size=512)
 
 ## 8. The Result Pattern — Explicit Error Handling
 
-**Source:** `lexigram/src/lexigram/result/types.py`
+**Source:** `core/lexigram/src/lexigram/result/types.py`
 
 ### When to Use What
 
@@ -710,7 +710,7 @@ The `lexigram-web` package provides a full ASGI web framework with controllers, 
 
 ### Controllers
 
-**Sources:** `lexigram-web/src/lexigram/web/routing/controllers.py` and `lexigram-web/src/lexigram/web/routing/controller.py`
+**Sources:** `packages/lexigram-web/src/lexigram/web/routing/controllers.py` and `packages/lexigram-web/src/lexigram/web/routing/controller.py`
 
 ```python
 from lexigram.web import Controller, get, post, put, delete, json_response
@@ -749,7 +749,7 @@ class UserController(Controller):
 
 ### Route Decorators
 
-**Source:** `lexigram-web/src/lexigram/web/routing/decorators.py`
+**Source:** `packages/lexigram-web/src/lexigram/web/routing/decorators.py`
 
 ```python
 @get("/path")         # GET request
@@ -799,7 +799,7 @@ class ProductController(GenericController[Product]):
 
 ### WebModule Registration
 
-**Source:** `lexigram-web/src/lexigram/web/module.py`
+**Source:** `packages/lexigram-web/src/lexigram/web/module.py`
 
 ```python
 # Explicit controller registration
@@ -820,7 +820,7 @@ WebModule.stub()
 
 ## 10. Configuration System
 
-**Source:** `lexigram/src/lexigram/config/__init__.py`
+**Source:** `core/lexigram/src/lexigram/config/__init__.py`
 
 Configuration is a **service**, not a global constant. It flows through the container like any other dependency.
 
@@ -844,7 +844,7 @@ Sources (in priority order, highest wins):
 Every extension package defines its own config class:
 
 ```python
-# lexigram-ai-llm/src/lexigram/ai/llm/config.py
+# experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/config.py
 @dataclass
 class ClientConfig:
     provider: str = "openai"
@@ -1128,16 +1128,16 @@ uv sync
 uv run ruff check . --fix && uv run ruff format .
 
 # Type Check
-uv run mypy lexigram/src/
+uv run mypy core/lexigram/src/
 
 # Test
 uv run pytest --tb=short
-uv run pytest lexigram-web/tests/ -v             # One package
+uv run pytest packages/lexigram-web/tests/ -v             # One package
 uv run pytest -k "test_user" -v                  # Pattern match
 uv run pytest -m "not integration"               # Skip integration
 
 # Full CI
-uv run ruff check . && uv run ruff format --check . && uv run mypy lexigram/src/ && uv run pytest --tb=short --cov-fail-under=80
+uv run ruff check . && uv run ruff format --check . && uv run mypy core/lexigram/src/ && uv run pytest --tb=short --cov-fail-under=80
 ```
 
 ---
@@ -1146,18 +1146,18 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy lexigram/src/
 
 | # | File | What You'll Learn |
 |---|---|---|
-| 1 | `lexigram-contracts/src/lexigram/contracts/core/di.py` | Container protocols — the DI contract |
-| 2 | `lexigram/src/lexigram/di/provider.py` | Provider base class — lifecycle hooks, priority |
-| 3 | `lexigram/src/lexigram/di/container/container.py` | Container — registration, resolution, scoping, validation |
-| 4 | `lexigram/src/lexigram/result/types.py` | `Ok`, `Err` — full monadic API |
-| 5 | `lexigram/src/lexigram/app/base.py` | Application — composition root, boot sequence |
-| 6 | `lexigram/src/lexigram/di/module/base.py` | Module base class and default factory helpers |
-| 7 | `lexigram/src/lexigram/primitives/registry/core.py` | Registry — extensible dispatch, backend/strategy variants |
-| 8 | `lexigram-ai-llm/src/lexigram/ai/llm/module.py` | Real extension module — configure/stub pattern |
-| 9 | `lexigram-ai-llm/src/lexigram/ai/llm/di/provider.py` | Real extension provider — register/boot/shutdown/health |
-| 10 | `lexigram-web/src/lexigram/web/routing/controllers.py` | Controller base class and web routing conventions |
-| 11 | `lexigram-events/src/lexigram/events/module.py` | Events module — CQRS buses, scope pattern |
-| 12 | `lexigram/src/lexigram/__init__.py` | Root exports — lazy-loaded public API |
+| 1 | `core/lexigram-contracts/src/lexigram/contracts/core/di.py` | Container protocols — the DI contract |
+| 2 | `core/lexigram/src/lexigram/di/provider.py` | Provider base class — lifecycle hooks, priority |
+| 3 | `core/lexigram/src/lexigram/di/container/container.py` | Container — registration, resolution, scoping, validation |
+| 4 | `core/lexigram/src/lexigram/result/types.py` | `Ok`, `Err` — full monadic API |
+| 5 | `core/lexigram/src/lexigram/app/base.py` | Application — composition root, boot sequence |
+| 6 | `core/lexigram/src/lexigram/di/module/base.py` | Module base class and default factory helpers |
+| 7 | `core/lexigram/src/lexigram/primitives/registry/core.py` | Registry — extensible dispatch, backend/strategy variants |
+| 8 | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/module.py` | Real extension module — configure/stub pattern |
+| 9 | `experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/di/provider.py` | Real extension provider — register/boot/shutdown/health |
+| 10 | `packages/lexigram-web/src/lexigram/web/routing/controllers.py` | Controller base class and web routing conventions |
+| 11 | `packages/lexigram-events/src/lexigram/events/module.py` | Events module — CQRS buses, scope pattern |
+| 12 | `core/lexigram/src/lexigram/__init__.py` | Root exports — lazy-loaded public API |
 
 ---
 

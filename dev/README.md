@@ -7,21 +7,21 @@ Unified tooling entrypoint for framework audits and script automation.
 From repo root:
 
 ```bash
-uv run python -m scripts.cli audit list
-uv run python -m scripts.cli audit run env_vars
-uv run python -m scripts.cli audit run rules
-uv run python -m scripts.cli audit run all
-uv run python -m scripts.cli audit validate
+uv run python -m dev.cli audit list
+uv run python -m dev.cli audit run env_vars
+uv run python -m dev.cli audit run rules
+uv run python -m dev.cli audit run all
+uv run python -m dev.cli audit validate
 ```
 
 ## Architecture
 
-- `scripts/cli.py`: single command surface
-- `scripts/core/`: shared runtime utilities (context, registry, models, validation)
-- `scripts/audit/generators/`: modular audit generators
-- `scripts/catalogs/`: standalone catalog generators (error codes, env vars, CLI commands)
+- `dev/cli.py`: single command surface
+- `dev/core/`: shared runtime utilities (context, registry, models, validation)
+- `dev/audit/generators/`: modular audit generators
+- `dev/catalogs/`: standalone catalog generators (error codes, env vars, CLI commands)
 
-No backward-compat script wrappers are maintained. Callers must use `scripts.cli` directly.
+No backward-compat script wrappers are maintained. Callers must use `dev.cli` directly.
 
 ## Makefile
 

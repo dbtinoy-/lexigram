@@ -457,7 +457,7 @@ AdminModule.configure(config=admin_config, resources=[UserResource])
 ## File Layout
 
 ```
-lexigram-admin/src/lexigram/admin/
+experimental/apps/lexigram-admin/src/lexigram/admin/
 ├── __init__.py              # Public API exports
 ├── module.py                # AdminModule (DI entry point)
 ├── config.py                # AdminConfig

@@ -173,4 +173,4 @@ request = ImageRequest(
 - Confirm the backend is actually expected to reach a network: `stability`,
   `openai`, and `comfyui` all require a live endpoint or key.
 - Open an issue at
-  https://github.com/dbtinoy-/lexigram-multimedia-experimental/issues
+  https://github.com/dbtinoy-/lexigram/issues

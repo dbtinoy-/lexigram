@@ -25,7 +25,7 @@ flowchart BT
 ## Package Layout
 
 ```
-lexigram-webhook/src/lexigram/webhook/
+packages/lexigram-webhook/src/lexigram/webhook/
 ├── __init__.py              # Public surface — re-exports + WebhookModule, WebhookConfig
 ├── config.py                # WebhookConfig — 18 fields with env overrides
 ├── constants.py             # Default values + StrEnums (StoreBackend, DeliveryStatus)
