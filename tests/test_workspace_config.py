@@ -7,7 +7,7 @@ import tomllib
 
 import pytest
 
-from scripts.core.package_inventory import discover_packages
+from dev.core.package_inventory import discover_packages
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONFIG = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
