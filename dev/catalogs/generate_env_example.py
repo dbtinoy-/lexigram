@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate .env.example from docs/lexigram-docs/reference/REF_ENV_VARS.md.
+"""Generate .env.example from docs/reference/REF_ENV_VARS.md.
 
 Usage:
     python scripts/catalogs/generate_env_example.py
@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG = ROOT / "docs/lexigram-docs/reference/REF_ENV_VARS.md"
+CATALOG = ROOT / "docs/reference/REF_ENV_VARS.md"
 OUT = ROOT / ".env.example"
 
 ROW = re.compile(r"^`([A-Z][A-Z0-9_]*)`$")
@@ -186,7 +186,7 @@ def generate() -> None:
         "# Copy to .env and adjust values for your deployment:",
         "#   cp .env.example .env",
         "#",
-        "# Generated from docs/lexigram-docs/reference/REF_ENV_VARS.md by",
+        "# Generated from docs/reference/REF_ENV_VARS.md by",
         "# scripts/catalogs/generate_env_example.py — do not edit by hand.",
         "#",
         "# All variables are optional unless noted: every config value carries a",

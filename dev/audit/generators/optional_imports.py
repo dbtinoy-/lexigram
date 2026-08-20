@@ -316,7 +316,7 @@ class OptionalImportsAuditGenerator(MarkdownAuditGenerator):
         if not validation.success:
             return validation
         resolved_root = self.resolve_root(root)
-        output_dir = resolved_root if all_mode else resolved_root / "docs/lexigram-docs/audit"
+        output_dir = resolved_root if all_mode else resolved_root / "docs/audit"
         output_dir.mkdir(parents=True, exist_ok=True)
         markdown, violations = self._render(resolved_root)
         output_path = output_dir / self.output_file

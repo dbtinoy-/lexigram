@@ -78,7 +78,7 @@ class MarkdownAuditGenerator:
             return validation
 
         resolved_root = self.resolve_root(root)
-        output_dir = resolved_root if all_mode else resolved_root / "docs/lexigram-docs/audit"
+        output_dir = resolved_root if all_mode else resolved_root / "docs/audit"
         output_dir.mkdir(parents=True, exist_ok=True)
         self._all_mode = all_mode
         try:

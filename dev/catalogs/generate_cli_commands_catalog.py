@@ -300,7 +300,7 @@ def main() -> None:
         lines.append(f"| {pkg} | `{path}` | {desc} |")
     lines.append("")
 
-    refs_dir = REPO_ROOT / "docs/lexigram-docs/reference" if not args.all else REPO_ROOT
+    refs_dir = REPO_ROOT / "docs/reference" if not args.all else REPO_ROOT
     refs_dir.mkdir(parents=True, exist_ok=True)
     output_path = refs_dir / "REF_CLI_COMMANDS.md"
     output_path.write_text("\n".join(lines) + "\n")

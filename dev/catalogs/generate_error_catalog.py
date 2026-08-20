@@ -479,7 +479,7 @@ def main() -> None:
             lines.append(f"| `{e['code']}` | `{e['class_name']}` | {desc} | `{e['package']}` |")
         lines.append("")
 
-    refs_dir = REPO_ROOT / "docs/lexigram-docs/reference" if not args.all else REPO_ROOT
+    refs_dir = REPO_ROOT / "docs/reference" if not args.all else REPO_ROOT
     refs_dir.mkdir(parents=True, exist_ok=True)
     output_path = refs_dir / "REF_ERROR_CODES.md"
     output_path.write_text("\n".join(lines) + "\n")

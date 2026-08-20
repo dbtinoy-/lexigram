@@ -8,7 +8,7 @@ from pathlib import Path
 def _write_workspace(root: Path) -> None:
     """Create a docs corpus with mixed good/bad internal links."""
 
-    docs = root / "docs" / "lexigram-docs"
+    docs = root / "docs"
     (docs / "fundamentals").mkdir(parents=True)
     (docs / "guides").mkdir()
     (docs / "ecosystem").mkdir()
@@ -31,6 +31,14 @@ def _write_workspace(root: Path) -> None:
     (root / "lexigram-web" / "docs").mkdir(parents=True)
     (root / "lexigram-web" / "docs" / "index.md").write_text("# web\n", encoding="utf-8")
     (root / "lexigram-bare").mkdir()
+
+    # Workspace manifest required by the package inventory (dev/core/package_inventory.py).
+    (root / "pyproject.toml").write_text(
+        "[tool.uv.workspace]\nmembers = [\"lexigram-web\", \"lexigram-bare\"]\n",
+        encoding="utf-8",
+    )
+    (root / "lexigram-web" / "pyproject.toml").write_text("", encoding="utf-8")
+    (root / "lexigram-bare" / "pyproject.toml").write_text("", encoding="utf-8")
 
 
 def test_docs_links_generator_reports_dead_links(tmp_path: Path) -> None:
@@ -55,7 +63,7 @@ def test_docs_links_generator_package_route_checks_docs_folder(tmp_path: Path) -
     from dev.audit.generators.docs_links import DocsLinksAuditGenerator
 
     _write_workspace(tmp_path)
-    (tmp_path / "docs" / "lexigram-docs" / "ecosystem" / "index.md").write_text(
+    (tmp_path / "docs" / "ecosystem" / "index.md").write_text(
         "- [Bare package](/packages/lexigram-bare/)\n", encoding="utf-8"
     )
 
@@ -72,13 +80,13 @@ def test_docs_links_generator_clean_corpus(tmp_path: Path) -> None:
 
     _write_workspace(tmp_path)
     # Fix the remaining dead targets so the corpus is fully clean.
-    (tmp_path / "docs" / "lexigram-docs" / "guides" / "web.md").write_text(
+    (tmp_path / "docs" / "guides" / "web.md").write_text(
         "# Web\n", encoding="utf-8"
     )
-    (tmp_path / "docs" / "lexigram-docs" / "fundamentals" / "routing.md").write_text(
+    (tmp_path / "docs" / "fundamentals" / "routing.md").write_text(
         "# Routing\n", encoding="utf-8"
     )
-    (tmp_path / "docs" / "lexigram-docs" / "fundamentals" / "providers.md").write_text(
+    (tmp_path / "docs" / "fundamentals" / "providers.md").write_text(
         "## Provider Priorities\n\n## Sub Section\n\n"
         "## Nope\n",  # add the missing anchor
         encoding="utf-8",

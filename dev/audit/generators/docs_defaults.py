@@ -587,7 +587,7 @@ class DocsDefaultsAuditGenerator(MarkdownAuditGenerator):
             return validation
         resolved_root = self.resolve_root(root)
         output_dir = (
-            resolved_root if all_mode else resolved_root / "docs/lexigram-docs/audit"
+            resolved_root if all_mode else resolved_root / "docs/audit"
         )
         output_dir.mkdir(parents=True, exist_ok=True)
         markdown, issue_count = self._render(resolved_root)

@@ -51,7 +51,7 @@ def test_env_vars_generator_emits_non_config_section_and_known_variable(
     generator = EnvVarsAuditGenerator()
 
     result = generator.run(root=tmp_path)
-    markdown = (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_ENV_VARS.md").read_text(encoding="utf-8")
+    markdown = (tmp_path / "docs/audit" / "AUDIT_ENV_VARS.md").read_text(encoding="utf-8")
 
     assert result.success is True
     assert "## Non-Config ENV Sources" in markdown

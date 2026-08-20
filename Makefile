@@ -229,7 +229,7 @@ audit:  ## Run dependency vulnerability scan
 	$(UV) run pip-audit 2>/dev/null || $(UV) pip audit
 
 .PHONY: catalog
-catalog:  ## Regenerate docs/lexigram-docs/reference/REF_ERROR_CODES.md from source
+catalog:  ## Regenerate docs/reference/REF_ERROR_CODES.md from source
 	$(UV) run python dev/catalogs/generate_error_catalog.py
 
 .PHONY: catalog-package
@@ -251,7 +251,7 @@ version-bump-all:  ## Show next version for all packages
 # AUDIT File Generation (Test/Doc Audits)
 # ---------------------------------------------------------------------------
 
-# Public audit targets (write to docs/lexigram-docs/audit)
+# Public audit targets (write to docs/audit)
 .PHONY: audit-overview
 audit-overview:
 	$(UV) run python -m dev.cli audit run overview
@@ -310,7 +310,7 @@ audit-package-dry:
 
 .PHONY: audit-package
 audit-package: audit-overview audit-integrations audit-protocols audit-security audit-quality audit-rules audit-tests audit-optional-imports audit-docs-links audit-docs-imports audit-docs-claims audit-docs-defaults audit-dependencies scripts-audit-index
-	@echo "All AUDIT files generated in docs/lexigram-docs/audit"
+	@echo "All AUDIT files generated in docs/audit"
 
 # All-packages audit targets (write to repo root)
 audit-overview-all:

@@ -586,7 +586,7 @@ def main() -> None:
             lines.append(f"| `{e['env_var']}` | {var_type} | {default} | {desc} | `{src}{note}` |")
         lines.append("")
 
-    refs_dir = REPO_ROOT / "docs/lexigram-docs/reference" if not args.all else REPO_ROOT
+    refs_dir = REPO_ROOT / "docs/reference" if not args.all else REPO_ROOT
     refs_dir.mkdir(parents=True, exist_ok=True)
     output_path = refs_dir / "REF_ENV_VARS.md"
     output_path.write_text("\n".join(lines) + "\n")

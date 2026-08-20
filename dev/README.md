@@ -46,7 +46,7 @@ Quality and test audits are evidence-backed:
 - `AUDIT_QUALITY.md` records live `ruff check` and `mypy` command evidence.
 - `AUDIT_TESTS.md` records live `pytest` execution evidence plus parsed examples.
 - `AUDIT_RULES.md` records Lexigram architecture misalignments found by the rules scan.
-- `AUDIT_DOC_LINKS.md` records dead internal links inside `docs/lexigram-docs/` (missing targets, missing anchors, `/packages/` routes without a `docs/` folder). The `docs-links` audit fails when any dead link is found, so `make audit-package` catches link rot before merge.
+- `AUDIT_DOC_LINKS.md` records dead internal links inside `docs/` (missing targets, missing anchors, `/packages/` routes without a `docs/` folder). The `docs-links` audit fails when any dead link is found, so `make audit-package` catches link rot before merge.
 - `AUDIT_SECURITY.md` records live `pip-audit` (dependency) and `ruff check --select S` (SAST) evidence, framework security-rule findings, and open audit-tracker areas parsed from `docs/AUDIT_TRACKER.md`.
 
 ## Testing

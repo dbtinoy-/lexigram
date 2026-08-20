@@ -86,7 +86,7 @@ def test_security_generator_verdict_critical_with_open_critical_row(
     monkeypatch.setattr(security, "run_rules", _fake_run_rules)
     generator = SecurityAuditGenerator()
     result = generator.run(root=tmp_path)
-    markdown = (tmp_path / "docs/lexigram-docs/audit" / "AUDIT_SECURITY.md").read_text(
+    markdown = (tmp_path / "docs/audit" / "AUDIT_SECURITY.md").read_text(
         encoding="utf-8"
     )
     assert result.success is True
@@ -137,7 +137,7 @@ def test_security_generator_parses_ruff_and_pip_evidence(
 
     monkeypatch.setattr(security, "run_command", fake_run_command)
     monkeypatch.setattr(security, "run_rules", fake_run_rules)
-    markdown = tmp_path / "docs/lexigram-docs/audit" / "AUDIT_SECURITY.md"
+    markdown = tmp_path / "docs/audit" / "AUDIT_SECURITY.md"
     generator = SecurityAuditGenerator()
     result = generator.run(root=tmp_path)
     assert result.success is True
@@ -206,7 +206,7 @@ def test_security_generator_handles_missing_tracker(
 
     monkeypatch.setattr(security, "run_command", fake_run_command)
     monkeypatch.setattr(security, "run_rules", _fake_run_rules)
-    markdown = tmp_path / "docs/lexigram-docs/audit" / "AUDIT_SECURITY.md"
+    markdown = tmp_path / "docs/audit" / "AUDIT_SECURITY.md"
     generator = SecurityAuditGenerator()
     result = generator.run(root=tmp_path)
     assert result.success is True

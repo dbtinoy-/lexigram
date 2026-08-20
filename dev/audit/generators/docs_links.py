@@ -144,7 +144,7 @@ class DocsLinksAuditGenerator(MarkdownAuditGenerator):
     name = "docs-links"
     description = (
         "Generate AUDIT_DOC_LINKS.md from internal markdown links in "
-        "docs/lexigram-docs, reporting dead targets and anchors."
+        "docs, reporting dead targets and anchors."
     )
     output_file = "AUDIT_DOC_LINKS.md"
 
@@ -160,7 +160,7 @@ class DocsLinksAuditGenerator(MarkdownAuditGenerator):
         if not validation.success:
             return validation
         resolved_root = self.resolve_root(root)
-        output_dir = resolved_root if all_mode else resolved_root / "docs/lexigram-docs/audit"
+        output_dir = resolved_root if all_mode else resolved_root / "docs/audit"
         output_dir.mkdir(parents=True, exist_ok=True)
         markdown, dead_count = self._render(resolved_root)
         output_path = output_dir / self.output_file
@@ -181,7 +181,7 @@ class DocsLinksAuditGenerator(MarkdownAuditGenerator):
     def _render(self, root: Path) -> tuple[str, int]:
         """Build the report body and count dead links."""
 
-        docs_root = root / "docs/lexigram-docs"
+        docs_root = root / "docs"
         findings = _iter_internal_links(docs_root)
 
         rows: list[tuple[LinkFinding, bool, bool]] = []
@@ -197,7 +197,7 @@ class DocsLinksAuditGenerator(MarkdownAuditGenerator):
         lines = [
             "# AUDIT_DOC_LINKS.md — Lexigram Documentation Link Audit",
             "",
-            "> **Source**: Internal markdown links inside `docs/lexigram-docs/`.",
+            "> **Source**: Internal markdown links inside `docs/`.",
             "> A link is *dead* when its target file does not exist, when a",
             "> `/packages/<name>/` route points at a package without a `docs/`",
             "> folder, or when its heading anchor is missing from the target.",

@@ -44,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--all",
         action="store_true",
-        help="Output to repo root instead of docs/lexigram-docs/audit",
+        help="Output to repo root instead of docs/audit",
     )
 
     validate_parser = audit_subparsers.add_parser(
