@@ -8,7 +8,7 @@ from lexigram.contracts.core.health import HealthCheckResult, HealthStatus
 from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
 from lexigram.contracts.multimedia.protocols import MusicProvider
 from lexigram.di.provider import Provider
-from lexigram.di.provider_utils import resolve_optional
+from lexigram.di.provider_utils import resolve_credential, resolve_optional
 from lexigram.logging import get_logger
 from lexigram.multimedia.music.config import MusicConfig
 from lexigram.multimedia.music.tasks import MusicGenerationTask
@@ -45,6 +45,7 @@ class AudioMusicProvider(Provider):
         self._secret_store: AsyncSecretStoreProtocol | None = None
         self._retry: RetryPolicyProtocol | None = None
         self._circuit_breaker: CircuitBreakerProtocol | None = None
+        self._credential_resolved: bool = False
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         from lexigram.contracts.infra.resilience.protocols import (
@@ -77,10 +78,22 @@ class AudioMusicProvider(Provider):
                 ),
             )
         elif self._config.backend == "stability-audio":
-            raise ProviderNotInstalledError(
-                "backend='stability-audio' is not yet implemented in "
-                "lexigram-multimedia-music. Use backend='local-http' or "
-                "contribute an implementation."
+            from lexigram.multimedia.music.providers.stability_audio import (
+                StabilityAudioMusicProvider,
+            )
+
+            api_key = await resolve_credential(
+                self._secret_store, self._config.stability_api_key_secret_name
+            )
+            self._credential_resolved = bool(api_key)
+            self._backend = cast(
+                "MusicProvider",
+                StabilityAudioMusicProvider(
+                    api_key=api_key or "",
+                    timeout=self._config.timeout,
+                    retry=self._retry,
+                    circuit_breaker=self._circuit_breaker,
+                ),
             )
         elif self._config.backend == "ace-step":
             from lexigram.multimedia.music.providers.ace_step import (
@@ -140,7 +153,12 @@ class AudioMusicProvider(Provider):
             )
             return HealthCheckResult(component=self.name, status=status)
 
-        return HealthCheckResult(component=self.name, status=HealthStatus.HEALTHY)
+        return HealthCheckResult(
+            component=self.name,
+            status=HealthStatus.HEALTHY
+            if self._credential_resolved
+            else HealthStatus.DEGRADED,
+        )
 
     async def _check_http_health(self, base_url: str, timeout: float) -> HealthStatus:
         import aiohttp

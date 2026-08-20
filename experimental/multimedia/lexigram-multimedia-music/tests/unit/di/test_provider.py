@@ -95,16 +95,42 @@ async def test_register_binds_task_handler() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stability_backend_raises_not_installed() -> None:
-    import pytest
-
-    from lexigram.contracts.multimedia.exceptions import ProviderNotInstalledError
-
+async def test_register_binds_stability_audio_backend(monkeypatch) -> None:
+    monkeypatch.setenv("STABILITY_API_KEY", "sk-test")
     provider = AudioMusicProvider(config=MusicConfig(backend="stability-audio"))
     container = _FakeContainer()
 
-    with pytest.raises(ProviderNotInstalledError):
-        await provider.register(container)
+    await provider.register(container)
+
+    from lexigram.multimedia.music.providers.stability_audio import (
+        StabilityAudioMusicProvider,
+    )
+
+    bound = container.bindings[MusicProvider]
+    assert isinstance(bound, StabilityAudioMusicProvider)
+
+
+@pytest.mark.asyncio
+async def test_stability_audio_health_degraded_without_credential() -> None:
+    provider = AudioMusicProvider(config=MusicConfig(backend="stability-audio"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_stability_audio_health_healthy_with_credential(monkeypatch) -> None:
+    monkeypatch.setenv("STABILITY_API_KEY", "sk-test")
+    provider = AudioMusicProvider(config=MusicConfig(backend="stability-audio"))
+    container = _FakeContainer()
+    await provider.register(container)
+
+    result = await provider.health_check()
+
+    assert result.status == HealthStatus.HEALTHY
 
 
 @pytest.mark.asyncio

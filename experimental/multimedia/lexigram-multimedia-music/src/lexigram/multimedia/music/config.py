@@ -17,6 +17,7 @@ class MusicConfig(BaseConfig):
     local_http_base_url: str = "http://localhost:5003"
     ace_step_base_url: str = "http://localhost:5300"
     stable_audio_open_base_url: str = "http://localhost:5301"
+    stability_api_key_secret_name: str = "stability_api_key"  # noqa: S105  # secret NAME, not a value
     timeout: float = 60.0
 
 
