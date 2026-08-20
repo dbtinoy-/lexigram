@@ -115,7 +115,7 @@ run_server(app, port=8000)
 - `HelloController` is a plain typed class; `/hello` maps query params to arguments.
 - `run_server(...)` serves it with uvicorn — `/health`, `/docs`, and `/redoc` come along for free.
 
-→ [Your First App](docs/lexigram-docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
+→ [Your First App](docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
 
 ## example app (fullstack, in-repo)
 
@@ -177,14 +177,14 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 
 ## audit
 
-- [Tests](docs/lexigram-docs/audit/AUDIT_TESTS.md) — live test evidence and coverage per package
-- [Quality](docs/lexigram-docs/audit/AUDIT_QUALITY.md) — mypy and ruff quality gates
-- [Security](docs/lexigram-docs/audit/AUDIT_SECURITY.md) — static security analysis
+- [Tests](docs/audit/AUDIT_TESTS.md) — live test evidence and coverage per package
+- [Quality](docs/audit/AUDIT_QUALITY.md) — mypy and ruff quality gates
+- [Security](docs/audit/AUDIT_SECURITY.md) — static security analysis
 
 ## reference
 
-- [Env vars](docs/lexigram-docs/reference/REF_ENV_VARS.md) — every `LEX_*` environment variable
-- [Error codes](docs/lexigram-docs/reference/REF_ERROR_CODES.md) — error codes and their meanings
+- [Env vars](docs/reference/REF_ENV_VARS.md) — every `LEX_*` environment variable
+- [Error codes](docs/reference/REF_ERROR_CODES.md) — error codes and their meanings
 
 ## roadmap
 
