@@ -1,6 +1,0 @@
-import asyncio
-
-STALE_RENDER_SECONDS = 15 * 60
-STAGE_STALE_SECONDS = 12 * 60
-WATCHDOG_INTERVAL = 30.0
-_START_LOCKS: dict[str, asyncio.Lock] = {}

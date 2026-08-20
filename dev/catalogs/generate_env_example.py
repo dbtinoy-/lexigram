@@ -97,7 +97,6 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
     "ADMIN_SETUP_TOKEN": ("changeme", "lexigram-admin boot token (integration/CI)"),
     "ANTHROPIC_API_KEY": ("sk-ant-changeme", "Anthropic provider key (AI doctor)"),
     "APNS_KEY_PATH": ("", "Apple push notification key path"),
-    "APP_AUTH_TOKEN": ("changeme", "fullstack-demo middleware auth token"),
     "APP_ENV": ("development", "generic app environment read"),
     "AUDIT_HMAC_KEY": ("changeme", "audit doctor / signing key"),
     "AUTH_JWT_SECRET": ("changeme", "lexigram-auth JWT secret"),
@@ -108,9 +107,6 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
         "postgresql://lexigram:lexigram@localhost:5432/lexigram",
         "SQL doctor / DB URL",
     ),
-    "DSM_AUTH_TOKEN": ("changeme", "fullstack-demo API auth token"),
-    "DSM_PORT": ("8080", "fullstack-demo server port"),
-    "DSM_URL": ("http://localhost:8080", "fullstack-demo base URL"),
     "ENVIRONMENT": ("development", "legacy app-environment compatibility reads"),
     "F5_TTS_REFERENCE_ROOT": ("", "multimedia-tts reference audio root"),
     "FCM_SERVER_KEY": ("changeme", "Firebase Cloud Messaging key"),
@@ -123,8 +119,6 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
         "http://localhost:4318",
         "OpenTelemetry collector endpoint",
     ),
-    "PEXELS_API_KEY": ("changeme", "fullstack-demo stock video key"),
-    "PIXABAY_API_KEY": ("changeme", "fullstack-demo stock video key"),
     "PLAYWRIGHT_SNAPSHOT": ("", "set to 1 to update admin e2e snapshots"),
     "RABBITMQ_URL": (
         "amqp://guest:guest@localhost:5672//",
@@ -138,10 +132,6 @@ SUPPLEMENTAL_VARS: dict[str, tuple[str, str]] = {
             "Sentry DSN; error tracking falls back to this when "
             "LEX_MONITOR__ERROR_TRACKING__DSN is unset"
         ),
-    ),
-    "SHORTS_CREATOR_DATABASE_URL": (
-        "postgresql://lexigram:lexigram@localhost:5432/shorts_creator",
-        "fullstack-demo database URL",
     ),
     "SMTP_HOST": ("localhost:25", "notification doctor SMTP host"),
     "TEST_POSTGRES_DSN": (
@@ -160,9 +150,6 @@ SUPPLEMENTAL_HEADER = [
     "# Variables referenced directly in source (os.getenv / os.environ) — optional;",
     "# unset values fall back to code defaults. Keep in sync with source usage.",
     "#",
-    "# Required by demos/fullstack-demo (shorts-creator):",
-    "#   APP_AUTH_TOKEN, DSM_AUTH_TOKEN, DSM_PORT, DSM_URL, PEXELS_API_KEY,",
-    "#   PIXABAY_API_KEY, SHORTS_CREATOR_DATABASE_URL",
     "# Required by other demos:",
     "#   LEXIGRAM_EXPERIMENT_SEED (llm-experiment), REALTIME_PORT (realtime-monitor)",
     "# Referenced by core framework source / doctor CLIs:",

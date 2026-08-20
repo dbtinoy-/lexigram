@@ -205,26 +205,6 @@ jobs:
       - name: Set up Python
         run: uv python install 3.11
 
-      - name: install demo app (locked)
-        working-directory: demos/fullstack-demo
-        run: uv sync --locked
-
-      - name: format (ruff check --format)
-        working-directory: demos/fullstack-demo
-        run: uv run ruff format --check src tests
-
-      - name: lint (ruff check)
-        working-directory: demos/fullstack-demo
-        run: uv run ruff check src tests
-
-      - name: typecheck (demo)
-        working-directory: demos/fullstack-demo
-        run: uv run mypy
-
-      - name: test (demo, non-integration)
-        working-directory: demos/fullstack-demo
-        run: uv run pytest -q -m "not integration"
-
       - name: test (demo suites, workspace env)
         run: uv run pytest -q -m "not integration" --no-cov demos/event-driven-orders/tests demos/realtime-monitor/tests
 

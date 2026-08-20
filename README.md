@@ -71,7 +71,7 @@ latest `main` run); each job has a local one-liner:
 | --- | --- | --- |
 | `quality` | format, lint, tier boundary, mypy (core), per-package tests | `uv run ruff format --check . && uv run ruff check . && uv run mypy core/lexigram/src/ && uv run pytest -m "not integration" --no-cov` |
 | `coverage` | aggregate tests with a 70% floor | `uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70` |
-| `example` | fullstack-demo gate (format, lint, mypy, tests) | `cd demos/fullstack-demo && uv run pytest -q -m "not integration"` |
+| `example` | demos gate (pytest-bearing demo suites + compile checks) | `make check-demos` |
 | `audit` | `pip-audit` known-vulnerability check | `uv run pip-audit` |
 
 > Every `-m "not integration"` run — per-package or aggregate — executes
@@ -116,31 +116,6 @@ run_server(app, port=8000)
 - `run_server(...)` serves it with uvicorn — `/health`, `/docs`, and `/redoc` come along for free.
 
 → [Your First App](docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
-
-## example app (fullstack, in-repo)
-
-[`demos/fullstack-demo`](./demos/fullstack-demo/) — **shorts-creator**, an
-end-to-end short-video reel generator built on the framework: LLM script
-generation, Chatterbox TTS narration, stock clip sourcing, caption overlays,
-and ffmpeg compose. It runs against the editable framework packages in this
-repo, so it doubles as a living integration surface — CI gates it with the
-same checks as the framework (format, lint, mypy, tests).
-
-```sh
-cd demos/fullstack-demo
-uv sync --locked
-uv run python -m shorts_creator.main    # serve on :8080
-# or: uv run uvicorn asgi_app:app --port 8080
-```
-
-Verify it like CI does:
-
-```sh
-uv run ruff format --check src tests
-uv run ruff check src tests
-uv run mypy
-uv run pytest -q -m "not integration"
-```
 
 ## what's in the box
 
