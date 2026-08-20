@@ -45,7 +45,7 @@ Changelog = "https://github.com/dbtinoy-/lexigram-dev/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 sendgrid = ["sendgrid>=6.0"]
 twilio = ["twilio>=8.0"]
-apns = ["httpx[http2]>=0.27.0", "PyJWT>=2.8.0", "cryptography>=42.0.0"]
+apns = ["httpx[http2]>=0.28.1", "PyJWT>=2.8.0", "cryptography>=42.0.0"]
 web-push = [
     "pywebpush>=1.14.0",
 ]
