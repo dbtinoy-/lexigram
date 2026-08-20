@@ -178,3 +178,11 @@ test.db
 !core/lexigram*/tests/fixtures/test.db
 !packages/lexigram*/tests/fixtures/test.db
 !experimental/*/lexigram*/tests/fixtures/test.db
+
+# Allow the generated demo gifs to be tracked (README hero images).
+!core/lexigram*/docs/gifs/
+!core/lexigram*/docs/gifs/**
+!packages/*/lexigram*/docs/gifs/
+!packages/*/lexigram*/docs/gifs/**
+!experimental/*/lexigram*/docs/gifs/
+!experimental/*/lexigram*/docs/gifs/**
