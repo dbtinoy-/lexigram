@@ -197,17 +197,22 @@ def test_contributor_get_controllers_empty() -> None:
     assert contributor.get_middleware() == []
 
 async def test_mount_registers_routes_once() -> None:
-    """Repeated mounts register each relay and model path exactly once."""
+    """Repeated mounts register each relay, model, and health path exactly once."""
     app = FakeApp()
     contributor = RelayGatewayWebContributor()
     await contributor.mount_to_app(app, object())
     await contributor.mount_to_app(app, object())
-    expected = list(RELAY_ROUTE_PATHS) + list(MODEL_ROUTE_PATHS)
+    expected = list(RELAY_ROUTE_PATHS) + list(MODEL_ROUTE_PATHS) + ["/health"]
     actual = [path for path, _, _ in app.registrations]
     assert sorted(actual) == sorted(expected)
     assert len(app.registrations) == len(expected)
     for path, _, methods in app.registrations:
-        assert methods == (["GET", "HEAD"] if path in MODEL_ROUTE_PATHS else ["POST"])
+        if path == "/health":
+            assert methods == ["GET", "HEAD"]
+        else:
+            assert methods == (
+                ["GET", "HEAD"] if path in MODEL_ROUTE_PATHS else ["POST"]
+            )
 
 async def test_buffered_openai_chat_success() -> None:
     """A buffered chat result is returned as JSON with request metadata."""

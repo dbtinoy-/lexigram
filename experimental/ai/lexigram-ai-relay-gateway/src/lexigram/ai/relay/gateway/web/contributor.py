@@ -12,9 +12,11 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.ai.relay.gateway.catalog import ModelCatalogService
+from lexigram.ai.relay.gateway.operations.health import RelayHealthService
 from lexigram.ai.relay.gateway.passthrough import PassthroughService
 from lexigram.ai.relay.gateway.web.routes import build_routes
 from lexigram.contracts.ai.relay import RelayGatewayProtocol
+from lexigram.contracts.exceptions.container import ContainerError
 
 __all__ = ["RelayGatewayWebContributor"]
 
@@ -95,10 +97,20 @@ class RelayGatewayWebContributor:
             )
             return await request_container.resolve(ModelCatalogService)
 
+        async def _resolve_health(request: Any) -> RelayHealthService | None:
+            request_container: Any = (
+                getattr(request.state, "container", None) or container
+            )
+            try:
+                return await request_container.resolve_optional(RelayHealthService)
+            except (ContainerError, AttributeError):
+                return None
+
         routes = build_routes(
             _resolve,
             resolve_passthrough=_resolve_passthrough,
             resolve_model_catalog=_resolve_model_catalog,
+            resolve_health=_resolve_health,
         )
         for route in routes:
             path = route.path

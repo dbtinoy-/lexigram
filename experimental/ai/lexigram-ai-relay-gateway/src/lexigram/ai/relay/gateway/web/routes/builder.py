@@ -14,6 +14,11 @@ from lexigram.ai.relay.gateway.web.routes.common import (
     ResolveModelCatalog,
     _with_auth_guard,
 )
+from lexigram.ai.relay.gateway.web.routes.health import (
+    HEALTH_ROUTE_PATH,
+    ResolveRelayHealth,
+    health_endpoint,
+)
 from lexigram.ai.relay.gateway.web.routes.jobs import (
     job_status_endpoint,
     job_submit_endpoint,
@@ -41,6 +46,7 @@ def build_routes(
     resolve_passthrough: ResolvePassthrough | None = None,
     resolve_job_passthrough: ResolveJobPassthrough | None = None,
     resolve_model_catalog: ResolveModelCatalog | None = None,
+    resolve_health: ResolveRelayHealth | None = None,
 ) -> list[Route]:
     """Build the relay POST routes bound to gateway resolvers.
 
@@ -61,11 +67,16 @@ def build_routes(
             model-list and model-detail routes (``GET /v1/models``,
             ``GET /v1beta/models``, and their detail variants) are
             appended.
+        resolve_health: Optional async callable resolving a
+            ``RelayHealthService`` from the request; when provided, the
+            unauthenticated ``GET /health`` route is appended.  The
+            health route is intentionally not auth-guarded: probe
+            traffic cannot present tenant credentials.
 
     Returns:
         One ``Route`` per inbound relay format, in ``RELAY_ROUTE_PATHS``
-        order, followed by the passthrough, audio, image, job-relay, and
-        model-catalog routes when their resolver is provided.
+        order, followed by the passthrough, audio, image, job-relay,
+        model-catalog, and health routes when their resolver is provided.
     """
     routes = [
         Route(
@@ -156,6 +167,14 @@ def build_routes(
                 _with_auth_guard(
                     partial(model_detail_endpoint, False, resolve_model_catalog)
                 ),
+                methods=["GET"],
+            )
+        )
+    if resolve_health is not None:
+        routes.append(
+            Route(
+                HEALTH_ROUTE_PATH,
+                partial(health_endpoint, resolve_health),
                 methods=["GET"],
             )
         )
