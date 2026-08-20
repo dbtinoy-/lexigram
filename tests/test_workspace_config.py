@@ -56,3 +56,33 @@ def test_collapsed_lists_cover_all_tier_roots() -> None:
     roots = {"core", "packages", "experimental"}
 
     assert roots <= set(CONFIG["tool"]["coverage"]["run"]["source"])
+
+
+def test_every_member_declares_runtime_dependencies() -> None:
+    """Each workspace member declares its own direct runtime dependencies.
+
+    A member whose pyproject.toml lists no `[project].dependencies` rides on
+    the workspace without an inspectable dependency graph, which breaks
+    dependency inventory tooling (uv.lock/uv tree are the only sources of
+    truth then). Members that genuinely have no runtime dependencies must
+    mark themselves explicitly with a `# dependency-free` comment in their
+    pyproject.toml so the intent is reviewable.
+    """
+
+    from dev.core.package_inventory import discover_package_paths
+
+    undecorated: list[str] = []
+    for member in discover_package_paths(REPO_ROOT):
+        pyproject = REPO_ROOT / member / "pyproject.toml"
+        text = pyproject.read_text()
+        project = tomllib.loads(text).get("project", {})
+        if project.get("dependencies"):
+            continue
+        if "dependency-free" in text:
+            continue
+        undecorated.append(str(pyproject))
+
+    assert not undecorated, (
+        "workspace members without [project].dependencies (add real deps or a "
+        f"'# dependency-free' marker): {undecorated}"
+    )

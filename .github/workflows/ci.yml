@@ -82,10 +82,10 @@ jobs:
       - name: install workspace (locked)
         run: uv sync --group tooling --group qa --group security --locked
 
-      - name: format (ruff check --format)
+      - name: format
         run: uv run ruff format --check .
 
-      - name: lint (ruff check)
+      - name: lint
         run: uv run ruff check .
 
       - name: Tier boundary
@@ -97,7 +97,7 @@ jobs:
       - name: env.example coverage
         run: uv run python dev/check_env_example.py --root .
 
-      - name: typecheck (mypy core)
+      - name: typecheck
         run: uv run mypy core/lexigram/src/
 
   tests:
@@ -123,7 +123,7 @@ jobs:
       - name: install workspace (locked)
         run: uv sync --group tooling --group qa --group security --locked
 
-      - name: test (${{ matrix.group }})
+      - name: test
         shell: bash
         run: |
           set -euo pipefail
@@ -187,7 +187,7 @@ jobs:
       - name: install workspace (locked)
         run: uv sync --group tooling --group qa --group security --locked
 
-      - name: test coverage (aggregate, floor 70)
+      - name: coverage test
         run: |
           uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70
 
