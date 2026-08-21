@@ -1,6 +1,7 @@
-"""Unit tests for SqlWebhookSubscriptionStore and SqlWebhookDeliveryStore."""
+"""SQL webhook delivery store attempt/dead-letter/failure tests."""
 
 from __future__ import annotations
+
 from enum import Enum
 
 from datetime import UTC, datetime
@@ -24,14 +25,12 @@ from lexigram.webhook.store.sql import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-
 def _make_db(rows: list[dict[str, Any]] | None = None, *, success: bool = True) -> MagicMock:
     """Build a mock DatabaseProviderProtocol with configurable query result."""
     db = MagicMock(spec=DatabaseProviderProtocol)
     result = QueryResult(rows=rows or [], row_count=len(rows or []), execution_time=0.0, success=success)
     db.execute_query = AsyncMock(return_value=result)
     return db
-
 
 def _sample_subscription(**kwargs: Any) -> WebhookSubscription:
     return WebhookSubscription(
@@ -45,7 +44,6 @@ def _sample_subscription(**kwargs: Any) -> WebhookSubscription:
         created_at=kwargs.get("created_at", datetime(2024, 1, 1, tzinfo=UTC)),
         metadata=kwargs.get("metadata", {}),
     )
-
 
 def _sample_attempt(**kwargs: Any) -> DeliveryAttempt:
     return DeliveryAttempt(
@@ -61,7 +59,6 @@ def _sample_attempt(**kwargs: Any) -> DeliveryAttempt:
         error_message=kwargs.get("error_message"),
         duration_ms=kwargs.get("duration_ms", 42.0),
     )
-
 
 def _sub_row(subscription: WebhookSubscription) -> dict[str, Any]:
     """Build a DB row dict matching the subscription schema."""
@@ -83,7 +80,6 @@ def _sub_row(subscription: WebhookSubscription) -> dict[str, Any]:
         "metadata": json.dumps(subscription.metadata),
     }
 
-
 def _attempt_row(attempt: DeliveryAttempt) -> dict[str, Any]:
     return {
         "attempt_id": attempt.attempt_id,
@@ -99,262 +95,10 @@ def _attempt_row(attempt: DeliveryAttempt) -> dict[str, Any]:
         "duration_ms": attempt.duration_ms,
     }
 
-
 # ---------------------------------------------------------------------------
 # SqlWebhookSubscriptionStore
 # ---------------------------------------------------------------------------
 
-
-class TestSqlWebhookSubscriptionStoreInitialize:
-    """Tests for SqlWebhookSubscriptionStore.initialize()."""
-
-    @pytest.mark.asyncio
-    async def test_initialize_executes_ddl(self) -> None:
-        """initialize() should execute at least one DDL statement."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.initialize()
-
-        assert db.execute_query.await_count >= 1
-        first_call_sql: str = db.execute_query.call_args_list[0][0][0]
-        assert "webhook_subscriptions" in first_call_sql
-
-    @pytest.mark.asyncio
-    async def test_initialize_creates_indexes(self) -> None:
-        """initialize() should create the expected indexes."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.initialize()
-
-        all_sqls = " ".join(call[0][0] for call in db.execute_query.call_args_list)
-        assert "idx_ws_active" in all_sqls
-        assert "idx_ws_tenant" in all_sqls
-
-
-class TestSqlWebhookSubscriptionStoreCreate:
-    """Tests for SqlWebhookSubscriptionStore.create()."""
-
-    @pytest.mark.asyncio
-    async def test_create_inserts_row(self) -> None:
-        """create() should execute an INSERT statement."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-        sub = _sample_subscription()
-
-        await store.create(sub)
-
-        db.execute_query.assert_awaited_once()
-        sql: str = db.execute_query.call_args[0][0]
-        assert "INSERT INTO webhook_subscriptions" in sql
-
-    @pytest.mark.asyncio
-    async def test_create_includes_subscription_id_in_params(self) -> None:
-        """create() params should contain the subscription_id."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-        sub = _sample_subscription(subscription_id="sub-xyz")
-
-        await store.create(sub)
-
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert "sub-xyz" in params
-
-    @pytest.mark.asyncio
-    async def test_create_serializes_event_types_as_json(self) -> None:
-        """create() should JSON-serialize event_types."""
-        import json
-
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-        sub = _sample_subscription(event_types=frozenset({"a.b", "c.d"}))
-
-        await store.create(sub)
-
-        params: list[Any] = db.execute_query.call_args[0][1]
-        event_types_param = params[3]
-        assert isinstance(event_types_param, str)
-        parsed = json.loads(event_types_param)
-        assert set(parsed) == {"a.b", "c.d"}
-
-    @pytest.mark.asyncio
-    async def test_create_none_event_types_stored_as_none(self) -> None:
-        """create() should store None when event_types is None."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-        sub = _sample_subscription(event_types=None)
-
-        await store.create(sub)
-
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert params[3] is None
-
-
-class TestSqlWebhookSubscriptionStoreGet:
-    """Tests for SqlWebhookSubscriptionStore.get()."""
-
-    @pytest.mark.asyncio
-    async def test_get_returns_subscription(self) -> None:
-        """get() should return a WebhookSubscription when a row is found."""
-        sub = _sample_subscription()
-        db = _make_db(rows=[_sub_row(sub)])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        result = await store.get("sub-1")
-
-        assert result is not None
-        assert result.subscription_id == "sub-1"
-        assert result.url == sub.url
-
-    @pytest.mark.asyncio
-    async def test_get_returns_none_when_not_found(self) -> None:
-        """get() should return None when no row is found."""
-        db = _make_db(rows=[])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        result = await store.get("nonexistent")
-
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_get_passes_id_as_param(self) -> None:
-        """get() should pass subscription_id as a query parameter."""
-        db = _make_db(rows=[])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.get("sub-42")
-
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert "sub-42" in params
-
-
-class TestSqlWebhookSubscriptionStoreList:
-    """Tests for SqlWebhookSubscriptionStore.list()."""
-
-    @pytest.mark.asyncio
-    async def test_list_builds_active_only_where_clause(self) -> None:
-        """list(active_only=True) should include active = ? in WHERE."""
-        db = _make_db(rows=[])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.list(active_only=True)
-
-        sql: str = db.execute_query.call_args[0][0]
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert "active = ?" in sql
-        assert 1 in params
-
-    @pytest.mark.asyncio
-    async def test_list_filters_by_tenant_id(self) -> None:
-        """list() should include tenant_id = ? when tenant_id is provided."""
-        db = _make_db(rows=[])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.list(tenant_id="tenant-99")
-
-        sql: str = db.execute_query.call_args[0][0]
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert "tenant_id = ?" in sql
-        assert "tenant-99" in params
-
-    @pytest.mark.asyncio
-    async def test_list_filters_by_event_type(self) -> None:
-        """list() should include a LIKE filter when event_type is provided."""
-        db = _make_db(rows=[])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.list(event_type="user.created", active_only=False)
-
-        sql: str = db.execute_query.call_args[0][0]
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert "event_types LIKE ?" in sql
-        assert '%"user.created"%' in params
-
-    @pytest.mark.asyncio
-    async def test_list_applies_limit_and_offset(self) -> None:
-        """list() should pass limit and offset as the last two params."""
-        db = _make_db(rows=[])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.list(limit=20, offset=5, active_only=False)
-
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert params[-2] == 20
-        assert params[-1] == 5
-
-    @pytest.mark.asyncio
-    async def test_list_returns_empty_on_db_failure(self) -> None:
-        """list() should return [] when DB result is not successful."""
-        db = _make_db(success=False)
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        results = await store.list()
-
-        assert results == []
-
-    @pytest.mark.asyncio
-    async def test_list_maps_rows_to_subscriptions(self) -> None:
-        """list() should deserialize DB rows into WebhookSubscription objects."""
-        sub = _sample_subscription()
-        db = _make_db(rows=[_sub_row(sub)])
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        results = await store.list(active_only=False)
-
-        assert len(results) == 1
-        assert results[0].subscription_id == sub.subscription_id
-
-
-class TestSqlWebhookSubscriptionStoreUpdate:
-    """Tests for SqlWebhookSubscriptionStore.update()."""
-
-    @pytest.mark.asyncio
-    async def test_update_executes_update_sql(self) -> None:
-        """update() should execute an UPDATE statement."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-        sub = _sample_subscription()
-
-        await store.update(sub)
-
-        sql: str = db.execute_query.call_args[0][0]
-        assert "UPDATE webhook_subscriptions" in sql
-        assert "WHERE subscription_id = ?" in sql
-
-    @pytest.mark.asyncio
-    async def test_update_passes_subscription_id_last(self) -> None:
-        """update() should place subscription_id as the last WHERE param."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-        sub = _sample_subscription(subscription_id="sub-upd")
-
-        await store.update(sub)
-
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert params[-1] == "sub-upd"
-
-
-class TestSqlWebhookSubscriptionStoreDelete:
-    """Tests for SqlWebhookSubscriptionStore.delete()."""
-
-    @pytest.mark.asyncio
-    async def test_delete_executes_delete_sql(self) -> None:
-        """delete() should execute a DELETE statement."""
-        db = _make_db()
-        store = SqlWebhookSubscriptionStore(db=db)
-
-        await store.delete("sub-del")
-
-        sql: str = db.execute_query.call_args[0][0]
-        params: list[Any] = db.execute_query.call_args[0][1]
-        assert "DELETE FROM webhook_subscriptions" in sql
-        assert "sub-del" in params
-
-
-# ---------------------------------------------------------------------------
-# SqlWebhookDeliveryStore
-# ---------------------------------------------------------------------------
 
 
 class TestSqlWebhookDeliveryStoreInitialize:
