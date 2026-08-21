@@ -23,6 +23,16 @@ T = TypeVar("T")
 class ConfigSource(ABC):
     """Abstract configuration source."""
 
+    pre_interpolated: bool = False
+    """Whether loaded values are already env-resolved.
+
+    When ``True``, :meth:`ConfigLoader._collect_sync` skips
+    ``${VAR}`` interpolation for this source's data. Values taken
+    directly from the process environment are already resolved; their
+    contents may legitimately contain ``${...}``-shaped text (shell
+    prompts, scripts) that must not be re-interpreted as placeholders.
+    """
+
     @abstractmethod
     def load_sync(self) -> dict[str, Any]:
         """Load config synchronously."""
@@ -47,7 +57,11 @@ class EnvironmentConfigSource(ConfigSource):
     Variables are lowercased, prefix-stripped, and ``__`` (or the configured
     *nested_delimiter*) is treated as nesting
     (e.g., ``LEX__DB__HOST`` → ``{"db": {"host": ...}}``).
+
+    Values are already env-resolved, so they are never re-interpolated.
     """
+
+    pre_interpolated = True
 
     def __init__(self, prefix: str = "", *, nested_delimiter: str = "__") -> None:
         self._prefix = prefix
@@ -354,13 +368,18 @@ class ConfigLoader:
         merged: dict[str, Any] = {}
         for source in self._get_sources(sources):
             try:
-                deep_merge(merged, source.load_sync())
+                data = source.load_sync()
             except (OSError, json.JSONDecodeError, ConfigurationError):
                 self._logger.exception(
                     "Failed to load config from %s",
                     source.get_name(),
                 )
-        interpolate_env_vars(merged)
+                continue
+            if not source.pre_interpolated:
+                # Authored sources may reference env vars via ${VAR};
+                # unresolved references fail fast (LEX_ERR_CFG_001).
+                interpolate_env_vars(data)
+            deep_merge(merged, data)
         return merged
 
     async def _collect(
@@ -370,13 +389,16 @@ class ConfigLoader:
         merged: dict[str, Any] = {}
         for source in self._get_sources(sources):
             try:
-                deep_merge(merged, await source.load())
+                data = await source.load()
             except (OSError, json.JSONDecodeError, ConfigurationError):
                 self._logger.exception(
                     "Failed to load config from %s",
                     source.get_name(),
                 )
-        interpolate_env_vars(merged)
+                continue
+            if not source.pre_interpolated:
+                interpolate_env_vars(data)
+            deep_merge(merged, data)
         return merged
 
     def _validate(self, schema: type[T], config: dict[str, Any]) -> T:
