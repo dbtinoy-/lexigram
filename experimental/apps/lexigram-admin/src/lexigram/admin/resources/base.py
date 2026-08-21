@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any
 import warnings
 
 from lexigram.admin.data.data_source import IDataSource
+from lexigram.admin.resources.archive_ops import ArchiveOperationsMixin
+from lexigram.admin.resources.layouts import apply_layout_config
 from lexigram.admin.resources.config import TableConfiguration
 
 if TYPE_CHECKING:
@@ -46,7 +48,7 @@ def _validate_resource_name(name: str) -> None:
         )
 
 
-class Resource:
+class Resource(ArchiveOperationsMixin):
     """Base class for Admin Resources.
 
     Resources define the configuration for list views (tables) and form views
@@ -328,150 +330,6 @@ class Resource:
         total = result.total
         return items, total
 
-    async def before_clone(self, data: dict) -> dict:
-        """Hook called before a record is cloned.
-
-        Strips the ``id`` field (so a new ID is assigned) and
-        appends `` (Copy)`` to the ``name`` field.  Override
-        to customise clone behaviour.
-
-        Args:
-            data: Record data dict fetched from the data source.
-
-        Returns:
-            Modified data dict to be passed to ``create``.
-        """
-        data.pop("id", None)
-        if "name" in data:
-            data["name"] = f"{data['name']} (Copy)"
-        return data
-
-    async def after_clone(self, record: Any) -> None:
-        """Hook called after a record has been cloned.
-
-        Args:
-            record: The newly created record returned by the data source.
-        """
-
-    async def duplicate(self, item_id: Any) -> Any:
-        """Duplicate (clone) a record by its identifier.
-
-        Fetches the existing record via the attached data source,
-        calls :meth:`before_clone` to prepare the data, creates
-        a new record, and calls :meth:`after_clone` with the result.
-
-        Args:
-            item_id: Identifier of the record to clone.
-
-        Returns:
-            The newly created record.
-
-        Raises:
-            RuntimeError: If no data source is attached.
-        """
-        if self._data_source is None:
-            raise RuntimeError("No data source attached to this resource")
-
-        original = await self._data_source.find_one(item_id)
-        data: dict = dict(original) if isinstance(original, dict) else {}
-        if not data and hasattr(original, "__dict__"):
-            data = dict(original.__dict__)
-        data = await self.before_clone(data)
-        new_record = await self._data_source.create(data)
-        await self.after_clone(new_record)
-        return new_record
-
-    async def before_restore(self, data: dict) -> dict:
-        """Hook called before a soft-deleted record is restored.
-
-        Sets ``deleted_at`` to ``None`` by default.  Override to
-        customise restore behaviour.
-
-        Args:
-            data: Record data dict fetched from the data source.
-
-        Returns:
-            Modified data dict to be passed to ``update``.
-        """
-        return {"deleted_at": None}
-
-    async def after_restore(self, record: Any) -> None:
-        """Hook called after a record has been restored.
-
-        Args:
-            record: The restored record returned by the data source.
-        """
-
-    async def restore(self, item_id: Any) -> Any:
-        """Restore a soft-deleted record.
-
-        Fetches the existing record, calls :meth:`before_restore` to
-        prepare the data, updates the record via the data source, and
-        calls :meth:`after_restore` with the result.
-
-        Args:
-            item_id: Identifier of the record to restore.
-
-        Returns:
-            The restored record.
-
-        Raises:
-            RuntimeError: If no data source is attached.
-        """
-        if self._data_source is None:
-            raise RuntimeError("No data source attached to this resource")
-
-        original = await self._data_source.find_one(item_id)
-        data: dict = dict(original) if isinstance(original, dict) else {}
-        if not data and hasattr(original, "__dict__"):
-            data = dict(original.__dict__)
-        data = await self.before_restore(data)
-        new_record = await self._data_source.update(item_id, data)
-        await self.after_restore(new_record)
-        return new_record
-
-    async def before_purge(self, data: dict) -> dict:
-        """Hook called before a record is permanently purged.
-
-        Args:
-            data: Record data dict fetched from the data source.
-
-        Returns:
-            Modified data dict (default: unchanged).
-        """
-        return data
-
-    async def after_purge(self, item_id: Any) -> None:
-        """Hook called after a record has been permanently purged.
-
-        Args:
-            item_id: Identifier of the purged record.
-        """
-
-    async def purge(self, item_id: Any) -> None:
-        """Permanently delete (purge) a record.
-
-        Fetches the existing record, calls :meth:`before_purge` to
-        prepare the data, hard-deletes via the data source, and calls
-        :meth:`after_purge` with the item id.
-
-        Args:
-            item_id: Identifier of the record to purge.
-
-        Raises:
-            RuntimeError: If no data source is attached.
-        """
-        if self._data_source is None:
-            raise RuntimeError("No data source attached to this resource")
-
-        original = await self._data_source.find_one(item_id)
-        data: dict = dict(original) if isinstance(original, dict) else {}
-        if not data and hasattr(original, "__dict__"):
-            data = dict(original.__dict__)
-        await self.before_purge(data)
-        await self._data_source.delete(item_id)
-        await self.after_purge(item_id)
-
     async def before_create(self, data: dict) -> dict:
         """Hook called before a record is created.
 
@@ -736,7 +594,7 @@ class Resource:
             for view in cfg.views_list:
                 if hasattr(view, "to_config"):
                     layout_config = view.to_config()
-                    cls._apply_layout_config(manager, layout_config)
+                    apply_layout_config(manager, layout_config)
 
             # Set default view
             if cfg.view:
@@ -768,99 +626,6 @@ class Resource:
             val = getattr(cfg, f"_{attr}", None)
 
         return val if val is not None else default
-
-    @staticmethod
-    def _apply_layout_config(manager: LayoutManager, config: Any) -> None:
-        """Apply layout configuration to manager using configurator registry."""
-        _layout_configurator_registry.configure(manager, config)
-
-
-# Registry-style configurators for layout types ---------------------------------
-from typing import Protocol
-
-
-class LayoutConfiguratorProtocol(Protocol):
-    """Protocol for layout configurators."""
-
-    def can_configure(self, layout_type: Any) -> bool: ...
-
-    def configure_layout(self, manager: LayoutManager, config: Any) -> None: ...
-
-
-class GridLayoutConfigurator:
-    def can_configure(self, layout_type: Any) -> bool:
-        from lexigram.admin.layout import LayoutType
-
-        return layout_type == LayoutType.GRID
-
-    def configure_layout(self, manager: LayoutManager, config: Any) -> None:
-        manager.add_grid_layout(  # type: ignore[attr-defined]
-            columns=config.columns,
-            card_template=config.card_template,
-            enabled=config.enabled,
-        )
-
-
-class CalendarLayoutConfigurator:
-    def can_configure(self, layout_type: Any) -> bool:
-        from lexigram.admin.layout import LayoutType
-
-        return layout_type == LayoutType.CALENDAR
-
-    def configure_layout(self, manager: LayoutManager, config: Any) -> None:
-        manager.add_calendar_layout(  # type: ignore[attr-defined]
-            date_field=config.date_field,
-            title_field=config.title_field,
-            enabled=config.enabled,
-        )
-
-
-class MapLayoutConfigurator:
-    def can_configure(self, layout_type: Any) -> bool:
-        from lexigram.admin.layout import LayoutType
-
-        return layout_type == LayoutType.MAP
-
-    def configure_layout(self, manager: LayoutManager, config: Any) -> None:
-        manager.add_map_layout(  # type: ignore[attr-defined]
-            latitude_field=config.latitude_field,
-            longitude_field=config.longitude_field,
-            marker_template=config.marker_template,
-            enabled=config.enabled,
-        )
-
-
-class ListLayoutConfigurator:
-    def can_configure(self, layout_type: Any) -> bool:
-        from lexigram.admin.layout import LayoutType
-
-        return layout_type == LayoutType.LIST
-
-    def configure_layout(self, manager: LayoutManager, config: Any) -> None:
-        manager.add_list_layout(enabled=config.enabled)  # type: ignore[attr-defined]
-
-
-class LayoutConfiguratorRegistry:
-    """Registry that selects a configurator for a given layout type."""
-
-    def __init__(self) -> None:
-        self._configurators: list[LayoutConfiguratorProtocol] = [
-            GridLayoutConfigurator(),
-            CalendarLayoutConfigurator(),
-            MapLayoutConfigurator(),
-            ListLayoutConfigurator(),
-        ]
-
-    def configure(self, manager: LayoutManager, config: Any) -> None:
-        for c in self._configurators:
-            if c.can_configure(config.type):
-                c.configure_layout(manager, config)
-                return
-        # Fallback: raise to make misconfiguration explicit
-        raise ValueError(f"No configurator for layout type: {config.type}")
-
-
-_layout_configurator_registry = LayoutConfiguratorRegistry()
 
 
 __all__ = ["Resource"]
