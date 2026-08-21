@@ -122,3 +122,48 @@ async def test_merge_propagates_feed_error_and_cancels_other_feeds() -> None:
     assert 1 in collected
     await asyncio.sleep(0.05)
     assert finished  # losing feed was cancelled, not left running
+
+
+async def test_on_end_complete_callback_fires_once_sync_and_async() -> None:
+    calls: list[str] = []
+
+    async def acomplete() -> None:
+        calls.append("a")
+
+    def scomplete() -> None:
+        calls.append("s")
+
+    first = await collect(Stream(gen()).pipe(ops.on_end(on_complete=scomplete)))
+    assert first == list(range(10))
+
+    second = await collect(Stream(gen()).pipe(ops.on_end(on_complete=acomplete)))
+    assert second == list(range(10))
+
+    assert calls == ["s", "a"]
+
+
+async def test_on_end_error_callback_fires_then_reraises() -> None:
+    seen: list[BaseException] = []
+
+    def on_error(exc: BaseException) -> None:
+        seen.append(exc)
+
+    async def failing() -> AsyncIterator[int]:
+        yield 1
+        raise ValueError("late")
+
+    collected: list[Any] = []
+
+    async def drain() -> None:
+        async for item in Stream(failing()).pipe(ops.on_end(on_error=on_error)):
+            collected.append(item)
+
+    with pytest.raises(ValueError, match="late"):
+        await drain()
+
+    assert collected == [1]
+    assert len(seen) == 1 and isinstance(seen[0], ValueError)
+
+
+async def test_on_end_without_callbacks_is_passthrough() -> None:
+    assert await collect(Stream(gen()).pipe(ops.on_end())) == list(range(10))

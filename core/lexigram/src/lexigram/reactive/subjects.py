@@ -23,6 +23,15 @@ _background_tasks: set[asyncio.Task[Any]] = set()
 _END = object()
 
 
+class _Failure:
+    """Terminal message carrying the exception that ended the stream."""
+
+    __slots__ = ("error",)
+
+    def __init__(self, error: BaseException) -> None:
+        self.error = error
+
+
 class _SubscriberIterator(Generic[T_subject]):
     """Async iterator over a subscriber channel, ending on the sentinel."""
 
@@ -38,6 +47,8 @@ class _SubscriberIterator(Generic[T_subject]):
                 item = await self._channel.receive()
             except ChannelClosedError:
                 raise StopAsyncIteration from None
+            if isinstance(item, _Failure):
+                raise item.error
             if item is _END:
                 raise StopAsyncIteration
             return item
@@ -74,6 +85,7 @@ class Subject(EventStream[T_subject]):
         self._on_overflow = on_overflow
         self._subscribers: list[BoundedChannel[T_subject]] = []
         self._completed = False
+        self._failed: BaseException | None = None
 
     def _new_subscriber(self) -> BoundedChannel[T_subject]:
         channel = BoundedChannel[T_subject](capacity=self._capacity)
@@ -108,25 +120,43 @@ class Subject(EventStream[T_subject]):
                     except ChannelFullError as exc:
                         raise BackpressureError("subscriber channel full") from exc
 
-    async def complete(self) -> None:
-        """Close all subscriber channels; remaining buffered items drain."""
+    async def _terminate(self, terminal: Any) -> None:
+        """Send one terminal message per subscriber, then close channels."""
         self._completed = True
         for channel in list(self._subscribers):
             if channel.is_closed:
                 continue
             try:
-                channel.send_nowait(cast("T_subject", _END))
+                channel.send_nowait(terminal)
             except ChannelFullError:
                 with suppress(asyncio.QueueEmpty):
                     channel.receive_nowait()
                 with suppress(ChannelFullError):
-                    channel.send_nowait(cast("T_subject", _END))
+                    channel.send_nowait(terminal)
             await channel.close()
+
+    async def complete(self) -> None:
+        """Close all subscriber channels; remaining buffered items drain."""
+        await self._terminate(cast("T_subject", _END))
+
+    async def error(self, exc: BaseException) -> None:
+        """Terminate all subscribers by raising ``exc`` at their next item.
+
+        Args:
+            exc: The exception consumers will observe.
+
+        Note:
+            Publishes after ``error()`` are ignored, mirroring ``complete()``.
+        """
+        self._failed = exc
+        await self._terminate(_Failure(exc))
 
     def __aiter__(self) -> AsyncIterator[T_subject]:
         """Iterate this subject's own subscriber channel (one per iterator)."""
         channel = self._new_subscriber()
-        if self._completed:
+        if self._failed is not None:
+            channel.send_nowait(_Failure(self._failed))
+        elif self._completed:
             channel.send_nowait(cast("T_subject", _END))
         return _SubscriberIterator(channel)
 
@@ -161,8 +191,9 @@ def share(
         A Subject fed by the source. Iterating it subscribes to the live feed.
 
     Note:
-        The pump task errors abort the subject feed silently; consumers
-        recover via ``ops.catch`` if needed.
+        If the pump task fails, subscribers observe the pump's exception at
+        their next item (recover upstream with ``ops.catch``); a cancelled
+        pump completes the subject cleanly.
     """
     subject = Subject[Any](channel_capacity=channel_capacity, on_overflow=on_overflow)
 
@@ -170,13 +201,18 @@ def share(
         async for item in source:
             await subject.publish(item)
 
-    def _schedule_complete(_task: asyncio.Task[Any]) -> None:
-        complete_task = asyncio.get_running_loop().create_task(subject.complete())
-        _background_tasks.add(complete_task)
-        complete_task.add_done_callback(_background_tasks.discard)
+    def _schedule_end(task: asyncio.Task[Any]) -> None:
+        if task.cancelled():
+            exc: BaseException | None = None
+        else:
+            exc = task.exception()
+        end = subject.complete() if exc is None else subject.error(exc)
+        end_task = asyncio.get_running_loop().create_task(end)
+        _background_tasks.add(end_task)
+        end_task.add_done_callback(_background_tasks.discard)
 
     task = asyncio.create_task(_pump())
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
-    task.add_done_callback(_schedule_complete)
+    task.add_done_callback(_schedule_end)
     return subject

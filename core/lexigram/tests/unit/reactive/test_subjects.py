@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from typing import Any
+
+import pytest
 
 from lexigram.reactive import EventStream, Stream, Subject, share
 
@@ -64,3 +67,48 @@ async def test_share_is_hot_between_publishes() -> None:
     await asyncio.sleep(0.02)  # "first" already published
     got = await collect_until(subject, 1)
     assert got == ["second"]
+
+
+async def test_subject_error_terminates_subscribers_with_exception() -> None:
+    subject: Subject[int] = Subject()
+    received: list[int] = []
+
+    async def consume() -> None:
+        try:
+            async for item in subject:
+                received.append(item)
+        except ValueError as exc:
+            received.append(-1)  # marker
+            assert str(exc) == "bad"
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.01)
+
+    await subject.publish(1)
+    await subject.publish(2)
+    await subject.error(ValueError("bad"))
+    await asyncio.wait_for(task, timeout=2)
+
+    assert received == [1, 2, -1]
+    # publish after error is a no-op, not an explosion
+    await subject.publish(3)
+    assert received == [1, 2, -1]
+
+
+async def test_share_propagates_pump_errors_to_subscribers() -> None:
+    async def failing_source() -> AsyncIterator[int]:
+        yield 1
+        raise RuntimeError("pump died")
+
+    subject = share(Stream(failing_source()))
+
+    received: list[int] = []
+
+    async def drain() -> None:
+        async for item in subject:
+            received.append(item)
+
+    with pytest.raises(RuntimeError, match="pump died"):
+        await drain()
+
+    assert received == [1]

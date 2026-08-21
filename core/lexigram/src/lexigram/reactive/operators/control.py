@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
+import inspect
 from typing import Any
 
 from lexigram.reactive.core import EventStream, Stream
@@ -31,8 +32,8 @@ def take(count: int) -> Any:
                     seen += 1
             finally:
                 if seen >= count:
-                    aiter = source.__aiter__()
-                    aclose = getattr(aiter, "aclose", None)
+                    src_iter = source.__aiter__()
+                    aclose = getattr(src_iter, "aclose", None)
                     if aclose is not None:
                         await aclose()
 
@@ -154,6 +155,51 @@ def catch(
                         yield item
                 elif default is not None:
                     yield default
+
+        return Stream(_gen())
+
+    return _op
+
+
+def on_end(
+    on_complete: Callable[[], Any] | None = None,
+    on_error: Callable[[BaseException], Any] | None = None,
+) -> Any:
+    """Invoke a callback exactly once when the stream completes or errors.
+
+    Callbacks may be sync or async. On error, ``on_error`` runs first and
+    the exception still propagates to the consumer afterwards.
+
+    Args:
+        on_complete: Called with no arguments on normal completion.
+        on_error: Called with the exception on failure.
+
+    Returns:
+        An operator that signals stream termination.
+
+    Example:
+        ```python
+        stream = source.pipe(
+            ops.on_end(on_complete=lambda: print("done")),
+        )
+        ```
+    """
+
+    def _op(source: EventStream[Any]) -> EventStream[Any]:
+        async def _gen() -> AsyncIterator[Any]:
+            try:
+                async for item in source:
+                    yield item
+            except Exception as exc:  # noqa: BLE001 — operator boundary
+                if on_error is not None:
+                    result = on_error(exc)
+                    if inspect.isawaitable(result):
+                        await result
+                raise
+            if on_complete is not None:
+                result = on_complete()
+                if inspect.isawaitable(result):
+                    await result
 
         return Stream(_gen())
 
