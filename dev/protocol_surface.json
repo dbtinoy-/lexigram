@@ -1,0 +1,2151 @@
+{
+  "lexigram.contracts.admin.action_hooks.ActionHookProtocol": [
+    "after",
+    "before",
+    "on_failure"
+  ],
+  "lexigram.contracts.admin.action_hooks.HasActionHooks": [
+    "after_hooks",
+    "before_hooks",
+    "failure_hooks"
+  ],
+  "lexigram.contracts.admin.audit_logger.AdminAuditLoggerProtocol": [
+    "log",
+    "write"
+  ],
+  "lexigram.contracts.admin.cache_provider.CacheProviderProtocol": [
+    "delete",
+    "get",
+    "invalidate_tags",
+    "set"
+  ],
+  "lexigram.contracts.admin.operations.AdminSearchableProtocol": [
+    "search"
+  ],
+  "lexigram.contracts.admin.operations.AggregatableProtocol": [
+    "aggregate"
+  ],
+  "lexigram.contracts.admin.operations.BulkOperationsProtocol": [
+    "bulk_create",
+    "bulk_delete",
+    "bulk_update"
+  ],
+  "lexigram.contracts.admin.operations.RelationLoaderProtocol": [
+    "get_relation_options",
+    "load_relations"
+  ],
+  "lexigram.contracts.admin.page_handler.ManagementPageHandler": [
+    "handle"
+  ],
+  "lexigram.contracts.admin.pii_redactor.PiiRedactorProtocol": [
+    "redact"
+  ],
+  "lexigram.contracts.admin.principal.AdminPrincipalProviderProtocol": [
+    "authenticate",
+    "create_principal",
+    "delete_principal",
+    "ensure_schema",
+    "list_principals",
+    "principal_for",
+    "sync_roles",
+    "update_principal"
+  ],
+  "lexigram.contracts.admin.protocols.AdminContributorProtocol": [
+    "contributor_id",
+    "depends_on",
+    "display_name",
+    "get_actions",
+    "get_dashboard_widgets",
+    "get_health_definitions",
+    "get_management_pages",
+    "get_navigation_items",
+    "get_resources",
+    "get_routes",
+    "get_settings_panels",
+    "group",
+    "icon",
+    "name",
+    "on_admin_boot",
+    "on_admin_shutdown",
+    "package_source",
+    "priority",
+    "render_health_check",
+    "render_widget",
+    "required_permissions",
+    "version"
+  ],
+  "lexigram.contracts.admin.protocols.AdminContributorRegistryProtocol": [
+    "get",
+    "get_all",
+    "get_by_group",
+    "register"
+  ],
+  "lexigram.contracts.admin.protocols.AdminDashboardProtocol": [
+    "execute_action",
+    "get_all_navigation",
+    "get_all_widgets",
+    "get_framework_health"
+  ],
+  "lexigram.contracts.admin.repository.AdminRepositoryProtocol": [
+    "count",
+    "create",
+    "delete",
+    "find_by_id",
+    "find_many",
+    "update"
+  ],
+  "lexigram.contracts.admin.stats.CacheStatsProtocol": [
+    "get_stats"
+  ],
+  "lexigram.contracts.admin.stats.DlqStatsProtocol": [
+    "get_stats"
+  ],
+  "lexigram.contracts.admin.stats.HealthOverviewProtocol": [
+    "run_all"
+  ],
+  "lexigram.contracts.admin.stats.MetricsReadbackProtocol": [
+    "get_all_metrics",
+    "get_metric"
+  ],
+  "lexigram.contracts.admin.stats.NamedHealthCheckProtocol": [
+    "run_check"
+  ],
+  "lexigram.contracts.admin.stats.QueueStatsProtocol": [
+    "get_stats"
+  ],
+  "lexigram.contracts.admin.stats.SessionCountProtocol": [
+    "count_active"
+  ],
+  "lexigram.contracts.admin.widget_protocols.WidgetHandlerProtocol": [
+    "get_data"
+  ],
+  "lexigram.contracts.ai.agents.AgentExecutorProtocol": [
+    "astream",
+    "run"
+  ],
+  "lexigram.contracts.ai.agents.AgentProtocol": [
+    "name",
+    "system_prompt",
+    "tools"
+  ],
+  "lexigram.contracts.ai.agents.AgentStrategyProtocol": [
+    "name",
+    "run"
+  ],
+  "lexigram.contracts.ai.agents.MemoryProtocol": [
+    "add_message",
+    "clear",
+    "get_messages"
+  ],
+  "lexigram.contracts.ai.agents.SkillComposerProtocol": [
+    "get_tools"
+  ],
+  "lexigram.contracts.ai.agents.StrategyProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.ai.agents.ToolProtocol": [
+    "description",
+    "execute",
+    "name",
+    "parameters_schema"
+  ],
+  "lexigram.contracts.ai.agents.ToolRegistryProtocol": [
+    "execute",
+    "get",
+    "list_tools",
+    "list_visible_tool_names",
+    "list_visible_tools",
+    "register",
+    "set_caller_module",
+    "set_module_graph"
+  ],
+  "lexigram.contracts.ai.callbacks.CallbackHandlerProtocol": [
+    "on_agent_action",
+    "on_agent_finish",
+    "on_chain_end",
+    "on_chain_start",
+    "on_llm_end",
+    "on_llm_error",
+    "on_llm_new_token",
+    "on_llm_start",
+    "on_retriever_end",
+    "on_retriever_start",
+    "on_tool_end",
+    "on_tool_start"
+  ],
+  "lexigram.contracts.ai.callbacks.CallbackManagerProtocol": [
+    "child",
+    "register",
+    "unregister"
+  ],
+  "lexigram.contracts.ai.feedback.FeedbackProtocol": [
+    "get_feedback_stats",
+    "submit_feedback"
+  ],
+  "lexigram.contracts.ai.feedback.FeedbackStoreProtocol": [
+    "aggregate",
+    "find_by_session",
+    "find_by_type",
+    "save"
+  ],
+  "lexigram.contracts.ai.governance.AIAuditStoreProtocol": [
+    "record"
+  ],
+  "lexigram.contracts.ai.governance.AIGovernanceProtocol": [
+    "check_budget",
+    "check_request",
+    "track_cost"
+  ],
+  "lexigram.contracts.ai.governance.CostTrackingProtocol": [
+    "get_budget",
+    "track_cost"
+  ],
+  "lexigram.contracts.ai.governance.relay_billing.RelayBillingProtocol": [
+    "pre_consume",
+    "release",
+    "settle"
+  ],
+  "lexigram.contracts.ai.governance.relay_billing.RelayPriceEstimatorProtocol": [
+    "estimate_charge"
+  ],
+  "lexigram.contracts.ai.governance.relay_billing.RelayUsageStoreProtocol": [
+    "query",
+    "release",
+    "save_reservation",
+    "settle_once"
+  ],
+  "lexigram.contracts.ai.guards.GuardPipelineProtocol": [
+    "check_input",
+    "check_output"
+  ],
+  "lexigram.contracts.ai.guards.GuardResultProtocol": [
+    "action",
+    "details",
+    "guard_name",
+    "passed",
+    "redacted_content"
+  ],
+  "lexigram.contracts.ai.guards.InputGuardProtocol": [
+    "check",
+    "name"
+  ],
+  "lexigram.contracts.ai.guards.OutputGuardProtocol": [
+    "check",
+    "name"
+  ],
+  "lexigram.contracts.ai.index.IndexProtocol": [
+    "as_retriever",
+    "delete",
+    "insert"
+  ],
+  "lexigram.contracts.ai.index.QueryEngineProtocol": [
+    "astream_query",
+    "query"
+  ],
+  "lexigram.contracts.ai.llm.ChatMessageProtocol": [
+    "content",
+    "role"
+  ],
+  "lexigram.contracts.ai.llm.CompletionProtocol": [
+    "content",
+    "model",
+    "thinking",
+    "usage"
+  ],
+  "lexigram.contracts.ai.llm.CostEstimatorProtocol": [
+    "estimate_cost"
+  ],
+  "lexigram.contracts.ai.llm.EmbeddingClientProtocol": [
+    "close",
+    "embed",
+    "health_check"
+  ],
+  "lexigram.contracts.ai.llm.LLMClientProtocol": [
+    "close",
+    "complete",
+    "health_check",
+    "stream_chat"
+  ],
+  "lexigram.contracts.ai.llm.PromptAssemblerProtocol": [
+    "assemble"
+  ],
+  "lexigram.contracts.ai.llm.PromptOptimizerProtocol": [
+    "optimize"
+  ],
+  "lexigram.contracts.ai.llm.PromptRegistryProtocol": [
+    "get",
+    "list_names",
+    "register"
+  ],
+  "lexigram.contracts.ai.llm.PromptRendererProtocol": [
+    "render"
+  ],
+  "lexigram.contracts.ai.llm.PromptTemplateProtocol": [
+    "get_variables",
+    "name",
+    "render"
+  ],
+  "lexigram.contracts.ai.llm.SemanticCacheProtocol": [
+    "invalidate",
+    "lookup",
+    "store"
+  ],
+  "lexigram.contracts.ai.llm.StructuredExtractorProtocol": [
+    "extract"
+  ],
+  "lexigram.contracts.ai.llm.TokenCounterProtocol": [
+    "count",
+    "count_messages",
+    "model"
+  ],
+  "lexigram.contracts.ai.loaders.DocumentLoaderProtocol": [
+    "load"
+  ],
+  "lexigram.contracts.ai.loaders.LoaderRegistryProtocol": [
+    "get",
+    "list",
+    "register"
+  ],
+  "lexigram.contracts.ai.memory.EpisodicMemoryProtocol": [
+    "forget",
+    "health_check",
+    "recall",
+    "record"
+  ],
+  "lexigram.contracts.ai.memory.MemoryConsolidatorProtocol": [
+    "consolidate",
+    "health_check"
+  ],
+  "lexigram.contracts.ai.memory.MemoryProtocol": [
+    "add_message",
+    "clear",
+    "get_messages"
+  ],
+  "lexigram.contracts.ai.memory.MemoryStoreProtocol": [
+    "clear",
+    "delete",
+    "get_recent",
+    "health_check",
+    "retrieve",
+    "store"
+  ],
+  "lexigram.contracts.ai.memory.SemanticMemoryProtocol": [
+    "get_entity_facts",
+    "health_check",
+    "query_facts",
+    "store_fact",
+    "update_fact"
+  ],
+  "lexigram.contracts.ai.memory.WorkingMemoryProtocol": [
+    "add",
+    "assemble",
+    "flush",
+    "get_context_entries",
+    "health_check"
+  ],
+  "lexigram.contracts.ai.protocols.AIProviderProtocol": [
+    "chat"
+  ],
+  "lexigram.contracts.ai.protocols.AISubsystemProtocol": [
+    "health_check",
+    "initialize"
+  ],
+  "lexigram.contracts.ai.providers.FallbackChainProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.ai.providers.ModelSelectorProtocol": [
+    "select"
+  ],
+  "lexigram.contracts.ai.providers.ProviderRegistryProtocol": [
+    "get_client",
+    "get_model_info",
+    "list_models",
+    "list_providers",
+    "register_provider"
+  ],
+  "lexigram.contracts.ai.rag.ChunkProtocol": [
+    "metadata",
+    "score",
+    "text"
+  ],
+  "lexigram.contracts.ai.rag.DocumentLoaderProtocol": [
+    "load"
+  ],
+  "lexigram.contracts.ai.rag.PromptCompressorProtocol": [
+    "compress"
+  ],
+  "lexigram.contracts.ai.rag.RAGEvaluatorProtocol": [
+    "evaluate"
+  ],
+  "lexigram.contracts.ai.rag.RAGPipelineProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.ai.rag.RerankingStrategyProtocol": [
+    "rerank"
+  ],
+  "lexigram.contracts.ai.rag.RetrievalStrategyProtocol": [
+    "retrieve"
+  ],
+  "lexigram.contracts.ai.rag.SynthesizerProtocol": [
+    "synthesize"
+  ],
+  "lexigram.contracts.ai.relay.auth.RelayAuthVerifierProtocol": [
+    "authenticate"
+  ],
+  "lexigram.contracts.ai.relay.context.MediaResolverProtocol": [
+    "resolve"
+  ],
+  "lexigram.contracts.ai.relay.gateway.RelayGatewayProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.ai.relay.ledger.RelayLedgerServiceProtocol": [
+    "checkin",
+    "credit",
+    "list_topups",
+    "settle_topup"
+  ],
+  "lexigram.contracts.ai.relay.logs.RelayRequestLogStoreProtocol": [
+    "append"
+  ],
+  "lexigram.contracts.ai.relay.operations.RelayOperationsControlProtocol": [
+    "force_cancel_stream",
+    "policy_snapshot",
+    "set_channel_state",
+    "update_policy"
+  ],
+  "lexigram.contracts.ai.relay.operations.RelayOperationsProtocol": [
+    "active_streams",
+    "channel_health",
+    "policy_snapshot",
+    "registry_diagnostics",
+    "route_metrics"
+  ],
+  "lexigram.contracts.ai.relay.operations.RelayPolicyStoreProtocol": [
+    "load",
+    "save"
+  ],
+  "lexigram.contracts.ai.relay.protocols.RelayConverterProtocol": [
+    "convert_request",
+    "convert_response",
+    "convert_stream_chunk",
+    "finalize",
+    "new_stream_session"
+  ],
+  "lexigram.contracts.ai.relay.protocols.RelayMapperProtocol": [
+    "delta_to_stream",
+    "ir_to_request",
+    "ir_to_response",
+    "request_to_ir",
+    "response_to_ir",
+    "stream_to_delta"
+  ],
+  "lexigram.contracts.ai.relay.protocols.RelayRegistryProtocol": [
+    "converter_routes",
+    "converter_version",
+    "mapper",
+    "mapper_ids",
+    "route_quality"
+  ],
+  "lexigram.contracts.ai.relay.protocols.RelayStreamSessionProtocol": [
+    "accept",
+    "finalize",
+    "snapshot"
+  ],
+  "lexigram.contracts.ai.relay.ratelimit.RelayRateLimitCounterProtocol": [
+    "take"
+  ],
+  "lexigram.contracts.ai.relay.store.RelayChannelStoreProtocol": [
+    "delete",
+    "list_channels",
+    "upsert"
+  ],
+  "lexigram.contracts.ai.relay.transport.RelayUpstreamProtocol": [
+    "cancel",
+    "request",
+    "stream"
+  ],
+  "lexigram.contracts.ai.relay.usage.RelayUsageServiceProtocol": [
+    "daily_usage",
+    "list_requests",
+    "model_rank"
+  ],
+  "lexigram.contracts.ai.retrievers.NodePostprocessorProtocol": [
+    "postprocess"
+  ],
+  "lexigram.contracts.ai.retrievers.RetrieverProtocol": [
+    "retrieve"
+  ],
+  "lexigram.contracts.ai.routing.InferenceLoggerProtocol": [
+    "get_recent",
+    "log"
+  ],
+  "lexigram.contracts.ai.routing.LLMRouterProtocol": [
+    "health_probe",
+    "route"
+  ],
+  "lexigram.contracts.ai.routing.QuotaBackendProtocol": [
+    "get_all_usage",
+    "get_usage",
+    "increment",
+    "is_exhausted",
+    "mark_exhausted",
+    "record_error"
+  ],
+  "lexigram.contracts.ai.routing.RoutingStrategyProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.ai.runnable.RunnableProtocol": [
+    "ainvoke",
+    "invoke"
+  ],
+  "lexigram.contracts.ai.session.ContextPrunerProtocol": [
+    "prune"
+  ],
+  "lexigram.contracts.ai.session.SessionContextProtocol": [
+    "get_or_create",
+    "session_id",
+    "state"
+  ],
+  "lexigram.contracts.ai.session.SessionManagerProtocol": [
+    "add_turn",
+    "checkpoint",
+    "close",
+    "create",
+    "get_state",
+    "restore",
+    "resume",
+    "suspend"
+  ],
+  "lexigram.contracts.ai.session.SessionStoreProtocol": [
+    "delete",
+    "list_checkpoints",
+    "list_sessions",
+    "load",
+    "load_checkpoint",
+    "save",
+    "save_checkpoint"
+  ],
+  "lexigram.contracts.ai.skills.SkillExecutorProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.ai.skills.SkillProtocol": [
+    "definition",
+    "execute",
+    "validate"
+  ],
+  "lexigram.contracts.ai.skills.SkillRegistryProtocol": [
+    "get",
+    "get_schemas",
+    "list_skills",
+    "register"
+  ],
+  "lexigram.contracts.ai.skills.ToolkitProtocol": [
+    "description",
+    "name",
+    "tools"
+  ],
+  "lexigram.contracts.ai.vector.BatchProcessorProtocol": [
+    "process_batch"
+  ],
+  "lexigram.contracts.ai.vector.ChunkerProtocol": [
+    "chunk"
+  ],
+  "lexigram.contracts.ai.vector.DocumentProtocol": [
+    "id",
+    "metadata",
+    "text"
+  ],
+  "lexigram.contracts.ai.vector.DocumentVectorStoreProtocol": [
+    "add",
+    "batch_upsert",
+    "delete",
+    "health_check",
+    "search",
+    "search_text"
+  ],
+  "lexigram.contracts.ai.vector.SearchResultProtocol": [
+    "document",
+    "metadata",
+    "score",
+    "text"
+  ],
+  "lexigram.contracts.ai.workflow.AIWorkflowNodeProtocol": [
+    "execute",
+    "name"
+  ],
+  "lexigram.contracts.ai.workflow.WorkflowProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.audit.protocols.AuditLoggerProtocol": [
+    "log",
+    "query"
+  ],
+  "lexigram.contracts.audit.protocols.AuditStoreProtocol": [
+    "append",
+    "count",
+    "delete_expired",
+    "query"
+  ],
+  "lexigram.contracts.audit.protocols.AuditVerifierProtocol": [
+    "verify_entry",
+    "verify_recent"
+  ],
+  "lexigram.contracts.audit.protocols.RetentionPolicyProtocol": [
+    "evaluate",
+    "get_expiry"
+  ],
+  "lexigram.contracts.auth.blacklist.TokenBlacklistProtocol": [
+    "blacklist",
+    "is_blacklisted"
+  ],
+  "lexigram.contracts.auth.guard.AuthenticatorProtocol": [
+    "authenticate"
+  ],
+  "lexigram.contracts.auth.guard.AuthorizerProtocol": [
+    "authorize",
+    "can",
+    "can_create",
+    "can_delete",
+    "can_execute_action",
+    "can_update",
+    "can_view",
+    "check_access",
+    "register_role",
+    "remove_role",
+    "set_roles",
+    "sync_from_db"
+  ],
+  "lexigram.contracts.auth.identity.IdentityResolverProtocol": [
+    "resolve_user_id",
+    "resolve_user_id_sync"
+  ],
+  "lexigram.contracts.auth.models.UserIdentityProtocol": [
+    "email",
+    "user_id"
+  ],
+  "lexigram.contracts.auth.policy.PolicyStoreProtocol": [
+    "delete_policy",
+    "get_policy",
+    "load_policies",
+    "save_policy"
+  ],
+  "lexigram.contracts.auth.protocols.AuthProviderProtocol": [
+    "get_user",
+    "has_any_permission",
+    "has_any_role",
+    "verify_token"
+  ],
+  "lexigram.contracts.auth.protocols.LoginAttemptTrackerProtocol": [
+    "clear",
+    "is_locked",
+    "record_failure"
+  ],
+  "lexigram.contracts.auth.protocols.MFAManagerProtocol": [
+    "enroll",
+    "get_mfa",
+    "list_methods",
+    "revoke",
+    "verify"
+  ],
+  "lexigram.contracts.auth.protocols.PasswordHasherProtocol": [
+    "hash",
+    "needs_rehash",
+    "rehash_if_needed",
+    "verify"
+  ],
+  "lexigram.contracts.auth.protocols.PasswordPolicyProtocol": [
+    "is_valid",
+    "validate"
+  ],
+  "lexigram.contracts.auth.repositories.APIKeyRepositoryProtocol": [
+    "find_by_prefix",
+    "find_by_user",
+    "insert",
+    "revoke",
+    "update_last_used"
+  ],
+  "lexigram.contracts.auth.repositories.SessionRepositoryProtocol": [
+    "find_active",
+    "find_active_by_user",
+    "insert",
+    "revoke",
+    "revoke_all",
+    "update_activity"
+  ],
+  "lexigram.contracts.auth.store.UserReaderProtocol": [
+    "count_users",
+    "get_by_email",
+    "get_by_id",
+    "get_by_username",
+    "list_users"
+  ],
+  "lexigram.contracts.auth.store.UserStoreProtocol": [],
+  "lexigram.contracts.auth.store.UserWriterProtocol": [
+    "create",
+    "delete",
+    "update"
+  ],
+  "lexigram.contracts.auth.token.TokenManagerProtocol": [
+    "create_token",
+    "refresh_token",
+    "verify_token"
+  ],
+  "lexigram.contracts.auth.user.AuthenticatedUserProtocol": [
+    "email",
+    "has_permission",
+    "has_role",
+    "is_active",
+    "is_verified",
+    "name",
+    "permissions",
+    "roles",
+    "user_id"
+  ],
+  "lexigram.contracts.auth.user.UserProtocol": [
+    "email",
+    "is_active",
+    "user_id"
+  ],
+  "lexigram.contracts.cli.generators.GeneratorProtocol": [
+    "generate"
+  ],
+  "lexigram.contracts.cli.protocols.CliContributorProtocol": [
+    "contributor_id",
+    "get_commands",
+    "get_doctor_checks",
+    "get_generators",
+    "get_health_checks",
+    "get_hooks",
+    "get_shell_context"
+  ],
+  "lexigram.contracts.codegen.protocols.ScaffoldGeneratorProtocol": [
+    "generate"
+  ],
+  "lexigram.contracts.codegen.protocols.TemplateGeneratorProtocol": [
+    "generate"
+  ],
+  "lexigram.contracts.core.clock.ClockProtocol": [
+    "monotonic",
+    "now",
+    "time",
+    "timestamp"
+  ],
+  "lexigram.contracts.core.concurrency_protocols.ChannelProtocol": [
+    "close",
+    "closed",
+    "receive",
+    "send"
+  ],
+  "lexigram.contracts.core.concurrency_protocols.DispatcherProtocol": [
+    "active_task_count",
+    "is_draining",
+    "run",
+    "run_many",
+    "shutdown"
+  ],
+  "lexigram.contracts.core.concurrency_protocols.ParallelProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.core.concurrency_protocols.TaskManagerProtocol": [
+    "create_background_task",
+    "create_critical_task",
+    "get_task_counts",
+    "shutdown_gracefully"
+  ],
+  "lexigram.contracts.core.config.ConfigProtocol": [
+    "environment",
+    "get",
+    "get_section",
+    "has_section",
+    "is_debug",
+    "is_development",
+    "is_production",
+    "is_staging",
+    "is_testing"
+  ],
+  "lexigram.contracts.core.context.ContextProtocol": [
+    "get",
+    "get_all",
+    "register_key",
+    "reset",
+    "set"
+  ],
+  "lexigram.contracts.core.context.RequestContextProtocol": [],
+  "lexigram.contracts.core.di.BootContainerProtocol": [],
+  "lexigram.contracts.core.di.ContainerProtocol": [],
+  "lexigram.contracts.core.di.ContainerRegistrarProtocol": [
+    "bind",
+    "has",
+    "scoped",
+    "singleton",
+    "transient"
+  ],
+  "lexigram.contracts.core.di.ContainerResolverProtocol": [
+    "bind",
+    "call",
+    "create_scope",
+    "has",
+    "resolve",
+    "resolve_all",
+    "resolve_optional"
+  ],
+  "lexigram.contracts.core.di.ContainerValidationProtocol": [
+    "validate",
+    "validate_no_orphans"
+  ],
+  "lexigram.contracts.core.disposable.AsyncDisposableProtocol": [
+    "dispose"
+  ],
+  "lexigram.contracts.core.health.HealthCheckAggregatorProtocol": [
+    "register",
+    "run_all",
+    "run_liveness",
+    "run_readiness",
+    "run_startup"
+  ],
+  "lexigram.contracts.core.health.HealthCheckProtocol": [
+    "health_check"
+  ],
+  "lexigram.contracts.core.hooks.HookRegistryProtocol": [
+    "apply_filter",
+    "call_action",
+    "clear",
+    "has_action",
+    "has_filter",
+    "register_action",
+    "register_filter",
+    "unregister_action",
+    "unregister_filter"
+  ],
+  "lexigram.contracts.core.idempotency.IdempotencyMiddlewareProtocol": [
+    "process",
+    "ttl"
+  ],
+  "lexigram.contracts.core.idempotency.IdempotencyStoreProtocol": [
+    "acquire",
+    "delete",
+    "get",
+    "get_record",
+    "set"
+  ],
+  "lexigram.contracts.core.identity.IdGeneratorProtocol": [
+    "generate",
+    "generate_for",
+    "strategy"
+  ],
+  "lexigram.contracts.core.invocation.InvocationContextProtocol": [],
+  "lexigram.contracts.core.invocation.InvocationHandlerProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.core.invocation.InvocationMiddlewareProtocol": [],
+  "lexigram.contracts.core.invocation.InvocationPipelineProtocol": [
+    "add",
+    "execute"
+  ],
+  "lexigram.contracts.core.lifecycle.GracefulShutdownProtocol": [
+    "shutdown"
+  ],
+  "lexigram.contracts.core.lifecycle.OnApplicationBootstrapProtocol": [
+    "on_application_bootstrap"
+  ],
+  "lexigram.contracts.core.lifecycle.OnApplicationShutdownProtocol": [
+    "on_application_shutdown"
+  ],
+  "lexigram.contracts.core.lifecycle.OnBeforeShutdownProtocol": [
+    "on_before_shutdown"
+  ],
+  "lexigram.contracts.core.lifecycle.OnConfigReloadProtocol": [
+    "on_config_reload"
+  ],
+  "lexigram.contracts.core.lifecycle.OnModuleInitProtocol": [
+    "on_module_init"
+  ],
+  "lexigram.contracts.core.lock.AsyncLockProtocol": [
+    "acquire",
+    "locked",
+    "release"
+  ],
+  "lexigram.contracts.core.lock.DistributedLockProtocol": [
+    "acquire",
+    "acquire_blocking",
+    "extend",
+    "is_held",
+    "release"
+  ],
+  "lexigram.contracts.core.lock.LockManagerProtocol": [
+    "acquire"
+  ],
+  "lexigram.contracts.core.logging.LoggerFactoryProtocol": [
+    "get_logger"
+  ],
+  "lexigram.contracts.core.logging.LoggerProtocol": [
+    "bind",
+    "critical",
+    "debug",
+    "error",
+    "exception",
+    "info",
+    "unbind",
+    "warning"
+  ],
+  "lexigram.contracts.core.logging.RedactorProtocol": [
+    "redact_dict",
+    "redact_value"
+  ],
+  "lexigram.contracts.core.middleware.ExceptionFilterChainProtocol": [
+    "add",
+    "handle"
+  ],
+  "lexigram.contracts.core.middleware.MiddlewarePipelineProtocol": [
+    "add",
+    "execute"
+  ],
+  "lexigram.contracts.core.middleware.MiddlewareProtocol": [],
+  "lexigram.contracts.core.module.CompiledModuleGraphProtocol": [
+    "get_module_names",
+    "global_exports",
+    "is_visible",
+    "provider_order",
+    "warnings"
+  ],
+  "lexigram.contracts.core.module.DynamicModuleProtocol": [
+    "controllers",
+    "exports",
+    "imports",
+    "is_global",
+    "module",
+    "providers",
+    "resolved_name"
+  ],
+  "lexigram.contracts.core.module.ModuleCompilerProtocol": [
+    "compile"
+  ],
+  "lexigram.contracts.core.module.ModuleMetadataProtocol": [
+    "controllers",
+    "exports",
+    "imports",
+    "is_global",
+    "name",
+    "providers"
+  ],
+  "lexigram.contracts.core.module.ModuleProtocol": [],
+  "lexigram.contracts.core.module.ModuleRegistryProtocol": [
+    "get_module_services",
+    "get_owner",
+    "register_ownership",
+    "validate_exports"
+  ],
+  "lexigram.contracts.core.provider.ProviderProtocol": [
+    "boot",
+    "dependencies",
+    "name",
+    "on_error",
+    "priority",
+    "register",
+    "shutdown"
+  ],
+  "lexigram.contracts.core.registry.BackendRegistryProtocol": [
+    "register_backend",
+    "select"
+  ],
+  "lexigram.contracts.core.registry.RegistryProtocol": [
+    "all_keys",
+    "clear",
+    "get",
+    "has",
+    "items",
+    "keys",
+    "register",
+    "resolve",
+    "unregister",
+    "values"
+  ],
+  "lexigram.contracts.core.registry.StrategyRegistryProtocol": [
+    "instantiate",
+    "register_strategy"
+  ],
+  "lexigram.contracts.core.serialization.AsyncStringSerializerProtocol": [
+    "deserialize",
+    "serialize"
+  ],
+  "lexigram.contracts.core.serialization.JsonSerializerProtocol": [
+    "dumps",
+    "loads"
+  ],
+  "lexigram.contracts.core.serialization.SerializerProtocol": [
+    "deserialize",
+    "serialize"
+  ],
+  "lexigram.contracts.core.stores.LockStoreProtocol": [
+    "acquire",
+    "extend",
+    "release"
+  ],
+  "lexigram.contracts.data.aggregatable.AggregatableProtocol": [
+    "aggregate"
+  ],
+  "lexigram.contracts.data.bulk_operations.BulkOperationsProtocol": [
+    "bulk_create",
+    "bulk_delete",
+    "bulk_update"
+  ],
+  "lexigram.contracts.data.data_source.DataSourceProtocol": [
+    "bulk_delete",
+    "create",
+    "delete",
+    "find_many",
+    "find_one",
+    "get_data",
+    "get_record_count",
+    "update"
+  ],
+  "lexigram.contracts.data.graph.protocols.GraphProtocol": [
+    "bulk_create_edges",
+    "bulk_create_nodes",
+    "count_edges",
+    "count_nodes",
+    "create_constraint",
+    "create_edge",
+    "create_index",
+    "create_node",
+    "delete_edge",
+    "delete_node",
+    "drop_constraint",
+    "drop_index",
+    "find_nodes",
+    "get_edge",
+    "get_edge_types",
+    "get_edges",
+    "get_labels",
+    "get_node",
+    "neighbors",
+    "query",
+    "shortest_path",
+    "traverse",
+    "update_edge",
+    "update_node"
+  ],
+  "lexigram.contracts.data.graph.protocols.GraphStoreProtocol": [
+    "connect",
+    "create_graph",
+    "delete_graph",
+    "disconnect",
+    "get_graph",
+    "health_check",
+    "list_graphs"
+  ],
+  "lexigram.contracts.data.nosql.nosql.CollectionProtocol": [
+    "aggregate",
+    "bulk_write",
+    "count_documents",
+    "create_index",
+    "delete_many",
+    "delete_one",
+    "distinct",
+    "find",
+    "find_one",
+    "find_one_and_update",
+    "insert_many",
+    "insert_one",
+    "list_indexes",
+    "name",
+    "replace_one",
+    "update_many",
+    "update_one"
+  ],
+  "lexigram.contracts.data.nosql.nosql.DocumentStoreProtocol": [
+    "collection",
+    "connect",
+    "disconnect",
+    "drop_collection",
+    "health_check",
+    "is_connected",
+    "list_collections",
+    "session"
+  ],
+  "lexigram.contracts.data.nosql.nosql_repository.DocumentRepositoryProtocol": [
+    "count",
+    "delete",
+    "delete_many",
+    "find_by_filter",
+    "find_by_spec",
+    "get",
+    "list",
+    "save",
+    "save_many"
+  ],
+  "lexigram.contracts.data.outbox.OutboxStoreProtocol": [
+    "append_batch",
+    "fetch_pending",
+    "mark_delivered",
+    "mark_failed"
+  ],
+  "lexigram.contracts.data.protocols.CursorCodecProtocol": [
+    "decode",
+    "encode"
+  ],
+  "lexigram.contracts.data.protocols.FilterCompilerProtocol": [
+    "compile"
+  ],
+  "lexigram.contracts.data.protocols.PaginatorProtocol": [
+    "paginate"
+  ],
+  "lexigram.contracts.data.protocols.QueryFilterProtocol": [],
+  "lexigram.contracts.data.relation_loader.RelationLoaderProtocol": [
+    "get_relation_options",
+    "load_relations"
+  ],
+  "lexigram.contracts.data.repository.ReadOnlyRepositoryProtocol": [
+    "count",
+    "find_by_spec",
+    "get",
+    "list"
+  ],
+  "lexigram.contracts.data.repository.RepositoryProtocol": [
+    "delete",
+    "delete_many",
+    "save",
+    "save_many"
+  ],
+  "lexigram.contracts.data.searchable.SearchableProtocol": [
+    "search"
+  ],
+  "lexigram.contracts.data.sql.append_log.AppendLogProtocol": [
+    "append",
+    "count",
+    "delete_stream",
+    "get_stream_version",
+    "read",
+    "read_all"
+  ],
+  "lexigram.contracts.data.sql.append_log.AppendLogSnapshotStore": [
+    "delete_snapshots",
+    "get_snapshot",
+    "save_snapshot"
+  ],
+  "lexigram.contracts.data.sql.database.ConnectionPoolProtocol": [
+    "connection_timeout",
+    "get_connection",
+    "get_pool_stats",
+    "get_query_stats",
+    "health_check",
+    "initialize",
+    "max_connections",
+    "shutdown",
+    "validate_connections",
+    "warm"
+  ],
+  "lexigram.contracts.data.sql.database.ConnectionProtocol": [
+    "close",
+    "execute",
+    "fetch",
+    "fetchrow"
+  ],
+  "lexigram.contracts.data.sql.database.CrudOperationsProtocol": [
+    "execute_delete",
+    "execute_insert",
+    "execute_query",
+    "execute_update"
+  ],
+  "lexigram.contracts.data.sql.database.DatabaseMetricsProtocol": [
+    "get_pool_stats"
+  ],
+  "lexigram.contracts.data.sql.database.DatabaseProviderProtocol": [
+    "acquire",
+    "begin_transaction",
+    "commit_transaction",
+    "connect",
+    "disconnect",
+    "execute",
+    "execute_delete",
+    "execute_insert",
+    "execute_query",
+    "execute_update",
+    "get_primary_pool",
+    "get_scoped_connection",
+    "health_check",
+    "is_connected",
+    "release",
+    "rollback_transaction",
+    "scoped_context",
+    "table_exists",
+    "transaction"
+  ],
+  "lexigram.contracts.data.sql.database.HealthMonitorProtocol": [
+    "health_check"
+  ],
+  "lexigram.contracts.data.sql.database.MigrationManagerProtocol": [
+    "apply_migration",
+    "get_applied_migrations",
+    "get_pending_migrations",
+    "initialize_migration_table",
+    "rollback_migration"
+  ],
+  "lexigram.contracts.data.sql.database.SchemaManagerProtocol": [
+    "table_exists"
+  ],
+  "lexigram.contracts.data.sql.database.TransactionManagerProtocol": [
+    "begin_transaction",
+    "commit_transaction",
+    "rollback_transaction"
+  ],
+  "lexigram.contracts.data.sql.mapper.DataMapperProtocol": [
+    "to_source",
+    "to_source_batch"
+  ],
+  "lexigram.contracts.data.sql.mapper.ReadOnlyMapperProtocol": [
+    "to_target",
+    "to_target_batch"
+  ],
+  "lexigram.contracts.data.sql.migrations.MigrationRunnerProtocol": [
+    "get_current_version",
+    "get_pending_migrations",
+    "rollback",
+    "run_migrations"
+  ],
+  "lexigram.contracts.data.sql.query_log.QueryLoggerProtocol": [
+    "get_query_stats",
+    "get_recent_queries",
+    "get_slow_queries",
+    "log_query"
+  ],
+  "lexigram.contracts.data.sql.unit_of_work.UnitOfWorkProtocol": [
+    "collect_events",
+    "commit",
+    "register_deleted",
+    "register_dirty",
+    "register_event",
+    "register_new",
+    "rollback"
+  ],
+  "lexigram.contracts.data.timeseries.protocols.TimeSeriesStoreProtocol": [
+    "connect",
+    "disconnect",
+    "health_check",
+    "insert",
+    "is_connected",
+    "query"
+  ],
+  "lexigram.contracts.data.vector.protocols.VectorCollectionProtocol": [
+    "add_texts",
+    "count",
+    "delete",
+    "delete_by_filter",
+    "dimension",
+    "distance_metric",
+    "get",
+    "name",
+    "search",
+    "update_metadata",
+    "upsert"
+  ],
+  "lexigram.contracts.data.vector.protocols.VectorStoreProtocol": [
+    "add_texts",
+    "collection_exists",
+    "connect",
+    "create_collection",
+    "delete_collection",
+    "disconnect",
+    "get_collection",
+    "health_check",
+    "list_collections"
+  ],
+  "lexigram.contracts.data.vector.tenancy.TenantCollectionResolver": [
+    "resolve"
+  ],
+  "lexigram.contracts.domain.aggregates.AggregateRootProtocol": [
+    "add_event",
+    "clear_events",
+    "collect_events",
+    "has_uncommitted_events",
+    "pull_events"
+  ],
+  "lexigram.contracts.domain.base.DomainModelProtocol": [
+    "model_copy",
+    "model_dump",
+    "model_dump_json",
+    "model_json_schema",
+    "model_validate",
+    "model_validate_json"
+  ],
+  "lexigram.contracts.domain.pagination.CursorPageProtocol": [
+    "has_more",
+    "items",
+    "next_cursor"
+  ],
+  "lexigram.contracts.domain.pagination.OffsetPageProtocol": [
+    "limit",
+    "offset"
+  ],
+  "lexigram.contracts.domain.services.DomainServiceProtocol": [],
+  "lexigram.contracts.domain.services.PolicyProtocol": [
+    "evaluate"
+  ],
+  "lexigram.contracts.domain.specification.SpecificationProtocol": [
+    "is_satisfied_by"
+  ],
+  "lexigram.contracts.events.messages.MessageSerializerProtocol": [
+    "deserialize",
+    "deserialize_event",
+    "serialize",
+    "serialize_event"
+  ],
+  "lexigram.contracts.events.outbox.OutboxBackendProtocol": [
+    "get_pending",
+    "mark_failed",
+    "mark_published",
+    "store_event"
+  ],
+  "lexigram.contracts.events.outbox.OutboxEntryProtocol": [
+    "entry_id",
+    "error",
+    "event",
+    "status"
+  ],
+  "lexigram.contracts.events.outbox.OutboxRelayProtocol": [
+    "process_pending"
+  ],
+  "lexigram.contracts.events.protocols.AggregateFactoryProtocol": [
+    "create"
+  ],
+  "lexigram.contracts.events.protocols.CommandBusProtocol": [
+    "dispatch"
+  ],
+  "lexigram.contracts.events.protocols.CommandHandlerProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.events.protocols.DomainEventPublisherProtocol": [
+    "publish"
+  ],
+  "lexigram.contracts.events.protocols.EventBusProtocol": [
+    "publish",
+    "subscribe",
+    "unsubscribe"
+  ],
+  "lexigram.contracts.events.protocols.EventHandlerProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.events.protocols.EventMiddlewareProtocol": [],
+  "lexigram.contracts.events.protocols.EventSourcedReadRepositoryProtocol": [
+    "exists",
+    "get",
+    "get_all"
+  ],
+  "lexigram.contracts.events.protocols.EventSourcedRepositoryProtocol": [
+    "save"
+  ],
+  "lexigram.contracts.events.protocols.EventStoreProtocol": [
+    "append",
+    "read",
+    "read_all"
+  ],
+  "lexigram.contracts.events.protocols.IntegrationEventProtocol": [],
+  "lexigram.contracts.events.protocols.MultiEventHandlerProtocol": [
+    "handle",
+    "handles"
+  ],
+  "lexigram.contracts.events.protocols.ProjectionProtocol": [
+    "apply"
+  ],
+  "lexigram.contracts.events.protocols.PubSubProtocol": [
+    "publish",
+    "subscribe",
+    "unsubscribe"
+  ],
+  "lexigram.contracts.events.protocols.QueryBusProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.events.protocols.QueryHandlerProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.events.protocols.SnapshotStoreProtocol": [
+    "load",
+    "save"
+  ],
+  "lexigram.contracts.events.protocols.WebhookSignatureVerifierProtocol": [
+    "compute_signature",
+    "verify"
+  ],
+  "lexigram.contracts.feature_flags.protocols.FlagManagerProtocol": [
+    "add_provider",
+    "evaluate",
+    "get_all_flags",
+    "get_value",
+    "is_enabled"
+  ],
+  "lexigram.contracts.feature_flags.protocols.FlagProviderProtocol": [
+    "get_flag",
+    "get_flag_sync",
+    "get_variant",
+    "get_variant_sync"
+  ],
+  "lexigram.contracts.feature_flags.protocols.MutableFlagProviderProtocol": [
+    "set_flag",
+    "set_flag_sync",
+    "set_variant",
+    "set_variant_sync"
+  ],
+  "lexigram.contracts.graphql.protocols.DataLoaderProtocol": [
+    "load",
+    "load_many",
+    "prime"
+  ],
+  "lexigram.contracts.graphql.protocols.DirectiveHandlerProtocol": [
+    "apply_directive"
+  ],
+  "lexigram.contracts.graphql.protocols.EntityResolverProtocol": [
+    "resolve_reference"
+  ],
+  "lexigram.contracts.graphql.protocols.ErrorFormatterProtocol": [
+    "format_error"
+  ],
+  "lexigram.contracts.graphql.protocols.GraphQLControllerProtocol": [],
+  "lexigram.contracts.graphql.protocols.GraphQLExecutorProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.graphql.protocols.GraphQLPrincipalResolverProtocol": [
+    "resolve_principal"
+  ],
+  "lexigram.contracts.graphql.protocols.GraphQLRequestProtocol": [
+    "json"
+  ],
+  "lexigram.contracts.graphql.protocols.IntrospectionHandlerProtocol": [
+    "introspect"
+  ],
+  "lexigram.contracts.graphql.protocols.MutationHandlerProtocol": [
+    "mutate"
+  ],
+  "lexigram.contracts.graphql.protocols.ResolverProtocol": [
+    "resolve"
+  ],
+  "lexigram.contracts.graphql.protocols.SchemaBuilderProtocol": [
+    "add_dataloader",
+    "add_extension",
+    "add_type",
+    "build",
+    "mutation",
+    "query",
+    "subscription"
+  ],
+  "lexigram.contracts.graphql.protocols.SubscriptionAuthHandlerProtocol": [
+    "authorize"
+  ],
+  "lexigram.contracts.graphql.protocols.SubscriptionHandlerProtocol": [
+    "subscribe"
+  ],
+  "lexigram.contracts.graphql.protocols.ValidationRuleProtocol": [
+    "validate"
+  ],
+  "lexigram.contracts.graphql.protocols.WebSocketTransportProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.infra.cache.protocols.CacheBackendProtocol": [
+    "clear",
+    "delete",
+    "delete_many",
+    "delete_pattern",
+    "exists",
+    "get",
+    "get_many",
+    "health_check",
+    "set",
+    "set_many"
+  ],
+  "lexigram.contracts.infra.cache.protocols.CacheHealthCheckerProtocol": [
+    "health_check"
+  ],
+  "lexigram.contracts.infra.cache.protocols.CacheKeyBuilderProtocol": [
+    "build_key"
+  ],
+  "lexigram.contracts.infra.cache.protocols.CacheProtectionStrategyProtocol": [
+    "acquire_lock",
+    "release_lock",
+    "wait_for_value"
+  ],
+  "lexigram.contracts.infra.cache.protocols.CacheProviderProtocol": [],
+  "lexigram.contracts.infra.resilience.protocols.BulkheadProtocol": [],
+  "lexigram.contracts.infra.resilience.protocols.CircuitBreakerProtocol": [
+    "call",
+    "force_open",
+    "protect",
+    "reset",
+    "state"
+  ],
+  "lexigram.contracts.infra.resilience.protocols.CircuitBreakerRegistryProtocol": [
+    "get",
+    "get_or_create",
+    "list_breakers"
+  ],
+  "lexigram.contracts.infra.resilience.protocols.RateLimiterProtocol": [
+    "acquire",
+    "get_stats",
+    "try_acquire"
+  ],
+  "lexigram.contracts.infra.resilience.protocols.ResilienceFallbackProtocol": [
+    "add",
+    "execute"
+  ],
+  "lexigram.contracts.infra.resilience.protocols.ResiliencePipelineFactoryProtocol": [],
+  "lexigram.contracts.infra.resilience.protocols.ResiliencePipelineProtocol": [
+    "add",
+    "execute"
+  ],
+  "lexigram.contracts.infra.resilience.protocols.RetryPolicyProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.infra.resilience.protocols.ThrottlerProtocol": [
+    "acquire",
+    "get_stats",
+    "try_acquire"
+  ],
+  "lexigram.contracts.infra.resilience.protocols.TimeoutProtocol": [
+    "default_timeout",
+    "execute_with_timeout"
+  ],
+  "lexigram.contracts.infra.resources.PoolManagerProtocol": [
+    "get_pool",
+    "get_stats"
+  ],
+  "lexigram.contracts.infra.resources.PoolProtocol": [
+    "close",
+    "get_stats"
+  ],
+  "lexigram.contracts.infra.resources.PoolStatsProtocol": [],
+  "lexigram.contracts.infra.state.StateStoreProtocol": [
+    "delete",
+    "exists",
+    "expire",
+    "get",
+    "get_many",
+    "set",
+    "set_many",
+    "ttl"
+  ],
+  "lexigram.contracts.infra.storage.kv.StorageBackendProtocol": [
+    "clear",
+    "connect",
+    "delete",
+    "disconnect",
+    "exists",
+    "get",
+    "health_check",
+    "list_keys",
+    "set",
+    "storage_type"
+  ],
+  "lexigram.contracts.infra.storage.protocols.BlobStoreProtocol": [
+    "delete",
+    "download",
+    "exists",
+    "get_presigned_url",
+    "get_url",
+    "health_check",
+    "info",
+    "list",
+    "stream",
+    "upload"
+  ],
+  "lexigram.contracts.infra.storage.protocols.StorageDriverProtocol": [
+    "copy",
+    "copy_batch",
+    "move"
+  ],
+  "lexigram.contracts.infra.storage.protocols.StorageProviderProtocol": [],
+  "lexigram.contracts.infra.tasks.progress.ProgressTrackerProtocol": [
+    "complete",
+    "fail",
+    "get",
+    "subscribe",
+    "update"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.DLQProtocol": [
+    "add",
+    "clear",
+    "get",
+    "list_failed",
+    "purge",
+    "retry",
+    "size"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.IdempotencyManagerProtocol": [
+    "check_duplicate",
+    "generate_key",
+    "record_completion",
+    "record_submission"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.IdempotentTaskManagerProtocol": [
+    "submit_task"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.JobProtocol": [],
+  "lexigram.contracts.infra.tasks.protocols.JobTemplateProtocol": [],
+  "lexigram.contracts.infra.tasks.protocols.TaskExecutorProtocol": [
+    "execute",
+    "get_handler",
+    "register_handler"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.TaskManagerProtocol": [
+    "pending_count",
+    "shutdown",
+    "track",
+    "track_named"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.TaskProviderProtocol": [
+    "boot",
+    "build_idempotency_manager",
+    "build_idempotent_task_manager",
+    "enqueue_job",
+    "get_scheduled_jobs",
+    "get_worker_stats",
+    "health_check",
+    "register",
+    "register_handler",
+    "register_scheduled_task",
+    "schedule_job",
+    "shutdown",
+    "unschedule_job"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.TaskQueueProtocol": [
+    "ack",
+    "clear",
+    "close",
+    "count",
+    "delete_job",
+    "dequeue",
+    "enqueue",
+    "get_job",
+    "get_task_count",
+    "nack"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.TaskWorkerProtocol": [
+    "start",
+    "stop"
+  ],
+  "lexigram.contracts.lifecycle.auditable.AuditableProtocol": [
+    "get_audit_log",
+    "log_operation"
+  ],
+  "lexigram.contracts.lifecycle.cache_aware.CacheAwareProtocol": [
+    "get_cache_info",
+    "invalidate_cache"
+  ],
+  "lexigram.contracts.lifecycle.exportable.ExportableProtocol": [
+    "export_data",
+    "get_supported_formats"
+  ],
+  "lexigram.contracts.lifecycle.transactional.TransactionalProtocol": [
+    "begin_transaction",
+    "commit_transaction",
+    "rollback_transaction"
+  ],
+  "lexigram.contracts.lifecycle.validatable.ValidatableProtocol": [
+    "get_validation_rules",
+    "validate_record"
+  ],
+  "lexigram.contracts.mailer.protocols.MailerProtocol": [
+    "health_check",
+    "send"
+  ],
+  "lexigram.contracts.mapping.protocols.ObjectMapperProtocol": [
+    "map",
+    "register"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPAuthorizerProtocol": [
+    "authorize"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPPromptHandlerProtocol": [
+    "get_prompt",
+    "list_prompts"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPPromptProviderProtocol": [
+    "get_prompt",
+    "list_prompts"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPResourceHandlerProtocol": [
+    "list_resources",
+    "list_templates",
+    "read_resource"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPResourceProviderProtocol": [
+    "list_resources",
+    "read_resource"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPServerProtocol": [
+    "handle_message"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPToolHandlerProtocol": [
+    "call_tool",
+    "list_tools"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPToolProviderProtocol": [
+    "call_tool",
+    "list_tools"
+  ],
+  "lexigram.contracts.mcp.protocols.MCPTransportProtocol": [
+    "start",
+    "stop"
+  ],
+  "lexigram.contracts.multimedia.protocols.BeatAnalysisProvider": [
+    "analyze"
+  ],
+  "lexigram.contracts.multimedia.protocols.ImageProvider": [
+    "generate"
+  ],
+  "lexigram.contracts.multimedia.protocols.InterpolationProvider": [
+    "interpolate"
+  ],
+  "lexigram.contracts.multimedia.protocols.MusicProvider": [
+    "generate"
+  ],
+  "lexigram.contracts.multimedia.protocols.TTSProvider": [
+    "generate"
+  ],
+  "lexigram.contracts.multimedia.protocols.UpscaleProvider": [
+    "upscale"
+  ],
+  "lexigram.contracts.multimedia.protocols.VideoProcessor": [
+    "assemble_frames",
+    "extract_frames",
+    "process"
+  ],
+  "lexigram.contracts.multimedia.protocols.VideoProvider": [
+    "generate"
+  ],
+  "lexigram.contracts.notification.delivery.DeliveryStoreProtocol": [
+    "create_pending",
+    "get_retry_count",
+    "increment_retry",
+    "mark_delivered",
+    "mark_failed",
+    "record_attempt",
+    "schedule_retry"
+  ],
+  "lexigram.contracts.notification.inbox.InboxStoreProtocol": [
+    "clear_all",
+    "count_unread",
+    "delete",
+    "get",
+    "health_check",
+    "list_for_user",
+    "mark_all_read",
+    "mark_read",
+    "save"
+  ],
+  "lexigram.contracts.notification.protocols.PushChannelProtocol": [
+    "health_check",
+    "send",
+    "send_batch"
+  ],
+  "lexigram.contracts.notification.protocols.SMSChannelProtocol": [
+    "health_check",
+    "send"
+  ],
+  "lexigram.contracts.observability.ai.AIHealthMonitorProtocol": [
+    "check",
+    "register_check"
+  ],
+  "lexigram.contracts.observability.ai.AIMetricsProtocol": [
+    "record_completion",
+    "record_error"
+  ],
+  "lexigram.contracts.observability.ai.AITracerProtocol": [
+    "trace_llm_call"
+  ],
+  "lexigram.contracts.observability.ai.ObservabilityProtocol": [
+    "end_trace",
+    "record_generation",
+    "start_trace"
+  ],
+  "lexigram.contracts.observability.audit.AuditVerifierSchedulerProtocol": [
+    "register_handler",
+    "schedule"
+  ],
+  "lexigram.contracts.observability.metrics.AlertDispatcherProtocol": [
+    "send_alert",
+    "send_metric_alert"
+  ],
+  "lexigram.contracts.observability.metrics.HealthCheckRegistryProtocol": [
+    "add",
+    "run_all",
+    "run_liveness",
+    "run_readiness",
+    "run_startup"
+  ],
+  "lexigram.contracts.observability.metrics.MetricProtocol": [
+    "description",
+    "name",
+    "record"
+  ],
+  "lexigram.contracts.observability.metrics.MetricsBackendProtocol": [
+    "initialize",
+    "record_metric",
+    "shutdown"
+  ],
+  "lexigram.contracts.observability.metrics.MetricsCollectorProtocol": [],
+  "lexigram.contracts.observability.metrics.MetricsFactoryProtocol": [
+    "create_counter",
+    "create_gauge",
+    "create_histogram",
+    "register_metric"
+  ],
+  "lexigram.contracts.observability.metrics.MetricsRecorderProtocol": [
+    "gauge",
+    "histogram",
+    "increment"
+  ],
+  "lexigram.contracts.observability.tracing.SpanProtocol": [
+    "add_event",
+    "end",
+    "record_exception",
+    "set_attribute",
+    "set_status"
+  ],
+  "lexigram.contracts.observability.tracing.TracerProtocol": [
+    "extract_context",
+    "get_current_span",
+    "inject_context",
+    "start_span"
+  ],
+  "lexigram.contracts.queue.protocols.MessageConsumerProtocol": [
+    "start",
+    "stop"
+  ],
+  "lexigram.contracts.queue.protocols.QueueProtocol": [
+    "close",
+    "connect",
+    "health_check",
+    "publish",
+    "subscribe"
+  ],
+  "lexigram.contracts.search.protocols.DatabaseSearchBackendProtocol": [
+    "close",
+    "connect",
+    "ensure_schema"
+  ],
+  "lexigram.contracts.search.protocols.DocumentTransformerProtocol": [
+    "extract_text",
+    "transform",
+    "transform_batch"
+  ],
+  "lexigram.contracts.search.protocols.IndexManagerProtocol": [
+    "create_index",
+    "delete_index",
+    "get_index_info",
+    "index_exists"
+  ],
+  "lexigram.contracts.search.protocols.SearchAnalyticsProtocol": [
+    "get_search_metrics",
+    "record_search"
+  ],
+  "lexigram.contracts.search.protocols.SearchEngineProtocol": [
+    "delete_document",
+    "health_check",
+    "index_document",
+    "index_many",
+    "search"
+  ],
+  "lexigram.contracts.search.protocols.SearchableProtocol": [
+    "search_document",
+    "search_document_id",
+    "search_index_name"
+  ],
+  "lexigram.contracts.security.protocols.CORSProtocol": [
+    "get_allowed_headers",
+    "get_allowed_methods",
+    "get_max_age",
+    "is_allowed_origin"
+  ],
+  "lexigram.contracts.security.protocols.CSPProtocol": [
+    "add_directive",
+    "build_header"
+  ],
+  "lexigram.contracts.security.protocols.CSRFProtocol": [
+    "generate_token",
+    "invalidate_token",
+    "validate_token"
+  ],
+  "lexigram.contracts.security.protocols.EncryptionProtocol": [
+    "decrypt",
+    "encrypt",
+    "rotate_key"
+  ],
+  "lexigram.contracts.security.protocols.GuardChainProtocol": [
+    "add",
+    "execute"
+  ],
+  "lexigram.contracts.security.protocols.HasherProtocol": [
+    "algorithm",
+    "digest",
+    "hash",
+    "verify",
+    "verify_digest"
+  ],
+  "lexigram.contracts.security.protocols.InputSanitizerProtocol": [
+    "is_safe_url_for_request",
+    "sanitize",
+    "sanitize_dict",
+    "sanitize_header_value"
+  ],
+  "lexigram.contracts.security.protocols.KeyDerivationProtocol": [
+    "derive",
+    "hash",
+    "verify"
+  ],
+  "lexigram.contracts.security.protocols.SecurityHeadersProtocol": [
+    "apply"
+  ],
+  "lexigram.contracts.security.secrets.SecretStoreProtocol": [
+    "delete_secret",
+    "get_secret",
+    "has_secret",
+    "set_secret"
+  ],
+  "lexigram.contracts.security.stores.AsyncSecretStoreProtocol": [
+    "delete",
+    "get",
+    "get_bulk",
+    "set"
+  ],
+  "lexigram.contracts.tenancy.migration.MigrationCopyStrategy": [
+    "copy",
+    "rollback",
+    "validate"
+  ],
+  "lexigram.contracts.tenancy.protocols.TenantConfigProviderProtocol": [
+    "get_all_config",
+    "get_config",
+    "set_config"
+  ],
+  "lexigram.contracts.tenancy.protocols.TenantIsolationStrategyProtocol": [
+    "apply_isolation",
+    "deprovision_isolation",
+    "provision_isolation",
+    "remove_isolation"
+  ],
+  "lexigram.contracts.tenancy.protocols.TenantMembershipProtocol": [
+    "user_belongs_to_tenant"
+  ],
+  "lexigram.contracts.tenancy.protocols.TenantProviderProtocol": [
+    "activate_tenant",
+    "create_tenant",
+    "deactivate_tenant",
+    "get_tenant",
+    "get_tenant_by_slug",
+    "list_tenants",
+    "suspend_tenant",
+    "update_tenant"
+  ],
+  "lexigram.contracts.tenancy.protocols.TenantResolverProtocol": [
+    "resolve"
+  ],
+  "lexigram.contracts.web.controller.ControllerProtocol": [
+    "collect_routes"
+  ],
+  "lexigram.contracts.web.execution_context.ExecutionContextProtocol": [
+    "controller_class",
+    "handler",
+    "method_name",
+    "request",
+    "route_metadata"
+  ],
+  "lexigram.contracts.web.guard.GuardProtocol": [
+    "can_activate",
+    "handle_rejection"
+  ],
+  "lexigram.contracts.web.http_protocols.ConnectMetricsCollectorProtocol": [
+    "get_metrics",
+    "record_request"
+  ],
+  "lexigram.contracts.web.http_protocols.HTTPClientProtocol": [
+    "delete",
+    "get",
+    "head",
+    "patch",
+    "post",
+    "put",
+    "request",
+    "start",
+    "stop"
+  ],
+  "lexigram.contracts.web.http_protocols.HTTPSessionProtocol": [
+    "close",
+    "request"
+  ],
+  "lexigram.contracts.web.http_protocols.InterceptorChainProtocol": [
+    "add_interceptor",
+    "process_request",
+    "process_response",
+    "remove_interceptor"
+  ],
+  "lexigram.contracts.web.http_protocols.InterceptorProtocol": [
+    "intercept_request",
+    "intercept_response"
+  ],
+  "lexigram.contracts.web.http_protocols.SelectorProtocol": [
+    "select"
+  ],
+  "lexigram.contracts.web.http_protocols.ServiceMeshRegistryProtocol": [
+    "deregister",
+    "discover",
+    "get_service",
+    "list_services",
+    "register"
+  ],
+  "lexigram.contracts.web.http_protocols.WebSocketProtocol": [
+    "accept",
+    "close",
+    "receive_json",
+    "receive_text",
+    "send_json",
+    "send_text"
+  ],
+  "lexigram.contracts.web.middleware.protocols.ASGIMiddlewareProtocol": [],
+  "lexigram.contracts.web.protocols.BackgroundTaskRunnerProtocol": [
+    "add_task"
+  ],
+  "lexigram.contracts.web.protocols.CORSPolicyProtocol": [
+    "get_allowed_headers",
+    "get_allowed_methods",
+    "get_max_age",
+    "is_origin_allowed"
+  ],
+  "lexigram.contracts.web.protocols.CRUDServiceProtocol": [
+    "create",
+    "delete",
+    "get",
+    "list_items",
+    "update"
+  ],
+  "lexigram.contracts.web.protocols.CSRFProtectionProtocol": [
+    "generate_token",
+    "get_cookie_name",
+    "get_header_name",
+    "validate_token"
+  ],
+  "lexigram.contracts.web.protocols.ConnectionManagerProtocol": [
+    "add",
+    "broadcast",
+    "count",
+    "remove"
+  ],
+  "lexigram.contracts.web.protocols.ExceptionFilterProtocol": [
+    "can_handle",
+    "handle"
+  ],
+  "lexigram.contracts.web.protocols.HTTPApplicationProtocol": [
+    "add_middleware",
+    "add_route",
+    "mount"
+  ],
+  "lexigram.contracts.web.protocols.HttpRequestLoggerProtocol": [
+    "log_request"
+  ],
+  "lexigram.contracts.web.protocols.RequestProtocol": [
+    "body",
+    "json"
+  ],
+  "lexigram.contracts.web.protocols.ResponseFactoryProtocol": [
+    "html",
+    "json",
+    "redirect"
+  ],
+  "lexigram.contracts.web.protocols.ResponseProtocol": [
+    "delete_cookie",
+    "set_cookie"
+  ],
+  "lexigram.contracts.web.protocols.WebContributorProtocol": [
+    "contributor_id",
+    "get_controllers",
+    "get_middleware",
+    "mount_to_app"
+  ],
+  "lexigram.contracts.web.protocols.WebMiddlewareProtocol": [],
+  "lexigram.contracts.web.protocols.WebProviderProtocol": [],
+  "lexigram.contracts.web.protocols.WebRateLimiterProtocol": [
+    "check_rate_limit"
+  ],
+  "lexigram.contracts.web.sse.ReactiveSseBridgeProtocol": [],
+  "lexigram.contracts.web.sse.SseResponseFactoryProtocol": [
+    "create_response"
+  ],
+  "lexigram.contracts.webhook.protocols.WebhookDeliveryServiceProtocol": [
+    "dispatch",
+    "redeliver"
+  ],
+  "lexigram.contracts.webhook.protocols.WebhookDeliveryStoreProtocol": [
+    "count_recent_failures",
+    "get_attempts",
+    "get_dead_letters",
+    "record_attempt"
+  ],
+  "lexigram.contracts.webhook.protocols.WebhookSubscriptionStoreProtocol": [
+    "create",
+    "delete",
+    "get",
+    "list",
+    "update"
+  ],
+  "lexigram.contracts.workflow.content_checkpoint.ContentCheckpointStoreProtocol": [
+    "evict",
+    "get",
+    "list_by_stage",
+    "set"
+  ],
+  "lexigram.contracts.workflow.protocols.ApprovalProtocol": [
+    "cancel_approval",
+    "request_approval"
+  ],
+  "lexigram.contracts.workflow.protocols.BulkProcessorProtocol": [
+    "process_batch"
+  ],
+  "lexigram.contracts.workflow.protocols.ExecutionProtocol": [
+    "cancel",
+    "execute",
+    "resume"
+  ],
+  "lexigram.contracts.workflow.protocols.PipelineContextProtocol": [
+    "get_result",
+    "metadata",
+    "set_result"
+  ],
+  "lexigram.contracts.workflow.protocols.PipelineProtocol": [
+    "add_step",
+    "execute"
+  ],
+  "lexigram.contracts.workflow.protocols.PipelineStepProtocol": [
+    "execute",
+    "name"
+  ],
+  "lexigram.contracts.workflow.protocols.SagaManagerProtocol": [
+    "process"
+  ],
+  "lexigram.contracts.workflow.protocols.SagaProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.workflow.protocols.SagaStoreProtocol": [
+    "delete",
+    "load",
+    "save"
+  ],
+  "lexigram.contracts.workflow.protocols.StateMachineProtocol": [
+    "can_transition",
+    "current_state",
+    "recover",
+    "transition",
+    "version"
+  ],
+  "lexigram.contracts.workflow.protocols.StatePersistenceProtocol": [
+    "append_transition",
+    "get_current_version",
+    "load_transitions"
+  ],
+  "lexigram.contracts.workflow.protocols.WorkflowGraphProtocol": [
+    "add_edge",
+    "add_node",
+    "get_node",
+    "topological_order"
+  ],
+  "lexigram.contracts.workflow.protocols.WorkflowNodeProtocol": [
+    "execute",
+    "name"
+  ]
+}
