@@ -41,12 +41,16 @@ Transport hygiene QA this week (verified locally, committed to `main`):
 
 In progress:
 
-- **Reactive layer** — progressive enhancement: wiring end events — started
 - **Admin dashboard** — polish continuation (open-ended)
+
+Shipped this cycle:
+
+- **Reactive layer** — wiring end events complete: `ops.on_end`,
+  `Subject.error()`, `share()` failure propagation, `merge()`/`take()`
+  defect fixes, `docs/reference/REF_REACTIVE.md`
 
 ## Next week
 
-- **Reactive layer** — wiring end events (continuation)
 - **Admin dashboard** — polish continuation
 - **Release `v0.1.4`** — cut once the reactive-layer milestone lands (planned)
 
