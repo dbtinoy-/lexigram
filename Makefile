@@ -101,7 +101,7 @@ ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 # The two pytest-bearing demos run from the repo root in the workspace env;
 # llm-experiment ships scripts + a notebook and is compile-gated. Format
 # and lint already cover demos/ via the root `ruff` invocations above.
-DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests
+DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests
 DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor
 
 .PHONY: test-demos
