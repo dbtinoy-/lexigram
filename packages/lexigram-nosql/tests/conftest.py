@@ -5,6 +5,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# Direct sibling-helper imports (e.g. ``dynamodb_test_helpers``) resolve
+# through this fronted path because pytest's importlib mode does not put
+# test directories on sys.path and ``tests/unit`` has no ``__init__.py``.
+_UNIT_TESTS_DIR = Path(__file__).resolve().parent / "unit"
+if str(_UNIT_TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_UNIT_TESTS_DIR))
+
 # Set up pymongo stubs early so that any import of lexigram.nosql.backends.mongodb
 # works without the real pymongo installed.  We use real Exception subclasses so
 # that except clauses in the source code can catch them.
