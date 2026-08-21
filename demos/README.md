@@ -1,7 +1,7 @@
 # Demos
 
 > 🎯 **Four runnable, fully-gated demo apps** — each one is a living tutorial
-> for a Lexigram superpower, built on the editable framework packages in this
+> for Lexigram, built on the editable framework packages in this
 > repository.
 
 ---
@@ -56,6 +56,18 @@ LLM evaluation with science-grade determinism:
   post-hoc error analysis persisted per run
 - 📓 **Notebook included** — `reproducibility.ipynb` walks the contract
 
+### 📚 [rag-docs](rag-docs/) — RAG over our own docs
+
+Retrieval-augmented answers from the framework's documentation:
+
+- 🧮 **Deterministic embeddings** — stdlib-only hashing embedder, no model,
+  byte-identical answers on re-run
+- 🔎 **Pluggable retrieval** — `vector` vs `mmr` strategies through a
+  registry, no if/elif dispatch
+- 🧊 **In-memory vector store** — chunked markdown upserted at boot
+- 🖥️ **Cited answers** — extractive synthesis with `[n] path#chunk`
+  citations via `uv run python -m rag_docs demo`
+
 ---
 
 ## 🚀 Running them
@@ -63,6 +75,7 @@ LLM evaluation with science-grade determinism:
 ```bash
 uv run python -m orders demo         # 📦 full order lifecycle in one process
 uv run python -m ops_console         # 📡 boot the realtime dashboard server
+uv run python -m rag_docs demo       # 📚 cited answers from our own docs
 uv run python demos/llm-experiment/run_experiment.py   # 🧪 seeded experiment + rerun
 make test-demos                      # ✅ every demo test suite
 ```
@@ -76,7 +89,7 @@ real resilience pipeline — no mocks where it matters.
 
 - 🎨 **Format + lint** — root `ruff format --check .` / `ruff check .`
   (demo-specific rule relaxations live in the root `pyproject.toml`)
-- 🧪 **Tests** — all four demos run their suites in the workspace env
+- 🧪 **Tests** — all five demos run their suites in the workspace env
   (`make test-demos`)
 - 🔍 **Compile check** — demo sources are compile-gated (`make verify-demos`)
 - 🏁 **One command** — `make check-demos` runs tests + compile checks and is

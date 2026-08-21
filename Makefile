@@ -107,11 +107,11 @@ guard:  ## Verify all dirty paths belong to this lane: make guard ALLOWED="path/
 # invocations above. The llm-experiment harness imports opentelemetry,
 # which lives in the `tooling` dependency group.
 DEMO_PYTEST := $(UV) run --group tooling pytest
-DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests
-DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates
+DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests demos/rag-docs/tests
+DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates demos/rag-docs
 
 .PHONY: test-demos
-test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment, resilient-rates)
+test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment, resilient-rates, rag-docs)
 	$(DEMO_PYTEST) -q -m "not integration" --no-cov $(DEMO_TEST_DIRS)
 
 .PHONY: verify-demos
