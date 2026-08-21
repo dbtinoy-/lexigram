@@ -244,7 +244,7 @@ catalog:  ## Regenerate docs/reference/REF_ERROR_CODES.md from source
 .PHONY: catalog-package
 catalog-package:  ## Run all standalone catalog generators
 	$(UV) run python dev/catalogs/generate_cli_commands_catalog.py
-	$(UV) run python dev/catalogs/generate_env_vars_catalog.py
+	$(UV) run python -m dev.catalogs.env_vars_catalog
 	$(UV) run python dev/catalogs/generate_error_catalog.py
 
 REPRO_OUT := $(CURDIR)/.cache/eval-reproduce

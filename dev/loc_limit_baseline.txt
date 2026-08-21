@@ -21,7 +21,6 @@ core/lexigram/src/lexigram/primitives/context.py
 core/lexigram/tests/integration/di/module/test_graph_reflection_integration.py
 demos/llm-experiment/harness.py
 dev/audit/generators/docs_claims.py
-dev/catalogs/generate_env_vars_catalog.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/executor/executor.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/function_calling.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/plan_execute.py
