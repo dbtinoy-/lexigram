@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lexigram.admin.data.query import EqualSpec, InSpec
+from lexigram.admin.data.filter_specs import EqualSpec, InSpec
 from lexigram.admin.ui.filters.base import Filter
 from lexigram.serialization import dumps_str
 from lexigram.ui import Zones

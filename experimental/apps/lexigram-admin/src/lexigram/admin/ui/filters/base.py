@@ -20,7 +20,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Self
 
-from lexigram.admin.data.query import EqualSpec
+from lexigram.admin.data.filter_specs import EqualSpec
 
 if TYPE_CHECKING:
     from collections.abc import Callable

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, runtime_checkable
 
-from lexigram.admin.data.query import PagedResult, QuerySpec
+from lexigram.admin.data.paged_result import PagedResult
+from lexigram.admin.data.query import QuerySpec
 from lexigram.admin.exceptions import (
     AdminDataError,
     AdminValidationError,
