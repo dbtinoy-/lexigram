@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
-from typing import Any
 
 from lexigram.ai.rag.retrieval.strategies.mmr import MMRRetrievalStrategy
 from lexigram.ai.rag.retrieval.strategies.vector import VectorRetrievalStrategy
 from lexigram.contracts.ai.llm import EmbeddingClientProtocol
+from lexigram.contracts.ai.rag import (
+    RetrievalStrategyProtocol,
+    SynthesizerProtocol,
+)
 from lexigram.contracts.ai.vector import Document, RAGSearchResult
+from lexigram.contracts.data.vector.protocols import VectorCollectionProtocol
 from lexigram.contracts.data.vector.types import SearchQuery, SearchResult
 from lexigram.result import Err, Ok, Result
 from rag_docs.errors import (
@@ -49,7 +53,7 @@ def _to_rag_result(result: SearchResult) -> RAGSearchResult:
     )
 
 
-STRATEGIES: dict[str, Any] = {
+STRATEGIES: dict[str, RetrievalStrategyProtocol] = {
     "vector": VectorRetrievalStrategy(),
     "mmr": MMRRetrievalStrategy(lambda_param=0.7),
 }
@@ -76,14 +80,15 @@ class DocsAskService:
         embedder: The deterministic embedder for queries.
         synthesizer: The extractive synthesizer.
         strategies: Name-to-strategy registry (no if/elif dispatch).
+        stats: Corpus statistics captured at index build; defaults to zeros.
     """
 
     def __init__(
         self,
-        collection: Any,
+        collection: VectorCollectionProtocol,
         embedder: EmbeddingClientProtocol,
-        synthesizer: Any,
-        strategies: dict[str, Any],
+        synthesizer: SynthesizerProtocol,
+        strategies: dict[str, RetrievalStrategyProtocol],
         stats: IndexStats | None = None,
     ) -> None:
         self._collection = collection
@@ -131,14 +136,12 @@ class DocsAskService:
             return Err(SynthesisFailedError(str(synthesis.unwrap_err())))
 
         response = synthesis.unwrap()
-        return Ok(
-            AskAnswer(
-                answer=response.answer,
-                citations=tuple(
-                    candidate.document.id or "" for candidate in candidates
-                ),
-            )
+        citations = tuple(
+            candidate.document.id
+            for candidate in candidates
+            if candidate.document.id
         )
+        return Ok(AskAnswer(answer=response.answer, citations=citations))
 
 
 __all__ = ["CITATION_PATTERN", "STRATEGIES", "AskAnswer", "DocsAskService"]
