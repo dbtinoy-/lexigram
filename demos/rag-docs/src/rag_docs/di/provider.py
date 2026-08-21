@@ -40,10 +40,13 @@ class DocsAskProvider(Provider):
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Ingest the corpus and assemble DocsAskService."""
         docs_dir = self._docs_dir or resolve_default_docs_dir()
-        _, collection, stats = await build_docs_store(docs_dir, HashingEmbedder())
+        # One shared embedder: build_docs_store fits it on the corpus, then
+        # the service reuses it so query vectors use the same IDF weights.
+        embedder = HashingEmbedder()
+        _, collection, stats = await build_docs_store(docs_dir, embedder)
         self._service = DocsAskService(
             collection=collection,
-            embedder=HashingEmbedder(),
+            embedder=embedder,
             synthesizer=ExtractiveSynthesizer(max_sentences=4),
             strategies=dict(STRATEGIES),
             stats=stats,

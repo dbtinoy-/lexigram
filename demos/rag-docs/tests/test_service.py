@@ -38,10 +38,13 @@ def make_corpus(root: Path) -> Path:
 
 
 async def make_service(tmp_path: Path) -> DocsAskService:
-    _, collection, _ = await build_docs_store(make_corpus(tmp_path), HashingEmbedder())
+    # One shared embedder: build fits it on the corpus, the service queries
+    # with the same IDF geometry (mirrors DocsAskProvider.boot).
+    embedder = HashingEmbedder()
+    _, collection, _ = await build_docs_store(make_corpus(tmp_path), embedder)
     return DocsAskService(
         collection=collection,
-        embedder=HashingEmbedder(),
+        embedder=embedder,
         synthesizer=ExtractiveSynthesizer(max_sentences=4),
         strategies=dict(STRATEGIES),
     )

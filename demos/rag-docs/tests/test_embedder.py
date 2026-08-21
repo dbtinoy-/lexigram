@@ -8,7 +8,7 @@ import pytest
 
 from lexigram.contracts.ai.llm import EmbeddingClientProtocol
 
-from rag_docs.embedder import HashingEmbedder
+from rag_docs.embedder import EMBEDDING_DIMENSION, HashingEmbedder
 
 
 async def test_implements_embedding_client_protocol() -> None:
@@ -22,7 +22,7 @@ async def test_dimension_and_l2_norm() -> None:
 
     assert len(vectors) == 2
     for vector in vectors:
-        assert len(vector) == 256
+        assert len(vector) == EMBEDDING_DIMENSION
         norm = math.sqrt(sum(component * component for component in vector))
         assert norm == pytest.approx(1.0, abs=1e-9)
 

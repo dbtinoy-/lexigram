@@ -5,13 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from lexigram.ai.rag.chunking.factory import create_chunker
+from lexigram.ai.rag.chunking.types import ChunkingConfig, ChunkingStrategy
 from lexigram.ai.rag.loaders.core import MarkdownLoader
 from lexigram.contracts.data.vector.types import CollectionConfig, VectorRecord
 from lexigram.vector.backends.memory import MemoryVectorCollection, MemoryVectorStore
-from rag_docs.embedder import HashingEmbedder
+
+from rag_docs.embedder import EMBEDDING_DIMENSION, HashingEmbedder
 
 CORPUS_COLLECTION_NAME = "lexigram_docs"
-_EMBEDDING_DIMENSION = 256
 
 
 @dataclass(frozen=True)
@@ -50,18 +52,27 @@ async def build_docs_store(
     store = MemoryVectorStore()
     await store.connect()
     await store.create_collection(
-        CollectionConfig(name=CORPUS_COLLECTION_NAME, dimension=_EMBEDDING_DIMENSION)
+        CollectionConfig(name=CORPUS_COLLECTION_NAME, dimension=EMBEDDING_DIMENSION)
     )
     collection = await store.get_collection(CORPUS_COLLECTION_NAME)
 
     loader = MarkdownLoader()
     files = sorted(docs_dir.rglob("*.md"))
-    records: list[VectorRecord] = []
+    loaded: list[tuple[str, list]] = []
     for path in files:
         relative = path.relative_to(docs_dir).as_posix()
-        chunks = await loader.load(path)
+        loaded.append((relative, await loader.load(path)))
+
+    # Fit IDF over the whole corpus before embedding so rare, distinctive
+    # tokens outweigh ubiquitous ones at query time too (same instance).
+    embedder.fit([chunk.text for _, chunks in loaded for chunk in chunks])
+
+    records: list[VectorRecord] = []
+    for relative, chunks in loaded:
         for chunk in chunks:
-            title = _extract_title(chunk.text, path.stem.replace("-", " ").title())
+            title = _extract_title(
+                chunk.text, Path(relative).stem.replace("-", " ").title()
+            )
             vector = (await embedder.embed([chunk.text]))[0]
             records.append(
                 VectorRecord(

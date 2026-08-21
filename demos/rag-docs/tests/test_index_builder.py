@@ -7,7 +7,7 @@ from pathlib import Path
 from lexigram.contracts.data.vector.types import SearchQuery
 from lexigram.vector.backends.memory import MemoryVectorStore
 
-from rag_docs.embedder import HashingEmbedder
+from rag_docs.embedder import EMBEDDING_DIMENSION, HashingEmbedder
 from rag_docs.index_builder import (
     CORPUS_COLLECTION_NAME,
     IndexStats,
@@ -61,5 +61,5 @@ async def test_empty_corpus_is_valid(tmp_path: Path) -> None:
     _, collection, stats = await build_docs_store(docs, HashingEmbedder())
 
     assert stats == IndexStats(files=0, chunks=0)
-    results = await collection.search(SearchQuery(vector=[0.0] * 256, top_k=5))
+    results = await collection.search(SearchQuery(vector=[0.0] * EMBEDDING_DIMENSION, top_k=5))
     assert results == []
