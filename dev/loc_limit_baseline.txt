@@ -166,7 +166,6 @@ packages/lexigram-sql/src/lexigram/sql/unit_of_work/simple.py
 packages/lexigram-sql/tests/integration/test_monitoring.py
 packages/lexigram-sql/tests/unit/test_backup.py
 packages/lexigram-sql/tests/unit/test_base_provider.py
-packages/lexigram-sql/tests/unit/test_generic_repository.py
 packages/lexigram-sql/tests/unit/test_migrations_lexigram_db.py
 packages/lexigram-sql/tests/unit/test_protocols_unit_of_work.py
 packages/lexigram-storage/src/lexigram/storage/backends/azure.py
