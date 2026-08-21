@@ -29,8 +29,8 @@ class OrderError(DomainError):
     """Base error for order domain operations."""
 
 
-class OrderNotPlacedError(OrderError):
-    """Raised when an order transition is attempted before placement."""
+class OrderNotPaidError(OrderError):
+    """Raised when shipping is attempted before the order is paid."""
 
 
 class OrderAlreadyPaidError(OrderError):
@@ -138,7 +138,7 @@ __all__ = [
     "OrderError",
     "OrderItem",
     "OrderNotFoundError",
-    "OrderNotPlacedError",
+    "OrderNotPaidError",
     "OrderPaid",
     "OrderPlaced",
     "OrderShipped",

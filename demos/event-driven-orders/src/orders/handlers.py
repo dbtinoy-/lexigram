@@ -19,7 +19,7 @@ from orders.domain import (
     OrderAlreadyPaidError,
     OrderAlreadyShippedError,
     OrderNotFoundError,
-    OrderNotPlacedError,
+    OrderNotPaidError,
     OrderPaid,
     OrderPlaced,
     OrderShipped,
@@ -131,7 +131,7 @@ class ShipOrderHandler(OrderCommandHandlerBase):
         if order is None:
             raise OrderNotFoundError(f"Order {command.order_id} not found")
         if order.status is not OrderStatus.PAID:
-            raise OrderNotPlacedError(
+            raise OrderNotPaidError(
                 f"Order {command.order_id} must be paid before shipping"
             )
 

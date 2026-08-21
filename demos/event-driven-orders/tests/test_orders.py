@@ -17,7 +17,7 @@ from lexigram.contracts.events import EventBusProtocol
 from lexigram.events.buses.command import CommandBusImpl
 
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
-from orders.domain import OrderItem, OrderStatus
+from orders.domain import OrderItem, OrderNotPaidError, OrderStatus
 from orders.events import OrdersView
 from orders.module import OrdersModule
 from orders.outbox import Outbox
@@ -27,7 +27,9 @@ from orders.services import OrdersApi
 
 @pytest.fixture
 async def app() -> AsyncIterator[Application]:
-    async with Application.boot(name="orders-test", modules=[OrdersModule.configure()]) as instance:
+    async with Application.boot(
+        name="orders-test", modules=[OrdersModule.configure()]
+    ) as instance:
         yield instance
 
 
@@ -59,7 +61,9 @@ class TestOrderLifecycle:
         event_bus = await app.container.resolve(EventBusProtocol)
         view = await app.container.resolve(OrdersView)
 
-        order_id = await command_bus.dispatch(PlaceOrder(customer="Bob", items=[item("SKU-2")]))
+        order_id = await command_bus.dispatch(
+            PlaceOrder(customer="Bob", items=[item("SKU-2")])
+        )
         await event_bus.flush()
 
         row = view.get(order_id)
@@ -76,7 +80,9 @@ class TestOrderLifecycle:
         command_bus = await app.container.resolve(CommandBusImpl)
         outbox = await app.container.resolve(Outbox)
 
-        order_id = await command_bus.dispatch(PlaceOrder(customer="Carol", items=[item("SKU-3")]))
+        order_id = await command_bus.dispatch(
+            PlaceOrder(customer="Carol", items=[item("SKU-3")])
+        )
         await command_bus.dispatch(PayOrder(order_id=order_id, amount=Decimal("10.00")))
 
         event_types = [record.event_type for record in outbox.all()]
@@ -84,9 +90,11 @@ class TestOrderLifecycle:
 
     async def test_dispatch_rejects_invalid_transition(self, app: Application) -> None:
         command_bus = await app.container.resolve(CommandBusImpl)
-        order_id = await command_bus.dispatch(PlaceOrder(customer="Dan", items=[item("SKU-4")]))
+        order_id = await command_bus.dispatch(
+            PlaceOrder(customer="Dan", items=[item("SKU-4")])
+        )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(OrderNotPaidError) as exc_info:
             await command_bus.dispatch(ShipOrder(order_id=order_id))
         assert "paid before shipping" in str(exc_info.value)
 
@@ -109,7 +117,9 @@ class TestOutbox:
         event_bus = await app.container.resolve(EventBusProtocol)
         outbox = await app.container.resolve(Outbox)
 
-        order_id = await command_bus.dispatch(PlaceOrder(customer="Eve", items=[item("SKU-5")]))
+        order_id = await command_bus.dispatch(
+            PlaceOrder(customer="Eve", items=[item("SKU-5")])
+        )
 
         assert outbox.pending()
         result = await outbox.flush(event_bus)
