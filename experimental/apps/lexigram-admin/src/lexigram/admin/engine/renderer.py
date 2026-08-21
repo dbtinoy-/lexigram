@@ -164,6 +164,11 @@ class AdminRenderer:
         logo_url = extra_context.get("logo_url") or ""
         favicon_url = extra_context.get("favicon_url") or ""
         dark_mode = extra_context.get("dark_mode") or ""
+        impersonation_active = bool(extra_context.get("impersonation_active"))
+        impersonation_target_id = str(
+            extra_context.get("impersonation_target_id") or ""
+        )
+        csrf_token = getattr(request.state, "csrf_token", None) if request else None
 
         shell = AdminShell(
             content=content,
@@ -178,6 +183,9 @@ class AdminRenderer:
             site_name=site_name,
             logo_url=logo_url,
             dark_mode=dark_mode,
+            impersonation_active=impersonation_active,
+            impersonation_target_id=impersonation_target_id,
+            csrf_token=csrf_token or "",
         )
 
         # Prepare templates
@@ -191,9 +199,6 @@ class AdminRenderer:
         templates = Jinja2Templates(directory=str(templates_dir))
 
         shell_html = Markup(render_to_string(shell))
-
-        # Pass CSRF token to template for hx-headers on body
-        csrf_token = getattr(request.state, "csrf_token", None) if request else None
 
         # Render using template
         return templates.TemplateResponse(

@@ -32,6 +32,9 @@ class AdminShell(Component):
         site_name: str = "",
         logo_url: str = "",
         dark_mode: str = "",
+        impersonation_active: bool = False,
+        impersonation_target_id: str = "",
+        csrf_token: str = "",
         **props: Any,
     ) -> None:
         super().__init__(**props)
@@ -44,6 +47,9 @@ class AdminShell(Component):
         self.site_name = site_name
         self.logo_url = logo_url
         self.dark_mode = dark_mode
+        self.impersonation_active = impersonation_active
+        self.impersonation_target_id = impersonation_target_id
+        self.csrf_token = csrf_token
 
         # Standardize user as a dict for components
         self.user_dict = props.pop("user_dict", {})
@@ -384,9 +390,48 @@ class AdminShell(Component):
             class_="lg:flex lg:flex-shrink-0",
         )
 
+        impersonation_banner = (
+            el(
+                "div",
+                el(
+                    "span",
+                    f"Impersonating {self.impersonation_target_id}",
+                    class_="font-medium",
+                ),
+                el(
+                    "form",
+                    el(
+                        "input",
+                        type_="hidden",
+                        name="csrf_token",
+                        value=self.csrf_token or "",
+                    ),
+                    el(
+                        "button",
+                        "Stop impersonating",
+                        type="submit",
+                        class_=(
+                            "ml-4 px-3 py-1 text-xs font-medium rounded-md "
+                            "bg-white/20 hover:bg-white/30 transition-colors"
+                        ),
+                    ),
+                    method="post",
+                    action="/admin/impersonate/stop",
+                    class_="inline-flex items-center",
+                ),
+                class_=(
+                    "flex items-center justify-between px-4 py-2 text-sm text-white "
+                    "bg-amber-600 dark:bg-amber-700"
+                ),
+            )
+            if self.impersonation_active
+            else ""
+        )
+
         main_area = el(
             "div",
             topbar_html,
+            impersonation_banner,
             # Breadcrumbs
             *(
                 [
