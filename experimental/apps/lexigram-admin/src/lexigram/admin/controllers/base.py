@@ -165,6 +165,79 @@ class AdminController(ControllerProtocol):
         except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
+    async def _apply_tenant_context(
+        self,
+        request: Request,
+        extra_context: dict[str, Any],
+    ) -> None:
+        """Resolve current tenant + switchable list into extra_context.
+
+        Populates ``current_tenant_id``/``current_tenant_name``/
+        ``tenant_list``/``tenant_csrf_token`` only when tenancy is enabled
+        and the requesting user is a superadmin — presence of
+        ``current_tenant_id`` doubles as the render gate for
+        ``TenantSwitcher`` (absent means "don't show the switcher"), so no
+        separate flag is threaded through.
+
+        ``tenant_csrf_token`` is generated fresh via the CSRF service
+        rather than reusing ``request.state.csrf_token``, because that
+        value is only populated by resource CRUD form rendering
+        (``resources/form_renderer.py``, ``resources/handler.py``), not on
+        the dashboard/widget pages this switcher actually appears on.
+        """
+        try:
+            from lexigram.admin.config import AdminConfig
+
+            container = getattr(request.state, "container", None) or getattr(
+                request.app.state, "container", None
+            )
+            if container is None:
+                return
+            config = await container.resolve(AdminConfig)
+            if not config.tenancy.enabled:
+                return
+
+            user = getattr(request.state, "user", None)
+            if not user:
+                return
+
+            from lexigram.admin.rbac.super_admin import is_super_admin
+
+            if not is_super_admin(user, config.rbac.super_admin_role):
+                return
+
+            from lexigram.admin.multitenancy.adapter import (
+                TenantProviderRegistry,
+                resolve_tenant_id,
+            )
+
+            registry = await container.resolve(TenantProviderRegistry)
+            current_tenant_id = await resolve_tenant_id(request, default="default")
+            current_tenant = await registry.get(current_tenant_id)
+            extra_context.setdefault("current_tenant_id", current_tenant_id)
+            extra_context.setdefault(
+                "current_tenant_name",
+                current_tenant.name if current_tenant else current_tenant_id,
+            )
+            extra_context.setdefault(
+                "tenant_list",
+                [(t.tenant_id, t.name) for t in await registry.all(active_only=True)],
+            )
+
+            try:
+                from lexigram.admin.auth.protocols import AdminCsrfServiceProtocol
+
+                csrf_service = await container.resolve(AdminCsrfServiceProtocol)
+                session = getattr(request, "session", {})
+                session_id = session.get("admin_user_id", "")
+                extra_context.setdefault(
+                    "tenant_csrf_token", csrf_service.generate_token(session_id)
+                )
+            except Exception:  # noqa: BLE001, S110 — token generation is non-fatal
+                pass
+        except Exception:  # noqa: BLE001, S110 — matches _apply_theme_overrides
+            pass
+
     async def _apply_impersonation_context(
         self,
         request: Request,
@@ -225,6 +298,8 @@ class AdminController(ControllerProtocol):
         """
         # Inject runtime theme overrides (primary_color, site_name)
         await self._apply_theme_overrides(request, extra_context)
+        # Inject tenant context (current tenant, switchable list, CSRF token)
+        await self._apply_tenant_context(request, extra_context)
         # Inject impersonation banner state, if an active session exists
         await self._apply_impersonation_context(request, extra_context)
 
