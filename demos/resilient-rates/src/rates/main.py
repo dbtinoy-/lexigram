@@ -107,7 +107,7 @@ async def _demo(service: RatesService, faults: FaultController) -> None:
             print(f"upstream exhausted: {type(exc).__name__}")
         if service.stats().retries > 0:
             break
-    print(f"single-flight gate held; retries used: {service.stats().retries}")
+    print(f"retry attempts absorbed by backoff: {service.stats().retries}")
 
     _banner(3, "down — breaker opens, stale serves reads")
     faults.set(Scenario.DOWN)
