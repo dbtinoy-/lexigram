@@ -100,7 +100,7 @@ async def _demo(service: RatesService, faults: FaultController) -> None:
 
     _banner(2, "flaky — retries absorb timeouts")
     faults.set(Scenario.FLAKY)
-    for attempt in range(6):
+    for _attempt in range(6):
         try:
             await _fetch_and_print(service, "GBP/USD")
         except Exception as exc:  # noqa: BLE001 — narration of terminal outcome
