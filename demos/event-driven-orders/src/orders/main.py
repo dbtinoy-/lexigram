@@ -7,6 +7,7 @@ Usage::
     uv run python -m orders ship <order-id>
     uv run python -m orders list
     uv run python -m orders outbox
+    uv run python -m orders demo
 """
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("list", help="list projected orders")
     sub.add_parser("outbox", help="show and flush the outbox")
+    sub.add_parser("demo", help="run the full lifecycle in one process")
     return parser
 
 
@@ -79,6 +81,23 @@ async def _run(args: argparse.Namespace) -> None:
             for record in api.list_outbox():
                 print(f"{record['event_type']}\t{record['status']}")
             sent = await api.flush_outbox()
+            print(f"flushed: {sent}")
+        elif args.command == "demo":
+            items = [_parse_item("SKU-1,2,9.99"), _parse_item("SKU-2,1,149.00")]
+            order_id = await api.place("Alice Wonder", items)
+            print(f"order placed: {order_id}")
+            await api.pay(order_id, Decimal("168.98"))
+            print(f"order paid: {order_id} (168.98)")
+            await api.ship(order_id)
+            print(f"order shipped: {order_id}")
+            for record in api.list_outbox():
+                print(f"{record['event_type']}\t{record['status']}")
+            sent = await api.flush_outbox()
+            await api.event_bus.flush()
+            for row in api.list_orders():
+                print(
+                    f"{row['order_id']}\t{row['customer']}\t{row['total']}\t{row['status']}"
+                )
             print(f"flushed: {sent}")
 
 

@@ -1,9 +1,9 @@
 """Command handlers for the event-driven orders demo.
 
-Command handlers live on the **write side**: they mutate local state, stage an
-outbox record, and publish a domain event. Event handlers on the other side
-(read model projection, notifications) react to the published events and never
-touch command dispatches.
+Command handlers live on the **write side**: they mutate local state and stage
+an outbox record. The outbox relay is the single delivery path to the event
+bus; read-side handlers (projection, notifications) react to those events and
+never touch command dispatches.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 from lexigram.contracts.domain import DomainEvent
-from lexigram.contracts.events import EventBusProtocol
 from lexigram.logging import get_logger
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import (
@@ -37,35 +36,26 @@ class OrderCommandHandlerBase:
 
     Args:
         repository: The write-side repository.
-        event_bus: The bus published events are announced on.
         outbox: The outbox each event is staged in before publishing.
     """
 
-    def __init__(
-        self,
-        repository: OrderRepository,
-        event_bus: EventBusProtocol,
-        outbox: Outbox,
-    ) -> None:
+    def __init__(self, repository: OrderRepository, outbox: Outbox) -> None:
         self.repository = repository
-        self.event_bus = event_bus
         self.outbox = outbox
 
     async def _publish(self, event: DomainEvent, event_name: str) -> None:
-        """Stage an event, publish it, and warn on rejection.
+        """Stage an event in the outbox; the relay delivers it later.
+
+        The write side never touches the event bus directly — the outbox
+        flush is the single delivery path, so a flushed outbox cannot
+        double-deliver events that commands already announced.
 
         Args:
-            event: The domain event to deliver.
-            event_name: Event type name used in rejection logs.
+            event: The domain event to stage.
+            event_name: Event type name used in staging logs.
         """
         self.outbox.stage(event)
-        result = await self.event_bus.publish(event)
-        if result.is_err():
-            logger.warning(
-                "order_event_rejected",
-                event=event_name,
-                error=str(result.unwrap_err()),
-            )
+        logger.debug("order_event_staged", event_type=event_name)
 
 
 class PlaceOrderHandler(OrderCommandHandlerBase):

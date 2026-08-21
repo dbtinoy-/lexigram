@@ -59,17 +59,15 @@ class OrdersProvider(Provider):
         command_bus = await container.resolve(CommandBusImpl)
         command_bus.register(
             PlaceOrder,
-            PlaceOrderHandler(
-                repository=repository, event_bus=event_bus, outbox=outbox
-            ),
+            PlaceOrderHandler(repository=repository, outbox=outbox),
         )
         command_bus.register(
             PayOrder,
-            PayOrderHandler(repository=repository, event_bus=event_bus, outbox=outbox),
+            PayOrderHandler(repository=repository, outbox=outbox),
         )
         command_bus.register(
             ShipOrder,
-            ShipOrderHandler(repository=repository, event_bus=event_bus, outbox=outbox),
+            ShipOrderHandler(repository=repository, outbox=outbox),
         )
 
         event_bus.subscribe(OrderPlaced, view.on_order_placed)

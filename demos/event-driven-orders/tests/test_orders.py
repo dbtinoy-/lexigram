@@ -19,6 +19,7 @@ from lexigram.events.buses.command import CommandBusImpl
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import OrderItem, OrderNotPaidError, OrderStatus
 from orders.events import OrdersView
+from orders.main import _build_parser, _run
 from orders.module import OrdersModule
 from orders.outbox import Outbox
 from orders.repositories import OrderRepository
@@ -41,6 +42,7 @@ class TestOrderLifecycle:
     async def test_place_pay_ship_projects_events(self, app: Application) -> None:
         command_bus = await app.container.resolve(CommandBusImpl)
         event_bus = await app.container.resolve(EventBusProtocol)
+        outbox = await app.container.resolve(Outbox)
         view = await app.container.resolve(OrdersView)
 
         order_id = await command_bus.dispatch(
@@ -48,6 +50,12 @@ class TestOrderLifecycle:
         )
         await command_bus.dispatch(PayOrder(order_id=order_id, amount=Decimal("19.98")))
         await command_bus.dispatch(ShipOrder(order_id=order_id))
+
+        # Delivery happens only through the outbox relay: flush publishes the
+        # staged events, then the bus drain runs the subscribed handlers.
+        staged = await outbox.flush(event_bus)
+        assert staged.is_ok()
+        assert staged.unwrap() == 3
         await event_bus.flush()
 
         row = view.get(order_id)
@@ -59,11 +67,13 @@ class TestOrderLifecycle:
     async def test_read_model_has_no_write_access(self, app: Application) -> None:
         command_bus = await app.container.resolve(CommandBusImpl)
         event_bus = await app.container.resolve(EventBusProtocol)
+        outbox = await app.container.resolve(Outbox)
         view = await app.container.resolve(OrdersView)
 
         order_id = await command_bus.dispatch(
             PlaceOrder(customer="Bob", items=[item("SKU-2")])
         )
+        await outbox.flush(event_bus)
         await event_bus.flush()
 
         row = view.get(order_id)
@@ -104,6 +114,7 @@ class TestOrderLifecycle:
 
         order_id = await api.place("Bob Belcher", [item("SKU-9", 1, "12.00")])
         await api.pay(order_id, Decimal("12.00"))
+        await api.flush_outbox()
         await event_bus.flush()
 
         rows = api.list_orders()
@@ -126,3 +137,18 @@ class TestOutbox:
         assert result.is_ok()
         assert result.unwrap() == 1
         assert not outbox.pending()
+
+
+class TestDemoCommand:
+    async def test_demo_runs_full_lifecycle_in_one_process(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        args = _build_parser().parse_args(["demo"])
+        await _run(args)
+
+        out = capsys.readouterr().out
+        assert "order placed:" in out
+        assert "order paid:" in out
+        assert "order shipped:" in out
+        assert "\tshipped" in out
+        assert "flushed: 3" in out
