@@ -95,7 +95,5 @@ class TestEvaluationHarness:
 
         assert second.total_samples == first.total_samples == 5
         assert second.passed_samples == first.passed_samples
-        assert (
-            [r.score for r in second.results] == [r.score for r in first.results]
-        )
+        assert [r.score for r in second.results] == [r.score for r in first.results]
         assert second.average_score == pytest.approx(first.average_score)
