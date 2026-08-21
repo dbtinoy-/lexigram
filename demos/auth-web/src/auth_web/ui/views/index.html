@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>auth-web</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="index">
+  <h1 class="accent">auth-web</h1>
+  <div class="card">
+    <p id="error" class="muted">Checking session…</p>
+  </div>
+  <script src="/static/app.js"></script>
+  <script>
+    (async () => {
+      const me = await api("/api/me");
+      window.location.href = me.ok ? "/profile" : "/login";
+    })();
+  </script>
+</body>
+</html>

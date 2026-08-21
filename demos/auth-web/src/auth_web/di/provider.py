@@ -8,6 +8,8 @@ from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.config import AuthConfig, JWTConfig
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.auth.authz.service import AuthorizationService
+from lexigram.contracts.auth.protocols import PasswordHasherProtocol
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
@@ -16,39 +18,43 @@ from lexigram.contracts.core.di import (
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 
-from auth_web.controllers.pages import AuthWebController
-from auth_web.services.session_repository import InMemorySessionRepository
+from auth_web.controllers.api import AuthApiController
+from auth_web.ui.pages import PagesController
+from auth_web.repository import InMemorySessionRepository
+from auth_web.services.password_change import PasswordChangeService
 
 logger = get_logger(__name__)
 
 DEMO_EMAIL = "admin@auth.demo"
 DEMO_PASSWORD = "Demo-Password-1"
 
+# Single source of truth for RBAC seeding. AuthConfig.roles is inert today
+# (the authorization sub-provider never reads it), so the provider pushes
+# these into AuthorizationService.set_roles() at boot.
+ROLE_DEFINITIONS: dict[str, dict[str, object]] = {
+    "viewer": {"name": "viewer", "permissions": ["profile:read"]},
+    "editor": {
+        "name": "editor",
+        "permissions": ["articles:*"],
+        "inherits": ["viewer"],
+    },
+    "admin": {"name": "admin", "permissions": ["*"], "inherits": ["editor"]},
+}
+
 
 def build_auth_config() -> AuthConfig:
-    """Offline demo config: explicit dev secrets and RBAC role definitions.
+    """Offline demo config: explicit dev secrets.
 
     Note:
-        ``AuthConfig.users`` is inert today (nothing consumes it at boot),
-        so the demo account is seeded explicitly in :meth:`AuthWebProvider.boot`.
+        ``AuthConfig.users`` and ``AuthConfig.roles`` are inert today
+        (nothing consumes them at boot), so the demo account is seeded via
+        ``UserService`` and roles via ``AuthorizationService.set_roles`` in
+        :meth:`AuthWebProvider.boot`.
     """
     secret = "auth-web-demo-secret-key-0123456789abcdef"
     return AuthConfig(
         secret_key=secret,
         token=JWTConfig(secret_key=secret),
-        roles={
-            "viewer": {"name": "viewer", "permissions": ["profile:read"]},
-            "editor": {
-                "name": "editor",
-                "permissions": ["articles:*"],
-                "inherits": ["viewer"],
-            },
-            "admin": {
-                "name": "admin",
-                "permissions": ["*"],
-                "inherits": ["editor"],
-            },
-        },
     )
 
 
@@ -62,7 +68,8 @@ class AuthWebProvider(Provider):
         self._repository = InMemorySessionRepository()
         self._user_service: UserService | None = None
         self._backend: SessionCookieBackend | None = None
-        self._controller: AuthWebController | None = None
+        self._api: AuthApiController | None = None
+        self._password_changes: PasswordChangeService | None = None
 
     def _get(self, kind: str) -> Any:
         """Return a boot-assembled collaborator or raise."""
@@ -72,17 +79,22 @@ class AuthWebProvider(Provider):
         return value
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Register every key the controller needs; boot fills instances.
+        """Register every key the controllers need; boot fills instances.
 
         Freeze-time validation requires all constructor dependencies to be
         present as keys, so each is bound here — the pure repository as a
         live instance, the boot-built collaborators as lazy factories.
+        The pages controller is stateless and constructed eagerly.
         """
         container.singleton(InMemorySessionRepository, instance=self._repository)
         container.singleton(SessionRepositoryProtocol, instance=self._repository)
         container.singleton(UserService, factory=lambda: self._get("_user_service"))
         container.singleton(SessionCookieBackend, factory=lambda: self._get("_backend"))
-        container.singleton(AuthWebController, factory=lambda: self._get("_controller"))
+        container.singleton(AuthApiController, factory=lambda: self._get("_api"))
+        container.singleton(
+            PasswordChangeService, factory=lambda: self._get("_password_changes")
+        )
+        container.singleton(PagesController, instance=PagesController())
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Resolve auth singletons; seed the demo user; build UI services."""
@@ -108,18 +120,29 @@ class AuthWebProvider(Provider):
         )
         if seeded.is_err():
             logger.info("seed_user_present", email=DEMO_EMAIL)
-        probe = await self._user_service.list_users()
 
         self._backend = SessionCookieBackend(
             session_repository=self._repository,
             user_fetcher=self._user_service.get_user,
             secure=False,  # local demo runs plain http
         )
-        self._controller = AuthWebController(
+        # Seed RBAC role definitions (AuthConfig.roles is inert — see
+        # ROLE_DEFINITIONS above).
+        authz = await container.resolve(AuthorizationService)
+        authz.set_roles(ROLE_DEFINITIONS)
+
+        self._password_changes = PasswordChangeService(
+            password_hasher=await container.resolve(PasswordHasherProtocol),
+            policy=authentication.password_policy,
+            user_store=authentication.user_store,
+        )
+
+        self._api = AuthApiController(
             authentication=authentication,
-            users=self._user_service,
             cookies=self._backend,
             sessions=self._repository,
+            authz=authz,
+            password_changes=self._password_changes,
         )
 
 

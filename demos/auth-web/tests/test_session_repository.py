@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from auth_web.services.session_repository import InMemorySessionRepository
+from auth_web.repository import InMemorySessionRepository
 
 
 def payload(session_id: str, user_id: str = "u-1") -> dict:

@@ -10,7 +10,8 @@ from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
 
-from auth_web.controllers.pages import AuthWebController
+from auth_web.controllers.api import AuthApiController
+from auth_web.ui.pages import PagesController
 from auth_web.di.provider import AuthWebProvider, build_auth_config
 
 
@@ -25,7 +26,7 @@ class AuthWebModule(Module):
         )
         web_config = WebConfig(
             server=ServerConfig(host="127.0.0.1", port=selected_port),
-            # The demo posts plain forms over local http; no browser
+            # The demo posts plain JSON over local http; no browser
             # synchronizer token needed (matches realtime-monitor).
             security=SecurityConfig(enable_csrf=False),
         )
@@ -34,7 +35,8 @@ class AuthWebModule(Module):
             imports=[
                 AuthModule.configure(build_auth_config()),
                 WebModule.configure(
-                    controllers=[AuthWebController], web_config=web_config
+                    controllers=[AuthApiController, PagesController],
+                    web_config=web_config,
                 ),
             ],
             providers=[AuthWebProvider],

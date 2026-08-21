@@ -1,4 +1,4 @@
-"""End-to-end login/logout flow tests against the booted app."""
+"""End-to-end API flow tests against the booted app."""
 
 from __future__ import annotations
 
@@ -11,9 +11,8 @@ from auth_web.di.provider import DEMO_EMAIL, DEMO_PASSWORD
 
 async def login(client: httpx.AsyncClient) -> httpx.Response:
     return await client.post(
-        "/login",
-        data={"email": DEMO_EMAIL, "password": DEMO_PASSWORD},
-        follow_redirects=False,
+        "/api/login",
+        json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD},
     )
 
 
@@ -23,40 +22,97 @@ async def test_root_redirects_anonymous_to_login(client: httpx.AsyncClient) -> N
     assert response.headers["location"] == "/login"
 
 
-async def test_login_page_renders(client: httpx.AsyncClient) -> None:
-    response = await client.get("/login")
-    assert response.status_code == 200
-    assert "Log in" in response.text
-
-
-async def test_login_wrong_password_rerenders_with_error(
-    client: httpx.AsyncClient,
-) -> None:
+async def test_login_wrong_password_returns_401(client: httpx.AsyncClient) -> None:
     response = await client.post(
-        "/login",
-        data={"email": DEMO_EMAIL, "password": "wrong-password"},
+        "/api/login",
+        json={"email": DEMO_EMAIL, "password": "wrong-password"},
     )
-    assert response.status_code == 200
-    assert "error" in response.text.lower()
+    assert response.status_code == 401
+    assert "error" in response.json()
 
 
-async def test_login_success_sets_cookie_and_redirects(
+async def test_login_success_sets_cookie_and_identity(
     client: httpx.AsyncClient,
 ) -> None:
     response = await login(client)
 
-    assert response.status_code in (302, 303, 307)
-    assert response.headers["location"] == "/profile"
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user"]["email"] == DEMO_EMAIL
     assert "session_id" in response.cookies
+
+
+async def test_me_requires_session(client: httpx.AsyncClient) -> None:
+    response = await client.get("/api/me")
+    assert response.status_code == 401
+
+
+async def test_me_returns_identity_after_login(client: httpx.AsyncClient) -> None:
+    await login(client)
+
+    response = await client.get("/api/me")
+
+    assert response.status_code == 200
+    assert response.json()["email"] == DEMO_EMAIL
 
 
 async def test_logout_clears_cookie(client: httpx.AsyncClient) -> None:
     await login(client)
 
-    response = await client.post("/logout", follow_redirects=False)
+    response = await client.post("/api/logout")
 
-    assert response.status_code in (302, 303, 307)
-    assert response.headers["location"] == "/login"
+    assert response.status_code == 200
+    me = await client.get("/api/me")
+    assert me.status_code == 401
+
+
+async def test_register_creates_account_and_logs_in(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.post(
+        "/api/register",
+        json={
+            "name": "New User",
+            "email": "new@auth.demo",
+            "password": "Another-Demo-Pass-1",
+            "confirm_password": "Another-Demo-Pass-1",
+        },
+    )
+
+    assert response.status_code == 201
+    me = await client.get("/api/me")
+    assert me.json()["email"] == "new@auth.demo"
+
+
+async def test_register_duplicate_email_returns_409(
+    client: httpx.AsyncClient,
+) -> None:
+    await login(client)  # ensure DEMO user exists
+
+    response = await client.post(
+        "/api/register",
+        json={
+            "name": "Dup User",
+            "email": DEMO_EMAIL,
+            "password": DEMO_PASSWORD,
+            "confirm_password": DEMO_PASSWORD,
+        },
+    )
+
+    assert response.status_code in (400, 409)
+
+
+async def test_password_mismatch_is_rejected(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/register",
+        json={
+            "name": "Mismatch",
+            "email": "mismatch@auth.demo",
+            "password": "Some-Pass-123",
+            "confirm_password": "Different-Pass-123",
+        },
+    )
+    assert response.status_code == 400
 
 
 async def test_account_lockout_after_repeated_failures(
@@ -64,12 +120,10 @@ async def test_account_lockout_after_repeated_failures(
 ) -> None:
     for _ in range(5):
         await client.post(
-            "/login",
-            data={"email": DEMO_EMAIL, "password": "wrong-password"},
+            "/api/login",
+            json={"email": DEMO_EMAIL, "password": "wrong-password"},
         )
-    response = await client.post(
-        "/login",
-        data={"email": DEMO_EMAIL, "password": DEMO_PASSWORD},
-    )
+    response = await login(client)
     # Correct password must NOT bypass an active lockout.
-    assert "locked" in response.text.lower()
+    assert response.status_code == 401
+    assert "locked" in response.json()["error"].lower()

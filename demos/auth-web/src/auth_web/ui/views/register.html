@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Register — auth-web</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="register">
+  <h1 class="accent">Register</h1>
+  <div class="card">
+    <p id="error" class="error"></p>
+    <form id="register-form">
+      <input name="name" placeholder="name" minlength="3" required />
+      <input name="email" type="email" placeholder="email" required />
+      <input name="password" type="password" placeholder="password (8+ chars, mixed case)" required />
+      <input name="confirm_password" type="password" placeholder="confirm password" required />
+      <button type="submit">Create account</button>
+    </form>
+    <p class="muted">Already registered? <a href="/login">Log in</a></p>
+  </div>
+  <script src="/static/app.js"></script>
+  <script>
+    document.getElementById("register-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      showError("");
+      const form = new FormData(event.target);
+      const result = await api("/api/register", {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(form)),
+      });
+      if (result.ok) {
+        window.location.href = "/profile";
+      } else {
+        showError(result.body.error || "Registration failed");
+      }
+    });
+  </script>
+</body>
+</html>
