@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
     from lexigram.contracts.core.di import ContainerResolverProtocol
     from lexigram.web.config import WebConfig, WebProviderConfig
+    from lexigram.web.di.provider import WebProvider
     from lexigram.web.routing.manager import WebRouterManager
 
 logger = get_logger(__name__)
@@ -53,10 +54,12 @@ class RouteSetup:
 
         1. Debug routes (guarded by ``web.enable_debug_routes_env_gate`` config).
         2. Prometheus ``/metrics`` ASGI app (when ``MonitoringProvider`` is active).
-        3. Web contributor mounts (admin panels, sub-apps, etc.).
-        4. Static file directory (when ``web_config.static`` is configured).
-        5. Main controller discovery via :class:`~lexigram.web.routing.manager.WebRouterManager`.
-        6. Register the Starlette app as the ASGI handler on the ``Application`` instance.
+        3. Canonical health endpoint (before contributors so extension
+           convenience routes cannot shadow the framework contract).
+        4. Web contributor mounts (admin panels, sub-apps, etc.).
+        5. Static file directory (when ``web_config.static`` is configured).
+        6. Main controller discovery via :class:`~lexigram.web.routing.manager.WebRouterManager`.
+        7. Register the Starlette app as the ASGI handler on the ``Application`` instance.
 
         Args:
             app: The Starlette application to configure.
@@ -67,10 +70,23 @@ class RouteSetup:
         """
         await self._register_debug_routes(app, container, provider_context)
         await self._mount_metrics(app, container)
+        self._register_health_route(app)
         await self._mount_contributors(app, container, provider_context)
         self._mount_static(app)
         await self._router_manager.register_routes(app, container)
         await self._register_asgi_handler(app, container)
+
+    def _register_health_route(self, app: Starlette) -> None:
+        """Register the canonical health endpoint before contributor mounts.
+
+        Contributors (e.g. the relay gateway) may offer their own ``/health``
+        convenience route with dedup logic; registering ours first guarantees
+        the framework's 200/207/503 health contract wins regardless of which
+        extensions are installed. Later duplicate registrations are no-ops.
+        """
+        from lexigram.web.routing.health import register_health_route
+
+        register_health_route(cast("WebProvider", self._router_manager.provider), app)
 
     # ------------------------------------------------------------------
     # Private helpers

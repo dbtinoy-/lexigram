@@ -56,10 +56,29 @@ async def _probe_response(request: Request, probe_name: str) -> Response:
 
 
 def register_health_route(provider: WebProvider, _app: Application) -> None:
-    """Register comprehensive health check routes."""
+    """Register comprehensive health check routes.
+
+    Idempotent: skips registration when a route for the health path is
+    already present (e.g. registered before contributor mounts so that
+    extension-provided routes cannot shadow the canonical endpoint).
+    """
     starlette = provider.starlette
     if starlette is None:
         raise RuntimeError("Starlette application not initialized")
+
+    prefix = str(
+        getattr(
+            provider.web_config,
+            "health_check_prefix",
+            const.DEFAULT_HEALTH_PATH,
+        )
+    )
+    if any(
+        getattr(route, "path", None) == prefix
+        for route in getattr(starlette, "routes", [])
+    ):
+        logger.debug("web.health_route_already_registered", path=prefix)
+        return
 
     async def health_handler(request: Request) -> Response:
         """Return 200/207/503 based on real dependency health checks."""
@@ -104,20 +123,15 @@ def register_health_route(provider: WebProvider, _app: Application) -> None:
         return await _probe_response(request, "startup_check")
 
     # Use prefix from config if available
-    prefix = getattr(
-        provider.web_config, "health_check_prefix", const.DEFAULT_HEALTH_PATH
-    )
-    starlette.add_route(str(prefix), health_handler, methods=["GET"])
+    starlette.add_route(prefix, health_handler, methods=["GET"])
+    starlette.add_route(f"{prefix.rstrip('/')}/live", liveness_handler, methods=["GET"])
     starlette.add_route(
-        f"{str(prefix).rstrip('/')}/live", liveness_handler, methods=["GET"]
-    )
-    starlette.add_route(
-        f"{str(prefix).rstrip('/')}/ready",
+        f"{prefix.rstrip('/')}/ready",
         readiness_handler,
         methods=["GET"],
     )
     starlette.add_route(
-        f"{str(prefix).rstrip('/')}/startup",
+        f"{prefix.rstrip('/')}/startup",
         startup_handler,
         methods=["GET"],
     )
