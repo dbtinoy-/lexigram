@@ -71,8 +71,6 @@ experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_channels.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_di.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_job_passthrough.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_stream.py
-experimental/ai/lexigram-ai-relay/src/lexigram/ai/relay/mappers/gemini_request.py
-experimental/ai/lexigram-ai-relay/src/lexigram/ai/relay/mappers/openai_chat.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_claude_mapper.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_engine.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_openai_chat_mapper.py
@@ -178,7 +176,6 @@ packages/lexigram-sql/tests/unit/test_connection_pool.py
 packages/lexigram-sql/tests/unit/test_drivers.py
 packages/lexigram-sql/tests/unit/test_generic_repository.py
 packages/lexigram-sql/tests/unit/test_migrations_lexigram_db.py
-packages/lexigram-sql/tests/unit/test_postgres_driver_lexigram_db.py
 packages/lexigram-sql/tests/unit/test_protocols_unit_of_work.py
 packages/lexigram-sql/tests/unit/test_provider_lexigram_db.py
 packages/lexigram-sql/tests/unit/test_query_logger.py
