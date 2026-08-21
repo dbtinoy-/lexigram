@@ -16,6 +16,7 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
+from lexigram.logging import get_logger
 from ops_console.controllers.console import EventsStreamHandler
 from ops_console.controllers.operator import OperatorHandler
 from ops_console.domain import Severity, SystemEvent
@@ -26,6 +27,8 @@ HEARTBEAT_EVENTS = (
     ("cpu", "load 0.12", "info"),
     ("net", "traffic 1.2 KiB/s", "info"),
 )
+
+logger = get_logger(__name__)
 
 
 class RealtimeProvider(Provider):
@@ -39,6 +42,7 @@ class RealtimeProvider(Provider):
         self.heartbeat_interval = heartbeat_interval
         self.events = EventStreamService()
         self._heartbeat_task: asyncio.Task[None] | None = None
+        self._stopping = False
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         container.singleton(EventStreamService, self.events)
@@ -67,7 +71,21 @@ class RealtimeProvider(Provider):
             web.starlette.router.routes.append(
                 WebSocketRoute("/api/ws/operator", self._make_endpoint(container))
             )
+        self._start_heartbeat()
+
+    def _start_heartbeat(self) -> None:
+        """Start the heartbeat producer under done-callback supervision."""
         self._heartbeat_task = asyncio.create_task(self._heartbeat())
+        self._heartbeat_task.add_done_callback(self._on_heartbeat_done)
+
+    def _on_heartbeat_done(self, task: asyncio.Task[None]) -> None:
+        """Log unexpected heartbeat death and restart unless shutting down."""
+        if task.cancelled() or self._stopping:
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.error("heartbeat_task_died", error=str(exc))
+            self._start_heartbeat()
 
     async def _heartbeat(self) -> None:
         """Emit a rotating heartbeat event every interval until shutdown."""
@@ -86,6 +104,7 @@ class RealtimeProvider(Provider):
             )
 
     async def shutdown(self) -> None:
+        self._stopping = True
         if self._heartbeat_task is not None:
             self._heartbeat_task.cancel()
             try:
