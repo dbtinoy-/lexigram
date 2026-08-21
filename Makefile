@@ -238,6 +238,12 @@ catalog-package:  ## Run all standalone catalog generators
 	$(UV) run python dev/catalogs/generate_env_vars_catalog.py
 	$(UV) run python dev/catalogs/generate_error_catalog.py
 
+REPRO_OUT := $(CURDIR)/.cache/eval-reproduce
+
+.PHONY: eval-reproduce
+eval-reproduce:  ## Re-run the seeded llm-experiment; fails if same-seed digests diverge
+	$(UV) run python demos/llm-experiment/run_experiment.py --seed 7 --out $(REPRO_OUT)
+
 version-check:  ## Compare local versions vs PyPI (exit 1 if bumps needed)
 	$(UV) run python dev/check_version.py check
 
