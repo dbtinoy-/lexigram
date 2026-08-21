@@ -23,7 +23,6 @@ demos/llm-experiment/harness.py
 dev/audit/generators/docs_claims.py
 dev/audit/generators/docs_defaults.py
 dev/catalogs/generate_env_vars_catalog.py
-dev/core/rules_catalog.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/executor/executor.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/function_calling.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/plan_execute.py
@@ -147,7 +146,6 @@ packages/lexigram-sql/src/lexigram/sql/backup/backup_manager.py
 packages/lexigram-sql/src/lexigram/sql/di/provider.py
 packages/lexigram-sql/src/lexigram/sql/migrations/generator.py
 packages/lexigram-sql/src/lexigram/sql/migrations/manager.py
-packages/lexigram-sql/src/lexigram/sql/monitoring/database_monitor.py
 packages/lexigram-sql/src/lexigram/sql/schema/model.py
 packages/lexigram-sql/src/lexigram/sql/unit_of_work/simple.py
 packages/lexigram-sql/tests/integration/test_monitoring.py

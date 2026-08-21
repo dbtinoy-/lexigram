@@ -28,7 +28,7 @@ from lexigram.sql.monitoring.metrics import (
 @pytest.fixture(autouse=True)
 def mock_db_logger():
     """Patch the db.monitor logger to use a standard library logger so caplog works."""
-    with patch("lexigram.sql.monitoring.database_monitor.logger") as mock_log:
+    with patch("lexigram.sql.monitoring.database_monitor.pool.logger") as mock_log:
         yield mock_log
 
 
