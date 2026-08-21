@@ -21,6 +21,7 @@ from orders.events import NotificationHandler, OrdersView
 from orders.handlers import PayOrderHandler, PlaceOrderHandler, ShipOrderHandler
 from orders.outbox import Outbox
 from orders.repositories import OrderRepository
+from orders.services import OrdersApi
 
 
 class OrdersProvider(Provider):
@@ -29,11 +30,24 @@ class OrdersProvider(Provider):
     name = "orders"
     priority = ProviderPriority.NORMAL
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._api: OrdersApi | None = None
+
+    def _get_api(self) -> OrdersApi:
+        """Return the API facade assembled during boot."""
+        if self._api is None:
+            raise RuntimeError("OrdersProvider has not been booted yet")
+        return self._api
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         container.singleton(OrderRepository, OrderRepository())
         container.singleton(OrdersView, OrdersView())
         container.singleton(NotificationHandler, NotificationHandler())
         container.singleton(Outbox, Outbox())
+        # The facade depends on buses that are only wired in boot(), so it is
+        # registered as a lazy factory here and assembled once boot completes.
+        container.singleton(OrdersApi, factory=self._get_api)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         repository = await container.resolve(OrderRepository)
@@ -63,6 +77,14 @@ class OrdersProvider(Provider):
         event_bus.subscribe(OrderShipped, view.on_order_shipped)
         event_bus.subscribe(OrderPlaced, notifier.on_order_placed)
         event_bus.subscribe(OrderShipped, notifier.on_order_shipped)
+
+        self._api = OrdersApi(
+            command_bus=command_bus,
+            event_bus=event_bus,
+            repository=repository,
+            view=view,
+            outbox=outbox,
+        )
 
     async def shutdown(self) -> None:
         """Nothing to tear down; the demo is fully in-memory."""

@@ -14,6 +14,7 @@ from orders.di.provider import OrdersProvider
 from orders.events import NotificationHandler, OrdersView
 from orders.outbox import Outbox
 from orders.repositories import OrderRepository
+from orders.services import OrdersApi
 
 
 @module()
@@ -28,6 +29,7 @@ class OrdersModule(Module):
             providers=[OrdersProvider],
             exports=[
                 EventBusProtocol,
+                OrdersApi,
                 OrderRepository,
                 OrdersView,
                 NotificationHandler,

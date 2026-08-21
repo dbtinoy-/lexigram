@@ -17,13 +17,8 @@ from decimal import Decimal
 import sys
 
 from lexigram.app import Application
-from lexigram.contracts.events import EventBusProtocol
-from lexigram.events.buses.command import CommandBusImpl
 from orders.domain import OrderItem
-from orders.events import OrdersView
 from orders.module import OrdersModule
-from orders.outbox import Outbox
-from orders.repositories import OrderRepository
 from orders.services import OrdersApi
 
 
@@ -63,13 +58,7 @@ async def _run(args: argparse.Namespace) -> None:
     async with Application.boot(
         name="orders", modules=[OrdersModule.configure()]
     ) as app:
-        api = OrdersApi(
-            command_bus=await app.container.resolve(CommandBusImpl),
-            event_bus=await app.container.resolve(EventBusProtocol),
-            repository=await app.container.resolve(OrderRepository),
-            view=await app.container.resolve(OrdersView),
-            outbox=await app.container.resolve(Outbox),
-        )
+        api = await app.container.resolve(OrdersApi)
 
         if args.command == "place":
             items = [_parse_item(spec) for spec in args.item]

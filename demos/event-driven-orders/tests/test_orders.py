@@ -22,6 +22,7 @@ from orders.events import OrdersView
 from orders.module import OrdersModule
 from orders.outbox import Outbox
 from orders.repositories import OrderRepository
+from orders.services import OrdersApi
 
 
 @pytest.fixture
@@ -88,6 +89,18 @@ class TestOrderLifecycle:
         with pytest.raises(Exception) as exc_info:
             await command_bus.dispatch(ShipOrder(order_id=order_id))
         assert "paid before shipping" in str(exc_info.value)
+
+    async def test_orders_api_resolves_from_container(self, app: Application) -> None:
+        api = await app.container.resolve(OrdersApi)
+        event_bus = await app.container.resolve(EventBusProtocol)
+
+        order_id = await api.place("Bob Belcher", [item("SKU-9", 1, "12.00")])
+        await api.pay(order_id, Decimal("12.00"))
+        await event_bus.flush()
+
+        rows = api.list_orders()
+        assert rows[0]["order_id"] == order_id
+        assert rows[0]["status"] == "paid"
 
 
 class TestOutbox:
