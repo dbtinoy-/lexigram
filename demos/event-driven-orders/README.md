@@ -26,6 +26,16 @@ framework's in-memory buses.
 ## Run it
 
 ```bash
+uv run python -m orders demo
+```
+
+`demo` runs the whole lifecycle in one process: place → pay → ship, the staged
+outbox records, delivery through the outbox relay (projection + notification
+handlers fire), and the final read-model row.
+
+You can also drive each step yourself:
+
+```bash
 uv run python -m orders place "Alice Wonder" --item "SKU-1,2,9.99" --item "SKU-2,1,149.00"
 uv run python -m orders list
 uv run python -m orders pay <order-id> 19.98
@@ -33,10 +43,14 @@ uv run python -m orders ship <order-id>
 uv run python -m orders outbox
 ```
 
-Watch the flow: `place` writes the order and publishes `OrderPlaced`, then a
-notification handler "emails" the customer. `pay` / `ship` project new status
-into the read model, and `outbox` shows every staged event and flushes the
-ones still pending.
+Note that all state is in-memory and per-process: each invocation boots a
+fresh application, so an order placed in one command is invisible to the next.
+Use `demo` to see the full flow in a single process, or the test suite below.
+
+Watch the flow: `place` writes the order and stages `OrderPlaced` in the
+outbox; the relay then delivers it, and a notification handler "emails" the
+customer. `pay` / `ship` project new status into the read model, and `outbox`
+shows every staged event and flushes the ones still pending.
 
 Big picture: the read model is *only ever built from events* — a command that
 fails validation (e.g. shipping before paying) is rejected by the write side
