@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import re
+import asyncio
 from pathlib import Path
 from typing import Any
 

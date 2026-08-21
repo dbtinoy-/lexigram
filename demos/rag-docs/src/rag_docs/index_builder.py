@@ -69,11 +69,12 @@ async def build_docs_store(
 
     records: list[VectorRecord] = []
     for relative, chunks in loaded:
-        for chunk in chunks:
+        # Batch the file's chunks into one embed call (O(files) calls total).
+        vectors = await embedder.embed([chunk.text for chunk in chunks])
+        for chunk, vector in zip(chunks, vectors, strict=True):
             title = _extract_title(
                 chunk.text, Path(relative).stem.replace("-", " ").title()
             )
-            vector = (await embedder.embed([chunk.text]))[0]
             records.append(
                 VectorRecord(
                     id=f"{relative}#{chunk.chunk_index}",

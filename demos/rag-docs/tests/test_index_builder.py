@@ -63,3 +63,17 @@ async def test_empty_corpus_is_valid(tmp_path: Path) -> None:
     assert stats == IndexStats(files=0, chunks=0)
     results = await collection.search(SearchQuery(vector=[0.0] * EMBEDDING_DIMENSION, top_k=5))
     assert results == []
+
+
+async def test_title_falls_back_to_file_name_without_heading(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "untitled-notes.md").write_text(
+        "No heading here at all, just body prose for the embedder.\n"
+    )
+
+    _, collection, _ = await build_docs_store(docs, HashingEmbedder())
+
+    record = await collection.get(["untitled-notes.md#0"])
+    assert record
+    assert record[0].metadata["title"] == "Untitled Notes"
