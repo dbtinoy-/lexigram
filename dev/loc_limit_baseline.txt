@@ -168,7 +168,6 @@ packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures.py
 packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures.py
 packages/lexigram-vector/src/lexigram/vector/search/hybrid.py
 packages/lexigram-vector/src/lexigram/vector/search/reranking.py
-packages/lexigram-vector/tests/unit/test_vector_cache.py
 packages/lexigram-web/src/lexigram/web/config.py
 packages/lexigram-web/src/lexigram/web/di/provider.py
 packages/lexigram-web/src/lexigram/web/errors/html_error_renderer.py
