@@ -322,27 +322,48 @@ class ImpersonationService:
         )
         return Ok(session.actor_id)
 
-    def get_active_session(self, actor_id: str) -> ImpersonationSession | None:
+    def get_active_session(
+        self, actor_id: str, request: Any | None = None
+    ) -> ImpersonationSession | None:
         """Return the active ``ImpersonationSession`` for *actor_id*, or ``None``.
 
         Args:
             actor_id: Admin user ID to look up.
+            request: Optional Starlette request — when the in-process
+                session store has no entry (e.g. a different worker
+                handled the original ``start()`` call), the session is
+                reconstructed from ``request.session`` if present.
 
         Returns:
             Active session, or ``None`` if the user is not impersonating.
         """
-        return self._sessions.get(actor_id)
+        session = self._sessions.get(actor_id)
+        if session is not None:
+            return session
+        if request is not None:
+            req_session = getattr(request, "session", None)
+            raw = req_session.get(_SESSION_KEY) if req_session else None
+            if isinstance(raw, dict) and raw.get("actor_id") == actor_id:
+                return ImpersonationSession(
+                    id=raw.get("id", ""),
+                    actor_id=actor_id,
+                    target_user_id=raw.get("target_user_id", ""),
+                    reason=raw.get("reason", ""),
+                )
+        return None
 
-    def is_impersonating(self, actor_id: str) -> bool:
+    def is_impersonating(self, actor_id: str, request: Any | None = None) -> bool:
         """Return ``True`` if *actor_id* currently has an active impersonation.
 
         Args:
             actor_id: Admin user ID to check.
+            request: Optional Starlette request, passed through to
+                ``get_active_session`` for cross-worker fallback.
 
         Returns:
             True if an active session exists for this actor.
         """
-        return actor_id in self._sessions
+        return self.get_active_session(actor_id, request) is not None
 
     def list_active(self) -> list[ImpersonationSession]:
         """Return all currently active impersonation sessions.

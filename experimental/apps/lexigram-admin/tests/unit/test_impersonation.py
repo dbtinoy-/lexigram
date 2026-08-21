@@ -254,6 +254,56 @@ class TestImpersonationServiceQuery:
         service = ImpersonationService()
         assert service.list_active() == []
 
+    @pytest.mark.asyncio
+    async def test_get_active_session_falls_back_to_request_session(self) -> None:
+        # Simulate a different worker process: a fresh service with no
+        # in-memory session, but a request carrying the session cookie
+        # written by the worker that handled `start()`.
+        writer_service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        mock_request = MagicMock()
+        mock_request.session = {}
+        await writer_service.start(actor, "user-123", request=mock_request)
+
+        reader_service = ImpersonationService()
+        session = reader_service.get_active_session("admin1", request=mock_request)
+
+        assert session is not None
+        assert session.target_user_id == "user-123"
+
+    @pytest.mark.asyncio
+    async def test_get_active_session_ignores_mismatched_actor_in_request(
+        self,
+    ) -> None:
+        writer_service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        mock_request = MagicMock()
+        mock_request.session = {}
+        await writer_service.start(actor, "user-123", request=mock_request)
+
+        reader_service = ImpersonationService()
+        session = reader_service.get_active_session(
+            "someone-else", request=mock_request
+        )
+
+        assert session is None
+
+    @pytest.mark.asyncio
+    async def test_is_impersonating_falls_back_to_request_session(self) -> None:
+        writer_service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        mock_request = MagicMock()
+        mock_request.session = {}
+        await writer_service.start(actor, "user-123", request=mock_request)
+
+        reader_service = ImpersonationService()
+        assert reader_service.is_impersonating("admin1", request=mock_request)
+        assert not reader_service.is_impersonating("admin1")
+
+    def test_get_active_session_without_request_still_works(self) -> None:
+        service = ImpersonationService()
+        assert service.get_active_session("nobody") is None
+
 
 class TestImpersonationCustomPolicy:
     @pytest.mark.asyncio
