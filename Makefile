@@ -95,6 +95,10 @@ ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 	$(PYTEST) --tb=short --cov-fail-under=80
 	$(MAKE) check-demos
 
+.PHONY: guard
+guard:  ## Verify all dirty paths belong to this lane: make guard ALLOWED="path/a path/b"
+	$(UV) run python dev/check_tree_guard.py --allow $(ALLOWED)
+
 # ---------------------------------------------------------------------------
 # Demos (living integration surfaces — gated like the framework)
 # ---------------------------------------------------------------------------
