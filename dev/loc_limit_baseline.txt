@@ -147,7 +147,6 @@ packages/lexigram-cache/src/lexigram/cache/repository/base.py
 packages/lexigram-cache/tests/unit/semantic/test_semantic_cache.py
 packages/lexigram-events/src/lexigram/events/decorators/validation.py
 packages/lexigram-events/tests/unit/test_adapters.py
-packages/lexigram-events/tests/unit/test_buses.py
 packages/lexigram-events/tests/unit/test_decorators_lexigram_events.py
 packages/lexigram-features/tests/unit/test_feature_flags.py
 packages/lexigram-graphql/src/lexigram/graphql/core/context.py
