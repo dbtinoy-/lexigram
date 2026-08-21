@@ -206,10 +206,10 @@ jobs:
         run: uv python install 3.11
 
       - name: test (demo suites, workspace env)
-        run: uv run pytest -q -m "not integration" --no-cov demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests
+        run: uv run --group tooling pytest -q -m "not integration" --no-cov demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests
 
       - name: compile (llm-experiment scripts)
-        run: uv run python -m compileall -q demos/llm-experiment demos/event-driven-orders demos/realtime-monitor
+        run: uv run python -m compileall -q demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates
 
   audit:
     name: Dependency audit

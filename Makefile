@@ -98,15 +98,17 @@ ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 # ---------------------------------------------------------------------------
 # Demos (living integration surfaces — gated like the framework)
 # ---------------------------------------------------------------------------
-# All three demos ship pytest suites and run from the repo root in the
+# All four demos ship pytest suites and run from the repo root in the
 # workspace env. Format and lint already cover demos/ via the root `ruff`
-# invocations above.
-DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests
-DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor
+# invocations above. The llm-experiment harness imports opentelemetry,
+# which lives in the `tooling` dependency group.
+DEMO_PYTEST := $(UV) run --group tooling pytest
+DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests
+DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates
 
 .PHONY: test-demos
-test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment)
-	$(PYTEST) -q -m "not integration" --no-cov $(DEMO_TEST_DIRS)
+test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment, resilient-rates)
+	$(DEMO_PYTEST) -q -m "not integration" --no-cov $(DEMO_TEST_DIRS)
 
 .PHONY: verify-demos
 verify-demos:  ## Compile-check demo entry points and scripts (incl. llm-experiment)
