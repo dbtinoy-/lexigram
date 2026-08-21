@@ -9,6 +9,13 @@ try:
 except ImportError:
     pytest_asyncio = None
 
+# Direct sibling-helper imports (e.g. ``admin_bulk_test_support``) resolve
+# through this fronted path because pytest's importlib mode does not put
+# test directories on sys.path and ``tests/unit`` has no ``__init__.py``.
+_UNIT_TESTS_DIR = Path(__file__).resolve().parent / "unit"
+if str(_UNIT_TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_UNIT_TESTS_DIR))
+
 # Import from the consolidated testing package
 from lexigram.testing import TestEnvironment
 

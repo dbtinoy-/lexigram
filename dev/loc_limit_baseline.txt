@@ -122,7 +122,6 @@ experimental/apps/lexigram-admin/tests/unit/auth/test_password_reset_service.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_dashboard_controller.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_settings_controller.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_widgets.py
-experimental/apps/lexigram-admin/tests/unit/test_admin_bulk_manager.py
 experimental/apps/lexigram-admin/tests/unit/test_filter_manager.py
 experimental/apps/lexigram-admin/tests/unit/test_resource_controller.py
 experimental/apps/lexigram-cli/src/lexigram/cli/commands/config.py
