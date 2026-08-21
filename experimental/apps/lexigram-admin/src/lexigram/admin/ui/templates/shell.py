@@ -32,6 +32,10 @@ class AdminShell(Component):
         site_name: str = "",
         logo_url: str = "",
         dark_mode: str = "",
+        current_tenant_id: str | None = None,
+        current_tenant_name: str = "",
+        tenant_list: list[tuple[str, str]] | None = None,
+        tenant_csrf_token: str | None = None,
         impersonation_active: bool = False,
         impersonation_target_id: str = "",
         csrf_token: str = "",
@@ -47,6 +51,10 @@ class AdminShell(Component):
         self.site_name = site_name
         self.logo_url = logo_url
         self.dark_mode = dark_mode
+        self.current_tenant_id = current_tenant_id
+        self.current_tenant_name = current_tenant_name
+        self.tenant_list = tenant_list or []
+        self.tenant_csrf_token = tenant_csrf_token
         self.impersonation_active = impersonation_active
         self.impersonation_target_id = impersonation_target_id
         self.csrf_token = csrf_token
@@ -180,6 +188,10 @@ class AdminShell(Component):
                 site_name=self.site_name,
                 user=self.user,
                 user_menu_items=self.user_menu_items,
+                current_tenant_id=self.current_tenant_id,
+                current_tenant_name=self.current_tenant_name,
+                tenant_list=self.tenant_list,
+                tenant_csrf_token=self.tenant_csrf_token,
             )
 
         # 3. Theme styles (injected as inline style for runtime primary color)
