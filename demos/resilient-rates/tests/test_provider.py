@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import time
 
 import pytest
 
@@ -57,9 +58,13 @@ async def test_flaky_seed7_first_draw_is_timeout() -> None:
 async def test_slow_delays_but_succeeds() -> None:
     provider = make_provider(Scenario.SLOW)
 
+    start = time.monotonic()
     quote = await provider.fetch("EUR/USD")
+    elapsed = time.monotonic() - start
 
     assert quote.source == "upstream"
+    # 0.05s sleep minus headroom for scheduling jitter.
+    assert elapsed >= 0.04
 
 
 async def test_unknown_pair_rejected() -> None:
