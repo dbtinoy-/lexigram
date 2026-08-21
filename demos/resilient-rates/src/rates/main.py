@@ -17,7 +17,6 @@ import sys
 
 from lexigram.app import Application
 from lexigram.logging import get_logger
-
 from rates.module import RatesModule
 from rates.provider import FaultController, Scenario
 from rates.service import RatesService
