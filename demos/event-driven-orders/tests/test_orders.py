@@ -14,14 +14,16 @@ import pytest
 
 from lexigram.app import Application
 from lexigram.contracts.events import EventBusProtocol
+from lexigram.contracts.exceptions import EventError
 from lexigram.events.buses.command import CommandBusImpl
+from lexigram.result import Err, Result
 
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
-from orders.domain import OrderItem, OrderNotPaidError, OrderStatus
-from orders.events import OrdersView
+from orders.domain import OrderItem, OrderNotPaidError, OrderPlaced, OrderStatus
+from orders.events import NotificationHandler, OrdersView
 from orders.main import _build_parser, _run
 from orders.module import OrdersModule
-from orders.outbox import Outbox
+from orders.outbox import Outbox, OutboxError
 from orders.repositories import OrderRepository
 from orders.services import OrdersApi
 
@@ -152,3 +154,55 @@ class TestDemoCommand:
         assert "order shipped:" in out
         assert "\tshipped" in out
         assert "flushed: 3" in out
+
+
+class TestOutboxFailurePaths:
+    async def test_flush_returns_err_and_preserves_pending_when_bus_rejects(
+        self, app: Application
+    ) -> None:
+        command_bus = await app.container.resolve(CommandBusImpl)
+        outbox = await app.container.resolve(Outbox)
+        event_bus = await app.container.resolve(EventBusProtocol)
+
+        await command_bus.dispatch(PlaceOrder(customer="Frank", items=[item("SKU-6")]))
+        assert len(outbox.pending()) == 1
+
+        class RejectingBus:
+            async def publish(self, event: object) -> Result[None, EventError]:
+                return Err(EventError("bus rejected"))
+
+        result = await outbox.flush(RejectingBus())
+        assert result.is_err()
+        assert "Failed to publish OrderPlaced" in str(result.unwrap_err())
+        # The failed record stays pending so a later relay can retry it.
+        assert len(outbox.pending()) == 1
+
+        retry = await outbox.flush(event_bus)
+        assert retry.is_ok()
+        assert retry.unwrap() == 1
+        assert not outbox.pending()
+
+    def test_stage_raises_when_outbox_is_full(self) -> None:
+        outbox = Outbox(max_records=1)
+        outbox.stage(OrderPlaced(order_id="o-1"))
+
+        with pytest.raises(OutboxError):
+            outbox.stage(OrderPlaced(order_id="o-2"))
+
+
+class TestNotifications:
+    async def test_notifications_record_side_effects(self, app: Application) -> None:
+        api = await app.container.resolve(OrdersApi)
+        event_bus = await app.container.resolve(EventBusProtocol)
+        notifier = await app.container.resolve(NotificationHandler)
+
+        order_id = await api.place("Grace Hopper", [item("SKU-7")])
+        await api.pay(order_id, Decimal("10.00"))
+        await api.ship(order_id)
+        await api.flush_outbox()
+        await event_bus.flush()
+
+        assert notifier.notifications == [
+            f"order {order_id}: confirmation email sent to Grace Hopper",
+            f"order {order_id}: tracking email sent",
+        ]
