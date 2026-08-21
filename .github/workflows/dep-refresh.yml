@@ -1,0 +1,56 @@
+name: Dependency refresh
+
+on:
+  schedule:
+    - cron: "0 4 * * 1" # Mondays 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dep-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Upgrade lock + offline gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Refresh lockfile
+        id: lock
+        run: uv lock --upgrade
+
+      - name: Install workspace (refreshed lock)
+        run: uv sync --group tooling --group qa --group security --locked
+
+      - name: Offline test gate
+        id: tests
+        continue-on-error: true
+        run: uv run pytest -m "not integration" -q --no-cov
+
+      - name: Open refresh PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: deps/auto-refresh
+          delete-branch: true
+          title: "⬆️ deps: weekly lock refresh"
+          body: |
+            Automated weekly `uv lock --upgrade`.
+
+            Offline gate result: ${{ steps.tests.outcome }}.
+
+            If failed: review the log, pin the offending transitive via
+            `override-dependencies` or a resolution constraint, then re-run.
+          commit-message: "⬆️ deps: weekly lock refresh"
