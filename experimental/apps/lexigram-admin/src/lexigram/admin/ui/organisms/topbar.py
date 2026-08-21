@@ -175,6 +175,10 @@ class TopBar(Component):
         center: Any | None = None,
         right: Any | None = None,
         site_name: str = "",
+        current_tenant_id: str | None = None,
+        current_tenant_name: str = "",
+        tenant_list: list[tuple[str, str]] | None = None,
+        tenant_csrf_token: str | None = None,
         **props: Any,
     ) -> None:
         super().__init__(**props)
@@ -185,6 +189,10 @@ class TopBar(Component):
         self.right = right
         self.user = user
         self.user_menu_items = user_menu_items
+        self.current_tenant_id = current_tenant_id
+        self.current_tenant_name = current_tenant_name
+        self.tenant_list = tenant_list or []
+        self.tenant_csrf_token = tenant_csrf_token
 
     def render(self) -> Any:
         # Default Left: Mobile toggle + Title
@@ -227,12 +235,20 @@ class TopBar(Component):
                 class_="flex items-center",
             )
 
-        # Default Right: NotificationBell + ThemeToggle in header (UserBox is sidebar-only)
+        # Default Right: TenantSwitcher (superadmin only) + NotificationBell + ThemeToggle
         right_node = self.right
         if right_node is None:
             from lexigram.ui import NotificationBell
 
             right_elements = []
+            if self.current_tenant_id is not None:
+                right_elements.append(
+                    TenantSwitcher(
+                        tenants=self.tenant_list,
+                        current_tenant_id=self.current_tenant_id,
+                        csrf_token=self.tenant_csrf_token,
+                    )
+                )
             right_elements.append(
                 NotificationBell(inbox_url="/admin/notifications").render()
             )
