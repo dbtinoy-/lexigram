@@ -181,7 +181,6 @@ packages/lexigram-sql/tests/unit/test_connection_pool.py
 packages/lexigram-sql/tests/unit/test_drivers.py
 packages/lexigram-sql/tests/unit/test_generic_repository.py
 packages/lexigram-sql/tests/unit/test_migrations_lexigram_db.py
-packages/lexigram-sql/tests/unit/test_mysql_driver.py
 packages/lexigram-sql/tests/unit/test_postgres_driver_lexigram_db.py
 packages/lexigram-sql/tests/unit/test_protocols_unit_of_work.py
 packages/lexigram-sql/tests/unit/test_provider_lexigram_db.py
