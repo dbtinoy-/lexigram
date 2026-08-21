@@ -12,7 +12,6 @@ core/lexigram-contracts/src/lexigram/contracts/events/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/graphql/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/infra/tasks/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/web/protocols.py
-core/lexigram-contracts/tests/unit/test_events_protocols.py
 core/lexigram-contracts/tests/unit/test_tasks_protocols.py
 core/lexigram-contracts/tests/unit/test_web_protocols.py
 core/lexigram/benchmarks/benchmark_result_pattern.py
@@ -93,7 +92,6 @@ experimental/apps/lexigram-admin/src/lexigram/admin/auth/store/direct_sql.py
 experimental/apps/lexigram-admin/src/lexigram/admin/config.py
 experimental/apps/lexigram-admin/src/lexigram/admin/controllers/base.py
 experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widgets.py
-experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/route_integrator.py
 experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/widgets.py
 experimental/apps/lexigram-admin/src/lexigram/admin/data/query.py
 experimental/apps/lexigram-admin/src/lexigram/admin/di/bundle_provider.py
@@ -118,7 +116,6 @@ experimental/apps/lexigram-admin/tests/unit/controllers/test_dashboard_controlle
 experimental/apps/lexigram-admin/tests/unit/controllers/test_settings_controller.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_widgets.py
 experimental/apps/lexigram-admin/tests/unit/test_filter_manager.py
-experimental/apps/lexigram-admin/tests/unit/test_resource_controller.py
 experimental/apps/lexigram-cli/src/lexigram/cli/commands/config.py
 experimental/apps/lexigram-cli/src/lexigram/cli/commands/db.py
 experimental/apps/lexigram-cli/src/lexigram/cli/registry/database.py
@@ -193,3 +190,4 @@ packages/lexigram-workflow/src/lexigram/workflow/bulk/operation.py
 packages/lexigram-workflow/tests/unit/test_graph_engine.py
 tests/integration/extension_tests/execution/test_pipeline_lexigram.py
 tests/integration/scenarios/relay_fakes.py
+experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_handlers.py
