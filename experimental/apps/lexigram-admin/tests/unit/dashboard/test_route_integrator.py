@@ -5,9 +5,9 @@ from unittest.mock import ANY, AsyncMock, MagicMock
 import pytest
 
 from lexigram.admin.dashboard.naming_policy import NamingPolicy
+from lexigram.admin.dashboard.page_handlers import _resolve_primary_color
 from lexigram.admin.dashboard.route_integrator import (
     RouteIntegrator,
-    _resolve_primary_color,
 )
 from lexigram.contracts.admin import AdminRouteSpec, BaseAdminContributor
 
@@ -172,7 +172,7 @@ class TestClusterAliases:
         alias = next(r for r in router._extra_routes if r.path == "/infrastructure/web")
         assert alias.endpoint is source.endpoint
         assert alias.name == "cluster_alias_web"
-        from lexigram.admin.dashboard.route_integrator import StructuredPageHandler
+        from lexigram.admin.dashboard.page_handlers import StructuredPageHandler
 
         assert isinstance(source.endpoint, StructuredPageHandler)
         assert source.endpoint._handler is handler
