@@ -63,7 +63,6 @@ experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_channels.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_di.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_job_passthrough.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_stream.py
-experimental/ai/lexigram-ai-relay/tests/unit/relay/test_claude_mapper.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_engine.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_openai_chat_mapper.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_stream_emitters.py
