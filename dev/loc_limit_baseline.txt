@@ -148,7 +148,6 @@ packages/lexigram-queue/tests/unit/test_gcp_pubsub.py
 packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
 packages/lexigram-resilience/src/lexigram/resilience/decorators.py
 packages/lexigram-resilience/tests/unit/test_bulkhead_result.py
-packages/lexigram-resilience/tests/unit/test_circuit_breaker_result.py
 packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
 packages/lexigram-search/src/lexigram/search/backends/filters.py
 packages/lexigram-sql/src/lexigram/sql/backends/mysql.py
