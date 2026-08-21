@@ -13,7 +13,6 @@ core/lexigram-contracts/src/lexigram/contracts/graphql/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/infra/tasks/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/web/protocols.py
 core/lexigram-contracts/tests/unit/test_tasks_protocols.py
-core/lexigram-contracts/tests/unit/test_web_protocols.py
 core/lexigram/benchmarks/benchmark_result_pattern.py
 core/lexigram/benchmarks/benchmark_service_resolution.py
 core/lexigram/src/lexigram/app/base.py
