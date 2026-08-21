@@ -99,22 +99,7 @@ run_server(app, port=8000)
 
 → [Your First App](docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
 
-## ci — what runs on every push/pr
-
-`.github/workflows/ci.yml` runs four jobs (the badge at the top shows the
-latest `main` run); each job has a local one-liner:
-
-| job | runs in CI | locally |
-| --- | --- | --- |
-| `quality` | format, lint, tier boundary, mypy (core), per-package tests | `uv run ruff format --check . && uv run ruff check . && uv run mypy core/lexigram/src/ && uv run pytest -m "not integration" --no-cov` |
-| `coverage` | aggregate tests with a 70% floor | `uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70` |
-| `example` | demos gate (pytest-bearing demo suites + compile checks) | `make check-demos` |
-| `audit` | `pip-audit` known-vulnerability check | `uv run pip-audit` |
-
-> Every `-m "not integration"` run — per-package or aggregate — executes
-> fully offline: zero postgres/redis/docker required. Only the separate
-> `Integration scenarios` CI job starts the backing services (via
-> `tests/docker-compose.yml`, the same `docker compose up -d` flow).
+→ [Demos](demos/README.md) — 🛡️ resilience patterns, 📦 CQRS & event sourcing, 📡 realtime SSE dashboards, 🧪 reproducible LLM experiments — four runnable apps gated like the framework
 
 ## what's in the box
 
@@ -153,6 +138,23 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 - **contracts.** every package talks through protocols, so swapping the implementation never ripples.
 - **providers.** lifecycle and wiring live in one place, so boot order is explicit and tests are trivial.
 - **async, end to end.** the container, the modules, the controllers — concurrency-safe by construction.
+
+## ci — what runs on every push/pr
+
+`.github/workflows/ci.yml` runs four jobs (the badge at the top shows the
+latest `main` run); each job has a local one-liner:
+
+| job | runs in CI | locally |
+| --- | --- | --- |
+| `quality` | format, lint, tier boundary, mypy (core), per-package tests | `uv run ruff format --check . && uv run ruff check . && uv run mypy core/lexigram/src/ && uv run pytest -m "not integration" --no-cov` |
+| `coverage` | aggregate tests with a 70% floor | `uv run pytest -m "not integration and not slow" --cov --cov-fail-under=70` |
+| `example` | demos gate (pytest-bearing demo suites + compile checks) | `make check-demos` |
+| `audit` | `pip-audit` known-vulnerability check | `uv run pip-audit` |
+
+> Every `-m "not integration"` run — per-package or aggregate — executes
+> fully offline: zero postgres/redis/docker required. Only the separate
+> `Integration scenarios` CI job starts the backing services (via
+> `tests/docker-compose.yml`, the same `docker compose up -d` flow).
 
 ## audit
 
