@@ -51,14 +51,11 @@ experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/pipeline/builder.py
 experimental/ai/lexigram-ai-rag/tests/unit/test_chunking.py
 experimental/ai/lexigram-ai-rag/tests/unit/test_graph_store_adapter.py
 experimental/ai/lexigram-ai-rag/tests/unit/test_rag_cache__testragcache.py
-experimental/ai/lexigram-ai-rag/tests/unit/test_rag_steps.py
 experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/passthrough_service.py
-experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/service.py
 experimental/ai/lexigram-ai-relay-gateway/tests/integration/test_admin_contributor.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_channels.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_stream.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_engine.py
-experimental/ai/lexigram-ai-relay/tests/unit/relay/test_openai_chat_mapper.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_stream_emitters.py
 experimental/ai/lexigram-ai-workers/src/lexigram/ai/workers/dlq/worker.py
 experimental/ai/lexigram-ai/docs/gifs/tools/app.py
@@ -68,7 +65,6 @@ experimental/ai/lexigram-ai/tests/unit/test_context_compression.py
 experimental/ai/lexigram-ai/tests/unit/test_evaluation.py
 experimental/ai/lexigram-ai/tests/unit/test_hyde.py
 experimental/ai/lexigram-ai/tests/unit/test_knowledge_graph.py
-experimental/ai/lexigram-ai/tests/unit/test_multi_hop_reasoning.py
 experimental/ai/lexigram-ai/tests/unit/test_preprocessing.py
 experimental/ai/lexigram-ai/tests/unit/test_selector.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py
@@ -126,7 +122,6 @@ packages/lexigram-graphql/src/lexigram/graphql/di/provider.py
 packages/lexigram-graphql/src/lexigram/graphql/subscriptions/transport.py
 packages/lexigram-http/src/lexigram/http/client/http_client.py
 packages/lexigram-monitor/src/lexigram/monitor/config.py
-packages/lexigram-monitor/src/lexigram/monitor/di/provider.py
 packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
 packages/lexigram-resilience/src/lexigram/resilience/decorators.py
 packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
