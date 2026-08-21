@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -630,3 +631,55 @@ class TestWidgetControllerHealthPermissionGate:
         assert response.status_code == 200
         assert b"health-check-badge" in response.body
         contributor.render_health_check.assert_awaited_once()
+
+
+class TestWidgetControllerTenantScoping:
+    """D4: dashboard widget prefs must resolve the real tenant, not hardcode 'default'."""
+
+    @pytest.mark.asyncio
+    async def test_render_widget_uses_resolved_tenant(self) -> None:
+        mock_registry = MagicMock()
+        mock_contributor = MagicMock()
+        mock_registry.get.return_value = mock_contributor
+        mock_contributor.render_widget = AsyncMock(
+            return_value=Ok(WidgetViewModel(content=MessageContent(text="ok")))
+        )
+        settings_service = MagicMock()
+        settings_service.get_widget_prefs = AsyncMock(return_value={"configs": {}})
+        controller = WidgetController(registry=mock_registry)
+        controller._settings_service = settings_service
+
+        mock_request = MagicMock()
+        mock_request.query_params = {}
+        mock_request.state = SimpleNamespace(tenant_id="acme")
+
+        await controller.render_widget(
+            request=mock_request, contributor_id="c1", widget_name="w1"
+        )
+
+        settings_service.get_widget_prefs.assert_awaited_once_with("acme", "default")
+
+    @pytest.mark.asyncio
+    async def test_widget_config_popup_uses_resolved_tenant(self) -> None:
+        controller = WidgetController(registry=MagicMock())
+        controller._registry.get_all.return_value = []
+        mock_request = MagicMock()
+        mock_request.state = SimpleNamespace(tenant_id="acme")
+
+        import lexigram.admin.controllers.widgets as widgets_module
+        from lexigram.admin.multitenancy.adapter import resolve_tenant_id as original
+
+        captured: dict[str, str] = {}
+
+        async def spy(request, *, default):
+            resolved = await original(request, default=default)
+            captured["tenant_id"] = resolved
+            return resolved
+
+        widgets_module.resolve_tenant_id = spy
+        try:
+            await controller.widget_config_popup(request=mock_request, name="w1")
+        finally:
+            widgets_module.resolve_tenant_id = original
+
+        assert captured["tenant_id"] == "acme"

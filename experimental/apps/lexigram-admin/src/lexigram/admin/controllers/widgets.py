@@ -16,6 +16,7 @@ from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminRbacConfig
 from lexigram.admin.dashboard.content_renderer import render_content
 from lexigram.admin.dashboard.widget_types import ConfigField
+from lexigram.admin.multitenancy.adapter import resolve_tenant_id
 from lexigram.admin.params import parse_widget_params
 from lexigram.admin.rbac.super_admin import is_super_admin
 from lexigram.contracts.admin.protocols import AdminContributorRegistryProtocol
@@ -216,7 +217,8 @@ class WidgetController:
 
         if self._settings_service:
             full_name = f"{contributor_id}.{widget_name}"
-            prefs = await self._settings_service.get_widget_prefs("default", "default")
+            tenant_id = await resolve_tenant_id(request, default="default")
+            prefs = await self._settings_service.get_widget_prefs(tenant_id, "default")
             cfg = prefs.get("configs", {}).get(full_name, {})
             if "time_window_minutes" in cfg:
                 from lexigram.contracts.admin.types import WidgetParams
@@ -359,7 +361,7 @@ class WidgetController:
 
         from lexigram.admin.dashboard.widgets import render_widget_config_popup
 
-        tenant_id = "default"
+        tenant_id = await resolve_tenant_id(request, default="default")
         user_id = "default"
 
         widget_def = None
@@ -416,7 +418,7 @@ class WidgetController:
             )
             return HTMLResponse("Permission denied", status_code=403)
 
-        tenant_id = "default"
+        tenant_id = await resolve_tenant_id(request, default="default")
         user_id = "default"
 
         data = request.scope.get("admin_form_data")
@@ -473,7 +475,7 @@ class WidgetController:
             )
             return HTMLResponse("Permission denied", status_code=403)
 
-        tenant_id = "default"
+        tenant_id = await resolve_tenant_id(request, default="default")
         user_id = "default"
 
         data = await request.json()
@@ -504,7 +506,7 @@ class WidgetController:
             )
             return HTMLResponse("Permission denied", status_code=403)
 
-        tenant_id = "default"
+        tenant_id = await resolve_tenant_id(request, default="default")
         user_id = "default"
 
         prefs = (
@@ -634,7 +636,7 @@ class WidgetController:
             )
             return HTMLResponse("Permission denied", status_code=403)
 
-        tenant_id = "default"
+        tenant_id = await resolve_tenant_id(request, default="default")
         user_id = "default"
 
         data = request.scope.get("admin_form_data")
