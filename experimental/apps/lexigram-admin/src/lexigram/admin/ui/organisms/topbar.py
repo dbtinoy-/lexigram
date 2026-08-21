@@ -240,7 +240,7 @@ class TopBar(Component):
         if right_node is None:
             from lexigram.ui import NotificationBell
 
-            right_elements = []
+            right_elements: list[Any] = []
             if self.current_tenant_id is not None:
                 right_elements.append(
                     TenantSwitcher(
