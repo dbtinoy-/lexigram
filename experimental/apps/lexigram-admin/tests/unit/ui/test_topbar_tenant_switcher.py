@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from lexigram.admin.ui.organisms.topbar import TopBar
-from lexigram.ui import render_to_string
+from lexigram.ui import el, render_to_string
 
 
 class TestTopBarTenantSwitcher:
@@ -38,3 +38,17 @@ class TestTopBarTenantSwitcher:
         switcher_idx = html.index('name="tenant_id"')
         bell_idx = html.index("notifications")
         assert switcher_idx < bell_idx
+
+    def test_explicit_right_node_suppresses_default_switcher_and_bell(self) -> None:
+        html = render_to_string(
+            TopBar(
+                title="Admin",
+                current_tenant_id="acme",
+                tenant_list=[("acme", "Acme Corp")],
+                right=el("span", "Custom Right"),
+            )
+        )
+        assert "Custom Right" in html
+        assert 'action="/admin/set-tenant"' not in html
+        assert 'name="tenant_id"' not in html
+        assert 'x-data="notificationBell"' not in html
