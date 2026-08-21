@@ -307,9 +307,12 @@ class TestMonitorProvider:
             async def health_check(self):
                 raise OSError("Connection failed")
 
-        from lexigram.monitor.di import provider as provider_module
+        from lexigram.monitor.di import _lifecycle, provider as provider_module
 
-        warning_spy = mocker.patch.object(provider_module, "logger")
+        mocker.patch.object(provider_module, "logger")
+        import lexigram.monitor.di._metrics as _metrics_mod
+
+        warning_spy = mocker.patch.object(_metrics_mod, "logger")
         provider.backend = BackendWithHealthCheck()
 
         result = await provider.health_check()
