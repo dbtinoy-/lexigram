@@ -209,6 +209,41 @@ class TestTypeHintResolverImpl:
         params = self.resolver.get_injectable_parameters(VarArgs)
         assert params == {}
 
+    def test_inherited_init_resolves_against_defining_module(self) -> None:
+        """Hints on an inherited __init__ resolve via its defining module.
+
+        When a class composes mixins, ``cls.__module__`` differs from the
+        module where ``cls.__init__`` is defined. String annotations (PEP 563)
+        must resolve against the *function's* globals, with the class module
+        as fallback — otherwise discovery silently returns no parameters.
+        """
+        import sys
+        import types
+
+        mod_name = "_di_type_hints_external_module"
+        mod = types.ModuleType(mod_name)
+        external_dep = type("ExternalDep", (), {})
+        mod.ExternalDep = external_dep  # type: ignore[attr-defined]
+        sys.modules[mod_name] = mod
+        try:
+            exec(  # noqa: S102 - controlled test payload
+                "from __future__ import annotations\n\n\n"
+                "class ExternalBase:\n"
+                "    def __init__(self, dep: ExternalDep) -> None:\n"
+                "        self.dep = dep\n",
+                mod.__dict__,
+            )
+            external_base: type = mod.ExternalBase  # type: ignore[attr-defined]
+
+            class Composed(external_base):
+                """Defined in this module; __init__ inherited from ``mod``."""
+
+            params = self.resolver.get_injectable_parameters(Composed)
+            assert "dep" in params
+            assert params["dep"].type_hint is external_dep
+        finally:
+            del sys.modules[mod_name]
+
     def test_get_type_dependencies(self) -> None:
         """Test getting all type dependencies."""
         deps = self.resolver.get_type_dependencies(ServiceB)

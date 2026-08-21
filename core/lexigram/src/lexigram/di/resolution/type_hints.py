@@ -193,11 +193,19 @@ class TypeHintResolverImpl:
 
     def _resolve_hints(self, cls: type) -> dict[str, Any]:
         """Resolve type hints for cls.__init__ with namespace handling."""
+        init = cls.__init__  # type: ignore[misc]
+        # Merge the defining function's globals with the class module's
+        # namespace. When __init__ is inherited from a base/mixin defined in
+        # another module (e.g. composable controllers), string annotations
+        # (PEP 563) must resolve against the *function's* module globals;
+        # names imported in the class's own module are kept as fallback.
+        globalns: dict[str, Any] = dict(getattr(init, "__globals__", {}) or {})
+        module = sys.modules.get(cls.__module__)
+        if module is not None and hasattr(module, "__dict__"):
+            globalns.update(module.__dict__)
         try:
-            module = sys.modules.get(cls.__module__)
-            globalns = getattr(module, "__dict__", None)
             return get_type_hints(
-                cls.__init__,  # type: ignore[misc]
+                init,
                 globalns=globalns,
                 localns=dict(cls.__dict__),
                 include_extras=True,
