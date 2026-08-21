@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from lexigram.contracts.domain import DomainEvent
 from lexigram.contracts.events import EventBusProtocol
 from lexigram.logging import get_logger
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
@@ -31,8 +32,14 @@ from orders.repositories import OrderRepository
 logger = get_logger(__name__)
 
 
-class PlaceOrderHandler:
-    """Handle :class:`PlaceOrder` by persisting the order and publishing the event."""
+class OrderCommandHandlerBase:
+    """Shared wiring for write-side command handlers.
+
+    Args:
+        repository: The write-side repository.
+        event_bus: The bus published events are announced on.
+        outbox: The outbox each event is staged in before publishing.
+    """
 
     def __init__(
         self,
@@ -43,6 +50,26 @@ class PlaceOrderHandler:
         self.repository = repository
         self.event_bus = event_bus
         self.outbox = outbox
+
+    async def _publish(self, event: DomainEvent, event_name: str) -> None:
+        """Stage an event, publish it, and warn on rejection.
+
+        Args:
+            event: The domain event to deliver.
+            event_name: Event type name used in rejection logs.
+        """
+        self.outbox.stage(event)
+        result = await self.event_bus.publish(event)
+        if result.is_err():
+            logger.warning(
+                "order_event_rejected",
+                event=event_name,
+                error=str(result.unwrap_err()),
+            )
+
+
+class PlaceOrderHandler(OrderCommandHandlerBase):
+    """Handle :class:`PlaceOrder` by persisting the order and publishing the event."""
 
     async def handle(self, command: PlaceOrder) -> str:
         total = sum((item.line_total for item in command.items), Decimal("0"))
@@ -60,30 +87,13 @@ class PlaceOrderHandler:
             customer=order.customer,
             total=total,
         )
-        self.outbox.stage(event)
-        result = await self.event_bus.publish(event)
-        if result.is_err():
-            logger.warning(
-                "order_event_rejected",
-                event="OrderPlaced",
-                error=str(result.unwrap_err()),
-            )
+        await self._publish(event, "OrderPlaced")
         logger.info("order_placed", order_id=order.order_id, total=str(total))
         return order.order_id
 
 
-class PayOrderHandler:
+class PayOrderHandler(OrderCommandHandlerBase):
     """Handle :class:`PayOrder` by marking the order paid."""
-
-    def __init__(
-        self,
-        repository: OrderRepository,
-        event_bus: EventBusProtocol,
-        outbox: Outbox,
-    ) -> None:
-        self.repository = repository
-        self.event_bus = event_bus
-        self.outbox = outbox
 
     async def handle(self, command: PayOrder) -> None:
         order = self.repository.get(command.order_id)
@@ -109,29 +119,12 @@ class PayOrderHandler:
             order_id=order.order_id,
             amount=command.amount,
         )
-        self.outbox.stage(event)
-        result = await self.event_bus.publish(event)
-        if result.is_err():
-            logger.warning(
-                "order_event_rejected",
-                event="OrderPaid",
-                error=str(result.unwrap_err()),
-            )
+        await self._publish(event, "OrderPaid")
         logger.info("order_paid", order_id=order.order_id, amount=str(command.amount))
 
 
-class ShipOrderHandler:
+class ShipOrderHandler(OrderCommandHandlerBase):
     """Handle :class:`ShipOrder` by marking the order shipped."""
-
-    def __init__(
-        self,
-        repository: OrderRepository,
-        event_bus: EventBusProtocol,
-        outbox: Outbox,
-    ) -> None:
-        self.repository = repository
-        self.event_bus = event_bus
-        self.outbox = outbox
 
     async def handle(self, command: ShipOrder) -> None:
         order = self.repository.get(command.order_id)
@@ -151,15 +144,13 @@ class ShipOrderHandler:
         self.repository.save(shipped)
 
         event = order_event(OrderShipped, order_id=order.order_id)
-        self.outbox.stage(event)
-        result = await self.event_bus.publish(event)
-        if result.is_err():
-            logger.warning(
-                "order_event_rejected",
-                event="OrderShipped",
-                error=str(result.unwrap_err()),
-            )
+        await self._publish(event, "OrderShipped")
         logger.info("order_shipped", order_id=order.order_id)
 
 
-__all__ = ["PayOrderHandler", "PlaceOrderHandler", "ShipOrderHandler"]
+__all__ = [
+    "OrderCommandHandlerBase",
+    "PayOrderHandler",
+    "PlaceOrderHandler",
+    "ShipOrderHandler",
+]
