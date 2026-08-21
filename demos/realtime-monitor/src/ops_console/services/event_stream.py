@@ -69,8 +69,8 @@ class EventStreamService:
         Returns:
             Number of subscribers the event was queued for.
         """
-        self._history.append(event)
         async with self._lock:
+            self._history.append(event)
             for queue in list(self._subscribers):
                 if queue.full():
                     try:
@@ -87,6 +87,9 @@ class EventStreamService:
         history window starts to miss events — it is expected to reconnect
         (browsers do this automatically for SSE).
 
+        An event published while a subscription is being set up is delivered
+        exactly once: either via replay or live, never both.
+
         Yields:
             Events in published order.
         """
@@ -95,8 +98,9 @@ class EventStreamService:
                 maxsize=DEFAULT_QUEUE_CAPACITY
             )
             self._subscribers.add(queue)
+            history = list(self._history)
         try:
-            for event in list(self._history):
+            for event in history:
                 yield event
             while True:
                 while True:

@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
-
 from ops_console.domain import Severity, SystemEvent
 from ops_console.services.event_stream import DEFAULT_QUEUE_CAPACITY, EventStreamService
+import pytest
 
 
 def make_event(message: str = "hello") -> SystemEvent:
-    return SystemEvent(kind="test", message=message, severity=Severity.INFO, source="unit")
+    return SystemEvent(
+        kind="test", message=message, severity=Severity.INFO, source="unit"
+    )
 
 
 async def drain(stream: EventStreamService, first: SystemEvent) -> list[str]:
@@ -22,6 +23,24 @@ async def drain(stream: EventStreamService, first: SystemEvent) -> list[str]:
         if event is first:
             break
     return messages
+
+
+async def drain_until_quiet(
+    stream: EventStreamService, quiet_seconds: float = 0.1
+) -> list[SystemEvent]:
+    """Consume events until none arrive for ``quiet_seconds``, then stop."""
+    received: list[SystemEvent] = []
+    gen = stream.subscribe()
+    try:
+        while True:
+            try:
+                received.append(
+                    await asyncio.wait_for(anext(gen), timeout=quiet_seconds)
+                )
+            except TimeoutError:
+                return received
+    finally:
+        await gen.aclose()
 
 
 @pytest.mark.asyncio
@@ -55,7 +74,9 @@ async def test_history_is_bounded_and_newest_first() -> None:
     stream = EventStreamService(history_size=3)
     for index in range(5):
         await stream.publish(
-            SystemEvent(kind="test", message=f"msg-{index}", severity=Severity.INFO, source="u1")
+            SystemEvent(
+                kind="test", message=f"msg-{index}", severity=Severity.INFO, source="u1"
+            )
         )
     snapshot = stream.snapshot()
 
@@ -81,7 +102,9 @@ async def test_slow_consumer_drops_oldest_instead_of_blocking() -> None:
 
     for index in range(300):
         await stream.publish(
-            SystemEvent(kind="test", message=f"msg-{index}", severity=Severity.INFO, source="u1")
+            SystemEvent(
+                kind="test", message=f"msg-{index}", severity=Severity.INFO, source="u1"
+            )
         )
     await asyncio.wait_for(task, timeout=5)
 
@@ -89,3 +112,28 @@ async def test_slow_consumer_drops_oldest_instead_of_blocking() -> None:
     # scheduled mid-publish (the publisher never yields), so the queue kept
     # only the newest 100 events: 200..299. Nothing below 200 is delivered.
     assert set(consumed) == {f"msg-{i}" for i in range(200, 300)}
+
+
+@pytest.mark.asyncio
+async def test_event_published_during_registration_is_delivered_exactly_once() -> None:
+    stream = EventStreamService()
+    for index in range(3):
+        await stream.publish(make_event(f"seed-{index}"))
+    late = make_event("late")
+
+    async with stream._lock:
+        consumer = asyncio.create_task(drain_until_quiet(stream))
+        await asyncio.sleep(0)  # consumer queues on the registration lock
+        publisher = asyncio.create_task(stream.publish(late))
+        await asyncio.sleep(
+            0
+        )  # pre-fix code appended to history here, outside the lock
+    # Lock released: subscriber registers and snapshots history first, then the
+    # publisher fans out — "late" must arrive via exactly one of the two paths.
+
+    received = await asyncio.wait_for(consumer, timeout=5)
+    await asyncio.wait_for(publisher, timeout=5)
+
+    messages = [event.message for event in received]
+    assert messages[:3] == ["seed-0", "seed-1", "seed-2"]
+    assert messages.count("late") == 1
