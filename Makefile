@@ -98,14 +98,14 @@ ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 # ---------------------------------------------------------------------------
 # Demos (living integration surfaces — gated like the framework)
 # ---------------------------------------------------------------------------
-# The two pytest-bearing demos run from the repo root in the workspace env;
-# llm-experiment ships scripts + a notebook and is compile-gated. Format
-# and lint already cover demos/ via the root `ruff` invocations above.
+# All three demos ship pytest suites and run from the repo root in the
+# workspace env. Format and lint already cover demos/ via the root `ruff`
+# invocations above.
 DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests
 DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor
 
 .PHONY: test-demos
-test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor)
+test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment)
 	$(PYTEST) -q -m "not integration" --no-cov $(DEMO_TEST_DIRS)
 
 .PHONY: verify-demos
