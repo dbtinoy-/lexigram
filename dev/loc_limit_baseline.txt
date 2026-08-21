@@ -140,7 +140,6 @@ packages/lexigram-graphql/src/lexigram/graphql/subscriptions/transport.py
 packages/lexigram-http/src/lexigram/http/client/http_client.py
 packages/lexigram-monitor/src/lexigram/monitor/config.py
 packages/lexigram-monitor/src/lexigram/monitor/di/provider.py
-packages/lexigram-queue/tests/unit/test_gcp_pubsub.py
 packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
 packages/lexigram-resilience/src/lexigram/resilience/decorators.py
 packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
