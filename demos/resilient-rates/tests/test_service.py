@@ -76,7 +76,7 @@ async def test_retry_recovers_under_flaky_and_counts_attempts() -> None:
 
 
 async def test_breaker_opens_then_serves_stale() -> None:
-    """A terminal outage opens the breaker; later reads fall back to stale."""
+    """Terminal outage outcomes fall back to the warm stale copy."""
 
     def single_fault_factory(
         retry_config: RetryConfig,
@@ -84,7 +84,7 @@ async def test_breaker_opens_then_serves_stale() -> None:
         timeout_config: TimeoutConfig,
     ) -> ResiliencePipeline:
         # Trip on the first failed execution and keep the circuit OPEN for
-        # the whole test so the open-circuit fallback is observably stable.
+        # the whole test so both terminal outcomes are observably stable.
         return ResiliencePipeline(
             retry_config=retry_config,
             circuit_config=replace(
@@ -108,13 +108,27 @@ async def test_breaker_opens_then_serves_stale() -> None:
     await service.clear_cache()  # drop the cached quote so DOWN reaches the pipeline
     faults.set(Scenario.DOWN)
 
+    exhausted = await service.fetch("EUR/USD")  # retries exhausted -> stale
+    open_circuit = await service.fetch("EUR/USD")  # breaker OPEN -> stale
+
+    assert exhausted.source == "stale"
+    assert open_circuit.source == "stale"
+    assert service.stats().stale_served == 2
+
+    faults.set(Scenario.HEALTHY)
+
+
+async def test_down_without_stale_copy_raises() -> None:
+    """A never-warmed pair has no stale tier: the outage surfaces."""
+
+    service, faults = make_service()
+
+    faults.set(Scenario.DOWN)
+
     with pytest.raises(RateUnavailableError):
-        await service.fetch("EUR/USD")  # retries exhausted: terminal outage
+        await service.fetch("GBP/USD")
 
-    quote = await service.fetch("EUR/USD")  # breaker OPEN: stale fallback
-
-    assert quote.source == "stale"
-    assert service.stats().stale_served == 1
+    assert service.stats().stale_served == 0
 
     faults.set(Scenario.HEALTHY)
 

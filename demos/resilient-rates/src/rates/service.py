@@ -128,8 +128,8 @@ class RatesService:
             A quote sourced from cache, upstream, or the stale store.
 
         Raises:
-            RateUnavailableError: Retries exhausted while the circuit was
-                CLOSED, or the circuit OPENed with no stale copy available.
+            RateUnavailableError: Terminal pipeline failure (retries
+                exhausted or circuit open) with no stale copy available.
             KeyError: Unknown pair.
         """
         key = f"{_CACHE_PREFIX}{pair}"
@@ -150,21 +150,18 @@ class RatesService:
             self._stats.misses += 1
             try:
                 quote = await self._pipeline.execute(self._provider.fetch, pair)
-            except CircuitOpenError as exc:
+            except (CircuitOpenError, RetryExhaustedError) as exc:
+                # Any terminal pipeline failure falls back to the stale tier
+                # when a last-known-good copy exists; without one, the outage
+                # surfaces to the caller.
                 stale = self._stale.get(pair)
                 if stale is None:
                     raise RateUnavailableError(
-                        f"circuit open for {pair} and no stale copy"
+                        f"upstream unavailable for {pair} and no stale copy"
                     ) from exc
                 self._stats.stale_served += 1
                 logger.warning("stale_served", pair=pair, reason=str(exc))
                 return replace(stale, source="stale")
-            except RetryExhaustedError as exc:
-                # Breaker still CLOSED: surface the outage instead of masking
-                # it — the stale tier exists for the OPEN-circuit state only.
-                raise RateUnavailableError(
-                    f"upstream exhausted retries for {pair}"
-                ) from exc
 
             self._stats.upstream_calls += 1
             self._stale[pair] = quote
