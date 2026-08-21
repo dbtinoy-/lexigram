@@ -68,6 +68,19 @@ Retrieval-augmented answers from the framework's documentation:
 - 🖥️ **Cited answers** — extractive synthesis with `[n] path#chunk`
   citations via `uv run python -m rag_docs demo`
 
+### 🔐 [auth-web](auth-web/) — browser account lifecycle
+
+Register, log in, manage sessions and passwords over `lexigram-auth`:
+
+- 🍪 **Cookie sessions** — `SessionCookieBackend` with revocation across
+  browsers, HttpOnly by default
+- 🎫 **JWT claims on your profile** — fresh token minted per visit, roles +
+  permissions expanded from seeded RBAC definitions
+- 🚫 **Lockout built in** — 5 wrong passwords lock the account, constant-time
+  verification prevents user enumeration
+- 🖥️ **Vanilla JS client** — HTML views + `fetch` against a pure JSON API via
+  `uv run python -m auth_web`
+
 ---
 
 ## 🚀 Running them
@@ -89,7 +102,7 @@ real resilience pipeline — no mocks where it matters.
 
 - 🎨 **Format + lint** — root `ruff format --check .` / `ruff check .`
   (demo-specific rule relaxations live in the root `pyproject.toml`)
-- 🧪 **Tests** — all five demos run their suites in the workspace env
+- 🧪 **Tests** — all six demos run their suites in the workspace env
   (`make test-demos`)
 - 🔍 **Compile check** — demo sources are compile-gated (`make verify-demos`)
 - 🏁 **One command** — `make check-demos` runs tests + compile checks and is

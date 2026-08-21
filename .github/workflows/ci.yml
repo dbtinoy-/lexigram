@@ -215,7 +215,7 @@ jobs:
         run: uv python install 3.11
 
       - name: test (demo suites, workspace env)
-        run: uv run --group tooling pytest -q -m "not integration" --no-cov demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests demos/rag-docs/tests
+        run: uv run --group tooling pytest -q -m "not integration" --no-cov demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests
 
       - name: compile (llm-experiment scripts)
         run: uv run python -m compileall -q demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates
