@@ -1,3 +1,7 @@
+"""BackupManager orchestration tests."""
+
+from __future__ import annotations
+
 """Tests for Lexigram DB backup functionality"""
 
 from datetime import UTC, datetime
@@ -15,6 +19,7 @@ from lexigram.sql.backup.backup_manager import (
     SQLBackupStrategy,
     TableData,
 )
+
 
 
 class MockDatabaseConnection(DatabaseConnection):
@@ -113,132 +118,6 @@ class MockAsyncContextManager:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
 
-
-class TestBackupMetadata:
-    """Test BackupMetadata dataclass"""
-
-    def test_backup_metadata_creation(self):
-        """Test creating backup metadata"""
-        created_at = datetime.now(UTC)
-        metadata = BackupMetadata(
-            database_type="sql",
-            tables=["users", "orders"],
-            record_counts={"users": 100, "orders": 50},
-            created_at=created_at,
-            version="1.0",
-            compressed=True,
-            checksum="abc123",
-        )
-
-        assert metadata.database_type == "sql"
-        assert metadata.tables == ["users", "orders"]
-        assert metadata.record_counts == {"users": 100, "orders": 50}
-        assert metadata.created_at == created_at
-        assert metadata.version == "1.0"
-        assert metadata.compressed is True
-        assert metadata.checksum == "abc123"
-
-
-class TestTableData:
-    """Test TableData dataclass"""
-
-    def test_table_data_creation(self):
-        """Test creating table data"""
-        data = TableData(
-            name="users",
-            columns=["id", "name", "email"],
-            rows=[[1, "John", "john@example.com"], [2, "Jane", "jane@example.com"]],
-            primary_key="id",
-        )
-
-        assert data.name == "users"
-        assert data.columns == ["id", "name", "email"]
-        assert len(data.rows) == 2
-        assert data.primary_key == "id"
-
-
-class TestSQLBackupStrategy:
-    """Test SQL backup strategy"""
-
-    @pytest.fixture
-    def mock_conn(self):
-        """Create mock connection with test data"""
-        conn = MockDatabaseConnection()
-
-        # Mock column information
-        conn.fetch_results = {
-            "SELECT column_name FROM information_schema.columns WHERE table_name = ? "
-            "AND table_schema = DATABASE() ORDER BY ordinal_position": [
-                {"column_name": "id"},
-                {"column_name": "name"},
-                {"column_name": "email"},
-            ],
-            "SELECT column_name FROM information_schema.key_column_usage WHERE table_name = ? "
-            "AND constraint_name = 'PRIMARY'": [{"column_name": "id"}],
-            "SELECT * FROM users": [
-                {"id": 1, "name": "John", "email": "john@example.com"},
-                {"id": 2, "name": "Jane", "email": "jane@example.com"},
-            ],
-        }
-
-        return conn
-
-    @pytest.fixture
-    def strategy(self):
-        """Create SQL backup strategy"""
-        return SQLBackupStrategy()
-
-    @pytest.mark.asyncio
-    async def test_backup_table(self, strategy, mock_conn):
-        """Test backing up a single table"""
-        # Setup mock data with parameterized queries
-        mock_conn.fetch_results = {
-            "SELECT column_name FROM information_schema.columns WHERE table_name = ? "
-            "AND table_schema = DATABASE() ORDER BY ordinal_position": [
-                {"column_name": "id"},
-                {"column_name": "name"},
-                {"column_name": "email"},
-            ],
-            "SELECT column_name FROM information_schema.key_column_usage WHERE table_name = ? "
-            "AND constraint_name = 'PRIMARY'": [{"column_name": "id"}],
-            'SELECT * FROM "users"': [
-                {"id": 1, "name": "John", "email": "john@example.com"},
-                {"id": 2, "name": "Jane", "email": "jane@example.com"},
-            ],
-        }
-
-        result = await strategy.backup_table(mock_conn, "users")
-
-        assert result.name == "users"
-        assert result.columns == ["id", "name", "email"]
-        assert result.primary_key == "id"
-        assert len(result.rows) == 2
-        assert result.rows[0] == [1, "John", "john@example.com"]
-
-    @pytest.mark.asyncio
-    async def test_get_table_list(self, strategy, mock_conn):
-        """Test getting table list"""
-        mock_conn.fetch_results = {
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() "
-            "AND table_type = 'BASE TABLE' AND table_name NOT IN ('schema_migrations', 'migrations')": [
-                {"table_name": "users"},
-                {"table_name": "orders"},
-                {"table_name": "products"},
-            ],
-        }
-
-        tables = await strategy.get_table_list(mock_conn)
-        assert tables == ["users", "orders", "products"]
-
-    @pytest.mark.asyncio
-    async def test_get_table_info(self, strategy, mock_conn):
-        """Test getting table info"""
-        mock_conn.fetch_results = {
-            'SELECT COUNT(*) as count FROM "users"': {"count": 150},
-        }
-
-        info = await strategy.get_table_info(mock_conn, "users")
-        assert info == {"record_count": 150, "table_name": "users"}
 
 
 class TestBackupManager:
@@ -468,109 +347,3 @@ class TestBackupManager:
         assert "Missing tables section" in result["issues"]
 
 
-class TestDatabaseMaintenance:
-    """Test DatabaseMaintenance functionality"""
-
-    @pytest.fixture
-    def mock_pool(self):
-        """Create mock connection pool"""
-        return MockConnectionPoolProtocol()
-
-    @pytest.fixture
-    def maintenance(self, mock_pool):
-        """Create database maintenance instance"""
-        return DatabaseMaintenance(mock_pool)
-
-    @pytest.mark.asyncio
-    async def test_vacuum_all_tables(self, maintenance):
-        """Test vacuuming all tables"""
-        await maintenance.vacuum()
-
-        conn = maintenance.connection_pool.mock_conn
-        assert len(conn.executed_queries) == 1
-        assert conn.executed_queries[0][0] == "VACUUM"
-
-    @pytest.mark.asyncio
-    async def test_vacuum_specific_table(self, maintenance):
-        """Test vacuuming a specific table"""
-        await maintenance.vacuum("users")
-
-        conn = maintenance.connection_pool.mock_conn
-        assert len(conn.executed_queries) == 1
-        assert conn.executed_queries[0][0] == 'VACUUM "users"'
-
-    @pytest.mark.asyncio
-    async def test_analyze_all_tables(self, maintenance):
-        """Test analyzing all tables"""
-        await maintenance.analyze()
-
-        conn = maintenance.connection_pool.mock_conn
-        assert len(conn.executed_queries) == 1
-        assert conn.executed_queries[0][0] == "ANALYZE TABLE"
-
-    @pytest.mark.asyncio
-    async def test_analyze_specific_table(self, maintenance):
-        """Test analyzing a specific table"""
-        await maintenance.analyze("users")
-
-        conn = maintenance.connection_pool.mock_conn
-        assert len(conn.executed_queries) == 1
-        assert conn.executed_queries[0][0] == 'ANALYZE TABLE "users"'
-
-    @pytest.mark.asyncio
-    async def test_get_table_sizes(self, maintenance):
-        """Test getting table sizes"""
-        conn = maintenance.connection_pool.mock_conn
-        conn.fetch_results = {
-            "SELECT table_name, data_length, index_length, "
-            "data_length + index_length as total_size FROM information_schema.tables "
-            "WHERE table_schema = DATABASE() "
-            "ORDER BY total_size DESC": [
-                {
-                    "table_name": "users",
-                    "data_length": 1024,
-                    "index_length": 512,
-                    "total_size": 1536,
-                },
-                {
-                    "table_name": "orders",
-                    "data_length": 2048,
-                    "index_length": 1024,
-                    "total_size": 3072,
-                },
-            ],
-        }
-
-        sizes = await maintenance.get_table_sizes()
-
-        assert "users" in sizes
-        assert "orders" in sizes
-        assert sizes["users"]["total_size"] == 1536
-        assert sizes["orders"]["total_size"] == 3072
-
-    @pytest.mark.asyncio
-    async def test_get_database_stats(self, maintenance):
-        """Test getting database statistics"""
-        conn = maintenance.connection_pool.mock_conn
-        conn.fetch_results = {
-            "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE()": {
-                "count": 5,
-            },
-            "SELECT SUM(table_rows) as total_records FROM information_schema.tables WHERE table_schema = DATABASE()": {
-                "total_records": 1500,
-            },
-            "SELECT SUM(data_length + index_length) as total_size, SUM(data_length) as data_size, "
-            "SUM(index_length) as index_size FROM information_schema.tables WHERE table_schema = DATABASE()": {
-                "total_size": 1048576,
-                "data_size": 786432,
-                "index_size": 262144,
-            },
-        }
-
-        stats = await maintenance.get_database_stats()
-
-        assert stats["table_count"] == 5
-        assert stats["total_records"] == 1500
-        assert stats["database_size"]["total"] == 1048576
-        assert stats["database_size"]["data"] == 786432
-        assert stats["database_size"]["index"] == 262144
