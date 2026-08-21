@@ -62,3 +62,14 @@ uv run pytest demos/realtime-monitor/tests -q
 The tests cover the bus in isolation (fan-out to many subscribers, replay for
 late subscribers, and the drop-oldest behavior for slow consumers), plus HTTP
 and WebSocket endpoints exercised through a Starlette `TestClient`.
+
+## Known boot noise
+
+On startup the server may log one
+`web.contributor_mount_failed ... 'admin_bundle'` error. This comes from
+**optional-package contributor discovery**: any installed package that
+declares a `lexigram.admin.contributors` entry point (today:
+`lexigram-auth`) is loaded into every web app's registry, and its mount
+resolves an admin bundle only the full admin application registers. The
+failure is isolated by design — the demo neither imports nor needs the admin
+panel, and serving is unaffected.
