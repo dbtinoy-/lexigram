@@ -19,7 +19,6 @@ core/lexigram/src/lexigram/di/container/container.py
 core/lexigram/src/lexigram/domain/models/base.py
 core/lexigram/src/lexigram/primitives/context.py
 core/lexigram/tests/integration/di/module/test_graph_reflection_integration.py
-core/lexigram/tests/unit/test_logging_system.py
 demos/llm-experiment/harness.py
 dev/audit/generators/docs_claims.py
 dev/audit/generators/docs_defaults.py
