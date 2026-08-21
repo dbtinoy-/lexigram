@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from lexigram.admin.ui.templates.shell import AdminShell
-from lexigram.ui.core.base import render_to_string
+from lexigram.ui import render_to_string
 
 
 class TestImpersonationBanner:
