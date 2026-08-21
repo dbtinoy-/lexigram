@@ -55,13 +55,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--root",
         type=Path,
         default=None,
-        help="Workspace root for path-sensitive generators",
+        help="Directory containing the audit reports (defaults to docs/audit)",
+    )
+    validate_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Validate reports at the workspace root instead of docs/audit",
     )
 
     return parser
 
 
-def run_named_generator_cli(generator_name: str, argv: Sequence[str] | None = None) -> int:
+def run_named_generator_cli(
+    generator_name: str, argv: Sequence[str] | None = None
+) -> int:
     """Run a named audit generator as a standalone adapter command."""
 
     parser = argparse.ArgumentParser(prog=f"scripts {generator_name}")
@@ -139,13 +146,13 @@ def _handle_audit_run(name: str, root: Path | None, all_mode: bool = False) -> i
     return _run_single_generator(generator, root=root, all_mode=all_mode)
 
 
-def _handle_audit_validate(root: Path | None) -> int:
+def _handle_audit_validate(root: Path | None, all_mode: bool = False) -> int:
     """Validate all registered generators through the registry."""
 
     registry = _get_registry()
     validated = 0
     exit_code = 0
-    resolved_root = _resolve_root(root)
+    resolved_root = _resolve_root(root, all_mode=all_mode)
     for name in registry.names():
         generator = registry.get(name)
         if generator is None or not isinstance(generator, AuditGeneratorProtocol):
@@ -178,12 +185,26 @@ def _handle_audit_validate(root: Path | None) -> int:
     return exit_code
 
 
-def _resolve_root(root: Path | None) -> Path:
-    """Resolve the workspace root used for CLI report validation."""
+def _resolve_root(root: Path | None, *, all_mode: bool = False) -> Path:
+    """Resolve the directory that holds the audit reports.
+
+    Mirrors the generator output layout: reports are written under
+    ``docs/audit/`` by default and at the workspace root in ``--all``
+    mode. An explicit ``root`` always wins.
+
+    Args:
+        root: Explicit report directory from ``--root``, or ``None``.
+        all_mode: Whether to resolve the workspace root instead of
+            ``docs/audit``.
+
+    Returns:
+        The directory to validate reports against.
+    """
 
     if root is not None:
         return root.resolve()
-    return Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[1]
+    return repo_root if all_mode else repo_root / "docs/audit"
 
 
 def _validate_report_content(*, name: str, report_text: str) -> int:
@@ -219,7 +240,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         all_mode = getattr(args, "all", False)
         return _handle_audit_run(args.name, args.root, all_mode=all_mode)
     if args.command == "audit" and args.audit_command == "validate":
-        return _handle_audit_validate(args.root)
+        return _handle_audit_validate(args.root, all_mode=getattr(args, "all", False))
 
     parser.error("unsupported command")
     return 2

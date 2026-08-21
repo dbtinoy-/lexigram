@@ -5,7 +5,7 @@ from pathlib import Path
 
 from dev.audit.generators import build_audit_registry
 from dev.audit.generators.base import AuditRunResult
-from dev.cli import main
+from dev.cli import _resolve_root, main
 from dev.core.registry import GeneratorRegistry
 
 
@@ -79,6 +79,27 @@ def test_cli_lists_generators(capsys) -> None:
     assert [line.split("\t", 1)[0] for line in output_lines[1:]] == list(
         build_audit_registry().names()
     )
+
+
+def test_resolve_root_mirrors_generator_output_layout() -> None:
+    """Report lookup defaults to docs/audit and honors --all, like run."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+
+    assert _resolve_root(None) == repo_root / "docs/audit"
+    assert _resolve_root(None, all_mode=True) == repo_root
+    explicit = repo_root / "reports"
+    assert _resolve_root(explicit) == explicit.resolve()
+
+
+def test_cli_validate_defaults_to_docs_audit_directory(capsys) -> None:
+    """Bare `audit validate` checks the committed docs/audit reports."""
+
+    exit_code = main(["audit", "validate"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "validated" in output
 
 
 def test_cli_runs_single_generator_successfully(tmp_path: Path, capsys) -> None:
@@ -176,7 +197,9 @@ def test_cli_validate_fails_when_required_reports_or_evidence_are_missing(
     ):
         registry.register(generator.name, generator)
 
-    (tmp_path / "AUDIT_QUALITY.md").write_text("# AUDIT_QUALITY.md\n\nmissing evidence\n", encoding="utf-8")
+    (tmp_path / "AUDIT_QUALITY.md").write_text(
+        "# AUDIT_QUALITY.md\n\nmissing evidence\n", encoding="utf-8"
+    )
     (tmp_path / "AUDIT_RULES.md").write_text(
         """
 # AUDIT_RULES.md
