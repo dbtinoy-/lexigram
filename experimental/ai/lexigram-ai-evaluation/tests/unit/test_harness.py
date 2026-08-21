@@ -69,3 +69,33 @@ class TestEvaluationHarness:
 
         assert report.average_score >= 0.0
         assert report.average_score <= 1.0
+
+    @pytest.mark.asyncio
+    async def test_repeated_runs_produce_identical_reports(self) -> None:
+        """Two runs over a fixed dataset yield identical reports.
+
+        Pins the reproducibility contract at the harness boundary: given
+        a deterministic evaluator and an immutable dataset, repeated
+        ``run`` calls must agree on totals and per-sample scores, so
+        downstream seeded experiments can diff run artifacts reliably.
+        """
+        harness = EvaluationHarness(pass_threshold=0.5)
+        dataset = EvaluationDataset(
+            name="repro",
+            samples=[
+                EvaluationSample(id=f"s{i}", input=f"q{i}", reference="", metadata={})
+                for i in range(5)
+            ],
+            metadata={"seed": 42},
+        )
+        evaluator = CriteriaEvaluator()
+
+        first = (await harness.run(dataset, evaluator)).unwrap()
+        second = (await harness.run(dataset, evaluator)).unwrap()
+
+        assert second.total_samples == first.total_samples == 5
+        assert second.passed_samples == first.passed_samples
+        assert (
+            [r.score for r in second.results] == [r.score for r in first.results]
+        )
+        assert second.average_score == pytest.approx(first.average_score)
