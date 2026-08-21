@@ -94,6 +94,9 @@ jobs:
       - name: Dependency pin guard
         run: uv run python dev/check_dep_pins.py --root .
 
+      - name: Stub-shadow gate (MRO resolution)
+        run: uv run python dev/check_stub_shadows.py --root .
+
       - name: env.example coverage
         run: uv run python dev/check_env_example.py --root .
 
