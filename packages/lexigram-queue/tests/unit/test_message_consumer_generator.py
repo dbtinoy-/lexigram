@@ -1,8 +1,7 @@
 """Tests for MessageConsumerGenerator."""
 
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+
 from lexigram.queue.cli.generators.message_consumer import MessageConsumerGenerator
 
 
@@ -13,47 +12,67 @@ def test_message_consumer_generator_name():
     assert "message queue consumer" in generator.description
 
 
-@patch("lexigram.queue.cli.generators.message_consumer.PackageLoader")
-@patch("lexigram.queue.cli.generators.message_consumer.Environment")
-def test_message_consumer_generator_generate(mock_env_class, mock_loader, tmp_path):
-    """Test generation process."""
-    mock_env = mock_env_class.return_value
-    mock_template = mock_env.get_template.return_value
-    mock_template.render.return_value = "rendered content"
-
+def test_generate_writes_rendered_consumer(tmp_path: Path):
+    """Generation renders the real template into the target directory."""
     output_dir = tmp_path / "consumers"
 
     generator = MessageConsumerGenerator(
-        output_dir=str(output_dir),
-        broker="kafka",
-        queue="test_queue"
+        output_dir=str(output_dir), broker="kafka", queue="test_queue"
     )
+    result = generator.generate(name="test")
 
-    with patch.object(MessageConsumerGenerator, "_get_package_name", return_value="app.consumers"):
-        result = generator.generate(name="test")
-
-        assert len(result.files_created) == 1
-        file_created = output_dir / "test_consumer.py"
-        assert file_created.exists()
-        assert file_created.read_text() == "rendered content"
-
-        mock_env.get_template.assert_called_with("message_consumer.py.jinja2")
-        mock_template.render.assert_called()
-
-        result2 = generator.generate(name="test")
-        assert len(result2.files_created) == 0
+    file_created = Path(result.files_created[0])
+    assert file_created == output_dir / "test_consumer.py"
+    content = file_created.read_text()
+    assert "class TestConsumer(MessageConsumer):" in content
+    assert 'topic = "test_queue"' in content
+    assert "via the kafka broker" in content
 
 
-def test_message_consumer_generator_fields():
-    """Test field parsing."""
-    generator = MessageConsumerGenerator(fields_str="f1:int")
+def test_second_generation_skips_existing_file(tmp_path: Path):
+    """Re-running without force skips instead of overwriting."""
+    generator = MessageConsumerGenerator(output_dir=str(tmp_path / "consumers"))
 
-    with patch("lexigram.queue.cli.generators.message_consumer.parse_fields") as mock_parse:
-        mock_parse.return_value = [{"name": "f1", "type": "int"}]
+    first = generator.generate(name="test")
+    assert len(first.files_created) == 1
 
-        with patch.object(MessageConsumerGenerator, "_get_package_name"), \
-             patch("lexigram.queue.cli.generators.message_consumer.Environment"), \
-             patch("lexigram.queue.cli.generators.message_consumer.open"):
+    second = generator.generate(name="test")
+    assert len(second.files_created) == 0
+    assert len(second.files_skipped) == 1
 
-            generator.generate(name="test")
-            mock_parse.assert_called_with("f1:int")
+
+def test_force_overwrites_existing_file(tmp_path: Path):
+    """force=True replaces an already-generated consumer."""
+    generator = MessageConsumerGenerator(output_dir=str(tmp_path / "consumers"))
+    generator.generate(name="test")
+
+    result = generator.generate(name="test", force=True)
+    assert len(result.files_overwritten) == 1
+
+
+def test_fields_str_flows_into_template(tmp_path: Path):
+    """Parsed fields appear in the rendered docstring."""
+    generator = MessageConsumerGenerator(
+        output_dir=str(tmp_path / "consumers"), fields_str="f1:int"
+    )
+    result = generator.generate(name="order")
+
+    content = Path(result.files_created[0]).read_text()
+    assert "- f1 (int)" in content
+
+
+def test_relative_output_dir_refused_outside_project(
+    tmp_path: Path, monkeypatch
+):
+    """Default relative dir at a project-less CWD raises before writing."""
+    bare = tmp_path / "nowhere"
+    bare.mkdir()
+    monkeypatch.chdir(bare)
+
+    try:
+        MessageConsumerGenerator()
+    except ValueError as exc:
+        assert "--output-dir" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for unresolvable relative dir")
+    assert not (bare / "src").exists(), "refusal must not touch the filesystem"

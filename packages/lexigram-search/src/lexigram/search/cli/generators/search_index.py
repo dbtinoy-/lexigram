@@ -64,7 +64,6 @@ class SearchIndexGenerator(GeneratorProtocol):
 
         # Create output directory
         output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
 
         # Index class name
         index_name = self._to_pascal_case(name)
@@ -95,6 +94,7 @@ class SearchIndexGenerator(GeneratorProtocol):
         if file_path.exists() and not options.get("force", False):
             return GenerationResult()
 
+        output_path.mkdir(parents=True, exist_ok=True)
         with open(file_path, "w") as f:
             f.write(content)
 

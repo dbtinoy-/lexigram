@@ -20,7 +20,8 @@ class GeneratorBase:
         output_dir: str | Path = "src",
         template_root: str | Path | None = None,
     ) -> None:
-        self.output_dir = Path(output_dir)
+        self.raw_output_dir = Path(output_dir)
+        self.output_dir = self._resolve_output_dir(self.raw_output_dir)
         self.template_root = self._resolve_template_root(template_root)
         self._environment = jinja2.Environment(
             loader=jinja2.FileSystemLoader(self.template_root),
@@ -64,6 +65,53 @@ class GeneratorBase:
             return GenerationResult(files_overwritten=[file_path])
 
         return GenerationResult(files_created=[file_path])
+
+    @staticmethod
+    def _find_project_anchor(start: Path) -> Path | None:
+        """Return the nearest ancestor directory with a real ``[project]`` table.
+
+        Virtual workspace roots (``[tool.uv.workspace]`` only, no
+        ``[project]``) are deliberately skipped: generated application code
+        must never land in the framework monorepo.
+        """
+
+        for candidate in (start, *start.parents):
+            pyproject = candidate / "pyproject.toml"
+            if not pyproject.is_file():
+                continue
+            try:
+                manifest = pyproject.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            if "[project]" in manifest:
+                return candidate
+        return None
+
+    @classmethod
+    def _resolve_output_dir(cls, output_dir: Path) -> Path:
+        """Resolve ``output_dir`` to an absolute path before any fs mutation.
+
+        Absolute paths pass through untouched. Relative paths anchor to the
+        nearest ancestor with a real project manifest, so generators invoked
+        from a subdirectory still write into the right package. Refusal
+        happens here — before any ``mkdir`` — so a misdirected run leaves no
+        stray directories behind.
+
+        Raises:
+            ValueError: If a relative path has no resolvable project anchor.
+        """
+
+        if output_dir.is_absolute():
+            return output_dir
+
+        anchor = cls._find_project_anchor(Path.cwd())
+        if anchor is None:
+            raise ValueError(
+                f"relative output_dir {output_dir.as_posix!r} cannot be "
+                "resolved: run inside the package that should receive the "
+                "generated code, or pass an absolute --output-dir"
+            )
+        return anchor / output_dir
 
     def _resolve_template_root(self, template_root: str | Path | None) -> Path:
         if template_root is not None:

@@ -63,8 +63,6 @@ class DocumentRepositoryGenerator(GeneratorBase):
             ]
 
         output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
-
         entity_name = self._to_pascal_case(name)
         repo_filename = f"{self._to_snake_case(name)}_repository.py"
         collection_name = self._to_snake_case(name) + "s"
@@ -88,6 +86,7 @@ class DocumentRepositoryGenerator(GeneratorBase):
         if file_path.exists() and not options.get("force", False):
             return GenerationResult()
 
+        output_path.mkdir(parents=True, exist_ok=True)
         with open(file_path, "w") as f:
             f.write(content)
 

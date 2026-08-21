@@ -19,8 +19,6 @@ class AuthGuardGenerator(GeneratorBase):
     ) -> GenerationResult:
         guard_type = options.get("type", "role")
         output_path = self.output_dir
-        output_path.mkdir(parents=True, exist_ok=True)
-
         guard_name = self._to_pascal_case(name)
         guard_filename = f"{self._to_snake_case(name)}_guard.py"
 

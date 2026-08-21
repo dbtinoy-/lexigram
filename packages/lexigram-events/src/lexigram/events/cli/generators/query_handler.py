@@ -26,8 +26,6 @@ class QueryHandlerGenerator(GeneratorBase):
             fields = [FieldSpec(name="id", type="str", required=False)]
 
         output_path = self.output_dir
-        output_path.mkdir(parents=True, exist_ok=True)
-
         query_name = self._to_pascal_case(name)
         query_filename = f"{self._to_snake_case(name)}.py"
 
