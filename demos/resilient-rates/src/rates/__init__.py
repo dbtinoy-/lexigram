@@ -2,4 +2,13 @@
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from rates.module import RatesModule
+from rates.provider import FaultController, SimulatedRatesProvider
+from rates.service import RatesService
+
+__all__ = [
+    "FaultController",
+    "RatesModule",
+    "RatesService",
+    "SimulatedRatesProvider",
+]
