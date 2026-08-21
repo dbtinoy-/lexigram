@@ -15,11 +15,11 @@ from starlette.requests import Request
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.core.routing import AdminRouter
 from lexigram.admin.resources.base import Resource
-from lexigram.admin.resources.handler import (
-    BulkActionHandler,
+from lexigram.admin.resources.action_handlers import (
     PurgeActionHandler,
     RestoreActionHandler,
 )
+from lexigram.admin.resources.handler import BulkActionHandler
 
 
 class TestRestoreActionHandler:

@@ -352,7 +352,7 @@ class Resource(ArchiveOperationsMixin):
         Override in subclasses to add custom validation logic.
         """
         from lexigram.admin.exceptions import AdminValidationError
-        from lexigram.admin.resources.handler import _coerce_form_data
+        from lexigram.admin.resources.action_handlers import _coerce_form_data
         from lexigram.contracts.exceptions.domain import FieldError
         from lexigram.result import Err, Ok
 

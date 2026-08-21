@@ -12,7 +12,7 @@ from lexigram.admin.actions.standard import ImportAction
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.core.routing import AdminRouter
 from lexigram.admin.resources.base import Resource
-from lexigram.admin.resources.handler import ImportActionHandler
+from lexigram.admin.resources.action_handlers import ImportActionHandler
 
 
 class _Report:

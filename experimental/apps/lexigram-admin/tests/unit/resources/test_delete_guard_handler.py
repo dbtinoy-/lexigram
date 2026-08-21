@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 from starlette.requests import Request
 
 from lexigram.admin.resources.base import Resource
-from lexigram.admin.resources.handler import DeleteActionHandler
+from lexigram.admin.resources.action_handlers import DeleteActionHandler
 
 
 class _ProtectedResource(Resource):

@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.core.routing import AdminRouter
-from lexigram.admin.resources.handler import CloneActionHandler
+from lexigram.admin.resources.action_handlers import CloneActionHandler
 
 
 class TestCloneActionHandler:
