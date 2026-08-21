@@ -153,7 +153,6 @@ packages/lexigram-graphql/src/lexigram/graphql/core/context.py
 packages/lexigram-graphql/src/lexigram/graphql/di/provider.py
 packages/lexigram-graphql/src/lexigram/graphql/subscriptions/transport.py
 packages/lexigram-http/src/lexigram/http/client/http_client.py
-packages/lexigram-http/tests/unit/test_http_module.py
 packages/lexigram-monitor/src/lexigram/monitor/config.py
 packages/lexigram-monitor/src/lexigram/monitor/di/provider.py
 packages/lexigram-queue/tests/unit/test_gcp_pubsub.py
