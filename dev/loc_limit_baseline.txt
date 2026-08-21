@@ -184,7 +184,6 @@ packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py
 packages/lexigram-web/src/lexigram/web/routing/validation.py
 packages/lexigram-web/src/lexigram/web/security/config.py
 packages/lexigram-web/tests/unit/coverage/test_final_coverage.py
-packages/lexigram-web/tests/unit/security/test_csrf_middleware.py
 packages/lexigram-webhook/tests/unit/test_sql_store.py
 packages/lexigram-workflow/src/lexigram/workflow/bulk/operation.py
 packages/lexigram-workflow/tests/unit/test_graph_engine.py
