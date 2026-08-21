@@ -67,7 +67,9 @@ def main() -> int:
 
     for line in sorted(foreign):
         print(line)
-    print(f"{len(foreign)} foreign path(s); allowed prefixes: {args.allow or ['<none>']}")
+    print(
+        f"{len(foreign)} foreign path(s); allowed prefixes: {args.allow or ['<none>']}"
+    )
     return 1 if foreign else 0
 
 
