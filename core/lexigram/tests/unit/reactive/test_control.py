@@ -24,6 +24,23 @@ async def test_take_limits_items() -> None:
     assert await collect(Stream(gen()).pipe(ops.take(3))) == [0, 1, 2]
 
 
+async def test_take_closes_generator_source_on_early_exit() -> None:
+    closed = False
+
+    async def source_gen() -> AsyncIterator[int]:
+        nonlocal closed
+        try:
+            for i in range(10):
+                yield i
+        finally:
+            closed = True
+
+    out = await collect(Stream(source_gen()).pipe(ops.take(2)))
+
+    assert out == [0, 1]
+    assert closed  # take() broke internally; source was aclosed deterministically
+
+
 async def test_skip_drops_first_items() -> None:
     assert await collect(Stream(gen()).pipe(ops.skip(7))) == [7, 8, 9]
 

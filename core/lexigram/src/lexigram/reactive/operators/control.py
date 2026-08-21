@@ -11,7 +11,7 @@ from lexigram.reactive.core import EventStream, Stream
 
 
 def take(count: int) -> Any:
-    """Emit at most ``count`` items, then stop the stream.
+    """Emit at most ``count`` items, then stop and close the source.
 
     Args:
         count: Maximum number of items to emit. ``0`` emits nothing.
@@ -23,11 +23,18 @@ def take(count: int) -> Any:
     def _op(source: EventStream[Any]) -> EventStream[Any]:
         async def _gen() -> AsyncIterator[Any]:
             seen = 0
-            async for item in source:
+            try:
+                async for item in source:
+                    if seen >= count:
+                        break
+                    yield item
+                    seen += 1
+            finally:
                 if seen >= count:
-                    break
-                yield item
-                seen += 1
+                    aiter = source.__aiter__()
+                    aclose = getattr(aiter, "aclose", None)
+                    if aclose is not None:
+                        await aclose()
 
         return Stream(_gen())
 
