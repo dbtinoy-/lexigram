@@ -17,8 +17,10 @@ An FX rate desk that survives a hostile upstream:
 - 🔁 **Retry + circuit breaker + timeout** assembled from contract configs
   through a resilience pipeline factory
 - ⚡ **Single-flight reads** — per-key locks collapse concurrent misses
-- 🧊 **Stale fallback** — circuit open? Serve the last known-good quote
+- 🧊 **Stale fallback** — upstream failing? Serve the last known-good quote
+  while retries exhaust or the circuit is open
 - 🎲 **Deterministic** — seeded random-walk quotes make failures reproducible
+- 🖥️ **Five-act walkthrough** — `uv run python -m rates demo`
 
 ### 📦 [event-driven-orders](event-driven-orders/) — CQRS & event sourcing
 
