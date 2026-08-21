@@ -17,6 +17,7 @@ from lexigram.testing.lib.assertions import (
 )
 from lexigram.testing.lib.async_helper import AsyncTestHelper
 from lexigram.testing.lib.factory import TestDataFactory
+from lexigram.testing.lib.smoke import assert_contracts_resolve
 
 # Module-level convenience instances
 test_assertions = TestAssertions()
@@ -27,6 +28,7 @@ __all__ = [
     "TestAssertions",
     "TestDataFactory",
     "assert_all_ok",
+    "assert_contracts_resolve",
     "assert_err",
     "assert_healthy",
     "assert_ok",
