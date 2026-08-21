@@ -62,6 +62,85 @@ class LanguageSwitcher(Component):
         )
 
 
+class TenantSwitcher(Component):
+    """Superadmin-only tenant switcher for the admin topbar.
+
+    Mirrors ``LanguageSwitcher``'s plain ``<select>``-in-``<form>``
+    auto-submit shape (there is no dropdown-menu precedent in this file
+    to follow instead). Renders nothing when *tenants* is empty — callers
+    (``TopBar``) are responsible for only constructing this with data
+    when tenancy is enabled and the requesting user is a superadmin; an
+    empty list is what makes this a no-op in every other case.
+
+    Unlike ``LanguageSwitcher``, this form carries a CSRF hidden field:
+    it is a genuine plain-form POST (not HTMX), so the shell's
+    ``hx-headers`` CSRF injection does not apply, and
+    ``request.state.csrf_token`` is not reliably populated on the pages
+    this switcher appears on (see plan header for details).
+
+    Args:
+        tenants: Ordered list of ``(tenant_id, name)`` pairs.
+        current_tenant_id: The currently active tenant id, pre-selected.
+        csrf_token: CSRF token embedded as a hidden form field, if given.
+        action_url: URL that accepts a ``POST`` with ``tenant_id=<id>``.
+    """
+
+    def __init__(
+        self,
+        tenants: list[tuple[str, str]] | None = None,
+        current_tenant_id: str | None = None,
+        csrf_token: str | None = None,
+        action_url: str = "/admin/set-tenant",
+        **props: Any,
+    ) -> None:
+        super().__init__(**props)
+        self.tenants = tenants or []
+        self.current_tenant_id = current_tenant_id
+        self.csrf_token = csrf_token
+        self.action_url = action_url
+
+    def render(self) -> Any:
+        if not self.tenants:
+            return ""
+        options = [
+            el(
+                "option",
+                name,
+                value=tenant_id,
+                selected=(tenant_id == self.current_tenant_id) or None,
+            )
+            for tenant_id, name in self.tenants
+        ]
+        select = el(
+            "select",
+            *options,
+            name="tenant_id",
+            class_=(
+                "text-sm bg-transparent border border-border "
+                "rounded px-2 py-1 text-foreground "
+                "focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+            ),
+            **{"x-on:change": "$el.form.submit()"},
+        )
+        children: list[Any] = [select]
+        if self.csrf_token:
+            children.append(
+                el(
+                    "input",
+                    type_="hidden",
+                    name="csrf_token",
+                    value=self.csrf_token,
+                )
+            )
+        return el(
+            "form",
+            *children,
+            method="POST",
+            action=self.action_url,
+            class_="inline-block",
+        )
+
+
 class ThemeToggle(Component):
     """
     Client-side theme toggle powered by Alpine.js and localStorage.
