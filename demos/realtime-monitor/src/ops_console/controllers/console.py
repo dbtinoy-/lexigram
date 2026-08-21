@@ -24,6 +24,8 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
 
+from starlette.requests import Request
+
 from lexigram.serialization import dumps_str
 from lexigram.ui import el, raw, render_to_string
 from lexigram.web import Controller, FileResponse, HTMLContent, get, post
@@ -45,7 +47,7 @@ class EventsStreamHandler(AbstractSSEHandler):
         super().__init__()
         self.events = events
 
-    async def stream(self, request) -> AsyncGenerator[dict[str, Any], None]:
+    async def stream(self, request: Request) -> AsyncGenerator[dict[str, Any], None]:
         async for event in self.events.subscribe():
             yield {"event": event.kind, "data": event.to_dict()}
 
@@ -62,27 +64,27 @@ class ConsoleController(Controller):
         self.sse = sse
 
     @get("/api/events/stream")
-    async def stream(self, request=None) -> Any:
+    async def stream(self, request: Request | None = None) -> Any:
         return await self.sse.handle(request)
 
     @get("/api/stats")
-    async def stats(self, request=None) -> dict[str, Any]:
+    async def stats(self, request: Request | None = None) -> dict[str, Any]:
         """Return live subscriber and history counts for the dashboard chips."""
         stats = self.events.stats()
         return {"subscribers": stats.subscribers, "history": stats.events}
 
     @get("/static/dashboard.js")
-    async def dashboard_js(self, request=None) -> FileResponse:
+    async def dashboard_js(self, request: Request | None = None) -> FileResponse:
         """Serve the dashboard client script as a real JavaScript asset."""
         return FileResponse(path=JAVASCRIPT_PATH, media_type="text/javascript")
 
     @get("/static/style.css")
-    async def dashboard_css(self, request=None) -> FileResponse:
+    async def dashboard_css(self, request: Request | None = None) -> FileResponse:
         """Serve the dashboard stylesheet as a real CSS asset."""
         return FileResponse(path=STYLESHEET_PATH, media_type="text/css")
 
     @get("/")
-    async def dashboard(self, request=None) -> HTMLContent:
+    async def dashboard(self, request: Request | None = None) -> HTMLContent:
         stats = self.events.stats()
         history = [event.to_dict() for event in self.events.snapshot()]
         seed_json = dumps_str(history).replace("</", "<\\/")
@@ -201,7 +203,7 @@ class ConsoleController(Controller):
         return HTMLContent(page)
 
     @post("/api/events")
-    async def publish_event(self, request=None) -> dict[str, Any]:
+    async def publish_event(self, request: Request | None = None) -> dict[str, Any]:
         body = await request.json()
         event = SystemEvent(
             kind="manual",
