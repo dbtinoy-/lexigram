@@ -118,6 +118,7 @@ class AdminProvider(
         """
         from lexigram.admin.controllers.dashboard import DashboardController
         from lexigram.admin.controllers.impersonation import ImpersonationController
+        from lexigram.admin.controllers.tenancy import TenancyController
         from lexigram.admin.controllers.widgets import WidgetController
         from lexigram.admin.di.sub_providers.auth import AdminAuthSubProvider
         from lexigram.admin.di.sub_providers.contributor import (
@@ -177,6 +178,7 @@ class AdminProvider(
         container.singleton(AdminRbacConfig, self._config.rbac)
         # Register built-in controllers
         container.singleton(WidgetController, WidgetController)
+        container.singleton(TenancyController, TenancyController)
         container.singleton(DashboardController, DashboardController)
         from lexigram.admin.services.impersonation import ImpersonationService
 

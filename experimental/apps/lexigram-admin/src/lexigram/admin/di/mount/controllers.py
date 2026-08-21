@@ -134,6 +134,46 @@ class AdminMountControllersMixin:
             if self._config.strict_resource_resolution:
                 raise
 
+        # Resolve built-in TenancyController (best-effort)
+        try:
+            from lexigram.admin.auth.protocols import (
+                AdminAuditLogServiceProtocol,
+            )
+            from lexigram.admin.controllers.tenancy import TenancyController
+            from lexigram.admin.multitenancy.adapter import TenantProviderRegistry
+
+            tenancy_controller = await resolver.resolve(
+                TenancyController,
+                bypass_visibility=True,
+            )
+            ctx.controllers.append(tenancy_controller)
+            if self._config.tenancy.enabled:
+                try:
+                    tenancy_controller._registry = await resolver.resolve(
+                        TenantProviderRegistry,
+                        bypass_visibility=True,
+                    )
+                except Exception:
+                    tenancy_controller._registry = None
+            try:
+                audit_service = await resolver.resolve(
+                    AdminAuditLogServiceProtocol,
+                    bypass_visibility=True,
+                )
+            except Exception:
+                audit_service = None
+            if audit_service is not None:
+                tenancy_controller._audit_service = audit_service
+        except Exception as exc:
+            _log.error(
+                "admin.tenancy_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:TenancyController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Resolve built-in DashboardController (best-effort)
         try:
             from lexigram.admin.controllers.dashboard import DashboardController
