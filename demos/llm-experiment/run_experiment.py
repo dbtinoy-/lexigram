@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import logging
 import os
 from pathlib import Path
 
@@ -23,9 +22,9 @@ from harness import ExperimentResult, metrics_delta, run_experiment
 
 from lexigram.ai.evaluation import AblationRunner, FileCheckpointStore
 from lexigram.contracts.ai.experiment import AblationResult
+from lexigram.logging import configure_logging, get_logger
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-logger = logging.getLogger("lexigram-experiment")
+logger = get_logger(__name__)
 
 DEFAULT_CONFIG = Path(__file__).parent / "experiment.yaml"
 DEFAULT_OUT = Path(__file__).parent / "runs"
@@ -64,6 +63,7 @@ def _framework_ablation(
 
 def main(argv: list[str] | None = None) -> int:
     """Execute the experiment and print the reproducibility digest."""
+    configure_logging(level="INFO")
     args = parse_args(argv)
     import yaml
 
@@ -74,33 +74,40 @@ def main(argv: list[str] | None = None) -> int:
         seed = int(env_seed) if env_seed else int(config["experiment"]["seed"])
 
     baseline = run_experiment(config, seed=seed, out_dir=args.out, ablate=args.ablate)
-    logger.info("run_id=%s digest=%s", baseline.run_id, baseline.digest)
     logger.info(
-        "checkpoints=%d traces=%d cost=$%.6f",
-        len(baseline.checkpoint_paths),
-        len(baseline.trace),
-        baseline.result["totals"]["cost_dollars"],
+        "experiment_run_complete",
+        run_id=baseline.run_id,
+        digest=baseline.digest,
+    )
+    logger.info(
+        "experiment_stats",
+        checkpoints=len(baseline.checkpoint_paths),
+        traces=len(baseline.trace),
+        cost_dollars=baseline.result["totals"]["cost_dollars"],
     )
 
     if args.ablate:
         control = run_experiment(config, seed=seed, out_dir=args.out)
         deltas = metrics_delta(control, baseline)
-        logger.info("ablation=%s delta=%s", args.ablate, deltas)
+        logger.info("experiment_ablation", knob=args.ablate, delta=deltas)
         record = _framework_ablation(control, baseline, args.out, args.ablate)
         logger.info(
-            "ablation_record=ok run=%s slugs=%s+%s digest=%s deltas=%s",
-            record.run_id,
-            record.baseline_slug,
-            record.ablated_slug,
-            record.digest,
-            record.deltas,
+            "ablation_record_ok",
+            run_id=record.run_id,
+            slugs=f"{record.baseline_slug}+{record.ablated_slug}",
+            digest=record.digest,
+            deltas=record.deltas,
         )
 
     rerun = run_experiment(config, seed=seed, out_dir=args.out, ablate=args.ablate)
     if rerun.digest == baseline.digest:
-        logger.info("reproducibility=ok same-seed runs produce an identical digest")
+        logger.info("reproducibility_ok")
     else:
-        logger.error("reproducibility=failed digests diverged")
+        logger.error(
+            "reproducibility_failed",
+            baseline_digest=baseline.digest,
+            rerun_digest=rerun.digest,
+        )
         return 1
     return 0
 
