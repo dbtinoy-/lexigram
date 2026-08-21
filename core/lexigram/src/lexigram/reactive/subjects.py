@@ -155,7 +155,7 @@ class Subject(EventStream[T_subject]):
         """Iterate this subject's own subscriber channel (one per iterator)."""
         channel = self._new_subscriber()
         if self._failed is not None:
-            channel.send_nowait(_Failure(self._failed))
+            channel.send_nowait(cast("T_subject", _Failure(self._failed)))
         elif self._completed:
             channel.send_nowait(cast("T_subject", _END))
         return _SubscriberIterator(channel)
