@@ -58,8 +58,16 @@ def skip(count: int) -> Any:
     return _op
 
 
+_MERGE_ITEM = object()
+_MERGE_END = object()
+_MERGE_ERROR = object()
+
+
 def merge(*sources: EventStream[Any]) -> Any:
     """Interleave items from multiple source streams.
+
+    The first feed error cancels the remaining feeds and is re-raised to
+    the consumer; items already emitted stay emitted.
 
     Args:
         sources: Additional streams to merge with the piped source.
@@ -72,20 +80,20 @@ def merge(*sources: EventStream[Any]) -> Any:
         all_sources = (source, *sources)
 
         async def _gen() -> AsyncIterator[Any]:
-            queue: asyncio.Queue[Any] = asyncio.Queue()
+            queue: asyncio.Queue[tuple[object, Any]] = asyncio.Queue()
             remaining = len(all_sources)
 
             async def _feed(stream: EventStream[Any]) -> None:
                 nonlocal remaining
                 try:
                     async for item in stream:
-                        await queue.put(item)
-                except Exception:  # noqa: BLE001, S110 — operator boundary
-                    pass
+                        await queue.put((_MERGE_ITEM, item))
+                except Exception as exc:  # noqa: BLE001 — operator boundary
+                    await queue.put((_MERGE_ERROR, exc))
                 finally:
                     remaining -= 1
                     if remaining == 0:
-                        await queue.put(None)
+                        await queue.put((_MERGE_END, None))
 
             tasks = [asyncio.create_task(_feed(s)) for s in all_sources]
             self_tasks: set[asyncio.Task[Any]] = set(tasks)
@@ -94,10 +102,13 @@ def merge(*sources: EventStream[Any]) -> Any:
                 task.add_done_callback(self_tasks.discard)
             try:
                 while True:
-                    item = await queue.get()
-                    if item is None:
+                    kind, payload = await queue.get()
+                    if kind is _MERGE_ITEM:
+                        yield payload
+                    elif kind is _MERGE_ERROR:
+                        raise payload
+                    else:
                         break
-                    yield item
             finally:
                 for task in tasks:
                     task.cancel()
