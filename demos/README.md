@@ -28,8 +28,11 @@ A full order lifecycle driven by messages:
 
 - ✍️ **Commands** — place, pay, ship
 - 📢 **Domain events** with handlers and read-side projections
+- 🔔 **Notification side effects** — customer-notification handlers subscribed
+  on the event bus next to the read-model projection
 - 🗳️ **Transactional outbox** — inspect and flush pending publishes
 - 🖥️ **CLI-first** — `uv run python -m orders place "Alice" --item "SKU-1,2,9.99"`
+  or watch the whole lifecycle via `uv run python -m orders demo`
 
 ### 📡 [realtime-monitor](realtime-monitor/) — realtime web console
 
@@ -60,7 +63,7 @@ LLM evaluation with science-grade determinism:
 ```bash
 uv run python -m orders demo         # 📦 full order lifecycle in one process
 uv run python -m ops_console         # 📡 boot the realtime dashboard server
-python demos/llm-experiment/run_experiment.py   # 🧪 seeded experiment + rerun
+uv run python demos/llm-experiment/run_experiment.py   # 🧪 seeded experiment + rerun
 make test-demos                      # ✅ every demo test suite
 ```
 
