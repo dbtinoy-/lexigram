@@ -2,6 +2,7 @@
 !tests/
 !tests/**
 !README.md
+!AGENTS.md
 !QUICKGUIDE.md
 !MILESTONE*.md
 !TESTS*.md
@@ -83,9 +84,6 @@ test.db
 COMPANY_*.md
 company-config/
 internal-docs/
-lexigram*/docs/plans/
-lexigram*/docs/plans/**
-lexigram*/docs/**/
 example*/
 !example/
 !example/**

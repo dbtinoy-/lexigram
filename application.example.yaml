@@ -718,7 +718,7 @@ monitor:
   debug: false
   metrics:
     enabled: true
-prefix: lexigram_
+    prefix: lexigram_
     default_labels: {}
     histogram_buckets:
       - 0.005
