@@ -94,6 +94,9 @@ jobs:
       - name: Dependency pin guard
         run: uv run python dev/check_dep_pins.py --root .
 
+      - name: LOC limit ratchet (500)
+        run: uv run python dev/check_loc_limit.py --root .
+
       - name: Stub-shadow gate (MRO resolution)
         run: uv run python dev/check_stub_shadows.py --root .
 

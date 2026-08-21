@@ -54,6 +54,10 @@ lint:  ## Run ruff check + format check (no writes)
 lint-boundaries:  ## Run the namespace-aware import-linter contracts
 	$(UV) run python tools/lint_imports.py
 
+.PHONY: lint-loc
+lint-loc:  ## Enforce the 500-LOC file limit (shrinking ratchet vs dev/loc_limit_baseline.txt)
+	$(UV) run python dev/check_loc_limit.py --root .
+
 .PHONY: lint-fix
 lint-fix:  ## Run ruff check + format (auto-fix)
 	$(RUFF) check . --fix
