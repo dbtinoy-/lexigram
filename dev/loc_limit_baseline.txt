@@ -24,7 +24,6 @@ dev/audit/generators/docs_claims.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/executor/executor.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/function_calling.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/plan_execute.py
-experimental/ai/lexigram-ai-agents/tests/unit/test_executor.py
 experimental/ai/lexigram-ai-agents/tests/unit/test_multi_agent.py
 experimental/ai/lexigram-ai-agents/tests/unit/tools/test_tools.py
 experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/admin/contributor.py
@@ -42,7 +41,6 @@ experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/security/core.py
 experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/streaming/stream.py
 experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/structured/typed_responses.py
 experimental/ai/lexigram-ai-llm/tests/unit/admin/test_llm_contributor.py
-experimental/ai/lexigram-ai-llm/tests/unit/routing/test_extended_clients.py
 experimental/ai/lexigram-ai-llm/tests/unit/routing/test_router.py
 experimental/ai/lexigram-ai-llm/tests/unit/routing/test_strategies.py
 experimental/ai/lexigram-ai-llm/tests/unit/test_structured.py
@@ -52,15 +50,12 @@ experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/loaders/core.py
 experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/pipeline/builder.py
 experimental/ai/lexigram-ai-rag/tests/unit/test_chunking.py
 experimental/ai/lexigram-ai-rag/tests/unit/test_graph_store_adapter.py
-experimental/ai/lexigram-ai-rag/tests/unit/test_multimodal.py
-experimental/ai/lexigram-ai-rag/tests/unit/test_rag_cache.py
+experimental/ai/lexigram-ai-rag/tests/unit/test_rag_cache__testragcache.py
 experimental/ai/lexigram-ai-rag/tests/unit/test_rag_steps.py
 experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/passthrough_service.py
 experimental/ai/lexigram-ai-relay-gateway/src/lexigram/ai/relay/gateway/service.py
 experimental/ai/lexigram-ai-relay-gateway/tests/integration/test_admin_contributor.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_channels.py
-experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_di.py
-experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_job_passthrough.py
 experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_stream.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_engine.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_openai_chat_mapper.py
@@ -75,7 +70,6 @@ experimental/ai/lexigram-ai/tests/unit/test_hyde.py
 experimental/ai/lexigram-ai/tests/unit/test_knowledge_graph.py
 experimental/ai/lexigram-ai/tests/unit/test_multi_hop_reasoning.py
 experimental/ai/lexigram-ai/tests/unit/test_preprocessing.py
-experimental/ai/lexigram-ai/tests/unit/test_query_transformation.py
 experimental/ai/lexigram-ai/tests/unit/test_selector.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/protocols.py
@@ -84,6 +78,7 @@ experimental/apps/lexigram-admin/src/lexigram/admin/auth/store/direct_sql.py
 experimental/apps/lexigram-admin/src/lexigram/admin/config.py
 experimental/apps/lexigram-admin/src/lexigram/admin/controllers/base.py
 experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widgets.py
+experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_handlers.py
 experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/widgets.py
 experimental/apps/lexigram-admin/src/lexigram/admin/data/query.py
 experimental/apps/lexigram-admin/src/lexigram/admin/di/bundle_provider.py
@@ -113,7 +108,6 @@ experimental/apps/lexigram-cli/src/lexigram/cli/commands/db.py
 experimental/apps/lexigram-cli/src/lexigram/cli/registry/database.py
 experimental/apps/lexigram-cli/src/lexigram/cli/registry/health.py
 experimental/apps/lexigram-cli/src/lexigram/cli/registry/provider.py
-experimental/apps/lexigram-cli/tests/unit/test_cli_contribution_system.py
 experimental/apps/lexigram-ui/src/lexigram/ui/charts/static.py
 experimental/apps/lexigram-ui/src/lexigram/ui/state.py
 experimental/apps/lexigram-ui/tests/unit/test_atoms.py
@@ -168,4 +162,3 @@ packages/lexigram-web/tests/unit/coverage/test_final_coverage.py
 packages/lexigram-workflow/src/lexigram/workflow/bulk/operation.py
 tests/integration/extension_tests/execution/test_pipeline_lexigram.py
 tests/integration/scenarios/relay_fakes.py
-experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_handlers.py
