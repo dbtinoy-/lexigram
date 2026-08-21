@@ -13,6 +13,7 @@ from lexigram.admin.actions import (
     CreateAction,
     DeleteAction,
     EditAction,
+    ImpersonateAction,
     PermissionsAction,
 )
 from lexigram.admin.auth.entity import AdminUserEntity
@@ -131,6 +132,7 @@ class UserResource(Resource):
         EditAction(),
         DeleteAction(),
         PermissionsAction(),
+        ImpersonateAction(),
     ]
 
     # Header actions

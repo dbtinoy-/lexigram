@@ -18,6 +18,8 @@ from lexigram.admin.actions.types import (
 )
 from lexigram.ui import Zones
 from lexigram.result import Err, Ok, Result
+
+
 class EditAction(RowAction):
     """Edit a single record."""
 
@@ -51,6 +53,8 @@ class EditAction(RowAction):
 
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
         return Ok({"message": f"Edited {record}"})
+
+
 class ViewAction(RowAction):
     """View a single record."""
 
@@ -75,6 +79,8 @@ class ViewAction(RowAction):
 
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
         return Ok({"message": f"Viewed {record}"})
+
+
 class DeleteAction(RowAction):
     """Delete a single record with confirmation."""
 
@@ -122,6 +128,8 @@ class DeleteAction(RowAction):
 
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
         return Ok({"message": f"Deleted {record}", "deleted": True})
+
+
 class PermissionsAction(RowAction):
     """Edit a user's direct permissions (users resource only)."""
 
@@ -146,6 +154,62 @@ class PermissionsAction(RowAction):
 
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
         return Ok({"message": f"Editing permissions for {record}"})
+
+
+class ImpersonateAction(RowAction):
+    """Impersonate a user's session (users resource only).
+
+    Target-role restriction (denying impersonation of another
+    super-admin) is enforced server-side only — this action has no
+    access to DI/config at render time (``Action`` is a frozen,
+    import-time-constructed dataclass), and the row's rendered fields
+    don't expose RBAC role membership. See
+    ``docs/superpowers/specs/2026-08-19-admin-impersonation-usability-design.md``
+    D5 for the full reasoning.
+    """
+
+    def __init__(
+        self,
+        name: str = "impersonate",
+        label: str | None = None,
+    ) -> None:
+        super().__init__(
+            name=name,
+            label=label or "Impersonate",
+            icon="user-check",
+            color=ActionColor.GRAY,
+        )
+
+    def visible_for(self, record: Any, user: Any | None = None) -> bool:
+        if user is None:
+            return True
+        record_id = self._get_record_id(record)
+        actor_id = str(getattr(user, "id", ""))
+        return record_id != actor_id
+
+    def _get_url(self, record: Any, ctx: ActionContext) -> str | None:
+        record_id = self._get_record_id(record)
+        if not record_id:
+            return None
+        return f"/admin/impersonate/{record_id}"
+
+    def _get_htmx_attrs(
+        self, url: str, record: Any, ctx: ActionContext
+    ) -> dict[str, str]:
+        name = (
+            record.get("name", "this user") if isinstance(record, dict) else "this user"
+        )
+        return {
+            "hx-post": url,
+            "hx-target": "body",
+            "hx-swap": "none",
+            "hx-confirm": f"Impersonate {name}?",
+        }
+
+    async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
+        return Ok({"message": f"Impersonating {record}"})
+
+
 class CloneAction(RowAction):
     """Clone a single record through the data source.
 
@@ -225,6 +289,8 @@ class CloneAction(RowAction):
                 "cloned_id": _extract_id(created),
             }
         )
+
+
 class RestoreAction(RowAction):
     """Restore a single soft-deleted record."""
 
@@ -249,6 +315,8 @@ class RestoreAction(RowAction):
 
     async def execute(self, record: Any, ctx: ActionContext) -> Result[Any, Any]:
         return Ok({"message": f"Restored {record}"})
+
+
 class PurgeAction(RowAction):
     """Permanently delete a soft-deleted record."""
 

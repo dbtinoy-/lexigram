@@ -47,6 +47,7 @@ if TYPE_CHECKING:
         ExportBulkAction,
         ImportAction,
         ImportBulkAction,
+        ImpersonateAction,
         PermissionsAction,
         PurgeAction,
         PurgeBulkAction,
@@ -72,6 +73,7 @@ _EXPORTS = {
     "ImportAction": "lexigram.admin.actions.standard",
     "ImportBulkAction": "lexigram.admin.actions.standard",
     "PermissionsAction": "lexigram.admin.actions.standard",
+    "ImpersonateAction": "lexigram.admin.actions.standard",
     # audited
     "AuditedAction": "lexigram.admin.actions.audited",
     # polymorphic
