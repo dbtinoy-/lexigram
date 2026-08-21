@@ -164,6 +164,10 @@ class AdminRenderer:
         logo_url = extra_context.get("logo_url") or ""
         favicon_url = extra_context.get("favicon_url") or ""
         dark_mode = extra_context.get("dark_mode") or ""
+        current_tenant_id = extra_context.get("current_tenant_id")
+        current_tenant_name = extra_context.get("current_tenant_name") or ""
+        tenant_list = extra_context.get("tenant_list") or []
+        tenant_csrf_token = extra_context.get("tenant_csrf_token")
         impersonation_active = bool(extra_context.get("impersonation_active"))
         impersonation_target_id = str(
             extra_context.get("impersonation_target_id") or ""
@@ -183,6 +187,10 @@ class AdminRenderer:
             site_name=site_name,
             logo_url=logo_url,
             dark_mode=dark_mode,
+            current_tenant_id=current_tenant_id,
+            current_tenant_name=current_tenant_name,
+            tenant_list=tenant_list,
+            tenant_csrf_token=tenant_csrf_token,
             impersonation_active=impersonation_active,
             impersonation_target_id=impersonation_target_id,
             csrf_token=csrf_token or "",
