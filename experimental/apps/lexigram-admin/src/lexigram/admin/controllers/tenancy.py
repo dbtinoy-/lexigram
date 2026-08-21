@@ -6,13 +6,13 @@ from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
+from starlette.routing import Route
 
 from lexigram.admin.auth.protocols import AdminAuditLogServiceProtocol
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.multitenancy.adapter import TenantProviderRegistry
 from lexigram.admin.rbac.super_admin import is_super_admin
-from lexigram.contracts.web import post
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
 
@@ -40,7 +40,21 @@ class TenancyController:
         self._registry = registry
         self._audit_service = audit_service
 
-    @post("/set-tenant")
+    def get_routes(self) -> list[Any]:
+        """Build routes explicitly so ``AdminRouter._build_routes`` mounts them.
+
+        Paths are relative to the admin mount (``config.prefix``), matching
+        the other built-in controllers.
+        """
+        return [
+            Route(
+                "/set-tenant",
+                endpoint=self.set_tenant,
+                methods=["POST"],
+                name="admin_set_tenant",
+            ),
+        ]
+
     async def set_tenant(self, request: Request) -> Response:
         """Switch the active tenant for a superadmin session."""
         if not self._config.tenancy.enabled or self._registry is None:

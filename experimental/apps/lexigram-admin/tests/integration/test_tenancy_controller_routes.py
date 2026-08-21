@@ -11,6 +11,7 @@ from starlette.routing import Route
 
 from lexigram.admin.config import AdminConfig
 from lexigram.admin.controllers.tenancy import TenancyController
+from lexigram.admin.core.routing import AdminRouter
 from lexigram.admin.multitenancy.adapter import TenantProviderRegistry
 from lexigram.admin.multitenancy.models import TenantConfig
 
@@ -43,9 +44,7 @@ class TestSetTenantRoute:
             tenants=[TenantConfig(tenant_id="acme", name="Acme Corp")],
         )
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/admin/set-tenant",
                 data={"tenant_id": "acme"},
@@ -62,9 +61,7 @@ class TestSetTenantRoute:
             tenants=[TenantConfig(tenant_id="acme", name="Acme Corp")],
         )
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/admin/set-tenant",
                 data={"tenant_id": "acme"},
@@ -76,12 +73,36 @@ class TestSetTenantRoute:
     async def test_unknown_tenant_returns_400(self) -> None:
         app = await _create_tenancy_app(roles=["superadmin"], tenants=[])
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/admin/set-tenant",
                 data={"tenant_id": "nonexistent"},
                 follow_redirects=False,
             )
         assert response.status_code == 400
+
+    def test_get_routes_registers_set_tenant_post_route(self) -> None:
+        """POST /admin/set-tenant is registered via the real AdminRouter path.
+
+        Mirrors ``AdminRouter._build_routes``: controllers exposing
+        ``get_routes()`` contribute their routes to the admin sub-app,
+        which is mounted at ``config.prefix`` — so the deployed path is
+        ``{prefix}`` + the route's mount-relative path.
+        """
+        config = AdminConfig(prefix="/admin")
+        config.tenancy.enabled = True
+        controller = TenancyController(config=config)
+
+        routes = AdminRouter(config=config, controllers=[controller])._build_routes()
+
+        set_tenant_routes = [
+            route
+            for route in routes
+            if isinstance(route, Route)
+            and route.path == "/set-tenant"
+            and "POST" in route.methods
+        ]
+        assert len(set_tenant_routes) == 1
+        route = set_tenant_routes[0]
+        assert f"{config.prefix}{route.path}" == "/admin/set-tenant"
+        assert route.endpoint == controller.set_tenant
