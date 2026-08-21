@@ -160,7 +160,8 @@ class ImpersonationService:
 
         Returns:
             ``Ok(ImpersonationSession)`` on success, or
-            ``Err(PermissionDeniedError)`` if the actor is not authorised.
+            ``Err(PermissionDeniedError)`` if the actor is not authorised
+            or already has an active impersonation session.
         """
         actor_id: str = getattr(actor, "id", str(actor))
 
@@ -173,6 +174,26 @@ class ImpersonationService:
             return Err(
                 PermissionDeniedError(
                     f"User {actor_id!r} is not authorised to impersonate other users"
+                )
+            )
+
+        # D1 — nested-session guard: an actor with a live impersonation
+        # session must stop it before starting another. Silently replacing
+        # the session would orphan the original target identity and break
+        # audit attribution.
+        existing = self._sessions.get(actor_id)
+        if existing is not None:
+            logger.warning(
+                "impersonation.nested_denied",
+                actor_id=actor_id,
+                active_target_user_id=existing.target_user_id,
+                requested_target_user_id=target_user_id,
+            )
+            return Err(
+                PermissionDeniedError(
+                    f"User {actor_id!r} is already impersonating "
+                    f"{existing.target_user_id!r}; stop the active "
+                    "impersonation session first"
                 )
             )
 

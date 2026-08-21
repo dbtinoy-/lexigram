@@ -114,6 +114,31 @@ class TestImpersonationServiceStart:
         entry = audit.log.call_args.args[0]
         assert entry.action == "impersonation.start"
 
+    @pytest.mark.asyncio
+    async def test_start_while_impersonating_returns_err(self) -> None:
+        service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        await service.start(actor, "user-123")
+        result = await service.start(actor, "user-456")
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), PermissionDeniedError)
+
+    @pytest.mark.asyncio
+    async def test_start_while_impersonating_preserves_original_session(
+        self,
+    ) -> None:
+        service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        await service.start(actor, "user-123")
+        mock_request = MagicMock()
+        mock_request.session = {}
+        result = await service.start(actor, "user-456", request=mock_request)
+        assert result.is_err()
+        active = service.get_active_session("admin1")
+        assert active is not None
+        assert active.target_user_id == "user-123"
+        assert "_admin_impersonation" not in mock_request.session
+
 
 class TestImpersonationServiceStop:
     @pytest.mark.asyncio
