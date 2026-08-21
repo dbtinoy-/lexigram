@@ -168,6 +168,12 @@ latest `main` run); each job has a local one-liner:
 - [Error codes](docs/reference/REF_ERROR_CODES.md) — error codes and their meanings
 - [Dependency tree](docs/reference/DEPENDENCY_TREE.md) — full locked workspace
   dependency graph; regenerate with `uv tree --locked > docs/reference/DEPENDENCY_TREE.md`
+- the workspace root intentionally declares **zero dependencies** — it is a
+  virtual manifest (`[tool.uv.workspace]` only, not a published distribution);
+  each package's real dependency surface lives in its own `pyproject.toml`,
+  surfaced in full in the locked tree above with pin hygiene enforced by
+  `dev/check_dep_pins.py` (ci). audits reading "0 direct deps at root" are
+  seeing this by design, not an undercount.
 
 ## roadmap
 
