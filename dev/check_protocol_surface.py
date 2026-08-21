@@ -18,10 +18,11 @@ from __future__ import annotations
 
 import argparse
 import inspect
-import json
 import logging
 from pathlib import Path
 import sys
+
+from lexigram.serialization import dumps, loads
 
 MANIFEST = Path(__file__).parent / "protocol_surface.json"
 CONTRACTS_PKG = "lexigram.contracts"
@@ -62,9 +63,9 @@ def _runtime_protocols() -> dict[str, list[str]]:
                 if member.startswith("_"):
                     continue
                 static = inspect.getattr_static(value, member)
-                if isinstance(static, (property, staticmethod, classmethod)) or callable(
-                    static
-                ):
+                if isinstance(
+                    static, (property, staticmethod, classmethod)
+                ) or callable(static):
                     members.append(member)
             surface[f"{value.__module__}.{value.__qualname__}"] = sorted(members)
     return surface
@@ -73,11 +74,11 @@ def _runtime_protocols() -> dict[str, list[str]]:
 def _load_manifest() -> dict[str, list[str]]:
     if not MANIFEST.exists():
         return {}
-    return json.loads(MANIFEST.read_text())
+    return loads(MANIFEST.read_text())
 
 
 def _write_manifest(surface: dict[str, list[str]]) -> None:
-    MANIFEST.write_text(json.dumps(surface, indent=2, sort_keys=True) + "\n")
+    MANIFEST.write_text(dumps(surface, indent=2, sort_keys=True).decode() + "\n")
 
 
 def main() -> int:
