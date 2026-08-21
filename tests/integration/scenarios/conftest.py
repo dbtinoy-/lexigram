@@ -118,6 +118,7 @@ async def relay_app_factory(relay_fakes):
 
     async def _build():
         from lexigram.admin import AdminModule
+        from lexigram.admin.config import AdminConfig
         from lexigram.ai.governance import GovernanceModule
         from lexigram.ai.governance.config import GovernanceConfig
         from lexigram.ai.relay import RelayModule
@@ -202,7 +203,11 @@ async def relay_app_factory(relay_fakes):
                 RelayModule.configure(),
                 gateway_module,
                 GovernanceModule.configure(GovernanceConfig(enabled=False)),
-                AdminModule.stub(),
+                AdminModule.stub(
+                    AdminConfig.from_dict(
+                        {"auth": {"security": {"setup_token": "test-setup-token"}}}
+                    )
+                ),
             ]
         )
 

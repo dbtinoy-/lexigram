@@ -71,8 +71,13 @@ class AdminModule(Module):
     def stub(cls, config: Any = None) -> DynamicModule:
         """Return a no-op AdminModule for testing.
 
+        Args:
+            config: Optional admin configuration; ``None`` uses defaults.
+                Honored so test compositions can satisfy boot-time
+                requirements (e.g. the setup-token guard).
+
         Returns:
-            A DynamicModule with default admin configuration.
+            A DynamicModule with the given (or default) admin configuration.
         """
         from lexigram.admin.di.bundle_provider import AdminProvider
         from lexigram.contracts.admin.protocols import (
@@ -82,7 +87,7 @@ class AdminModule(Module):
 
         return DynamicModule(
             module=cls,
-            providers=[AdminProvider()],
+            providers=[AdminProvider(config=config)],
             exports=[AdminContributorRegistryProtocol, AdminDashboardProtocol],
         )
 
