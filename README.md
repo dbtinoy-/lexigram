@@ -164,6 +164,8 @@ Lexigram is in 0.1 — which means you can still change it. APIs may shift befor
 
 - [Env vars](docs/reference/REF_ENV_VARS.md) — every `LEX_*` environment variable
 - [Error codes](docs/reference/REF_ERROR_CODES.md) — error codes and their meanings
+- [Dependency tree](docs/reference/DEPENDENCY_TREE.md) — full locked workspace
+  dependency graph; regenerate with `uv tree --locked > docs/reference/DEPENDENCY_TREE.md`
 
 ## roadmap
 
