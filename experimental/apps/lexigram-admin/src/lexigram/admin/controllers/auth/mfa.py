@@ -8,6 +8,7 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from lexigram.admin.controllers.auth.core import (
     _CACHE_CONTROL_NO_STORE,
+    AuthCoreMixin,
     _humanize_error,
     logger,
 )
@@ -25,35 +26,8 @@ if TYPE_CHECKING:
     from lexigram.admin.observability.admin_metrics import AdminMetrics
 
 
-class AuthMfaMixin:
+class AuthMfaMixin(AuthCoreMixin):
     """AuthController mfa endpoints."""
-
-    def _fresh_csrf(self, request: Request) -> str:
-        raise NotImplementedError
-
-    async def render_admin(
-        self,
-        request: Request,
-        content: Any,
-        title: str = "Admin",
-        breadcrumbs: list[dict[str, Any]] | None = None,
-        **extra_context: Any,
-    ) -> HTMLResponse:
-        raise NotImplementedError
-
-    def generate_breadcrumbs(
-        self,
-        *crumbs: tuple[str, str],
-        current: str | None = None,
-    ) -> list[dict[str, str]]:
-        raise NotImplementedError
-
-    @staticmethod
-    def _safe_next_url(candidate: str) -> str:
-        raise NotImplementedError
-
-    def _get_client_ip(self, request: Request) -> str:
-        raise NotImplementedError
 
     _auth_service: AdminAuthServiceProtocol
     _csrf_service: AdminCsrfServiceProtocol

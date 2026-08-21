@@ -9,6 +9,7 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from lexigram.admin.controllers.auth.core import (
     _CACHE_CONTROL_NO_STORE,
+    AuthCoreMixin,
     _humanize_error,
     logger,
 )
@@ -25,11 +26,8 @@ if TYPE_CHECKING:
     )
 
 
-class AuthPasswordResetMixin:
+class AuthPasswordResetMixin(AuthCoreMixin):
     """AuthController password_reset endpoints."""
-
-    def _get_client_ip(self, request: Request) -> str:
-        raise NotImplementedError
 
     _csrf_service: AdminCsrfServiceProtocol
     _password_reset_service: AdminPasswordResetServiceProtocol | None

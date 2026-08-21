@@ -8,6 +8,7 @@ from starlette.responses import HTMLResponse, RedirectResponse
 
 from lexigram.admin.controllers.auth.core import (
     _CACHE_CONTROL_NO_STORE,
+    AuthCoreMixin,
     _humanize_error,
     logger,
 )
@@ -26,14 +27,8 @@ if TYPE_CHECKING:
     from lexigram.admin.auth.store import AdminUserStoreProtocol
 
 
-class AuthRegistrationMixin:
+class AuthRegistrationMixin(AuthCoreMixin):
     """AuthController registration endpoints."""
-
-    def _fresh_csrf(self, request: Request) -> str:
-        raise NotImplementedError
-
-    def _get_client_ip(self, request: Request) -> str:
-        raise NotImplementedError
 
     _csrf_service: AdminCsrfServiceProtocol
     _email_verification_service: AdminEmailVerificationServiceProtocol | None
