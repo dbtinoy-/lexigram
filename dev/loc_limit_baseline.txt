@@ -136,7 +136,6 @@ packages/lexigram-audit/tests/unit/test_sql_store.py
 packages/lexigram-auth/src/lexigram/auth/authn/ldap.py
 packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py
 packages/lexigram-auth/src/lexigram/auth/storage/oauth_identity_store.py
-packages/lexigram-auth/tests/unit/test_auth.py
 packages/lexigram-auth/tests/unit/test_oauth2.py
 packages/lexigram-auth/tests/unit/test_storage_stores.py
 packages/lexigram-cache/src/lexigram/cache/config.py
