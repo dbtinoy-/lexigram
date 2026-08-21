@@ -51,6 +51,18 @@ class TestImpersonationPolicy:
         )
         assert service._policy._super_admin_role == "root"
 
+    def test_cannot_impersonate_target_holding_super_admin_role(self) -> None:
+        policy = ImpersonationPolicy()
+        assert not policy.can_impersonate_target(["superadmin", "editor"])
+
+    def test_can_impersonate_target_without_super_admin_role(self) -> None:
+        policy = ImpersonationPolicy()
+        assert policy.can_impersonate_target(["editor", "viewer"])
+
+    def test_can_impersonate_target_with_no_roles(self) -> None:
+        policy = ImpersonationPolicy()
+        assert policy.can_impersonate_target([])
+
 
 class TestImpersonationSession:
     def test_session_has_unique_id(self) -> None:
@@ -138,6 +150,29 @@ class TestImpersonationServiceStart:
         assert active is not None
         assert active.target_user_id == "user-123"
         assert "_admin_impersonation" not in mock_request.session
+
+    @pytest.mark.asyncio
+    async def test_start_denies_target_with_super_admin_role(self) -> None:
+        service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        result = await service.start(actor, "user-123", target_roles=["superadmin"])
+        assert result.is_err()
+        assert isinstance(result.unwrap_err(), PermissionDeniedError)
+        assert not service.is_impersonating("admin1")
+
+    @pytest.mark.asyncio
+    async def test_start_allows_target_without_super_admin_role(self) -> None:
+        service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        result = await service.start(actor, "user-123", target_roles=["editor"])
+        assert result.is_ok()
+
+    @pytest.mark.asyncio
+    async def test_start_allows_when_target_roles_not_provided(self) -> None:
+        service = ImpersonationService()
+        actor = _make_actor("admin1", ["superadmin"])
+        result = await service.start(actor, "user-123")
+        assert result.is_ok()
 
 
 class TestImpersonationServiceStop:

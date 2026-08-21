@@ -108,6 +108,19 @@ class ImpersonationPolicy:
         """
         return is_super_admin(actor, self._super_admin_role)
 
+    def can_impersonate_target(self, target_roles: list[str]) -> bool:
+        """Return True unless *target_roles* includes the super-admin role.
+
+        Args:
+            target_roles: Role names held by the user being impersonated.
+
+        Returns:
+            False if the target holds the configured super-admin role
+            (impersonating another super-admin is never allowed); True
+            otherwise, including when *target_roles* is empty.
+        """
+        return self._super_admin_role not in target_roles
+
 
 @inject
 class ImpersonationService:
@@ -148,6 +161,7 @@ class ImpersonationService:
         target_user_id: str,
         reason: str = "",
         request: Any | None = None,
+        target_roles: list[str] | None = None,
     ) -> Result[ImpersonationSession, PermissionDeniedError]:
         """Begin impersonating *target_user_id* on behalf of *actor*.
 
@@ -157,6 +171,9 @@ class ImpersonationService:
             reason: Free-text reason recorded in the audit trail.
             request: Optional Starlette request — if provided, the
                 impersonation token is stored in ``request.session``.
+            target_roles: Optional list of role names held by the target
+                user. When provided and it includes the configured
+                super-admin role, the attempt is denied.
 
         Returns:
             ``Ok(ImpersonationSession)`` on success, or
@@ -194,6 +211,22 @@ class ImpersonationService:
                     f"User {actor_id!r} is already impersonating "
                     f"{existing.target_user_id!r}; stop the active "
                     "impersonation session first"
+                )
+            )
+
+        # D2 — target-role restriction: a super-admin must never be
+        # impersonated, even by another super-admin. The caller supplies
+        # the target's roles as resolved from the user store.
+        if target_roles and not self._policy.can_impersonate_target(target_roles):
+            logger.warning(
+                "impersonation.target_denied",
+                actor_id=actor_id,
+                target_user_id=target_user_id,
+            )
+            return Err(
+                PermissionDeniedError(
+                    f"Target user {target_user_id!r} holds the super-admin role "
+                    "and cannot be impersonated."
                 )
             )
 
