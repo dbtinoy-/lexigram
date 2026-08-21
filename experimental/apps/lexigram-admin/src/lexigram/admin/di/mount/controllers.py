@@ -94,6 +94,46 @@ class AdminMountControllersMixin:
             if self._config.strict_resource_resolution:
                 raise
 
+        # Resolve built-in ImpersonationController (best-effort)
+        try:
+            from lexigram.admin.auth.protocols import (
+                AdminAuditLogServiceProtocol,
+            )
+            from lexigram.admin.controllers.impersonation import (
+                ImpersonationController,
+            )
+            from lexigram.admin.services.impersonation import ImpersonationService
+
+            impersonation_service = await resolver.resolve(
+                ImpersonationService,
+                bypass_visibility=True,
+            )
+            if getattr(impersonation_service, "_audit", None) is None:
+                try:
+                    audit_service = await resolver.resolve(
+                        AdminAuditLogServiceProtocol,
+                        bypass_visibility=True,
+                    )
+                except Exception:  # noqa: BLE001 — audit wiring is optional
+                    audit_service = None
+                if audit_service is not None:
+                    impersonation_service._audit = audit_service
+
+            impersonation_controller = await resolver.resolve(
+                ImpersonationController,
+                bypass_visibility=True,
+            )
+            ctx.controllers.append(impersonation_controller)
+        except Exception as exc:
+            _log.error(
+                "admin.impersonation_controller_resolution_failed",
+                error=str(exc),
+                strict=self._config.strict_resource_resolution,
+            )
+            self._mount_failures["controller:ImpersonationController"] = str(exc)
+            if self._config.strict_resource_resolution:
+                raise
+
         # Resolve built-in DashboardController (best-effort)
         try:
             from lexigram.admin.controllers.dashboard import DashboardController

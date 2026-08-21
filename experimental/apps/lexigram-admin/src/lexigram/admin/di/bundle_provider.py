@@ -117,6 +117,7 @@ class AdminProvider(
         only bindings are registered.
         """
         from lexigram.admin.controllers.dashboard import DashboardController
+        from lexigram.admin.controllers.impersonation import ImpersonationController
         from lexigram.admin.controllers.widgets import WidgetController
         from lexigram.admin.di.sub_providers.auth import AdminAuthSubProvider
         from lexigram.admin.di.sub_providers.contributor import (
@@ -177,6 +178,10 @@ class AdminProvider(
         # Register built-in controllers
         container.singleton(WidgetController, WidgetController)
         container.singleton(DashboardController, DashboardController)
+        from lexigram.admin.services.impersonation import ImpersonationService
+
+        container.singleton(ImpersonationService, ImpersonationService)
+        container.singleton(ImpersonationController, ImpersonationController)
         # Register the RBAC permission inventory (populated at mount time)
         from lexigram.admin.rbac.inventory import PermissionInventoryService
 

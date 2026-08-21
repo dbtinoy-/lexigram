@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from starlette.requests import Request
@@ -13,6 +12,7 @@ from lexigram.admin.auth.store import AdminUserStoreProtocol
 from lexigram.admin.services.impersonation import ImpersonationService
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import dumps_str
 
 logger = get_logger(__name__)
 
@@ -81,7 +81,10 @@ class ImpersonationController:
 
         if result.is_err():
             error = result.unwrap_err()
-            return self._toast_error(str(error), status_code=403)
+            # DomainError.message is the bare human-readable text; str()
+            # appends the LEX_ERR_* code enrichment (docs URL + arrow),
+            # which is not latin-1 encodable and so not header-safe.
+            return self._toast_error(error.message, status_code=403)
 
         response = Response(status_code=200)
         response.headers["HX-Redirect"] = "/admin/users"
@@ -103,7 +106,7 @@ class ImpersonationController:
     def _toast_error(message: str, *, status_code: int) -> Response:
         """Build an error response carrying an HX-Trigger toast event."""
         response = Response(content=message, status_code=status_code)
-        response.headers["HX-Trigger"] = json.dumps(
+        response.headers["HX-Trigger"] = dumps_str(
             {"show-toast": {"message": message, "type": "error"}}
         )
         return response
