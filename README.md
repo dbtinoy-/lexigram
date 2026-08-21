@@ -132,6 +132,11 @@ the AI family — agents, llms, rag, memory, skills, mcp, session, workers, obse
 ```text
 HOOK    agents · llms · rag · mcp · memory
 CORE    web · sql · cache · auth · queue · events
+DATA    vector · graph · search · nosql · storage
+EDGE    http · webhook · notification
+FLOW    tasks · workflow · resilience
+OPS     monitor · audit · secrets · tenancy
+MEDIA   tts · music · video · image
 TRUST   di · contracts · modules · async
 ```
 
