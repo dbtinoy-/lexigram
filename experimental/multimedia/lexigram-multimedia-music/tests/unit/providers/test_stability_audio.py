@@ -53,9 +53,7 @@ async def test_generate_sends_bearer_and_multipart_payload() -> None:
     with patch(
         "aiohttp.ClientSession.post", return_value=_mock_cm(mock_resp)
     ) as mock_post:
-        with patch.object(
-            aiohttp.FormData, "add_field", wraps=aiohttp.FormData.add_field
-        ) as mock_add:
+        with patch.object(aiohttp.FormData, "add_field", autospec=True) as mock_add:
             result = await provider.generate(
                 MusicRequest(
                     prompt="deep ambient pads",
@@ -75,7 +73,7 @@ async def test_generate_sends_bearer_and_multipart_payload() -> None:
     assert call.kwargs["headers"]["Authorization"] == "Bearer sk-test"
     assert call.kwargs["headers"]["Accept"] == "audio/*"
 
-    fields = {name: value for name, value, *_ in mock_add.call_args_list}
+    fields = {c.args[1]: c.args[2] for c in mock_add.call_args_list}
     assert fields["prompt"] == "deep ambient pads"
     assert fields["output_format"] == "wav"
     assert fields["duration"] == "45"
@@ -97,14 +95,12 @@ async def test_generate_omits_extra_fields_when_absent() -> None:
     with patch(
         "aiohttp.ClientSession.post", return_value=_mock_cm(mock_resp)
     ) as mock_post:
-        with patch.object(
-            aiohttp.FormData, "add_field", wraps=aiohttp.FormData.add_field
-        ) as mock_add:
+        with patch.object(aiohttp.FormData, "add_field", autospec=True) as mock_add:
             result = await provider.generate(MusicRequest(prompt="lo-fi beats"))
 
     assert result.is_ok()
 
-    fields = {name for name, *_ in mock_add.call_args_list}
+    fields = {c.args[1] for c in mock_add.call_args_list}
     assert {"prompt", "output_format", "duration"} <= fields
     assert "seed" not in fields
     assert "steps" not in fields

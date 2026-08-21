@@ -13,10 +13,15 @@ def test_music_config_from_dict() -> None:
     assert cfg.timeout == 5.0
 
 
-def test_music_config_has_no_stability_fields() -> None:
+def test_music_config_has_no_duration_field() -> None:
+    """Duration belongs to the request, not the subsystem config."""
     cfg = MusicConfig()
-    assert not hasattr(cfg, "stability_api_key_secret_name")
     assert not hasattr(cfg, "duration_seconds")
+
+
+def test_stability_credential_is_a_secret_name_not_a_value() -> None:
+    cfg = MusicConfig()
+    assert cfg.stability_api_key_secret_name == "stability_api_key"
 
 
 def test_stability_audio_stays_a_valid_but_unimplemented_backend() -> None:

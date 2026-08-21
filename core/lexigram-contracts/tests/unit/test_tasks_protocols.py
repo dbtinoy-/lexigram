@@ -327,7 +327,17 @@ class TestTaskProviderProtocol:
             async def enqueue_job(self, job: Any) -> str:
                 return ""
 
-            def schedule_job(self, job_template: Any, cron_expression: str, job_id: str | None = None) -> str | None:
+            def build_idempotency_manager(self, storage: Any) -> Any:
+                return None
+
+            def build_idempotent_task_manager(
+                self, queue_client: Any, idempotency_manager: Any
+            ) -> Any:
+                return None
+
+            def schedule_job(
+                self, job_template: Any, cron_expression: str, job_id: str | None = None
+            ) -> str | None:
                 return None
 
             def unschedule_job(self, job_id: str) -> bool:
@@ -537,7 +547,13 @@ class TestDLQProtocol:
         """Test protocol is runtime checkable."""
 
         class DLQ:
-            async def add(self, message_id: str, payload: Any, reason: str, metadata: dict | None = None) -> None:
+            async def add(
+                self,
+                message_id: str,
+                payload: Any,
+                reason: str,
+                metadata: dict | None = None,
+            ) -> None:
                 pass
 
             async def get(self, message_id: str) -> dict | None:

@@ -275,7 +275,9 @@ class TestCommandAssembler:
 
         assert app.registered_commands == []
 
-    def test_definition_command_executes_registry_loaded_adapter(self) -> None:
+    def test_definition_command_executes_registry_loaded_adapter(
+        self, tmp_path, monkeypatch
+    ) -> None:
         """Assembler commands must execute using the generator definition metadata."""
         from pathlib import Path
         import sys
@@ -328,8 +330,8 @@ class TestCommandAssembler:
         assembler.assemble(app)
 
         runner = CliRunner()
-        with runner.isolated_filesystem():
-            result = runner.invoke(app, ["Gizmo"])
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["Gizmo"])
 
         assert result.exit_code == 0, result.output
         assert "Created: src/widgets/Gizmo.py" in result.output
@@ -591,7 +593,9 @@ class TestPluginListCommand:
 
 
 class TestCommandAssemblerPackageLayout:
-    def test_definition_command_preserves_src_suffix_for_package_layout(self) -> None:
+    def test_definition_command_preserves_src_suffix_for_package_layout(
+        self, tmp_path, monkeypatch
+    ) -> None:
         from pathlib import Path
         import sys
         from types import ModuleType
@@ -643,12 +647,12 @@ class TestCommandAssemblerPackageLayout:
         assembler.assemble(app)
 
         runner = CliRunner()
+        monkeypatch.chdir(tmp_path)
         try:
-            with runner.isolated_filesystem():
-                package_dir = Path("src") / "petclinic"
-                package_dir.mkdir(parents=True)
-                (package_dir / "__init__.py").write_text("")
-                result = runner.invoke(app, ["Gizmo"])
+            package_dir = Path("src") / "petclinic"
+            package_dir.mkdir(parents=True)
+            (package_dir / "__init__.py").write_text("")
+            result = runner.invoke(app, ["Gizmo"])
         finally:
             sys.modules.pop(module_name, None)
 
