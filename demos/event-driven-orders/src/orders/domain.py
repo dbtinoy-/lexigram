@@ -108,7 +108,7 @@ class OrderShipped(DomainEvent):
 def order_event(
     event_cls: type[DomainEvent],
     order_id: str,
-    aggregate_id: Any = None,
+    aggregate_id: UUID | None = None,
     **payload: Any,
 ) -> DomainEvent:
     """Build a domain event with aggregate context attached.
