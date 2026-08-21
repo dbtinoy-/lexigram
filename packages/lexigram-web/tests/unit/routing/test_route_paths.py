@@ -24,7 +24,5 @@ async def test_no_duplicate_route_paths(test_bed) -> None:
         for path in (getattr(route, "path", None) for route in web.starlette.routes)
         if path
     ]
-    duplicates = {
-        path: count for path, count in Counter(paths).items() if count > 1
-    }
+    duplicates = {path: count for path, count in Counter(paths).items() if count > 1}
     assert not duplicates, f"duplicate route paths registered: {duplicates}"
