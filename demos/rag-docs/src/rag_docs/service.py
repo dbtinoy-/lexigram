@@ -137,9 +137,7 @@ class DocsAskService:
 
         response = synthesis.unwrap()
         citations = tuple(
-            candidate.document.id
-            for candidate in candidates
-            if candidate.document.id
+            candidate.document.id for candidate in candidates if candidate.document.id
         )
         return Ok(AskAnswer(answer=response.answer, citations=citations))
 
