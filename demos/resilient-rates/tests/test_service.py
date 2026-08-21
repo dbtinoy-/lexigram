@@ -118,6 +118,36 @@ async def test_breaker_opens_then_serves_stale() -> None:
     faults.set(Scenario.HEALTHY)
 
 
+async def test_production_breaker_stops_calling_upstream_while_serving_stale() -> None:
+    # Production numbers (threshold=3, recovery=0.2): repeated DOWN reads
+    # must eventually trip the circuit — observable as upstream_calls
+    # plateauing while every read keeps being served from the stale tier.
+    faults = FaultController()
+    provider = SimulatedRatesProvider(faults=faults, seed=7)
+    service = RatesService(
+        cache=MemoryCacheBackend(),
+        pipeline_factory=make_pipeline_factory(),
+        provider=provider,
+        faults=faults,
+    )
+
+    await service.fetch("EUR/USD")  # warm the stale tier while healthy
+    await service.clear_cache()
+    faults.set(Scenario.DOWN)
+
+    upstream_sequence: list[int] = []
+    for _ in range(5):
+        quote = await service.fetch("EUR/USD")
+        assert quote.source == "stale"
+        upstream_sequence.append(service.stats().upstream_calls)
+
+    assert service.stats().stale_served == 5
+    assert upstream_sequence[-1] == upstream_sequence[-2]  # plateau: breaker OPEN
+    assert service.stats().retries >= 1  # retries were attempted before tripping
+
+    faults.set(Scenario.HEALTHY)
+
+
 async def test_down_without_stale_copy_raises() -> None:
     """A never-warmed pair has no stale tier: the outage surfaces."""
 

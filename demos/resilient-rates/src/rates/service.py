@@ -133,6 +133,7 @@ class RatesService:
             KeyError: Unknown pair.
         """
         key = f"{_CACHE_PREFIX}{pair}"
+        logger.debug("fetch_started", pair=pair, scenario=self._faults.current.value)
         cached = await self._cache_get(key)
         if cached is not None:
             self._stats.hits += 1
