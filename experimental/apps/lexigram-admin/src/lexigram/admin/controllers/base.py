@@ -165,6 +165,44 @@ class AdminController(ControllerProtocol):
         except Exception:  # noqa: BLE001, S110 — non-fatal
             pass
 
+    async def _apply_impersonation_context(
+        self,
+        request: Request,
+        extra_context: dict[str, Any],
+    ) -> None:
+        """Populate impersonation banner state into extra_context, if active.
+
+        Resolves ``ImpersonationService`` from the request-scoped container
+        and checks whether the current actor has an active session. Display
+        name resolution is out of scope (no user-store dependency here) —
+        the banner shows the raw target user ID.
+        """
+        user = getattr(request.state, "user", None)
+        if user is None:
+            return
+
+        try:
+            from lexigram.admin.services.impersonation import ImpersonationService
+
+            container = getattr(request.state, "container", None) or getattr(
+                request.app.state, "container", None
+            )
+            if container is None:
+                return
+            service = await container.resolve(ImpersonationService)
+            if service is None:
+                return
+
+            actor_id = str(getattr(user, "id", ""))
+            session = service.get_active_session(actor_id, request)
+            if session is not None:
+                extra_context.setdefault("impersonation_active", True)
+                extra_context.setdefault(
+                    "impersonation_target_id", session.target_user_id
+                )
+        except Exception:  # noqa: BLE001, S110 — non-fatal
+            pass
+
     async def render_admin(
         self,
         request: Request,
@@ -187,6 +225,8 @@ class AdminController(ControllerProtocol):
         """
         # Inject runtime theme overrides (primary_color, site_name)
         await self._apply_theme_overrides(request, extra_context)
+        # Inject impersonation banner state, if an active session exists
+        await self._apply_impersonation_context(request, extra_context)
 
         # If content is awaitable, resolve it first
         if inspect.isawaitable(content):
