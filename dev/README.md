@@ -23,6 +23,16 @@ uv run python -m dev.cli audit validate
 
 No backward-compat script wrappers are maintained. Callers must use `dev.cli` directly.
 
+## Standalone gates (invoked directly by CI)
+
+| Script | Purpose |
+| --- | --- |
+| `dev/check_tier_boundary.py` | Fails when a stable-tier package depends on an `experimental/` one |
+| `dev/check_dep_pins.py` | Dependency pin policy |
+| `dev/check_stub_shadows.py` | Fails when a class attribute resolves to a `NotImplementedError` stub shadowing a real implementation later in its MRO. Run after any mixin/base refactor |
+| `dev/check_protocol_surface.py` | Fails when a `lexigram.contracts` runtime_checkable Protocol gains/loses public members. After an intentional protocol change run with `--update`, review the `dev/protocol_surface.json` diff, and commit both together |
+| `dev/check_env_example.py` | env.example coverage |
+
 ## Makefile
 
 Audit targets call the same CLI:

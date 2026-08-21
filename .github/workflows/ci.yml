@@ -97,6 +97,9 @@ jobs:
       - name: Stub-shadow gate (MRO resolution)
         run: uv run python dev/check_stub_shadows.py --root .
 
+      - name: Contracts protocol-surface gate
+        run: uv run python dev/check_protocol_surface.py --root .
+
       - name: env.example coverage
         run: uv run python dev/check_env_example.py --root .
 
