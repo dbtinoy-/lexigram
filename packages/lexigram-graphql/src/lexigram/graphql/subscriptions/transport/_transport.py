@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 
 from lexigram.graphql.subscriptions.transport._messaging import _WSMessagingMixin
 
+
 @dataclass
 
 class GraphQLWSTransport(_WSMessagingMixin):

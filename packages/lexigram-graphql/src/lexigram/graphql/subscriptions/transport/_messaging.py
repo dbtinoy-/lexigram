@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 from lexigram import serialization as json
 from lexigram.graphql.subscriptions.protocol import GQLWSMessageType
-from lexigram.graphql.types import SubscriptionInfo
 from lexigram.graphql.subscriptions.transport._connection import SubscriptionConnection
+from lexigram.graphql.types import SubscriptionInfo
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:

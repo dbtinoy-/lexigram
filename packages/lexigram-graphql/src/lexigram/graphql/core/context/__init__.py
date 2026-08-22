@@ -9,10 +9,10 @@ from __future__ import annotations
 from lexigram.graphql.core.context._context import GraphQLContext
 from lexigram.graphql.core.context._factory import ContextFactory
 from lexigram.graphql.core.context._models import (
+    GraphQLErrorPayload,
     GraphQLRequest,
     GraphQLResponse,
 )
-from lexigram.graphql.core.context._models import GraphQLErrorPayload
 
 __all__ = [
     "ContextFactory",

@@ -34,6 +34,7 @@ from lexigram.sql.exceptions import (
     QueryError,
 )
 
+
 class MySQLConnectionPool(ConnectionPoolProtocol):
     """MySQL connection pool with health checks and resilience"""
 

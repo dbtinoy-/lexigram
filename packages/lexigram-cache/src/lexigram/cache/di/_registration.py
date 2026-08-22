@@ -57,9 +57,14 @@ class _CacheRegistrationMixin:
         self._initialize_serializers()
 
         # Register provider and protocol (no I/O)
-        from lexigram.cache.di.provider import CacheProvider  # noqa: PLC0415 — breaks provider<->mixin cycle
-        from lexigram.contracts.infra.cache.protocols import CacheProviderProtocol  # noqa: PLC0415
+        from lexigram.cache.di.provider import (
+            CacheProvider,  # noqa: PLC0415 — breaks provider<->mixin cycle
+        )
+        from lexigram.contracts.infra.cache.protocols import (
+            CacheProviderProtocol,  # noqa: PLC0415
+        )
 
+        container.singleton(CacheProvider, self)
         container.singleton(CacheProviderProtocol, self)
 
         # Bind lazy factories that resolve after boot() populates self._backends / _services.

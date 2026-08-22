@@ -26,6 +26,7 @@ from lexigram.sql.exceptions import (
     QueryError,
 )
 
+
 class MySQLConnection(DatabaseConnection):
     """MySQL database connection"""
 

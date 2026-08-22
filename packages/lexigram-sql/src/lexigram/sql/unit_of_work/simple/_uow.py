@@ -10,6 +10,7 @@ from typing import Any, Self, cast
 from lexigram.contracts import DatabaseProviderProtocol
 from lexigram.logging import get_logger
 from lexigram.sql.exceptions import DatabaseConnectionError, DatabaseError, QueryError
+from lexigram.sql.unit_of_work.base import AbstractUnitOfWork
 from lexigram.sql.unit_of_work.simple._operations import (  # noqa: F401
     DeleteOperationHandler,
     EntityOperation,
@@ -20,7 +21,6 @@ from lexigram.sql.unit_of_work.simple._operations import (  # noqa: F401
     _operation_handler_registry,
     _table_naming_registry,
 )
-from lexigram.sql.unit_of_work.base import AbstractUnitOfWork
 
 logger = get_logger(__name__)
 

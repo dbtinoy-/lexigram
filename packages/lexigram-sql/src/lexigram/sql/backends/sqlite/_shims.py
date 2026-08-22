@@ -5,20 +5,13 @@ from typing import Any
 # Declare optional third-party/runtime names as Any so we can provide runtime fallbacks
 aiosqlite: Any = None
 try:
-    import aiosqlite
+    import aiosqlite  # noqa: F401 — patched by tests via backend modules
 
     HAS_SQLITE = True
 except ImportError:
     HAS_SQLITE = False
 
 
-from lexigram.contracts import (
-    HealthCheckResult,
-    HealthStatus,
-    RetryConfig,
-)
-from lexigram.contracts.infra.resilience import CircuitBreakerProtocol
-from lexigram.sql.lib.retry import retry_call
 
 HAS_MONITORING = False
 try:

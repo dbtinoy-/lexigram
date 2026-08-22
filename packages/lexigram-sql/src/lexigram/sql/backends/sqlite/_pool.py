@@ -23,21 +23,18 @@ from lexigram.contracts import (
     RetryConfig,
 )
 from lexigram.contracts.infra.resilience import CircuitBreakerProtocol
+from lexigram.sql.backends.sqlite._connection import HAS_MONITORING, SQLiteConnection
 from lexigram.sql.backends.sqlite._shims import (  # noqa: F401
     HAS_MONITORING,
     HAS_SQLITE,
     DatabaseMonitor,
     aiosqlite,
 )
-from lexigram.sql.lib.retry import retry_call
-
-
-
-from lexigram.sql.backends.sqlite._connection import HAS_MONITORING, SQLiteConnection
 from lexigram.sql.exceptions import (
     DatabaseConnectionError,
     DatabaseError,
 )
+from lexigram.sql.lib.retry import retry_call
 
 
 class SQLiteConnectionPool(ConnectionPoolProtocol):

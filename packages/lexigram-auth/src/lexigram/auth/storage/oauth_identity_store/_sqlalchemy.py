@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any
 
 from lexigram.logging import get_logger
 
@@ -13,12 +13,12 @@ if TYPE_CHECKING:
     from lexigram.contracts.data import DatabaseProviderProtocol
 
 
-from lexigram.di.decorators import inject
-
 from lexigram.auth.storage.oauth_identity_store._protocol import (
     OAuthIdentity,
     OAuthIdentityStore,
 )
+from lexigram.di.decorators import inject
+
 
 @inject
 class SQLAlchemyOAuthIdentityStore(OAuthIdentityStore):
