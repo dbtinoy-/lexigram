@@ -64,6 +64,11 @@ class PostgresProvider(DatabaseDriver):
         except asyncpg.InvalidCatalogNameError:
             # Database doesn't exist, try to create it
             target_db = conn_kwargs.get("database")
+            if not isinstance(target_db, str):
+                raise ConnectionError(
+                    "Cannot auto-create database: 'database' connect kwarg "
+                    f"is missing or not a string (got {target_db!r})"
+                ) from None
             logger.info(
                 "Database '%s' does not exist. Attempting to create it...", target_db
             )
@@ -76,7 +81,9 @@ class PostgresProvider(DatabaseDriver):
                 admin_conn = await asyncpg.connect(**admin_kwargs)
                 try:
                     # CREATE DATABASE cannot run in a transaction block
-                    await admin_conn.execute(f'CREATE DATABASE "{validate_identifier(target_db)}"')
+                    await admin_conn.execute(
+                        f'CREATE DATABASE "{validate_identifier(target_db)}"'
+                    )
                     logger.info("Successfully created database '%s'", target_db)
                 finally:
                     await admin_conn.close()

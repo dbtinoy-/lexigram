@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from lexigram.concurrency.task_utils import create_tracked_task
 from lexigram.contracts.core import (
@@ -20,6 +20,7 @@ from lexigram.contracts.observability.metrics import (
 )
 from lexigram.logging import get_logger
 from lexigram.tasks.admin.contributor import TasksAdminContributor
+from lexigram.tasks.di._attrs import _TaskAttrsMixin
 from lexigram.tasks.execution.health import TaskHealth
 from lexigram.tasks.execution.pool import WorkerPool
 from lexigram.tasks.results.cache_backend import CacheBackendResultStore
@@ -39,7 +40,7 @@ logger = get_logger(__name__)
 
 
 
-class _TaskLifecycleMixin:
+class _TaskLifecycleMixin(_TaskAttrsMixin):
     """See TaskProvider."""
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Start the task provider.

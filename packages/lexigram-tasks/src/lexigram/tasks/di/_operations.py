@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
 from lexigram.contracts.infra.tasks import (
@@ -11,6 +11,7 @@ from lexigram.contracts.infra.tasks import (
     TaskQueueProtocol,
 )
 from lexigram.logging import get_logger
+from lexigram.tasks.di._attrs import _TaskAttrsMixin
 from lexigram.tasks.exceptions import TaskRegistrationError
 from lexigram.tasks.execution.manager import (
     IdempotencyManager,
@@ -31,7 +32,7 @@ logger = get_logger(__name__)
 
 
 
-class _TaskOperationsMixin:
+class _TaskOperationsMixin(_TaskAttrsMixin):
     """See TaskProvider."""
     def register_handler(self, task_name: str, handler: Callable[..., Any]) -> None:
         """Register a task handler
@@ -114,8 +115,9 @@ class _TaskOperationsMixin:
     ) -> str | None:
         """Schedule a job with cron expression"""
         if self.scheduler:
-            return self.scheduler.schedule_job_sync(
-                job_template, cron_expression, job_id
+            return cast(
+                "str | None",
+                self.scheduler.schedule_job_sync(job_template, cron_expression, job_id),
             )
         logger.warning("Scheduler not enabled")
         return None
@@ -123,13 +125,14 @@ class _TaskOperationsMixin:
     def unschedule_job_sync(self, job_id: str) -> bool:
         """Remove a scheduled job"""
         if self.scheduler:
-            return self.scheduler.unschedule_job_sync(job_id)
+            return bool(self.scheduler.unschedule_job_sync(job_id))
         return False
 
     def get_worker_stats(self) -> dict[str, Any] | None:
         """Get worker pool statistics"""
         if self.worker_pool:
-            return self.worker_pool.get_pool_stats()
+            result: dict[str, Any] | None = self.worker_pool.get_pool_stats()
+            return result
         return None
 
     def get_scheduled_jobs(self) -> dict[str, Any] | None:

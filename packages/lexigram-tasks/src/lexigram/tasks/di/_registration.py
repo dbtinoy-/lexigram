@@ -15,6 +15,7 @@ from lexigram.tasks.admin.handlers.avg_duration import AvgDurationWidgetHandler
 from lexigram.tasks.admin.handlers.tasks_summary import TasksSummaryWidgetHandler
 from lexigram.tasks.backends.registry import TaskBackendRegistry
 from lexigram.tasks.config import TaskConfig
+from lexigram.tasks.di._attrs import _TaskAttrsMixin
 from lexigram.tasks.execution.metrics import TaskMetricsCollector
 from lexigram.tasks.execution.pool import WorkerPool
 from lexigram.tasks.execution.registry import HandlerRegistry
@@ -35,7 +36,7 @@ logger = get_logger(__name__)
 
 
 
-class _TaskRegistrationMixin:
+class _TaskRegistrationMixin(_TaskAttrsMixin):
     """See TaskProvider."""
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register task services with the DI container.

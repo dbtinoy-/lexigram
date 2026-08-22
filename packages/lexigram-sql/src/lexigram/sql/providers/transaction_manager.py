@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 import uuid
 
 from lexigram.contracts.core import HookRegistryProtocol
+from lexigram.contracts.data.identifiers import validate_identifier
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.identity import IdGeneratorProtocol
@@ -205,7 +206,11 @@ class TransactionManager(ABC):
         Yields:
             Nothing — the context manager manages the savepoint lifecycle.
         """
-        base_name = name or (self._id_generator.generate()[:12] if self._id_generator else uuid.uuid4().hex[:12])
+        base_name = name or (
+            self._id_generator.generate()[:12]
+            if self._id_generator
+            else uuid.uuid4().hex[:12]
+        )
         sp_name = f"sp_{validate_identifier(base_name)}"
 
         if (
