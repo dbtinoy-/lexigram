@@ -9,7 +9,7 @@ from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-from prompt_lab.api import LabApiController
+from prompt_lab.controllers.api import LabApiController
 from prompt_lab.di.provider import LabProvider
 from prompt_lab.services.ab_runner import ABRunner
 from prompt_lab.ui.pages import LabPageController

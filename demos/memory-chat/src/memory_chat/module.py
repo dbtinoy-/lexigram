@@ -9,7 +9,7 @@ from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-from memory_chat.api import ConciergeApiController
+from memory_chat.controllers.api import ConciergeApiController
 from memory_chat.di.provider import ConciergeProvider
 from memory_chat.services.chat_service import ConciergeService
 from memory_chat.ui.pages import ChatPageController

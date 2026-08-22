@@ -11,6 +11,7 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.contracts.events import EventBusProtocol
 from lexigram.di.provider import Provider
@@ -78,10 +79,22 @@ class OrdersProvider(Provider):
         (singleton), reproducing the original boot-time wiring contract:
         any consumer may dispatch or publish straight after start().
         """
-        await container.resolve(OrdersApi)
+        self._api = await container.resolve(OrdersApi)
 
     async def shutdown(self) -> None:
         """Nothing to tear down; the demo is fully in-memory."""
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report write/read-side readiness with outbox depth."""
+        return HealthCheckResult(
+            component=self.name,
+            details={
+                "wired": getattr(self, "_api", None) is not None,
+                "outbox_depth": (
+                    len(self._api.list_outbox()) if getattr(self, "_api", None) else 0
+                ),
+            },
+        )
 
 
 __all__ = ["OrdersProvider"]

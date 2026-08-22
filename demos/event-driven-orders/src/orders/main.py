@@ -137,6 +137,8 @@ async def _run(args: argparse.Namespace) -> int:
             print(f"flushed: {sent}")
             return 0
 
+    return 0
+
 
 def main() -> None:
     args = _build_parser().parse_args()

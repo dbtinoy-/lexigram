@@ -22,6 +22,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from lexigram.contracts.exceptions.events import HandlerNotFoundError
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 from orders.domain import (
     OrderAlreadyPaidError,
@@ -49,7 +50,7 @@ class OrdersApiController(Controller):
     @post("/orders")
     async def place_order(self, request: Request) -> JSONResponse:
         """Place a new order from a JSON customer/items payload."""
-        body = await request.json()
+        body = json_loads(await request.body())
         customer = str(body.get("customer") or "").strip()
         if not customer:
             return JSONResponse({"error": "customer is required"}, status_code=400)
@@ -111,7 +112,7 @@ class OrdersApiController(Controller):
     async def pay_order(self, request: Request) -> JSONResponse:
         """Mark an order paid."""
         order_id = request.path_params["order_id"]
-        body = await request.json()
+        body = json_loads(await request.body())
         try:
             amount = Decimal(str(body.get("amount", "0")))
         except InvalidOperation:

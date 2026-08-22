@@ -14,8 +14,8 @@ from lexigram.events.module import EventsModule
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-from orders.api import OrdersApiController
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
+from orders.controllers.api import OrdersApiController
 from orders.di.provider import OrdersProvider
 from orders.events import NotificationHandler, OrdersView
 from orders.repository.order_repository import OrderRepository
