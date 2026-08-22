@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from lexigram.contracts.core.idempotency import IdempotencyStoreProtocol
 from lexigram.contracts.infra.tasks import (
@@ -115,24 +115,20 @@ class _TaskOperationsMixin(_TaskAttrsMixin):
     ) -> str | None:
         """Schedule a job with cron expression"""
         if self.scheduler:
-            return cast(
-                "str | None",
-                self.scheduler.schedule_job_sync(job_template, cron_expression, job_id),
-            )
+            return self.scheduler.schedule_job_sync(job_template, cron_expression, job_id)
         logger.warning("Scheduler not enabled")
         return None
 
     def unschedule_job_sync(self, job_id: str) -> bool:
         """Remove a scheduled job"""
         if self.scheduler:
-            return bool(self.scheduler.unschedule_job_sync(job_id))
+            return self.scheduler.unschedule_job_sync(job_id)
         return False
 
     def get_worker_stats(self) -> dict[str, Any] | None:
         """Get worker pool statistics"""
         if self.worker_pool:
-            result: dict[str, Any] | None = self.worker_pool.get_pool_stats()
-            return result
+            return self.worker_pool.get_pool_stats()
         return None
 
     def get_scheduled_jobs(self) -> dict[str, Any] | None:
