@@ -1,0 +1,20 @@
+/* Support-agent console theme */
+:root { --bg:#10151c; --panel:#1a2230; --ink:#dbe4f0; --accent:#4da3ff; }
+* { box-sizing: border-box; }
+body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+header h1 { margin:.6rem 1rem; font-size:1.2rem; }
+main { display:flex; gap:1rem; padding:0 1rem 1rem; }
+aside { width:220px; background:var(--panel); border-radius:8px; padding:.75rem; }
+#console { flex:1; background:var(--panel); border-radius:8px; padding:1rem; }
+#scenarios button, #ask-form button {
+  background:var(--panel); color:var(--ink); border:1px solid #33415c;
+  border-radius:6px; padding:.4rem .8rem; cursor:pointer;
+}
+#scenarios button.active { background:var(--accent); color:#08111e; border-color:var(--accent); }
+#ask-form { display:flex; gap:.5rem; margin:.75rem 0; }
+#question { flex:1; padding:.45rem .6rem; border-radius:6px; border:1px solid #33415c; background:#0c1118; color:var(--ink); }
+.hidden { display:none; }
+.muted { color:#7d8ba1; font-size:.85rem; }
+#error { color:#ff7a7a; }
+table { width:100%; border-collapse:collapse; font-size:.9rem; }
+th, td { text-align:left; padding:.35rem .5rem; border-bottom:1px solid #26314a; vertical-align:top; }

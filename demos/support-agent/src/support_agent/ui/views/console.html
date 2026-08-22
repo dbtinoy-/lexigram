@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Support Agent Console</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header><h1>Support Agent Console</h1></header>
+  <main>
+    <aside id="tools-panel">
+      <h2>Tools</h2>
+      <ul id="tools"></ul>
+    </aside>
+    <section id="console">
+      <div id="scenarios">
+        <button data-scenario="happy">Happy path</button>
+        <button data-scenario="multi_tool">Multi-tool</button>
+        <button data-scenario="failure">Failure</button>
+      </div>
+      <form id="ask-form">
+        <input id="question" type="text" autocomplete="off"
+               placeholder="Ask about order A-100, refunds, shipping&hellip;">
+        <button type="submit">Ask</button>
+      </form>
+      <p id="answer" class="hidden"></p>
+      <table id="trace" class="hidden">
+        <thead><tr><th>#</th><th>Thought</th><th>Action</th><th>Tool result</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="meta" class="muted"></p>
+      <p id="error" class="hidden"></p>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
