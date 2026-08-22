@@ -10,7 +10,7 @@ from lexigram.contracts.ai.feedback import FeedbackItem
 THRESHOLD_RATING = 2.0
 
 REFERENCE_BARS: dict[str, str] = {
-    "refund-policy": "money back",
+    "refund-policy": "refund within 30 days",
     "shipping-time": "business days",
     "track-order": "tracking id",
     "warranty": "24 month",
