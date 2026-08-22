@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from auth_web.controllers.api import AuthApiController
+from auth_web.repository import InMemorySessionRepository
+from auth_web.services.password_change import PasswordChangeService
+from auth_web.ui.pages import PagesController
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
+from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.config import AuthConfig, JWTConfig
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.auth.authz.service import AuthorizationService
 from lexigram.contracts.auth.protocols import PasswordHasherProtocol
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
@@ -17,11 +21,6 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
-
-from auth_web.controllers.api import AuthApiController
-from auth_web.ui.pages import PagesController
-from auth_web.repository import InMemorySessionRepository
-from auth_web.services.password_change import PasswordChangeService
 
 logger = get_logger(__name__)
 

@@ -14,12 +14,11 @@ import sys
 
 import httpx
 import pytest
+from rbac_console.module import RbacModule
 from starlette.applications import Starlette
 
 from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
-
-from rbac_console.module import RbacModule
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 

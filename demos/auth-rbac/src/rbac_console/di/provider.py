@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
+from rbac_console.articles import ArticleStore
+from rbac_console.controllers.api import PERSONAS, RbacApiController
+from rbac_console.personas import PersonaDirectory
+from rbac_console.session_repository import InMemorySessionRepository
+from rbac_console.ui.pages import PagesController
 
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.contracts.auth import UserStoreProtocol
-from lexigram.contracts.auth.protocols import PasswordPolicyProtocol
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
@@ -16,12 +18,6 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
-
-from rbac_console.articles import ArticleStore
-from rbac_console.personas import PersonaDirectory
-from rbac_console.controllers.api import PERSONAS, RbacApiController
-from rbac_console.session_repository import InMemorySessionRepository
-from rbac_console.ui.pages import PagesController
 
 logger = get_logger(__name__)
 

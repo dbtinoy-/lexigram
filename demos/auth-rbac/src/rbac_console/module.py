@@ -10,7 +10,6 @@ from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-
 from rbac_console.controllers.api import RbacApiController
 from rbac_console.di.provider import RbacProvider
 from rbac_console.ui.pages import PagesController

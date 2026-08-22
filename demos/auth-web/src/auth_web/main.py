@@ -12,10 +12,9 @@ import asyncio
 import os
 import sys
 
+from auth_web.module import AuthWebModule
 from lexigram.app import Application
 from lexigram.web.server.runner import run_server_async
-
-from auth_web.module import AuthWebModule
 
 
 async def _serve(port: int) -> None:

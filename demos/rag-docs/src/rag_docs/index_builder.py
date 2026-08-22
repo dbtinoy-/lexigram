@@ -5,12 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from lexigram.ai.rag.chunking.factory import create_chunker
-from lexigram.ai.rag.chunking.types import ChunkingConfig, ChunkingStrategy
 from lexigram.ai.rag.loaders.core import MarkdownLoader
 from lexigram.contracts.data.vector.types import CollectionConfig, VectorRecord
 from lexigram.vector.backends.memory import MemoryVectorCollection, MemoryVectorStore
-
 from rag_docs.embedder import EMBEDDING_DIMENSION, HashingEmbedder
 
 CORPUS_COLLECTION_NAME = "lexigram_docs"

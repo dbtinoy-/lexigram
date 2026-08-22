@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
+from auth_web.repository import InMemorySessionRepository
+from auth_web.services.password_change import PasswordChangeService
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -14,9 +15,6 @@ from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.web import Controller, get, post
-
-from auth_web.repository import InMemorySessionRepository
-from auth_web.services.password_change import PasswordChangeService
 
 logger = get_logger(__name__)
 
@@ -124,7 +122,7 @@ class AuthApiController(Controller):
             user.user_id, cutoff=datetime.now(UTC)
         )
 
-        # Effective permissions = explicit claims ∪ role-derived patterns
+        # Effective permissions = explicit claims UNION role-derived patterns
         # (AuthorizationService expands inheritance for us).
         effective: set[str] = set(claims.permissions)
         for role in claims.roles:

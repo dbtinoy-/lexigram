@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import os
 
+from auth_web.controllers.api import AuthApiController
+from auth_web.di.provider import AuthWebProvider, build_auth_config
+from auth_web.ui.pages import PagesController
 from lexigram.auth.module import AuthModule
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-
-from auth_web.controllers.api import AuthApiController
-from auth_web.ui.pages import PagesController
-from auth_web.di.provider import AuthWebProvider, build_auth_config
 
 
 @module()

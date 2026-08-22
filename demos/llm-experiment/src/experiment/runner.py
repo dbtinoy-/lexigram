@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable, Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 import hashlib
 from pathlib import Path
 import random
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -35,15 +35,14 @@ from lexigram.contracts.ai.relay.dto import (
     ClaudeResponse,
     ClaudeUsage,
 )
+from lexigram.contracts.observability.metrics import MetricsCollectorProtocol
+from lexigram.contracts.observability.tracing import TracerProtocol
 from lexigram.serialization import dumps_str
 
 T = TypeVar("T")
 
 
-T = TypeVar("T")
-
-
-def _drive(coro_factory: Callable[[], Awaitable[T]]) -> T:
+def _drive(coro_factory: Callable[[], Coroutine[Any, Any, T]]) -> T:
     """Run a coroutine to completion from a sync caller.
 
     Works both from plain scripts (no running loop, runs on this
@@ -62,7 +61,7 @@ def _drive(coro_factory: Callable[[], Awaitable[T]]) -> T:
     except RuntimeError:
         return asyncio.run(coro_factory())
     with ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro_factory()).result()
+        return pool.submit(lambda: asyncio.run(coro_factory())).result()
 
 
 def _build_payload(
@@ -131,12 +130,14 @@ def run_experiment(
     context = ConversionContext()
 
     collector = JsonMetricsCollector()
-    metrics = AIMetrics(collector=collector)
+    metrics = AIMetrics(collector=cast("MetricsCollectorProtocol", collector))
 
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    tracer = AITracer(tracer=provider.get_tracer("lexigram-experiment"))
+    tracer = AITracer(
+        tracer=cast("TracerProtocol", provider.get_tracer("lexigram-experiment"))
+    )
 
     model = exp["model"]
     provider_name = exp["provider"]
@@ -155,7 +156,7 @@ def run_experiment(
             roundtrip = mapper.ir_to_response(ir, context=context).unwrap()
             span.set_attribute(
                 "tokens.total", ir.usage.prompt_tokens if ir.usage else 0
-            )
+            )  # noqa: B023 - usage read inside trace context
 
         # Thinking blocks consume output tokens in the real API; the harness
         # accounts for them explicitly so ablation of thinking is measurable.
@@ -164,13 +165,11 @@ def run_experiment(
             for block in payload.content
             if block.type == "thinking"
         )
-        completion_tokens = (
-            ir.usage.completion_tokens if ir.usage else 0
-        ) + thinking_tokens
-        token_total = (ir.usage.prompt_tokens if ir.usage else 0) + completion_tokens
-        cost = round(
-            (ir.usage.prompt_tokens * 3.0 + completion_tokens * 15.0) / 1_000_000, 6
-        )
+        usage = ir.usage
+        prompt_tokens = usage.prompt_tokens if usage else 0
+        completion_tokens = (usage.completion_tokens if usage else 0) + thinking_tokens
+        token_total = prompt_tokens + completion_tokens
+        cost = round((prompt_tokens * 3.0 + completion_tokens * 15.0) / 1_000_000, 6)
         total_cost += cost
         metrics.llm_requests_total.increment(labels={**labels, "status": "success"})
         metrics.llm_tokens_total.increment(amount=token_total, labels=labels)
@@ -226,7 +225,7 @@ def run_experiment(
         },
     }
     metrics_snapshot = collector.snapshot()
-    trace = [
+    trace: list[dict[str, str | dict[str, Any]]] = [
         {"name": span.name, "attributes": dict(span.attributes or {})}
         for span in sorted(exporter.get_finished_spans(), key=lambda s: s.name or "")
     ]

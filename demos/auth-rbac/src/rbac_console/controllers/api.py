@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from rbac_console.articles import ArticleStore
+from rbac_console.personas import PersonaDirectory
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -12,9 +14,6 @@ from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.web import Controller, get, post
-
-from rbac_console.articles import ArticleStore
-from rbac_console.personas import PersonaDirectory
 
 logger = get_logger(__name__)
 

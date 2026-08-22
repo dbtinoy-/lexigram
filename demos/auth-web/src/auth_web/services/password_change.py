@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from lexigram.auth.authn.security import PasswordHasher
-from lexigram.auth.models.user import UserCredentials
 from lexigram.auth.exceptions import (
     InvalidCredentialsError,
     PasswordPolicyError,
 )
-from lexigram.contracts.auth.protocols import PasswordPolicyProtocol
+from lexigram.auth.models.user import UserCredentials
 from lexigram.contracts.auth import UserStoreProtocol
+from lexigram.contracts.auth.protocols import PasswordPolicyProtocol
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 
