@@ -64,6 +64,43 @@ class NullErrorTracker:
         """Nothing to flush."""
 
 
+_SENSITIVE_MARKERS = (
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "authorization",
+    "credential",
+    "private_key",
+    "dsn",
+)
+
+
+def _scrub_event(event: dict, hint: Any) -> dict:
+    """Mask denylisted keys in an outbound Sentry event payload.
+
+    Walks ``request.headers`` / ``request.data`` / ``extra`` and masks any
+    key containing a sensitive marker so credentials never leave the process.
+    """
+    def _walk(node: object) -> None:
+        if isinstance(node, dict):
+            for key in list(node):
+                if isinstance(key, str) and any(
+                    marker in key.lower() for marker in _SENSITIVE_MARKERS
+                ):
+                    node[key] = "[redacted]"
+                else:
+                    _walk(node[key])
+        elif isinstance(node, (list, tuple)):
+            for item in node:
+                _walk(item)
+
+    _walk(event)
+    return event
+
+
 class SentryErrorTracker:
     """Sentry-backed tracker used when a DSN is configured."""
 
@@ -84,6 +121,7 @@ class SentryErrorTracker:
             environment=config.environment,
             traces_sample_rate=config.traces_sample_rate,
             send_default_pii=config.send_default_pii,
+            before_send=_scrub_event,
         )
 
     def capture_exception(self, exc: BaseException) -> None:
