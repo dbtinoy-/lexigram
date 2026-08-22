@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from lexigram.ai.prompt.registry.versioned import VersionedPromptStore
-from lexigram.ai.prompt.template.base import AbstractPromptTemplate
+from lexigram.ai.prompt.template.chat import ChatPromptTemplate
 
 _STORE_KEY: dict[str, str] = {
     "v1": "support-v1",
@@ -35,10 +35,10 @@ class LabVersions:
             metadata={"note": REV2_WARMTH_NOTE},
         )
 
-    def active(self, variant: str) -> tuple[int, AbstractPromptTemplate]:
+    def active(self, variant: str) -> tuple[int, ChatPromptTemplate]:
         """Current revision number and template for a variant key."""
         key = _STORE_KEY[variant]
-        return self._current_rev(key), self._store.get(key)
+        return self._current_rev(key), cast("ChatPromptTemplate", self._store.get(key))
 
     def _current_rev(self, key: str) -> int:
         for row in self._store.list_versions(key):
@@ -50,9 +50,9 @@ class LabVersions:
         self,
         variant: str,
         rev: int,
-    ) -> tuple[int, AbstractPromptTemplate]:
+    ) -> tuple[int, ChatPromptTemplate]:
         key = _STORE_KEY[variant]
-        return rev, self._store.get_version(key, rev)
+        return rev, cast("ChatPromptTemplate", self._store.get_version(key, rev))
 
     def rollback(self, variant: str, steps: int = 1) -> int:
         """Step the pointer back; return the new active revision."""

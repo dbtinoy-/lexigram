@@ -12,6 +12,7 @@ from typing import Any
 from starlette.requests import Request
 
 from feedback_loop.services.loop_service import LoopService
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 
@@ -38,9 +39,12 @@ class LoopApiController(Controller):
         key = str(data.get("key", ""))
         owner = str(data.get("owner", "")).strip()
 
-        result = await self._service.ask(key, owner=owner or "web-user")
-        return result.map_sync(
-            lambda answer: {
+        inner = await self._service.ask(key, owner=owner or "web-user")
+        if inner.is_err():
+            return Err(inner.unwrap_err())
+        answer = inner.unwrap()
+        return Ok(
+            {
                 "trace_id": answer.trace_id,
                 "question": answer.question,
                 "answer": answer.answer,
@@ -62,13 +66,15 @@ class LoopApiController(Controller):
         except (TypeError, ValueError):
             rating = float("nan")  # out of bounds ⇒ InvalidRatingError path
 
-        result = await self._service.rate(
+        inner = await self._service.rate(
             trace_id,
             rating,
             owner=owner or "web-user",
             comment=comment,
         )
-        return result.map_sync(lambda item_id: {"item_id": item_id})
+        if inner.is_err():
+            return Err(inner.unwrap_err())
+        return Ok({"item_id": inner.unwrap()})
 
     @get("/api/stats/{owner}")
     async def stats(self, request: Request) -> dict:
@@ -83,9 +89,12 @@ class LoopApiController(Controller):
         data = await _body(request)
         owner = str(data.get("owner", "")).strip() or "web-user"
 
-        result = await self._service.regress(owner=owner)
-        return result.map_sync(
-            lambda summary: {
+        inner = await self._service.regress(owner=owner)
+        if inner.is_err():
+            return Err(inner.unwrap_err())
+        summary = inner.unwrap()
+        return Ok(
+            {
                 "run_id": summary.run_id,
                 "total_samples": summary.total_samples,
                 "passed_samples": summary.passed_samples,

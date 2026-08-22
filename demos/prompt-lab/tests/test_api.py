@@ -40,14 +40,14 @@ async def test_render_specific_revision(client: httpx.AsyncClient) -> None:
     assert "happy to help" in rendered  # same template body at any revision
 
 
-async def test_render_unknown_variable_is_400(client: httpx.AsyncClient) -> None:
+async def test_render_unknown_variable_is_422(client: httpx.AsyncClient) -> None:
     response = await client.post(
         "/api/render",
         json={"variant": "v1", "vars": {"bogus": "x"}},
     )
 
-    assert response.status_code == 400
-    assert "missing" in response.json()["error"].lower()
+    assert response.status_code == 422
+    assert "missing" in response.json()["detail"].lower()
 
 
 async def test_history_and_rollback(client: httpx.AsyncClient) -> None:

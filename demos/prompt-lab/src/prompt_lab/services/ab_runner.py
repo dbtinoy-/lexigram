@@ -56,7 +56,7 @@ class ABRunner:
             ]
             dataset = EvaluationDataset(
                 name=f"ab-{variant}",
-                samples=list(samples),
+                samples=list(samples),  # type: ignore[arg-type]  # runner duck-types ScoredSample.output
                 metadata={},
             )
             result = await self._harness.run(dataset, evaluator)

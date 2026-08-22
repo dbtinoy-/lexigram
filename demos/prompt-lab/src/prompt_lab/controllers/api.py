@@ -6,22 +6,16 @@ from starlette.requests import Request
 
 from lexigram.ai.prompt.exceptions import PromptNotFoundError, PromptRenderError
 from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, JSONResponse, get, post
+from lexigram.web import Controller, get, post
 from prompt_lab.repository.templates import VARIANT_LABELS
 from prompt_lab.services.ab_runner import ABRunner
 from prompt_lab.services.versioning import LabVersions
 
 
-def _error(message: str, status: int) -> JSONResponse:
-    return JSONResponse({"error": message}, status_code=status)
-
-
-def _not_found(message: str) -> NotFoundError:
-    return NotFoundError(message)
-
-
 def _invalid(message: str) -> ValidationError:
+    """Build a validation error for malformed render requests."""
     return ValidationError(message)
 
 
@@ -42,7 +36,7 @@ class LabApiController(Controller):
         self._runner = runner
 
     @get("/api/templates")
-    async def templates(self, request: Request) -> JSONResponse:
+    async def templates(self, request: Request) -> list[dict]:
         rows = []
         for variant in ("v1", "v2"):
             rev, _tpl = self._versions.active(variant)
@@ -53,15 +47,18 @@ class LabApiController(Controller):
                     "active_rev": rev,
                 },
             )
-        return JSONResponse(rows)
+        return rows
 
     @post("/api/render")
-    async def render(self, request: Request) -> JSONResponse:
+    async def render(
+        self,
+        request: Request,
+    ) -> Result[dict, NotFoundError | ValidationError]:
         """Render one variant at an optional revision with supplied vars."""
         data = await _body(request)
         variant = str(data.get("variant", ""))
         if variant not in VARIANT_LABELS:
-            return _error(f"unknown variant: {variant!r}", 404)
+            return Err(NotFoundError(f"unknown variant: {variant!r}"))
 
         vars_in = {str(k): str(v) for k, v in dict(data.get("vars", {})).items()}
         try:
@@ -74,35 +71,37 @@ class LabApiController(Controller):
                 _rev, template = self._versions.active(variant)
             missing = [v for v in template.get_variables() if v not in vars_in]
             if missing:
-                return _error(f"missing variables: {missing}", 400)
+                return Err(_invalid(f"missing variables: {missing}"))
             rendered = template.render_as_string(**vars_in)
         except (PromptNotFoundError, PromptRenderError) as exc:
-            return _error(str(exc), 400)
+            return Err(_invalid(str(exc)))
         except ValueError as exc:
-            return _error(str(exc), 400)
-        return JSONResponse({"rendered": rendered})
+            return Err(_invalid(str(exc)))
+        return Ok({"rendered": rendered})
 
     @get("/api/history/{variant}")
-    async def history(self, request: Request) -> JSONResponse:
+    async def history(self, request: Request) -> Result[dict, NotFoundError]:
+        """Revision history for one variant."""
         variant = request.path_params["variant"]
         if variant not in VARIANT_LABELS:
-            raise _not_found(f"unknown variant: {variant!r}")
-        return JSONResponse({"entries": self._versions.history(variant)})
+            return Err(NotFoundError(f"unknown variant: {variant!r}"))
+        return Ok({"entries": self._versions.history(variant)})
 
     @post("/api/rollback")
-    async def rollback(self, request: Request) -> JSONResponse:
+    async def rollback(self, request: Request) -> Result[dict, NotFoundError]:
+        """Roll one variant back by N revisions."""
         data = await _body(request)
         variant = str(data.get("variant", ""))
         if variant not in VARIANT_LABELS:
-            raise _not_found(f"unknown variant: {variant!r}")
+            return Err(NotFoundError(f"unknown variant: {variant!r}"))
         steps = int(data.get("steps", 1))
         active_rev = self._versions.rollback(variant, steps=steps)
-        return JSONResponse({"active_rev": active_rev})
+        return Ok({"active_rev": active_rev})
 
     @post("/api/ab")
-    async def ab(self, request: Request) -> JSONResponse:
+    async def ab(self, request: Request) -> dict:
         """Score both variants over the seeded cases (byte-stable)."""
-        return JSONResponse(await self._runner.run_all())
+        return await self._runner.run_all()
 
 
 __all__ = ["LabApiController"]

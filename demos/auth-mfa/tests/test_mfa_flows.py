@@ -80,7 +80,7 @@ async def test_wrong_code_attempts_are_capped(client: httpx.AsyncClient) -> None
     statuses: list[tuple[int, str]] = []
     for _ in range(4):
         response = await client.post("/api/mfa/challenge", json={"code": "000000"})
-        statuses.append((response.status_code, response.json().get("error", "")))
+        statuses.append((response.status_code, response.json().get("detail", "")))
 
     assert all(status == 401 for status, _ in statuses)
     assert "too many attempts" in statuses[2][1]

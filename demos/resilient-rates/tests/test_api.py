@@ -97,7 +97,7 @@ async def test_scenario_flip_roundtrip(client: httpx.AsyncClient) -> None:
 
     unknown = await client.post("/scenario/wat")
     assert unknown.status_code == 404
-    assert "valid" in unknown.json()["error"]
+    assert "valid" in unknown.json()["detail"]
 
     back = await client.post("/scenario/healthy")
     assert back.status_code == 200

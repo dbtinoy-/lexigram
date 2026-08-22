@@ -7,6 +7,7 @@ methods the CLI (or a future web controller) can call.
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.events import EventBusProtocol
@@ -115,12 +116,17 @@ class OrdersApi:
             ``Ok(count)`` of published events; ``Err(OutboxError)`` when
             any publish failed (records stay pending).
         """
+        flush = getattr(self.event_bus, "flush", None)
+        if callable(flush):
+            await flush()
         result = await self.outbox.flush(self.event_bus)
         if result.is_err():
             return Err(result.unwrap_err())
         sent = result.unwrap()
         logger.info("outbox_flushed", published=sent)
-        await self.event_bus.flush()
+        flush = getattr(self.event_bus, "flush", None)
+        if callable(flush):
+            await flush()
         return Ok(sent)
 
 

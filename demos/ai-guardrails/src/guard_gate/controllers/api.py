@@ -61,7 +61,7 @@ class GuardApiController(Controller):
         """Handle an act-keyed or raw-text request."""
         data = await _body(request)
         act_key = str(data.get("act", ""))
-        act = ACTS.get(act_key, None)
+        act = ACTS.get(act_key) if act_key in ACTS else None
         if act_key and act is None:
             return _problem(404, f"unknown act: {act_key!r}")
 

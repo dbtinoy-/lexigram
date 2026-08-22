@@ -11,11 +11,22 @@ from lexigram.logging import get_logger
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 
+
+def _problem(status: int, detail: str) -> JSONResponse:
+    """RFC-9457 style problem response."""
+    from lexigram.web.errors.problem_detail import ProblemDetail
+
+    body = ProblemDetail(
+        title="Request rejected", status=status, detail=detail
+    ).to_dict()
+    return JSONResponse(body, status_code=status)
+
+
 logger = get_logger(__name__)
 
 
 def _error(message: str, status: int) -> JSONResponse:
-    return JSONResponse({"error": message}, status_code=status)
+    return _problem(status, message)
 
 
 class KeysApiController(Controller):

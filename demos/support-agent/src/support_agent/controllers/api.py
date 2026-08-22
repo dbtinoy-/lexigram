@@ -12,7 +12,7 @@ from starlette.requests import Request
 
 from lexigram.contracts.ai.agents import AgentError
 from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError
-from lexigram.result import Err, Result
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 from lexigram.web.routing.result_bridge import ResultResponseMapper
@@ -77,7 +77,7 @@ class AgentApiController(Controller):
     async def ask(
         self,
         request: Request,
-    ) -> Result[dict[str, Any], Exception]:
+    ) -> Result[dict[str, Any], AgentError | NotFoundError | ValidationError]:
         """Run one scenario-scripted ReAct turn."""
         data = await _body(request)
         scenario_key = str(data.get("scenario", ""))
@@ -90,8 +90,10 @@ class AgentApiController(Controller):
             return Err(ValidationError("question is required"))
 
         self._scripted.load(scenario.script)
-        result = await self._support.ask(question)
-        return result.map_sync(_payload)
+        inner = await self._support.ask(question)
+        if inner.is_err():
+            return Err(inner.unwrap_err())
+        return Ok(_payload(inner.unwrap()))
 
 
 __all__ = ["AgentApiController"]

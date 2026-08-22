@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.ai.governance.audit import AIAuditStore
 from lexigram.contracts.ai.governance import AIGovernanceProtocol
 from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
@@ -52,7 +53,6 @@ class GuardrailsProvider(Provider):
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Assemble from booted collaborators."""
-        from lexigram.ai.governance.audit import AIAuditStore
         from lexigram.ai.governance.config import GovernanceConfig
         from lexigram.contracts.ai.guards import GuardPipelineProtocol
 

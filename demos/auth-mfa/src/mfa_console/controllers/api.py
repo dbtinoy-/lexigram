@@ -17,6 +17,17 @@ from lexigram.primitives import clock
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 
+
+def _problem(status: int, detail: str) -> JSONResponse:
+    """RFC-9457 style problem response."""
+    from lexigram.web.errors.problem_detail import ProblemDetail
+
+    body = ProblemDetail(
+        title="Request rejected", status=status, detail=detail
+    ).to_dict()
+    return JSONResponse(body, status_code=status)
+
+
 logger = get_logger(__name__)
 
 PENDING_COOKIE = "mfa_pending"
@@ -25,7 +36,7 @@ MAX_CHALLENGE_ATTEMPTS = 3
 
 
 def _error(message: str, status: int) -> JSONResponse:
-    return JSONResponse({"error": message}, status_code=status)
+    return _problem(status, message)
 
 
 def _mfa_enabled(user: Any) -> bool:
@@ -117,9 +128,7 @@ class MfaApiController(Controller):
             self._attempts[pending_id] = attempts
             if attempts >= MAX_CHALLENGE_ATTEMPTS:
                 await self._sessions.revoke(pending_id)
-                response = JSONResponse(
-                    {"error": "too many attempts; log in again"}, status_code=401
-                )
+                response = _problem(401, "too many attempts; log in again")
                 response.delete_cookie(PENDING_COOKIE)
                 return response
             return _error("invalid code", 401)

@@ -88,8 +88,9 @@ class GuardedAssistant:
         if checked.blocked:
             blocker = checked.blocking_result
             details = getattr(blocker, "details", {}) or {}
-            reason = details.get("reason") or getattr(blocker, "reason", "")
-            return Outcome("blocked", reason=str(reason))
+            raw_reason = details.get("reason") or getattr(blocker, "reason", "")
+            reason = str(raw_reason or "")
+            return Outcome("blocked", reason=reason)
 
         working_text = checked.final_content or text
         reply_text = _canned(working_text)

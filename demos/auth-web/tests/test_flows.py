@@ -28,7 +28,7 @@ async def test_login_wrong_password_returns_401(client: httpx.AsyncClient) -> No
         json={"email": DEMO_EMAIL, "password": "wrong-password"},
     )
     assert response.status_code == 401
-    assert "error" in response.json()
+    assert "Invalid credentials" in response.json()["detail"]
 
 
 async def test_login_success_sets_cookie_and_identity(
@@ -126,4 +126,4 @@ async def test_account_lockout_after_repeated_failures(
     response = await login(client)
     # Correct password must NOT bypass an active lockout.
     assert response.status_code == 401
-    assert "locked" in response.json()["error"].lower()
+    assert "locked" in response.json()["detail"].lower()

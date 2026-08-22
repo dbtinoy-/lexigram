@@ -130,24 +130,24 @@ async def _single(service: LoopService, args: argparse.Namespace) -> int:
             f"rate it:  feedback_loop rate {answer.trace_id} <1-5> --owner {args.owner}"
         )
     elif args.command == "rate":
-        result = await service.rate(
+        rate_result = await service.rate(
             args.trace_id,
             args.rating,
             owner=args.owner,
             comment=args.comment,
         )
-        if result.is_err():
-            return _err_exit(result)
-        print(f"captured rating {args.rating:g} ({result.unwrap()})")
+        if rate_result.is_err():
+            return _err_exit(rate_result)
+        print(f"captured rating {args.rating:g} ({rate_result.unwrap()})")
     elif args.command == "stats":
         snap = await service.stats(owner=args.owner)
         avg = snap.average if snap.average is not None else "n/a"
         print(f"total={snap.total} average={avg} by_type={snap.by_type}")
     elif args.command == "regress":
-        result = await service.regress(owner=args.owner)
-        if result.is_err():
-            return _err_exit(result)
-        summary = result.unwrap()
+        regress_result = await service.regress(owner=args.owner)
+        if regress_result.is_err():
+            return _err_exit(regress_result)
+        summary = regress_result.unwrap()
         print(f"run={summary.run_id}")
         print(
             f"samples={summary.total_samples} "

@@ -7,7 +7,7 @@ from typing import Any
 from starlette.requests import Request
 
 from lexigram.contracts.exceptions.domain import ValidationError
-from lexigram.result import Err
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 from memory_chat.services.chat_service import ConciergeService
@@ -37,9 +37,12 @@ class ConciergeApiController(Controller):
         if not owner or not text.strip():
             return Err(ValidationError("owner and text are required"))
 
-        result = await self._concierge.send(owner, text)
-        return result.map_sync(
-            lambda turn: {
+        inner = await self._concierge.send(owner, text)
+        if inner.is_err():
+            return Err(inner.unwrap_err())
+        turn = inner.unwrap()
+        return Ok(
+            {
                 "reply": turn.reply_text,
                 "cited": turn.cited,
                 "context_chars": turn.context_chars,

@@ -55,4 +55,8 @@ def build_dataset(items: list[FeedbackItem]) -> EvaluationDataset | None:
         )
         for item in low
     ]
-    return EvaluationDataset(name="regression", samples=list(samples), metadata={})
+    return EvaluationDataset(
+        name="regression",
+        samples=list(samples),  # type: ignore[arg-type]  # runner duck-types ScoredSample
+        metadata={},
+    )

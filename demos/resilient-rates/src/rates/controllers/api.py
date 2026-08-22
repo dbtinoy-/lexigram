@@ -25,6 +25,16 @@ from rates.repository.simulated_upstream import FaultController, Scenario
 from rates.services.rates_service import RatesService
 
 
+def _problem(status: int, detail: str) -> JSONResponse:
+    """RFC-9457 style problem response."""
+    from lexigram.web.errors.problem_detail import ProblemDetail
+
+    body = ProblemDetail(
+        title="Request rejected", status=status, detail=detail
+    ).to_dict()
+    return JSONResponse(body, status_code=status)
+
+
 class RatesApiController(Controller):
     """Expose the rate desk and its fault controls over HTTP."""
 
@@ -37,13 +47,10 @@ class RatesApiController(Controller):
         """Fetch one quote through the full resilience pipeline."""
         pair = request.path_params["pair"].upper().strip("/")
         if "/" not in pair:
-            return JSONResponse(
-                {"error": f"invalid pair {pair!r}; expected BASE/QUOTE"},
-                status_code=404,
-            )
+            return _problem(404, f"invalid pair {pair!r}; expected BASE/QUOTE")
         result = await self.service.fetch(pair)
         if result.is_err():
-            return JSONResponse({"error": str(result.unwrap_err())}, status_code=503)
+            return _problem(503, str(result.unwrap_err()))
         quote = result.unwrap()
         payload = asdict(quote)
         payload["rate"] = str(quote.rate)
@@ -68,10 +75,7 @@ class RatesApiController(Controller):
             scenario = Scenario(raw)
         except ValueError:
             valid = ", ".join(s.value for s in Scenario)
-            return JSONResponse(
-                {"error": f"unknown scenario {raw!r}; valid: {valid}"},
-                status_code=404,
-            )
+            return _problem(404, f"unknown scenario {raw!r}; valid: {valid}")
         self.faults.set(scenario)
         return JSONResponse({"ok": True, "scenario": scenario.value})
 

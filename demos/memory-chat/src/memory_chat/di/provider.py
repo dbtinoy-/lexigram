@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from memory_chat.repository.memory_repository import MemoryRepository
+
+if TYPE_CHECKING:
+    from lexigram.contracts.core.di import (
+        ContainerRegistrarProtocol,
+        ContainerResolverProtocol,
+    )
+
+
 from memory_chat.services.chat_service import ConciergeService
 
 from lexigram.contracts.ai.memory import (
@@ -36,13 +46,12 @@ class ConciergeProvider(Provider):
             raise RuntimeError("ConciergeProvider has not been booted yet")
         return self._service
 
-    async def register(self, container) -> None:
+    async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind the lazy factory; stores resolve only in boot()."""
 
-        assert isinstance(container, object)
         container.singleton(ConciergeService, factory=self._get_service)
 
-    async def boot(self, container) -> None:
+    async def boot(self, container: ContainerResolverProtocol) -> None:
         """Assemble the repository façade over MemoryModule's protocols."""
         working = await container.resolve(WorkingMemoryProtocol)
         episodic = await container.resolve(EpisodicMemoryProtocol)

@@ -35,6 +35,17 @@ from orders.domain import (
 )
 from orders.services.orders_api import OrdersApi
 
+
+def _problem(status: int, detail: str) -> JSONResponse:
+    """RFC-9457 style problem response."""
+    from lexigram.web.errors.problem_detail import ProblemDetail
+
+    body = ProblemDetail(
+        title="Request rejected", status=status, detail=detail
+    ).to_dict()
+    return JSONResponse(body, status_code=status)
+
+
 # Domain error → HTTP status mappings (rendered as ProblemDetail bodies).
 # Base first: register() inserts at front, so leaves must be registered
 # AFTER the base to take precedence.
@@ -57,7 +68,7 @@ class OrdersApiController(Controller):
         body = json_loads(await request.body())
         customer = str(body.get("customer") or "").strip()
         if not customer:
-            return JSONResponse({"error": "customer is required"}, status_code=400)
+            return _problem(400, "customer is required")
 
         parsed: list[OrderItem] = []
         for raw in body.get("items") or []:
@@ -72,7 +83,7 @@ class OrdersApiController(Controller):
                     )
                 )
             except (KeyError, InvalidOperation, ValueError, TypeError) as exc:
-                return JSONResponse({"error": f"invalid item: {exc}"}, status_code=400)
+                return _problem(400, f"invalid item: {exc}")
         if not parsed:
             return JSONResponse(
                 {"error": "at least one item is required"}, status_code=400

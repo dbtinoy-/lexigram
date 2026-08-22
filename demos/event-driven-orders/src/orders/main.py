@@ -17,7 +17,6 @@ import argparse
 import asyncio
 from decimal import Decimal
 import os
-import sys
 
 from lexigram.app import Application
 from orders.domain import OrderItem
@@ -84,13 +83,23 @@ async def _run(args: argparse.Namespace) -> int:
 
         if args.command == "place":
             items = [_parse_item(spec) for spec in args.item]
-            order_id = await api.place(args.customer, items)
+            placed = await api.place(args.customer, items)
+            if placed.is_err():
+                print(f"rejected: {placed.unwrap_err()}")
+                return 1
+            order_id = placed.unwrap()
             print(f"order placed: {order_id}")
         elif args.command == "pay":
-            await api.pay(args.order_id, args.amount)
+            paid = await api.pay(args.order_id, args.amount)
+            if paid.is_err():
+                print(f"rejected: {paid.unwrap_err()}")
+                return 1
             print(f"order paid: {args.order_id} ({args.amount})")
         elif args.command == "ship":
-            await api.ship(args.order_id)
+            shipped = await api.ship(args.order_id)
+            if shipped.is_err():
+                print(f"rejected: {shipped.unwrap_err()}")
+                return 1
             print(f"order shipped: {args.order_id}")
         elif args.command == "list":
             for row in api.list_orders():
@@ -140,12 +149,12 @@ async def _run(args: argparse.Namespace) -> int:
     return 0
 
 
-def main() -> None:
+def main() -> int:
     args = _build_parser().parse_args()
     try:
-        sys.exit(asyncio.run(_run(args)))
+        return asyncio.run(_run(args))
     except KeyboardInterrupt:
-        sys.exit(130)
+        return 130
 
 
 if __name__ == "__main__":
