@@ -31,6 +31,7 @@ class _JWTCreationMixin:
     algorithm: str
     access_expiration_hours: int
     refresh_expiration_days: int
+    _required_audience: str | None
     _binding_config: TokenBindingConfig | None
 
     def __init__(
