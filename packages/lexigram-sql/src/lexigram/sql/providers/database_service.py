@@ -277,7 +277,8 @@ class DatabaseService(_ConnectionMixin, _QueryMixin, _HealthMixin):
     async def get_primary_pool(self) -> ConnectionPoolProtocol:
         """Return the primary connection pool."""
         if self.db_provider is not None:
-            return await self.db_provider.get_primary_pool()
+            pool: ConnectionPoolProtocol = await self.db_provider.get_primary_pool()
+            return pool
         if self.connection_pool is not None:
             return self.connection_pool
         msg = "No database provider or connection pool available"

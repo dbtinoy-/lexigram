@@ -95,7 +95,7 @@ class AbstractDriver(ABC, BlobStoreProtocol):
             Raw byte chunks.
         """
         raise NotImplementedError
-        yield b""  # pragma: no cover - async generator signature marker
+        yield b""  # type: ignore[unreachable]  # pragma: no cover — signature marker
 
     @abstractmethod
     async def delete(self, path: str) -> None:
@@ -142,7 +142,7 @@ class AbstractDriver(ABC, BlobStoreProtocol):
             :class:`~lexigram.contracts.infra.storage.FileInfo` entries.
         """
         raise NotImplementedError
-        yield FileInfo(  # pragma: no cover - async generator signature marker
+        yield FileInfo(  # type: ignore[unreachable]  # pragma: no cover — signature marker
             path="",
             size=0,
             content_type="",

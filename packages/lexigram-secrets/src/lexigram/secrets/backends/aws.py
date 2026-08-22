@@ -55,7 +55,7 @@ class AWSSecretsManagerStore:
 
     async def _get_client(self) -> Any:
         if self._session is None:
-            import aioboto3  # type: ignore[import-not-found]
+            import aioboto3
 
             self._session = aioboto3.Session(
                 aws_access_key_id=self._aws_access_key_id,

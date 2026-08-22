@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 # Optional imports - make aiobotocore optional
 try:
-    import aiobotocore.client  # type: ignore[import-not-found]
-    import aiobotocore.session  # type: ignore[import-not-found]
+    import aiobotocore.client
+    import aiobotocore.session
     import botocore.exceptions
 
     _AIOBOTOCORE_AVAILABLE = True

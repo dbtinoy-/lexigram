@@ -59,7 +59,9 @@ class MemoryDriver(AbstractDriver):
             raw = data.read()
             if isinstance(raw, str):
                 content = raw.encode("utf-8")
-            elif isinstance(raw, (bytes, bytearray)):
+            elif isinstance(raw, bytearray):
+                content = bytes(raw)
+            elif isinstance(raw, bytes):
                 content = raw
             else:
                 raise ValueError(f"Unsupported read() return type: {type(raw)}")

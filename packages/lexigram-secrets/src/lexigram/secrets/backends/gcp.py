@@ -16,7 +16,7 @@ def _rpc_status(exc: Exception) -> Any | None:
 
 def _is_not_found(exc: Exception) -> bool:
     try:
-        from grpc import StatusCode  # type: ignore[import-untyped]
+        from grpc import StatusCode
     except ImportError:  # pragma: no cover - grpc is a lazy dependency
         return False
     return _rpc_status(exc) == StatusCode.NOT_FOUND

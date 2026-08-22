@@ -11,7 +11,7 @@ from lexigram.validation import SecretStr
 
 # Optional dependency — azure-storage-blob provides async Blob Storage access.
 try:
-    from azure.storage.blob.aio import (  # type: ignore[import-untyped]
+    from azure.storage.blob.aio import (
         BlobServiceClient as _BlobServiceClient,
     )
     from azure.storage.blob.aio import (
@@ -152,7 +152,7 @@ class AzureDriver(AbstractDriver):
         resolved_content_type = content_type if content_type else get_content_type(key)
 
         try:
-            from azure.storage.blob import (  # type: ignore[import-untyped]
+            from azure.storage.blob import (
                 ContentSettings,
             )
 

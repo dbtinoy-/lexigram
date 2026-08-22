@@ -10,7 +10,7 @@ from lexigram.logging import get_logger
 
 # Optional dependency — gcloud-aio-storage provides native async GCS access.
 try:
-    from gcloud.aio.storage import (  # type: ignore[import-not-found]
+    from gcloud.aio.storage import (
         Storage as _GCSStorage,
     )
 

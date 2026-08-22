@@ -131,9 +131,14 @@ class AlembicManager:
 
     def _create_alembic_config(self) -> Config:
         """Create and configure Alembic Config object."""
-        package_root = Path(__file__).resolve().parents[4]
+        # Package root (packages/lexigram-sql/) — parents[4] would land in
+        # src/, where `command.init()` then writes a template alembic.ini.
+        package_root = Path(__file__).resolve().parents[5]
         config = Config()
-        config.config_file_name = str(package_root / "alembic.ini")
+        if (package_root / "alembic.ini").exists():
+            config.config_file_name = str(package_root / "alembic.ini")
+        # else: installed (non-workspace) layout with no packaged ini — leave
+        # config_file_name unset so Alembic uses programmatic options only.
         config.set_main_option("script_location", str(self.migrations_path))
         # Strip +aiosqlite/+asyncpg for Alembic which is sync
         self.connection_string = self.database_url

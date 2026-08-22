@@ -18,6 +18,22 @@ from lexigram.sql.exceptions import DatabaseConnectionError, DatabaseError, Quer
 
 T = TypeVar("T")
 
+_ROW_COLUMNS = (
+    "event_id",
+    "event_type",
+    "event_data",
+    "metadata",
+    "timestamp",
+    "stream_version",
+)
+
+
+def _row_to_dict(row: Any) -> dict[str, Any]:
+    """Normalize a driver row (mapping-like or positional) to a field dict."""
+    if hasattr(row, "keys"):
+        return dict(row)
+    return dict(zip(_ROW_COLUMNS, tuple(row), strict=False))
+
 
 class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
     """Append log implementation backed by DatabaseService.
@@ -124,18 +140,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
         for row in rows:
             # row is typically a dict-like object from advanced providers,
             # or a tuple. Make it play nice.
-            row_dict: dict[str, Any] = (
-                dict(row)
-                if hasattr(row, "keys")
-                else {
-                    "event_id": row[0],  # type: ignore[index]
-                    "event_type": row[1],  # type: ignore[index]
-                    "event_data": row[2],  # type: ignore[index]
-                    "metadata": row[3],  # type: ignore[index]
-                    "timestamp": row[4],  # type: ignore[index]
-                    "stream_version": row[5],  # type: ignore[index]
-                }
-            )
+            row_dict = _row_to_dict(row)
 
             data = row_dict["event_data"]
             if isinstance(data, str):
@@ -161,18 +166,7 @@ class DatabaseProviderAppendLog(AppendLogProtocol[T], Generic[T]):
 
         results = []
         for row in rows:
-            row_dict: dict[str, Any] = (
-                dict(row)
-                if hasattr(row, "keys")
-                else {
-                    "event_id": row[0],  # type: ignore[index]
-                    "event_type": row[1],  # type: ignore[index]
-                    "event_data": row[2],  # type: ignore[index]
-                    "metadata": row[3],  # type: ignore[index]
-                    "timestamp": row[4],  # type: ignore[index]
-                    "stream_version": row[5],  # type: ignore[index]
-                }
-            )
+            row_dict = _row_to_dict(row)
             data = row_dict["event_data"]
             if isinstance(data, str):
                 data = json.loads(data)

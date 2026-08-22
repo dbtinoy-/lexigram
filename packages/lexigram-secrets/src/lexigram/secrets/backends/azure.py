@@ -39,11 +39,11 @@ class AzureKeyVaultStore:
 
     async def _get_client(self) -> Any:
         if self._client is None:
-            from azure.identity import (  # type: ignore[import-untyped]
+            from azure.identity import (
                 ClientSecretCredential,
                 DefaultAzureCredential,
             )
-            from azure.keyvault.secrets import (  # type: ignore[import-untyped]
+            from azure.keyvault.secrets import (
                 SecretClient,
             )
 

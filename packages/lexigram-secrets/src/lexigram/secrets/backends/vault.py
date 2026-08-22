@@ -10,7 +10,7 @@ from lexigram.secrets.types import SecretVersion, VersionedSecret
 
 def _is_not_found(exc: Exception) -> bool:
     try:
-        from hvac.exceptions import InvalidPath  # type: ignore[import-untyped]
+        from hvac.exceptions import InvalidPath
     except ImportError:  # pragma: no cover - hvac is a lazy dependency
         return False
     return isinstance(exc, InvalidPath)
@@ -44,7 +44,7 @@ class HashicorpVaultStore:
 
     def _get_client(self) -> Any:  # noqa: ANN202
         if self._client is None:
-            import hvac  # type: ignore[import-untyped]
+            import hvac
 
             self._client = hvac.Client(url=self._url, token=self._token)
         return self._client
