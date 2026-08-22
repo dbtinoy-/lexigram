@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar, get_args
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
-from lexigram.admin.controllers.resource.meta import T
-from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
 from lexigram.admin.exceptions import AdminValidationError, NotFoundError
-from lexigram.admin.state.context import AdminContext, AdminContextManager
+from lexigram.admin.state.context import AdminContextManager
 
 if TYPE_CHECKING:
     from lexigram.admin.controllers.resource import ResourceController
-
 
 
 class ResourceMutationMixin:
@@ -80,9 +77,57 @@ class ResourceMutationMixin:
                 status_code=302,
             )
 
-    def validate_create(self: ResourceController, data: dict[str, Any]) -> dict[str, Any]:
-        """Validate data for create. Override to customize."""
-        return data
+    _PROTECTED_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {"id", "tenant_id", "created_at", "updated_at"}
+    )
+
+    @classmethod
+    def _model_type(cls: type[ResourceController]) -> type | None:
+        """Extract the concrete model bound via ``ResourceController[Model]``."""
+        for klass in cls.__mro__:
+            for base in getattr(klass, "__orig_bases__", ()):
+                args = get_args(base)
+                if args and isinstance(args[0], type):
+                    return args[0]
+        return None
+
+    @classmethod
+    def _validated_model_fields(
+        cls: type[ResourceController], data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Coerce HTML form strings against the model and drop unknown keys.
+
+        Controllers without a bound model keep the historical raw
+        pass-through so untyped deployments are unaffected.
+        """
+        from lexigram.admin.resources.form_coercion import _coerce_form_data
+
+        model = cls._model_type()
+        cleaned = dict(_coerce_form_data(data, model)) if model else dict(data)
+        if not model:
+            return cleaned
+        fields = getattr(model, "model_fields", None) or getattr(
+            model, "__annotations__", {}
+        )
+        allowed = set()
+        for k, ann in fields.items():
+            if k.startswith("_") or str(ann).startswith("ClassVar"):
+                continue
+            allowed.add(k)
+        allowed -= cls._PROTECTED_FIELDS
+        return {k: v for k, v in cleaned.items() if k in allowed}
+
+    def validate_create(
+        self: ResourceController, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Coerce form values and keep only declared model fields.
+
+        Unknown keys (potential mass-assignment vectors such as ``role`` or
+        ``tenant_id``) and protected columns are stripped. Override to
+        customize beyond this baseline.
+        """
+        return self._validated_model_fields(data)
+
     async def edit_form(self: ResourceController, request: Request) -> Response:
         """Show edit form."""
         async with AdminContextManager(request) as ctx:
@@ -156,9 +201,12 @@ class ResourceMutationMixin:
                 status_code=302,
             )
 
-    def validate_update(self: ResourceController, item_id: Any, data: dict[str, Any]) -> dict[str, Any]:
-        """Validate data for update. Override to customize."""
-        return data
+    def validate_update(
+        self: ResourceController, item_id: Any, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Coerce form values and keep only declared model fields."""
+        return self._validated_model_fields(data)
+
     async def delete_confirm(self: ResourceController, request: Request) -> Response:
         """Render a delete confirmation slide-over panel.
 
@@ -189,6 +237,7 @@ class ResourceMutationMixin:
             delete_url=delete_url,
         )
         return HTMLResponse(html)
+
     async def delete(self: ResourceController, request: Request) -> Response:
         """Delete resource (soft or hard depending on soft_delete_enabled)."""
         async with AdminContextManager(request) as ctx:

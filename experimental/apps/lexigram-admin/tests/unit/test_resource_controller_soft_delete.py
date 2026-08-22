@@ -265,7 +265,11 @@ class SqlGuardedController(ConcreteResourceController):
 
 
 class TestHostileIdentifierFieldsReturn400:
-    """Hostile form-field names must surface as 400, not SQL execution."""
+    """Hostile form-field names must never reach SQL execution.
+
+    Layer 1: model-field allowlist strips unknown keys (this suite).
+    Layer 2: SqlDataSource identifier validation remains as backstop
+    for callers that bypass the controller."""
 
     HOSTILE_FIELD = "email) VALUES ('x',"
 
@@ -274,14 +278,17 @@ class TestHostileIdentifierFieldsReturn400:
         self.controller = SqlGuardedController(self.db)
 
     @pytest.mark.asyncio
-    async def test_create_hostile_field_name_returns_400(self) -> None:
+    async def test_create_hostile_field_name_never_reaches_sql(self) -> None:
+        """Unknown/hostile keys are stripped by the field allowlist before
+        any data-source call, so no SQL identifier ever sees them."""
         request = _make_request(
             "POST", "/admin/item", form_data={self.HOSTILE_FIELD: "value"}
         )
         response = await self.controller.create(request)
-        assert response.status_code == 400
-        assert b"Invalid SQL identifier" in response.body
-        self.db.fetch_one.assert_not_awaited()
+        assert response.status_code == 302
+        stmt = self.db.execute.call_args.args[0] if self.db.execute.await_count else ""
+        assert self.HOSTILE_FIELD not in stmt
+        assert "email) VALUES" not in stmt
 
     @pytest.mark.asyncio
     async def test_create_benign_field_names_still_redirect(self) -> None:
@@ -291,7 +298,7 @@ class TestHostileIdentifierFieldsReturn400:
         assert self.db.fetch_one.await_count == 1
 
     @pytest.mark.asyncio
-    async def test_update_hostile_field_name_returns_400(self) -> None:
+    async def test_update_hostile_field_name_never_reaches_sql(self) -> None:
         request = _make_request(
             "PUT",
             "/admin/item/1",
@@ -299,8 +306,11 @@ class TestHostileIdentifierFieldsReturn400:
             form_data={self.HOSTILE_FIELD: "x"},
         )
         response = await self.controller.update(request)
-        assert response.status_code == 400
-        assert b"Invalid SQL identifier" in response.body
+        assert response.status_code == 302
+        # The write statement must not reference the hostile identifier.
+        stmt = self.db.execute.call_args.args[0] if self.db.execute.await_count else ""
+        assert "email) VALUES" not in stmt
+        assert self.HOSTILE_FIELD not in str(self.db.execute.call_args)
 
     @pytest.mark.asyncio
     async def test_update_benign_field_names_still_redirect(self) -> None:

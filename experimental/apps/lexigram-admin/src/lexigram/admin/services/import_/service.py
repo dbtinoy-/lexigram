@@ -252,10 +252,14 @@ class AdminImportService:
         *,
         required_fields: list[str] | None = None,
         max_rows: int = 10_000,
+        allowed_fields: set[str] | None = None,
     ) -> None:
         self._data_source = data_source
         self._required_fields: list[str] = required_fields or []
         self._max_rows = max_rows
+        # Mass-assignment guard: when set, rows carrying keys outside this
+        # allowlist are rejected during validation.
+        self._allowed_fields = allowed_fields
         self._reports: list[ImportReport] = []
 
     # ------------------------------------------------------------------
@@ -448,6 +452,16 @@ class AdminImportService:
         """
         errors: list[ImportRowError] = []
         for row_num, row in enumerate(rows, start=1):
+            if self._allowed_fields is not None:
+                for key in row:
+                    if key not in self._allowed_fields:
+                        errors.append(
+                            ImportRowError(
+                                row=row_num,
+                                field=key,
+                                message=f"Unknown field '{key}' (not importable)",
+                            )
+                        )
             for field_name in self._required_fields:
                 val = row.get(field_name)
                 if val is None or (isinstance(val, str) and not val.strip()):
