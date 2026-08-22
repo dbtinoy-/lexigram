@@ -96,6 +96,15 @@ One support-request pipeline, unprotected vs protected:
 - 🔎 **Live audit trail** — MODEL_DENIED / BUDGET_EXCEEDED rows in the sidebar
 - 🎚️ **Protection toggle** — flip guards + governance off and watch the difference
 
+### ✍️ [prompt-lab](prompt-lab/) — prompt authoring & A/B, zero LLM
+
+Iterate on a support-reply prompt like a scientist:
+
+- 🧬 **Two variants** — terse v1 vs empathetic few-shot v2
+- 🕘 **Real versioning** — push revisions, inspect history, roll back live
+- 🎯 **Deterministic A/B** — criteria-scored over four seeded cases, byte-stable
+- 🖥️ **Lab console** — render previews at any revision side-by-side with scores
+
 ### 🔐 [auth-web](auth-web/) — browser account lifecycle
 
 Register, log in, manage sessions and passwords over `lexigram-auth`:

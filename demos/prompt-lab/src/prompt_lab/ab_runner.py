@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.contracts.ai.evaluation import EvaluationDataset
-
 from prompt_lab.cases import CASES, CRITERIA
 
 
@@ -43,7 +42,8 @@ class ABRunner:
                 ScoredSample(
                     id=case.id,
                     input=template.render_as_string(
-                        issue=case.question, tone="neutral",
+                        issue=case.question,
+                        tone="neutral",
                     ),
                     output=RESPOND(variant)(case.question),
                     reference=case.reference,
@@ -52,7 +52,9 @@ class ABRunner:
                 for case in CASES
             ]
             dataset = EvaluationDataset(
-                name=f"ab-{variant}", samples=list(samples), metadata={},
+                name=f"ab-{variant}",
+                samples=list(samples),
+                metadata={},
             )
             result = await self._harness.run(dataset, evaluator)
             if result.is_err():

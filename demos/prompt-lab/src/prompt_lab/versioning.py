@@ -13,8 +13,7 @@ _STORE_KEY: dict[str, str] = {
 }
 
 _V2_WARMTH_NOTE = (
-    "Add one extra sentence of empathy before helping. "
-    "(rev 3: even more warmth)"
+    "Add one extra sentence of empathy before helping. (rev 3: even more warmth)"
 )
 
 
@@ -44,7 +43,9 @@ class LabVersions:
         raise KeyError(f"no current revision for '{key}'")
 
     def get_revision(
-        self, variant: str, rev: int,
+        self,
+        variant: str,
+        rev: int,
     ) -> tuple[int, AbstractPromptTemplate]:
         key = _STORE_KEY[variant]
         return rev, self._store.get_version(key, rev)

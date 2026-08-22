@@ -9,7 +9,6 @@ from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-
 from prompt_lab.ab_runner import ABRunner
 from prompt_lab.controllers.api import LabApiController
 from prompt_lab.di.provider import LabProvider
@@ -22,8 +21,8 @@ class PromptLabModule(Module):
 
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
-        selected_port = port if port is not None else int(
-            os.environ.get("PROMPT_LAB_PORT", "8085")
+        selected_port = (
+            port if port is not None else int(os.environ.get("PROMPT_LAB_PORT", "8085"))
         )
         return DynamicModule(
             module=cls,

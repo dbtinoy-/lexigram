@@ -10,7 +10,6 @@ from lexigram.ai.prompt.exceptions import (
     PromptRenderError,
 )
 from lexigram.web import Controller, get, post
-
 from prompt_lab.ab_runner import ABRunner
 from prompt_lab.templates import VARIANT_LABELS
 from prompt_lab.versioning import LabVersions
@@ -53,7 +52,8 @@ class LabApiController(Controller):
         try:
             if data.get("rev") is not None:
                 _rev, template = self._versions.get_revision(
-                    variant, int(data["rev"]),
+                    variant,
+                    int(data["rev"]),
                 )
             else:
                 _rev, template = self._versions.active(variant)
