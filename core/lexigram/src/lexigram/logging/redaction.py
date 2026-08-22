@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextvars
+import re
 from typing import Any
 
 from lexigram.contracts.core.logging import RedactorProtocol
@@ -25,6 +26,77 @@ _DEFAULT_FIELD_DENYLIST: frozenset[str] = frozenset(
         "client_secret",
     }
 )
+
+_SECRET_TOKENS: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "authorization",
+        "auth",
+        "credential",
+        "credentials",
+        "private",
+        "dsn",
+    }
+)
+
+_KEY_TAIL_PREFIXES: frozenset[str] = frozenset(
+    {
+        "api",
+        "server",
+        "auth",
+        "access",
+        "secret",
+        "signing",
+        "vapid",
+        "apns",
+        "session",
+        "client",
+        "private",
+        "encryption",
+        "license",
+    }
+)
+
+_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+
+
+def _is_sensitive_key(key: str) -> bool:
+    """True when *key* carries a secret-bearing token.
+
+    Matching normalizes camelCase and ``-``/``_`` separators into segments,
+    then flags a key when any segment equals a secret token (masking
+    ``auth_token``, ``apiKey``, ``dsn``, ``vapid_private_key``, ...) or when
+    the final segment is ``key`` preceded by an auth-flavored prefix
+    (``server_key``, ``access_key``). Benign lookalikes such as ``monkey``,
+    ``keyboard``, ``token_count`` stay untouched.
+    """
+    normalized = _CAMEL_BOUNDARY.sub("_", key).lower().replace("-", "_")
+    segments = [seg for seg in normalized.split("_") if seg]
+    if not segments:
+        return False
+    if not any(seg in _SECRET_TOKENS for seg in segments):
+        # Trailing "key"/"secret"-style names without a token segment still
+        # count when prefixed by an auth-flavored word (server_key).
+        return (
+            len(segments) > 1
+            and segments[-1] == "key"
+            and segments[0] in _KEY_TAIL_PREFIXES
+        )
+    # A secret token is present; require it to anchor the *end* of the key
+    # (or be paired with a value-ish suffix) so metric-style names such as
+    # ``token_count`` / ``prompt_tokens`` keep flowing to logs.
+    tail_ok = segments[-1] in _SECRET_TOKENS or segments[-1] in {
+        "key",
+        "id",
+        "hash",
+        "signature",
+    }
+    return tail_ok or segments[-1] in _KEY_TAIL_PREFIXES
 
 
 class NoOpRedactor:
@@ -59,9 +131,23 @@ class DefaultRedactor:
         self,
         field_denylist: frozenset[str] | tuple[str, ...] | None = None,
     ) -> None:
+        self._custom_list = field_denylist is not None
         if field_denylist is None:
             field_denylist = _DEFAULT_FIELD_DENYLIST
         self._field_denylist = frozenset(f.lower() for f in field_denylist)
+
+    def _matches(self, key: str) -> bool:
+        """Case-insensitive sensitive-key match.
+
+        With the default denylist, segment/camelCase token matching applies.
+        An explicitly provided ``field_denylist`` replaces built-in matching
+        entirely (historical contract): only its exact keys are masked.
+        """
+        if key.lower() in self._field_denylist:
+            return True
+        if field_denylist_was_explicit := getattr(self, "_custom_list", False):
+            return False
+        return _is_sensitive_key(key)
 
     def redact_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Return ``data`` with denylisted keys masked, recursing containers.
@@ -73,11 +159,7 @@ class DefaultRedactor:
             A new mapping with matching keys set to ``"<redacted>"``.
         """
         return {
-            key: (
-                "<redacted>"
-                if key.lower() in self._field_denylist
-                else self.redact_value(value)
-            )
+            key: ("<redacted>" if self._matches(key) else self.redact_value(value))
             for key, value in data.items()
         }
 
