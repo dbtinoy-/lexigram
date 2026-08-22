@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
 
-from lexigram.web import Controller, FileResponse, get
+from lexigram.web import Controller, FileResponse, RedirectResponse, get
 
 UI_ROOT = Path(__file__).resolve().parent
 VIEWS_ROOT = UI_ROOT / "views"

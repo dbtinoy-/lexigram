@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 from support_agent.repository.scenarios import SCENARIOS
 from support_agent.repository.scripted_llm import ScriptedLLM
 from support_agent.services.support_service import (

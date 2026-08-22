@@ -5,11 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from feedback_loop.services.loop_service import LoopService
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 
 
 def _error(message: str, status: int) -> JSONResponse:

@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from starlette.requests import Request
-from starlette.responses import FileResponse
 
 from lexigram.web import Controller, FileResponse, get
 

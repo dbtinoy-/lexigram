@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from guard_gate.repository.acts import ACTS
 from guard_gate.services.guarded_assistant import GuardedAssistant
 from guard_gate.services.policy import PolicyToggle
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 
 
 def _error(message: str, status: int) -> JSONResponse:

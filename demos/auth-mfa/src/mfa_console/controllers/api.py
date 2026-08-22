@@ -7,7 +7,6 @@ from typing import Any
 
 from mfa_console.repository.session_repository import InMemorySessionRepository
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
@@ -16,7 +15,7 @@ from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 
 logger = get_logger(__name__)
 

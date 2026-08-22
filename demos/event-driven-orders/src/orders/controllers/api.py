@@ -19,11 +19,10 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from lexigram.contracts.exceptions.events import HandlerNotFoundError
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 from orders.domain import (
     OrderAlreadyPaidError,
     OrderAlreadyShippedError,

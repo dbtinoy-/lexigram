@@ -7,14 +7,13 @@ from typing import Any
 from rbac_console.articles import ArticleStore
 from rbac_console.personas import PERSONAS, PersonaDirectory
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 
 logger = get_logger(__name__)
 

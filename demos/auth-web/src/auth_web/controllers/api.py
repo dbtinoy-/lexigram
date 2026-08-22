@@ -5,7 +5,6 @@ from __future__ import annotations
 from auth_web.repository import InMemorySessionRepository
 from auth_web.services.password_change import PasswordChangeService
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from lexigram.auth.authn.schemas.requests import RegisterRequest
 from lexigram.auth.authn.services import AuthenticationService
@@ -14,7 +13,7 @@ from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 
 logger = get_logger(__name__)
 

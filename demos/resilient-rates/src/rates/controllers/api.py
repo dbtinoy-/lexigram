@@ -19,9 +19,8 @@ from dataclasses import asdict
 from typing import Any
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 from rates.repository.simulated_upstream import FaultController, Scenario
 from rates.services.rates_service import RatesService
 

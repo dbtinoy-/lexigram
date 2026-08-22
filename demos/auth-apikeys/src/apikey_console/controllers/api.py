@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from lexigram.auth.authn.apikeys import APIKeyManager
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 
 logger = get_logger(__name__)
 

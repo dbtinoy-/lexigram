@@ -13,10 +13,10 @@ import httpx
 import pytest
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from lexigram.app import Application
+from lexigram.web import JSONResponse
 
 from rag_docs.controllers.api import DocsAskApiController
 from rag_docs.module import DocsAskModule

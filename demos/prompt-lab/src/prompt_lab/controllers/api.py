@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from lexigram.ai.prompt.exceptions import (
     PromptNotFoundError,
     PromptRenderError,
 )
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, get, post
+from lexigram.web import Controller, JSONResponse, get, post
 from prompt_lab.repository.templates import VARIANT_LABELS
 from prompt_lab.services.ab_runner import ABRunner
 from prompt_lab.services.versioning import LabVersions
