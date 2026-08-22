@@ -13,7 +13,7 @@ from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.di.provider import WebProvider
 from lexigram.web.security import SecurityConfig
-from ops_console.controllers.console import ConsoleController, EventsStreamHandler
+from ops_console.controllers.api import ConsoleController, EventsStreamHandler
 from ops_console.controllers.operator import OperatorHandler
 from ops_console.di.provider import RealtimeProvider
 from ops_console.services.event_stream import EventStreamService

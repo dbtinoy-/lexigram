@@ -17,7 +17,7 @@ from lexigram.contracts.core.di import (
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
-from ops_console.controllers.console import EventsStreamHandler
+from ops_console.controllers.api import EventsStreamHandler
 from ops_console.controllers.operator import OperatorHandler
 from ops_console.domain import Severity, SystemEvent
 from ops_console.services.event_stream import EventStreamService

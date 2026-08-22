@@ -12,14 +12,13 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 import sys
 
+from apikey_console.module import ApiKeysModule
 import httpx
 import pytest
 from starlette.applications import Starlette
 
 from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
-
-from apikey_console.module import ApiKeysModule
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 

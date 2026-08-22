@@ -11,7 +11,7 @@ from lexigram.contracts.infra.resilience.protocols import (
     ResiliencePipelineFactoryProtocol,
 )
 from lexigram.di.provider import Provider
-from rates.api import RatesApiController
+from rates.controllers.api import RatesApiController
 from rates.provider import FaultController, SimulatedRatesProvider
 from rates.services.rates_service import RatesService
 

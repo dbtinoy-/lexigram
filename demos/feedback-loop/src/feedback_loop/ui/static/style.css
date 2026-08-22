@@ -1,0 +1,20 @@
+/* Feedback-loop console theme */
+:root { --bg:#101418; --panel:#1a222a; --ink:#dce8f0; --accent:#6cc3ff; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+header h1 { margin:.6rem 1rem; font-size:1.2rem; }
+main { display:flex; gap:1rem; padding:0 1rem 1rem; }
+#console { flex:1; background:var(--panel); border-radius:8px; padding:1rem; }
+aside { width:280px; background:var(--panel); border-radius:8px; padding:.75rem; }
+#questions button, #ask-form button, #regress-btn {
+  background:#22303c; color:var(--ink); border:1px solid #35485a;
+  border-radius:6px; padding:.35rem .7rem; cursor:pointer; margin:.2rem; }
+#ask-form { display:flex; gap:.5rem; margin:.75rem 0; align-items:center; }
+#rating { padding:.35rem; border-radius:6px; border:1px solid #35485a;
+  background:#0c1117; color:var(--ink); }
+.row { padding:.3rem 0; border-bottom:1px solid #243240; font-size:.9rem; }
+.muted { color:#84a0b5; font-size:.85rem; }
+.hidden { display:none; }
+#error { color:#ff8f8f; }
+table { width:100%; font-size:.8rem; border-collapse:collapse; }
+th, td { text-align:left; padding:.25rem .4rem; border-bottom:1px solid #26333f; }

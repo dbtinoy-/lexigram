@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 
 from feedback_loop.module import FeedbackLoopModule
@@ -67,6 +68,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="full loop: asks, ratings, regress, report",
         parents=[common],
     )
+
+    p_serve = sub.add_parser(
+        "serve",
+        help="serve the web console",
+        parents=[common],
+    )
+    p_serve.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("FEEDBACK_LOOP_PORT", "8086")),
+    )
     return parser
 
 
@@ -81,12 +93,30 @@ def _err_exit(result) -> int:
 async def run(args: argparse.Namespace) -> int:
     async with Application.boot(
         name="feedback-loop",
-        modules=[FeedbackLoopModule.configure(experiment_dir=args.experiment_dir)],
+        modules=[
+            FeedbackLoopModule.configure(
+                experiment_dir=args.experiment_dir,
+                port=getattr(args, "port", None),
+            )
+        ],
     ) as app:
         service = await app.container.resolve(LoopService)
         if args.command == "demo":
             return await _demo(service)
+        if args.command == "serve":
+            return await _serve(app, args.port)
         return await _single(service, args)
+
+
+async def _serve(app, port: int) -> int:
+    """Serve the web console until interrupted."""
+    from lexigram.web.di.provider import WebProvider
+    from lexigram.web.server.runner import run_server_async
+
+    web = await app.container.resolve(WebProvider)
+    print(f"serving on http://127.0.0.1:{port}")
+    await run_server_async(web.starlette, host="127.0.0.1", port=port)
+    return 0
 
 
 async def _single(service: LoopService, args: argparse.Namespace) -> int:

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import os
 
+from apikey_console.controllers.api import KeysApiController
+from apikey_console.controllers.pages import PagesController
+from apikey_console.di.provider import ApiKeysProvider, build_auth_config
 from lexigram.auth.module import AuthModule
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-
-from apikey_console.controllers.api import KeysApiController
-from apikey_console.controllers.pages import PagesController
-from apikey_console.di.provider import ApiKeysProvider, build_auth_config
 
 
 @module()

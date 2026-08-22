@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RAG Docs</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header><h1>RAG Docs — ask our own documentation</h1></header>
+  <main>
+    <section id="console">
+      <form id="ask-form">
+        <input id="question" type="text" autocomplete="off"
+               placeholder="e.g. how do providers boot?">
+        <select id="strategy">
+          <option value="vector">vector</option>
+          <option value="mmr">mmr</option>
+        </select>
+        <button type="submit">Ask</button>
+      </form>
+      <p id="answer"></p>
+      <ul id="citations"></ul>
+      <p id="error" class="hidden"></p>
+    </section>
+    <aside><h2>Index stats</h2><pre id="stats" class="muted">loading…</pre></aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from mfa_console.controllers.api import MfaApiController
+from mfa_console.repository.session_repository import InMemorySessionRepository
+from mfa_console.ui.pages import PagesController
+
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.config import AuthConfig, JWTConfig
@@ -14,10 +18,6 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
-
-from mfa_console.controllers.api import MfaApiController
-from mfa_console.session_repository import InMemorySessionRepository
-from mfa_console.ui.pages import PagesController
 
 logger = get_logger(__name__)
 

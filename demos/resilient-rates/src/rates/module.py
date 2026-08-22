@@ -12,7 +12,7 @@ from lexigram.resilience.module import ResilienceModule
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-from rates.api import RatesApiController
+from rates.controllers.api import RatesApiController
 from rates.di.provider import RatesProvider
 from rates.provider import FaultController, SimulatedRatesProvider
 from rates.services.rates_service import RatesService

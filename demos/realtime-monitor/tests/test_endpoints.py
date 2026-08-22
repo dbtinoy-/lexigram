@@ -13,7 +13,7 @@ from starlette.applications import Starlette
 from starlette.routing import WebSocketRoute
 from starlette.testclient import TestClient
 
-from ops_console.controllers.console import ConsoleController, EventsStreamHandler
+from ops_console.controllers.api import ConsoleController, EventsStreamHandler
 from ops_console.domain import Severity, SystemEvent
 from ops_console.services.event_stream import EventStreamService
 from ops_console.ui.pages import PagesController

@@ -18,7 +18,7 @@ from starlette.routing import Route
 
 from lexigram.app import Application
 
-from rag_docs.api import DocsAskApiController
+from rag_docs.controllers.api import DocsAskApiController
 from rag_docs.module import DocsAskModule
 
 

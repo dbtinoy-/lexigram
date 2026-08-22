@@ -12,10 +12,9 @@ import asyncio
 import os
 import sys
 
+from apikey_console.module import ApiKeysModule
 from lexigram.app import Application
 from lexigram.web.server.runner import run_server_async
-
-from apikey_console.module import ApiKeysModule
 
 
 async def _serve(port: int) -> None:

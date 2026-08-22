@@ -5,12 +5,12 @@ from __future__ import annotations
 from rbac_console.articles import ArticleStore
 from rbac_console.controllers.api import RbacApiController
 from rbac_console.personas import PersonaDirectory
+from rbac_console.repository.session_repository import InMemorySessionRepository
 from rbac_console.seed import (
     PERSONA_PASSWORD,
     ROLE_DEFINITIONS,
     RbacSeedService,
 )
-from rbac_console.session_repository import InMemorySessionRepository
 
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService

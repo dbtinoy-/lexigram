@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from apikey_console.controllers.api import KeysApiController
+from apikey_console.repository.keys_repository import InMemoryAPIKeyRepository
+from apikey_console.repository.session_repository import InMemorySessionRepository
+from apikey_console.ui.pages import PagesController
 from lexigram.auth.authn.apikeys import APIKeyManager
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
@@ -15,11 +19,6 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
-
-from apikey_console.controllers.api import KeysApiController
-from apikey_console.keys_repository import InMemoryAPIKeyRepository
-from apikey_console.session_repository import InMemorySessionRepository
-from apikey_console.ui.pages import PagesController
 
 logger = get_logger(__name__)
 

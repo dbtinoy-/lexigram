@@ -9,9 +9,10 @@ from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-from rag_docs.api import DocsAskApiController
+from rag_docs.controllers.api import DocsAskApiController
 from rag_docs.di.provider import DocsAskProvider
 from rag_docs.services.docs_ask import DocsAskService
+from rag_docs.ui.pages import DocsPageController
 
 
 @module()
@@ -29,7 +30,7 @@ class DocsAskModule(Module):
             module=cls,
             imports=[
                 WebModule.configure(
-                    controllers=[DocsAskApiController],
+                    controllers=[DocsAskApiController, DocsPageController],
                     web_config=WebConfig(
                         server=ServerConfig(
                             host="127.0.0.1",

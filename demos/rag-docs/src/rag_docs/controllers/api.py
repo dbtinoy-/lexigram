@@ -15,6 +15,7 @@ from typing import Any
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 from rag_docs.errors import (
     NoResultsError,
@@ -33,7 +34,7 @@ class DocsAskApiController(Controller):
     @post("/ask")
     async def ask(self, request: Request) -> JSONResponse:
         """Answer a natural-language question with citations."""
-        body = await request.json()
+        body = json_loads(await request.body())
         question = str(body.get("question") or "").strip()
         if not question:
             return JSONResponse({"error": "question is required"}, status_code=400)

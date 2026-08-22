@@ -1,0 +1,19 @@
+/* Rag-docs console theme */
+:root { --bg:#101312; --panel:#1b2420; --ink:#dcefe6; --accent:#9be29b; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+header h1 { margin:.6rem 1rem; font-size:1.15rem; }
+main { display:flex; gap:1rem; padding:0 1rem 1rem; }
+#console { flex:1; background:var(--panel); border-radius:8px; padding:1rem; }
+aside { width:260px; background:var(--panel); border-radius:8px; padding:.75rem; }
+#ask-form { display:flex; gap:.5rem; margin-bottom:.75rem; }
+#question { flex:1; padding:.45rem .6rem; border-radius:6px; border:1px solid #35503f;
+  background:#0c110f; color:var(--ink); }
+#strategy { border-radius:6px; border:1px solid #35503f; background:#0c110f; color:var(--ink); }
+#ask-form button { background:#23402f; color:var(--ink); border:1px solid #35503f;
+  border-radius:6px; padding:.35rem .7rem; cursor:pointer; }
+#answer { white-space:pre-wrap; line-height:1.45; }
+#citations li { font-size:.8rem; margin:.2rem 0; }
+.hidden { display:none; }
+.muted { color:#87a396; font-size:.8rem; }
+#error { color:#ff9c8a; }

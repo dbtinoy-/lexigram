@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from mfa_console.repository.session_repository import InMemorySessionRepository
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -14,8 +15,6 @@ from lexigram.auth.mfa.manager import MFAManager
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.web import Controller, get, post
-
-from mfa_console.session_repository import InMemorySessionRepository
 
 logger = get_logger(__name__)
 

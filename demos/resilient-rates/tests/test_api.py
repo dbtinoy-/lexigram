@@ -19,7 +19,7 @@ from starlette.routing import Route
 
 from lexigram.app import Application
 
-from rates.api import RatesApiController
+from rates.controllers.api import RatesApiController
 from rates.module import RatesModule
 
 
