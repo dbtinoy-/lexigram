@@ -54,6 +54,15 @@ class GeneratorBase:
     ) -> GenerationResult:
         existed = file_path.exists()
 
+        # Path-traversal guard: the resolved target must stay inside the
+        # generator's output directory (spec finding 15).
+        base = Path(self.output_dir).resolve()
+        resolved = file_path.resolve()
+        if not resolved.is_relative_to(base):
+            raise ValueError(
+                f"Generated path {file_path} escapes output directory {base}"
+            )
+
         if existed and not force:
             return GenerationResult(files_skipped=[file_path])
 
@@ -134,6 +143,23 @@ class GeneratorBase:
         compact = re.sub(r"[\s-]+", "_", name)
         separated = re.sub(r"([A-Z])", r"_\1", compact)
         return separated.lower().strip("_")
+
+    _VALID_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+
+    @classmethod
+    def _validate_component_name(cls, name: str) -> str:
+        """Reject names that could escape the output dir or poison codegen.
+
+        Raises:
+            ValueError: If *name* contains path separators, dot segments,
+                or does not start with an alphanumeric character.
+        """
+        if not cls._VALID_NAME_RE.match(name):
+            raise ValueError(
+                f"Invalid generator name {name!r}: must match "
+                f"{cls._VALID_NAME_RE.pattern!r}"
+            )
+        return name
 
     @staticmethod
     def _get_package_name(output_dir: str | Path) -> str:
