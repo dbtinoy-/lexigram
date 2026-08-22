@@ -9,8 +9,8 @@ import pytest
 from lexigram.contracts.ai.agents import AgentResponse
 from lexigram.result import Ok
 
-from support_agent.agent_service import SupportAgent, build_support_agent
-from support_agent.scripts import SCENARIOS
+from support_agent.services.support_service import SupportAgent, build_support_agent
+from support_agent.repository.scenarios import SCENARIOS
 
 
 def _response() -> AgentResponse:

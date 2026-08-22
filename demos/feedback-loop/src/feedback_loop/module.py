@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from feedback_loop.di.provider import LoopProvider
-from feedback_loop.loop_service import LoopService
+from feedback_loop.services.loop_service import LoopService
 from lexigram.ai.evaluation.config import EvaluationConfig
 from lexigram.ai.evaluation.module import EvaluationModule
 from lexigram.ai.feedback.config import FeedbackConfig

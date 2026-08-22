@@ -12,9 +12,9 @@ if TYPE_CHECKING:
         ContainerResolverProtocol,
     )
 
-from prompt_lab.ab_runner import ABRunner
-from prompt_lab.templates import TEMPLATES
-from prompt_lab.versioning import LabVersions
+from prompt_lab.repository.templates import TEMPLATES
+from prompt_lab.services.ab_runner import ABRunner
+from prompt_lab.services.versioning import LabVersions
 
 
 class LabProvider(Provider):

@@ -4,17 +4,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from feedback_loop.bot import BOT, TRACE_IDS
 from feedback_loop.errors import (
     InvalidRatingError,
+    NoLowRatedError,
     UnknownQuestionError,
     UnknownTraceError,
 )
-from feedback_loop.regression import build_dataset
-from lexigram.ai.evaluation.evaluators.qa import QAEvaluator
+from feedback_loop.repository.bot import BOT, TRACE_IDS
+from feedback_loop.services.regression import build_dataset
+
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.contracts.ai.experiment import ExperimentConfig, RunStatus
 from lexigram.contracts.ai.feedback import FeedbackType
+from lexigram.result import Err, Ok, Result
 
 PASS_THRESHOLD = 0.6
 _EXPERIMENT_SEED = 7
@@ -51,29 +53,34 @@ class RunSummary:
 
 
 class LoopService:
-    """Ask → rate → stats → regress → report, in-memory + .runs files."""
+    """Ask → rate → stats → regress → report as Result-returning steps."""
 
     def __init__(
         self,
         collector,
         harness: EvaluationHarness | None = None,
-        qa_evaluator: QAEvaluator | None = None,
         tracker=None,
     ) -> None:
         self._collector = collector
         self._harness = harness or EvaluationHarness(pass_threshold=PASS_THRESHOLD)
-        self._qa = qa_evaluator or QAEvaluator()
         self._tracker = tracker
 
-    async def ask(self, key: str, *, owner: str) -> Answer:
+    async def ask(
+        self,
+        key: str,
+        *,
+        owner: str,
+    ) -> Result[Answer, UnknownQuestionError]:
         """Answer a known question; issue its stable trace id."""
         if key not in BOT:
-            raise UnknownQuestionError(f"unknown question: {key!r}")
-        return Answer(
-            trace_id=TRACE_IDS[key],
-            question_key=key,
-            question=key.replace("-", " "),
-            answer=BOT[key],
+            return Err(UnknownQuestionError(f"unknown question: {key!r}"))
+        return Ok(
+            Answer(
+                trace_id=TRACE_IDS[key],
+                question_key=key,
+                question=key.replace("-", " "),
+                answer=BOT[key],
+            ),
         )
 
     async def rate(
@@ -83,17 +90,17 @@ class LoopService:
         *,
         owner: str,
         comment: str | None = None,
-    ) -> str:
+    ) -> Result[str, UnknownTraceError | InvalidRatingError]:
         """Capture a rating for a previously issued trace id."""
         keys_by_trace = {v: k for k, v in TRACE_IDS.items()}
         if trace_id not in keys_by_trace:
-            raise UnknownTraceError(f"unknown trace: {trace_id!r}")
+            return Err(UnknownTraceError(f"unknown trace: {trace_id!r}"))
         value = float(rating)
         if not 1.0 <= value <= 5.0:
-            raise InvalidRatingError(f"rating out of range: {rating!r}")
+            return Err(InvalidRatingError(f"rating out of range: {rating!r}"))
 
         key = keys_by_trace[trace_id]
-        return await self._collector.collect_rating(
+        item_id = await self._collector.collect_rating(
             value,
             owner_id=owner,
             context={
@@ -105,6 +112,7 @@ class LoopService:
             },
             metadata={"source": "cli"},
         )
+        return Ok(item_id)
 
     async def stats(self, *, owner: str) -> StatsSnapshot:
         """Aggregate this owner's captured ratings (memory mode)."""
@@ -119,7 +127,11 @@ class LoopService:
             by_type[name] = by_type.get(name, 0) + 1
         return StatsSnapshot(total=total, average=average, by_type=by_type)
 
-    async def regress(self, *, owner: str) -> RunSummary:
+    async def regress(
+        self,
+        *,
+        owner: str,
+    ) -> Result[RunSummary, NoLowRatedError]:
         """Promote low-rated items, run the harness, log a tracked run."""
         items = await self._collector.get_feedback(
             owner_id=owner,
@@ -127,9 +139,9 @@ class LoopService:
         )
         dataset = build_dataset(items)
         if dataset is None:
-            raise ValueError("no low-rated feedback to regress")
+            return Err(NoLowRatedError("no low-rated feedback to regress"))
 
-        report_result = await self._harness.run(dataset, self._qa)
+        report_result = await self._harness.run(dataset, self._qa_evaluator())
         if report_result.is_err():
             raise RuntimeError(f"harness failed: {report_result.unwrap_err()}")
         report = report_result.unwrap()
@@ -166,10 +178,16 @@ class LoopService:
                 average_score=summary.average_score,
                 failing_ids=summary.failing_ids,
             )
-        return summary
+        return Ok(summary)
 
     async def report(self, run_id: str):
         """Post-hoc error analysis over a tracked run."""
         from lexigram.ai.evaluation.analysis import ErrorAnalysis
 
         return await ErrorAnalysis(self._tracker).report(run_id)
+
+    def _qa_evaluator(self):
+        """QA scorer (keyword overlap vs per-case reference bars)."""
+        from lexigram.ai.evaluation.evaluators.qa import QAEvaluator
+
+        return QAEvaluator()

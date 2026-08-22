@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from support_agent.fixtures import KB
+from support_agent.repository.fixtures import KB
 from support_agent.tools import (
     SUPPORT_TOOLS,
     calculate_refund,

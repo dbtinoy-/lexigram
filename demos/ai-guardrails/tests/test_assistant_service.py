@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from guard_gate.acts import ACTS, COST_PER_TURN, ALLOWED_MODEL
+from guard_gate.repository.acts import ACTS, COST_PER_TURN, ALLOWED_MODEL
 
 
 @pytest.fixture
 async def assistant(app):
-    from guard_gate.assistant_service import GuardedAssistant
+    from guard_gate.services.guarded_assistant import GuardedAssistant
 
     return await app.container.resolve(GuardedAssistant)
 

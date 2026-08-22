@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from memory_chat.extraction import extract_facts
+from memory_chat.services.extraction import extract_facts
 
 
 class TestExtractFacts:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from feedback_loop.bot import BOT, POOR_KEYS, TRACE_IDS
+from feedback_loop.repository.bot import BOT, POOR_KEYS, TRACE_IDS
 from feedback_loop.errors import InvalidRatingError, UnknownTraceError
 
 

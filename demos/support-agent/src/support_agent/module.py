@@ -9,9 +9,9 @@ from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-from support_agent.agent_service import SupportAgent
 from support_agent.controllers.api import AgentApiController
 from support_agent.di.provider import AgentSupportProvider
+from support_agent.services.support_service import SupportAgent
 from support_agent.ui.pages import ConsolePageController
 
 

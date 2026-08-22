@@ -12,7 +12,7 @@ if TYPE_CHECKING:
         ContainerResolverProtocol,
     )
 
-from feedback_loop.loop_service import LoopService
+from feedback_loop.services.loop_service import LoopService
 
 
 class LoopProvider(Provider):

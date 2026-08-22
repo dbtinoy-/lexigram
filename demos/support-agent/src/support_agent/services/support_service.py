@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from support_agent.tools import SUPPORT_TOOLS
+
 from lexigram.ai.agents import AgentBuilder
 from lexigram.contracts.ai.agents import (
     AgentError,
@@ -10,7 +12,6 @@ from lexigram.contracts.ai.agents import (
     AgentResponse,
 )
 from lexigram.result import Result
-from support_agent.tools import SUPPORT_TOOLS
 
 SYSTEM_PROMPT = (
     "You are support-agent, a customer support assistant for an online "

@@ -11,17 +11,11 @@ import argparse
 import asyncio
 import sys
 
-from feedback_loop.bot import BOT, TRACE_IDS
-from feedback_loop.errors import (
-    InvalidRatingError,
-    UnknownQuestionError,
-    UnknownTraceError,
-)
-from feedback_loop.loop_service import LoopService
 from feedback_loop.module import FeedbackLoopModule
+from feedback_loop.repository.bot import BOT, TRACE_IDS
+from feedback_loop.services.loop_service import LoopService
 from lexigram.app import Application
-
-_TYPED_ERRORS = (UnknownQuestionError, UnknownTraceError, InvalidRatingError)
+from lexigram.result import Err
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,7 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="feedback_loop", parents=[common])
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_ask = sub.add_parser("ask", help="ask a canned question", parents=[common])
+    p_ask = sub.add_parser(
+        "ask",
+        help="ask a canned question",
+        parents=[common],
+    )
     p_ask.add_argument("key")
     p_ask.add_argument("--owner", required=True)
 
@@ -44,21 +42,41 @@ def build_parser() -> argparse.ArgumentParser:
     p_rate.add_argument("--comment", default=None)
     p_rate.add_argument("--owner", required=True)
 
-    p_stats = sub.add_parser("stats", help="aggregate my ratings", parents=[common])
+    p_stats = sub.add_parser(
+        "stats",
+        help="aggregate my ratings",
+        parents=[common],
+    )
     p_stats.add_argument("--owner", required=True)
 
     p_reg = sub.add_parser(
-        "regress", help="run regression from low ratings", parents=[common]
+        "regress",
+        help="run regression from low ratings",
+        parents=[common],
     )
     p_reg.add_argument("--owner", required=True)
 
-    p_rep = sub.add_parser("report", help="error analysis for a run", parents=[common])
+    p_rep = sub.add_parser(
+        "report",
+        help="error analysis for a run",
+        parents=[common],
+    )
     p_rep.add_argument("run_id")
 
     sub.add_parser(
-        "demo", help="full loop: asks, ratings, regress, report", parents=[common]
+        "demo",
+        help="full loop: asks, ratings, regress, report",
+        parents=[common],
     )
     return parser
+
+
+def _err_exit(result) -> int:
+    """Print a domain error and signal failure."""
+    if isinstance(result, Err):
+        print(f"error: {result.unwrap_err()}")
+        return 1
+    return 0
 
 
 async def _boot_service(args: argparse.Namespace):
@@ -72,44 +90,44 @@ async def _boot_service(args: argparse.Namespace):
 
 
 async def run(args: argparse.Namespace) -> int:
-    try:
-        app_ctx, service = await _boot_service(args)
-    except _TYPED_ERRORS as exc:
-        print(f"error: {exc}")
-        return 1
-
+    app_ctx, service = await _boot_service(args)
     try:
         if args.command == "demo":
             return await _demo(service)
         return await _single(service, args)
-    except _TYPED_ERRORS as exc:
-        print(f"error: {exc}")
-        return 1
     finally:
         await app_ctx.__aexit__(None, None, None)
 
 
 async def _single(service: LoopService, args: argparse.Namespace) -> int:
     if args.command == "ask":
-        answer = await service.ask(args.key, owner=args.owner)
+        result = await service.ask(args.key, owner=args.owner)
+        if isinstance(result, Err):
+            return _err_exit(result)
+        answer = result.unwrap()
         print(f"[{answer.trace_id}] {answer.answer}")
         print(
             f"rate it:  feedback_loop rate {answer.trace_id} <1-5> --owner {args.owner}"
         )
     elif args.command == "rate":
-        item_id = await service.rate(
+        result = await service.rate(
             args.trace_id,
             args.rating,
             owner=args.owner,
             comment=args.comment,
         )
-        print(f"captured rating {args.rating:g} ({item_id})")
+        if isinstance(result, Err):
+            return _err_exit(result)
+        print(f"captured rating {args.rating:g} ({result.unwrap()})")
     elif args.command == "stats":
         snap = await service.stats(owner=args.owner)
         avg = snap.average if snap.average is not None else "n/a"
         print(f"total={snap.total} average={avg} by_type={snap.by_type}")
     elif args.command == "regress":
-        summary = await service.regress(owner=args.owner)
+        result = await service.regress(owner=args.owner)
+        if isinstance(result, Err):
+            return _err_exit(result)
+        summary = result.unwrap()
         print(f"run={summary.run_id}")
         print(
             f"samples={summary.total_samples} "
@@ -137,18 +155,23 @@ async def _demo(service: LoopService) -> int:
 
     print("== ask ==")
     for key in sorted(BOT):
-        answer = await service.ask(key, owner="alice")
+        result = await service.ask(key, owner="alice")
+        if isinstance(result, Err):
+            return _err_exit(result)
+        answer = result.unwrap()
         print(f"[{answer.trace_id}] {key}: {answer.answer}")
 
     print("\n== rate ==")
     for key, value in ratings.items():
-        item_id = await service.rate(
+        rated = await service.rate(
             TRACE_IDS[key],
             value,
             owner="alice",
             comment=f"auto:{value:g}",
         )
-        print(f"{TRACE_IDS[key]} <- {value:g} ({item_id})")
+        if isinstance(rated, Err):
+            return _err_exit(rated)
+        print(f"{TRACE_IDS[key]} <- {value:g} ({rated.unwrap()})")
 
     print("\n== stats ==")
     snap = await service.stats(owner="alice")
@@ -156,7 +179,10 @@ async def _demo(service: LoopService) -> int:
     print(f"total={snap.total} average={avg} by_type={snap.by_type}")
 
     print("\n== regress ==")
-    summary = await service.regress(owner="alice")
+    regressed = await service.regress(owner="alice")
+    if isinstance(regressed, Err):
+        return _err_exit(regressed)
+    summary = regressed.unwrap()
     print(f"run={summary.run_id}")
     print(
         f"samples={summary.total_samples} passed={summary.passed_samples} "

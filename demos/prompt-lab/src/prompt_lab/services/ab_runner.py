@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from prompt_lab.repository.cases import CASES, CRITERIA
+
 from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.contracts.ai.evaluation import EvaluationDataset
-from prompt_lab.cases import CASES, CRITERIA
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,6 @@ class ABRunner:
 
 def RESPOND(variant: str):
     """Late-bound responder lookup (keeps import surface minimal)."""
-    from prompt_lab.responders import RESPONDERS
+    from prompt_lab.repository.responders import RESPONDERS
 
     return RESPONDERS[variant]

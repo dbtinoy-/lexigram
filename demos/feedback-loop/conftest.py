@@ -16,8 +16,8 @@ import pytest
 @pytest.fixture
 async def service(tmp_path):
     """Boot the module graph with tmp experiment dir; yield LoopService."""
-    from feedback_loop.loop_service import LoopService
     from feedback_loop.module import FeedbackLoopModule
+    from feedback_loop.services.loop_service import LoopService
 
     from lexigram.app import Application
 

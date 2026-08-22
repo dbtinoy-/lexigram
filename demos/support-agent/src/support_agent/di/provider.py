@@ -14,8 +14,8 @@ if TYPE_CHECKING:
         ContainerResolverProtocol,
     )
 
-from support_agent.agent_service import SupportAgent, build_support_agent
-from support_agent.llm import ScriptedLLM
+from support_agent.repository.scripted_llm import ScriptedLLM
+from support_agent.services.support_service import SupportAgent, build_support_agent
 
 
 class AgentSupportProvider(Provider):

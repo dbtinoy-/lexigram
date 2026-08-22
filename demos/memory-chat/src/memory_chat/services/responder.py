@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from memory_chat.extraction import Triple
+from memory_chat.services.extraction import Triple
 
 _FOOD_WORDS = ("food", "menu", "eat", "dinner", "lunch", "snack", "meal")
 _REMEMBER_WORDS = ("remember", "know about me")

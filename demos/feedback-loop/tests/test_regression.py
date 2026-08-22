@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from lexigram.contracts.ai.feedback import FeedbackItem, FeedbackType
 
-from feedback_loop.bot import BOT
-from feedback_loop.regression import REFERENCE_BARS, ScoredSample, build_dataset
+from feedback_loop.repository.bot import BOT
+from feedback_loop.services.regression import REFERENCE_BARS, ScoredSample, build_dataset
 
 
 def _item(key: str, rating: float, owner: str = "alice") -> FeedbackItem:

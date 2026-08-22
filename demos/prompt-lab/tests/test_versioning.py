@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from prompt_lab.templates import TEMPLATES
-from prompt_lab.versioning import LabVersions
+from prompt_lab.repository.templates import TEMPLATES
+from prompt_lab.services.versioning import LabVersions
 
 
 @pytest.fixture

@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.ai.agents import tool
-from support_agent.fixtures import KB, ORDERS
+from support_agent.repository.fixtures import KB, ORDERS
 
 FULL_REFUND_DAYS = 7
 HALF_REFUND_DAYS = 30

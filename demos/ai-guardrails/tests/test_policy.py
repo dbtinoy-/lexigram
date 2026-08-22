@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from guard_gate.acts import ACTS, ALLOWED_MODEL, COST_PER_TURN
-from guard_gate.policy import PolicyToggle
+from guard_gate.repository.acts import ACTS, ALLOWED_MODEL, COST_PER_TURN
+from guard_gate.services.policy import PolicyToggle
 
 
 class TestActs:

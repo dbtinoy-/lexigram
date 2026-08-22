@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from memory_chat.responder import reply_for
+from memory_chat.services.responder import reply_for
 
 
 ALICE_FACTS = [

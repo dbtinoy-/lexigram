@@ -7,14 +7,27 @@ from typing import Any
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
-from support_agent.agent_service import SupportAgent, build_support_agent
-from support_agent.llm import ScriptedLLM
-from support_agent.scripts import SCENARIOS
+from support_agent.repository.scenarios import SCENARIOS
+from support_agent.repository.scripted_llm import ScriptedLLM
+from support_agent.services.support_service import (
+    SupportAgent,
+    build_support_agent,
+)
 
 
 def _error(message: str, status: int) -> JSONResponse:
     return JSONResponse({"error": message}, status_code=status)
+
+
+async def _body(request: Request) -> dict[str, Any]:
+    """Parse the request body through the framework serializer."""
+    raw = await request.body()
+    if not raw:
+        return {}
+    parsed = json_loads(raw)
+    return dict(parsed) if isinstance(parsed, dict) else {}
 
 
 def _serialize(response: Any) -> JSONResponse:
@@ -61,7 +74,7 @@ class AgentApiController(Controller):
     @post("/api/ask")
     async def ask(self, request: Request) -> JSONResponse:
         """Run one scenario-scripted ReAct turn."""
-        data = await request.json()
+        data = await _body(request)
         scenario = SCENARIOS.get(str(data.get("scenario", "")))
         if scenario is None:
             return _error(f"unknown scenario: {data.get('scenario')!r}", 400)

@@ -9,14 +9,24 @@ from lexigram.ai.prompt.exceptions import (
     PromptNotFoundError,
     PromptRenderError,
 )
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
-from prompt_lab.ab_runner import ABRunner
-from prompt_lab.templates import VARIANT_LABELS
-from prompt_lab.versioning import LabVersions
+from prompt_lab.repository.templates import VARIANT_LABELS
+from prompt_lab.services.ab_runner import ABRunner
+from prompt_lab.services.versioning import LabVersions
 
 
 def _error(message: str, status: int) -> JSONResponse:
     return JSONResponse({"error": message}, status_code=status)
+
+
+async def _body(request: Request) -> dict:
+    """Parse the request body through the framework serializer."""
+    raw = await request.body()
+    if not raw:
+        return {}
+    parsed = json_loads(raw)
+    return dict(parsed) if isinstance(parsed, dict) else {}
 
 
 class LabApiController(Controller):
@@ -43,7 +53,7 @@ class LabApiController(Controller):
     @post("/api/render")
     async def render(self, request: Request) -> JSONResponse:
         """Render one variant at an optional revision with supplied vars."""
-        data = await request.json()
+        data = await _body(request)
         variant = str(data.get("variant", ""))
         if variant not in VARIANT_LABELS:
             return _error(f"unknown variant: {variant!r}", 404)
@@ -76,7 +86,7 @@ class LabApiController(Controller):
 
     @post("/api/rollback")
     async def rollback(self, request: Request) -> JSONResponse:
-        data = await request.json()
+        data = await _body(request)
         variant = str(data.get("variant", ""))
         if variant not in VARIANT_LABELS:
             return _error(f"unknown variant: {variant!r}", 404)

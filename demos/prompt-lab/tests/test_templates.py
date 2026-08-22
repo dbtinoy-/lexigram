@@ -6,7 +6,7 @@ import pytest
 
 from lexigram.ai.prompt.exceptions import PromptValidationError
 
-from prompt_lab.templates import TEMPLATES
+from prompt_lab.repository.templates import TEMPLATES
 
 
 class TestTemplates:

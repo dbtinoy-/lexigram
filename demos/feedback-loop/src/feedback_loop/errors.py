@@ -13,3 +13,7 @@ class UnknownTraceError(ValueError):
 
 class InvalidRatingError(ValueError):
     """Raised when a rating is outside the closed interval [1, 5]."""
+
+
+class NoLowRatedError(ValueError):
+    """Raised when a regression run has no low-rated feedback to use."""

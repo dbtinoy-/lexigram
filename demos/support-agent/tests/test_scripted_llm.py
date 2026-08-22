@@ -6,7 +6,7 @@ import pytest
 
 from lexigram.result import Ok
 
-from support_agent.llm import EmptyScriptError, ScriptedLLM
+from support_agent.repository.scripted_llm import EmptyScriptError, ScriptedLLM
 
 
 class TestScriptedLLM:

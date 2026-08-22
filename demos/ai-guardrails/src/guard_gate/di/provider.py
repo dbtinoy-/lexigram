@@ -13,9 +13,9 @@ if TYPE_CHECKING:
         ContainerResolverProtocol,
     )
 
-from guard_gate.acts import COST_PER_TURN
-from guard_gate.assistant_service import GuardedAssistant
-from guard_gate.policy import PolicyToggle
+from guard_gate.repository.acts import COST_PER_TURN
+from guard_gate.services.guarded_assistant import GuardedAssistant
+from guard_gate.services.policy import PolicyToggle
 
 
 class GuardrailsProvider(Provider):

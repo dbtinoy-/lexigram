@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
-from memory_chat.chat_service import ConciergeService
+from typing import Any
+
+from memory_chat.services.chat_service import ConciergeService
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 
 
 def _error(message: str, status: int) -> JSONResponse:
     return JSONResponse({"error": message}, status_code=status)
+
+
+async def _body(request: Request) -> dict[str, Any]:
+    """Parse the request body through the framework serializer."""
+    raw = await request.body()
+    if not raw:
+        return {}
+    parsed = json_loads(raw)
+    return dict(parsed) if isinstance(parsed, dict) else {}
 
 
 class ConciergeApiController(Controller):
@@ -22,18 +34,21 @@ class ConciergeApiController(Controller):
     @post("/api/chat")
     async def chat(self, request: Request) -> JSONResponse:
         """One conversational turn for an owner."""
-        data = await request.json()
+        data = await _body(request)
         owner = str(data.get("owner", "")).strip()
-        text = str(data.get("text", "")).strip()
-        if not owner or not text:
+        text = str(data.get("text", ""))
+        if not owner or not text.strip():
             return _error("owner and text are required", 400)
 
         result = await self._concierge.send(owner, text)
+        if result.is_err():
+            return _error(str(result.unwrap_err()), 400)
+        turn = result.unwrap()
         return JSONResponse(
             {
-                "reply": result.reply_text,
-                "cited": result.cited,
-                "context_chars": result.context_chars,
+                "reply": turn.reply_text,
+                "cited": turn.cited,
+                "context_chars": turn.context_chars,
             },
         )
 

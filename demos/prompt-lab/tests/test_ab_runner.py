@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from prompt_lab.ab_runner import ABRunner
-from prompt_lab.responders import RESPONDERS
-from prompt_lab.templates import TEMPLATES
-from prompt_lab.versioning import LabVersions
+from prompt_lab.services.ab_runner import ABRunner
+from prompt_lab.repository.responders import RESPONDERS
+from prompt_lab.repository.templates import TEMPLATES
+from prompt_lab.services.versioning import LabVersions
 
 
 @pytest.fixture

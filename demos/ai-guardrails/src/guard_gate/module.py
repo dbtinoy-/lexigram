@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import os
 
-from guard_gate.acts import RESTRICTED_MODEL
-from guard_gate.assistant_service import GuardedAssistant
 from guard_gate.controllers.api import GuardApiController
 from guard_gate.di.provider import GuardrailsProvider
-from guard_gate.policy import PolicyToggle
+from guard_gate.repository.acts import RESTRICTED_MODEL
+from guard_gate.services.guarded_assistant import GuardedAssistant
+from guard_gate.services.policy import PolicyToggle
 from guard_gate.ui.pages import PlaygroundPageController
 from lexigram.ai.governance.config import GovernanceConfig
 from lexigram.ai.governance.module import GovernanceModule

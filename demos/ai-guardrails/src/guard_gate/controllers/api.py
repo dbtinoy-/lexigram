@@ -5,14 +5,26 @@ from __future__ import annotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from guard_gate.acts import ACTS
-from guard_gate.assistant_service import GuardedAssistant
-from guard_gate.policy import PolicyToggle
+from guard_gate.repository.acts import ACTS
+from guard_gate.services.guarded_assistant import GuardedAssistant
+from guard_gate.services.policy import PolicyToggle
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 
 
 def _error(message: str, status: int) -> JSONResponse:
     return JSONResponse({"error": message}, status_code=status)
+
+
+async def _body(request: Request) -> dict:
+    """Parse the request body through the framework serializer."""
+    from typing import Any
+
+    raw = await request.body()
+    if not raw:
+        return {}
+    parsed: Any = json_loads(raw)
+    return dict(parsed) if isinstance(parsed, dict) else {}
 
 
 def _serialize(outcome) -> JSONResponse:
@@ -42,7 +54,7 @@ class GuardApiController(Controller):
     @post("/api/ask")
     async def ask(self, request: Request) -> JSONResponse:
         """Handle an act-keyed or raw-text request."""
-        data = await request.json()
+        data = await _body(request)
         act_key = str(data.get("act", ""))
         act = ACTS.get(act_key)
         if act_key and act is None:
@@ -61,7 +73,7 @@ class GuardApiController(Controller):
     @post("/api/policy")
     async def policy(self, request: Request) -> JSONResponse:
         """Flip protection on/off."""
-        data = await request.json()
+        data = await _body(request)
         enabled = bool(data.get("enabled"))
         self._toggle.set(enabled)
         return JSONResponse({"enabled": self._toggle.enabled})
