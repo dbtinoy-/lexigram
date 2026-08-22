@@ -122,7 +122,19 @@ verify-demos:  ## Compile-check demo entry points and scripts (incl. llm-experim
 	$(UV) run python -m compileall -q $(DEMO_COMPILE_DIRS)
 
 .PHONY: check-demos
-check-demos: test-demos verify-demos  ## Demo gate: tests + compile checks
+check-demos: test-demos verify-demos smoke-demos  ## Demo gate: tests + compile checks + smoke runs
+
+# Smoke-run every demo entry point (catches CLI rot compile checks cannot).
+# CLI demos run a real guided walkthrough; server demos prove they import/boot.
+.PHONY: smoke-demos
+smoke-demos: ## Execute demo entry points end-to-end
+	cd demos/resilient-rates && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m rates demo >/dev/null
+	cd demos/event-driven-orders && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m orders demo >/dev/null
+	cd demos/rag-docs && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m rag_docs demo >/dev/null
+	cd demos/llm-experiment && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python run_experiment.py --seed 42 >/dev/null
+	cd demos/realtime-monitor && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import ops_console.main" >/dev/null
+	cd demos/auth-web && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import auth_web.main" >/dev/null
+	cd demos/auth-rbac && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import rbac_console.main" >/dev/null
 
 .PHONY: test-integration
 test-integration:  ## Run integration tests (requires Docker Compose services)

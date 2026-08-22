@@ -220,6 +220,9 @@ jobs:
       - name: compile (llm-experiment scripts)
         run: uv run python -m compileall -q demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates
 
+      - name: smoke (execute demo entry points)
+        run: make smoke-demos
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
