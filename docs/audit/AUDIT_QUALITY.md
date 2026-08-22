@@ -10,33 +10,33 @@
 - Passing tools: 0
 - Failing tools: 2
 - Packages counted: 54
-- Total mypy errors: 152
-- Packages with errors: 28
+- Total mypy errors: 434
+- Packages with errors: 11
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **FAIL** | 1 | 248 ms | `uv run ruff check .` |
-| `Mypy` | **FAIL** | 1 | 351519 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **FAIL** | 1 | 240 ms | `uv run ruff check .` |
+| `Mypy` | **FAIL** | 1 | 61159 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `248 ms`
+- Duration: `240 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
 ```text
-I001 [*] Import block is un-sorted or un-formatted
-  --> demos/auth-apikeys/src/apikey_console/controllers/api.py:3:1
-   |
- 1 |   """JSON API for the API-keys console — management + machine endpoint."""
- 2 |
- 3 | / from __future__ import annotations
- 4 | |
- 5 | | from starlette.requests import Request
+RUF022 [*] `__all__` is not sorted
+   --> core/lexigram-contracts/src/lexigram/contracts/data/identifiers.py:386:11
+    |
+386 |   __all__ = [
+    |  ___________^
+387 | |     "DEFAULT_MAX_IDENTIFIER_LENGTH",
+388 | |     "MAX_IDENTIFIER_LENGTHS",
+389 | |     "Column",
 ...
 ```
 
@@ -44,39 +44,22 @@ I001 [*] Import block is un-sorted or un-formatted
 
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `351519 ms`
+- Duration: `61159 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
 [lexigram] 35 errors
-[lexigram-admin] 1 errors
+[lexigram-admin] 378 errors
 [lexigram-ai] 1 errors
-[lexigram-ai-llm] 3 errors
-[lexigram-ai-rag] 1 errors
 [lexigram-ai-relay] 1 errors
-[lexigram-ai-relay-gateway] 1 errors
-[lexigram-audit] 1 errors
-[lexigram-auth] 4 errors
 [lexigram-cache] 1 errors
 [lexigram-cli] 0 errors
-[lexigram-contracts] 21 errors
-[lexigram-events] 3 errors
+[lexigram-events] 7 errors
 [lexigram-graphql] 2 errors
-[lexigram-monitor] 2 errors
-[lexigram-multimedia-tts] 10 errors
-[lexigram-multimedia-video] 6 errors
-[lexigram-nosql] 3 errors
-[lexigram-notification] 15 errors
 [lexigram-queue] 3 errors
 [lexigram-resilience] 3 errors
-[lexigram-search] 2 errors
-[lexigram-secrets] 5 errors
-[lexigram-sql] 13 errors
-[lexigram-storage] 7 errors
-[lexigram-testing] 1 errors
-[lexigram-vector] 2 errors
-[lexigram-web] 3 errors
+[lexigram-sql] 1 errors
 [lexigram-workflow] 2 errors
 ```
 
@@ -86,36 +69,36 @@ I001 [*] Import block is un-sorted or un-formatted
 
 | Code | Count | Description |
 |------|-------|-------------|
-| `name-defined` | 28 | Type checking error |
-| `no-any-return` | 27 | Function returns Any when specific type declared |
-| `import-not-found` | 26 | Type checking error |
-| `unreachable` | 20 | Type checking error |
-| `unused-ignore` | 14 | Unused type: ignore comment |
-| `syntax` | 10 | Type checking error |
-| `import-untyped` | 8 | Type checking error |
-| `no-untyped-def` | 4 | Function missing return type annotation |
-| `no-redef` | 4 | Name already defined |
-| `assignment` | 4 | Type checking error |
-| `arg-type` | 3 | Argument type mismatch |
-| `union-attr` | 2 | Type checking error |
-| `misc` | 1 | Miscellaneous type checking error |
-| `no-untyped-call` | 1 | Type checking error |
-| `comparison-overlap` | 1 | Type checking error |
+| `no-any-return` | 171 | Function returns Any when specific type declared |
+| `no-untyped-def` | 80 | Function missing return type annotation |
+| `unreachable` | 61 | Type checking error |
+| `misc` | 44 | Miscellaneous type checking error |
+| `untyped-decorator` | 33 | Type checking error |
+| `attr-defined` | 18 | Attribute not defined on type |
+| `name-defined` | 9 | Type checking error |
+| `var-annotated` | 9 | Variable missing type annotation |
+| `unused-ignore` | 5 | Unused type: ignore comment |
+| `union-attr` | 3 | Type checking error |
+| `import-not-found` | 3 | Type checking error |
+| `str` | 2 | Type checking error |
+| `syntax` | 2 | Type checking error |
+| `func-returns-value` | 1 | Type checking error |
+| `return-value` | 1 | Type checking error |
 
 #### By Package (Top 10)
 
 | Package | Errors |
 |---------|--------|
+| `lexigram-admin` | 378 |
 | `lexigram` | 35 |
-| `lexigram-contracts` | 21 |
-| `lexigram-notification` | 15 |
-| `lexigram-sql` | 13 |
-| `lexigram-multimedia-tts` | 10 |
-| `lexigram-storage` | 7 |
-| `lexigram-multimedia-video` | 6 |
-| `lexigram-secrets` | 5 |
-| `lexigram-auth` | 4 |
-| `lexigram-ai-llm` | 3 |
+| `lexigram-events` | 7 |
+| `lexigram-queue` | 3 |
+| `lexigram-resilience` | 3 |
+| `lexigram-graphql` | 2 |
+| `lexigram-workflow` | 2 |
+| `lexigram-ai` | 1 |
+| `lexigram-ai-relay` | 1 |
+| `lexigram-cache` | 1 |
 
 ## Package Metrics
 
@@ -136,7 +119,7 @@ I001 [*] Import block is un-sorted or un-formatted
 | `lexigram-ai-prompt` | 46 | 32 |
 | `lexigram-ai-rag` | 186 | 46 |
 | `lexigram-ai-relay` | 43 | 35 |
-| `lexigram-ai-relay-gateway` | 64 | 55 |
+| `lexigram-ai-relay-gateway` | 65 | 55 |
 | `lexigram-ai-session` | 46 | 35 |
 | `lexigram-ai-skills` | 53 | 38 |
 | `lexigram-ai-workers` | 34 | 34 |
