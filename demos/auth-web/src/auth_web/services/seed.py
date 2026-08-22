@@ -48,4 +48,4 @@ class DemoSeedService:
         self._authz.set_roles(ROLE_DEFINITIONS)
 
 
-__all__ = ["DEMO_EMAIL", "DEMO_PASSWORD", "DemoSeedService", "ROLE_DEFINITIONS"]
+__all__ = ["DEMO_EMAIL", "DEMO_PASSWORD", "ROLE_DEFINITIONS", "DemoSeedService"]
