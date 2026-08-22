@@ -10,7 +10,7 @@ from lexigram.app import Application
 
 from rates.module import RatesModule
 from rates.provider import FaultController, Scenario
-from rates.service import RatesService
+from rates.services.rates_service import RatesService
 
 
 @pytest.fixture
@@ -30,8 +30,8 @@ async def test_boots_and_resolves_services(app: Application) -> None:
 async def test_end_to_end_miss_hit_through_real_backend(app: Application) -> None:
     service = await app.container.resolve(RatesService)
 
-    first = await service.fetch("EUR/USD")
-    second = await service.fetch("EUR/USD")
+    first = (await service.fetch("EUR/USD")).unwrap()
+    second = (await service.fetch("EUR/USD")).unwrap()
 
     assert first.source == "upstream"
     assert second.source == "cache"

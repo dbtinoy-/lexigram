@@ -18,7 +18,7 @@ from lexigram.resilience.pipeline.executor import ResiliencePipeline
 
 from rates.exceptions import RateUnavailableError
 from rates.provider import FaultController, Scenario, SimulatedRatesProvider
-from rates.service import RatesService
+from rates.services.rates_service import RatesService
 
 
 def make_pipeline_factory() -> Any:
@@ -54,8 +54,8 @@ def make_service(scenario: Scenario = Scenario.HEALTHY, seed: int = 7) -> tuple[
 async def test_miss_then_hit_counts_correctly() -> None:
     service, _ = make_service()
 
-    first = await service.fetch("EUR/USD")
-    second = await service.fetch("EUR/USD")
+    first = (await service.fetch("EUR/USD")).unwrap()
+    second = (await service.fetch("EUR/USD")).unwrap()
 
     assert first.source == "upstream"
     assert second.source == "cache"
@@ -69,7 +69,7 @@ async def test_retry_recovers_under_flaky_and_counts_attempts() -> None:
     # draw 0.8474 succeeds — exactly one retry, deterministically.
     service, _ = make_service(scenario=Scenario.FLAKY, seed=1)
 
-    quote = await service.fetch("EUR/USD")
+    quote = (await service.fetch("EUR/USD")).unwrap()
 
     assert quote.source == "upstream"
     assert service.stats().retries >= 1
@@ -108,8 +108,8 @@ async def test_breaker_opens_then_serves_stale() -> None:
     await service.clear_cache()  # drop the cached quote so DOWN reaches the pipeline
     faults.set(Scenario.DOWN)
 
-    exhausted = await service.fetch("EUR/USD")  # retries exhausted -> stale
-    open_circuit = await service.fetch("EUR/USD")  # breaker OPEN -> stale
+    exhausted = (await service.fetch("EUR/USD")).unwrap()  # retries exhausted -> stale
+    open_circuit = (await service.fetch("EUR/USD")).unwrap()  # breaker OPEN -> stale
 
     assert exhausted.source == "stale"
     assert open_circuit.source == "stale"
@@ -137,7 +137,7 @@ async def test_production_breaker_stops_calling_upstream_while_serving_stale() -
 
     upstream_sequence: list[int] = []
     for _ in range(5):
-        quote = await service.fetch("EUR/USD")
+        quote = (await service.fetch("EUR/USD")).unwrap()
         assert quote.source == "stale"
         upstream_sequence.append(service.stats().upstream_calls)
 
@@ -148,15 +148,16 @@ async def test_production_breaker_stops_calling_upstream_while_serving_stale() -
     faults.set(Scenario.HEALTHY)
 
 
-async def test_down_without_stale_copy_raises() -> None:
-    """A never-warmed pair has no stale tier: the outage surfaces."""
+async def test_down_without_stale_copy_returns_err() -> None:
+    """A never-warmed pair has no stale tier: the outage surfaces as Err."""
 
     service, faults = make_service()
 
     faults.set(Scenario.DOWN)
 
-    with pytest.raises(RateUnavailableError):
-        await service.fetch("GBP/USD")
+    result = await service.fetch("GBP/USD")
+    assert result.is_err()
+    assert isinstance(result.unwrap_err(), RateUnavailableError)
 
     assert service.stats().stale_served == 0
 
@@ -167,7 +168,8 @@ async def test_stampede_yields_single_upstream_call() -> None:
     service, _ = make_service()
 
     await service.clear_cache()
-    quotes = await asyncio.gather(*(service.fetch("USD/JPY") for _ in range(10)))
+    results = await asyncio.gather(*(service.fetch("USD/JPY") for _ in range(10)))
+    quotes = [r.unwrap() for r in results]
 
     assert all(q.source in {"upstream", "cache"} for q in quotes)
     assert len({q.rate for q in quotes}) == 1  # everyone sees the same quote

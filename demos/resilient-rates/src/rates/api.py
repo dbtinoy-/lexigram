@@ -23,7 +23,7 @@ from starlette.responses import JSONResponse
 
 from lexigram.web import Controller, get, post
 from rates.provider import FaultController, Scenario
-from rates.service import RatesService
+from rates.services.rates_service import RatesService
 
 
 class RatesApiController(Controller):
@@ -42,7 +42,12 @@ class RatesApiController(Controller):
                 {"error": f"invalid pair {pair!r}; expected BASE/QUOTE"},
                 status_code=404,
             )
-        quote = await self.service.fetch(pair)
+        result = await self.service.fetch(pair)
+        if result.is_err():
+            return JSONResponse(
+                {"error": str(result.unwrap_err())}, status_code=503
+            )
+        quote = result.unwrap()
         payload = asdict(quote)
         payload["rate"] = str(quote.rate)
         return JSONResponse(payload)
@@ -71,7 +76,7 @@ class RatesApiController(Controller):
                 status_code=404,
             )
         self.faults.set(scenario)
-        return {"ok": True, "scenario": scenario.value}
+        return JSONResponse({"ok": True, "scenario": scenario.value})
 
 
 __all__ = ["RatesApiController"]

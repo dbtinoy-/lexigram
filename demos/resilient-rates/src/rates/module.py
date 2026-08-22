@@ -15,7 +15,7 @@ from lexigram.web.security import SecurityConfig
 from rates.api import RatesApiController
 from rates.di.provider import RatesProvider
 from rates.provider import FaultController, SimulatedRatesProvider
-from rates.service import RatesService
+from rates.services.rates_service import RatesService
 
 
 def _memory_cache_config() -> CacheConfig:

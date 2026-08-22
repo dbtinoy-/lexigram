@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Any
 
+from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 from lexigram.contracts.infra.resilience.models import (
     CircuitBreakerConfig,
@@ -18,7 +19,6 @@ from lexigram.contracts.infra.resilience.protocols import (
 )
 from lexigram.logging import get_logger
 from lexigram.resilience.exceptions import CircuitOpenError, RetryExhaustedError
-from lexigram.result import Ok
 from rates.domain import RateQuote
 from rates.exceptions import (
     RateUnavailableError,
@@ -118,19 +118,19 @@ class RatesService:
         """Return the last-known-good quote for a pair, if any."""
         return self._stale.get(pair)
 
-    async def fetch(self, pair: str) -> RateQuote:
+    async def fetch(
+        self, pair: str
+    ) -> Result[RateQuote, RateUnavailableError]:
         """Return a quote for ``pair`` via cache-aside + resilience.
 
         Args:
             pair: Currency pair symbol.
 
         Returns:
-            A quote sourced from cache, upstream, or the stale store.
-
-        Raises:
-            RateUnavailableError: Terminal pipeline failure (retries
-                exhausted or circuit open) with no stale copy available.
-            KeyError: Unknown pair.
+            ``Ok(quote)`` sourced from cache, upstream, or the stale
+            store; ``Err(RateUnavailableError)`` when the pipeline fails
+            terminally (retries exhausted / circuit open) and no stale
+            copy exists.
         """
         key = f"{_CACHE_PREFIX}{pair}"
         logger.debug("fetch_started", pair=pair, scenario=self._faults.current.value)
@@ -138,7 +138,7 @@ class RatesService:
         if cached is not None:
             self._stats.hits += 1
             logger.debug("cache_hit", pair=pair)
-            return self._as_cache_hit(cached)
+            return Ok(self._as_cache_hit(cached))
 
         lock = self._locks.setdefault(pair, asyncio.Lock())
         async with lock:
@@ -146,7 +146,7 @@ class RatesService:
             if cached is not None:
                 self._stats.hits += 1
                 logger.debug("cache_hit_after_wait", pair=pair)
-                return self._as_cache_hit(cached)
+                return Ok(self._as_cache_hit(cached))
 
             self._stats.misses += 1
             try:
@@ -157,17 +157,20 @@ class RatesService:
                 # surfaces to the caller.
                 stale = self._stale.get(pair)
                 if stale is None:
-                    raise RateUnavailableError(
-                        f"upstream unavailable for {pair} and no stale copy"
-                    ) from exc
+                    return Err(
+                        RateUnavailableError(
+                            f"upstream unavailable for {pair} "
+                            "and no stale copy"
+                        )
+                    )
                 self._stats.stale_served += 1
                 logger.warning("stale_served", pair=pair, reason=str(exc))
-                return replace(stale, source="stale")
+                return Ok(replace(stale, source="stale"))
 
             self._stats.upstream_calls += 1
             self._stale[pair] = quote
             await self._cache_set(key, quote)
-            return quote
+            return Ok(quote)
 
     def _as_cache_hit(self, quote: RateQuote) -> RateQuote:
         """Re-stamp a stored quote with its serve-time provenance.

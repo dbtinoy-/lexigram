@@ -20,7 +20,7 @@ from lexigram.app import Application
 from lexigram.logging import get_logger
 from rates.module import RatesModule
 from rates.provider import FaultController, Scenario
-from rates.service import RatesService
+from rates.services.rates_service import RatesService
 
 logger = get_logger(__name__)
 
@@ -52,9 +52,14 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-async def _fetch_and_print(service: RatesService, pair: str) -> None:
-    quote = await service.fetch(pair)
+async def _fetch_and_print(service: RatesService, pair: str) -> int:
+    result = await service.fetch(pair)
+    if result.is_err():
+        print(f"unavailable: {result.unwrap_err()}")
+        return 1
+    quote = result.unwrap()
     print(f"{quote.pair}\t{quote.rate}\tsource={quote.source}")
+    return 0
 
 
 async def _serve(port: int) -> None:
@@ -93,9 +98,10 @@ async def _run(args: argparse.Namespace) -> None:
             print("cache cleared")
         elif args.command == "stampede":
             await service.clear_cache()
-            quotes = await asyncio.gather(
+            results = await asyncio.gather(
                 *(service.fetch(args.pair) for _ in range(args.workers))
             )
+            quotes = [r.unwrap() for r in results if r.is_ok()]
             unique = {q.rate for q in quotes}
             s = service.stats()
             print(
@@ -135,23 +141,30 @@ async def _demo(service: RatesService, faults: FaultController) -> None:
     await service.clear_cache()  # simulate TTL expiry so reads reach the breaker
     for _ in range(3):
         try:
-            await service.fetch("EUR/USD")
+            (await service.fetch("EUR/USD")).unwrap()
         except Exception as exc:  # noqa: BLE001 — narration of terminal outcome
             print(f"upstream exhausted: {type(exc).__name__}")
-    stale = await service.fetch("EUR/USD")
+    stale_result = await service.fetch("EUR/USD")
+    if stale_result.is_err():
+        # No stale tier exists yet — the outage surfaces to the caller.
+        print(f"unavailable: {stale_result.unwrap_err()}")
+        faults.set(Scenario.HEALTHY)
+        return
+    stale = stale_result.unwrap()
     print(f"{stale.pair}\t{stale.rate}\tsource={stale.source}")
 
     _banner(4, "heal — HALF_OPEN probe closes the circuit")
     faults.set(Scenario.HEALTHY)
     await service.clear_cache()  # fresh read must probe the recovering circuit
     await asyncio.sleep(0.25)  # past the 0.2s recovery window
-    healed = await service.fetch("EUR/USD")
+    healed = (await service.fetch("EUR/USD")).unwrap()
     print(f"circuit CLOSED after HALF_OPEN probe; source={healed.source}")
 
     _banner(5, "stampede — single-flight collapses 10 into 1")
     await service.clear_cache()
     service.reset_stats()
-    quotes = await asyncio.gather(*(service.fetch("USD/JPY") for _ in range(10)))
+    results = await asyncio.gather(*(service.fetch("USD/JPY") for _ in range(10)))
+    quotes = [r.unwrap() for r in results if r.is_ok()]
     print(f"distinct rates seen: {len({q.rate for q in quotes})}")
     print(f"upstream calls: {service.stats().upstream_calls}")
     print("single-flight: 10 waiters, 1 leader")
