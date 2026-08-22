@@ -130,7 +130,6 @@ packages/lexigram-sql/src/lexigram/sql/backends/sqlite.py
 packages/lexigram-sql/src/lexigram/sql/backup/backup_manager.py
 packages/lexigram-sql/src/lexigram/sql/di/provider.py
 packages/lexigram-sql/src/lexigram/sql/migrations/generator.py
-packages/lexigram-sql/src/lexigram/sql/migrations/manager.py
 packages/lexigram-sql/src/lexigram/sql/schema/model.py
 packages/lexigram-sql/src/lexigram/sql/unit_of_work/simple.py
 packages/lexigram-sql/tests/integration/test_monitoring.py
