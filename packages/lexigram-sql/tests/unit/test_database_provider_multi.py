@@ -42,7 +42,7 @@ async def test_multi_backend_registers_named_singletons() -> None:
     provider = DatabaseProvider(config=config)
     container = Container()
 
-    with patch("lexigram.sql.di.provider.DatabaseService") as MockDbService:
+    with patch("lexigram.sql.di._registration.DatabaseService") as MockDbService:
         mock_primary = MagicMock()
         mock_maps = MagicMock()
         MockDbService.side_effect = [mock_primary, mock_maps]
@@ -60,7 +60,7 @@ async def test_multi_backend_primary_registers_unnamed() -> None:
     provider = DatabaseProvider(config=config)
     container = Container()
 
-    with patch("lexigram.sql.di.provider.DatabaseService") as MockDbService:
+    with patch("lexigram.sql.di._registration.DatabaseService") as MockDbService:
         mock_primary = MagicMock()
         mock_maps = MagicMock()
         MockDbService.side_effect = [mock_primary, mock_maps]
@@ -79,7 +79,7 @@ async def test_single_db_mode_unchanged() -> None:
     provider = DatabaseProvider(config=config)
     container = Container()
 
-    with patch("lexigram.sql.di.provider.DatabaseService") as MockDbService:
+    with patch("lexigram.sql.di._registration.DatabaseService") as MockDbService:
         MockDbService.return_value = MagicMock()
         await provider.register(container)
 
@@ -96,7 +96,7 @@ async def test_multi_backend_boot_connects_all_parallel() -> None:
     provider = DatabaseProvider(config=config)
     container = Container()
 
-    with patch("lexigram.sql.di.provider.DatabaseService") as MockDbService:
+    with patch("lexigram.sql.di._registration.DatabaseService") as MockDbService:
         mock_primary = MagicMock()
         mock_primary.boot = AsyncMock()
         mock_maps = MagicMock()
@@ -124,7 +124,7 @@ async def test_multi_backend_health_check_returns_worst_status() -> None:
     provider = DatabaseProvider(config=config)
     container = Container()
 
-    with patch("lexigram.sql.di.provider.DatabaseService") as MockDbService:
+    with patch("lexigram.sql.di._registration.DatabaseService") as MockDbService:
         mock_primary = MagicMock()
         mock_primary.health_check = AsyncMock(
             return_value=HealthCheckResult(component="primary", status=HealthStatus.HEALTHY)
