@@ -77,6 +77,9 @@ class _JWTCreationMixin:
             "roles": user.roles,
             "permissions": user.permissions,
             "type": "access",
+            # Audience minted only when required_audience is configured,
+            # keeping default deployments byte-compatible.
+            **({"aud": self._required_audience} if self._required_audience else {}),
             "jti": self._ids.generate_for("Token")
             if self._ids
             else secrets.token_urlsafe(16),
@@ -115,6 +118,9 @@ class _JWTCreationMixin:
         payload = {
             "sub": user.user_id,
             "type": "refresh",
+            # Audience minted only when required_audience is configured,
+            # keeping default deployments byte-compatible.
+            **({"aud": self._required_audience} if self._required_audience else {}),
             "jti": self._ids.generate_for("Token")
             if self._ids
             else secrets.token_urlsafe(16),
