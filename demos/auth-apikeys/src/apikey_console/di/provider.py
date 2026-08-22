@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from typing import cast
+
 from apikey_console.controllers.api import KeysApiController
 from apikey_console.repository.keys_repository import InMemoryAPIKeyRepository
 from apikey_console.repository.session_repository import InMemorySessionRepository
@@ -11,7 +14,7 @@ from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.config import AuthConfig, JWTConfig
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.contracts.auth import APIKeyRepositoryProtocol
+from lexigram.contracts.auth import APIKeyRepositoryProtocol, AuthenticatedUserProtocol
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
@@ -50,10 +53,6 @@ class ApiKeysProvider(Provider):
         self._session_repository = InMemorySessionRepository()
         self._keys_repository = InMemoryAPIKeyRepository()
 
-    def _get(self, kind: str) -> Any:
-        """Return a boot-assembled collaborator (None before boot)."""
-        return getattr(self, kind)
-
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind builders; collaborators resolve lazily via the container."""
         container.singleton(
@@ -69,9 +68,6 @@ class ApiKeysProvider(Provider):
         container.singleton(APIKeyManager, factory=self._build_key_manager)
         container.singleton(KeysApiController, factory=self._build_api)
         container.singleton(PagesController, instance=PagesController())
-
-    def _get(self, kind: str) -> Any:
-        return getattr(self, kind)
 
     async def _build_user_service(
         self, resolver: ContainerResolverProtocol
@@ -91,7 +87,10 @@ class ApiKeysProvider(Provider):
         repository = await resolver.resolve(SessionRepositoryProtocol)
         return SessionCookieBackend(
             session_repository=repository,
-            user_fetcher=user_service.get_user,
+            user_fetcher=cast(
+                "Callable[[str], Awaitable[AuthenticatedUserProtocol | None]]",
+                user_service.get_user,
+            ),
             secure=False,  # local demo runs plain http
         )
 
@@ -104,10 +103,12 @@ class ApiKeysProvider(Provider):
     async def _build_api(
         self, resolver: ContainerResolverProtocol
     ) -> KeysApiController:
-        users = await resolver.resolve(UserService)
+        authentication = await resolver.resolve(AuthenticationService)
         cookies = await resolver.resolve(SessionCookieBackend)
         manager = await resolver.resolve(APIKeyManager)
-        return KeysApiController(users=users, cookies=cookies, manager=manager)
+        return KeysApiController(
+            authentication=authentication, cookies=cookies, manager=manager
+        )
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Seed the demo account. AuthConfig.users is inert today."""

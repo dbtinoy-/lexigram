@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from typing import cast
+
 from auth_web.controllers.api import AuthApiController
 from auth_web.repository import InMemorySessionRepository
 from auth_web.services.password_change import PasswordChangeService
@@ -12,6 +15,7 @@ from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.config import AuthConfig, JWTConfig
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.contracts.auth import AuthenticatedUserProtocol
 from lexigram.contracts.auth.protocols import PasswordHasherProtocol
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
@@ -91,7 +95,10 @@ class AuthWebProvider(Provider):
     ) -> SessionCookieBackend:
         return SessionCookieBackend(
             session_repository=(await resolver.resolve(InMemorySessionRepository)),
-            user_fetcher=(await resolver.resolve(UserService)).get_user,
+            user_fetcher=cast(
+                "Callable[[str], Awaitable[AuthenticatedUserProtocol | None]]",
+                (await resolver.resolve(UserService)).get_user,
+            ),
             secure=False,  # local demo runs plain http
         )
 

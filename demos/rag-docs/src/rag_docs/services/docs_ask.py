@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+from typing import cast
 
 from lexigram.ai.rag.retrieval.strategies.mmr import MMRRetrievalStrategy
 from lexigram.ai.rag.retrieval.strategies.vector import VectorRetrievalStrategy
@@ -12,7 +13,11 @@ from lexigram.contracts.ai.rag import (
     RetrievalStrategyProtocol,
     SynthesizerProtocol,
 )
-from lexigram.contracts.ai.vector import Document, RAGSearchResult
+from lexigram.contracts.ai.vector import (
+    Document,
+    RAGSearchResult,
+    SearchResultProtocol,
+)
 from lexigram.contracts.data.vector.protocols import VectorCollectionProtocol
 from lexigram.contracts.data.vector.types import SearchQuery, SearchResult
 from lexigram.logging import get_logger
@@ -143,7 +148,9 @@ class DocsAskService:
 
         hits = [_to_rag_result(result) for result in results]
         candidates = await self._strategies[strategy].retrieve(
-            query, hits, top_k=_TOP_K_CANDIDATES
+            query,
+            cast("list[SearchResultProtocol]", hits),
+            top_k=_TOP_K_CANDIDATES,
         )
         synthesis = await self._synthesizer.synthesize(query, candidates)
         if synthesis.is_err():

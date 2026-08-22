@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from auth_web.repository import InMemorySessionRepository
 from auth_web.services.password_change import PasswordChangeService
 from starlette.requests import Request
@@ -9,6 +11,7 @@ from starlette.requests import Request
 from lexigram.auth.authn.schemas.requests import RegisterRequest
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authz.service import AuthorizationService
+from lexigram.auth.models.user import User
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
@@ -122,7 +125,7 @@ class AuthApiController(Controller):
         if user is None:
             return _error("not authenticated", 401)
 
-        token = self._authentication.create_token(user)
+        token = self._authentication.create_token(cast("User", user))
         verified = await self._authentication.verify_token(token.token)
         if verified.is_err():
             return _error(str(verified.unwrap_err()), 500)

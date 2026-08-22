@@ -15,7 +15,6 @@ from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
-from lexigram.web.routing.result_bridge import ResultResponseMapper
 from support_agent.repository.scenarios import SCENARIOS
 from support_agent.repository.scripted_llm import ScriptedLLM
 from support_agent.services.support_service import (
@@ -23,8 +22,8 @@ from support_agent.services.support_service import (
     build_support_agent,
 )
 
-# Agent failures are infrastructure-level (scripted boundary misuse).
-ResultResponseMapper.register(AgentError, 500)
+# AgentError is not a DomainError, so the result bridge maps it to 500
+# (server fault) by default — no per-app registration needed.
 
 
 async def _body(request: Request) -> dict[str, Any]:

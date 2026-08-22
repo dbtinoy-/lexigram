@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from typing import cast
+
 from rbac_console.articles import ArticleStore
 from rbac_console.controllers.api import RbacApiController
 from rbac_console.personas import PersonaDirectory
@@ -15,6 +18,7 @@ from rbac_console.seed import (
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.contracts.auth import AuthenticatedUserProtocol
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
@@ -73,7 +77,10 @@ class RbacProvider(Provider):
     ) -> SessionCookieBackend:
         return SessionCookieBackend(
             session_repository=(await resolver.resolve(InMemorySessionRepository)),
-            user_fetcher=(await resolver.resolve(UserService)).get_user,
+            user_fetcher=cast(
+                "Callable[[str], Awaitable[AuthenticatedUserProtocol | None]]",
+                (await resolver.resolve(UserService)).get_user,
+            ),
             secure=False,  # local demo runs plain http
         )
 

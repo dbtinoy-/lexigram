@@ -29,7 +29,7 @@ class ConciergeApiController(Controller):
         self._concierge = concierge
 
     @post("/api/chat")
-    async def chat(self, request: Request) -> Result[dict, Exception]:
+    async def chat(self, request: Request) -> Result[dict, ValidationError]:
         """One conversational turn for an owner."""
         data = await _body(request)
         owner = str(data.get("owner", "")).strip()

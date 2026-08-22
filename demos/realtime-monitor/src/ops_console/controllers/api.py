@@ -57,17 +57,17 @@ class ConsoleController(Controller):
         self.sse = sse
 
     @get("/api/events/stream")
-    async def stream(self, request: Request | None = None) -> Any:
+    async def stream(self, request: Request) -> Any:
         return await self.sse.handle(request)
 
     @get("/api/stats")
-    async def stats(self, request: Request | None = None) -> dict[str, Any]:
+    async def stats(self, request: Request) -> dict[str, Any]:
         """Return live subscriber and history counts for the dashboard chips."""
         stats = self.events.stats()
         return {"subscribers": stats.subscribers, "history": stats.events}
 
     @post("/api/events")
-    async def publish_event(self, request: Request | None = None) -> dict[str, Any]:
+    async def publish_event(self, request: Request) -> dict[str, Any]:
         body = json_loads(await request.body())
         event = SystemEvent(
             kind="manual",

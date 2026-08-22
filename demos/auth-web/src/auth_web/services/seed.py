@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
+from lexigram.contracts.auth.roles import RoleDefinition
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -15,7 +18,7 @@ DEMO_PASSWORD = "Demo-Password-1"
 # (the authorization sub-provider never reads it), so these are pushed into
 # AuthorizationService.set_roles() here.
 # TODO(framework): consume AuthConfig.users/roles so demos stop hand-seeding.
-ROLE_DEFINITIONS: dict[str, dict[str, object]] = {
+ROLE_DEFINITIONS: dict[str, dict[str, Any]] = {
     "viewer": {"name": "viewer", "permissions": ["profile:read"]},
     "editor": {
         "name": "editor",
@@ -43,7 +46,9 @@ class DemoSeedService:
         )
         if seeded.is_err():
             logger.info("seed_user_present", email=DEMO_EMAIL)
-        self._authz.set_roles(ROLE_DEFINITIONS)
+        self._authz.set_roles(
+            cast("dict[str, RoleDefinition | dict[str, Any]]", ROLE_DEFINITIONS)
+        )
 
 
 __all__ = ["DEMO_EMAIL", "DEMO_PASSWORD", "ROLE_DEFINITIONS", "DemoSeedService"]

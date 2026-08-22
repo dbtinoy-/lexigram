@@ -70,6 +70,8 @@ class RbacApiController(Controller):
             return _error(f"unknown persona {persona!r}", 400)
 
         user = self._personas.get(persona)
+        if user is None:
+            return _error(f"unknown persona {persona!r}", 404)
         response = JSONResponse(
             {"ok": True, "persona": persona, "roles": list(user.roles)}
         )

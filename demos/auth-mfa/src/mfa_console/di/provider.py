@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from typing import cast
+
 from mfa_console.controllers.api import MfaApiController
 from mfa_console.repository.session_repository import InMemorySessionRepository
 from mfa_console.ui.pages import PagesController
@@ -11,6 +14,7 @@ from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.config import AuthConfig, JWTConfig
 from lexigram.auth.mfa.manager import MFAManager
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.contracts.auth import AuthenticatedUserProtocol
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
 from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
@@ -92,7 +96,10 @@ class MfaProvider(Provider):
         user_service = await resolver.resolve(UserService)
         return SessionCookieBackend(
             session_repository=repository,
-            user_fetcher=user_service.get_user,
+            user_fetcher=cast(
+                "Callable[[str], Awaitable[AuthenticatedUserProtocol | None]]",
+                user_service.get_user,
+            ),
             secure=False,  # local demo runs plain http
         )
 

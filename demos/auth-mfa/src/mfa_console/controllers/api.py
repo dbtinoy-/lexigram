@@ -154,7 +154,7 @@ class MfaApiController(Controller):
         user = await self._cookies.authenticate(request)
         if user is None:
             return _error("not authenticated", 401)
-        profile_mfa = (user.profile or {}).get("mfa") or {}
+        profile_mfa = (getattr(user, "profile", None) or {}).get("mfa") or {}
         remaining = len(profile_mfa.get("backup_codes") or [])
         return JSONResponse(
             {"enabled": _mfa_enabled(user), "backup_codes_left": remaining}

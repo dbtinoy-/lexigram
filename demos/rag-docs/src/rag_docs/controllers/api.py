@@ -15,11 +15,12 @@ from typing import Any
 from starlette.requests import Request
 
 from lexigram.contracts.exceptions.domain import ValidationError
-from lexigram.result import Err, Result
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 from lexigram.web.routing.result_bridge import ResultResponseMapper
 from rag_docs.errors import (
+    DocsAskError,
     NoResultsError,
     SynthesisFailedError,
     UnknownStrategyError,
@@ -47,7 +48,7 @@ class DocsAskApiController(Controller):
     async def ask(
         self,
         request: Request,
-    ) -> Result[dict[str, Any], Exception]:
+    ) -> Result[dict[str, Any], DocsAskError | ValidationError]:
         """Answer a natural-language question with citations."""
         body = json_loads(await request.body())
         question = str(body.get("question") or "").strip()
@@ -55,9 +56,12 @@ class DocsAskApiController(Controller):
             return Err(ValidationError("question is required"))
         strategy = str(body.get("strategy") or "vector")
 
-        result = await self.service.ask(question, strategy=strategy)
-        return result.map_sync(
-            lambda answer: {
+        inner = await self.service.ask(question, strategy=strategy)
+        if inner.is_err():
+            return Err(inner.unwrap_err())
+        answer = inner.unwrap()
+        return Ok(
+            {
                 "answer": answer.answer,
                 "citations": list(answer.citations),
             },

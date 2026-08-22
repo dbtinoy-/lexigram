@@ -8,7 +8,7 @@ from lexigram.auth.exceptions import (
     PasswordPolicyError,
 )
 from lexigram.auth.models.user import UserCredentials
-from lexigram.contracts.auth import UserStoreProtocol
+from lexigram.auth.storage.token_store import UserStoreProtocol
 from lexigram.contracts.auth.protocols import PasswordPolicyProtocol
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result

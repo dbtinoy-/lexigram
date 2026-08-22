@@ -27,6 +27,9 @@ def _tokenize(text: str) -> set[str]:
     return {_stem(token) for token in _TOKEN_RE.findall(text.lower())}
 
 
+from lexigram.contracts.core.health import HealthCheckResult
+
+
 class HashingEmbedder(EmbeddingClientProtocol):
     """Signed BLAKE2b feature-hashing embedder with corpus-fitted IDF.
 
@@ -108,6 +111,13 @@ class HashingEmbedder(EmbeddingClientProtocol):
             One L2-normalized vector per input text.
         """
         return [self._embed_one(text) for text in texts]
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Deterministic embedder: always healthy."""
+        return HealthCheckResult(component="hashing-embedder")
+
+    async def close(self) -> None:
+        """Nothing to release."""
 
 
 EMBEDDING_DIMENSION = _EMBEDDING_DIMENSION

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
+from lexigram.contracts.auth.roles import RoleDefinition
 from lexigram.logging import get_logger
 from rbac_console.articles import ArticleStore
 from rbac_console.personas import PERSONAS, PersonaDirectory
@@ -16,7 +19,7 @@ PERSONA_PASSWORD = "Demo-Password-1"
 # so these go into AuthorizationService.set_roles() here. The grammar is
 # `resource.action` with bidirectional `*` wildcards.
 # TODO(framework): consume AuthConfig.roles so demos stop hand-seeding.
-ROLE_DEFINITIONS: dict[str, dict[str, object]] = {
+ROLE_DEFINITIONS: dict[str, dict[str, Any]] = {
     "viewer": {"name": "viewer", "permissions": ["articles.view"]},
     "editor": {
         "name": "editor",
@@ -56,7 +59,9 @@ class RbacSeedService:
             else:
                 self._personas.register(persona, created.unwrap())
 
-        self._authz.set_roles(ROLE_DEFINITIONS)
+        self._authz.set_roles(
+            cast("dict[str, RoleDefinition | dict[str, Any]]", ROLE_DEFINITIONS)
+        )
 
         self._articles.create("Welcome", "Articles are guarded by RBAC patterns.")
         self._articles.create("Second", "Try creating one as different personas.")
