@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from dataclasses import dataclass
-from typing import Any, Protocol, runtime_checkable
+from datetime import datetime
+from typing import Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
