@@ -22,7 +22,7 @@ from rag_docs.errors import (
     SynthesisFailedError,
     UnknownStrategyError,
 )
-from rag_docs.index_builder import IndexStats
+from rag_docs.repository.index_builder import IndexStats
 
 CITATION_PATTERN = re.compile(r"^(?P<source>.+)#(?P<index>\d+)$")
 

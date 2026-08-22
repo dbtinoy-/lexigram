@@ -22,7 +22,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from lexigram.web import Controller, get, post
-from rates.provider import FaultController, Scenario
+from rates.repository.simulated_upstream import FaultController, Scenario
 from rates.services.rates_service import RatesService
 
 

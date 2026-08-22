@@ -9,7 +9,7 @@ import pytest
 
 from rates.domain import RateQuote
 from rates.exceptions import UpstreamTimeoutError, UpstreamUnavailableError
-from rates.provider import FaultController, Scenario, SimulatedRatesProvider
+from rates.repository.simulated_upstream import FaultController, Scenario, SimulatedRatesProvider
 
 
 def make_provider(scenario: Scenario, seed: int = 7) -> SimulatedRatesProvider:

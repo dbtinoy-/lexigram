@@ -14,7 +14,7 @@ from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
 from rates.controllers.api import RatesApiController
 from rates.di.provider import RatesProvider
-from rates.provider import FaultController, SimulatedRatesProvider
+from rates.repository.simulated_upstream import FaultController, SimulatedRatesProvider
 from rates.services.rates_service import RatesService
 
 

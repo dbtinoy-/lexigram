@@ -14,13 +14,13 @@ from lexigram.ai.rag.synthesis.synthesizers.extractive import (
 from lexigram.contracts.ai.exceptions import RAGError
 from lexigram.result import Err
 
-from rag_docs.embedder import HashingEmbedder
+from rag_docs.repository.embedder import HashingEmbedder
 from rag_docs.errors import (
     NoResultsError,
     SynthesisFailedError,
     UnknownStrategyError,
 )
-from rag_docs.index_builder import build_docs_store
+from rag_docs.repository.index_builder import build_docs_store
 from rag_docs.services.docs_ask import CITATION_PATTERN, STRATEGIES, DocsAskService
 
 QUESTION = "how do modules export services?"

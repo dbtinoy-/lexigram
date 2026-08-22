@@ -7,8 +7,8 @@ from pathlib import Path
 from lexigram.contracts.data.vector.types import SearchQuery
 from lexigram.vector.backends.memory import MemoryVectorStore
 
-from rag_docs.embedder import EMBEDDING_DIMENSION, HashingEmbedder
-from rag_docs.index_builder import (
+from rag_docs.repository.embedder import EMBEDDING_DIMENSION, HashingEmbedder
+from rag_docs.repository.index_builder import (
     CORPUS_COLLECTION_NAME,
     IndexStats,
     build_docs_store,

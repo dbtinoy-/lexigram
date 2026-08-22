@@ -8,7 +8,7 @@ from pathlib import Path
 from lexigram.ai.rag.loaders.core import MarkdownLoader
 from lexigram.contracts.data.vector.types import CollectionConfig, VectorRecord
 from lexigram.vector.backends.memory import MemoryVectorCollection, MemoryVectorStore
-from rag_docs.embedder import EMBEDDING_DIMENSION, HashingEmbedder
+from rag_docs.repository.embedder import EMBEDDING_DIMENSION, HashingEmbedder
 
 CORPUS_COLLECTION_NAME = "lexigram_docs"
 

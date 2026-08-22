@@ -25,7 +25,7 @@ from rates.exceptions import (
     UpstreamTimeoutError,
     UpstreamUnavailableError,
 )
-from rates.provider import FaultController, SimulatedRatesProvider
+from rates.repository.simulated_upstream import FaultController, SimulatedRatesProvider
 
 logger = get_logger(__name__)
 

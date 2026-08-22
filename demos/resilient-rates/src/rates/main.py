@@ -19,7 +19,7 @@ import sys
 from lexigram.app import Application
 from lexigram.logging import get_logger
 from rates.module import RatesModule
-from rates.provider import FaultController, Scenario
+from rates.repository.simulated_upstream import FaultController, Scenario
 from rates.services.rates_service import RatesService
 
 logger = get_logger(__name__)

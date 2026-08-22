@@ -17,7 +17,7 @@ from lexigram.contracts.infra.resilience.models import (
 from lexigram.resilience.pipeline.executor import ResiliencePipeline
 
 from rates.exceptions import RateUnavailableError
-from rates.provider import FaultController, Scenario, SimulatedRatesProvider
+from rates.repository.simulated_upstream import FaultController, Scenario, SimulatedRatesProvider
 from rates.services.rates_service import RatesService
 
 

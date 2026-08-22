@@ -13,8 +13,8 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.di.provider import Provider
 from rag_docs.controllers.api import DocsAskApiController
-from rag_docs.embedder import HashingEmbedder
-from rag_docs.index_builder import build_docs_store
+from rag_docs.repository.embedder import HashingEmbedder
+from rag_docs.repository.index_builder import build_docs_store
 from rag_docs.services.docs_ask import STRATEGIES, DocsAskService
 
 

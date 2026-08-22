@@ -8,7 +8,7 @@ import pytest
 
 from lexigram.contracts.ai.llm import EmbeddingClientProtocol
 
-from rag_docs.embedder import EMBEDDING_DIMENSION, HashingEmbedder
+from rag_docs.repository.embedder import EMBEDDING_DIMENSION, HashingEmbedder
 
 
 async def test_implements_embedding_client_protocol() -> None:

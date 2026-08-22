@@ -12,7 +12,7 @@ from lexigram.contracts.infra.resilience.protocols import (
 )
 from lexigram.di.provider import Provider
 from rates.controllers.api import RatesApiController
-from rates.provider import FaultController, SimulatedRatesProvider
+from rates.repository.simulated_upstream import FaultController, SimulatedRatesProvider
 from rates.services.rates_service import RatesService
 
 
