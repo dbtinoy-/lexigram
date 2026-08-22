@@ -205,7 +205,8 @@ class TransactionManager(ABC):
         Yields:
             Nothing — the context manager manages the savepoint lifecycle.
         """
-        sp_name = f"sp_{(name or (self._id_generator.generate()[:12] if self._id_generator else uuid.uuid4().hex[:12]))}"
+        base_name = name or (self._id_generator.generate()[:12] if self._id_generator else uuid.uuid4().hex[:12])
+        sp_name = f"sp_{validate_identifier(base_name)}"
 
         if (
             self._in_transaction_var.get()

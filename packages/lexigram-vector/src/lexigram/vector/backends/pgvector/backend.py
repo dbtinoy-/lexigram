@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lexigram.contracts.data.identifiers import validate_identifier
 from lexigram.contracts.data.vector import (
     CollectionConfig,
     CollectionInfo,
@@ -82,6 +83,8 @@ class PgVectorStore(BaseVectorStore):
         ops = self._get_operator_class(config.distance_metric)
         index_type = "hnsw" if config.index_type == IndexType.HNSW else "ivfflat"
 
+        index_name = validate_identifier(index_name)
+        table_name = validate_identifier(table_name)
         if index_type == "hnsw":
             # HNSW with configurable m and ef_construction
             m = config.hnsw_m or 16
@@ -106,7 +109,8 @@ class PgVectorStore(BaseVectorStore):
         )
 
     async def delete_collection(self, name: str) -> None:
-        await self._provider.execute(f'DROP TABLE IF EXISTS "{name}"')
+        safe_name = validate_identifier(name)
+        await self._provider.execute(f'DROP TABLE IF EXISTS "{safe_name}"')
 
     async def collection_exists(self, name: str) -> bool:
         return await self._provider.table_exists(name)

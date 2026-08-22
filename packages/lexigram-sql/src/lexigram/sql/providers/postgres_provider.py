@@ -16,6 +16,7 @@ try:
 except ImportError:
     asyncpg = None
 
+from lexigram.contracts.data.identifiers import validate_identifier
 from lexigram.logging import get_logger
 from lexigram.sql.exceptions import (
     CheckConstraintError,
@@ -75,7 +76,7 @@ class PostgresProvider(DatabaseDriver):
                 admin_conn = await asyncpg.connect(**admin_kwargs)
                 try:
                     # CREATE DATABASE cannot run in a transaction block
-                    await admin_conn.execute(f'CREATE DATABASE "{target_db}"')
+                    await admin_conn.execute(f'CREATE DATABASE "{validate_identifier(target_db)}"')
                     logger.info("Successfully created database '%s'", target_db)
                 finally:
                     await admin_conn.close()

@@ -362,6 +362,27 @@ def schema(name: str, *, dialect: SQLDialect = SQLDialect.POSTGRESQL) -> Schema:
     return Schema(name, dialect=dialect)
 
 
+def validate_identifier(name: str, *, dialect: SQLDialect = SQLDialect.POSTGRESQL) -> str:
+    """Validate *name* as a safe SQL identifier and return it.
+
+    Fail-closed guard for call sites that interpolate identifiers into raw
+    DDL/DML strings. Raises :class:`InvalidIdentifierError` on empty names,
+    invalid characters, or dialect length overflow.
+
+    Args:
+        name: The identifier to validate.
+        dialect: SQL dialect for length limits (default PostgreSQL).
+
+    Returns:
+        The validated name, unchanged.
+
+    Raises:
+        InvalidIdentifierError: On any validation failure.
+    """
+    Identifier(name=name, dialect=dialect)
+    return name
+
+
 __all__ = [
     "DEFAULT_MAX_IDENTIFIER_LENGTH",
     "MAX_IDENTIFIER_LENGTHS",
@@ -370,6 +391,7 @@ __all__ = [
     "QualifiedTable",
     "Schema",
     "Table",
+    "validate_identifier",
     "column",
     "schema",
     "table",
