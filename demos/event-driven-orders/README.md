@@ -12,6 +12,19 @@ staged into a minimal transactional **outbox** so nothing is lost between
 No database, broker, or external service is required — everything runs on the
 framework's in-memory buses.
 
+## REST API
+
+```bash
+uv run python -m orders serve           # :7074 (ORDERS_PORT)
+curl -X POST localhost:7074/orders -H 'content-type: application/json' \
+     -d '{"customer":"Alice","items":[{"sku":"SKU-1","qty":2,"unit_price":"9.99"}]}'
+curl -X POST localhost:7074/orders/<id>/pay -H 'content-type: application/json' \
+     -d '{"amount":"19.98"}'
+curl localhost:7074/orders              # read-model projection
+curl -X POST localhost:7074/outbox/flush
+```
+
+
 ## What it shows
 
 | Piece | Where | Lexigram API used |

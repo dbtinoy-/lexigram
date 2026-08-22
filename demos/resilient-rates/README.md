@@ -12,6 +12,16 @@ locks collapse concurrent misses into one upstream call.
 No network, broker, or external service is required — the upstream is a
 deterministic seeded random-walk provider whose faults you script live.
 
+## REST API
+
+```bash
+uv run python -m rates serve            # :7073 (RATES_PORT)
+curl localhost:7073/rates/EUR/USD       # quote via cache → pipeline → stale
+curl -X POST localhost:7073/scenario/down   # flip upstream health live
+curl localhost:7073/stats               # hits/misses/retries/stale
+```
+
+
 ## What it shows
 
 | Piece | Where | Lexigram API used |

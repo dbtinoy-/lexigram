@@ -9,6 +9,16 @@ embedded with a deterministic hashing embedder, stored in an in-memory vector
 collection, retrieved through pluggable strategies (`vector` or `mmr`), and
 synthesized into cited answers — no LLM, no network, fully deterministic.
 
+## REST API
+
+```bash
+uv run python -m rag_docs serve         # :7075 (RAGDOCS_PORT)
+curl -X POST localhost:7075/ask -H 'content-type: application/json' \
+     -d '{"question":"how do modules export services?"}'
+curl localhost:7075/stats               # corpus files/chunks
+```
+
+
 ## What it shows
 
 | Piece | Where | Lexigram API used |

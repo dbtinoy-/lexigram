@@ -10,6 +10,9 @@
 
 ### 🛡️ [resilient-rates](resilient-rates/) — resilience patterns end to end
 
+- 🌐 **REST API** — `GET /rates/{pair}`, `POST /scenario/{name}` live fault flips,
+  `GET /stats` counters (`uv run python -m rates serve`, :7073)
+
 An FX rate desk that survives a hostile upstream:
 
 - 💥 **Scriptable faults** — flip `healthy / flaky / down / slow` live via a
@@ -23,6 +26,9 @@ An FX rate desk that survives a hostile upstream:
 - 🖥️ **Five-act walkthrough** — `uv run python -m rates demo`
 
 ### 📦 [event-driven-orders](event-driven-orders/) — CQRS & event sourcing
+
+- 🌐 **REST API** — `POST /orders`, lifecycle commands, read-model queries,
+  outbox inspect/flush (`uv run python -m orders serve`, :7074)
 
 A full order lifecycle driven by messages:
 
@@ -57,6 +63,9 @@ LLM evaluation with science-grade determinism:
 - 📓 **Notebook included** — `reproducibility.ipynb` walks the contract
 
 ### 📚 [rag-docs](rag-docs/) — RAG over our own docs
+
+- 🌐 **REST API** — `POST /ask {question}` → cited answer,
+  `GET /stats` corpus stats (`uv run python -m rag_docs serve`, :7075)
 
 Retrieval-augmented answers from the framework's documentation:
 
@@ -146,6 +155,12 @@ Role-based access control with live `authorize()` verdicts:
 
 ```bash
 uv run python -m orders demo         # 📦 full order lifecycle in one process
+uv run python -m orders serve        # 📦 same lifecycle as a REST API (:7074)
+uv run python -m rates serve         # 🛡️ resilience desk as a REST API (:7073)
+curl -X POST localhost:7073/scenario/down   # …then watch retry/breaker react
+uv run python -m rag_docs serve      # 📚 cited answers over HTTP (:7075)
+curl -X POST localhost:7075/ask -H 'content-type: application/json' \
+     -d '{"question":"how do modules export services?"}'
 uv run python -m ops_console         # 📡 boot the realtime dashboard server
 uv run python -m rag_docs demo       # 📚 cited answers from our own docs
 uv run python demos/llm-experiment/run_experiment.py   # 🧪 seeded experiment + rerun
