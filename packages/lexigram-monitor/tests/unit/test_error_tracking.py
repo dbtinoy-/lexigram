@@ -13,6 +13,7 @@ from lexigram.monitor.error_tracking import (
     SentryErrorTracker,
     setup_error_tracking,
 )
+from lexigram.validation import SecretStr
 
 
 class TestSetupErrorTracking:
@@ -68,7 +69,10 @@ class TestSetupErrorTracking:
 
         config = MonitorConfig.from_yaml(tmp_path / "application.yaml")
 
-        assert config.error_tracking.dsn == "https://a@b/1"
+        dsn = config.error_tracking.dsn
+        assert (
+            dsn.get_secret_value() if hasattr(dsn, "get_secret_value") else dsn
+        ) == "https://a@b/1"
         assert config.error_tracking.environment == "staging"
 
 
@@ -80,7 +84,7 @@ class TestSentryErrorTracker:
 
         SentryErrorTracker(
             ErrorTrackingConfig(
-                dsn="https://a@b/1",
+                dsn=SecretStr("https://a@b/1"),
                 environment="production",
                 traces_sample_rate=0.5,
                 send_default_pii=True,

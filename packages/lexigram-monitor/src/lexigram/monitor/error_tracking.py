@@ -84,6 +84,7 @@ def _scrub_event(event: dict, hint: Any) -> dict:
     Walks ``request.headers`` / ``request.data`` / ``extra`` and masks any
     key containing a sensitive marker so credentials never leave the process.
     """
+
     def _walk(node: object) -> None:
         if isinstance(node, dict):
             for key in list(node):
@@ -116,8 +117,11 @@ class SentryErrorTracker:
         """
         self._config = config
         self._sentry = sentry
+        effective_dsn = dsn or config.dsn
+        if effective_dsn is not None and not isinstance(effective_dsn, str):
+            effective_dsn = effective_dsn.get_secret_value()
         sentry.init(
-            dsn=dsn or config.dsn,
+            dsn=effective_dsn,
             environment=config.environment,
             traces_sample_rate=config.traces_sample_rate,
             send_default_pii=config.send_default_pii,
@@ -154,7 +158,10 @@ def setup_error_tracking(config: ErrorTrackingConfig) -> ErrorTrackerProtocol:
         tracker = setup_error_tracking(MonitorConfig().error_tracking)
         ```
     """
-    dsn = config.dsn or os.getenv("SENTRY_DSN")
+    raw_dsn = config.dsn
+    if raw_dsn is not None and not isinstance(raw_dsn, str):
+        raw_dsn = raw_dsn.get_secret_value()
+    dsn = raw_dsn or os.getenv("SENTRY_DSN")
     if not dsn or not dsn.strip():
         return NullErrorTracker()
     try:

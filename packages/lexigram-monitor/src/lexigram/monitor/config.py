@@ -22,7 +22,7 @@ from typing import Any, ClassVar
 from lexigram.config import BaseConfig
 from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.monitor import constants as monitor_const
-from lexigram.validation import ConfigDict, Field, field_validator
+from lexigram.validation import ConfigDict, Field, SecretStr, field_validator
 
 
 class BackendType(StrEnum):
@@ -369,10 +369,18 @@ class ErrorTrackingConfig(BaseConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
 
-    dsn: str | None = Field(
+    dsn: SecretStr | None = Field(
         None,
         description="Sentry DSN; error tracking is a no-op when unset",
     )
+    @field_validator("dsn", mode="before")
+    @classmethod
+    def _coerce_dsn(cls, value: Any) -> Any:
+        """Accept plain strings from env/YAML; store as SecretStr."""
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
+
     environment: Any = Field(
         None,
         description="Environment tag for captured events",
