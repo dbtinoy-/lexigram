@@ -6,12 +6,14 @@ Usage::
     uv run python -m rag_docs ask "how do modules export services?"
     uv run python -m rag_docs ask --strategy mmr "how does routing work?"
     uv run python -m rag_docs demo
+    uv run python -m rag_docs serve       # REST API on :7075 (RAGDOCS_PORT)
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 from pathlib import Path
 import sys
 
@@ -50,6 +52,11 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_docs_dir(p_ask)
 
     p_demo = sub.add_parser("demo", help="canned questions across strategies")
+    p_serve = sub.add_parser(
+        "serve", help="serve the REST API (default :7075, RAGDOCS_PORT)"
+    )
+    p_serve.add_argument("--port", type=int, default=None)
+    _add_docs_dir(p_serve)
     _add_docs_dir(p_demo)
     return parser
 
@@ -71,7 +78,24 @@ async def _ask_once(service: DocsAskService, query: str, strategy: str) -> int:
     return 0
 
 
+async def _serve(port: int, docs_dir: Path | None) -> None:
+    from lexigram.web.di.provider import WebProvider
+    from lexigram.web.server.runner import run_server_async
+
+    async with Application.boot(
+        name="rag-docs",
+        modules=[DocsAskModule.configure(docs_dir=docs_dir, port=port)],
+    ) as app:
+        await app.container.resolve(DocsAskService)
+        web = await app.container.resolve(WebProvider)
+        await run_server_async(web.starlette, host="127.0.0.1", port=port)
+
+
 async def _run(args: argparse.Namespace) -> int:
+    if args.command == "serve":
+        port = args.port or int(os.environ.get("RAGDOCS_PORT", "7075"))
+        await _serve(port, _effective_docs_dir(args))
+        return 0
     async with Application.boot(
         name="rag-docs",
         modules=[DocsAskModule.configure(docs_dir=_effective_docs_dir(args))],
