@@ -58,8 +58,7 @@ class _CacheRegistrationMixin:
 
         # Register provider and protocol (no I/O)
         from lexigram.cache.di.provider import CacheProvider  # noqa: PLC0415 — breaks provider<->mixin cycle
-        container.singleton(CacheProvider, self)
-        from lexigram.contracts.infra.cache.protocols import CacheProviderProtocol
+        from lexigram.contracts.infra.cache.protocols import CacheProviderProtocol  # noqa: PLC0415
 
         container.singleton(CacheProviderProtocol, self)
 
