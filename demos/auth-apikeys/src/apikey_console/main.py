@@ -2,7 +2,7 @@
 
 Run::
 
-    uv run python -m apikey_console            # starts the web server on :8084
+    uv run python -m apikey_console            # starts the web server on :8091
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ async def _serve(port: int) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="API-keys console demo")
     parser.add_argument(
-        "--port", type=int, default=int(os.environ.get("APIKEYS_PORT", "8084"))
+        "--port", type=int, default=int(os.environ.get("APIKEYS_PORT", "8091"))
     )
     args = parser.parse_args()
     asyncio.run(_serve(args.port))

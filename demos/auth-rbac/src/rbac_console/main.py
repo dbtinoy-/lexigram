@@ -2,7 +2,7 @@
 
 Run::
 
-    uv run python -m rbac_console            # starts the web server on :8082
+    uv run python -m rbac_console            # starts the web server on :8090
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ async def _serve(port: int) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="RBAC console demo")
     parser.add_argument(
-        "--port", type=int, default=int(os.environ.get("RBAC_PORT", "8082"))
+        "--port", type=int, default=int(os.environ.get("RBAC_PORT", "8090"))
     )
     args = parser.parse_args()
     asyncio.run(_serve(args.port))

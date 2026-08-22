@@ -1,8 +1,9 @@
 # Demos
 
-> 🎯 **Seven runnable, fully-gated demo apps** — each one is a living tutorial
-> for Lexigram, built on the editable framework packages in this
-> repository.
+> 🎯 **Fourteen runnable, fully-gated demo apps** — each one is a living tutorial
+> for Lexigram, built on the editable framework packages in this repository:
+> nine capability demos plus five auth consoles, all offline-deterministic
+> and gated like the framework itself.
 
 ---
 
@@ -86,6 +87,7 @@ A support-desk agent driven by a scripted LLM:
 - 🎬 **Deterministic model boundary** — scripted completions, byte-stable reruns
 - 🖥️ **Browser console** — pick a scenario, ask, read the trace table
 - 💥 **Failure act included** — unknown tools degrade to failed tool-call records
+- 🚀 **Run** — `PYTHONPATH=demos/support-agent/src uv run python -m support_agent`
 
 ### 🧠 [memory-chat](memory-chat/) — conversational memory, zero LLM
 
@@ -95,6 +97,7 @@ A concierge that remembers what you tell it:
 - 👥 **Two-owner console** — alice's allergies never leak into bob's session
 - 🎬 **Demo replay** — scripted two-session transcript proves recall AND isolation
 - 🚫 **No model calls** — deterministic template responder keeps runs byte-stable
+- 🚀 **Run** — `PYTHONPATH=demos/memory-chat/src uv run python -m memory_chat`
 
 ### 🛡️ [ai-guardrails](ai-guardrails/) — guards + budgets, five acts live
 
@@ -104,6 +107,7 @@ One support-request pipeline, unprotected vs protected:
 - ⛔ **Restricted model denied** · 💸 **Budget exhausts after three paid turns**
 - 🔎 **Live audit trail** — MODEL_DENIED / BUDGET_EXCEEDED rows in the sidebar
 - 🎚️ **Protection toggle** — flip guards + governance off and watch the difference
+- 🚀 **Run** — `PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate`
 
 ### ✍️ [prompt-lab](prompt-lab/) — prompt authoring & A/B, zero LLM
 
@@ -113,6 +117,7 @@ Iterate on a support-reply prompt like a scientist:
 - 🕘 **Real versioning** — push revisions, inspect history, roll back live
 - 🎯 **Deterministic A/B** — criteria-scored over four seeded cases, byte-stable
 - 🖥️ **Lab console** — render previews at any revision side-by-side with scores
+- 🚀 **Run** — `PYTHONPATH=demos/prompt-lab/src uv run python -m prompt_lab`
 
 ### 🔁 [feedback-loop](feedback-loop/) — ratings become regression suites
 
@@ -175,17 +180,28 @@ API-key management UI plus an `X-API-Key`-guarded JSON endpoint:
 ## 🚀 Running them
 
 ```bash
-uv run python -m orders demo         # 📦 full order lifecycle in one process
-uv run python -m orders serve        # 📦 same lifecycle as a REST API (:7074)
-uv run python -m rates serve         # 🛡️ resilience desk as a REST API (:7073)
+# ── capability demos ──────────────────────────────────────────────
+uv run python -m rates serve          # 🛡️ resilience desk REST API (:7073)
+uv run python -m orders demo          # 📦 full CQRS order lifecycle (:7074 serve)
+uv run python -m orders serve         # 📦 same lifecycle as a REST API (:7074)
 curl -X POST localhost:7073/scenario/down   # …then watch retry/breaker react
-uv run python -m rag_docs serve      # 📚 cited answers over HTTP (:7075)
-curl -X POST localhost:7075/ask -H 'content-type: application/json' \
-     -d '{"question":"how do modules export services?"}'
-uv run python -m ops_console         # 📡 boot the realtime dashboard server
-uv run python -m rag_docs demo       # 📚 cited answers from our own docs
+PYTHONPATH=demos/support-agent/src uv run python -m support_agent   # 🤖 agent console (:8082)
+PYTHONPATH=demos/memory-chat/src uv run python -m memory_chat       # 🧠 memory chat (:8083)
+PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate      # 🛡️ guardrails playground (:8084)
+PYTHONPATH=demos/prompt-lab/src uv run python -m prompt_lab         # ✍️ prompt lab (:8085)
+PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop demo   # 🔁 ratings → regression loop
+uv run python -m rag_docs demo        # 📚 cited answers from our own docs
+uv run python -m rag_docs serve       # 📚 same corpus as an ask API (:7075)
+uv run python -m ops_console          # 📡 boot the realtime dashboard server
 uv run python demos/llm-experiment/run_experiment.py   # 🧪 seeded experiment + rerun
-make test-demos                      # ✅ every demo test suite
+
+# ── auth consoles ─────────────────────────────────────────────────
+uv run python -m auth_web             # 🔐 account lifecycle (:8081)
+uv run python -m rbac_console         # 👥 permission matrix (:8090)
+uv run python -m mfa_console          # 🔢 TOTP challenge (:8092)
+uv run python -m apikey_console       # 🗝️ machine auth keys (:8091)
+
+make test-demos                       # ✅ every demo test suite
 ```
 
 Each demo boots the real framework — real DI graph, real cache backend,

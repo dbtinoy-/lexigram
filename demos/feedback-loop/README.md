@@ -25,7 +25,8 @@ per-process; the `demo` subcommand plays the whole loop.
 
 ```bash
 PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop demo
-# subcommands: ask / rate / stats / regress / report / demo
+# subcommands: ask / rate / stats / regress / report / demo / serve
+PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop serve   # web console :8086
 ```
 
 ## Tests

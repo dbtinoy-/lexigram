@@ -21,7 +21,7 @@ class MfaModule(Module):
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
         selected_port = (
-            port if port is not None else int(os.environ.get("MFA_PORT", "8083"))
+            port if port is not None else int(os.environ.get("MFA_PORT", "8092"))
         )
         web_config = WebConfig(
             server=ServerConfig(host="127.0.0.1", port=selected_port),

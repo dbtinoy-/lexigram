@@ -2,7 +2,7 @@
 
 Run::
 
-    uv run python -m mfa_console            # starts the web server on :8083
+    uv run python -m mfa_console            # starts the web server on :8092
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ async def _serve(port: int) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="MFA console demo")
     parser.add_argument(
-        "--port", type=int, default=int(os.environ.get("MFA_PORT", "8083"))
+        "--port", type=int, default=int(os.environ.get("MFA_PORT", "8092"))
     )
     args = parser.parse_args()
     asyncio.run(_serve(args.port))

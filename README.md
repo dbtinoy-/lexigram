@@ -99,7 +99,7 @@ run_server(app, port=8000)
 
 → [Your First App](docs/getting-started/first-app.md) — the full walkthrough with DI, controllers, and `Result` types
 
-→ [Demos](demos/README.md) — 🛡️ resilience patterns, 📦 CQRS & event sourcing, 📡 realtime SSE dashboards, 🧪 reproducible LLM experiments — four runnable apps gated like the framework
+→ [Demos](demos/README.md) — 🤖 tool-calling agents, 🧠 conversational memory, 🛡️ guardrails & budgets, ✍️ prompt A/B labs, 🔁 feedback-to-regression loops, plus 🛡️ resilience, 📦 CQRS, 📡 realtime SSE, 🧪 reproducible LLM experiments and 🔐 auth consoles — fourteen runnable apps gated like the framework
 
 ## what's in the box
 

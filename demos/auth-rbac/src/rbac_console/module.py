@@ -36,7 +36,7 @@ class RbacModule(Module):
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
         selected_port = (
-            port if port is not None else int(os.environ.get("RBAC_PORT", "8082"))
+            port if port is not None else int(os.environ.get("RBAC_PORT", "8090"))
         )
         web_config = WebConfig(
             server=ServerConfig(host="127.0.0.1", port=selected_port),
