@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.ai.agents import tool
+from lexigram.primitives import Registry
 from support_agent.repository.fixtures import KB, ORDERS
 
 FULL_REFUND_DAYS = 7
@@ -48,14 +49,28 @@ async def search_kb(query: str) -> list[dict[str, str]]:
     return [entry for _, entry in scored[:2]]
 
 
-SUPPORT_TOOLS: list[Any] = [
-    tool(description="Look up an order by ID and return status, items, and total.")(
-        lookup_order,
-    ),
-    tool(description="Compute the refund amount for a delivered order.")(
-        calculate_refund,
-    ),
-    tool(description="Search the FAQ knowledge base for relevant snippets.")(
-        search_kb,
-    ),
-]
+def _build_tools() -> Registry[str, Any]:
+    """Framework Registry keyed by tool name."""
+    registry: Registry[str, Any] = Registry()
+    registry.register(
+        "lookup_order",
+        tool(description="Look up an order by ID and return status, items, and total.")(
+            lookup_order,
+        ),
+    )
+    registry.register(
+        "calculate_refund",
+        tool(description="Compute the refund amount for a delivered order.")(
+            calculate_refund,
+        ),
+    )
+    registry.register(
+        "search_kb",
+        tool(description="Search the FAQ knowledge base for relevant snippets.")(
+            search_kb,
+        ),
+    )
+    return registry
+
+
+SUPPORT_TOOLS: Registry[str, Any] = _build_tools()

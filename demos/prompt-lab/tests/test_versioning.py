@@ -27,7 +27,10 @@ class TestLabVersions:
     def test_get_revision_fetches_specific(self, versions) -> None:
         _rev, first = versions.get_revision("v2", 1)
         text = str(first.render(issue="x", tone="y"))
-        assert "even more warmth" not in text.lower()
+        assert "happy to help" in text.lower()  # base few-shot intact
+        entries = versions.history("v2")
+        assert "baseline" in entries[0]["metadata"]["note"]
+        assert "warmth" in entries[-1]["metadata"]["note"]
 
     def test_rollback_moves_pointer_back(self, versions) -> None:
         new_rev = versions.rollback("v2", steps=1)

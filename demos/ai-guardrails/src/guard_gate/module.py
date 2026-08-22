@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from guard_gate.controllers.api import GuardApiController
+from guard_gate.api import GuardApiController
 from guard_gate.di.provider import GuardrailsProvider
 from guard_gate.repository.acts import RESTRICTED_MODEL
 from guard_gate.services.guarded_assistant import GuardedAssistant

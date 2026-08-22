@@ -64,9 +64,10 @@ class TestSearchKb:
 
 
 def test_tool_surface() -> None:
-    assert {t.name for t in SUPPORT_TOOLS} == {
+    assert set(SUPPORT_TOOLS.keys()) == {
         "lookup_order",
         "calculate_refund",
         "search_kb",
     }
+    assert {t.name for t in SUPPORT_TOOLS.values()} == set(SUPPORT_TOOLS.keys())
     assert len(KB) >= 6

@@ -78,24 +78,15 @@ def _err_exit(result) -> int:
     return 0
 
 
-async def _boot_service(args: argparse.Namespace):
-    app_ctx = Application.boot(
+async def run(args: argparse.Namespace) -> int:
+    async with Application.boot(
         name="feedback-loop",
         modules=[FeedbackLoopModule.configure(experiment_dir=args.experiment_dir)],
-    )
-    app = await app_ctx.__aenter__()
-    service = await app.container.resolve(LoopService)
-    return app_ctx, service
-
-
-async def run(args: argparse.Namespace) -> int:
-    app_ctx, service = await _boot_service(args)
-    try:
+    ) as app:
+        service = await app.container.resolve(LoopService)
         if args.command == "demo":
             return await _demo(service)
         return await _single(service, args)
-    finally:
-        await app_ctx.__aexit__(None, None, None)
 
 
 async def _single(service: LoopService, args: argparse.Namespace) -> int:

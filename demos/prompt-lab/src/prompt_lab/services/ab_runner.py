@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from prompt_lab.repository.cases import CASES, CRITERIA
-
 from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.contracts.ai.evaluation import EvaluationDataset
 from lexigram.logging import get_logger
+from prompt_lab.repository.cases import CASES, CRITERIA
 
 logger = get_logger(__name__)
 

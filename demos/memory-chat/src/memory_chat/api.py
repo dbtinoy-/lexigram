@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from memory_chat.services.chat_service import ConciergeService
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
+from memory_chat.services.chat_service import ConciergeService
 
 
 def _error(message: str, status: int) -> JSONResponse:

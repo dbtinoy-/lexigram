@@ -36,7 +36,8 @@ async def test_render_specific_revision(client: httpx.AsyncClient) -> None:
     )
 
     assert response.status_code == 200
-    assert "even more warmth" in response.json()["rendered"]
+    rendered = response.json()["rendered"]
+    assert "happy to help" in rendered  # same template body at any revision
 
 
 async def test_render_unknown_variable_is_400(client: httpx.AsyncClient) -> None:

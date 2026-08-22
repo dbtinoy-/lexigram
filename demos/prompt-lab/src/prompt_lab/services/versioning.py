@@ -12,9 +12,7 @@ _STORE_KEY: dict[str, str] = {
     "v2": "support-v2",
 }
 
-_V2_WARMTH_NOTE = (
-    "Add one extra sentence of empathy before helping. (rev 3: even more warmth)"
-)
+REV2_WARMTH_NOTE = "even more warmth"
 
 
 class LabVersions:
@@ -24,12 +22,18 @@ class LabVersions:
         self._store = VersionedPromptStore(max_versions=max_versions)
 
     def seed(self, factories: dict[str, Any]) -> None:
-        """Push v1 rev1, v2 rev2 (empathy tweak) — v2 rev1 stays as base."""
+        """Push v1 rev1, v2 rev2 (warmth note in metadata) — rev1 stays."""
         self._store.push(_STORE_KEY["v1"], factories["v1"]())
-        self._store.push(_STORE_KEY["v2"], factories["v2"]())
-        warmed = factories["v2"]()
-        warmed._system = f"{warmed._system}\n{_V2_WARMTH_NOTE}"
-        self._store.push(_STORE_KEY["v2"], warmed)
+        self._store.push(
+            _STORE_KEY["v2"],
+            factories["v2"](),
+            metadata={"note": f"rev 2 baseline ({REV2_WARMTH_NOTE} pending)"},
+        )
+        self._store.push(
+            _STORE_KEY["v2"],
+            factories["v2"](),
+            metadata={"note": REV2_WARMTH_NOTE},
+        )
 
     def active(self, variant: str) -> tuple[int, AbstractPromptTemplate]:
         """Current revision number and template for a variant key."""

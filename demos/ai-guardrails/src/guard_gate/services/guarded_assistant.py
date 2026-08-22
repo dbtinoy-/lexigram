@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from guard_gate.repository.acts import PROVIDER
 from guard_gate.services.policy import PolicyToggle
-
 from lexigram.ai.governance.audit import AIAuditStore
 from lexigram.ai.governance.audit.models import AuditQuery
 from lexigram.contracts.ai.governance import AIGovernanceProtocol

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from support_agent.tools import SUPPORT_TOOLS
-
 from lexigram.ai.agents import AgentBuilder
 from lexigram.contracts.ai.agents import (
     AgentError,
@@ -13,6 +11,7 @@ from lexigram.contracts.ai.agents import (
 )
 from lexigram.logging import get_logger
 from lexigram.result import Result
+from support_agent.tools import SUPPORT_TOOLS
 
 logger = get_logger(__name__)
 
@@ -29,7 +28,7 @@ def build_support_agent() -> AgentProtocol:
     return (
         AgentBuilder("support-agent")
         .with_system_prompt(SYSTEM_PROMPT)
-        .with_tools(*SUPPORT_TOOLS)
+        .with_tools(*SUPPORT_TOOLS.values())
         .with_strategy("react")
         .build()
     )
