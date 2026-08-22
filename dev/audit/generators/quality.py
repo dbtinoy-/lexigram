@@ -251,11 +251,14 @@ def _run_mypy_tool(*, root: Path, package_paths: tuple[Path, ...]) -> dict[str, 
     for package_root in source_roots:
         package_name = package_root.name
         started_at = perf_counter()
-        mypy_command = ("uv", "run", "mypy", f"{package_name}/src/")
+        package_src = package_root.relative_to(root) / "src"
+        # Run from the package dir so its own [tool.mypy] config governs
+        # (matches `make type-pkg` / CI behaviour).
+        mypy_command = ("uv", "run", "mypy", "src")
         try:
             evidence = run_command(
                 mypy_command,
-                cwd=root,
+                cwd=package_root,
                 timeout=MYPY_TIMEOUT_PER_PACKAGE,
             )
         except OSError as exc:
