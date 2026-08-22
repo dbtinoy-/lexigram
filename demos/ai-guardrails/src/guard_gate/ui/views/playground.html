@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Guardrails Playground</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header><h1>Guardrails Playground</h1></header>
+  <main>
+    <section id="console">
+      <div class="row">
+        <label>Protection <input type="checkbox" id="policy-toggle" checked></label>
+      </div>
+      <div id="acts">
+        <button data-act="injection">Injection</button>
+        <button data-act="pii">PII</button>
+        <button data-act="length">Oversize</button>
+        <button data-act="model">Restricted model</button>
+        <button data-act="budget">Drain budget</button>
+      </div>
+      <form id="ask-form">
+        <input id="text" type="text" autocomplete="off"
+               placeholder="Try &quot;Email me at a@b.com about my order&quot;">
+        <select id="model">
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+          <option value="gpt-5-restricted">gpt-5-restricted</option>
+        </select>
+        <button type="submit">Ask</button>
+      </form>
+      <div id="outcomes"></div>
+      <p id="error" class="hidden"></p>
+    </section>
+    <aside>
+      <h2>Budget</h2>
+      <p id="state" class="muted"></p>
+      <h2>Audit trail</h2>
+      <table id="audit"><thead><tr><th>event</th><th>status</th><th>cost</th></tr></thead>
+        <tbody id="audit-body"></tbody></table>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

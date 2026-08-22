@@ -1,0 +1,23 @@
+/* Guardrails playground theme */
+:root { --bg:#141018; --panel:#201a28; --ink:#eee4f4; --ok:#7fd18b; --warn:#ffd166; --bad:#ff7a7a; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+header h1 { font-size:1.15rem; margin:.6rem 1rem; }
+main { display:flex; gap:1rem; padding:0 1rem 1rem; }
+#console { flex:1; background:var(--panel); border-radius:8px; padding:1rem; }
+aside { width:300px; background:var(--panel); border-radius:8px; padding:.75rem; }
+.row { display:flex; gap:.5rem; align-items:center; margin:.35rem 0; flex-wrap:wrap; }
+#acts button, #ask-form button { background:#2b2338; color:var(--ink); border:1px solid #46395c;
+  border-radius:6px; padding:.35rem .7rem; cursor:pointer; }
+#ask-form { display:flex; gap:.5rem; margin:.75rem 0; }
+#text { flex:1; padding:.45rem .6rem; border-radius:6px; border:1px solid #46395c;
+  background:#120e18; color:var(--ink); }
+.badge { padding:.1rem .5rem; border-radius:999px; font-size:.75rem; }
+.badge.ok { background:var(--ok); color:#0c1710; }
+.badge.redact { background:var(--warn); color:#241d05; }
+.badge.block { background:var(--bad); color:#2a0808; }
+.hidden { display:none; }
+.muted { color:#9b8fae; font-size:.85rem; }
+#error { color:var(--bad); }
+table { width:100%; font-size:.8rem; border-collapse:collapse; }
+th, td { text-align:left; padding:.25rem .4rem; border-bottom:1px solid #372c49; }
