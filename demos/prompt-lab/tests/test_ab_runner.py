@@ -19,12 +19,12 @@ def runner() -> ABRunner:
 
 class TestResponders:
     def test_v1_clipped_style(self) -> None:
-        out = RESPONDERS["v1"]("Where is my order?")
+        out = RESPONDERS.get("v1")("Where is my order?")
         assert out.startswith("Order issue noted.")
         assert "happy to help" not in out
 
     def test_v2_warm_style(self) -> None:
-        out = RESPONDERS["v2"]("Where is my order?")
+        out = RESPONDERS.get("v2")("Where is my order?")
         assert "happy to help" in out
 
 

@@ -11,7 +11,11 @@ from lexigram.contracts.ai.agents import (
     AgentProtocol,
     AgentResponse,
 )
+from lexigram.logging import get_logger
 from lexigram.result import Result
+
+logger = get_logger(__name__)
+
 
 SYSTEM_PROMPT = (
     "You are support-agent, a customer support assistant for an online "
@@ -47,4 +51,9 @@ class SupportAgent:
         )
         if result.is_ok():
             self.last_response = result.unwrap()
+            logger.info(
+                "agent_ask_complete",
+                tool_calls=self.last_response.tool_call_count,
+                tokens=self.last_response.total_tokens,
+            )
         return result

@@ -43,3 +43,18 @@ async def client(app: Starlette) -> AsyncIterator[httpx.AsyncClient]:
         transport=transport, base_url="http://testserver"
     ) as http:
         yield http
+
+
+from datetime import UTC, datetime
+
+from lexigram.primitives import clock
+from lexigram.testing.clock import FixedClock
+
+_TURN_EPOCH = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+@pytest.fixture(autouse=True)
+def _fixed_clock():
+    """Pin the ambient clock so entries stay byte-deterministic."""
+    with clock.use(FixedClock(_TURN_EPOCH)):
+        yield

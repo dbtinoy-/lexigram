@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 
 if TYPE_CHECKING:
@@ -21,6 +22,13 @@ class LabProvider(Provider):
     """Binds seeded versions and assembles the runner at boot."""
 
     name = "prompt-lab"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness with live counters."""
+        return HealthCheckResult(
+            component=self.name,
+            details={"variants_seeded": len(self._versions.history("v2"))},
+        )
 
     def __init__(self) -> None:
         super().__init__()

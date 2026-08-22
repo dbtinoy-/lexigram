@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
 
 from memory_chat.repository.memory_repository import MemoryRepository
 from memory_chat.services.extraction import extract_facts
 from memory_chat.services.responder import reply_for
 
 from lexigram.contracts.ai.memory import MemoryEntry
+from lexigram.logging import get_logger
+from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
-
-TURN_EPOCH = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 class EmptyMessageError(ValueError):
@@ -44,6 +43,9 @@ class DemoResult:
     isolation_ok: bool = False
 
 
+logger = get_logger(__name__)
+
+
 class ConciergeService:
     """Drives one turn through record → extract → recall → respond."""
 
@@ -72,6 +74,12 @@ class ConciergeService:
         facts = await self._repo.facts_for(owner)
         context_chars = await self._repo.context_chars(owner, cleaned)
         reply = reply_for(cleaned, facts)
+        logger.info(
+            "chat_turn_processed",
+            owner=owner,
+            cited=len(reply.cited),
+            context_chars=context_chars,
+        )
         return Ok(TurnResult(reply.text, list(reply.cited), context_chars))
 
     async def get_facts(self, owner: str) -> FactsSnapshot:
@@ -99,7 +107,7 @@ class ConciergeService:
         return DemoResult(transcript=transcript, isolation_ok=bob_clean)
 
     def _entry_for(self, owner: str, text: str) -> MemoryEntry:
-        """Deterministic entry: fabricated id/timestamp, no wall clock."""
+        """Build the entry; timestamp comes from the ambient clock."""
         n = self._turns.get(owner, 0)
         self._turns[owner] = n + 1
         has_facts = bool(extract_facts(owner, text))
@@ -108,6 +116,6 @@ class ConciergeService:
             owner_id=owner,
             content=text,
             role="user",
-            timestamp=TURN_EPOCH + timedelta(seconds=n),
+            timestamp=clock.now(),
             importance=0.9 if has_facts else 0.5,
         )

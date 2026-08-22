@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 
 if TYPE_CHECKING:
@@ -19,6 +20,16 @@ class LoopProvider(Provider):
     """Assembles LoopService from booted collaborators."""
 
     name = "loop"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness with live counters."""
+        return HealthCheckResult(
+            component=self.name,
+            details={
+                "tracker_bound": self._service is not None
+                and self._service._tracker is not None
+            },
+        )
 
     def __init__(self) -> None:
         super().__init__()

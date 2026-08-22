@@ -48,9 +48,9 @@ class TestBuildSupportAgent:
 
 class TestScenariosRegistry:
     def test_three_scenarios_registered(self) -> None:
-        assert set(SCENARIOS) == {"happy", "multi_tool", "failure"}
+        assert set(SCENARIOS.keys()) == {"happy", "multi_tool", "failure"}
         assert all(len(s.script) >= 2 for s in SCENARIOS.values())
-        assert {s.label for s in SCENARIOS.values()} == {
+        assert {v.label for v in SCENARIOS.values()} == {
             "Happy path",
             "Multi-tool",
             "Failure",

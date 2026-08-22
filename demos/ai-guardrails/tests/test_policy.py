@@ -8,16 +8,16 @@ from guard_gate.services.policy import PolicyToggle
 
 class TestActs:
     def test_five_acts_registered(self) -> None:
-        assert set(ACTS) == {"injection", "pii", "length", "model", "budget"}
+        assert set(ACTS.keys()) == {"injection", "pii", "length", "model", "budget"}
 
     def test_model_act_uses_restricted_model(self) -> None:
-        assert ACTS["model"].model != ALLOWED_MODEL
+        assert ACTS.get("model").model != ALLOWED_MODEL
 
     def test_length_act_exceeds_limit(self) -> None:
-        assert len(ACTS["length"].text) > 500
+        assert len(ACTS.get("length").text) > 500
 
     def test_pii_act_contains_email(self) -> None:
-        assert "@" in ACTS["pii"].text
+        assert "@" in ACTS.get("pii").text
 
 
 class TestPolicyToggle:

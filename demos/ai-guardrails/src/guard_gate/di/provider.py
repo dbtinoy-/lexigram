@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lexigram.contracts.ai.governance import AIGovernanceProtocol
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 
 if TYPE_CHECKING:
@@ -22,6 +23,17 @@ class GuardrailsProvider(Provider):
     """Resolves guard + governance contracts and assembles the assistant."""
 
     name = "guard-assistant"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report protection state and budget headroom."""
+        assistant = self._assistant
+        return HealthCheckResult(
+            component=self.name,
+            details={
+                "policy_enabled": self._toggle.enabled,
+                "remaining_budget": assistant.remaining if assistant else None,
+            },
+        )
 
     def __init__(self) -> None:
         super().__init__()

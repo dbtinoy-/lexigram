@@ -16,7 +16,7 @@ async def assistant(app):
 
 class TestFiveActs:
     async def test_injection_blocked(self, assistant) -> None:
-        act = ACTS["injection"]
+        act = ACTS.get("injection")
         outcome = await assistant.handle("alice", act.text, act.model)
 
         assert outcome.kind == "blocked"
@@ -24,7 +24,7 @@ class TestFiveActs:
         assert outcome.reason
 
     async def test_pii_redacted_end_to_end(self, assistant) -> None:
-        act = ACTS["pii"]
+        act = ACTS.get("pii")
         outcome = await assistant.handle("alice", act.text, act.model)
 
         assert outcome.kind == "redacted"
@@ -33,13 +33,13 @@ class TestFiveActs:
         assert "jane.doe@example.com" not in outcome.reply
 
     async def test_length_act_blocked(self, assistant) -> None:
-        act = ACTS["length"]
+        act = ACTS.get("length")
         outcome = await assistant.handle("alice", act.text, act.model)
 
         assert outcome.kind == "blocked"
 
     async def test_restricted_model_denied(self, assistant) -> None:
-        act = ACTS["model"]
+        act = ACTS.get("model")
         outcome = await assistant.handle("alice", act.text, act.model)
 
         assert outcome.kind == "denied_model"
@@ -55,7 +55,7 @@ class TestFiveActs:
             assert ok.kind == "pass"
 
         drained = await assistant.handle(
-            "bob", ACTS["budget"].text, ACTS["budget"].model,
+            "bob", ACTS.get("budget").text, ACTS.get("budget").model,
         )
         assert drained.kind == "denied_budget"
         assert drained.reason == "monthly budget exhausted"
@@ -66,7 +66,7 @@ class TestLedgerAndBypass:
     async def test_spent_tracks_only_costed_turns(self, assistant) -> None:
         spent_before = assistant.remaining
         await assistant.handle(
-            "carol", ACTS["injection"].text, ALLOWED_MODEL,
+            "carol", ACTS.get("injection").text, ALLOWED_MODEL,
         )  # blocked: free
         assert assistant.remaining == spent_before
 
@@ -78,7 +78,7 @@ class TestLedgerAndBypass:
         toggle.set(False)
         try:
             outcome = await assistant.handle(
-                "dave", ACTS["injection"].text, ACTS["model"].model,
+                "dave", ACTS.get("injection").text, ACTS.get("model").model,
             )
             assert outcome.kind == "pass"  # raw canned reply, no denial
         finally:

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from lexigram.primitives import Registry
+
 HAPPY_SCRIPT: list[str] = [
     (
         "THOUGHT: I need the order details first.\n"
@@ -55,8 +57,15 @@ class Scenario:
     script: list[str] = field(default_factory=list)
 
 
-SCENARIOS: dict[str, Scenario] = {
-    "happy": Scenario("happy", "Happy path", HAPPY_SCRIPT),
-    "multi_tool": Scenario("multi_tool", "Multi-tool", MULTI_TOOL_SCRIPT),
-    "failure": Scenario("failure", "Failure", FAILURE_SCRIPT),
-}
+def _build_scenarios() -> Registry[str, Scenario]:
+    """Framework Registry keyed by scenario id."""
+    registry: Registry[str, Scenario] = Registry()
+    registry.register("happy", Scenario("happy", "Happy path", HAPPY_SCRIPT))
+    registry.register(
+        "multi_tool", Scenario("multi_tool", "Multi-tool", MULTI_TOOL_SCRIPT)
+    )
+    registry.register("failure", Scenario("failure", "Failure", FAILURE_SCRIPT))
+    return registry
+
+
+SCENARIOS: Registry[str, Scenario] = _build_scenarios()

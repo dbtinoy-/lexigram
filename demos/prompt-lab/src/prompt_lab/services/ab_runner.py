@@ -9,6 +9,9 @@ from prompt_lab.repository.cases import CASES, CRITERIA
 from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.contracts.ai.evaluation import EvaluationDataset
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -46,7 +49,7 @@ class ABRunner:
                         issue=case.question,
                         tone="neutral",
                     ),
-                    output=RESPOND(variant)(case.question),
+                    output=_responder(variant)(case.question),
                     reference=case.reference,
                     metadata={},
                 )
@@ -75,11 +78,19 @@ class ABRunner:
             variants_report,
             key=lambda k: variants_report[k]["average_score"],
         )
+        logger.info(
+            "ab_run_complete",
+            winner=winner,
+            scores={k: v["average_score"] for k, v in variants_report.items()},
+        )
         return {"variants": variants_report, "winner": winner}
 
 
-def RESPOND(variant: str):
+def _responder(variant: str):
     """Late-bound responder lookup (keeps import surface minimal)."""
     from prompt_lab.repository.responders import RESPONDERS
 
-    return RESPONDERS[variant]
+    responder = RESPONDERS.get(variant)
+    if responder is None:
+        raise KeyError(f"no responder for variant {variant!r}")
+    return responder

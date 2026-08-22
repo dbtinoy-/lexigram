@@ -15,7 +15,6 @@ from feedback_loop.module import FeedbackLoopModule
 from feedback_loop.repository.bot import BOT, TRACE_IDS
 from feedback_loop.services.loop_service import LoopService
 from lexigram.app import Application
-from lexigram.result import Err
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _err_exit(result) -> int:
     """Print a domain error and signal failure."""
-    if isinstance(result, Err):
+    if result.is_err():
         print(f"error: {result.unwrap_err()}")
         return 1
     return 0
@@ -102,7 +101,7 @@ async def run(args: argparse.Namespace) -> int:
 async def _single(service: LoopService, args: argparse.Namespace) -> int:
     if args.command == "ask":
         result = await service.ask(args.key, owner=args.owner)
-        if isinstance(result, Err):
+        if result.is_err():
             return _err_exit(result)
         answer = result.unwrap()
         print(f"[{answer.trace_id}] {answer.answer}")
@@ -116,7 +115,7 @@ async def _single(service: LoopService, args: argparse.Namespace) -> int:
             owner=args.owner,
             comment=args.comment,
         )
-        if isinstance(result, Err):
+        if result.is_err():
             return _err_exit(result)
         print(f"captured rating {args.rating:g} ({result.unwrap()})")
     elif args.command == "stats":
@@ -125,7 +124,7 @@ async def _single(service: LoopService, args: argparse.Namespace) -> int:
         print(f"total={snap.total} average={avg} by_type={snap.by_type}")
     elif args.command == "regress":
         result = await service.regress(owner=args.owner)
-        if isinstance(result, Err):
+        if result.is_err():
             return _err_exit(result)
         summary = result.unwrap()
         print(f"run={summary.run_id}")
@@ -156,7 +155,7 @@ async def _demo(service: LoopService) -> int:
     print("== ask ==")
     for key in sorted(BOT):
         result = await service.ask(key, owner="alice")
-        if isinstance(result, Err):
+        if result.is_err():
             return _err_exit(result)
         answer = result.unwrap()
         print(f"[{answer.trace_id}] {key}: {answer.answer}")
@@ -169,7 +168,7 @@ async def _demo(service: LoopService) -> int:
             owner="alice",
             comment=f"auto:{value:g}",
         )
-        if isinstance(rated, Err):
+        if rated.is_err():
             return _err_exit(rated)
         print(f"{TRACE_IDS[key]} <- {value:g} ({rated.unwrap()})")
 
@@ -180,7 +179,7 @@ async def _demo(service: LoopService) -> int:
 
     print("\n== regress ==")
     regressed = await service.regress(owner="alice")
-    if isinstance(regressed, Err):
+    if regressed.is_err():
         return _err_exit(regressed)
     summary = regressed.unwrap()
     print(f"run={summary.run_id}")

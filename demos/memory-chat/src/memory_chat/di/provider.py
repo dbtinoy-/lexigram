@@ -10,6 +10,7 @@ from lexigram.contracts.ai.memory import (
     SemanticMemoryProtocol,
     WorkingMemoryProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 
 
@@ -17,6 +18,13 @@ class ConciergeProvider(Provider):
     """Resolves the three memory contracts and assembles the service."""
 
     name = "concierge"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness with live counters."""
+        return HealthCheckResult(
+            component=self.name,
+            details={"owners_seen": len(self._service._turns) if self._service else 0},
+        )
 
     def __init__(self) -> None:
         super().__init__()

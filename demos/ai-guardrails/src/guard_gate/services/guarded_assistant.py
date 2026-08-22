@@ -10,6 +10,9 @@ from guard_gate.services.policy import PolicyToggle
 from lexigram.ai.governance.audit import AIAuditStore
 from lexigram.ai.governance.audit.models import AuditQuery
 from lexigram.contracts.ai.governance import AIGovernanceProtocol
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -109,6 +112,7 @@ class GuardedAssistant:
         self._charged = self._spent() + self.cost_per_turn
 
         kind = "redacted" if "[REDACTED:" in final_reply else "pass"
+        logger.info("guard_outcome", kind=kind, model=model, user_id=user_id)
         return Outcome(kind, final_reply, remaining_budget=self.remaining)
 
     async def audit_rows(self, limit: int = 50) -> list[dict]:

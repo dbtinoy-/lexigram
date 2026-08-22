@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from lexigram.contracts.ai.agents import AgentExecutorProtocol
 from lexigram.contracts.ai.llm import LLMClientProtocol
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 
 if TYPE_CHECKING:
@@ -55,6 +56,13 @@ class AgentSupportProvider(Provider):
         self._support = SupportAgent(
             executor=executor,
             agent=build_support_agent(),
+        )
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness with live counters."""
+        return HealthCheckResult(
+            component=self.name,
+            details={"scripted_remaining": self._llm.remaining},
         )
 
 

@@ -16,7 +16,11 @@ from feedback_loop.services.regression import build_dataset
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
 from lexigram.contracts.ai.experiment import ExperimentConfig, RunStatus
 from lexigram.contracts.ai.feedback import FeedbackType
+from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
+
+logger = get_logger(__name__)
+
 
 PASS_THRESHOLD = 0.6
 _EXPERIMENT_SEED = 7
@@ -171,6 +175,12 @@ class LoopService:
             for sample_score in report.results:
                 await self._tracker.log_metric(run.run_id, "score", sample_score.score)
             await self._tracker.finish(run.run_id, RunStatus.COMPLETED)
+            logger.info(
+                "regression_run_tracked",
+                run_id=run.run_id,
+                samples=summary.total_samples,
+                failing=len(summary.failing_ids),
+            )
             summary = RunSummary(
                 run_id=run.run_id,
                 total_samples=summary.total_samples,

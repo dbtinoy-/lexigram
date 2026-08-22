@@ -75,7 +75,7 @@ class AgentApiController(Controller):
     async def ask(self, request: Request) -> JSONResponse:
         """Run one scenario-scripted ReAct turn."""
         data = await _body(request)
-        scenario = SCENARIOS.get(str(data.get("scenario", "")))
+        scenario = SCENARIOS.get(str(data.get("scenario", "")), None)
         if scenario is None:
             return _error(f"unknown scenario: {data.get('scenario')!r}", 400)
 
