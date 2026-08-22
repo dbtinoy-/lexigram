@@ -14,7 +14,6 @@ import sys
 
 from lexigram.app import Application
 from lexigram.web.server.runner import run_server_async
-
 from support_agent.module import SupportAgentModule
 
 

@@ -8,7 +8,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from lexigram.web import Controller, get, post
-
 from support_agent.agent_service import SupportAgent, build_support_agent
 from support_agent.llm import ScriptedLLM
 from support_agent.scripts import SCENARIOS

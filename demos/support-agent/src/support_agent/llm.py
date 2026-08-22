@@ -76,4 +76,4 @@ class ScriptedLLM:
 
     async def close(self) -> None:
         """Nothing to release."""
-        return None
+        return

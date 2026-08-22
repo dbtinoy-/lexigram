@@ -10,7 +10,6 @@ from lexigram.contracts.ai.agents import (
     AgentResponse,
 )
 from lexigram.result import Result
-
 from support_agent.tools import SUPPORT_TOOLS
 
 SYSTEM_PROMPT = (
@@ -34,9 +33,7 @@ def build_support_agent() -> AgentProtocol:
 class SupportAgent:
     """Concrete facade: one question in, one traced response out."""
 
-    def __init__(
-        self, executor: AgentExecutorProtocol, agent: AgentProtocol
-    ) -> None:
+    def __init__(self, executor: AgentExecutorProtocol, agent: AgentProtocol) -> None:
         self._executor = executor
         self._agent = agent
         self.last_response: AgentResponse | None = None

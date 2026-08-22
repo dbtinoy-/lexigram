@@ -68,6 +68,16 @@ Retrieval-augmented answers from the framework's documentation:
 - 🖥️ **Cited answers** — extractive synthesis with `[n] path#chunk`
   citations via `uv run python -m rag_docs demo`
 
+### 🤖 [support-agent](support-agent/) — tool-calling ReAct agent
+
+A support-desk agent driven by a scripted LLM:
+
+- 🧠 **Real agent loop** — THOUGHT/ACTION parsing through the framework's react strategy
+- 🔧 **Three container-injected tools** — order lookup, refund policy math, KB search
+- 🎬 **Deterministic model boundary** — scripted completions, byte-stable reruns
+- 🖥️ **Browser console** — pick a scenario, ask, read the trace table
+- 💥 **Failure act included** — unknown tools degrade to failed tool-call records
+
 ### 🔐 [auth-web](auth-web/) — browser account lifecycle
 
 Register, log in, manage sessions and passwords over `lexigram-auth`:

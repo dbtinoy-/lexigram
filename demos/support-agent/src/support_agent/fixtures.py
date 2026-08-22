@@ -27,10 +27,28 @@ ORDERS: dict[str, dict] = {
 }
 
 KB: list[dict[str, str]] = [
-    {"title": "Refunds", "snippet": "Full refund within 7 days of delivery. Half refund within 30 days."},
-    {"title": "Shipping", "snippet": "Standard shipping takes 3-5 business days with FastShip carrier."},
-    {"title": "Tracking", "snippet": "Track your parcel using the tracking id in your shipment email."},
-    {"title": "Returns", "snippet": "Start a return from your account page before requesting a refund."},
-    {"title": "Warranty", "snippet": "All products include a 24 month limited warranty."},
-    {"title": "Payments", "snippet": "We accept major cards and wallet payments; cards are charged at dispatch."},
+    {
+        "title": "Refunds",
+        "snippet": "Full refund within 7 days of delivery. Half refund within 30 days.",
+    },
+    {
+        "title": "Shipping",
+        "snippet": "Standard shipping takes 3-5 business days with FastShip carrier.",
+    },
+    {
+        "title": "Tracking",
+        "snippet": "Track your parcel using the tracking id in your shipment email.",
+    },
+    {
+        "title": "Returns",
+        "snippet": "Start a return from your account page before requesting a refund.",
+    },
+    {
+        "title": "Warranty",
+        "snippet": "All products include a 24 month limited warranty.",
+    },
+    {
+        "title": "Payments",
+        "snippet": "We accept major cards and wallet payments; cards are charged at dispatch.",
+    },
 ]
