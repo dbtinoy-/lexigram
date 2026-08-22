@@ -22,7 +22,7 @@ tests compute RFC 6238 codes directly from the framework's
 ## Run it
 
 ```bash
-uv run python -m mfa_console
+PYTHONPATH=demos/auth-mfa/src uv run python -m mfa_console
 ```
 
 Open http://127.0.0.1:8083.

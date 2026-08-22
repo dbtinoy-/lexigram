@@ -22,7 +22,7 @@ build step. Everything runs offline against in-memory stores.
 ## Run it
 
 ```bash
-uv run python -m auth_web
+PYTHONPATH=demos/auth-web/src uv run python -m auth_web
 ```
 
 Open http://127.0.0.1:8081 and log in with the seeded account:

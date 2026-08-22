@@ -12,7 +12,7 @@ synthesized into cited answers — no LLM, no network, fully deterministic.
 ## REST API
 
 ```bash
-uv run python -m rag_docs serve         # :7075 (RAGDOCS_PORT)
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs serve         # :7075 (RAGDOCS_PORT)
 curl -X POST localhost:7075/ask -H 'content-type: application/json' \
      -d '{"question":"how do modules export services?"}'
 curl localhost:7075/stats               # corpus files/chunks
@@ -35,7 +35,7 @@ curl localhost:7075/stats               # corpus files/chunks
 ## Run it
 
 ```bash
-uv run python -m rag_docs demo
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs demo
 ```
 
 `demo` builds the index from the repository's real `docs/` tree and asks
@@ -45,9 +45,9 @@ plus numbered citations of the form `[n] <path>#<chunk>`.
 You can also drive each piece yourself:
 
 ```bash
-uv run python -m rag_docs index                                 # corpus stats
-uv run python -m rag_docs ask "how do modules export services?"
-uv run python -m rag_docs ask --strategy mmr "what is the result pattern?"
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs index                                 # corpus stats
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs ask "how do modules export services?"
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs ask --strategy mmr "what is the result pattern?"
 ```
 
 Every command rebuilds the index at boot — the store is memory-only by

@@ -15,7 +15,7 @@ deterministic seeded random-walk provider whose faults you script live.
 ## REST API
 
 ```bash
-uv run python -m rates serve            # :7073 (RATES_PORT)
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # :7073 (RATES_PORT)
 curl localhost:7073/rates/EUR/USD       # quote via cache → pipeline → stale
 curl -X POST localhost:7073/scenario/down   # flip upstream health live
 curl localhost:7073/stats               # hits/misses/retries/stale
@@ -37,7 +37,7 @@ curl localhost:7073/stats               # hits/misses/retries/stale
 
 ## Scenarios
 
-Flip upstream health at any time with `uv run python -m rates scenario <name>`:
+Flip upstream health at any time with `PYTHONPATH=demos/resilient-rates/src uv run python -m rates scenario <name>`:
 
 | Scenario | Upstream behavior |
 |----------|-------------------|
@@ -49,7 +49,7 @@ Flip upstream health at any time with `uv run python -m rates scenario <name>`:
 ## Run it
 
 ```bash
-uv run python -m rates demo
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates demo
 ```
 
 `demo` runs the whole story in one process across five acts:
@@ -68,11 +68,11 @@ uv run python -m rates demo
 You can also drive each piece yourself:
 
 ```bash
-uv run python -m rates fetch EUR/USD        # one quote (cache → upstream → stale)
-uv run python -m rates scenario flaky       # flip upstream health live
-uv run python -m rates stats                # hits / misses / upstream / retries / stale
-uv run python -m rates clear-cache          # drop cached quotes
-uv run python -m rates stampede USD/JPY     # 10 concurrent fetches of one pair
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates fetch EUR/USD        # one quote (cache → upstream → stale)
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates scenario flaky       # flip upstream health live
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates stats                # hits / misses / upstream / retries / stale
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates clear-cache          # drop cached quotes
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates stampede USD/JPY     # 10 concurrent fetches of one pair
 ```
 
 All state is in-memory and per-process: each invocation boots a fresh

@@ -1,6 +1,6 @@
 # Realtime Monitor Demo
 
-> Module name: `ops_console` — run with `uv run python -m ops_console`
+> Module name: `ops_console` — run with `PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console`
 
 Demonstrates the **real-time web** subsystem of Lexigram.
 
@@ -24,14 +24,14 @@ assets are required — the browser client is a dependency-free `EventSource`.
 ## Run it
 
 ```bash
-uv run python -m ops_console                 # serves http://127.0.0.1:7071
+PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console                 # serves http://127.0.0.1:7071
 ```
 
 Open http://127.0.0.1:7071 in two browsers — you should see the same live
 heartbeats appear in both. Then push a manual event:
 
 ```bash
-uv run python -m ops_console --publish --message "deploy request approved"
+PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console --publish --message "deploy request approved"
 ```
 
 Big picture: the SSE handler replays recent history for a brand-new subscriber,

@@ -18,7 +18,7 @@ hashes persist. Fully offline.
 ## Run it
 
 ```bash
-uv run python -m apikey_console
+PYTHONPATH=demos/auth-apikeys/src uv run python -m apikey_console
 ```
 
 Open http://127.0.0.1:8084 and log in as `admin@keys.demo` /

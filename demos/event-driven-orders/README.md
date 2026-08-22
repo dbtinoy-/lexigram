@@ -15,7 +15,7 @@ framework's in-memory buses.
 ## REST API
 
 ```bash
-uv run python -m orders serve           # :7074 (ORDERS_PORT)
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders serve           # :7074 (ORDERS_PORT)
 curl -X POST localhost:7074/orders -H 'content-type: application/json' \
      -d '{"customer":"Alice","items":[{"sku":"SKU-1","qty":2,"unit_price":"9.99"}]}'
 curl -X POST localhost:7074/orders/<id>/pay -H 'content-type: application/json' \
@@ -39,7 +39,7 @@ curl -X POST localhost:7074/outbox/flush
 ## Run it
 
 ```bash
-uv run python -m orders demo
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders demo
 ```
 
 `demo` runs the whole lifecycle in one process: place → pay → ship, the staged
@@ -49,11 +49,11 @@ handlers fire), and the final read-model row.
 You can also drive each step yourself:
 
 ```bash
-uv run python -m orders place "Alice Wonder" --item "SKU-1,2,9.99" --item "SKU-2,1,149.00"
-uv run python -m orders list
-uv run python -m orders pay <order-id> 19.98
-uv run python -m orders ship <order-id>
-uv run python -m orders outbox
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders place "Alice Wonder" --item "SKU-1,2,9.99" --item "SKU-2,1,149.00"
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders list
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders pay <order-id> 19.98
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders ship <order-id>
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders outbox
 ```
 
 Note that all state is in-memory and per-process: each invocation boots a

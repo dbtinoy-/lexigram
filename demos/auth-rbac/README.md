@@ -1,6 +1,6 @@
 # RBAC Console Demo
 
-> Module name: `rbac_console` — run with `uv run python -m rbac_console`
+> Module name: `rbac_console` — run with `PYTHONPATH=demos/auth-rbac/src uv run python -m rbac_console`
 
 Demonstrates **role-based access control** from lexigram-auth through a
 browser: pick a seeded persona, watch the live permission matrix flip, try
@@ -34,7 +34,7 @@ Matrix checks: `articles.view/create/update/delete` plus
 ## Run it
 
 ```bash
-uv run python -m rbac_console
+PYTHONPATH=demos/auth-rbac/src uv run python -m rbac_console
 ```
 
 Open http://127.0.0.1:8082, log in as any persona (password

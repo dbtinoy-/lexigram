@@ -181,27 +181,28 @@ API-key management UI plus an `X-API-Key`-guarded JSON endpoint:
 
 ```bash
 # ── capability demos ──────────────────────────────────────────────
-uv run python -m rates serve          # 🛡️ resilience desk REST API (:7073)
-uv run python -m orders demo          # 📦 full CQRS order lifecycle (:7074 serve)
-uv run python -m orders serve         # 📦 same lifecycle as a REST API (:7074)
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # 🛡️ resilience REST API (:7073)
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders demo        # 📦 full CQRS order lifecycle
+PYTHONPATH=demos/event-driven-orders/src uv run python -m orders serve       # 📦 same lifecycle as REST API (:7074)
 curl -X POST localhost:7073/scenario/down   # …then watch retry/breaker react
-PYTHONPATH=demos/support-agent/src uv run python -m support_agent   # 🤖 agent console (:8082)
-PYTHONPATH=demos/memory-chat/src uv run python -m memory_chat       # 🧠 memory chat (:8083)
-PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate      # 🛡️ guardrails playground (:8084)
-PYTHONPATH=demos/prompt-lab/src uv run python -m prompt_lab         # ✍️ prompt lab (:8085)
-PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop demo   # 🔁 ratings → regression loop
-uv run python -m rag_docs demo        # 📚 cited answers from our own docs
-uv run python -m rag_docs serve       # 📚 same corpus as an ask API (:7075)
-uv run python -m ops_console          # 📡 boot the realtime dashboard server
-uv run python demos/llm-experiment/run_experiment.py   # 🧪 seeded experiment + rerun
+PYTHONPATH=demos/support-agent/src uv run python -m support_agent            # 🤖 agent console (:8082)
+PYTHONPATH=demos/memory-chat/src uv run python -m memory_chat                # 🧠 memory chat (:8083)
+PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate               # 🛡️ guardrails playground (:8084)
+PYTHONPATH=demos/prompt-lab/src uv run python -m prompt_lab                  # ✍️ prompt lab (:8085)
+PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop demo       # 🔁 ratings → regression loop
+PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop serve      # 🔁 same loop as web console (:8086)
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs demo                 # 📚 cited answers from our own docs
+PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs serve                # 📚 same corpus as an ask API (:7075)
+PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console           # 📡 realtime dashboard server (:7071)
+uv run python demos/llm-experiment/run_experiment.py                         # 🧪 seeded experiment + rerun
 
 # ── auth consoles ─────────────────────────────────────────────────
-uv run python -m auth_web             # 🔐 account lifecycle (:8081)
-uv run python -m rbac_console         # 👥 permission matrix (:8090)
-uv run python -m mfa_console          # 🔢 TOTP challenge (:8092)
-uv run python -m apikey_console       # 🗝️ machine auth keys (:8091)
+PYTHONPATH=demos/auth-web/src uv run python -m auth_web                      # 🔐 account lifecycle (:8081)
+PYTHONPATH=demos/auth-rbac/src uv run python -m rbac_console                 # 👥 permission matrix (:8090)
+PYTHONPATH=demos/auth-apikeys/src uv run python -m apikey_console            # 🗝️ machine auth keys (:8091)
+PYTHONPATH=demos/auth-mfa/src uv run python -m mfa_console                   # 🔢 TOTP challenge (:8092)
 
-make test-demos                       # ✅ every demo test suite
+make test-demos                                                              # ✅ every demo test suite
 ```
 
 Each demo boots the real framework — real DI graph, real cache backend,
