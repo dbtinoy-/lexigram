@@ -120,7 +120,11 @@ class NotificationProvider(Provider):
             return APNsPush(
                 team_id=apns_cfg.team_id or "",
                 key_id=apns_cfg.key_id or "",
-                apns_auth_key=apns_cfg.apns_auth_key or "",
+                apns_auth_key=(
+                    apns_cfg.apns_auth_key.get_secret_value()
+                    if hasattr(apns_cfg.apns_auth_key, "get_secret_value")
+                    else (apns_cfg.apns_auth_key or "")
+                ),
                 bundle_id=apns_cfg.bundle_id or "",
                 sandbox=apns_cfg.sandbox,
                 timeout=apns_cfg.timeout,

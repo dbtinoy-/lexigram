@@ -1,4 +1,5 @@
 """Tests for lexigram.notification config."""
+
 from __future__ import annotations
 
 import pytest
@@ -21,7 +22,7 @@ class TestTwilioDriverConfig:
             account_sid="AC123", auth_token="token123", from_number="+1234567890"
         )
         assert cfg.account_sid == "AC123"
-        assert cfg.auth_token == "token123"
+        assert cfg.auth_token.get_secret_value() == "token123"
         assert cfg.from_number == "+1234567890"
         assert cfg.timeout == 30  # DEFAULT_TWILIO_TIMEOUT
 
@@ -42,7 +43,7 @@ class TestFCMDriverConfig:
     def test_defaults(self) -> None:
         """Test FCMDriverConfig defaults."""
         cfg = FCMDriverConfig(server_key="server_key_123")
-        assert cfg.server_key == "server_key_123"
+        assert cfg.server_key.get_secret_value() == "server_key_123"
         assert cfg.timeout == 30  # DEFAULT_FCM_TIMEOUT
 
     def test_custom_timeout(self) -> None:
@@ -98,11 +99,9 @@ class TestNamedPushConfig:
     def test_with_fcm_config(self) -> None:
         """Test NamedPushConfig with FCMDriverConfig."""
         fcm_cfg = FCMDriverConfig(server_key="server_key_123")
-        cfg = NamedPushConfig(
-            name="mobile", driver="fcm", primary=True, fcm=fcm_cfg
-        )
+        cfg = NamedPushConfig(name="mobile", driver="fcm", primary=True, fcm=fcm_cfg)
         assert cfg.fcm is not None
-        assert cfg.fcm.server_key == "server_key_123"
+        assert cfg.fcm.server_key.get_secret_value() == "server_key_123"
 
 
 class TestNotificationConfig:

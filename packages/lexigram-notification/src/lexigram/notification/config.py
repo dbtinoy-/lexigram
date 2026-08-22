@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from lexigram.config.base import BaseConfig
 from lexigram.domain import DomainModel
@@ -17,7 +17,7 @@ from lexigram.notification.constants import (
     ENV_NESTED_DELIMITER,
     ENV_PREFIX,
 )
-from lexigram.validation import ConfigDict, Field
+from lexigram.validation import ConfigDict, Field, SecretStr, field_validator
 
 
 @dataclass(init=False)
@@ -28,7 +28,7 @@ class TwilioDriverConfig(DomainModel):
         default=None,
         description="Twilio Account SID",
     )
-    auth_token: str | None = Field(
+    auth_token: SecretStr | None = Field(
         default=None,
         description="Twilio Auth Token",
     )
@@ -42,15 +42,30 @@ class TwilioDriverConfig(DomainModel):
         description="HTTP timeout (s)",
     )
 
+    @field_validator("auth_token")
+    @classmethod
+    def _coerce_auth_token(cls, value: Any) -> Any:
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
+
 
 @dataclass(init=False)
 class FCMDriverConfig(DomainModel):
     """Firebase Cloud Messaging (FCM) push notification configuration."""
 
-    server_key: str | None = Field(
+    server_key: SecretStr | None = Field(
         default=None,
         description="FCM Server API Key",
     )
+
+    @field_validator("server_key")
+    @classmethod
+    def _coerce_server_key(cls, value: Any) -> Any:
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
+
     timeout: int = Field(
         default=DEFAULT_FCM_TIMEOUT,
         ge=1,
@@ -70,7 +85,7 @@ class APNsDriverConfig(DomainModel):
         default=None,
         description="APNs Auth Key ID (10-character string)",
     )
-    apns_auth_key: str | None = Field(
+    apns_auth_key: SecretStr | None = Field(
         default=None,
         description=(
             "ECDSA private key — PEM string starting with "
@@ -91,12 +106,19 @@ class APNsDriverConfig(DomainModel):
         description="HTTP timeout (s)",
     )
 
+    @field_validator("apns_auth_key")
+    @classmethod
+    def _coerce_apns_auth_key(cls, value: Any) -> Any:
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
+
 
 @dataclass(init=False)
 class WebPushDriverConfig(DomainModel):
     """Web Push (RFC 8030) driver configuration."""
 
-    vapid_private_key: str | None = Field(
+    vapid_private_key: SecretStr | None = Field(
         default=None,
         description="VAPID private key (PEM-encoded EC prime256v1)",
     )
@@ -113,6 +135,13 @@ class WebPushDriverConfig(DomainModel):
         ge=1,
         description="HTTP timeout (s)",
     )
+
+    @field_validator("vapid_private_key")
+    @classmethod
+    def _coerce_vapid_private_key(cls, value: Any) -> Any:
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
 
 
 @dataclass(init=False)
@@ -284,7 +313,7 @@ class SMTPDriverConfig(DomainModel):
         default=None,
         description="SMTP auth username",
     )
-    password: str | None = Field(
+    password: SecretStr | None = Field(
         default=None,
         description="SMTP auth password",
     )
@@ -302,12 +331,19 @@ class SMTPDriverConfig(DomainModel):
         description="Connection timeout (s)",
     )
 
+    @field_validator("password")
+    @classmethod
+    def _coerce_password(cls, value: Any) -> Any:
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
+
 
 @dataclass(init=False)
 class SendGridDriverConfig(DomainModel):
     """SendGrid API configuration."""
 
-    api_key: str | None = Field(
+    api_key: SecretStr | None = Field(
         default=None,
         description="SendGrid API key",
     )
@@ -320,6 +356,13 @@ class SendGridDriverConfig(DomainModel):
         default=False,
         description="Sandbox mode — emails not sent",
     )
+
+    @field_validator("api_key")
+    @classmethod
+    def _coerce_api_key(cls, value: Any) -> Any:
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
 
 
 @dataclass(init=False)
