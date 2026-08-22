@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 from functools import wraps
+import hmac
 from typing import TYPE_CHECKING, Any
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -434,10 +435,14 @@ def csrf_protect(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable
         session = getattr(request.state, "session", None)
         expected_token = getattr(session, "csrf_token", None) if session else None
 
-        if expected_token is None:
-            # No CSRF protection configured
-            logger.warning("CSRF protection skipped - no token in session")
-            return await func(request, *args, **kwargs)
+        if not expected_token:
+            # Fail closed: a session without CSRF state cannot authorize
+            # state-changing requests.
+            logger.warning("csrf_rejected_no_session_token")
+            raise PermissionDeniedError(
+                message="Missing CSRF session state",
+                code=ErrorCode.AUTH_INVALID_TOKEN,
+            )
 
         # Get submitted token
         submitted_token = request.headers.get("X-CSRF-Token")
@@ -458,7 +463,9 @@ def csrf_protect(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable
             ):
                 pass
 
-        if not submitted_token or submitted_token != expected_token:
+        if not submitted_token or not hmac.compare_digest(
+            submitted_token, expected_token
+        ):
             raise PermissionDeniedError(
                 message="Invalid or missing CSRF token",
                 code=ErrorCode.AUTH_INVALID_TOKEN,
