@@ -354,6 +354,14 @@ class LoggingModule(Module):
 Start with providers (Pattern 2) and graduate to modules (Pattern 3) when you need encapsulation.
 :::
 
+:::tip[Living demo]
+See module boundaries, protocols, and RBAC guards running end-to-end in `demos/auth-rbac/`. Try it locally:
+
+```bash
+uv run python -m rbac_console
+```
+:::
+
 ---
 
 ## Application Lifecycle

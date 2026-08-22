@@ -3,6 +3,15 @@ title: "Real-Time & WebSockets"
 description: "Server-sent events, WebSocket connections, and streaming responses."
 ---
 
+:::tip[Living demo]
+A runnable, CI-gated companion lives at `demos/realtime-monitor/`. Try it locally:
+
+```bash
+uv run python -m ops_console
+```
+:::
+
+
 `lexigram-web` provides WebSocket wrappers, SSE (Server-Sent Events) handlers, and streaming responses. The SSE layer includes backpressure, retry tracking, and a shared heartbeat scheduler that keeps asyncio tasks proportional to heartbeat intervals — not connection count.
 
 For the full configuration reference and advanced features (connection lifecycle events, guard pipelines), see the [`lexigram-web` package docs](/packages/lexigram-web/).

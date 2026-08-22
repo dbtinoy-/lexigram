@@ -3,6 +3,15 @@ title: "Resilience"
 description: "Protect calls to flaky dependencies with retry, circuit breaker, bulkhead, rate limit, throttle, and fallback."
 ---
 
+:::tip[Living demo]
+A runnable, CI-gated companion lives at `demos/resilient-rates/`. Try it locally:
+
+```bash
+uv run python -m rates demo
+```
+:::
+
+
 `lexigram-resilience` ships the core fault-tolerance patterns: **retry**, **circuit breaker**, **bulkhead**, **rate limiter**, **throttle**, **timeout**, and **fallback**. Wrap any call that crosses a process boundary — HTTP APIs, databases, message brokers, LLM providers — and turn intermittent failures into bounded, observable behaviour.
 
 For the complete API and tuning knobs, see the [`lexigram-resilience` package docs](/packages/lexigram-resilience/).

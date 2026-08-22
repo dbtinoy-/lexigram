@@ -3,6 +3,15 @@ title: "Authentication"
 description: "Identity and access control with lexigram-auth guards, JWT, and RBAC."
 ---
 
+:::tip[Living demo]
+A runnable, CI-gated companion lives at `demos/auth-web/`. Try it locally:
+
+```bash
+uv run python -m auth_web
+```
+:::
+
+
 `lexigram-auth` provides authentication and authorization — JWT, OAuth2, password hashing, and role-based access control (RBAC). In a web application, most checks happen in the request pipeline using **guards**.
 
 ---

@@ -3,6 +3,15 @@ title: "Vector Stores"
 description: "Store and search embeddings with pgvector, Qdrant, Pinecone, or in-memory."
 ---
 
+:::tip[Living demo]
+A runnable, CI-gated companion lives at `demos/rag-docs/`. Try it locally:
+
+```bash
+uv run python -m rag_docs demo
+```
+:::
+
+
 `lexigram-vector` provides vector store backends behind a single protocol. Application code depends on `VectorStoreProtocol`; the backend (pgvector, Qdrant, Pinecone, Chroma, or in-memory) is chosen in configuration. Swap backends, run several side-by-side, and substitute an in-memory stub in tests without touching services that use them.
 
 For the full configuration reference and advanced features (hybrid search, reranking, embedding caching), see the [`lexigram-vector` package docs](/packages/lexigram-vector/).

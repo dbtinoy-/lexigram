@@ -3,6 +3,15 @@ title: "Queue & Message Bus"
 description: "Async publish/subscribe messaging with Redis, RabbitMQ, Kafka, SQS, and more."
 ---
 
+:::tip[Living demo]
+A runnable, CI-gated companion lives at `demos/event-driven-orders/`. Try it locally:
+
+```bash
+uv run python -m orders demo
+```
+:::
+
+
 `lexigram-queue` provides async publish/subscribe messaging behind a single protocol. Application code depends on `QueueProtocol`; the backend (in-memory, Redis, RabbitMQ, Kafka, SQS, Azure Service Bus, or GCP Pub/Sub) is chosen in configuration. You can swap backends, run several side-by-side, and substitute an in-memory stub in tests without touching the services that use them.
 
 For the full configuration reference and advanced features (transactional outbox, middleware pipelines, dead-letter queues), see the [`lexigram-queue` package docs](/packages/lexigram-queue/).

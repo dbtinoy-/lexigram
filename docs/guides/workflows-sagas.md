@@ -3,6 +3,15 @@ title: "Workflows & Sagas"
 description: "Orchestrate multi-step processes with compensation, state machines, and pipeline steps."
 ---
 
+:::tip[Living demo]
+A runnable, CI-gated companion lives at `demos/event-driven-orders/`. Try it locally:
+
+```bash
+uv run python -m orders demo
+```
+:::
+
+
 `lexigram-workflow` provides three orchestration primitives: **pipelines** for sequential step execution, **sagas** for long-running processes with compensation, and **graph workflows** for DAG-based execution with branching and gates.
 
 For the full configuration reference, workflow graph DSL, and advanced saga patterns, see the [`lexigram-workflow` package docs](/packages/lexigram-workflow/).
