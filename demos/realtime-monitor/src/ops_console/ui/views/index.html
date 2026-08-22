@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Realtime Console</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="conn">
+          <h1 class="accent">Realtime Console</h1>
+          <div class="conn">
+            <span class="dot" id="conn-dot"></span>
+            <span id="conn-label">Connecting…</span>
+          </div>
+        </div>
+        <span class="chip">subs: <b id="subs">—</b></span>
+        <span class="chip">history: <b id="hist">—</b></span>
+        <span class="chip">♥ <b id="beat">—</b></span>
+      </div>
+
+      <div class="toolbar">
+        <input placeholder="Search events…" id="search" class="search" type="search" />
+        <select id="filter-sev">
+          <option value="all">All severities</option>
+          <option value="info">Info</option>
+          <option value="warn">Warn</option>
+          <option value="critical">Critical</option>
+        </select>
+        <button id="pause">Pause</button>
+        <button id="clear">Clear feed</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Severity</th>
+            <th>Source</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="events">
+          <tr id="empty"><td colspan="4">Loading…</td></tr>
+        </tbody>
+      </table>
+
+      <form class="publish" id="publish-form">
+        <input placeholder="Event message…" id="msg" required />
+        <input placeholder="source" value="console" id="src" />
+        <select id="sev">
+          <option value="info">info</option>
+          <option value="warn">warn</option>
+          <option value="critical">critical</option>
+        </select>
+        <button type="submit" id="publish-btn">Publish</button>
+      </form>
+
+      <script src="/static/dashboard.js"></script>
+    </div>
+  </body>
+</html>

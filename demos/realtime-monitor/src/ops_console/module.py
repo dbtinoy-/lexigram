@@ -17,6 +17,7 @@ from ops_console.controllers.console import ConsoleController, EventsStreamHandl
 from ops_console.controllers.operator import OperatorHandler
 from ops_console.di.provider import RealtimeProvider
 from ops_console.services.event_stream import EventStreamService
+from ops_console.ui.pages import PagesController
 
 
 @module()
@@ -43,7 +44,7 @@ class RealtimeModule(Module):
             module=cls,
             imports=[
                 WebModule.configure(
-                    controllers=[ConsoleController, OperatorHandler],
+                    controllers=[ConsoleController, OperatorHandler, PagesController],
                     web_config=web_config,
                 ),
             ],

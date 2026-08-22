@@ -16,18 +16,13 @@ from starlette.testclient import TestClient
 from ops_console.controllers.console import ConsoleController, EventsStreamHandler
 from ops_console.domain import Severity, SystemEvent
 from ops_console.services.event_stream import EventStreamService
+from ops_console.ui.pages import PagesController
 
 
 def build_app() -> Starlette:
     events = EventStreamService()
     sse = EventsStreamHandler(events)
     controller = ConsoleController(events, sse)
-
-    async def dashboard(request) -> None:
-        result = await controller.dashboard(request)
-        from lexigram.web import html_response
-
-        return html_response(str(result))
 
     async def publish(request) -> None:
         result = await controller.publish_event(request)
@@ -40,11 +35,16 @@ def build_app() -> Starlette:
 
         return JSONResponse(await controller.stats(request))
 
+    pages = PagesController()
+
+    async def index(request) -> None:
+        return await pages.index(request)
+
     async def dashboard_js(request) -> None:
-        return await controller.dashboard_js(request)
+        return await pages.dashboard_js(request)
 
     async def dashboard_css(request) -> None:
-        return await controller.dashboard_css(request)
+        return await pages.stylesheet(request)
 
     async def ws_endpoint(starlette_ws) -> None:
         from lexigram.web import WebSocket
@@ -60,7 +60,7 @@ def build_app() -> Starlette:
     app.add_route("/static/dashboard.js", dashboard_js)
     app.add_route("/static/style.css", dashboard_css)
     app.add_route("/api/events", publish, methods=["POST"])
-    app.add_route("/", dashboard)
+    app.add_route("/", index)
     app.router.routes.append(WebSocketRoute("/api/ws/operator", ws_endpoint))
     return app
 
@@ -77,16 +77,6 @@ def test_dashboard_page_renders(client: TestClient) -> None:
     assert "Realtime Console" in response.text
     assert "src=\"/static/dashboard.js\"" in response.text
     assert "href=\"/static/style.css\"" in response.text
-    assert "id=\"feed-data\"" in response.text
-
-
-def test_dashboard_seeds_history_json(client: TestClient) -> None:
-    import json
-
-    response = client.get("/")
-
-    assert response.status_code == 200
-    json.loads(response.text.split("id=\"feed-data\">")[1].split("</script>")[0])
 
 
 def test_stats_endpoint_reports_live_counts(client: TestClient) -> None:
