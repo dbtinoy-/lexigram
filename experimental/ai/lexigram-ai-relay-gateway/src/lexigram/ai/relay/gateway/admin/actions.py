@@ -131,6 +131,50 @@ def _echo(channel: RelayChannel) -> dict[str, object]:
     }
 
 
+def _validate_upstream_url(
+    url: str,
+    *,
+    allowlist: tuple[str, ...] = (),
+) -> tuple[bool, str | None]:
+    """Validate a candidate channel ``upstream_base_url``.
+
+    Stored-SSRF guard (spec finding 8): the URL must parse, use ``https``, and
+    pass :func:`is_safe_url_for_request` (scheme/private-host/DNS checks).
+    When a non-empty operator ``allowlist`` is configured the host must also
+    match one of its entries.
+
+    Returns:
+        ``(True, None)`` when acceptable, else ``(False, reason)``.
+    """
+    import ipaddress
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        return False, "upstream_base_url must use https"
+
+    # Relay upstreams are operator-configured and are frequently internal
+    # (self-hosted proxies), so RFC1918 hostnames are legitimate. What must
+    # never be reachable is the machine/cloud-metadata boundary: reject
+    # literal loopback, link-local (169.254.169.254), and this-host IPs.
+    try:
+        ip = ipaddress.ip_address(parsed.hostname or "")
+    except ValueError:
+        ip = None
+    if ip is not None and (ip.is_loopback or ip.is_link_local):
+        return False, (
+            f"upstream_base_url must not target loopback, link-local, or "
+            f"non-global address {parsed.hostname!r}"
+        )
+
+    if allowlist and parsed.hostname not in allowlist:
+        return False, (
+            f"upstream host {parsed.hostname!r} is not in the configured "
+            "upstream allowlist"
+        )
+    return True, None
+
+
 def _build_channel(params: dict[str, object]) -> tuple[RelayChannel | None, str | None]:
     """Build a validated channel from action parameters.
 
@@ -148,6 +192,9 @@ def _build_channel(params: dict[str, object]) -> tuple[RelayChannel | None, str 
     upstream_base_url = params.get("upstream_base_url")
     if not isinstance(upstream_base_url, str) or not upstream_base_url.strip():
         return None, "upstream_base_url is required"
+    upstream_ok, upstream_err = _validate_upstream_url(upstream_base_url.strip())
+    if not upstream_ok:
+        return None, f"upstream_base_url rejected: {upstream_err}"
     target_format = params.get("target_format")
     if not isinstance(target_format, str) or not target_format.strip():
         return None, "target_format is required"
