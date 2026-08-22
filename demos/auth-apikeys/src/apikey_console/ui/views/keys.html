@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>API keys — apikeys-console</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="keys">
+  <h1 class="accent">API keys</h1>
+
+  <div class="card" id="raw-key-box" style="display:none">
+    <div class="row"><strong>Raw key — shown once, copy it now</strong></div>
+    <code id="raw-key"></code>
+  </div>
+
+  <div class="card">
+    <div class="row"><strong>Your keys</strong></div>
+    <table>
+      <thead><tr><th>Name</th><th>Prefix</th><th>Scopes</th><th>Expires</th><th></th></tr></thead>
+      <tbody id="key-rows"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="row"><strong>Issue a new key</strong></div>
+    <form id="create-form">
+      <input name="name" placeholder="key name" required />
+      <label><input type="checkbox" name="scope-read" checked /> read</label>
+      <label><input type="checkbox" name="scope-write" /> write</label>
+      <button type="submit">Create key</button>
+    </form>
+    <p class="muted">Machine usage:
+      <code>curl -H "X-API-Key: &lt;raw&gt;" http://127.0.0.1:8084/api/me</code></p>
+  </div>
+
+  <nav><a href="#" id="logout">Log out</a></nav>
+  <script src="/static/app.js"></script>
+  <script src="/static/keys.js"></script>
+</body>
+</html>
