@@ -120,7 +120,6 @@ packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
 packages/lexigram-sql/src/lexigram/sql/backup/backup_manager.py
 packages/lexigram-sql/src/lexigram/sql/migrations/generator.py
 packages/lexigram-sql/src/lexigram/sql/schema/model.py
-packages/lexigram-sql/src/lexigram/sql/unit_of_work/simple.py
 packages/lexigram-sql/tests/integration/test_monitoring.py
 packages/lexigram-sql/tests/unit/test_base_provider.py
 packages/lexigram-sql/tests/unit/test_protocols_unit_of_work.py
