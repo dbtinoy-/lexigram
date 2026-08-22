@@ -12,10 +12,9 @@ import asyncio
 import os
 import sys
 
+from guard_gate.module import GuardrailsModule
 from lexigram.app import Application
 from lexigram.web.server.runner import run_server_async
-
-from guard_gate.module import GuardrailsModule
 
 
 async def _serve(port: int) -> None:

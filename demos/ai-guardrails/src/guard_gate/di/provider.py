@@ -52,8 +52,7 @@ class GuardrailsProvider(Provider):
         self._assistant = GuardedAssistant(
             pipeline=pipeline,
             governance=governance,
-            audit_store=audit_store if audit_store is not None
-            else _fallback_store(),
+            audit_store=audit_store if audit_store is not None else _fallback_store(),
             monthly_budget=float(gov_config.monthly_budget or 0.50),
             restricted_models=list(gov_config.restricted_models),
             toggle=self._toggle,

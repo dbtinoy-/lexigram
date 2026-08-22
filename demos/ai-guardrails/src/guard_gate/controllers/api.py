@@ -5,11 +5,10 @@ from __future__ import annotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from lexigram.web import Controller, get, post
-
 from guard_gate.acts import ACTS
 from guard_gate.assistant_service import GuardedAssistant
 from guard_gate.policy import PolicyToggle
+from lexigram.web import Controller, get, post
 
 
 def _error(message: str, status: int) -> JSONResponse:
@@ -74,8 +73,9 @@ class GuardApiController(Controller):
             {
                 "policy_enabled": self._toggle.enabled,
                 "monthly_budget": self._assistant.monthly_budget,
-                "spent": round(self._assistant.monthly_budget
-                               - self._assistant.remaining, 2),
+                "spent": round(
+                    self._assistant.monthly_budget - self._assistant.remaining, 2
+                ),
                 "remaining": self._assistant.remaining,
             },
         )

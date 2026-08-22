@@ -87,6 +87,15 @@ A concierge that remembers what you tell it:
 - 🎬 **Demo replay** — scripted two-session transcript proves recall AND isolation
 - 🚫 **No model calls** — deterministic template responder keeps runs byte-stable
 
+### 🛡️ [ai-guardrails](ai-guardrails/) — guards + budgets, five acts live
+
+One support-request pipeline, unprotected vs protected:
+
+- 🚫 **Injection blocked** · 🕶️ **PII redacted end-to-end** · 📏 **Oversize blocked**
+- ⛔ **Restricted model denied** · 💸 **Budget exhausts after three paid turns**
+- 🔎 **Live audit trail** — MODEL_DENIED / BUDGET_EXCEEDED rows in the sidebar
+- 🎚️ **Protection toggle** — flip guards + governance off and watch the difference
+
 ### 🔐 [auth-web](auth-web/) — browser account lifecycle
 
 Register, log in, manage sessions and passwords over `lexigram-auth`:

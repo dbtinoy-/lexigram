@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from guard_gate.acts import PROVIDER
+from guard_gate.policy import PolicyToggle
 from lexigram.ai.governance.audit import AIAuditStore
 from lexigram.ai.governance.audit.models import AuditQuery
 from lexigram.contracts.ai.governance import AIGovernanceProtocol
-
-from guard_gate.acts import PROVIDER
-from guard_gate.policy import PolicyToggle
 
 
 @dataclass(frozen=True)
@@ -52,9 +51,7 @@ class GuardedAssistant:
         """Charged turns this process has completed."""
         return getattr(self, "_charged", 0)
 
-    async def handle(
-        self, user_id: str, text: str, model: str
-    ) -> Outcome:
+    async def handle(self, user_id: str, text: str, model: str) -> Outcome:
         """Run one request through the full protected path."""
         if not self.toggle.enabled:
             return Outcome("pass", _canned(text))
@@ -68,7 +65,8 @@ class GuardedAssistant:
             return Outcome("denied_model", reason=reason)
 
         if not await self._governance.check_budget(
-            self.cost_per_turn, user_id,
+            self.cost_per_turn,
+            user_id,
         ):
             return Outcome(
                 "denied_budget",
@@ -77,7 +75,9 @@ class GuardedAssistant:
             )
 
         checked_result = await self._pipeline.check_input(
-            text, messages=[], metadata={},
+            text,
+            messages=[],
+            metadata={},
         )
         if checked_result.is_err():
             return Outcome("blocked", reason=str(checked_result.unwrap_err()))
@@ -91,11 +91,14 @@ class GuardedAssistant:
         working_text = checked.final_content or text
         reply_text = _canned(working_text)
         outbound_result = await self._pipeline.check_output(
-            reply_text, original_input=text, metadata={},
+            reply_text,
+            original_input=text,
+            metadata={},
         )
         if outbound_result.is_err():
             return Outcome(
-                "redacted", reply=reply_text,
+                "redacted",
+                reply=reply_text,
                 reason=str(outbound_result.unwrap_err()),
             )
         outbound = outbound_result.unwrap()
