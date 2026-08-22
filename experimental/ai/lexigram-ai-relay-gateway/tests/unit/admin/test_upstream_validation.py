@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lexigram.ai.relay.gateway.admin.actions import _validate_upstream_url
+from lexigram.ai.relay.gateway.admin.upstream_guard import validate_upstream_url
 
 
 @pytest.mark.parametrize(
@@ -18,32 +18,32 @@ from lexigram.ai.relay.gateway.admin.actions import _validate_upstream_url
     ],
 )
 def test_dangerous_urls_rejected(url):
-    ok, err = _validate_upstream_url(url)
+    ok, err = validate_upstream_url(url)
     assert not ok
     assert err
 
 
 def test_internal_hostname_allowed_for_operator_upstreams():
     """Relay upstreams are often internal proxies — RFC1918 hostnames OK."""
-    ok, err = _validate_upstream_url("https://10.0.0.5:8080/v1")
+    ok, err = validate_upstream_url("https://10.0.0.5:8080/v1")
     assert ok, err
 
 
 def test_https_public_url_accepted():
-    ok, err = _validate_upstream_url("https://api.example.com/v1")
+    ok, err = validate_upstream_url("https://api.example.com/v1")
     assert ok
     assert err is None
 
 
 def test_allowlist_restricts_hosts():
-    ok, _ = _validate_upstream_url(
+    ok, _ = validate_upstream_url(
         "https://evil.example.com", allowlist=("api.openai.com",)
     )
     assert not ok
 
 
 def test_allowlist_match_accepted():
-    ok, err = _validate_upstream_url(
+    ok, err = validate_upstream_url(
         "https://api.openai.com/v1", allowlist=("api.openai.com",)
     )
     assert ok and err is None

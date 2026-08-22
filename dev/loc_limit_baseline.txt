@@ -141,3 +141,4 @@ packages/lexigram-web/src/lexigram/web/security/config.py
 packages/lexigram-web/tests/unit/coverage/test_final_coverage.py
 packages/lexigram-workflow/src/lexigram/workflow/bulk/operation.py
 tests/integration/scenarios/relay_fakes.py
+packages/lexigram-notification/src/lexigram/notification/config.py
