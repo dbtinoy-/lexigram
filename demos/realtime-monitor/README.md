@@ -1,5 +1,7 @@
 # Realtime Monitor Demo
 
+> Module name: `ops_console` — run with `uv run python -m ops_console`
+
 Demonstrates the **real-time web** subsystem of Lexigram.
 
 This demo is a small production-style ops console. System events stream into a

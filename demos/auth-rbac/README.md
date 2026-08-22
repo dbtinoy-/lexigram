@@ -1,5 +1,7 @@
 # RBAC Console Demo
 
+> Module name: `rbac_console` — run with `uv run python -m rbac_console`
+
 Demonstrates **role-based access control** from lexigram-auth through a
 browser: pick a seeded persona, watch the live permission matrix flip, try
 `authorize()` verdicts for any action/resource pair, and hit guarded article
