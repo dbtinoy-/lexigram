@@ -102,7 +102,7 @@ async def test_report_matches_run(service) -> None:
 
 
 async def test_regress_without_low_ratings_is_err(service) -> None:
-    from feedback_loop.errors import NoLowRatedError
+    from feedback_loop.errors import NoLowRatedError  # noqa: F811
 
     await service.ask("track-order", owner="alice")
     await service.rate(TRACE_IDS["track-order"], 5, owner="alice")

@@ -16,10 +16,11 @@ async def test_ask_by_act_key(client: httpx.AsyncClient) -> None:
     assert "[REDACTED:EMAIL]" in body["reply"]
 
 
-async def test_unknown_act_is_400(client: httpx.AsyncClient) -> None:
+async def test_unknown_act_is_404(client: httpx.AsyncClient) -> None:
     response = await client.post("/api/ask", json={"act": "nope"})
 
-    assert response.status_code == 400
+    assert response.status_code == 404
+    assert "unknown act" in response.json()["detail"]
 
 
 async def test_ask_raw_text(client: httpx.AsyncClient) -> None:

@@ -6,13 +6,11 @@ from typing import Any
 
 from starlette.requests import Request
 
+from lexigram.contracts.exceptions.domain import ValidationError
+from lexigram.result import Err
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 from memory_chat.services.chat_service import ConciergeService
-
-
-def _error(message: str, status: int) -> JSONResponse:
-    return JSONResponse({"error": message}, status_code=status)
 
 
 async def _body(request: Request) -> dict[str, Any]:
@@ -31,20 +29,17 @@ class ConciergeApiController(Controller):
         self._concierge = concierge
 
     @post("/api/chat")
-    async def chat(self, request: Request) -> JSONResponse:
+    async def chat(self, request: Request) -> Result[dict, Exception]:
         """One conversational turn for an owner."""
         data = await _body(request)
         owner = str(data.get("owner", "")).strip()
         text = str(data.get("text", ""))
         if not owner or not text.strip():
-            return _error("owner and text are required", 400)
+            return Err(ValidationError("owner and text are required"))
 
         result = await self._concierge.send(owner, text)
-        if result.is_err():
-            return _error(str(result.unwrap_err()), 400)
-        turn = result.unwrap()
-        return JSONResponse(
-            {
+        return result.map_sync(
+            lambda turn: {
                 "reply": turn.reply_text,
                 "cited": turn.cited,
                 "context_chars": turn.context_chars,

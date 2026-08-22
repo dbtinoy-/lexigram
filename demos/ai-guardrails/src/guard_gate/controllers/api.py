@@ -11,8 +11,14 @@ from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 
 
-def _error(message: str, status: int) -> JSONResponse:
-    return JSONResponse({"error": message}, status_code=status)
+def _problem(status: int, detail: str) -> JSONResponse:
+    """RFC-9457 style problem response."""
+    from lexigram.web.errors.problem_detail import ProblemDetail
+
+    body = ProblemDetail(
+        title="Request rejected", status=status, detail=detail
+    ).to_dict()
+    return JSONResponse(body, status_code=status)
 
 
 async def _body(request: Request) -> dict:
@@ -57,14 +63,14 @@ class GuardApiController(Controller):
         act_key = str(data.get("act", ""))
         act = ACTS.get(act_key, None)
         if act_key and act is None:
-            return _error(f"unknown act: {act_key!r}", 400)
+            return _problem(404, f"unknown act: {act_key!r}")
 
         text = str(data.get("text", act.text if act else "")).strip()
         model = str(data.get("model", act.model if act else "")).strip()
         user_id = str(data.get("user_id", "demo-user"))
 
         if not text or not model:
-            return _error("text and model are required", 400)
+            return _problem(422, "text and model are required")
 
         outcome = await self._assistant.handle(user_id, text, model)
         return _serialize(outcome)

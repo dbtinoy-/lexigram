@@ -17,10 +17,11 @@ async def test_ask_returns_trace(client: httpx.AsyncClient) -> None:
     assert "tracking id" in body["answer"]
 
 
-async def test_ask_unknown_key_is_400(client: httpx.AsyncClient) -> None:
+async def test_ask_unknown_key_is_404(client: httpx.AsyncClient) -> None:
     response = await client.post("/api/ask", json={"key": "nope"})
 
-    assert response.status_code == 400
+    assert response.status_code == 404
+    assert "unknown question" in response.json()["detail"]
 
 
 async def test_rate_then_stats(client: httpx.AsyncClient) -> None:
@@ -38,13 +39,23 @@ async def test_rate_then_stats(client: httpx.AsyncClient) -> None:
     assert stats["average"] == 2.0
 
 
-async def test_rate_invalid_is_400(client: httpx.AsyncClient) -> None:
+async def test_rate_invalid_trace_is_404(client: httpx.AsyncClient) -> None:
     response = await client.post(
         "/api/rate",
         json={"trace_id": "t9", "rating": 5, "owner": "alice"},
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 404
+
+
+async def test_rate_out_of_bounds_is_422(client: httpx.AsyncClient) -> None:
+    await client.post("/api/ask", json={"key": "warranty", "owner": "alice"})
+    response = await client.post(
+        "/api/rate",
+        json={"trace_id": "t4", "rating": 6, "owner": "alice"},
+    )
+
+    assert response.status_code == 422
 
 
 async def test_regress_and_report(client: httpx.AsyncClient) -> None:
@@ -83,4 +94,4 @@ async def test_regress_without_low_ratings_is_400(
 
     response = await client.post("/api/regress", json={"owner": "carol"})
 
-    assert response.status_code == 400
+    assert response.status_code == 409

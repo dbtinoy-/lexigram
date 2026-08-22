@@ -55,10 +55,10 @@ async def test_demo_endpoint_stable(client: httpx.AsyncClient) -> None:
     assert second["isolation_ok"] is True
 
 
-async def test_empty_text_is_400(client: httpx.AsyncClient) -> None:
+async def test_blank_message_is_422(client: httpx.AsyncClient) -> None:
     response = await client.post(
         "/api/chat",
         json={"owner": "alice", "text": "   "},
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 422

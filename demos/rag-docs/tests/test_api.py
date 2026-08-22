@@ -1,8 +1,8 @@
 """REST endpoint tests for the rag-docs demo.
 
 Boots ``DocsAskModule`` (web wiring included) through the real container —
-which ingests the corpus at boot — resolves the controller, and drives its
-routes via an ``httpx.AsyncClient`` over a minimal Starlette app.
+which ingests the corpus at boot — and drives the real routes via an
+``httpx.AsyncClient`` over the framework's ASGI app.
 """
 
 from __future__ import annotations
@@ -11,15 +11,9 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.routing import Route
 
 from lexigram.app import Application
-from lexigram.web import JSONResponse
-
-from rag_docs.controllers.api import DocsAskApiController
-from rag_docs.module import DocsAskModule
+from lexigram.web.di.provider import WebProvider
 
 
 @pytest.fixture
@@ -27,28 +21,15 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
     async with Application.boot(
         name="rag-api-test", modules=[DocsAskModule.configure()]
     ) as app:
-        controller = await app.container.resolve(DocsAskApiController)
-
-        def json(handler):
-            async def endpoint(request: Request) -> JSONResponse:
-                result = await handler(request)
-                if isinstance(result, JSONResponse):
-                    return result
-                return JSONResponse(result)
-
-            return endpoint
-
-        asgi = Starlette(
-            routes=[
-                Route("/ask", json(controller.ask), methods=["POST"]),
-                Route("/stats", json(controller.health), methods=["GET"]),
-            ]
-        )
-        transport = httpx.ASGITransport(app=asgi)
+        web = await app.container.resolve(WebProvider)
+        transport = httpx.ASGITransport(app=web.starlette)
         async with httpx.AsyncClient(
             transport=transport, base_url="http://test"
         ) as http:
             yield http
+
+
+from rag_docs.module import DocsAskModule  # noqa: E402  (after sys.path setup)
 
 
 async def test_ask_returns_answer_with_citations(
@@ -84,13 +65,14 @@ async def test_unknown_strategy_maps_to_400(client: httpx.AsyncClient) -> None:
     )
 
     assert response.status_code == 400
-    assert "strategy" in response.json()["error"].lower()
+    assert "strategy" in response.json()["detail"].lower()
 
 
-async def test_missing_question_maps_to_400(client: httpx.AsyncClient) -> None:
+async def test_missing_question_maps_to_422(client: httpx.AsyncClient) -> None:
     response = await client.post("/ask", json={})
 
-    assert response.status_code == 400
+    assert response.status_code == 422
+    assert "question is required" in response.json()["detail"]
 
 
 async def test_stats_reports_corpus_stats(client: httpx.AsyncClient) -> None:

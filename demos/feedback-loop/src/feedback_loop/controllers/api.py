@@ -1,4 +1,9 @@
-"""JSON API for the feedback-loop console — no HTML lives here."""
+"""JSON API for the feedback-loop console — no HTML lives here.
+
+Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
+and maps ``Err`` errors to ProblemDetail responses automatically (the demo's
+domain errors subclass contracts' NotFound/Validation/Conflict errors).
+"""
 
 from __future__ import annotations
 
@@ -8,11 +13,7 @@ from starlette.requests import Request
 
 from feedback_loop.services.loop_service import LoopService
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, JSONResponse, get, post
-
-
-def _error(message: str, status: int) -> JSONResponse:
-    return JSONResponse({"error": message}, status_code=status)
+from lexigram.web import Controller, get, post
 
 
 async def _body(request: Request) -> dict[str, Any]:
@@ -31,16 +32,15 @@ class LoopApiController(Controller):
         self._service = service
 
     @post("/api/ask")
-    async def ask(self, request: Request) -> JSONResponse:
+    async def ask(self, request: Request) -> Result[dict, Exception]:
+        """Answer a canned question, issuing its stable trace id."""
         data = await _body(request)
         key = str(data.get("key", ""))
         owner = str(data.get("owner", "")).strip()
+
         result = await self._service.ask(key, owner=owner or "web-user")
-        if result.is_err():
-            return _error(str(result.unwrap_err()), 400)
-        answer = result.unwrap()
-        return JSONResponse(
-            {
+        return result.map_sync(
+            lambda answer: {
                 "trace_id": answer.trace_id,
                 "question": answer.question,
                 "answer": answer.answer,
@@ -48,15 +48,19 @@ class LoopApiController(Controller):
         )
 
     @post("/api/rate")
-    async def rate(self, request: Request) -> JSONResponse:
+    async def rate(
+        self,
+        request: Request,
+    ) -> Result[dict, Exception]:
+        """Capture a 1..5 rating for a previously issued trace id."""
         data = await _body(request)
         trace_id = str(data.get("trace_id", ""))
+        owner = str(data.get("owner", "")).strip()
+        comment = str(data.get("comment", "")) or None
         try:
             rating = float(data.get("rating", 0))
         except (TypeError, ValueError):
-            return _error("rating must be a number", 400)
-        owner = str(data.get("owner", "")).strip()
-        comment = str(data.get("comment", "")) or None
+            rating = float("nan")  # out of bounds ⇒ InvalidRatingError path
 
         result = await self._service.rate(
             trace_id,
@@ -64,28 +68,24 @@ class LoopApiController(Controller):
             owner=owner or "web-user",
             comment=comment,
         )
-        if result.is_err():
-            return _error(str(result.unwrap_err()), 400)
-        return JSONResponse({"item_id": result.unwrap()})
+        return result.map_sync(lambda item_id: {"item_id": item_id})
 
     @get("/api/stats/{owner}")
-    async def stats(self, request: Request) -> JSONResponse:
+    async def stats(self, request: Request) -> dict:
+        """Aggregate this owner's captured ratings."""
         snap = await self._service.stats(owner=request.path_params["owner"])
         avg = snap.average if snap.average is not None else "n/a"
-        return JSONResponse(
-            {"total": snap.total, "average": avg, "by_type": snap.by_type},
-        )
+        return {"total": snap.total, "average": avg, "by_type": snap.by_type}
 
     @post("/api/regress")
-    async def regress(self, request: Request) -> JSONResponse:
+    async def regress(self, request: Request) -> Result[dict, Exception]:
+        """Promote low-rated exchanges into a tracked regression run."""
         data = await _body(request)
         owner = str(data.get("owner", "")).strip() or "web-user"
+
         result = await self._service.regress(owner=owner)
-        if result.is_err():
-            return _error(str(result.unwrap_err()), 400)
-        summary = result.unwrap()
-        return JSONResponse(
-            {
+        return result.map_sync(
+            lambda summary: {
                 "run_id": summary.run_id,
                 "total_samples": summary.total_samples,
                 "passed_samples": summary.passed_samples,
@@ -95,19 +95,18 @@ class LoopApiController(Controller):
         )
 
     @get("/api/report/{run_id}")
-    async def report(self, request: Request) -> JSONResponse:
+    async def report(self, request: Request) -> dict:
+        """Post-hoc error analysis for a tracked run."""
         run_id = request.path_params["run_id"]
         analysis = await self._service.report(run_id)
-        return JSONResponse(
-            {
-                "run_id": run_id,
-                "total_records": analysis.total_records,
-                "error_count": analysis.error_count,
-                "score_mean": analysis.score_mean,
-                "score_min": analysis.score_min,
-                "score_max": analysis.score_max,
-            },
-        )
+        return {
+            "run_id": run_id,
+            "total_records": analysis.total_records,
+            "error_count": analysis.error_count,
+            "score_mean": analysis.score_mean,
+            "score_min": analysis.score_min,
+            "score_max": analysis.score_max,
+        }
 
 
 __all__ = ["LoopApiController"]

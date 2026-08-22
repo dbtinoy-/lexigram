@@ -4,8 +4,18 @@ from __future__ import annotations
 
 import pytest
 
+from lexigram.contracts.exceptions.domain import (
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from feedback_loop.repository.bot import BOT, POOR_KEYS, TRACE_IDS
-from feedback_loop.errors import InvalidRatingError, UnknownTraceError
+from feedback_loop.errors import (
+    InvalidRatingError,
+    NoLowRatedError,
+    UnknownQuestionError,
+    UnknownTraceError,
+)
 
 
 class TestBot:
@@ -24,5 +34,7 @@ class TestBot:
 
 class TestErrors:
     def test_error_hierarchy(self) -> None:
-        assert issubclass(InvalidRatingError, ValueError)
-        assert issubclass(UnknownTraceError, ValueError)
+        assert issubclass(InvalidRatingError, ValidationError)
+        assert issubclass(UnknownQuestionError, NotFoundError)
+        assert issubclass(UnknownTraceError, NotFoundError)
+        assert issubclass(NoLowRatedError, ConflictError)

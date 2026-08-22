@@ -1,9 +1,8 @@
 """REST endpoint tests for the event-driven orders demo.
 
-Boots ``OrdersModule`` (events + web wiring) through the real container,
-resolves ``OrdersApiController``, and drives its routes via an
-``httpx.AsyncClient`` over a minimal Starlette app — mirroring how
-``main.py serve`` mounts them.
+Boots ``OrdersModule`` (events + web wiring) through the real container and
+drives the framework-mounted routes via an ``httpx.AsyncClient`` over
+``WebProvider.starlette`` -- mirroring how ``main.py serve`` mounts them.
 """
 
 from __future__ import annotations
@@ -12,14 +11,10 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.routing import Route
 
 from lexigram.app import Application
-from lexigram.web import JSONResponse
+from lexigram.web.di.provider import WebProvider
 
-from orders.controllers.api import OrdersApiController
 from orders.module import OrdersModule
 
 
@@ -28,47 +23,8 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
     async with Application.boot(
         name="orders-api-test", modules=[OrdersModule.configure()]
     ) as app:
-        controller = await app.container.resolve(OrdersApiController)
-
-        def json(
-            handler,
-        ):  # wrap controller methods into plain Starlette endpoints
-            async def endpoint(request: Request) -> JSONResponse:
-                result = await handler(request)
-                if isinstance(result, JSONResponse):
-                    return result
-                return JSONResponse(result)
-
-            return endpoint
-
-        asgi = Starlette(
-            routes=[
-                Route("/orders", json(controller.place_order), methods=["POST"]),
-                Route("/orders", json(controller.list_orders), methods=["GET"]),
-                Route(
-                    "/orders/{order_id}",
-                    json(controller.get_order),
-                    methods=["GET"],
-                ),
-                Route(
-                    "/orders/{order_id}/pay",
-                    json(controller.pay_order),
-                    methods=["POST"],
-                ),
-                Route(
-                    "/orders/{order_id}/ship",
-                    json(controller.ship_order),
-                    methods=["POST"],
-                ),
-                Route("/outbox", json(controller.list_outbox), methods=["GET"]),
-                Route(
-                    "/outbox/flush",
-                    json(controller.flush_outbox),
-                    methods=["POST"],
-                ),
-            ]
-        )
-        transport = httpx.ASGITransport(app=asgi)
+        web = await app.container.resolve(WebProvider)
+        transport = httpx.ASGITransport(app=web.starlette)
         async with httpx.AsyncClient(
             transport=transport, base_url="http://test"
         ) as http:
@@ -109,7 +65,7 @@ async def test_ship_unpaid_maps_to_409(client: httpx.AsyncClient) -> None:
     response = await client.post(f"/orders/{order_id}/ship")
 
     assert response.status_code == 409
-    assert "paid" in response.json()["error"].lower()
+    assert "paid" in response.json()["detail"].lower()
 
 
 async def test_unknown_order_maps_to_404(client: httpx.AsyncClient) -> None:

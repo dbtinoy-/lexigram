@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from starlette.requests import Request
 
-from lexigram.ai.prompt.exceptions import (
-    PromptNotFoundError,
-    PromptRenderError,
-)
+from lexigram.ai.prompt.exceptions import PromptNotFoundError, PromptRenderError
+from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 from prompt_lab.repository.templates import VARIANT_LABELS
@@ -17,6 +15,14 @@ from prompt_lab.services.versioning import LabVersions
 
 def _error(message: str, status: int) -> JSONResponse:
     return JSONResponse({"error": message}, status_code=status)
+
+
+def _not_found(message: str) -> NotFoundError:
+    return NotFoundError(message)
+
+
+def _invalid(message: str) -> ValidationError:
+    return ValidationError(message)
 
 
 async def _body(request: Request) -> dict:
@@ -80,7 +86,7 @@ class LabApiController(Controller):
     async def history(self, request: Request) -> JSONResponse:
         variant = request.path_params["variant"]
         if variant not in VARIANT_LABELS:
-            return _error(f"unknown variant: {variant!r}", 404)
+            raise _not_found(f"unknown variant: {variant!r}")
         return JSONResponse({"entries": self._versions.history(variant)})
 
     @post("/api/rollback")
@@ -88,7 +94,7 @@ class LabApiController(Controller):
         data = await _body(request)
         variant = str(data.get("variant", ""))
         if variant not in VARIANT_LABELS:
-            return _error(f"unknown variant: {variant!r}", 404)
+            raise _not_found(f"unknown variant: {variant!r}")
         steps = int(data.get("steps", 1))
         active_rev = self._versions.rollback(variant, steps=steps)
         return JSONResponse({"active_rev": active_rev})

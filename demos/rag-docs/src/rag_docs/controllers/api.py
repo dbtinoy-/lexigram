@@ -14,8 +14,11 @@ from typing import Any
 
 from starlette.requests import Request
 
+from lexigram.contracts.exceptions.domain import ValidationError
+from lexigram.result import Err, Result
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, JSONResponse, get, post
+from lexigram.web import Controller, get, post
+from lexigram.web.routing.result_bridge import ResultResponseMapper
 from rag_docs.errors import (
     NoResultsError,
     SynthesisFailedError,
@@ -23,32 +26,41 @@ from rag_docs.errors import (
 )
 from rag_docs.services.docs_ask import DocsAskService
 
+# Domain error → HTTP status mappings (rendered as ProblemDetail bodies).
+ResultResponseMapper.register(UnknownStrategyError, 400)
+ResultResponseMapper.register(NoResultsError, 404)
+ResultResponseMapper.register(SynthesisFailedError, 502)
+
 
 class DocsAskApiController(Controller):
-    """Expose the docs ask service over HTTP."""
+    """Expose the docs ask service over HTTP.
+
+    Handlers return the service's ``Result`` directly; the pipeline renders
+    ``Ok`` payloads and maps domain errors to ProblemDetail responses using
+    the registered status mappings below.
+    """
 
     def __init__(self, service: DocsAskService) -> None:
         self.service = service
 
     @post("/ask")
-    async def ask(self, request: Request) -> JSONResponse:
+    async def ask(
+        self,
+        request: Request,
+    ) -> Result[dict[str, Any], Exception]:
         """Answer a natural-language question with citations."""
         body = json_loads(await request.body())
         question = str(body.get("question") or "").strip()
         if not question:
-            return JSONResponse({"error": "question is required"}, status_code=400)
+            return Err(ValidationError("question is required"))
         strategy = str(body.get("strategy") or "vector")
 
         result = await self.service.ask(question, strategy=strategy)
-        if result.is_err():
-            error = result.unwrap_err()
-            return JSONResponse(
-                {"error": str(error)},
-                status_code=_STATUS_BY_ERROR.get(type(error), 502),
-            )
-        answer = result.unwrap()
-        return JSONResponse(
-            {"answer": answer.answer, "citations": list(answer.citations)}
+        return result.map_sync(
+            lambda answer: {
+                "answer": answer.answer,
+                "citations": list(answer.citations),
+            },
         )
 
     @get("/stats")
@@ -56,13 +68,6 @@ class DocsAskApiController(Controller):
         """Return corpus index stats."""
         stats = self.service.corpus_stats
         return {"files": stats.files, "chunks": stats.chunks}
-
-
-_STATUS_BY_ERROR: dict[type[Exception], int] = {
-    UnknownStrategyError: 400,
-    NoResultsError: 404,
-    SynthesisFailedError: 502,
-}
 
 
 __all__ = ["DocsAskApiController"]

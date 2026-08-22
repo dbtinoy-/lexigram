@@ -8,21 +8,23 @@ from a browser or curl alongside the existing CLI:
 - ``POST /orders/{id}/pay|ship``         — lifecycle commands
 - ``GET /outbox`` / ``POST /outbox/flush`` — transactional outbox inspection
 
-Domain failures map to status codes: unknown order → 404, state conflicts
-(``OrderNotPaidError`` / already-paid / already-shipped) → 409.
+Lifecycle handlers return the facade's ``Result`` directly; the pipeline
+renders ``Ok`` payloads and maps domain errors to ProblemDetail responses
+using the registered mappings below (unknown order → 404, state conflicts
+→ 409, other order errors → 400).
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Coroutine
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from starlette.requests import Request
 
-from lexigram.contracts.exceptions.events import HandlerNotFoundError
+from lexigram.result import Err, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
+from lexigram.web.routing.result_bridge import ResultResponseMapper
 from orders.domain import (
     OrderAlreadyPaidError,
     OrderAlreadyShippedError,
@@ -33,11 +35,14 @@ from orders.domain import (
 )
 from orders.services.orders_api import OrdersApi
 
-_CONFLICTS = (
-    OrderNotPaidError,
-    OrderAlreadyPaidError,
-    OrderAlreadyShippedError,
-)
+# Domain error → HTTP status mappings (rendered as ProblemDetail bodies).
+# Base first: register() inserts at front, so leaves must be registered
+# AFTER the base to take precedence.
+ResultResponseMapper.register(OrderError, 400)
+ResultResponseMapper.register(OrderNotPaidError, 409)
+ResultResponseMapper.register(OrderAlreadyPaidError, 409)
+ResultResponseMapper.register(OrderAlreadyShippedError, 409)
+ResultResponseMapper.register(OrderNotFoundError, 404)
 
 
 class OrdersApiController(Controller):
@@ -93,38 +98,31 @@ class OrdersApiController(Controller):
                 return JSONResponse(row)
         return JSONResponse({"error": f"unknown order {order_id}"}, status_code=404)
 
-    async def _dispatch(
-        self, run: Callable[[], Coroutine[Any, Any, None]]
-    ) -> JSONResponse:
-        """Run a lifecycle command, mapping domain failures to statuses."""
-        try:
-            await run()
-        except OrderNotFoundError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=404)
-        except _CONFLICTS as exc:
-            return JSONResponse({"error": str(exc)}, status_code=409)
-        except (HandlerNotFoundError, OrderError) as exc:
-            return JSONResponse({"error": str(exc)}, status_code=400)
-        return JSONResponse({"ok": True})
-
     @post("/orders/{order_id}/pay")
-    async def pay_order(self, request: Request) -> JSONResponse:
+    async def pay_order(
+        self,
+        request: Request,
+    ) -> Result[None, OrderError]:
         """Mark an order paid."""
         order_id = request.path_params["order_id"]
         body = json_loads(await request.body())
         try:
             amount = Decimal(str(body.get("amount", "0")))
         except InvalidOperation:
-            return JSONResponse({"error": "invalid amount"}, status_code=400)
-        return await self._dispatch(
-            lambda: self.api.pay(order_id=order_id, amount=amount)
-        )
+            return Err(OrderError("invalid amount"))
+        try:
+            return await self.api.pay(order_id=order_id, amount=amount)
+        except OrderError as exc:
+            return Err(exc)
 
     @post("/orders/{order_id}/ship")
-    async def ship_order(self, request: Request) -> JSONResponse:
+    async def ship_order(self, request: Request) -> Result[None, OrderError]:
         """Mark an order shipped (requires the order to be paid)."""
         order_id = request.path_params["order_id"]
-        return await self._dispatch(lambda: self.api.ship(order_id))
+        try:
+            return await self.api.ship(order_id)
+        except OrderError as exc:
+            return Err(exc)
 
     @get("/outbox")
     async def list_outbox(self, request: Request | None = None) -> list[dict[str, Any]]:
@@ -132,12 +130,12 @@ class OrdersApiController(Controller):
         return self.api.list_outbox()
 
     @post("/outbox/flush")
-    async def flush_outbox(self, request: Request | None = None) -> JSONResponse:
+    async def flush_outbox(
+        self, request: Request | None = None
+    ) -> Result[dict, Exception]:
         """Flush staged events through the event bus."""
         flushed = await self.api.flush_outbox()
-        if flushed.is_err():
-            return JSONResponse({"error": str(flushed.unwrap_err())}, status_code=502)
-        return JSONResponse({"ok": True, "flushed": flushed.unwrap()})
+        return flushed.map_sync(lambda count: {"ok": True, "flushed": count})
 
 
 __all__ = ["OrdersApiController"]

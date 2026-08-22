@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from lexigram.contracts.ai.memory import MemoryEntry
+from lexigram.contracts.exceptions.domain import ValidationError
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
 from lexigram.result import Err, Ok, Result
@@ -13,7 +14,7 @@ from memory_chat.services.extraction import extract_facts
 from memory_chat.services.responder import reply_for
 
 
-class EmptyMessageError(ValueError):
+class EmptyMessageError(ValidationError):
     """Raised when a turn carries no message text."""
 
 

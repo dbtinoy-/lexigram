@@ -64,14 +64,24 @@ async def test_failure_scenario_degrades_without_raising(
     assert "Unknown tool" in record["error"]
 
 
-async def test_unknown_scenario_is_400(client: httpx.AsyncClient) -> None:
+async def test_unknown_scenario_is_404(client: httpx.AsyncClient) -> None:
     response = await client.post(
         "/api/ask",
         json={"question": "hi", "scenario": "nope"},
     )
 
-    assert response.status_code == 400
-    assert "unknown scenario" in response.json()["error"].lower()
+    assert response.status_code == 404
+    body = response.json()
+    assert "unknown scenario" in body["detail"].lower()
+
+
+async def test_blank_question_is_422(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/ask",
+        json={"question": "   ", "scenario": "happy"},
+    )
+
+    assert response.status_code == 422
 
 
 async def test_runs_are_byte_stable(client: httpx.AsyncClient) -> None:
