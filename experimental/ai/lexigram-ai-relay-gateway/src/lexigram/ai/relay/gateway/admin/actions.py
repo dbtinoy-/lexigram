@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.ai.relay.gateway.admin.upstream_guard import _validate_upstream_url
+from lexigram.ai.relay.gateway.admin.upstream_guard import validate_upstream_url
 from lexigram.ai.relay.gateway.operations.controls import RelayControlsService
 from lexigram.ai.relay.gateway.operations.health import RelayHealthService
 from lexigram.contracts.ai.relay import (
@@ -149,7 +149,7 @@ def _build_channel(params: dict[str, object]) -> tuple[RelayChannel | None, str 
     upstream_base_url = params.get("upstream_base_url")
     if not isinstance(upstream_base_url, str) or not upstream_base_url.strip():
         return None, "upstream_base_url is required"
-    upstream_ok, upstream_err = _validate_upstream_url(upstream_base_url.strip())
+    upstream_ok, upstream_err = validate_upstream_url(upstream_base_url.strip())
     if not upstream_ok:
         return None, f"upstream_base_url rejected: {upstream_err}"
     target_format = params.get("target_format")
