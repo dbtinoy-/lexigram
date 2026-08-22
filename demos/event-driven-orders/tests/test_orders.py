@@ -23,9 +23,9 @@ from orders.domain import OrderItem, OrderNotPaidError, OrderPlaced, OrderStatus
 from orders.events import NotificationHandler, OrdersView
 from orders.main import _build_parser, _run
 from orders.module import OrdersModule
-from orders.outbox import Outbox, OutboxError
-from orders.repositories import OrderRepository
-from orders.services import OrdersApi
+from orders.repository.outbox import Outbox, OutboxError
+from orders.repository.order_repository import OrderRepository
+from orders.services.orders_api import OrdersApi
 
 
 @pytest.fixture
@@ -114,8 +114,8 @@ class TestOrderLifecycle:
         api = await app.container.resolve(OrdersApi)
         event_bus = await app.container.resolve(EventBusProtocol)
 
-        order_id = await api.place("Bob Belcher", [item("SKU-9", 1, "12.00")])
-        await api.pay(order_id, Decimal("12.00"))
+        order_id = (await api.place("Bob Belcher", [item("SKU-9", 1, "12.00")])).unwrap()
+        (await api.pay(order_id, Decimal("12.00"))).unwrap()
         await api.flush_outbox()
         await event_bus.flush()
 
@@ -196,8 +196,10 @@ class TestNotifications:
         event_bus = await app.container.resolve(EventBusProtocol)
         notifier = await app.container.resolve(NotificationHandler)
 
-        order_id = await api.place("Grace Hopper", [item("SKU-7")])
-        await api.pay(order_id, Decimal("10.00"))
+        order_id = (
+            await api.place("Grace Hopper", [item("SKU-7")])
+        ).unwrap()
+        (await api.pay(order_id, Decimal("10.00"))).unwrap()
         await api.ship(order_id)
         await api.flush_outbox()
         await event_bus.flush()

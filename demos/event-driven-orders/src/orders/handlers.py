@@ -25,8 +25,8 @@ from orders.domain import (
     OrderStatus,
     order_event,
 )
-from orders.outbox import Outbox
-from orders.repositories import OrderRepository
+from orders.repository.order_repository import OrderRepository
+from orders.repository.outbox import Outbox
 
 logger = get_logger(__name__)
 

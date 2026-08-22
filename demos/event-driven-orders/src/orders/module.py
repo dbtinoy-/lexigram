@@ -18,9 +18,9 @@ from orders.api import OrdersApiController
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.di.provider import OrdersProvider
 from orders.events import NotificationHandler, OrdersView
-from orders.outbox import Outbox
-from orders.repositories import OrderRepository
-from orders.services import OrdersApi
+from orders.repository.order_repository import OrderRepository
+from orders.repository.outbox import Outbox
+from orders.services.orders_api import OrdersApi
 
 
 @module()

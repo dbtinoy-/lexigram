@@ -14,9 +14,9 @@ from orders.domain import (
 )
 from orders.events import NotificationHandler, OrdersView, OrderView
 from orders.module import OrdersModule
-from orders.outbox import Outbox, OutboxRecord, OutboxStatus
-from orders.repositories import OrderRepository
-from orders.services import OrdersApi
+from orders.repository.order_repository import OrderRepository
+from orders.repository.outbox import Outbox, OutboxRecord, OutboxStatus
+from orders.services.orders_api import OrdersApi
 
 __all__ = [
     "NotificationHandler",

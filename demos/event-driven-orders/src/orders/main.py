@@ -22,7 +22,7 @@ import sys
 from lexigram.app import Application
 from orders.domain import OrderItem
 from orders.module import OrdersModule
-from orders.services import OrdersApi
+from orders.services.orders_api import OrdersApi
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -72,11 +72,11 @@ async def _serve(port: int) -> None:
         await run_server_async(web.starlette, host="127.0.0.1", port=port)
 
 
-async def _run(args: argparse.Namespace) -> None:
+async def _run(args: argparse.Namespace) -> int:
     if args.command == "serve":
         port = args.port or int(os.environ.get("ORDERS_PORT", "7074"))
         await _serve(port)
-        return
+        return 0
     async with Application.boot(
         name="orders", modules=[OrdersModule.configure()]
     ) as app:
@@ -100,31 +100,48 @@ async def _run(args: argparse.Namespace) -> None:
         elif args.command == "outbox":
             for record in api.list_outbox():
                 print(f"{record['event_type']}\t{record['status']}")
-            sent = await api.flush_outbox()
-            print(f"flushed: {sent}")
+            flushed = await api.flush_outbox()
+            if flushed.is_err():
+                print(f"flush failed: {flushed.unwrap_err()}")
+                return 1
+            print(f"flushed: {flushed.unwrap()}")
         elif args.command == "demo":
             items = [_parse_item("SKU-1,2,9.99"), _parse_item("SKU-2,1,149.00")]
-            order_id = await api.place("Alice Wonder", items)
+            placed = await api.place("Alice Wonder", items)
+            if placed.is_err():
+                print(f"rejected: {placed.unwrap_err()}")
+                return 1
+            order_id = placed.unwrap()
             print(f"order placed: {order_id}")
-            await api.pay(order_id, Decimal("168.98"))
+            paid = await api.pay(order_id, Decimal("168.98"))
+            if paid.is_err():
+                print(f"rejected: {paid.unwrap_err()}")
+                return 1
             print(f"order paid: {order_id} (168.98)")
-            await api.ship(order_id)
+            shipped = await api.ship(order_id)
+            if shipped.is_err():
+                print(f"rejected: {shipped.unwrap_err()}")
+                return 1
             print(f"order shipped: {order_id}")
             for record in api.list_outbox():
                 print(f"{record['event_type']}\t{record['status']}")
-            sent = await api.flush_outbox()
-            await api.event_bus.flush()
+            flushed = await api.flush_outbox()
+            if flushed.is_err():
+                print(f"flush failed: {flushed.unwrap_err()}")
+                return 1
+            sent = flushed.unwrap()
             for row in api.list_orders():
                 print(
                     f"{row['order_id']}\t{row['customer']}\t{row['total']}\t{row['status']}"
                 )
             print(f"flushed: {sent}")
+            return 0
 
 
 def main() -> None:
     args = _build_parser().parse_args()
     try:
-        asyncio.run(_run(args))
+        sys.exit(asyncio.run(_run(args)))
     except KeyboardInterrupt:
         sys.exit(130)
 

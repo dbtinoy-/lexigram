@@ -31,7 +31,7 @@ from orders.domain import (
     OrderNotFoundError,
     OrderNotPaidError,
 )
-from orders.services import OrdersApi
+from orders.services.orders_api import OrdersApi
 
 _CONFLICTS = (
     OrderNotPaidError,
@@ -73,7 +73,10 @@ class OrdersApiController(Controller):
                 {"error": "at least one item is required"}, status_code=400
             )
 
-        order_id = await self.api.place(customer=customer, items=parsed)
+        placed = await self.api.place(customer=customer, items=parsed)
+        if placed.is_err():
+            return JSONResponse({"error": str(placed.unwrap_err())}, status_code=409)
+        order_id = placed.unwrap()
         return JSONResponse({"order_id": order_id, "status": "placed"}, status_code=201)
 
     @get("/orders")
@@ -129,10 +132,12 @@ class OrdersApiController(Controller):
         return self.api.list_outbox()
 
     @post("/outbox/flush")
-    async def flush_outbox(self, request: Request | None = None) -> dict[str, Any]:
+    async def flush_outbox(self, request: Request | None = None) -> JSONResponse:
         """Flush staged events through the event bus."""
         flushed = await self.api.flush_outbox()
-        return {"ok": True, "flushed": flushed}
+        if flushed.is_err():
+            return JSONResponse({"error": str(flushed.unwrap_err())}, status_code=502)
+        return JSONResponse({"ok": True, "flushed": flushed.unwrap()})
 
 
 __all__ = ["OrdersApiController"]

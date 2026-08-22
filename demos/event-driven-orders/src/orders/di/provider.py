@@ -19,9 +19,9 @@ from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import OrderPaid, OrderPlaced, OrderShipped
 from orders.events import NotificationHandler, OrdersView
 from orders.handlers import PayOrderHandler, PlaceOrderHandler, ShipOrderHandler
-from orders.outbox import Outbox
-from orders.repositories import OrderRepository
-from orders.services import OrdersApi
+from orders.repository.order_repository import OrderRepository
+from orders.repository.outbox import Outbox
+from orders.services.orders_api import OrdersApi
 
 
 class OrdersProvider(Provider):

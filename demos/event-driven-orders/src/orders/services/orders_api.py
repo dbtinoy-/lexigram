@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.events import EventBusProtocol
 from lexigram.events.buses.command import CommandBusImpl
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
-from orders.domain import OrderItem
+from orders.domain import OrderError, OrderItem
 from orders.events import OrdersView
-from orders.outbox import Outbox
-from orders.repositories import OrderRepository
+from orders.repository.order_repository import OrderRepository
+from orders.repository.outbox import Outbox
 
 
 class OrdersApi:
@@ -42,19 +43,51 @@ class OrdersApi:
         self.view = view
         self.outbox = outbox
 
-    async def place(self, customer: str, items: list[OrderItem]) -> str:
-        """Dispatch ``PlaceOrder`` and return the new order id."""
-        return await self.command_bus.dispatch(
+    async def _dispatch_command(self, command: Any) -> Any:
+        """Run ``command`` through the bus and normalize the outcome.
+
+        The bus is typed ``-> Any``: handlers may return bare values or
+        ``Result``-like objects depending on configuration. Rejections are
+        raised as ``OrderError`` subclasses; successful values pass back
+        untouched.
+        """
+        try:
+            return await self.command_bus.dispatch(command)
+        except OrderError:
+            raise
+
+    async def place(
+        self, customer: str, items: list[OrderItem]
+    ) -> Result[str, OrderError]:
+        """Dispatch ``PlaceOrder`` and return the new order id.
+
+        Returns:
+            ``Ok(order_id)`` on success; ``Err(OrderError)`` when the
+            write side rejects the command.
+        """
+        order_id = await self._dispatch_command(
             PlaceOrder(customer=customer, items=items)
         )
+        return Ok(str(order_id))
 
-    async def pay(self, order_id: str, amount: Decimal) -> None:
-        """Dispatch ``PayOrder``."""
-        await self.command_bus.dispatch(PayOrder(order_id=order_id, amount=amount))
+    async def pay(self, order_id: str, amount: Decimal) -> Result[None, OrderError]:
+        """Dispatch ``PayOrder``.
 
-    async def ship(self, order_id: str) -> None:
-        """Dispatch ``ShipOrder``."""
-        await self.command_bus.dispatch(ShipOrder(order_id=order_id))
+        Returns:
+            ``Ok(None)`` on success; ``Err(OrderError)`` on rejection.
+        """
+        await self._dispatch_command(PayOrder(order_id=order_id, amount=amount))
+        return Ok(None)
+
+    async def ship(self, order_id: str) -> Result[None, OrderError]:
+        """Dispatch ``ShipOrder`` (requires a paid order).
+
+        Returns:
+            ``Ok(None)`` on success; ``Err(OrderNotPaidError)`` and friends
+            on rejection.
+        """
+        await self._dispatch_command(ShipOrder(order_id=order_id))
+        return Ok(None)
 
     def list_orders(self) -> list[dict[str, object]]:
         """Return the read-model rows for every order."""
@@ -70,19 +103,23 @@ class OrdersApi:
             for record in self.outbox.all()
         ]
 
-    async def flush_outbox(self) -> int:
+    async def flush_outbox(self) -> Result[int, Exception]:
         """Flush staged events through the event bus; return count sent.
 
         Publishes the outbox and then drains the bus so subscribed
         projections advance before this call returns — one call, fully
         consistent read side.
+
+        Returns:
+            ``Ok(count)`` of published events; ``Err(OutboxError)`` when
+            any publish failed (records stay pending).
         """
         result = await self.outbox.flush(self.event_bus)
         if result.is_err():
-            raise result.unwrap_err()
+            return Err(result.unwrap_err())
         sent = result.unwrap()
         await self.event_bus.flush()
-        return sent
+        return Ok(sent)
 
 
 __all__ = ["OrdersApi"]
