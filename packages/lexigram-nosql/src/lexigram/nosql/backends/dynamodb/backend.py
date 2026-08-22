@@ -65,7 +65,7 @@ class DynamoDBBackend(AbstractDocumentStore):
     async def connect(self) -> None:
         """Initialise the aioboto3 DynamoDB resource and verify connectivity."""
         try:
-            import aioboto3  # type: ignore[import-not-found]
+            import aioboto3
         except ImportError as exc:
             raise NoSQLConnectionError(
                 "aioboto3 is required for DynamoDB support. "

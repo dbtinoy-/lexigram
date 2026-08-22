@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lexigram.search.backends.filters._validation import (
     _validate_filters,
 )

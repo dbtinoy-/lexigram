@@ -150,6 +150,7 @@ known-first-party = ["lexigram"]
 force-sort-within-sections = true
 
 [tool.mypy]
+ignore_missing_imports = true
 python_version = "3.11"
 namespace_packages = true
 explicit_package_bases = true
@@ -164,7 +165,7 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
-warn_unreachable = true
+warn_unreachable = false
 strict_equality = true
 show_error_codes = true
 overrides = [

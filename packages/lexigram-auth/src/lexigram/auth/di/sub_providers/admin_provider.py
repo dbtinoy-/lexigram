@@ -10,7 +10,7 @@ from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
     from lexigram.auth.config import AuthConfig
-    from lexigram.contracts.core.container import (  # type: ignore[import-untyped]
+    from lexigram.contracts.core.container import (
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )

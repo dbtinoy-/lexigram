@@ -8,18 +8,18 @@ from typing import Any, Protocol
 from lexigram.logging import get_logger
 
 try:
-    from saml2 import BINDING_HTTP_POST  # type: ignore[import-not-found]
+    from saml2 import BINDING_HTTP_POST
 
     # Optional imports that may not be used directly are aliased to avoid unused-import warnings
     from saml2 import BINDING_HTTP_REDIRECT as _BINDING_HTTP_REDIRECT
-    from saml2.client import Saml2Client  # type: ignore[import-not-found]
-    from saml2.config import Config as Saml2Config  # type: ignore[import-not-found]
-    from saml2.metadata import (  # type: ignore[import-not-found]
+    from saml2.client import Saml2Client
+    from saml2.config import Config as Saml2Config
+    from saml2.metadata import (
         entity_descriptor as _entity_descriptor,
     )
-    from saml2.response import AuthnResponse  # type: ignore[import-not-found]
-    from saml2.saml import NAMEID_FORMAT_EMAILADDRESS  # type: ignore[import-not-found]
-    import xmlsec as _xmlsec  # type: ignore[import-not-found]
+    from saml2.response import AuthnResponse
+    from saml2.saml import NAMEID_FORMAT_EMAILADDRESS
+    import xmlsec as _xmlsec
 
     HAS_SAML = True
     # Use no-op references to aliased optional imports so static linters don't flag them

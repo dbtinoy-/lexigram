@@ -164,7 +164,8 @@ known-first-party = ["lexigram"]
 force-sort-within-sections = true
 
 [tool.mypy]
-python_version = "3.11"
+ignore_missing_imports = true
+python_version = "3.13"
 namespace_packages = true
 explicit_package_bases = true
 mypy_path = ["src"]

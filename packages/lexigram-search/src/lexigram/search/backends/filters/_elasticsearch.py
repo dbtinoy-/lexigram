@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.search.backends.filters._validation import _validate_filters
+from lexigram.search.backends.filters._validation import (
+    FilterRenderError,
+    _validate_filters,
+)
 
 
 def _es_clauses(sub: dict[str, Any]) -> list[dict[str, Any]]:

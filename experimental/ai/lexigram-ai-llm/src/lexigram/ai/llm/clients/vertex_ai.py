@@ -92,8 +92,8 @@ class VertexAIClient(AbstractLLMClient):
         super().__init__(config=config)
 
         try:
-            import google.auth  # type: ignore[import-not-found]  # noqa: F401
-            import google.auth.transport.requests  # type: ignore[import-not-found]  # noqa: F401
+            import google.auth  # noqa: F401
+            import google.auth.transport.requests  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "VertexAIClient requires 'google-auth'. "
@@ -136,7 +136,7 @@ class VertexAIClient(AbstractLLMClient):
 
         try:
             if self._credentials_file:
-                from google.oauth2 import (  # type: ignore[import-not-found]
+                from google.oauth2 import (
                     service_account,
                 )
 

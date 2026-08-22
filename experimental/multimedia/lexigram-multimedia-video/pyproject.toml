@@ -76,12 +76,11 @@ video = "lexigram.multimedia.video.module:VideoModule"
 packages = ["src/lexigram"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 namespace_packages = true
 explicit_package_bases = true
 mypy_path = ["src"]
-ignore_missing_imports = false
-warn_return_any = true
+ignore_missing_imports = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

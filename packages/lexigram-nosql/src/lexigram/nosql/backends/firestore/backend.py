@@ -71,7 +71,7 @@ class FirestoreBackend(AbstractDocumentStore):
         }
 
         if self._config.credentials_json:
-            from google.oauth2 import service_account  # type: ignore[import-not-found]
+            from google.oauth2 import service_account
 
             import lexigram.serialization as json
 

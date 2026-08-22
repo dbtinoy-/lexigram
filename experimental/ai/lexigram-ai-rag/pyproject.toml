@@ -101,7 +101,7 @@ lexigram-contracts = { workspace = true }
 lexigram-testing = { workspace = true }
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 namespace_packages = true
 explicit_package_bases = true
 mypy_path = ["src"]

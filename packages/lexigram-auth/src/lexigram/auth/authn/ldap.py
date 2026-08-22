@@ -8,9 +8,9 @@ from typing import Any
 from lexigram.logging import get_logger
 
 try:
-    import ldap3  # type: ignore[import-untyped]
+    import ldap3
     from ldap3 import ALL, BASE, SUBTREE, Connection, Server
-    from ldap3.core.exceptions import LDAPException  # type: ignore[import-untyped]
+    from ldap3.core.exceptions import LDAPException
 
     LDAP_AVAILABLE = True
 except ImportError:
