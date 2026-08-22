@@ -16,15 +16,12 @@ Result semantics (verb methods only):
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
-import time
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterable
+    from collections.abc import Iterable
 
     from lexigram.contracts.observability.metrics import MetricsRecorderProtocol
-    from lexigram.contracts.web.sse import ServerSentEvent
 
 from lexigram.contracts.infra.resilience import (
     CircuitBreakerError as _CoreCircuitBreakerError,
@@ -39,21 +36,15 @@ from lexigram.contracts.infra.resilience import (
 )
 from lexigram.contracts.security import is_safe_url_for_request
 from lexigram.contracts.web import HttpResponse, InterceptorProtocol
-from lexigram.contracts.web.sse import ServerSentEvent
 from lexigram.http.config import HTTPClientConfig
 from lexigram.http.exceptions import (
     HTTPCircuitOpenError,
-    HTTPClientError,
-    HTTPConnectionError,
     HTTPRetryExhaustedError,
-    HTTPStatusError,
-    HTTPTimeoutError,
     HTTPUnsafeURLError,
 )
 from lexigram.http.pool import ConnectionPool
 from lexigram.http.types import RequestContext
 from lexigram.logging import get_logger
-from lexigram.result import Err, Ok, Result
 
 logger = get_logger(__name__)
 
@@ -112,7 +103,14 @@ async def _to_http_response(raw: Any, method: str) -> HttpResponse:
     )
 
 
-class HTTPClient:
+from lexigram.http.client._streaming import _HTTPStreamingMixin
+from lexigram.http.client._verbs import _HTTPVerbsMixin
+
+
+class HTTPClient(
+    _HTTPStreamingMixin,
+    _HTTPVerbsMixin,
+):
     """Async HTTP client with connection pooling and optional resilience.
 
     All dependencies are provided at construction time (constructor injection).
@@ -153,8 +151,8 @@ class HTTPClient:
         resilience: ResiliencePipelineProtocol | None = None,
         metrics: MetricsRecorderProtocol | None = None,
     ) -> None:
-        self._config = config or HTTPClientConfig()
-        self._pool = pool or ConnectionPool(
+        self._config: HTTPClientConfig = config or HTTPClientConfig()
+        self._pool: ConnectionPool = pool or ConnectionPool(
             max_connections=self._config.pool.max_connections,
             max_keepalive_connections=self._config.pool.max_keepalive_connections,
             max_connections_per_host=self._config.pool.max_connections_per_host,
@@ -191,7 +189,6 @@ class HTTPClient:
     @pool.setter
     def pool(self, value: ConnectionPool) -> None:
         """Replace the connection pool (mainly for testing)."""
-        self._pool = value
 
     async def start(self) -> None:
         """Start the HTTP client and its connection pool."""
@@ -308,387 +305,3 @@ class HTTPClient:
             raw = await interceptor.intercept_response(raw)
 
         return await _to_http_response(raw, method)
-
-    async def get(
-        self, url: str, **kwargs: Any
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Perform a GET request.
-
-        Args:
-            url: Target URL.
-            **kwargs: Forwarded to :meth:`request`.
-
-        Returns:
-            ``Ok(HttpResponse)`` on 2xx; ``Err(HTTPStatusError)`` on 4xx/5xx;
-            ``Err(HTTPConnectionError | HTTPTimeoutError)`` on transport failure.
-
-        Raises:
-            HTTPCircuitOpenError: When the circuit breaker is open.
-            HTTPRetryExhaustedError: When all retry attempts are exhausted.
-        """
-        return await self._request_result("GET", url, **kwargs)
-
-    async def post(
-        self, url: str, **kwargs: Any
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Perform a POST request.
-
-        Args:
-            url: Target URL.
-            **kwargs: Forwarded to :meth:`request`.
-
-        Returns:
-            ``Ok(HttpResponse)`` on 2xx; ``Err(HTTPStatusError)`` on 4xx/5xx;
-            ``Err(HTTPConnectionError | HTTPTimeoutError)`` on transport failure.
-
-        Raises:
-            HTTPCircuitOpenError: When the circuit breaker is open.
-            HTTPRetryExhaustedError: When all retry attempts are exhausted.
-        """
-        return await self._request_result("POST", url, **kwargs)
-
-    async def put(
-        self, url: str, **kwargs: Any
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Perform a PUT request.
-
-        Args:
-            url: Target URL.
-            **kwargs: Forwarded to :meth:`request`.
-
-        Returns:
-            ``Ok(HttpResponse)`` on 2xx; ``Err(HTTPStatusError)`` on 4xx/5xx;
-            ``Err(HTTPConnectionError | HTTPTimeoutError)`` on transport failure.
-
-        Raises:
-            HTTPCircuitOpenError: When the circuit breaker is open.
-            HTTPRetryExhaustedError: When all retry attempts are exhausted.
-        """
-        return await self._request_result("PUT", url, **kwargs)
-
-    async def delete(
-        self, url: str, **kwargs: Any
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Perform a DELETE request.
-
-        Args:
-            url: Target URL.
-            **kwargs: Forwarded to :meth:`request`.
-
-        Returns:
-            ``Ok(HttpResponse)`` on 2xx; ``Err(HTTPStatusError)`` on 4xx/5xx;
-            ``Err(HTTPConnectionError | HTTPTimeoutError)`` on transport failure.
-
-        Raises:
-            HTTPCircuitOpenError: When the circuit breaker is open.
-            HTTPRetryExhaustedError: When all retry attempts are exhausted.
-        """
-        return await self._request_result("DELETE", url, **kwargs)
-
-    async def patch(
-        self, url: str, **kwargs: Any
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Perform a PATCH request.
-
-        Args:
-            url: Target URL.
-            **kwargs: Forwarded to :meth:`request`.
-
-        Returns:
-            ``Ok(HttpResponse)`` on 2xx; ``Err(HTTPStatusError)`` on 4xx/5xx;
-            ``Err(HTTPConnectionError | HTTPTimeoutError)`` on transport failure.
-
-        Raises:
-            HTTPCircuitOpenError: When the circuit breaker is open.
-            HTTPRetryExhaustedError: When all retry attempts are exhausted.
-        """
-        return await self._request_result("PATCH", url, **kwargs)
-
-    async def head(
-        self, url: str, **kwargs: Any
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Perform a HEAD request.
-
-        Args:
-            url: Target URL.
-            **kwargs: Forwarded to :meth:`request`.
-
-        Returns:
-            ``Ok(HttpResponse)`` on 2xx; ``Err(HTTPStatusError)`` on 4xx/5xx;
-            ``Err(HTTPConnectionError | HTTPTimeoutError)`` on transport failure.
-
-        Raises:
-            HTTPCircuitOpenError: When the circuit breaker is open.
-            HTTPRetryExhaustedError: When all retry attempts are exhausted.
-        """
-        return await self._request_result("HEAD", url, **kwargs)
-
-    async def _request_result(
-        self, method: str, url: str, **kwargs: Any
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Shared Result-returning implementation for all verb methods.
-
-        Calls the raw :meth:`request` transport method and maps the outcome:
-        - 2xx → ``Ok(HttpResponse)``
-        - 4xx/5xx → ``Err(HTTPStatusError)``
-        - Connection / timeout failures → ``Err(HTTPConnectionError | HTTPTimeoutError)``
-        - Circuit-breaker open / retries exhausted → raised as-is (infrastructure)
-
-        Args:
-            method: HTTP method string.
-            url: Target URL.
-            **kwargs: Forwarded to :meth:`request`.
-        """
-        start = time.monotonic()
-        try:
-            response = await self.request(method, url, **kwargs)
-        except HTTPConnectionError as exc:
-            logger.debug(
-                "http.client.connection_error", method=method, url=url, error=str(exc)
-            )
-            if self._metrics is not None:
-                self._metrics.increment(
-                    "http.request.status",
-                    tags={"method": method.upper(), "status": "connection_error"},
-                )
-            return Err(exc)
-        except HTTPTimeoutError as exc:
-            logger.debug("http.client.timeout", method=method, url=url, error=str(exc))
-            if self._metrics is not None:
-                self._metrics.increment(
-                    "http.request.status",
-                    tags={"method": method.upper(), "status": "timeout"},
-                )
-            return Err(exc)
-        # HTTPCircuitOpenError and HTTPRetryExhaustedError propagate as exceptions.
-        finally:
-            duration = time.monotonic() - start
-            if self._metrics is not None:
-                self._metrics.histogram(
-                    "http.request.duration",
-                    duration,
-                    tags={"method": method.upper()},
-                )
-
-        if response.status >= 400:
-            logger.debug(
-                "http.client.error_response",
-                method=method,
-                url=url,
-                status=response.status,
-            )
-            if self._metrics is not None:
-                self._metrics.increment(
-                    "http.request.status",
-                    tags={"method": method.upper(), "status": str(response.status)},
-                )
-            return Err(HTTPStatusError(status=response.status, response=response))
-        if self._metrics is not None:
-            self._metrics.increment(
-                "http.request.status",
-                tags={"method": method.upper(), "status": str(response.status)},
-            )
-        return Ok(response)
-
-    async def post_multipart(
-        self,
-        url: str,
-        fields: dict[str, str | bytes | tuple[str, bytes, str]],
-        **kwargs: Any,
-    ) -> Result[HttpResponse, HTTPClientError]:
-        """Upload multipart/form-data.
-
-        Builds an ``aiohttp.FormData`` payload from *fields* and POSTs it.
-        Each value can be:
-
-        * ``str`` — sent as a plain text field
-        * ``bytes`` — sent as a file-like binary field (filename inferred from
-          the field name)
-        * ``(filename, data, content_type)`` — full control over the part
-          headers
-
-        Args:
-            url: Target URL.
-            fields: Mapping of field names to values.  See above for supported
-                value types.
-            **kwargs: Additional keyword arguments forwarded to :meth:`request`.
-
-        Returns:
-            ``Ok(HttpResponse)`` on 2xx; ``Err(...)`` on failure.
-
-        Example::
-
-            result = await client.post_multipart(
-                "https://api.example.com/upload",
-                fields={
-                    "description": "My file",
-                    "file": ("report.pdf", pdf_bytes, "application/pdf"),
-                },
-            )
-        """
-        import aiohttp
-
-        form = aiohttp.FormData()
-        for name, value in fields.items():
-            if isinstance(value, str):
-                form.add_field(name, value)
-            elif isinstance(value, bytes):
-                form.add_field(name, value, filename=name)
-            else:
-                filename, data, content_type = value
-                form.add_field(name, data, filename=filename, content_type=content_type)
-
-        return await self._request_result("POST", url, data=form, **kwargs)
-
-    @asynccontextmanager
-    async def stream(
-        self,
-        method: str,
-        url: str,
-        **kwargs: Any,
-    ) -> AsyncIterator[AsyncIterator[bytes]]:
-        """Async context manager that streams the response body as raw bytes chunks.
-
-        Unlike :meth:`request`, this method does not buffer the entire response
-        body in memory — suitable for large file downloads or chunked responses.
-
-        Args:
-            method: HTTP method (``GET``, ``POST``, etc.)
-            url: Target URL.
-            **kwargs: Additional keyword arguments forwarded to ``aiohttp``.
-
-        Yields:
-            An :class:`~collections.abc.AsyncIterator` of ``bytes`` chunks.
-
-        Raises:
-            HTTPConnectionError: When the connection cannot be established.
-            HTTPTimeoutError: When the request times out.
-
-        Example::
-
-            async with client.stream("GET", large_file_url) as chunks:
-                async for chunk in chunks:
-                    await file.write(chunk)
-        """
-        if self._pool._session is None:
-            raise HTTPConnectionError("HTTPClient not started. Call start() first.")
-
-        await self._assert_url_safe(url)
-
-        async with self._pool._session.request(method, url, **kwargs) as resp:  # type: ignore[attr-defined]
-
-            async def _iter_chunks() -> AsyncIterator[bytes]:
-                async for chunk, _ in resp.content.iter_chunks():
-                    if chunk:
-                        yield chunk
-
-            yield _iter_chunks()
-
-    @asynccontextmanager
-    async def sse(
-        self,
-        url: str,
-        **kwargs: Any,
-    ) -> AsyncIterator[AsyncIterator[ServerSentEvent]]:
-        """Async context manager that consumes a Server-Sent Events (SSE) stream.
-
-        Opens a persistent ``GET`` connection and parses the ``text/event-stream``
-        response into :class:`~lexigram.contracts.web.sse.ServerSentEvent` objects.
-
-        Args:
-            url: SSE endpoint URL.
-            **kwargs: Additional keyword arguments forwarded to ``aiohttp``.
-
-        Yields:
-            An :class:`~collections.abc.AsyncIterator` of
-            :class:`~lexigram.contracts.web.sse.ServerSentEvent` objects.
-
-        Raises:
-            HTTPConnectionError: When the connection cannot be established.
-
-        Example::
-
-            from lexigram.logging import get_logger
-
-            logger = get_logger(__name__)
-            async with client.sse("https://api.example.com/events") as events:
-                async for event in events:
-                    logger.info("sse_event", event_type=event.event, data=event.data)
-        """
-        if self._pool._session is None:
-            raise HTTPConnectionError("HTTPClient not started. Call start() first.")
-
-        await self._assert_url_safe(url)
-
-        headers = dict(kwargs.pop("headers", {}))
-        headers.setdefault("Accept", "text/event-stream")
-        headers.setdefault("Cache-Control", "no-cache")
-
-        async with self._pool._session.request(  # type: ignore[attr-defined]
-            "GET", url, headers=headers, **kwargs
-        ) as resp:
-
-            async def _parse_sse() -> AsyncIterator[ServerSentEvent]:
-                event_type = "message"
-                data_lines: list[str] = []
-                event_id: str | None = None
-
-                async for raw_line in resp.content:
-                    line = raw_line.decode("utf-8").rstrip("\n").rstrip("\r")
-                    if not line:
-                        if data_lines:
-                            yield ServerSentEvent(
-                                data="\n".join(data_lines),
-                                event=event_type,
-                                event_id=event_id,
-                            )
-                        event_type = "message"
-                        data_lines = []
-                        event_id = None
-                    elif line.startswith("data:"):
-                        data_lines.append(line[5:].lstrip(" "))
-                    elif line.startswith("event:"):
-                        event_type = line[6:].strip()
-                    elif line.startswith("id:"):
-                        event_id = line[3:].strip()
-
-            yield _parse_sse()
-
-    @classmethod
-    @asynccontextmanager
-    async def session_context(
-        cls,
-        config: HTTPClientConfig | None = None,
-        retry_policy: RetryPolicyProtocol | None = None,
-        circuit_breaker: CircuitBreakerProtocol | None = None,
-        interceptors: Iterable[InterceptorProtocol] = (),
-    ) -> AsyncIterator[HTTPClient]:
-        """Async context manager that starts and stops the client automatically.
-
-        Args:
-            config: Optional :class:`HTTPClientConfig`; framework defaults apply.
-            retry_policy: Optional retry policy; framework default when ``None``.
-            circuit_breaker: Optional circuit breaker; disabled when ``None``.
-            interceptors: Zero or more interceptors.
-
-        Yields:
-            A started :class:`HTTPClient` instance.
-
-        Example:
-            >>> async with HTTPClient.session_context() as client:
-            ...     response = await client.get("https://api.example.com")
-        """
-        client = cls(
-            config=config,
-            retry_policy=retry_policy,
-            circuit_breaker=circuit_breaker,
-            interceptors=interceptors,
-        )
-        await client.start()
-        try:
-            yield client
-        finally:
-            await client.stop()
-
-
-__all__ = ["HTTPClient"]
