@@ -36,7 +36,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_health_check_healthy(self):
         """Test SQLite pool health check when healthy"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_cursor = AsyncMock()
             mock_conn.execute = AsyncMock(return_value=mock_cursor)
@@ -76,7 +76,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_health_check_unhealthy_query_failed(self):
         """Test SQLite pool health check when query fails"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 
@@ -105,7 +105,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_health_check_caching(self):
         """Test SQLite pool health check caching"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_cursor = AsyncMock()
             mock_conn.execute = AsyncMock(return_value=mock_cursor)

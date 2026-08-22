@@ -57,7 +57,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_connection_creation(self):
         """Test SQLite connection creation"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 

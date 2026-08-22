@@ -72,7 +72,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_with_monitoring(self, mock_monitor):
         """Test SQLite pool with monitoring enabled"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 
@@ -88,10 +88,10 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_retry_logic(self):
         """Test SQLite pool retry logic on initialization failures"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite"):
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite"):
             # Mock retry_call to track calls
             with patch(
-                "lexigram.sql.backends.sqlite.retry_call", new_callable=AsyncMock
+                "lexigram.sql.backends.sqlite._pool.retry_call", new_callable=AsyncMock
             ) as mock_retry:
                 mock_conn = AsyncMock()
                 mock_retry.return_value = mock_conn
@@ -108,7 +108,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_circuit_breaker(self):
         """Test SQLite pool circuit breaker integration"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 
@@ -143,7 +143,7 @@ class TestSQLiteDriver:
 
     def test_sqlite_import_error_when_unavailable(self):
         """Test SQLite import error when aiosqlite not available"""
-        with patch("lexigram.sql.backends.sqlite.HAS_SQLITE", False):
+        with patch("lexigram.sql.backends.sqlite._pool.HAS_SQLITE", False):
             with pytest.raises(
                 ImportError,
                 match="aiosqlite is required for SQLite support",

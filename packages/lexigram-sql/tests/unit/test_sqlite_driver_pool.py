@@ -36,7 +36,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_creation(self):
         """Test SQLite pool creation"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 
@@ -50,7 +50,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_initialization_success(self):
         """Test SQLite pool initialization success"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 
@@ -64,14 +64,14 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_initialization_failure(self):
         """Test SQLite pool initialization failure"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_aiosqlite.connect = AsyncMock(
                 side_effect=OSError("Connection failed"),
             )
 
             # Mock retry_call to avoid retries in this test
             with patch(
-                "lexigram.sql.backends.sqlite.retry_call", new_callable=AsyncMock
+                "lexigram.sql.backends.sqlite._pool.retry_call", new_callable=AsyncMock
             ) as mock_retry:
                 mock_retry.side_effect = OSError("Connection failed")
 
@@ -97,7 +97,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_get_connection_error(self):
         """Test SQLite pool get_connection error"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 
@@ -130,7 +130,7 @@ class TestSQLiteDriver:
     @pytest.mark.asyncio
     async def test_sqlite_pool_close(self):
         """Test SQLite pool close"""
-        with patch("lexigram.sql.backends.sqlite.aiosqlite") as mock_aiosqlite:
+        with patch("lexigram.sql.backends.sqlite._pool.aiosqlite") as mock_aiosqlite:
             mock_conn = AsyncMock()
             mock_aiosqlite.connect = AsyncMock(return_value=mock_conn)
 

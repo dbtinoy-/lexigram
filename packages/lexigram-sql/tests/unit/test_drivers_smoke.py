@@ -204,7 +204,7 @@ class TestSQLiteDriver:
 
     @pytest.mark.skipif(not HAS_SQLITE, reason="aiosqlite not available")
     @pytest.mark.asyncio
-    @patch("lexigram.sql.backends.sqlite.aiosqlite")
+    @patch("lexigram.sql.backends.sqlite._pool.aiosqlite")
     async def test_sqlite_pool_initialization(self, mock_aiosqlite):
         """Test SQLite pool initialization"""
         mock_conn = AsyncMock()
