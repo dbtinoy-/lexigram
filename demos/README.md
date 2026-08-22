@@ -149,6 +149,27 @@ Role-based access control with live `authorize()` verdicts:
 - 🛡️ **Guarded resources** — article create denies viewers with 403 + missing
   pattern
 
+### 🔢 [auth-mfa](auth-mfa/) — TOTP challenge console
+
+Two-factor authentication with pending-challenge sessions:
+
+- 📟 **Pending challenge flow** — password issues a pre-auth cookie; only a
+  valid TOTP/backup code upgrades it to a real session
+- 🗝️ **Enrollment with backup codes** — `enable_totp` returns secret +
+  provisioning URI + one-time codes, shown exactly once
+- 🚧 **Attempt capping** — 3 wrong codes revoke the challenge back to login
+- ⏻ **Disable needs password** — re-verification before TOTP is removed
+
+### 🗝️ [auth-apikeys](auth-apikeys/) — machine authentication
+
+API-key management UI plus an `X-API-Key`-guarded JSON endpoint:
+
+- 🗝️ **Raw key shown once** — hashes persist; the table shows prefixes only
+- 🎯 **Scoped keys** — issue with read/write scopes; `/api/me` echoes identity
+- 🚫 **Revoke = instant 401** — revoked and garbage keys both rejected
+- 🖥️ **Cookie + key side by side** — management needs a session, machines
+  need a header
+
 ---
 
 ## 🚀 Running them
@@ -176,7 +197,7 @@ real resilience pipeline — no mocks where it matters.
 
 - 🎨 **Format + lint** — root `ruff format --check .` / `ruff check .`
   (demo-specific rule relaxations live in the root `pyproject.toml`)
-- 🧪 **Tests** — all seven demos run their suites in the workspace env
+- 🧪 **Tests** — every demo runs its suite in the workspace env
   (`make test-demos`)
 - 🔍 **Compile check** — demo sources are compile-gated (`make verify-demos`)
 - 🏁 **One command** — `make check-demos` runs tests + compile checks and is
