@@ -7,12 +7,12 @@ from lexigram.sql.migrations.manager import AlembicManager
 @pytest.fixture
 def mock_alembic_components(monkeypatch):
     """Mock the AlembicManager's internal components."""
-    monkeypatch.setattr("lexigram.sql.migrations.manager.ALEMBIC_AVAILABLE", True)
+    monkeypatch.setattr("lexigram.sql.migrations.manager._alembic.ALEMBIC_AVAILABLE", True)
 
-    with patch("lexigram.sql.migrations.manager.Config") as MockConfig, \
-         patch("lexigram.sql.migrations.manager.MigrationEngine") as MockEngine, \
-         patch("lexigram.sql.migrations.manager.SchemaIntrospector") as MockIntrospector, \
-         patch("lexigram.sql.migrations.manager.MigrationOrchestrator") as MockOrchestrator:
+    with patch("lexigram.sql.migrations.manager._alembic.Config") as MockConfig, \
+         patch("lexigram.sql.migrations.manager._alembic.MigrationEngine") as MockEngine, \
+         patch("lexigram.sql.migrations.manager._alembic.SchemaIntrospector") as MockIntrospector, \
+         patch("lexigram.sql.migrations.manager._alembic.MigrationOrchestrator") as MockOrchestrator:
 
         mock_config = MockConfig.return_value
         mock_engine = MockEngine.return_value

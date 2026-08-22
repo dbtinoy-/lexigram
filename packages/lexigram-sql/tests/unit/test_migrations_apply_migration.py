@@ -48,7 +48,7 @@ async def test_apply_migration_logs_and_raises(tmp_path):
     # Create manager with a dummy provider and migrations path in tmp
     mgr = AlembicManager(DummyProvider(), migrations_path=tmp_path)
 
-    with patch("lexigram.sql.migrations.manager.logger") as mock_logger:
+    with patch("lexigram.sql.migrations.manager._alembic.logger") as mock_logger:
         with pytest.raises(DatabaseError):
             await mgr.apply_migration("v1", "name", "CREATE TABLE foo (id INT);")
 

@@ -52,7 +52,7 @@ class BadProvider:
 async def test_apply_migration_rollback_failure_logs(tmp_path):
     mgr = AlembicManager(BadProvider(), migrations_path=tmp_path)
 
-    with patch("lexigram.sql.migrations.manager.logger") as mock_logger:
+    with patch("lexigram.sql.migrations.manager._alembic.logger") as mock_logger:
         with pytest.raises(DatabaseError):
             await mgr.apply_migration("v1", "name", "CREATE TABLE foo (id INT);")
 
