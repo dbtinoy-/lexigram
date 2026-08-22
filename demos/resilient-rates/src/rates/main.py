@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 
 from lexigram.app import Application
@@ -44,6 +45,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_stm.add_argument("--workers", type=int, default=10)
 
     sub.add_parser("demo", help="five-act guided walkthrough")
+    p_serve = sub.add_parser(
+        "serve", help="serve the REST API (default :7073, RATES_PORT)"
+    )
+    p_serve.add_argument("--port", type=int, default=None)
     return parser
 
 
@@ -52,7 +57,23 @@ async def _fetch_and_print(service: RatesService, pair: str) -> None:
     print(f"{quote.pair}\t{quote.rate}\tsource={quote.source}")
 
 
+async def _serve(port: int) -> None:
+    from lexigram.web.di.provider import WebProvider
+    from lexigram.web.server.runner import run_server_async
+
+    async with Application.boot(
+        name="rates", modules=[RatesModule.configure(port=port)]
+    ) as app:
+        await app.container.resolve(RatesService)  # eager pipeline wiring
+        web = await app.container.resolve(WebProvider)
+        await run_server_async(web.starlette, host="127.0.0.1", port=port)
+
+
 async def _run(args: argparse.Namespace) -> None:
+    if args.command == "serve":
+        port = args.port or int(os.environ.get("RATES_PORT", "7073"))
+        await _serve(port)
+        return
     async with Application.boot(name="rates", modules=[RatesModule.configure()]) as app:
         service = await app.container.resolve(RatesService)
         faults = await app.container.resolve(FaultController)
