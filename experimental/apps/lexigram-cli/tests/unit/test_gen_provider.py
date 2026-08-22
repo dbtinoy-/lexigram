@@ -27,7 +27,10 @@ class TestGenProvider:
             ],
         )
         assert result.exit_code == 0
-        assert "Created: src/providers/my_awesome_provider.py" in result.output
+        assert (
+            f"Created: {temp_project / 'src/providers/my_awesome_provider.py'}"
+            in result.output
+        )
         assert (temp_project / "src/providers/my_awesome_provider.py").exists()
 
     def test_gen_provider_content(

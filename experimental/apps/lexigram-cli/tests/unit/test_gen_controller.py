@@ -23,7 +23,10 @@ class TestGenController:
             ],
         )
         assert result.exit_code == 0
-        assert "Created: src/controllers/pet_controller.py" in result.output
+        assert (
+            f"Created: {temp_project / 'src/controllers/pet_controller.py'}"
+            in result.output
+        )
         assert (temp_project / "src/controllers/pet_controller.py").exists()
 
     def test_gen_controller_content(
