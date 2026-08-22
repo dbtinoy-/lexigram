@@ -7,7 +7,6 @@ core/lexigram-contracts/src/lexigram/contracts/ai/agents.py
 core/lexigram-contracts/src/lexigram/contracts/ai/llm.py
 core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/gemini.py
 core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/openai_responses.py
-core/lexigram-contracts/src/lexigram/contracts/data/sql/database.py
 core/lexigram-contracts/src/lexigram/contracts/events/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/graphql/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/infra/tasks/protocols.py
