@@ -78,6 +78,15 @@ A support-desk agent driven by a scripted LLM:
 - 🖥️ **Browser console** — pick a scenario, ask, read the trace table
 - 💥 **Failure act included** — unknown tools degrade to failed tool-call records
 
+### 🧠 [memory-chat](memory-chat/) — conversational memory, zero LLM
+
+A concierge that remembers what you tell it:
+
+- 💬 **Facts persist** — stated once, cited turns later via episodic + semantic stores
+- 👥 **Two-owner console** — alice's allergies never leak into bob's session
+- 🎬 **Demo replay** — scripted two-session transcript proves recall AND isolation
+- 🚫 **No model calls** — deterministic template responder keeps runs byte-stable
+
 ### 🔐 [auth-web](auth-web/) — browser account lifecycle
 
 Register, log in, manage sessions and passwords over `lexigram-auth`:

@@ -12,7 +12,6 @@ from lexigram.contracts.ai.memory import (
     SemanticMemoryProtocol,
     WorkingMemoryProtocol,
 )
-
 from memory_chat.extraction import extract_facts
 from memory_chat.responder import reply_for
 

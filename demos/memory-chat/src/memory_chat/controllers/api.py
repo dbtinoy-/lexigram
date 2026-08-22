@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+from memory_chat.chat_service import ConciergeService
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from lexigram.web import Controller, get, post
-
-from memory_chat.chat_service import ConciergeService
 
 
 def _error(message: str, status: int) -> JSONResponse:
@@ -46,8 +45,7 @@ class ConciergeApiController(Controller):
             {
                 "triples": snapshot.triples,
                 "recent": [
-                    {"content": e.content, "role": e.role}
-                    for e in snapshot.recent
+                    {"content": e.content, "role": e.role} for e in snapshot.recent
                 ],
             },
         )

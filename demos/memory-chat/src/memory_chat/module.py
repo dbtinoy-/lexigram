@@ -9,7 +9,6 @@ from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
-
 from memory_chat.chat_service import ConciergeService
 from memory_chat.controllers.api import ConciergeApiController
 from memory_chat.di.provider import ConciergeProvider
@@ -22,8 +21,10 @@ class MemoryChatModule(Module):
 
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
-        selected_port = port if port is not None else int(
-            os.environ.get("MEMORY_CHAT_PORT", "8083")
+        selected_port = (
+            port
+            if port is not None
+            else int(os.environ.get("MEMORY_CHAT_PORT", "8083"))
         )
         return DynamicModule(
             module=cls,
