@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Prompt Lab</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header><h1>Prompt Lab</h1></header>
+  <main>
+    <section id="console">
+      <div id="variants">
+        <button data-variant="v1">Terse (v1)</button>
+        <button data-variant="v2">Empathetic (v2)</button>
+      </div>
+      <form id="preview-form">
+        <input id="issue" type="text" value="late parcel">
+        <input id="tone" type="text" value="neutral">
+        <input id="rev" type="number" min="1" placeholder="rev?">
+        <button type="submit">Render</button>
+      </form>
+      <pre id="preview"></pre>
+      <div class="row">
+        <ul id="history-list"></ul>
+        <button id="rollback-btn">Rollback</button>
+      </div>
+    </section>
+    <aside>
+      <h2>A/B scorecard</h2>
+      <button id="ab-btn">Run A/B</button>
+      <table><thead><tr><th>variant</th><th>avg</th><th>passed</th></tr></thead>
+        <tbody id="ab-body"></tbody></table>
+      <p id="winner" class="muted"></p>
+      <p id="error" class="hidden"></p>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
