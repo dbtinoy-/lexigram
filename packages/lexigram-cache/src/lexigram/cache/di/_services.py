@@ -29,6 +29,10 @@ T = TypeVar("T")
 
 
 class _CacheServicesMixin:
+    config: Any
+    _backends: dict[str, CacheBackendProtocol]
+    _protection: Any
+    _services: dict[str, CacheService]
     """See :class:`CacheProvider`."""
     def _initialize_serializers(self) -> None:
         """Initialize available serializers.
@@ -132,7 +136,10 @@ class _CacheServicesMixin:
 
         from lexigram.cache.service.core import CacheService
 
-        return CacheService(provider=self, protection=self._protection)
+        return CacheService(
+            provider=self,  # type: ignore[arg-type]
+            protection=self._protection,
+        )
 
     def get_service(self, backend_name: str | None = None) -> CacheService:
         """

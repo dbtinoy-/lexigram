@@ -103,7 +103,7 @@ class CacheService(PipelineMixin, InvalidationMixin, PatternsMixin):
         if self._backend is not None:
             return self._backend
         if self.provider is not None:
-            return cast("CacheBackendProtocol", self.provider.get_backend(name))
+            return self.provider.get_backend(name)
         raise RuntimeError(
             "No backend or provider available for CacheService. "
             "Initialize with either a provider or a direct backend.",
