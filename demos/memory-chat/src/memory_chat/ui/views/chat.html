@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Memory Chat</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header><h1>Memory Chat</h1>
+    <nav id="owners">
+      <button data-owner="alice">alice</button>
+      <button data-owner="bob">bob</button>
+    </nav>
+  </header>
+  <main>
+    <section id="chat-pane">
+      <div id="thread"></div>
+      <form id="ask-form">
+        <input id="message" type="text" autocomplete="off"
+               placeholder="Say &quot;I'm allergic to peanuts&quot; then ask for a menu">
+        <button type="submit">Send</button>
+      </form>
+      <p id="error" class="hidden"></p>
+    </section>
+    <aside id="facts-panel">
+      <h2>Facts</h2>
+      <ul id="facts"></ul>
+      <button id="demo-btn">Run demo replay</button>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

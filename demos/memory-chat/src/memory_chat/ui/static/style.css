@@ -1,0 +1,27 @@
+/* Memory-chat console theme */
+:root { --bg:#12141a; --panel:#1c2130; --ink:#dde5f2; --accent:#7fd18b; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+header { display:flex; align-items:center; gap:1rem; padding:.6rem 1rem; }
+header h1 { font-size:1.15rem; margin:0; }
+#owners button { background:var(--panel); color:var(--ink); border:1px solid #34405a;
+  border-radius:6px; padding:.3rem .7rem; cursor:pointer; }
+#owners button.active { background:var(--accent); color:#0c1710; border-color:var(--accent); }
+main { display:flex; gap:1rem; padding:0 1rem 1rem; }
+#chat-pane { flex:1; background:var(--panel); border-radius:8px; padding:1rem; }
+#thread { display:flex; flex-direction:column; gap:.5rem; min-height:240px; }
+.bubble { padding:.45rem .65rem; border-radius:8px; max-width:80%; }
+.bubble.user { align-self:flex-end; background:#2a3650; }
+.bubble.bot { align-self:flex-start; background:#243024; }
+.chip { display:inline-block; margin:.25rem .25rem 0 0; padding:.1rem .45rem;
+  border-radius:999px; background:#33472f; font-size:.75rem; }
+#ask-form { display:flex; gap:.5rem; margin-top:.75rem; }
+#message { flex:1; padding:.45rem .6rem; border-radius:6px; border:1px solid #34405a;
+  background:#0d1017; color:var(--ink); }
+#facts-panel { width:230px; background:var(--panel); border-radius:8px; padding:.75rem; }
+#facts li { margin:.25rem 0; }
+#demo-btn { margin-top:.6rem; width:100%; padding:.4rem; cursor:pointer;
+  border-radius:6px; border:1px solid #34405a; background:#243046; color:var(--ink); }
+.hidden { display:none; }
+.muted { color:#7e8aa0; }
+#error { color:#ff8484; }

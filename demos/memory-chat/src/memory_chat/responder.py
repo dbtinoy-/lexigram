@@ -28,6 +28,9 @@ def reply_for(text: str, facts: list[Triple]) -> Reply:
         return _menu_reply(constraints, cited)
     if any(word in lowered for word in _REMEMBER_WORDS) and constraints:
         return Reply(f"You've told me: {'; '.join(cited)}.", cited)
+    if cited:
+        # A statement turn: acknowledge AND echo what was just learned.
+        return Reply(f"Noted — {'; '.join(cited)}. What's next?", cited)
     return Reply("Noted! What would you like next?")
 
 
