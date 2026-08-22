@@ -7,6 +7,7 @@ admin account has been created.
 
 from __future__ import annotations
 
+import hmac
 import secrets
 from urllib.parse import quote_plus
 
@@ -200,7 +201,14 @@ class SetupController(AdminController):
             return HTMLResponse(content=html, status_code=422)
 
         # ── Optional setup-token guard ─────────────────────────────────
-        if required_token and setup_token_input != required_token:
+        required_token_str = (
+            required_token.get_secret_value()
+            if hasattr(required_token, "get_secret_value")
+            else required_token
+        )
+        if required_token_str and not hmac.compare_digest(
+            setup_token_input, required_token_str
+        ):
             logger.warning("setup.token_mismatch", ip=ip)
             await self._audit_service.log_event(
                 event_type=AdminSecurityEventType.SETUP_BLOCKED,

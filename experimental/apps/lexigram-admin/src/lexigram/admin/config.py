@@ -10,7 +10,13 @@ from lexigram.admin.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
 from lexigram.admin.resources.config import ResourceConfig, TableConfiguration
 from lexigram.config import BaseConfig
 from lexigram.domain import DomainModel
-from lexigram.validation import ConfigDict, Field, SecretStr, model_validator
+from lexigram.validation import (
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 
 
 @dataclass(init=False)
@@ -163,10 +169,19 @@ class AdminSecurityConfig(DomainModel):
     )
     permanent_lockout_threshold: int = Field(default=50, ge=10)
 
-    setup_token: str | None = Field(
+    setup_token: SecretStr | None = Field(
         default=None,
         description="Optional ADMIN_SETUP_TOKEN — when set, must be provided during first-run setup.",
     )
+
+    @field_validator("setup_token")
+    @classmethod
+    def _coerce_setup_token(cls, value: Any) -> Any:
+        """Accept plain strings from env/YAML; store as SecretStr."""
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
+
     setup_token_optin_unsafe: bool = Field(
         default=False,
         description=(
