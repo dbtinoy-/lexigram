@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Profile — mfa-console</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="profile">
+  <h1 class="accent">Profile</h1>
+  <div class="card" id="identity"><p class="muted">Loading…</p></div>
+
+  <div class="card">
+    <div class="row"><strong>Two-factor authentication</strong>
+      <span id="mfa-state" class="chip"></span>
+    </div>
+    <div id="enroll-box" style="display:none">
+      <p>Enable TOTP, then confirm with a code from your authenticator on next login.</p>
+      <button id="enroll-btn">Enable TOTP</button>
+    </div>
+    <div id="enrolled-box" style="display:none">
+      <p class="ok">MFA is enabled. Backup codes remaining: <b id="codes-left"></b></p>
+      <form id="disable-form">
+        <input name="password" type="password" placeholder="current password" required />
+        <button type="submit" class="secondary">Disable MFA</button>
+      </form>
+    </div>
+    <pre id="enroll-output" class="muted"></pre>
+  </div>
+
+  <nav><a href="/login" id="logout">Log out</a></nav>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/mfa.js"></script>
+</body>
+</html>
