@@ -106,15 +106,15 @@ guard:  ## Verify all dirty paths belong to this lane: make guard ALLOWED="path/
 # ---------------------------------------------------------------------------
 # Demos (living integration surfaces — gated like the framework)
 # ---------------------------------------------------------------------------
-# All five demos ship pytest suites and run from the repo root in the
+# All six demos ship pytest suites and run from the repo root in the
 # workspace env. The llm-experiment harness imports opentelemetry,
 # which lives in the `tooling` dependency group.
 DEMO_PYTEST := $(UV) run --group tooling pytest
-DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests
-DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates demos/rag-docs demos/auth-web
+DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests demos/auth-rbac/tests
+DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates demos/rag-docs demos/auth-web demos/auth-rbac
 
 .PHONY: test-demos
-test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment, resilient-rates, rag-docs, auth-web)
+test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment, resilient-rates, rag-docs, auth-web, auth-rbac)
 	$(DEMO_PYTEST) -q -m "not integration" --no-cov $(DEMO_TEST_DIRS)
 
 .PHONY: verify-demos

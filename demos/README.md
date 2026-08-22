@@ -81,6 +81,18 @@ Register, log in, manage sessions and passwords over `lexigram-auth`:
 - 🖥️ **Vanilla JS client** — HTML views + `fetch` against a pure JSON API via
   `uv run python -m auth_web`
 
+### 👥 [auth-rbac](auth-rbac/) — permission matrix console
+
+Role-based access control with live `authorize()` verdicts:
+
+- 👥 **Seeded personas** — viewer / editor / admin logins sharing one password
+- 🧾 **Pattern grammar** — `resource.action` permissions with `*` wildcards
+  and role inheritance (`editor` ⊃ `viewer`)
+- 🧮 **Live matrix** — the grid recomputes via `authorize()` per persona; a
+  try-form runs any action/resource pair
+- 🛡️ **Guarded resources** — article create denies viewers with 403 + missing
+  pattern
+
 ---
 
 ## 🚀 Running them
@@ -102,7 +114,7 @@ real resilience pipeline — no mocks where it matters.
 
 - 🎨 **Format + lint** — root `ruff format --check .` / `ruff check .`
   (demo-specific rule relaxations live in the root `pyproject.toml`)
-- 🧪 **Tests** — all six demos run their suites in the workspace env
+- 🧪 **Tests** — all seven demos run their suites in the workspace env
   (`make test-demos`)
 - 🔍 **Compile check** — demo sources are compile-gated (`make verify-demos`)
 - 🏁 **One command** — `make check-demos` runs tests + compile checks and is

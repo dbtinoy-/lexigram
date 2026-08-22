@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Log in — rbac-console</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="login">
+  <h1 class="accent">Pick a persona</h1>
+  <div class="card">
+    <p id="error" class="error"></p>
+    <div id="personas"></div>
+    <p class="muted">All personas share the password <code>Demo-Password-1</code></p>
+  </div>
+  <script src="/static/app.js"></script>
+  <script>
+    async function loadPersonas() {
+      const me = await api("/api/me");
+      if (me.ok) {
+        window.location.href = "/matrix";
+        return;
+      }
+      const roles = ["viewer", "editor", "admin"];
+      const box = document.getElementById("personas");
+      for (const role of roles) {
+        const button = document.createElement("button");
+        button.textContent = `Log in as ${role}`;
+        button.addEventListener("click", async () => {
+          showError("");
+          const result = await api("/api/login", {
+            method: "POST",
+            body: JSON.stringify({ persona: role }),
+          });
+          if (result.ok) {
+            window.location.href = "/matrix";
+          } else {
+            showError(result.body.error || "Login failed");
+          }
+        });
+        box.appendChild(button);
+        box.appendChild(document.createElement("p"));
+      }
+    }
+    loadPersonas();
+  </script>
+</body>
+</html>
