@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 from lexigram.admin.controllers.resource.meta import ResourceMeta, T
 from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
+from starlette.requests import Request
+
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:

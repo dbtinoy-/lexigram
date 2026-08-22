@@ -5,6 +5,8 @@ Part of the ``lexigram.admin.actions.standard`` package.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+
 import inspect
 from typing import Any
 
