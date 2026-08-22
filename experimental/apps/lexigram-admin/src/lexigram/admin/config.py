@@ -378,11 +378,12 @@ class AdminAuthConfig(DomainModel):
         )
 
         if (
-            self.env == "production"
+            self.env in {"production", "staging"}
             and self.session_secret.get_secret_value().lower() in insecure_defaults
         ):
             raise ValueError(
-                "CRITICAL SECURITY ERROR: Default admin session_secret detected in PRODUCTION.\n"
+                "CRITICAL SECURITY ERROR: Default admin session_secret detected in "
+                f"{self.env.upper()}.\n"
                 "You MUST set a secure session secret via LEX_ADMIN__AUTH__SESSION_SECRET.",
             )
 

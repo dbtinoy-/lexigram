@@ -75,13 +75,19 @@ class TenancyController:
 
         previous_tenant_id = getattr(request.state, "tenant_id", None) or "default"
 
-        redirect_to = request.headers.get("referer") or "/admin/"
+        # Open-redirect guard: same-origin check on the Referer target.
+        from lexigram.admin.controllers.auth.core import AuthCoreMixin
+
+        redirect_to = AuthCoreMixin._safe_next_url(
+            request.headers.get("referer") or "/admin/"
+        )
         response = RedirectResponse(url=redirect_to, status_code=303)
         response.set_cookie(
             self._config.tenancy.cookie_name,
             tenant.tenant_id,
             httponly=True,
             samesite="lax",
+            secure=self._config.environment in {"production", "staging"},
         )
 
         await self._audit(
