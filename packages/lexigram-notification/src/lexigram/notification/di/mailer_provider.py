@@ -78,7 +78,7 @@ class MailerProvider(Provider):
 
         if entry.driver == "smtp":
             cfg = entry.smtp or SMTPDriverConfig()
-            password: str | None = None
+            password: Any | None = None
             if cfg.password:
                 password = getattr(
                     cfg.password, "get_secret_value", lambda: cfg.password or ""
@@ -98,7 +98,7 @@ class MailerProvider(Provider):
             from lexigram.notification.mailer.sendgrid_mailer import SendGridMailer
 
             cfg_sg = entry.sendgrid or SendGridDriverConfig()
-            api_key: str = ""
+            api_key: Any = ""
             if cfg_sg.api_key:
                 api_key = (
                     getattr(

@@ -90,9 +90,12 @@ class NotificationProvider(Provider):
             if TwilioSMS is None:
                 raise ImportError("TwilioSMS unavailable")
             cfg = entry.twilio or TwilioDriverConfig()
-            token = getattr(
-                cfg.auth_token, "get_secret_value", lambda: cfg.auth_token
-            )()
+            token = (
+                cfg.auth_token.get_secret_value()
+                if hasattr(cfg.auth_token, "get_secret_value")
+                and cfg.auth_token is not None
+                else (cfg.auth_token or "")
+            )
             return TwilioSMS(
                 account_sid=cfg.account_sid or "",
                 auth_token=token or "",
@@ -107,10 +110,13 @@ class NotificationProvider(Provider):
             if FCMPush is None:
                 raise ImportError("FCMPush unavailable")
             fcm_cfg = entry.fcm or FCMDriverConfig()
-            key = getattr(
-                fcm_cfg.server_key, "get_secret_value", lambda: fcm_cfg.server_key or ""
-            )()
-            return FCMPush(server_key=key or "", timeout=fcm_cfg.timeout)
+            server_key = (
+                fcm_cfg.server_key.get_secret_value()
+                if hasattr(fcm_cfg.server_key, "get_secret_value")
+                and fcm_cfg.server_key is not None
+                else (fcm_cfg.server_key or "")
+            )
+            return FCMPush(server_key=server_key or "", timeout=fcm_cfg.timeout)
         if entry.driver == "apns":
             if APNsPush is None:
                 raise ImportError(
@@ -123,7 +129,8 @@ class NotificationProvider(Provider):
                 apns_auth_key=(
                     apns_cfg.apns_auth_key.get_secret_value()
                     if hasattr(apns_cfg.apns_auth_key, "get_secret_value")
-                    else (apns_cfg.apns_auth_key or "")
+                    and apns_cfg.apns_auth_key is not None
+                    else str(apns_cfg.apns_auth_key or "")
                 ),
                 bundle_id=apns_cfg.bundle_id or "",
                 sandbox=apns_cfg.sandbox,
