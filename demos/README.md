@@ -105,6 +105,16 @@ Iterate on a support-reply prompt like a scientist:
 - 🎯 **Deterministic A/B** — criteria-scored over four seeded cases, byte-stable
 - 🖥️ **Lab console** — render previews at any revision side-by-side with scores
 
+### 🔁 [feedback-loop](feedback-loop/) — ratings become regression suites
+
+Close the quality loop without a model call:
+
+- ⭐ **Rate canned answers** — 1–5 stars captured per trace id
+- 📉 **Low ratings promote** — ≤2-rated exchanges become eval samples
+- 🎯 **Real harness runs** — QA-scored, tracked under seeded run ids
+- 🔎 **Error analysis** — mean/min/max scores and top failing cases printed
+- 💻 **CLI-first** — six subcommands; `demo` plays the whole loop
+
 ### 🔐 [auth-web](auth-web/) — browser account lifecycle
 
 Register, log in, manage sessions and passwords over `lexigram-auth`:

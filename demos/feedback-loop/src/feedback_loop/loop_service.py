@@ -4,11 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from lexigram.ai.evaluation.evaluators.qa import QAEvaluator
-from lexigram.ai.evaluation.harness.runner import EvaluationHarness
-from lexigram.contracts.ai.experiment import ExperimentConfig, RunStatus
-from lexigram.contracts.ai.feedback import FeedbackType
-
 from feedback_loop.bot import BOT, TRACE_IDS
 from feedback_loop.errors import (
     InvalidRatingError,
@@ -16,6 +11,10 @@ from feedback_loop.errors import (
     UnknownTraceError,
 )
 from feedback_loop.regression import build_dataset
+from lexigram.ai.evaluation.evaluators.qa import QAEvaluator
+from lexigram.ai.evaluation.harness.runner import EvaluationHarness
+from lexigram.contracts.ai.experiment import ExperimentConfig, RunStatus
+from lexigram.contracts.ai.feedback import FeedbackType
 
 PASS_THRESHOLD = 0.6
 _EXPERIMENT_SEED = 7
@@ -123,7 +122,8 @@ class LoopService:
     async def regress(self, *, owner: str) -> RunSummary:
         """Promote low-rated items, run the harness, log a tracked run."""
         items = await self._collector.get_feedback(
-            owner_id=owner, feedback_type=FeedbackType.RATING,
+            owner_id=owner,
+            feedback_type=FeedbackType.RATING,
         )
         dataset = build_dataset(items)
         if dataset is None:
@@ -137,9 +137,7 @@ class LoopService:
         summary = RunSummary(
             run_id=f"pending-{owner}",
             total_samples=report.total_samples,
-            passed_samples=sum(
-                1 for r in report.results if r.score >= PASS_THRESHOLD
-            ),
+            passed_samples=sum(1 for r in report.results if r.score >= PASS_THRESHOLD),
             average_score=round(report.average_score, 4),
             failing_ids=[
                 dataset.samples[idx].id

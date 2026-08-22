@@ -180,4 +180,4 @@ test.db
 !packages/*/lexigram*/docs/gifs/
 !packages/*/lexigram*/docs/gifs/**
 !experimental/*/lexigram*/docs/gifs/
-!experimental/*/lexigram*/docs/gifs/**
+!experimental/*/lexigram*/docs/gifs/**demos/feedback-loop/.runs/

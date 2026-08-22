@@ -11,8 +11,6 @@ import argparse
 import asyncio
 import sys
 
-from lexigram.app import Application
-
 from feedback_loop.bot import BOT, TRACE_IDS
 from feedback_loop.errors import (
     InvalidRatingError,
@@ -21,6 +19,7 @@ from feedback_loop.errors import (
 )
 from feedback_loop.loop_service import LoopService
 from feedback_loop.module import FeedbackLoopModule
+from lexigram.app import Application
 
 _TYPED_ERRORS = (UnknownQuestionError, UnknownTraceError, InvalidRatingError)
 
@@ -48,13 +47,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_stats = sub.add_parser("stats", help="aggregate my ratings", parents=[common])
     p_stats.add_argument("--owner", required=True)
 
-    p_reg = sub.add_parser("regress", help="run regression from low ratings", parents=[common])
+    p_reg = sub.add_parser(
+        "regress", help="run regression from low ratings", parents=[common]
+    )
     p_reg.add_argument("--owner", required=True)
 
     p_rep = sub.add_parser("report", help="error analysis for a run", parents=[common])
     p_rep.add_argument("run_id")
 
-    sub.add_parser("demo", help="full loop: asks, ratings, regress, report", parents=[common])
+    sub.add_parser(
+        "demo", help="full loop: asks, ratings, regress, report", parents=[common]
+    )
     return parser
 
 
@@ -91,8 +94,7 @@ async def _single(service: LoopService, args: argparse.Namespace) -> int:
         answer = await service.ask(args.key, owner=args.owner)
         print(f"[{answer.trace_id}] {answer.answer}")
         print(
-            f"rate it:  feedback_loop rate {answer.trace_id} <1-5> "
-            f"--owner {args.owner}"
+            f"rate it:  feedback_loop rate {answer.trace_id} <1-5> --owner {args.owner}"
         )
     elif args.command == "rate":
         item_id = await service.rate(
@@ -117,9 +119,7 @@ async def _single(service: LoopService, args: argparse.Namespace) -> int:
         print(f"failing: {', '.join(summary.failing_ids) or '(none)'}")
     elif args.command == "report":
         analysis = await service.report(args.run_id)
-        print(
-            f"records={analysis.total_records} errors={analysis.error_count}"
-        )
+        print(f"records={analysis.total_records} errors={analysis.error_count}")
         print(
             f"score mean={analysis.score_mean} min={analysis.score_min} "
             f"max={analysis.score_max}"
@@ -143,7 +143,10 @@ async def _demo(service: LoopService) -> int:
     print("\n== rate ==")
     for key, value in ratings.items():
         item_id = await service.rate(
-            TRACE_IDS[key], value, owner="alice", comment=f"auto:{value:g}",
+            TRACE_IDS[key],
+            value,
+            owner="alice",
+            comment=f"auto:{value:g}",
         )
         print(f"{TRACE_IDS[key]} <- {value:g} ({item_id})")
 

@@ -1,6 +1,6 @@
 """Pytest bootstrap for the feedback-loop demo (single shim — no UI).
 
-    uv run pytest demos/feedback-loop/tests -q
+uv run pytest demos/feedback-loop/tests -q
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ import pytest
 @pytest.fixture
 async def service(tmp_path):
     """Boot the module graph with tmp experiment dir; yield LoopService."""
-    from lexigram.app import Application
-
     from feedback_loop.loop_service import LoopService
     from feedback_loop.module import FeedbackLoopModule
+
+    from lexigram.app import Application
 
     async with Application.boot(
         name="feedback-loop-test",
