@@ -1303,6 +1303,22 @@ Safe Sync (when you need a clean tree to pull/rebase):
  5. `git status --short` before and after any sync; uncommitted work you did
     not recognize as yours belongs to another lane — do not touch it.
 
+**Avoid `git stash pop` whenever other agents are working** (MANDATORY):
+a stash pop mutates the shared working tree and index mid-flight, so any
+concurrent session's edits can collide with yours while the pop applies —
+and a conflicted pop leaves both lanes with mixed, half-applied state until
+someone resolves it manually. The stash push/pop dance above is a last
+resort for a single-owner tree, not a routine move:
+
+- Prefer checkpoint commits (rule 1) over stash round-trips in all cases.
+- If you must stash while other agents are active: scope it (`git stash
+  push -u -- <your-paths>`), keep the window as short as possible, announce
+  the lane + expected duration if a team channel exists, and re-run
+  `git status --short` immediately before popping to confirm no foreign
+  edits landed meanwhile.
+- If anything unexpected appears at pop time, abort: leave the stash intact
+  (`git stash list` to confirm) and coordinate instead of force-resolving.
+
 ### Staging & Commit Isolation (MANDATORY)
 
 The shared index is shared state too. Two incidents on 2026-08-21:
