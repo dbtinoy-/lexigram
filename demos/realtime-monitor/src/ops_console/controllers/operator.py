@@ -37,9 +37,7 @@ class OperatorHandler(Controller, AbstractWebSocketHandler):
 
     async def on_connect(self, websocket: WebSocket) -> None:
         await websocket.accept()
-        await websocket.send_json(
-            {"ok": True, "message": "operator channel connected"}
-        )
+        await websocket.send_json({"ok": True, "message": "operator channel connected"})
 
     async def on_message(self, websocket: WebSocket, message: dict[str, Any]) -> None:
         event = SystemEvent(

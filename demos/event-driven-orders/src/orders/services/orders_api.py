@@ -51,10 +51,7 @@ class OrdersApi:
         raised as ``OrderError`` subclasses; successful values pass back
         untouched.
         """
-        try:
-            return await self.command_bus.dispatch(command)
-        except OrderError:
-            raise
+        return await self.command_bus.dispatch(command)
 
     async def place(
         self, customer: str, items: list[OrderItem]

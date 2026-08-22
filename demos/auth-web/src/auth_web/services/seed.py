@@ -29,9 +29,7 @@ ROLE_DEFINITIONS: dict[str, dict[str, object]] = {
 class DemoSeedService:
     """Seed the demo account and RBAC roles exactly once."""
 
-    def __init__(
-        self, user_service: UserService, authz: AuthorizationService
-    ) -> None:
+    def __init__(self, user_service: UserService, authz: AuthorizationService) -> None:
         self._user_service = user_service
         self._authz = authz
 

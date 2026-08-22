@@ -118,9 +118,7 @@ class RatesService:
         """Return the last-known-good quote for a pair, if any."""
         return self._stale.get(pair)
 
-    async def fetch(
-        self, pair: str
-    ) -> Result[RateQuote, RateUnavailableError]:
+    async def fetch(self, pair: str) -> Result[RateQuote, RateUnavailableError]:
         """Return a quote for ``pair`` via cache-aside + resilience.
 
         Args:
@@ -159,8 +157,7 @@ class RatesService:
                 if stale is None:
                     return Err(
                         RateUnavailableError(
-                            f"upstream unavailable for {pair} "
-                            "and no stale copy"
+                            f"upstream unavailable for {pair} and no stale copy"
                         )
                     )
                 self._stats.stale_served += 1

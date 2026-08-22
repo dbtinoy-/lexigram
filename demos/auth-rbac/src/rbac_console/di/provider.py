@@ -49,9 +49,7 @@ class RbacProvider(Provider):
         container.singleton(RbacApiController, factory=self._build_api)
         container.singleton(RbacSeedService, factory=self._build_seed_service)
 
-    async def _build_users(
-        self, resolver: ContainerResolverProtocol
-    ) -> UserService:
+    async def _build_users(self, resolver: ContainerResolverProtocol) -> UserService:
         from lexigram.auth.authn.services import AuthenticationService
 
         authentication = await resolver.resolve(AuthenticationService)
@@ -69,9 +67,7 @@ class RbacProvider(Provider):
         self, resolver: ContainerResolverProtocol
     ) -> SessionCookieBackend:
         return SessionCookieBackend(
-            session_repository=(
-                await resolver.resolve(InMemorySessionRepository)
-            ),
+            session_repository=(await resolver.resolve(InMemorySessionRepository)),
             user_fetcher=(await resolver.resolve(UserService)).get_user,
             secure=False,  # local demo runs plain http
         )

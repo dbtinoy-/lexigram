@@ -44,9 +44,7 @@ class RatesApiController(Controller):
             )
         result = await self.service.fetch(pair)
         if result.is_err():
-            return JSONResponse(
-                {"error": str(result.unwrap_err())}, status_code=503
-            )
+            return JSONResponse({"error": str(result.unwrap_err())}, status_code=503)
         quote = result.unwrap()
         payload = asdict(quote)
         payload["rate"] = str(quote.rate)

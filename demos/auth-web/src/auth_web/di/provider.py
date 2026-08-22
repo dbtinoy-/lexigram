@@ -62,9 +62,7 @@ class AuthWebProvider(Provider):
         container.singleton(SessionRepositoryProtocol, instance=repository)
         container.singleton(UserService, factory=self._build_user_service)
         container.singleton(SessionCookieBackend, factory=self._build_backend)
-        container.singleton(
-            PasswordChangeService, factory=self._build_password_changes
-        )
+        container.singleton(PasswordChangeService, factory=self._build_password_changes)
         container.singleton(AuthApiController, factory=self._build_api)
         container.singleton(PagesController, instance=PagesController())
         container.singleton(DemoSeedService, factory=self._build_seed_service)
@@ -87,9 +85,7 @@ class AuthWebProvider(Provider):
         self, resolver: ContainerResolverProtocol
     ) -> SessionCookieBackend:
         return SessionCookieBackend(
-            session_repository=(
-                await resolver.resolve(InMemorySessionRepository)
-            ),
+            session_repository=(await resolver.resolve(InMemorySessionRepository)),
             user_fetcher=(await resolver.resolve(UserService)).get_user,
             secure=False,  # local demo runs plain http
         )
