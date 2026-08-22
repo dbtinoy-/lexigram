@@ -23,6 +23,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+
+from lexigram.validation import SecretStr
 import secrets
 import time
 from typing import TYPE_CHECKING, Any, cast
@@ -110,6 +112,8 @@ class CSRFProtectionMiddleware:
             would be impossible).
         """
         secret = self._config.secret_key
+        if secret is not None and hasattr(secret, "get_secret_value"):
+            secret = secret.get_secret_value()
         if not secret:
             return None
         nonce = secrets.token_hex(16)
@@ -143,8 +147,13 @@ class CSRFProtectionMiddleware:
 
     def _expected_signature(self, encoded_payload: bytes) -> bytes:
         """Recompute the HMAC-SHA256 signature over the encoded payload."""
-        secret = self._config.secret_key
-        assert secret is not None  # noqa: S101  # secret_key validated at boot; signature path requires it
+        raw_sig = self._config.secret_key
+        secret: str = (
+            raw_sig.get_secret_value()
+            if isinstance(raw_sig, SecretStr)
+            else (raw_sig or "")
+        )
+        assert secret is not None  # noqa: S101  # validated at boot
         return hmac.new(secret.encode(), encoded_payload, hashlib.sha256).digest()
 
     # ------------------------------------------------------------------
@@ -320,8 +329,13 @@ class CSRFProtectionMiddleware:
 
         # Cookie (double-submit) mode — token must be signed, fresh, and
         # echoed verbatim.
-        secret = self._config.secret_key
-        if not secret:
+        raw_verify = self._config.secret_key
+        verify_secret: str | None = (
+            raw_verify.get_secret_value()
+            if isinstance(raw_verify, SecretStr)
+            else raw_verify
+        )
+        if not verify_secret:
             # Without a signing secret the token cannot be verified — fail closed.
             await self._reject(scope, receive, send, "csrf_unverifiable")
             return

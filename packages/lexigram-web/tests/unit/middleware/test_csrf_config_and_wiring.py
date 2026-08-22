@@ -68,7 +68,12 @@ class TestCsrfConfig:
     def test_csrf_config_secret_key_is_public_field(self) -> None:
         """F-W3: secret_key is a public field (populatable via env var)."""
         cfg = CSRFConfig(secret_key="test-secret-32bytes-long!!")
-        assert cfg.secret_key == "test-secret-32bytes-long!!"
+        secret = cfg.secret_key
+        assert (
+            secret.get_secret_value()
+            if hasattr(secret, "get_secret_value")
+            else secret
+        ) == "test-secret-32bytes-long!!"
 
     def test_csrf_config_default_secret_key_is_none(self) -> None:
         """secret_key defaults to None (production validation requires it)."""

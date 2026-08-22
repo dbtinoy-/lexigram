@@ -434,6 +434,8 @@ class WebConfig(BaseConfig):
                     "You MUST enable it via LEX_WEB__SECURITY__CSRF__ENABLED.",
                 )
             csrf_key = self.security.csrf.secret_key
+            if hasattr(csrf_key, "get_secret_value"):
+                csrf_key = csrf_key.get_secret_value()
             if not csrf_key or csrf_key.strip() == "":
                 raise ValueError(
                     "CRITICAL SECURITY ERROR: CSRF is enabled but no secret_key is set in PRODUCTION.\n"

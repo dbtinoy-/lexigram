@@ -15,7 +15,13 @@ from typing import Any, ClassVar
 from lexigram.config.base import BaseConfig
 from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.security.constants import ENV_NESTED_DELIMITER, ENV_PREFIX
-from lexigram.validation import ConfigDict, Field, model_validator
+from lexigram.validation import (
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 
 # ---------------------------------------------------------------------------
 # CORS
@@ -304,12 +310,20 @@ class CSRFConfig(BaseConfig):
         default_factory=list,
         description="Authorization header schemes that bypass CSRF validation (explicit opt-in).",
     )
-    secret_key: str | None = Field(
+    secret_key: SecretStr | None = Field(
         default=None,
         exclude=True,
         description="HMAC secret used to sign and verify CSRF tokens "
         "(populated via LEX_WEB__SECURITY__CSRF__SECRET_KEY)",
     )
+
+    @field_validator("secret_key")
+    @classmethod
+    def _coerce_secret_key(cls, value: Any) -> Any:
+        """Accept plain strings from env/YAML; store as SecretStr."""
+        if value is None or isinstance(value, SecretStr):
+            return value
+        return SecretStr(str(value))
 
     def validate_for_environment(
         self, env: Environment | None = None
@@ -319,7 +333,13 @@ class CSRFConfig(BaseConfig):
         issues: list[ConfigIssue] = []
 
         if resolved == Environment.PRODUCTION and self.enabled:
-            if not self.secret_key or self.secret_key.strip() == "":
+            csrf_raw = self.secret_key
+            csrf_key: str | None = (
+                csrf_raw.get_secret_value()
+                if isinstance(csrf_raw, SecretStr)
+                else csrf_raw
+            )
+            if not csrf_key or csrf_key.strip() == "":
                 issues.append(
                     ConfigIssue(
                         field="csrf.secret_key",
