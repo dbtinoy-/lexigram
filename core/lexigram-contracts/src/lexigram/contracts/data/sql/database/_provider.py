@@ -4,6 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
+from lexigram.contracts.core import HealthCheckResult
+from lexigram.contracts.data.sql.database._pool import ConnectionPoolProtocol
+from lexigram.contracts.data.sql.database._results import (
+    DeleteResult,
+    InsertResult,
+    IsolationLevel,
+    UpdateResult,
+)
+
 if TYPE_CHECKING:
     from contextlib import AbstractAsyncContextManager
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
+from lexigram.contracts.data.sql.database._results import QueryResult
+
 
 @runtime_checkable
 class ConnectionProtocol(Protocol):

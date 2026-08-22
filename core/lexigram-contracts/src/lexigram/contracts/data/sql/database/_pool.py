@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from contextlib import AbstractAsyncContextManager
+from typing import Any, Protocol, runtime_checkable
+
+from lexigram.contracts.core import HealthCheckResult
 
 
 @runtime_checkable

@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Any, TYPE_CHECKING, Protocol, runtime_checkable
+
+from lexigram.contracts.core import HealthCheckResult
+from lexigram.contracts.data.sql.database._results import (
+    DeleteResult,
+    InsertResult,
+    QueryResult,
+    UpdateResult,
+)
 
 if TYPE_CHECKING:
     from lexigram.contracts.data.sql.database._results import QueryResult

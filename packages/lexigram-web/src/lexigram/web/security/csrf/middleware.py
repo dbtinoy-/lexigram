@@ -23,13 +23,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-
-from lexigram.validation import SecretStr
 import secrets
 import time
 from typing import TYPE_CHECKING, Any, cast
 
 from lexigram.logging import get_logger
+from lexigram.validation import SecretStr
 from lexigram.web.security.config import CSRFConfig
 
 if TYPE_CHECKING:
@@ -111,9 +110,12 @@ class CSRFProtectionMiddleware:
             or ``None`` when no ``secret_key`` is configured (verification
             would be impossible).
         """
-        secret = self._config.secret_key
-        if secret is not None and hasattr(secret, "get_secret_value"):
-            secret = secret.get_secret_value()
+        raw_secret: SecretStr | str | None = self._config.secret_key
+        secret: str | None = None
+        if isinstance(raw_secret, SecretStr):
+            secret = raw_secret.get_secret_value()
+        elif raw_secret is not None:
+            secret = raw_secret
         if not secret:
             return None
         nonce = secrets.token_hex(16)

@@ -7,7 +7,7 @@ Resolves handler arguments from HTTP requests, supporting multiple sources
 from __future__ import annotations
 
 import inspect
-from typing import Any
+from typing import Any, cast
 
 from lexigram.logging import get_logger
 from lexigram.web.exceptions import DependencyResolutionError
@@ -169,7 +169,9 @@ class ParameterBinder:
         result = value
         for pipe in pipes:
             # If pipe is a class, instantiate it (simple DI could be added here later)
-            pipe_instance = pipe() if inspect.isclass(pipe) else pipe
+            pipe_instance = (
+                cast("Any", pipe()) if inspect.isclass(pipe) else pipe
+            )
             result = await pipe_instance.transform(result, metadata)
 
         return result

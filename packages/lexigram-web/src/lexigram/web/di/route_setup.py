@@ -86,7 +86,12 @@ class RouteSetup:
         """
         from lexigram.web.routing.health import register_health_route
 
-        register_health_route(cast("WebProvider", self._router_manager.provider), app)
+        # app is a Starlette instance; the health helper accepts any ASGI
+        # application with a .routes attribute, so the nominal mismatch is safe.
+        register_health_route(
+            cast("WebProvider", self._router_manager.provider),
+            app,  # type: ignore[arg-type]  # Starlette vs Application nominal mismatch
+        )
 
     # ------------------------------------------------------------------
     # Private helpers
