@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from rbac_console.articles import ArticleStore
-from rbac_console.personas import PersonaDirectory
+from rbac_console.personas import PERSONAS, PersonaDirectory
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -27,7 +27,6 @@ MATRIX_CHECKS: tuple[tuple[str, str], ...] = (
     ("delete", "articles"),
     ("open", "admin_console"),
 )
-PERSONAS: tuple[str, ...] = ("viewer", "editor", "admin")
 
 
 def _error(message: str, status: int) -> JSONResponse:
