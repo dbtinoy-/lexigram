@@ -38,9 +38,7 @@ class OrdersProvider(Provider):
         # The facade needs buses wired in boot(); build lazily.
         container.singleton(OrdersApi, factory=self._build_api)
 
-    async def _build_api(
-        self, resolver: ContainerResolverProtocol
-    ) -> OrdersApi:
+    async def _build_api(self, resolver: ContainerResolverProtocol) -> OrdersApi:
         """Register handlers/subscriptions, then assemble the facade."""
         repository = await resolver.resolve(OrderRepository)
         outbox = await resolver.resolve(Outbox)

@@ -71,11 +71,18 @@ class OrdersApi:
         ]
 
     async def flush_outbox(self) -> int:
-        """Flush staged events through the event bus; return count sent."""
+        """Flush staged events through the event bus; return count sent.
+
+        Publishes the outbox and then drains the bus so subscribed
+        projections advance before this call returns — one call, fully
+        consistent read side.
+        """
         result = await self.outbox.flush(self.event_bus)
         if result.is_err():
             raise result.unwrap_err()
-        return result.unwrap()
+        sent = result.unwrap()
+        await self.event_bus.flush()
+        return sent
 
 
 __all__ = ["OrdersApi"]

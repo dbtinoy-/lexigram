@@ -8,6 +8,7 @@ Usage::
     uv run python -m orders list
     uv run python -m orders outbox
     uv run python -m orders demo
+    uv run python -m orders serve        # REST API on :7074 (ORDERS_PORT to override)
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from decimal import Decimal
+import os
 import sys
 
 from lexigram.app import Application
@@ -45,6 +47,8 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("list", help="list projected orders")
     sub.add_parser("outbox", help="show and flush the outbox")
     sub.add_parser("demo", help="run the full lifecycle in one process")
+    p_serve = sub.add_parser("serve", help="serve the REST API (default :7074)")
+    p_serve.add_argument("--port", type=int, default=None)
     return parser
 
 
@@ -56,7 +60,23 @@ def _parse_item(spec: str) -> OrderItem:
     return OrderItem(sku=sku, name=sku, qty=int(qty), unit_price=Decimal(price))
 
 
+async def _serve(port: int) -> None:
+    from lexigram.web.di.provider import WebProvider
+    from lexigram.web.server.runner import run_server_async
+
+    async with Application.boot(
+        name="orders", modules=[OrdersModule.configure(port=port)]
+    ) as app:
+        await app.container.resolve(OrdersApi)  # wire buses/handlers eagerly
+        web = await app.container.resolve(WebProvider)
+        await run_server_async(web.starlette, host="127.0.0.1", port=port)
+
+
 async def _run(args: argparse.Namespace) -> None:
+    if args.command == "serve":
+        port = args.port or int(os.environ.get("ORDERS_PORT", "7074"))
+        await _serve(port)
+        return
     async with Application.boot(
         name="orders", modules=[OrdersModule.configure()]
     ) as app:
