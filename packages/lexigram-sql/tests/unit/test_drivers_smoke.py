@@ -178,7 +178,7 @@ class TestMySQLDriver:
 
     @pytest.mark.skipif(not HAS_MYSQL, reason="aiomysql not available")
     @pytest.mark.asyncio
-    @patch("lexigram.sql.backends.mysql.aiomysql.create_pool", new_callable=AsyncMock)
+    @patch("lexigram.sql.backends.mysql._pool.aiomysql.create_pool", new_callable=AsyncMock)
     async def test_mysql_pool_initialization(self, mock_create_pool):
         """Test MySQL pool initialization"""
         mock_pool = AsyncMock()

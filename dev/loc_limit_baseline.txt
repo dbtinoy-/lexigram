@@ -119,7 +119,6 @@ packages/lexigram-monitor/src/lexigram/monitor/config.py
 packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
 packages/lexigram-resilience/src/lexigram/resilience/decorators.py
 packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
-packages/lexigram-sql/src/lexigram/sql/backends/mysql.py
 packages/lexigram-sql/src/lexigram/sql/backup/backup_manager.py
 packages/lexigram-sql/src/lexigram/sql/migrations/generator.py
 packages/lexigram-sql/src/lexigram/sql/schema/model.py

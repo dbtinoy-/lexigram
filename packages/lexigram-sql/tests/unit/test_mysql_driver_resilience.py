@@ -181,7 +181,7 @@ class TestMySQLDriver:
 
     def test_mysql_import_error_when_unavailable(self):
         """Test MySQL import error when aiomysql not available"""
-        with patch("lexigram.sql.backends.mysql.HAS_MYSQL", False):
+        with patch("lexigram.sql.backends.mysql._pool.HAS_MYSQL", False):
             with pytest.raises(
                 ImportError,
                 match="aiomysql is required for MySQL support",
