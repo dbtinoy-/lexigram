@@ -1,6 +1,6 @@
 # Demos
 
-> 🎯 **Four runnable, fully-gated demo apps** — each one is a living tutorial
+> 🎯 **Seven runnable, fully-gated demo apps** — each one is a living tutorial
 > for Lexigram, built on the editable framework packages in this
 > repository.
 
