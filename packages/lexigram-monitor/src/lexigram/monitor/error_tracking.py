@@ -30,6 +30,7 @@ import structlog
 
 from lexigram.logging import get_logger
 from lexigram.monitor.config import ErrorTrackingConfig
+from lexigram.validation import SecretStr
 
 logger = get_logger(__name__)
 
@@ -117,9 +118,9 @@ class SentryErrorTracker:
         """
         self._config = config
         self._sentry = sentry
-        effective_dsn = dsn or config.dsn
-        if effective_dsn is not None and not isinstance(effective_dsn, str):
-            effective_dsn = effective_dsn.get_secret_value()
+        effective_dsn = dsn
+        if effective_dsn is None and isinstance(config.dsn, SecretStr):
+            effective_dsn = config.dsn.get_secret_value()
         sentry.init(
             dsn=effective_dsn,
             environment=config.environment,
@@ -158,10 +159,12 @@ def setup_error_tracking(config: ErrorTrackingConfig) -> ErrorTrackerProtocol:
         tracker = setup_error_tracking(MonitorConfig().error_tracking)
         ```
     """
-    raw_dsn = config.dsn
-    if raw_dsn is not None and not isinstance(raw_dsn, str):
-        raw_dsn = raw_dsn.get_secret_value()
-    dsn = raw_dsn or os.getenv("SENTRY_DSN")
+    configured: str | None = (
+        config.dsn.get_secret_value()
+        if isinstance(config.dsn, SecretStr)
+        else config.dsn
+    )
+    dsn: str | None = configured or os.getenv("SENTRY_DSN")
     if not dsn or not dsn.strip():
         return NullErrorTracker()
     try:
