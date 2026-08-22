@@ -19,7 +19,6 @@ core/lexigram/src/lexigram/di/container/container.py
 core/lexigram/src/lexigram/domain/models/base.py
 core/lexigram/src/lexigram/primitives/context.py
 core/lexigram/tests/integration/di/module/test_graph_reflection_integration.py
-demos/llm-experiment/harness.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/executor/executor.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/function_calling.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/plan_execute.py
@@ -124,7 +123,6 @@ packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
 packages/lexigram-resilience/src/lexigram/resilience/decorators.py
 packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
 packages/lexigram-sql/src/lexigram/sql/backends/mysql.py
-packages/lexigram-sql/src/lexigram/sql/backends/sqlite.py
 packages/lexigram-sql/src/lexigram/sql/backup/backup_manager.py
 packages/lexigram-sql/src/lexigram/sql/di/provider.py
 packages/lexigram-sql/src/lexigram/sql/migrations/generator.py

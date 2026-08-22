@@ -1,28 +1,11 @@
-"""Seeded, config-driven LLM relay experiment harness.
-
-Runs a fully deterministic, offline "experiment": wire Claude payloads
-(drawn from a seeded PRNG) are converted through the framework's
-:class:`~lexigram.ai.relay.mappers.claude.ClaudeMapper` to canonical IR
-and back, while OpenTelemetry spans (:class:`AITracer`) and structured
-metrics (:class:`AIMetrics`) are recorded.
-
-Same seed + same config => byte-identical metrics, params, and
-conversion results (see :func:`run_experiment` -> ``digest``).  This is
-the framework's reproducibility path: no external experiment-tracking
-service is required.  Runs are tracked through the evaluation subsystem
-(:class:`~lexigram.ai.evaluation.LocalTracker` with seed-stable run
-ids), per-iteration checkpoints land digest-verified in
-:class:`~lexigram.ai.evaluation.FileCheckpointStore`, and
-:class:`~lexigram.ai.evaluation.ErrorAnalysis` summarizes every run
-under ``runs/<run_id>/``.
-"""
+"""Seeded experiment execution and artifact persistence."""
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 import hashlib
 from pathlib import Path
 import random
@@ -33,6 +16,8 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 import yaml
 
+from experiment.metrics import JsonMetricsCollector
+from experiment.results import ExperimentResult, _canonical
 from lexigram.ai.evaluation.analysis import ErrorAnalysis
 from lexigram.ai.evaluation.checkpoints import FileCheckpointStore
 from lexigram.ai.evaluation.tracking import LocalTracker, make_run_id
@@ -52,135 +37,7 @@ from lexigram.contracts.ai.relay.dto import (
 )
 from lexigram.serialization import dumps_str
 
-
-class JsonCounter:
-    """A counter instrument that records into a deterministic JSON sink."""
-
-    def __init__(self, name: str, sink: JsonMetricsCollector) -> None:
-        self.name = name
-        self._sink = sink
-
-    def increment(
-        self, amount: float = 1.0, labels: dict[str, str] | None = None
-    ) -> None:
-        self._sink.increment(self.name, amount, labels)
-
-
-class JsonHistogram:
-    """A histogram instrument that records into a deterministic JSON sink."""
-
-    def __init__(self, name: str, sink: JsonMetricsCollector) -> None:
-        self.name = name
-        self._sink = sink
-
-    def observe(self, value: float, labels: dict[str, str] | None = None) -> None:
-        self._sink.histogram(self.name, value, labels)
-
-
-class JsonGauge:
-    """A gauge instrument that records into a deterministic JSON sink."""
-
-    def __init__(self, name: str, sink: JsonMetricsCollector) -> None:
-        self.name = name
-        self._sink = sink
-
-    def set_value(self, value: float, labels: dict[str, str] | None = None) -> None:
-        self._sink.gauge(self.name, value, labels)
-
-
-class JsonMetricsCollector:
-    """Minimal :class:`MetricsCollectorProtocol` that snapshots to JSON.
-
-    Counters/histograms/gauge observations are keyed by ``name`` plus a
-    canonical, sort-stable label key so identical inputs always produce
-    identical snapshots (used by the reproducibility digest).
-    """
-
-    def __init__(self) -> None:
-        self._counters: dict[tuple[str, str], float] = {}
-        self._gauges: dict[tuple[str, str], float] = {}
-        self._histograms: dict[tuple[str, str], list[float]] = {}
-
-    @staticmethod
-    def _labels_key(labels: dict[str, str] | None) -> str:
-        if not labels:
-            return "-"
-        return dumps_str(labels, sort_keys=True)
-
-    def increment(
-        self, name: str, value: float = 1.0, tags: dict[str, str] | None = None
-    ) -> None:
-        key = (name, self._labels_key(tags))
-        self._counters[key] = self._counters.get(key, 0.0) + value
-
-    def gauge(
-        self, name: str, value: float, tags: dict[str, str] | None = None
-    ) -> None:
-        key = (name, self._labels_key(tags))
-        self._gauges[key] = value
-
-    def histogram(
-        self, name: str, value: float, tags: dict[str, str] | None = None
-    ) -> None:
-        key = (name, self._labels_key(tags))
-        self._histograms.setdefault(key, []).append(value)
-
-    def create_counter(
-        self,
-        name: str,
-        description: str = "",
-        labels: dict[str, str] | None = None,
-    ) -> JsonCounter:
-        return JsonCounter(name, self)
-
-    def create_gauge(
-        self,
-        name: str,
-        description: str = "",
-        labels: dict[str, str] | None = None,
-    ) -> JsonGauge:
-        return JsonGauge(name, self)
-
-    def create_histogram(
-        self,
-        name: str,
-        description: str = "",
-        labels: dict[str, str] | None = None,
-        buckets: list[float] | None = None,
-    ) -> JsonHistogram:
-        return JsonHistogram(name, self)
-
-    def snapshot(self) -> dict[str, Any]:
-        """Return a deterministically ordered JSON-ready snapshot."""
-        out: dict[str, Any] = {"counters": {}, "gauges": {}, "histograms": {}}
-        for (name, labels), total in sorted(self._counters.items()):
-            out["counters"].setdefault(name, {})[labels] = round(total, 6)
-        for (name, labels), value in sorted(self._gauges.items()):
-            out["gauges"].setdefault(name, {})[labels] = round(value, 6)
-        for (name, labels), values in sorted(self._histograms.items()):
-            out["histograms"].setdefault(name, {})[labels] = sorted(
-                round(v, 6) for v in values
-            )
-        return out
-
-
-@dataclass(frozen=True)
-class ExperimentResult:
-    """One fully reproducible experiment run."""
-
-    run_id: str
-    params: dict[str, Any]
-    metrics: dict[str, Any]
-    result: dict[str, Any]
-    trace: list[dict[str, str | dict[str, Any]]]
-    checkpoint_paths: list[str]
-    analysis: dict[str, Any]
-    digest: str
-
-
-def _canonical(value: Any) -> str:
-    """Stable, key-sorted JSON serialization for digesting."""
-    return dumps_str(value, sort_keys=True)
+T = TypeVar("T")
 
 
 T = TypeVar("T")
@@ -516,23 +373,4 @@ def load_config(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text())
 
 
-def metrics_delta(run_a: ExperimentResult, run_b: ExperimentResult) -> dict[str, Any]:
-    """Return the metrics delta between two runs for ablation analysis.
-
-    Args:
-        run_a: Baseline run (e.g. full feature set).
-        run_b: Ablated run (e.g. thinking blocks dropped).
-
-    Returns:
-        Per-metric counter deltas and histogram observation count deltas.
-    """
-    deltas: dict[str, Any] = {}
-    for name, series in run_a.metrics["counters"].items():
-        baseline = sum(series.values())
-        other = run_b.metrics["counters"].get(name, {})
-        deltas[name] = round(sum(other.values()) - baseline, 6)
-    for name, series in run_a.metrics["histograms"].items():
-        baseline = sum(len(v) for v in series.values())
-        other = run_b.metrics["histograms"].get(name, {})
-        deltas[name] = sum(len(v) for v in other.values()) - baseline
-    return deltas
+__all__ = ["load_config", "run_experiment", "write_json"]

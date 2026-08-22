@@ -17,8 +17,12 @@ import argparse
 import asyncio
 import os
 from pathlib import Path
+import sys
 
-from harness import ExperimentResult, metrics_delta, run_experiment
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+from experiment.results import ExperimentResult, metrics_delta
+from experiment.runner import run_experiment
 
 from lexigram.ai.evaluation import AblationRunner, FileCheckpointStore
 from lexigram.contracts.ai.experiment import AblationResult

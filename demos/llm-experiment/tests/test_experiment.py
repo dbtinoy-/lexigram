@@ -10,7 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from harness import ExperimentResult, metrics_delta, run_experiment
+from experiment.results import ExperimentResult, metrics_delta
+from experiment.runner import run_experiment
 
 
 def make_config() -> dict[str, Any]:
