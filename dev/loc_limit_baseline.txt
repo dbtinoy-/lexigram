@@ -117,7 +117,6 @@ packages/lexigram-cache/tests/unit/semantic/test_semantic_cache.py
 packages/lexigram-events/src/lexigram/events/decorators/validation.py
 packages/lexigram-graphql/src/lexigram/graphql/core/context.py
 packages/lexigram-graphql/src/lexigram/graphql/di/provider.py
-packages/lexigram-graphql/src/lexigram/graphql/subscriptions/transport.py
 packages/lexigram-monitor/src/lexigram/monitor/config.py
 packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
 packages/lexigram-resilience/src/lexigram/resilience/decorators.py

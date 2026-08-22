@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from lexigram import serialization as json
 from lexigram.graphql.subscriptions.protocol import GQLWSMessageType
+from lexigram.graphql.subscriptions.transport._connection import SubscriptionConnection
 from lexigram.graphql.types import SubscriptionInfo
 from lexigram.logging import get_logger
 
@@ -22,27 +23,11 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+from lexigram.graphql.subscriptions.transport._messaging import _WSMessagingMixin
 
 @dataclass
-class SubscriptionConnection:
-    """Manages active subscriptions for a WebSocket connection."""
 
-    subscriptions: dict[str, SubscriptionInfo] = field(default_factory=dict)
-
-    def add(self, subscription_id: str, info: SubscriptionInfo) -> None:
-        """Add a subscription."""
-        self.subscriptions[subscription_id] = info
-
-    def remove(self, subscription_id: str) -> None:
-        """Remove a subscription."""
-        self.subscriptions.pop(subscription_id, None)
-
-    def get(self, subscription_id: str) -> SubscriptionInfo | None:
-        """Get a subscription by ID."""
-        return self.subscriptions.get(subscription_id)
-
-
-class GraphQLWSTransport:
+class GraphQLWSTransport(_WSMessagingMixin):
     """WebSocket transport for GraphQL subscriptions.
 
     Implements the graphql-transport-ws protocol.
@@ -405,98 +390,6 @@ class GraphQLWSTransport:
         if self._connection:
             self._connection.remove(subscription_id)
 
-    async def _send_message(self, message: dict[str, Any]) -> None:
-        """Send a message to the client.
-
-        Args:
-            message: The message to send.
-        """
-        if not self._websocket:
-            return
-        try:
-            await self._websocket.send_json(message)
-        except Exception as e:
-            if type(e).__name__ == "WebSocketDisconnect":
-                logger.debug("WebSocket disconnected while sending: %s", e)
-            else:
-                raise
-
-    async def _send_next(self, subscription_id: str, data: Any) -> None:
-        """Send next message (subscription data).
-
-        Args:
-            subscription_id: The subscription ID.
-            data: The data to send.
-        """
-        # Convert ExecutionResult to dict if needed
-        payload_data = None
-        if data is not None:
-            if hasattr(data, "data"):
-                payload_data = data.data
-            elif hasattr(data, "__dict__"):
-                payload_data = data.__dict__
-            else:
-                payload_data = data
-
-        await self._send_message(
-            {
-                "id": subscription_id,
-                "type": GQLWSMessageType.NEXT,
-                "payload": {"data": payload_data} if payload_data else {},
-            }
-        )
-
-    async def _send_error(self, subscription_id: str | None, error: str) -> None:
-        """Send error message.
-
-        Args:
-            subscription_id: The subscription ID (may be None for connection errors).
-            error: The error message.
-        """
-        await self._send_message(
-            {
-                "id": subscription_id,
-                "type": GQLWSMessageType.ERROR,
-                "payload": {"message": error},
-            }
-        )
-
-    async def _send_complete(self, subscription_id: str) -> None:
-        """Send complete message.
-
-        Args:
-            subscription_id: The subscription ID.
-        """
-        await self._send_message(
-            {
-                "id": subscription_id,
-                "type": GQLWSMessageType.COMPLETE,
-            }
-        )
-
-    async def _keepalive(self) -> None:
-        """Send keep-alive ping messages (graphql-transport-ws protocol)."""
-        try:
-            while True:
-                await asyncio.sleep(self.keepalive_interval)
-                if self._websocket and self._connection_ack_sent:
-                    await self._send_message({"type": GQLWSMessageType.PING})
-        except asyncio.CancelledError:
-            pass
-
-    async def _cleanup(self) -> None:
-        """Clean up resources on disconnect."""
-        if self._connection:
-            # Cancel all active subscriptions
-            for sub_id in list(self._connection.subscriptions.keys()):
-                self._connection.remove(sub_id)
-        self._connection = None
-        self._websocket = None
-
-    # ------------------------------------------------------------------
-    # SubscriptionHandler protocol implementation
-    # ------------------------------------------------------------------
-
     async def subscribe(
         self,
         field_name: str,
@@ -549,137 +442,3 @@ class GraphQLWSTransport:
 
         return _single_event()
 
-
-async def graphql_ws_endpoint(websocket: Any) -> None:
-    """ASGI-compatible endpoint for GraphQL WebSocket connections.
-
-    This is a simple endpoint that can be used with Starlette.
-    For production use, configure with proper execute/subscribe handlers.
-
-    Example:
-        from starlette.routing import Route
-        from lexigram.graphql import constants as const
-
-        async def get_transport():
-            from lexigram.graphql.schema import build_schema
-            # Configure with your schema
-            return GraphQLWSTransport(
-                execute=execute_fn,
-                subscribe=subscribe_fn,
-            )
-
-        routes = [
-            Route(const.DEFAULT_SUBSCRIPTIONS_PATH, graphql_ws_endpoint),
-        ]
-    """
-    transport = GraphQLWSTransport()
-    await transport.handle(websocket)
-
-
-def create_ws_route(path: str) -> Any:
-    """Create a WebSocket route for GraphQL subscriptions.
-
-    Returns a Starlette ``Route`` when ``starlette`` is installed.  The return
-    type is ``Any`` so callers are not forced to depend on Starlette directly.
-
-    Args:
-        path: The WebSocket path.
-
-    Returns:
-        A Starlette Route object.
-    """
-    from starlette.routing import Route  # deferred — Starlette is optional
-
-    return Route(path, graphql_ws_endpoint)
-
-
-class GraphQLWSHandler:
-    """Handler class for GraphQL WebSocket subscriptions.
-
-    This class provides a more configurable way to handle subscriptions.
-    """
-
-    def __init__(
-        self,
-        execute: Callable[..., Awaitable[Any]] | None = None,
-        subscribe: Callable[..., Awaitable[Any]] | None = None,
-        connection_init_timeout: float = 10.0,
-        keepalive_interval: float = 30.0,
-        context_factory: Any | None = None,
-        auth_handler: Any | None = None,
-    ):
-        """Initialize the handler.
-
-        Args:
-            execute: Function to execute GraphQL operations.
-            subscribe: Function to subscribe to GraphQL operations.
-            connection_init_timeout: Timeout for connection_init in seconds.
-            keepalive_interval: Interval for keep-alive messages in seconds.
-            context_factory: Optional factory to create GraphQL context.
-            auth_handler: Optional handler for connection authentication.
-        """
-        self._transport = GraphQLWSTransport(
-            execute=execute,
-            subscribe=subscribe,
-            connection_init_timeout=connection_init_timeout,
-            keepalive_interval=keepalive_interval,
-            context_factory=context_factory,
-            auth_handler=auth_handler,
-        )
-
-    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
-        """Handle WebSocket connection.
-
-        Args:
-            scope: ASGI scope
-            receive: ASGI receive
-            send: ASGI send
-        """
-        from starlette.websockets import WebSocket
-
-        websocket = WebSocket(scope=scope, receive=receive, send=send)
-        await self._transport.handle(websocket, app=scope.get("app"))
-
-    @classmethod
-    def create_from_schema(
-        cls,
-        schema: Any,
-        execute: Callable[..., Awaitable[Any]] | None = None,
-        context_factory: Any | None = None,
-        auth_handler: Any | None = None,
-    ) -> GraphQLWSHandler:
-        """Create a handler from a Strawberry schema.
-
-        Args:
-            schema: The Strawberry schema.
-            execute: Optional custom execute function.
-            context_factory: Optional factory to create GraphQL context.
-            auth_handler: Optional handler for connection authentication.
-
-        Returns:
-            A configured GraphQLWSHandler.
-        """
-        # Get execute/subscribe from schema if not provided
-        if execute is None and hasattr(schema, "execute"):
-            execute = schema.execute
-
-        subscribe = None
-        if hasattr(schema, "subscribe"):
-            subscribe = schema.subscribe
-
-        return cls(
-            execute=execute,
-            subscribe=subscribe,
-            context_factory=context_factory,
-            auth_handler=auth_handler,
-        )
-
-
-__all__ = [
-    "GraphQLWSHandler",
-    "GraphQLWSTransport",
-    "SubscriptionConnection",
-    "create_ws_route",
-    "graphql_ws_endpoint",
-    "logger",
-]
