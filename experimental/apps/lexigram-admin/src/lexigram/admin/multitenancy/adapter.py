@@ -162,6 +162,7 @@ async def resolve_tenant_id(
     default: str = "",
     header: str = "x-tenant-id",
     cookie: str = "admin_tenant",
+    claim: str | None = None,
 ) -> str:
     """Resolve tenant ID from a request, delegating to ``lexigram-tenancy``
     resolvers when available.
@@ -173,6 +174,13 @@ async def resolve_tenant_id(
     4. Subdomain matched against registry
     5. *default*
     """
+
+    # Identity-bound resolution (security): when an authenticated tenant
+    # claim exists it wins outright — client-supplied header/cookie values
+    # that disagree with it are ignored rather than honored.
+    if claim:
+        return str(claim)
+
     # 1. State override
     state_tenant = getattr(getattr(request, "state", None), "tenant_id", None)
     if state_tenant:

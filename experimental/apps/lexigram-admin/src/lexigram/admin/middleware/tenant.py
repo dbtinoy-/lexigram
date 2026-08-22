@@ -67,11 +67,16 @@ class AdminTenantMiddleware:
             return
 
         # Resolve tenant ID (delegates to lexigram-tenancy when available)
+        # Identity-bound resolution: when auth has already attached an
+        # authenticated user with a tenant claim, it wins over client hints.
+        user = getattr(request.state, "user", None)
+        claim = getattr(user, "tenant_id", None) if user else None
         tenant_id = await resolve_tenant_id(
             request,
             default=self.config.default_tenant_id,
             header=self.config.header_name,
             cookie=self.config.cookie_name,
+            claim=claim,
         )
         request.state.tenant_id = tenant_id
 
