@@ -43,7 +43,7 @@ class RealtimeModule(Module):
             module=cls,
             imports=[
                 WebModule.configure(
-                    controllers=[ConsoleController],
+                    controllers=[ConsoleController, OperatorHandler],
                     web_config=web_config,
                 ),
             ],

@@ -49,28 +49,13 @@ class RealtimeProvider(Provider):
         container.singleton(EventsStreamHandler, EventsStreamHandler(self.events))
         container.singleton(OperatorHandler, OperatorHandler(self.events))
 
-    def _make_endpoint(self, container: ContainerResolverProtocol):
-        """Build the ASGI endpoint that wraps the operator WebSocket handler."""
-
-        async def endpoint(starlette_ws) -> None:
-            from lexigram.web import WebSocket
-
-            ws = WebSocket(starlette_ws)
-            handler = await container.resolve(OperatorHandler)
-            await handler.handle(ws)
-
-        return endpoint
-
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        from starlette.routing import WebSocketRoute
+        """Start the heartbeat producer.
 
-        from lexigram.web.di.provider import WebProvider
-
-        web = await container.resolve(WebProvider)
-        if web.starlette is not None:
-            web.starlette.router.routes.append(
-                WebSocketRoute("/api/ws/operator", self._make_endpoint(container))
-            )
+        The WebSocket route is mounted by the web layer itself —
+        ``OperatorHandler`` is a Controller whose ``@websocket``-decorated
+        entrypoint is collected with every other controller route.
+        """
         self._start_heartbeat()
 
     def _start_heartbeat(self) -> None:
