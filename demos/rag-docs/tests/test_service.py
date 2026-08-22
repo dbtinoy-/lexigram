@@ -21,7 +21,7 @@ from rag_docs.errors import (
     UnknownStrategyError,
 )
 from rag_docs.index_builder import build_docs_store
-from rag_docs.service import CITATION_PATTERN, STRATEGIES, DocsAskService
+from rag_docs.services.docs_ask import CITATION_PATTERN, STRATEGIES, DocsAskService
 
 QUESTION = "how do modules export services?"
 

@@ -11,7 +11,7 @@ from lexigram.web.config import ServerConfig
 from lexigram.web.security import SecurityConfig
 from rag_docs.api import DocsAskApiController
 from rag_docs.di.provider import DocsAskProvider
-from rag_docs.service import DocsAskService
+from rag_docs.services.docs_ask import DocsAskService
 
 
 @module()

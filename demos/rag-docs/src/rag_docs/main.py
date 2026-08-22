@@ -20,7 +20,7 @@ import sys
 from lexigram.app import Application
 from rag_docs.di.provider import resolve_default_docs_dir
 from rag_docs.module import DocsAskModule
-from rag_docs.service import DocsAskService
+from rag_docs.services.docs_ask import DocsAskService
 
 _CANNED_QUESTIONS: tuple[tuple[str, str], ...] = (
     ("how do modules export services?", "vector"),

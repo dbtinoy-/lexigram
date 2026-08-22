@@ -15,7 +15,7 @@ from lexigram.di.provider import Provider
 from rag_docs.api import DocsAskApiController
 from rag_docs.embedder import HashingEmbedder
 from rag_docs.index_builder import build_docs_store
-from rag_docs.service import STRATEGIES, DocsAskService
+from rag_docs.services.docs_ask import STRATEGIES, DocsAskService
 
 
 class DocsAskProvider(Provider):

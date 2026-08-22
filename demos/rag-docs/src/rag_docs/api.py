@@ -21,7 +21,7 @@ from rag_docs.errors import (
     SynthesisFailedError,
     UnknownStrategyError,
 )
-from rag_docs.service import DocsAskService
+from rag_docs.services.docs_ask import DocsAskService
 
 
 class DocsAskApiController(Controller):
