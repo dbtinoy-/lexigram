@@ -6,6 +6,9 @@ from dataclasses import dataclass, field
 
 from lexigram.contracts.ai.evaluation import EvaluationDataset
 from lexigram.contracts.ai.feedback import FeedbackItem
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
 
 THRESHOLD_RATING = 2.0
 
