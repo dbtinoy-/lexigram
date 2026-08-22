@@ -108,7 +108,6 @@ experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/
 packages/lexigram-audit/tests/unit/test_sql_store.py
 packages/lexigram-auth/src/lexigram/auth/authn/ldap.py
 packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py
-packages/lexigram-auth/src/lexigram/auth/storage/oauth_identity_store.py
 packages/lexigram-cache/src/lexigram/cache/config.py
 packages/lexigram-cache/src/lexigram/cache/repository/base.py
 packages/lexigram-cache/tests/unit/semantic/test_semantic_cache.py
