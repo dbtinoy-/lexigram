@@ -71,6 +71,7 @@ class HTTPClientConfig(BaseConfig):
     trust_env: bool = True
     cookie_jar: bool = True
     enforce_url_safety: bool = True
+    max_redirects: int = 5
 
     def __post_init__(self) -> None:
         """Validate proxy URL format if provided."""

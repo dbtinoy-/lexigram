@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
     from lexigram.contracts.observability.metrics import MetricsRecorderProtocol
 
+from yarl import URL
+
 from lexigram.contracts.infra.resilience import (
     CircuitBreakerError as _CoreCircuitBreakerError,
 )
@@ -39,6 +41,7 @@ from lexigram.contracts.web import HttpResponse, InterceptorProtocol
 from lexigram.http.config import HTTPClientConfig
 from lexigram.http.exceptions import (
     HTTPCircuitOpenError,
+    HTTPClientError,
     HTTPRetryExhaustedError,
     HTTPUnsafeURLError,
 )
@@ -257,10 +260,11 @@ class HTTPClient(
         _kwargs = dict(kwargs)
         _kwargs["headers"] = request_ctx.headers
 
-        # SSRF gate: reject URLs that could reach private/reserved hosts.
-        # Runs after the interceptor loop so the final, rewritten URL is
-        # what gets validated.
-        await self._assert_url_safe(_url)
+        # SSRF + redirect policy.  Automatic redirects are disabled; the
+        # client follows Location hops itself so the SSRF gate re-validates
+        # every target before a connection is attempted (spec finding 4).
+        allow_redirects = _kwargs.pop("allow_redirects", None)
+        max_hops = max(0, int(getattr(self._config, "max_redirects", 5)))
 
         # Short-circuit immediately when circuit is already open
         if self._circuit_breaker and (
@@ -269,28 +273,67 @@ class HTTPClient(
         ):
             raise HTTPCircuitOpenError("Circuit breaker is OPEN")
 
-        async def _execute() -> Any:
-            if self._pool._session is None:
+        async def _execute_one(hop_url: str) -> Any:
+            session = self._pool._session
+            if session is None:
                 raise RuntimeError(
                     "HTTPClient not started — call await client.start() first"
                 )
-            # Inject pool-level proxy unless caller overrides it
-            if getattr(self._pool, "proxy", None) and "proxy" not in _kwargs:
-                _kwargs["proxy"] = self._pool.proxy
+            hop_kwargs = dict(_kwargs)
+            hop_kwargs["allow_redirects"] = (
+                allow_redirects if allow_redirects is not None else False
+            )
+            if getattr(self._pool, "proxy", None) and "proxy" not in hop_kwargs:
+                hop_kwargs["proxy"] = self._pool.proxy
+
+            async def _call() -> Any:
+                return await session.request(_method, hop_url, **hop_kwargs)
+
             if self._circuit_breaker:
-                return await self._circuit_breaker.call(
-                    self._pool._session.request,
-                    _method,
-                    _url,
-                    **_kwargs,
-                )
-            return await self._pool._session.request(_method, _url, **_kwargs)
+                return await self._circuit_breaker.call(_call)
+            return await _call()
 
         try:
-            if self._resilience is not None:
-                raw = await self._resilience.execute(_execute)
+            if allow_redirects is not None:
+                # Caller owns redirect behavior entirely.
+                await self._assert_url_safe(_url)
+                raw = await (
+                    self._resilience.execute(lambda: _execute_one(_url), method=_method)
+                    if self._resilience is not None
+                    else self._retry_policy.execute(
+                        lambda: _execute_one(_url), method=_method
+                    )
+                )
             else:
-                raw = await self._retry_policy.execute(_execute, method=_method)
+                follows_left = max_hops
+                while True:
+                    await self._assert_url_safe(_url)
+                    raw = await (
+                        self._resilience.execute(
+                            lambda url=_url: _execute_one(url), method=_method
+                        )
+                        if self._resilience is not None
+                        else self._retry_policy.execute(
+                            lambda url=_url: _execute_one(url), method=_method
+                        )
+                    )
+                    status = getattr(raw, "status", None)
+                    if status not in (301, 302, 303, 307, 308):
+                        break
+                    if follows_left == 0:
+                        raise HTTPClientError(
+                            f"Too many redirects (> {max_hops}) for {_url!r}"
+                        )
+                    location = getattr(raw, "headers", {}).get("Location")
+                    if not location:
+                        break
+                    follows_left -= 1
+                    release = getattr(raw, "release", None)
+                    if release is not None:
+                        result = release()
+                        if asyncio.iscoroutine(result):
+                            await result
+                    _url = str(URL(_url).join(URL(location)))
         except (
             Exception
         ) as exc:  # HTTP client must normalise all resilience library exceptions
@@ -300,7 +343,7 @@ class HTTPClient(
                 raise HTTPCircuitOpenError(str(exc)) from exc
             raise
 
-        # Run response interceptors
+        # Run response interceptors (final response only)
         for interceptor in self._interceptors:
             raw = await interceptor.intercept_response(raw)
 
