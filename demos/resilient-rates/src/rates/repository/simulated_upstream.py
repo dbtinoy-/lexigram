@@ -6,8 +6,8 @@ import asyncio
 from decimal import Decimal
 from enum import Enum
 import random
-import time
 
+from lexigram.primitives import clock
 from rates.domain import RateQuote
 from rates.exceptions import UpstreamTimeoutError, UpstreamUnavailableError
 
@@ -92,7 +92,7 @@ class SimulatedRatesProvider:
             Decimal("0.00001")
         )
         return RateQuote(
-            pair=pair, rate=rate, fetched_at=time.time(), source="upstream"
+            pair=pair, rate=rate, fetched_at=clock.now().timestamp(), source="upstream"
         )
 
 

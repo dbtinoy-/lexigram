@@ -6,6 +6,7 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 from lexigram.contracts.infra.resilience.protocols import (
     ResiliencePipelineFactoryProtocol,
@@ -20,6 +21,10 @@ class RatesProvider(Provider):
     """Register the rate desk services as container-managed singletons."""
 
     name = "rates"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness."""
+        return HealthCheckResult(component=self.name)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind singletons; RatesService builds lazily from booted deps."""

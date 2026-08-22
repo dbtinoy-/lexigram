@@ -15,6 +15,8 @@ from lexigram.contracts.ai.rag import (
 from lexigram.contracts.ai.vector import Document, RAGSearchResult
 from lexigram.contracts.data.vector.protocols import VectorCollectionProtocol
 from lexigram.contracts.data.vector.types import SearchQuery, SearchResult
+from lexigram.logging import get_logger
+from lexigram.primitives import Registry
 from lexigram.result import Err, Ok, Result
 from rag_docs.errors import (
     DocsAskError,
@@ -23,6 +25,8 @@ from rag_docs.errors import (
     UnknownStrategyError,
 )
 from rag_docs.repository.index_builder import IndexStats
+
+logger = get_logger(__name__)
 
 CITATION_PATTERN = re.compile(r"^(?P<source>.+)#(?P<index>\d+)$")
 
@@ -53,10 +57,20 @@ def _to_rag_result(result: SearchResult) -> RAGSearchResult:
     )
 
 
-STRATEGIES: dict[str, RetrievalStrategyProtocol] = {
-    "vector": VectorRetrievalStrategy(),
-    "mmr": MMRRetrievalStrategy(lambda_param=0.7),
-}
+def _build_strategies() -> Registry[str, RetrievalStrategyProtocol]:
+    """Framework Registry keyed by strategy id."""
+    registry: Registry[str, RetrievalStrategyProtocol] = Registry()
+    registry.register("vector", VectorRetrievalStrategy())
+    registry.register("mmr", MMRRetrievalStrategy(lambda_param=0.7))
+    return registry
+
+
+STRATEGIES: Registry[str, RetrievalStrategyProtocol] = _build_strategies()
+
+
+def strategies_snapshot() -> dict[str, RetrievalStrategyProtocol]:
+    """Plain-mapping view of the strategy registry."""
+    return {key: STRATEGIES.get(key) for key in STRATEGIES}
 
 
 @dataclass(frozen=True)
@@ -138,6 +152,12 @@ class DocsAskService:
         response = synthesis.unwrap()
         citations = tuple(
             candidate.document.id for candidate in candidates if candidate.document.id
+        )
+        logger.info(
+            "docs_ask_complete",
+            strategy=strategy,
+            candidates=len(candidates),
+            citations=len(citations),
         )
         return Ok(AskAnswer(answer=response.answer, citations=citations))
 

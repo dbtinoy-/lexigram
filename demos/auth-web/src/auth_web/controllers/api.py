@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from auth_web.repository import InMemorySessionRepository
 from auth_web.services.password_change import PasswordChangeService
 from starlette.requests import Request
@@ -14,6 +12,8 @@ from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
+from lexigram.primitives import clock
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 
 logger = get_logger(__name__)
@@ -43,7 +43,7 @@ class AuthApiController(Controller):
     @post("/api/register")
     async def register(self, request: Request) -> JSONResponse:
         """Create an account and start a session for it."""
-        data = await request.json()
+        data = json_loads(await request.body())
         result = await self._authentication.register_user(
             RegisterRequest(
                 name=str(data.get("name", "")),
@@ -65,7 +65,7 @@ class AuthApiController(Controller):
     @post("/api/login")
     async def login(self, request: Request) -> JSONResponse:
         """Verify credentials and set the session cookie."""
-        data = await request.json()
+        data = json_loads(await request.body())
         email = str(data.get("email", ""))
         password = str(data.get("password", ""))
 
@@ -119,7 +119,7 @@ class AuthApiController(Controller):
         claims = verified.unwrap()
 
         sessions = await self._sessions.find_active_by_user(
-            user.user_id, cutoff=datetime.now(UTC)
+            user.user_id, cutoff=clock.now()
         )
 
         # Effective permissions = explicit claims UNION role-derived patterns
@@ -162,7 +162,7 @@ class AuthApiController(Controller):
         if user is None:
             return _error("not authenticated", 401)
 
-        data = await request.json()
+        data = json_loads(await request.body())
         result = await self._password_changes.change(
             user_id=user.user_id,
             current_password=str(data.get("current_password", "")),
@@ -180,7 +180,7 @@ class AuthApiController(Controller):
             return _error("not authenticated", 401)
 
         rows = await self._sessions.find_active_by_user(
-            user.user_id, cutoff=datetime.now(UTC)
+            user.user_id, cutoff=clock.now()
         )
         if session_id not in {row["session_id"] for row in rows}:
             return _error("unknown session", 404)

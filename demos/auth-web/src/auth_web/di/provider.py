@@ -18,6 +18,7 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 
 DEMO_SECRET = "auth-web-demo-secret-key-0123456789abcdef"
@@ -54,6 +55,10 @@ class AuthWebProvider(Provider):
     """
 
     name = "auth-web"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness."""
+        return HealthCheckResult(component=self.name)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind pure instances now; collaborators build lazily post-boot."""

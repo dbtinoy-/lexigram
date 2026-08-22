@@ -9,6 +9,7 @@ from lexigram.auth.authn.apikeys import APIKeyManager
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 
 logger = get_logger(__name__)
@@ -36,7 +37,7 @@ class KeysApiController(Controller):
 
     @post("/api/login")
     async def login(self, request: Request) -> JSONResponse:
-        data = await request.json()
+        data = json_loads(await request.body())
         user = await self._authentication.authenticate_user(
             email=str(data.get("email", "")),
             password=str(data.get("password", "")),
@@ -83,7 +84,7 @@ class KeysApiController(Controller):
         user = await self._require_session(request)
         if user is None:
             return _error("not authenticated", 401)
-        data = await request.json()
+        data = json_loads(await request.body())
         raw_key, api_key = await self._manager.create_key(
             user_id=user.user_id,
             name=str(data.get("name", "unnamed")),

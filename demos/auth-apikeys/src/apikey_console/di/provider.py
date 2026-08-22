@@ -17,6 +17,7 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 
@@ -39,6 +40,10 @@ class ApiKeysProvider(Provider):
     """Seed the demo user and wire key management + machine auth."""
 
     name = "apikeys-console"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness."""
+        return HealthCheckResult(component=self.name)
 
     def __init__(self) -> None:
         super().__init__()

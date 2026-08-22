@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from mfa_console.repository.session_repository import InMemorySessionRepository
@@ -14,6 +14,8 @@ from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.mfa.manager import MFAManager
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
+from lexigram.primitives import clock
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 
 logger = get_logger(__name__)
@@ -65,7 +67,7 @@ class MfaApiController(Controller):
     @post("/api/login")
     async def login(self, request: Request) -> JSONResponse:
         """Password step; MFA-enabled users get a pending challenge cookie."""
-        data = await request.json()
+        data = json_loads(await request.body())
         email = str(data.get("email", ""))
         password = str(data.get("password", ""))
 
@@ -80,14 +82,13 @@ class MfaApiController(Controller):
             await self._cookies.login(response, user.user_id)
             return response
 
-        pending_id = f"pending-{user.user_id}-{datetime.now(UTC).timestamp()}"
+        pending_id = f"pending-{user.user_id}-{clock.now().timestamp()}"
         await self._sessions.insert(
             {
                 "session_id": pending_id,
                 "user_id": user.user_id,
                 "device_id": "pre-auth",
-                "expires_at": datetime.now(UTC)
-                + timedelta(seconds=PENDING_TTL_SECONDS),
+                "expires_at": clock.now() + timedelta(seconds=PENDING_TTL_SECONDS),
             }
         )
         response = JSONResponse({"ok": True, "mfa_required": True})
@@ -109,7 +110,7 @@ class MfaApiController(Controller):
             return _error("no pending challenge", 401)
         user, pending_id, _row = resolved
 
-        data = await request.json()
+        data = json_loads(await request.body())
         code = str(data.get("code", ""))
 
         if not await self._mfa.verify_totp(user.user_id, code):
@@ -179,7 +180,7 @@ class MfaApiController(Controller):
         if user is None:
             return _error("not authenticated", 401)
 
-        data = await request.json()
+        data = json_loads(await request.body())
         recheck = await self._authentication.authenticate_user(
             user.email, str(data.get("password", ""))
         )

@@ -14,6 +14,7 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
@@ -35,6 +36,14 @@ class RealtimeProvider(Provider):
     """Provide the shared event stream plus the realtime endpoints."""
 
     name = "realtime"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report stream liveness."""
+        return HealthCheckResult(
+            component=self.name,
+            details={"stopping": self._stopping},
+        )
+
     priority = ProviderPriority.COMMS
 
     def __init__(self, heartbeat_interval: float = 15.0) -> None:

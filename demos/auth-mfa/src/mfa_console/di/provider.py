@@ -16,6 +16,7 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 
@@ -30,6 +31,10 @@ class MfaProvider(Provider):
     """Seed users, enroll the MFA persona, and wire the console."""
 
     name = "mfa-console"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness."""
+        return HealthCheckResult(component=self.name)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind builders; collaborators resolve lazily via the container."""

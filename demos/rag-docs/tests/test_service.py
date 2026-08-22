@@ -21,7 +21,12 @@ from rag_docs.errors import (
     UnknownStrategyError,
 )
 from rag_docs.repository.index_builder import build_docs_store
-from rag_docs.services.docs_ask import CITATION_PATTERN, STRATEGIES, DocsAskService
+from rag_docs.services.docs_ask import (
+    CITATION_PATTERN,
+    STRATEGIES,
+    DocsAskService,
+    strategies_snapshot,
+)
 
 QUESTION = "how do modules export services?"
 
@@ -46,14 +51,14 @@ async def make_service(tmp_path: Path) -> DocsAskService:
         collection=collection,
         embedder=embedder,
         synthesizer=ExtractiveSynthesizer(max_sentences=4),
-        strategies=dict(STRATEGIES),
+        strategies=strategies_snapshot(),
     )
 
 
 async def test_registry_has_vector_and_mmr() -> None:
     assert set(STRATEGIES) == {"vector", "mmr"}
-    assert isinstance(STRATEGIES["vector"], VectorRetrievalStrategy)
-    assert isinstance(STRATEGIES["mmr"], MMRRetrievalStrategy)
+    assert isinstance(STRATEGIES.get("vector"), VectorRetrievalStrategy)
+    assert isinstance(STRATEGIES.get("mmr"), MMRRetrievalStrategy)
 
 
 async def test_ask_returns_answer_with_citations(tmp_path: Path) -> None:

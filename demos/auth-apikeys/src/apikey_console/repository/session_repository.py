@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 
 from lexigram.contracts.auth.repositories import SessionRepositoryProtocol
+from lexigram.primitives import clock
 
 
 def _utc_now() -> datetime:
-    return datetime.now(UTC)
+    return clock.now()
 
 
 @dataclass

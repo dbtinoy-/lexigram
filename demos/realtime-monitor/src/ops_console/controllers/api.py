@@ -23,6 +23,7 @@ from typing import Any
 
 from starlette.requests import Request
 
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 from lexigram.web.sse.handler import AbstractSSEHandler
 from ops_console.domain import Severity, SystemEvent
@@ -67,7 +68,7 @@ class ConsoleController(Controller):
 
     @post("/api/events")
     async def publish_event(self, request: Request | None = None) -> dict[str, Any]:
-        body = await request.json()
+        body = json_loads(await request.body())
         event = SystemEvent(
             kind="manual",
             message=str(body.get("message") or "no message"),

@@ -11,17 +11,25 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
+from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.di.provider import Provider
 from rag_docs.controllers.api import DocsAskApiController
 from rag_docs.repository.embedder import HashingEmbedder
 from rag_docs.repository.index_builder import build_docs_store
-from rag_docs.services.docs_ask import STRATEGIES, DocsAskService
+from rag_docs.services.docs_ask import DocsAskService, strategies_snapshot
 
 
 class DocsAskProvider(Provider):
     """Build the docs index at boot and register the ask service."""
 
     name = "rag-docs"
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report docs index readiness."""
+        return HealthCheckResult(
+            component=self.name,
+            details={"docs_dir": str(self._docs_dir)},
+        )
 
     def __init__(self, docs_dir: Path | None = None) -> None:
         super().__init__()
@@ -50,7 +58,7 @@ class DocsAskProvider(Provider):
             collection=collection,
             embedder=embedder,
             synthesizer=ExtractiveSynthesizer(max_sentences=4),
-            strategies=dict(STRATEGIES),
+            strategies=strategies_snapshot(),
             stats=stats,
         )
 

@@ -11,11 +11,14 @@ from decimal import Decimal
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.events import EventBusProtocol
 from lexigram.events.buses.command import CommandBusImpl
+from lexigram.logging import get_logger
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import OrderError, OrderItem
 from orders.events import OrdersView
 from orders.repository.order_repository import OrderRepository
 from orders.repository.outbox import Outbox
+
+logger = get_logger(__name__)
 
 
 class OrdersApi:
@@ -65,6 +68,7 @@ class OrdersApi:
         order_id = await self._dispatch_command(
             PlaceOrder(customer=customer, items=items)
         )
+        logger.info("order_placed", order_id=str(order_id), customer=customer)
         return Ok(str(order_id))
 
     async def pay(self, order_id: str, amount: Decimal) -> Result[None, OrderError]:
@@ -115,6 +119,7 @@ class OrdersApi:
         if result.is_err():
             return Err(result.unwrap_err())
         sent = result.unwrap()
+        logger.info("outbox_flushed", published=sent)
         await self.event_bus.flush()
         return Ok(sent)
 

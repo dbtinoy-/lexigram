@@ -14,7 +14,10 @@ from collections import deque
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
+from lexigram.logging import get_logger
 from ops_console.domain import SystemEvent
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -78,6 +81,12 @@ class EventStreamService:
                     except asyncio.QueueEmpty:
                         pass
                 queue.put_nowait(event)
+        logger.info(
+            "event_published",
+            event_type=type(event).__name__,
+            subscribers=len(self._subscribers),
+            history=len(self._history),
+        )
         return len(self._subscribers)
 
     async def subscribe(self) -> AsyncIterator[SystemEvent]:

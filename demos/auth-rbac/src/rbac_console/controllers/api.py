@@ -13,6 +13,7 @@ from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.logging import get_logger
+from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 
 logger = get_logger(__name__)
@@ -53,7 +54,7 @@ class RbacApiController(Controller):
     @post("/api/login")
     async def login(self, request: Request) -> JSONResponse:
         """Log in as one of the seeded personas."""
-        data = await request.json()
+        data = json_loads(await request.body())
         persona = str(data.get("persona", ""))
         if persona not in PERSONAS:
             return _error(f"unknown persona {persona!r}", 400)
@@ -120,7 +121,7 @@ class RbacApiController(Controller):
     @post("/api/try")
     async def try_check(self, request: Request) -> JSONResponse:
         """Run one authorize() verdict for a persona/action/resource triple."""
-        data = await request.json()
+        data = json_loads(await request.body())
         role = str(data.get("role", ""))
         action = str(data.get("action", ""))
         resource = str(data.get("resource", ""))
@@ -160,7 +161,7 @@ class RbacApiController(Controller):
         allowed = await self._authz.authorize(user, "create", "articles")
         if not (allowed.unwrap() if allowed.is_ok() else False):
             return _error("forbidden: missing articles.create", 403)
-        data = await request.json()
+        data = json_loads(await request.body())
         article = self._articles.create(
             title=str(data.get("title", "untitled")),
             body=str(data.get("body", "")),
