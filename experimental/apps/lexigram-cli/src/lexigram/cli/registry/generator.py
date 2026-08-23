@@ -21,8 +21,8 @@ class GeneratorResult:
     """Result of a code generation operation."""
 
     success: bool
-    files_created: list[str] = None  # type: ignore[assignment]
-    files_updated: list[str] = None  # type: ignore[assignment]
+    files_created: list[str] | None = None
+    files_updated: list[str] | None = None
     message: str = ""
     error: str = ""
 
@@ -77,8 +77,9 @@ class GeneratorAdapter(CodeGenerator):
 
     def get_name(self) -> str:
         cls = self._generator_class
-        if getattr(cls, "name", None):
-            return cls.name  # type: ignore[attr-defined]
+        class_name: Any = getattr(cls, "name", None)
+        if class_name:
+            return str(class_name)
         return cls.__name__.replace("Generator", "").lower()
 
     def get_description(self) -> str:

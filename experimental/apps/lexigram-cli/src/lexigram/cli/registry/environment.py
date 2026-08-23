@@ -199,7 +199,7 @@ class EnvironmentRegistry:
 class EnvironmentManager:
     """Manages environment switching and validation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.registry = EnvironmentRegistry
 
     def switch(self, name: str) -> bool:

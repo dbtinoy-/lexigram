@@ -19,7 +19,7 @@ def test(
     coverage: bool = typer.Option(False, "--coverage", help="Run with coverage"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
     runner: str = typer.Option("pytest", "--runner", "-r", help="Test runner to use"),
-):
+) -> None:
     """Run project tests."""
     out = OutputManager()
 
@@ -53,7 +53,7 @@ def lint(
     path: str = typer.Argument(".", help="Path to lint"),
     fix: bool = typer.Option(False, "--fix", help="Automatically fix issues"),
     runner: str = typer.Option("ruff", "--runner", "-r", help="Linter to use"),
-):
+) -> None:
     """Run project linting."""
     out = OutputManager()
 
@@ -86,7 +86,7 @@ def lint(
 def typecheck(
     path: str = typer.Argument("src", help="Path to type check"),
     runner: str = typer.Option("mypy", "--runner", "-r", help="Type checker to use"),
-):
+) -> None:
     """Run type checking."""
     out = OutputManager()
 
@@ -122,7 +122,7 @@ def routes(
         "--app",
         help="Path to the application instance (e.g., myapp.main:app)",
     ),
-):
+) -> None:
     """List all registered web and GraphQL routes."""
     out = OutputManager()
     out.print("[yellow]⚠  Route introspection is not yet implemented.[/yellow]")
@@ -132,7 +132,7 @@ def routes(
 
 
 @app.command()
-def run_all():
+def run_all() -> None:
     """Run all project checks (test, lint, typecheck)."""
     out = OutputManager()
 

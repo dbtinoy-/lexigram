@@ -6,19 +6,24 @@ import asyncio
 import importlib.util
 from pathlib import Path
 import subprocess
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
 from lexigram.cli.output import OutputManager
 from lexigram.cli.registry import DatabaseConnection
 from lexigram.cli.runtime import handle_errors
-from lexigram.contracts.cli.contributions import SchemaSetupOutcome, SchemaSetupResult
+from lexigram.contracts.cli.contributions import (
+    SchemaSetupContribution,
+    SchemaSetupOutcome,
+    SchemaSetupResult,
+)
+from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
 
 app = typer.Typer(name="db")
 
 
-async def _bootstrap_migration_runner():
+async def _bootstrap_migration_runner() -> Any:
     """Used for direct migration execution (run/rollback/status) via the DI container.
 
     Prefers the DI-managed runner when lexigram-sql is available so that
@@ -30,16 +35,18 @@ async def _bootstrap_migration_runner():
     db_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
 
     try:
-        from lexigram import Container
+        from lexigram.di.container import Container
+        from lexigram.di.orchestrator import ProviderOrchestrator
         from lexigram.contracts.data.sql.migrations import MigrationRunnerProtocol
 
         sql_provider_mod = importlib.import_module("lexigram.sql.di.provider")
-        DBDIProvider = sql_provider_mod.DatabaseService
+        DBDIProvider = sql_provider_mod.DatabaseProvider
 
         container = Container()
         provider = DBDIProvider(config=db_url)
-        await container.register(provider)
-        await container.boot()
+        orchestrator = ProviderOrchestrator(container)
+        orchestrator.add(provider)
+        await orchestrator.boot_all(container)
         return await container.resolve(MigrationRunnerProtocol)
 
     except ImportError:
@@ -55,11 +62,12 @@ async def _bootstrap_migration_runner():
             raise typer.Exit(1) from None
 
 
-async def _bootstrap_db_provider():
+async def _bootstrap_db_provider() -> tuple[Any, Any]:
     """Used by `db setup` to resolve a DatabaseProviderProtocol outside a full app boot.
 
     Registers and boots the DatabaseProvider directly against a fresh
-    Container, then resolves DatabaseProviderProtocol.
+    Container via a ProviderOrchestrator (same lifecycle as Application),
+    then resolves DatabaseProviderProtocol.
 
     Returns:
         A ``(db, provider)`` tuple: the resolved database facade and the
@@ -69,16 +77,24 @@ async def _bootstrap_db_provider():
 
     db_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
     try:
-        from lexigram import Container
+        from lexigram.di.container import Container
+        from lexigram.di.orchestrator import ProviderOrchestrator
         from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
 
         sql_provider_mod = importlib.import_module("lexigram.sql.di.provider")
         DatabaseProvider = sql_provider_mod.DatabaseProvider
+        sql_config_mod = importlib.import_module("lexigram.sql.config")
+        DatabaseConfig = sql_config_mod.DatabaseConfig
 
         container = Container()
         provider = DatabaseProvider(config=db_url)
-        await provider.register(container)
-        await provider.boot(container)
+        # Satisfy the orchestrator's config-injection phase: the provider
+        # already holds an explicit DatabaseConfig, so LexigramConfig lookup
+        # (unavailable in this bare CLI container) must be skipped.
+        provider.config = DatabaseConfig.from_url(db_url)
+        orchestrator = ProviderOrchestrator(container)
+        orchestrator.add(provider)
+        await orchestrator.boot_all(container)
         return await container.resolve(DatabaseProviderProtocol), provider
 
     except ImportError as e:
@@ -89,7 +105,7 @@ async def _bootstrap_db_provider():
         raise typer.Exit(1) from None
 
 
-async def get_migration_manager():
+async def get_migration_manager() -> Any:
     """Used for introspection/listing: resolves a legacy SimpleMigrationManager exposing the full manager API.
 
     Commands that only need run/rollback/status should use
@@ -112,7 +128,7 @@ async def get_migration_manager():
 @handle_errors
 def init(
     directory: str = typer.Argument("migrations", help="Migration directory"),
-):
+) -> None:
     """Initialize database migrations."""
     out = OutputManager()
     path = Path(directory)
@@ -127,11 +143,11 @@ def init(
 @handle_errors
 def migrate(
     name: str = typer.Argument(..., help="Migration name"),
-):
+) -> None:
     """Generate a new migration file."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         manager = await get_migration_manager()
         version = await manager.create_migration(name, "-- Add your SQL here")
         out.success(f"Created migration {version}: {name}")
@@ -176,11 +192,11 @@ def create(
 @handle_errors
 def upgrade(
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Apply pending migrations."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         runner = await _bootstrap_migration_runner()
         applied = await runner.run_migrations()
         if applied:
@@ -197,11 +213,11 @@ def upgrade(
 def downgrade(
     version: str | None = typer.Argument(None, help="Version to downgrade to"),
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Revert migrations."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         runner = await _bootstrap_migration_runner()
         current = await runner.get_current_version()
         if not current:
@@ -224,11 +240,11 @@ def downgrade(
 @handle_errors
 def status(
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Show migration status."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         runner = await _bootstrap_migration_runner()
         current = await runner.get_current_version()
         pending = await runner.get_pending_migrations()
@@ -253,11 +269,11 @@ def status(
 def history(
     limit: int = typer.Option(20, "--limit", "-n", help="Number of migrations to show"),
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Show migration history."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         manager = await get_migration_manager()
         await manager.provider.boot()
         try:
@@ -280,11 +296,11 @@ def history(
 @handle_errors
 def validate(
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Validate migrations."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         manager = await get_migration_manager()
         await manager.provider.boot()
         try:
@@ -332,11 +348,11 @@ def validate(
 def seed(
     file: str | None = typer.Argument(None, help="Specific seed file to run"),
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Run database seeders."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         manager = await get_migration_manager()
         await manager.provider.boot()
         try:
@@ -388,7 +404,7 @@ def reset(
         help="Force reset without confirmation",
     ),
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Drop and recreate the database."""
     out = OutputManager()
     if not force:
@@ -398,7 +414,7 @@ def reset(
         if not confirm:
             raise typer.Abort
 
-    async def _run():
+    async def _run() -> None:
         manager = await get_migration_manager()
         await manager.provider.boot()
         try:
@@ -464,7 +480,7 @@ def reset(
 @handle_errors
 def shell(
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Open database shell (auto-detects database type)."""
     out = OutputManager()
 
@@ -496,11 +512,11 @@ def inspect_(
         None, "--table", "-t", help="Specific table to inspect"
     ),
     env: str | None = typer.Option(None, "--env", "-e", help="Environment name"),
-):
+) -> None:
     """Show database schema."""
     out = OutputManager()
 
-    async def _run():
+    async def _run() -> None:
         try:
             conn = DatabaseConnection()
 
@@ -552,7 +568,7 @@ def inspect_(
 def backup(
     output: str | None = typer.Option("--output", "-o", help="Output file path"),
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Backup the database."""
     out = OutputManager()
 
@@ -602,7 +618,7 @@ def restore(
         help="Force restore without confirmation",
     ),
     env: str | None = typer.Option("--env", "-e", help="Environment name"),
-):
+) -> None:
     """Restore the database from backup."""
     out = OutputManager()
     if not force:
@@ -687,12 +703,16 @@ async def _run_setup(package: str | None) -> None:
         await provider.shutdown()
 
 
-async def _run_one_schema_setup(contribution, db) -> SchemaSetupOutcome:
+async def _run_one_schema_setup(
+    contribution: SchemaSetupContribution,
+    db: DatabaseProviderProtocol,
+) -> SchemaSetupOutcome:
     try:
         module_path, _, fn_name = contribution.setup_fn_path.partition(":")
         mod = importlib.import_module(module_path)
         ensure_fn = getattr(mod, fn_name)
-        return await ensure_fn(db)
+        outcome: SchemaSetupOutcome = await ensure_fn(db)
+        return outcome
     except Exception as exc:
         return SchemaSetupOutcome(status=SchemaSetupResult.FAILED, message=str(exc))
 

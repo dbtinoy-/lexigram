@@ -8,7 +8,7 @@ inspect and apply event-schema migrations managed by
 from __future__ import annotations
 
 import asyncio
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -18,7 +18,7 @@ from lexigram.cli.runtime import handle_errors
 app = typer.Typer(name="events")
 
 
-def _make_evolution():
+def _make_evolution() -> Any:
     """Bootstrap an in-memory SchemaRegistry and SchemaEvolution.
 
     When ``lexigram-events`` is installed and discoverable, this returns a

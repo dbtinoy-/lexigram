@@ -146,6 +146,8 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 show_error_codes = true
+# Jinja scaffold directories ({{ package_name }}) are templates, not packages.
+exclude = ["(?x)(^|/)templates/"]
 overrides = [
     { module = "tests.*", ignore_errors = true },
     { module = "docs.*", ignore_errors = true },

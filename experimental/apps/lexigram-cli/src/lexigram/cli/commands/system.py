@@ -29,7 +29,7 @@ def _resolve_callable(path: str) -> Any:
 
 
 @app.command()
-def info():
+def info() -> None:
     """Display information about the Lexigram environment."""
     console.print("[bold cyan]Lexigram Environment Info[/bold cyan]")
     import platform
@@ -57,7 +57,7 @@ def health(
         "--strict",
         help="Fail on non-critical issues too",
     ),
-):
+) -> None:
     """Check the health of the current Lexigram project."""
     from lexigram.cli.contributors.runtime import ContributorRuntime  # noqa: PLC0415
 
@@ -108,7 +108,7 @@ def health(
 
 
 @app.command()
-def shell():
+def shell() -> None:
     """Open an interactive Lexigram shell."""
     console.print("[info]Opening Lexigram interactive shell...[/info]")
     try:
@@ -122,7 +122,7 @@ def shell():
 
 
 @app.command()
-def providers():
+def providers() -> None:
     """List all registered providers in the current project."""
     console.print("[bold cyan]Registered Providers:[/bold cyan]")
 
@@ -164,7 +164,7 @@ def doctor(
         "--fix",
         help="Attempt to fix issues automatically",
     ),
-):
+) -> None:
     """Diagnose system environment and configuration issues."""
     from lexigram.cli.contributors.runtime import ContributorRuntime  # noqa: PLC0415
 

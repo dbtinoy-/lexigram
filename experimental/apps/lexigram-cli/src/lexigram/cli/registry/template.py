@@ -256,8 +256,6 @@ class ProjectBuilder:
         package_name: str,
         target_dir: Path,
     ) -> None:
-        if self.template is None:
-            return
         deps = self.template.get_dependencies()
         deps_str = '\n    "'.join(deps) if deps else ""
 

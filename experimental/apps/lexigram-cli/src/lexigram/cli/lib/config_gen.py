@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, cast, get_args, get_origin
+from typing import TYPE_CHECKING, Any, ClassVar, get_args, get_origin
 
 from lexigram.logging import get_logger
 
@@ -51,7 +51,8 @@ def _import_config_class(import_path: str) -> type[Any]:
     module_path, class_name = import_path.rsplit(":", 1)
 
     module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+    config_cls: type[Any] = getattr(module, class_name)
+    return config_cls
 
 
 def _get_default_value(field_info: FieldInfo, field_name: str) -> Any:
@@ -276,7 +277,7 @@ def run_config_gen(args: argparse.Namespace) -> None:
         import_path = PACKAGE_CONFIGS.get(args.package)
         if import_path is None:
             return
-        packages: dict[str, str] = {args.package: cast("str", import_path)}
+        packages: dict[str, str] = {args.package: import_path}
     elif args.generate_all:
         packages = PACKAGE_CONFIGS
     else:
@@ -284,8 +285,6 @@ def run_config_gen(args: argparse.Namespace) -> None:
 
     generated = 0
     for key, import_path in sorted(packages.items()):
-        if import_path is None:
-            continue
         filename = f"{key}.yaml"
         filepath = output_dir / filename
 

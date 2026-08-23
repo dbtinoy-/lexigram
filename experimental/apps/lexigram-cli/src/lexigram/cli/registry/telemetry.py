@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 import platform
-from typing import Any
+from typing import Any, Callable, ParamSpec, TypeVar
 
 from lexigram import serialization as json
 from lexigram.logging import get_logger
@@ -101,7 +101,7 @@ class FileTelemetryBackend(TelemetryBackend):
 class HTTPTelemetryBackend(TelemetryBackend):
     """HTTP backend for sending telemetry to a remote endpoint."""
 
-    def __init__(self, endpoint: str = DEFAULT_ENDPOINT):
+    def __init__(self, endpoint: str = DEFAULT_ENDPOINT) -> None:
         self.endpoint = endpoint
         self._pending: list[TelemetryEvent] = []
 
@@ -111,7 +111,7 @@ class HTTPTelemetryBackend(TelemetryBackend):
 
             import httpx
 
-            async def _send():
+            async def _send() -> None:
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     await client.post(
                         self.endpoint,
@@ -261,11 +261,15 @@ class TelemetryRegistry:
             return None
 
 
-def track_command(command: str):
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def track_command(command: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to track command execution."""
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = datetime.now(UTC)
             success = True
             error_type = None

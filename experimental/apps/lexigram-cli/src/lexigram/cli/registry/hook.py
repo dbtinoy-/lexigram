@@ -167,7 +167,7 @@ class HookRegistry:
 class HookExecutor:
     """Executes hooks for CLI lifecycle events."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.registry = HookRegistry
 
     async def execute_phase(
@@ -220,7 +220,7 @@ def create_validation_hook(
     """Create a validation hook from a function."""
 
     class CustomValidationHook(Hook):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self.name = name
             self.phase = phase

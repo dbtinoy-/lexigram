@@ -105,12 +105,12 @@ class SecretValidationValidator(ConfigValidator):
     ) -> list[ValidationIssue]:
         issues = []
 
-        def check_value(path: str, value: Any):
+        def check_value(path: str, value: Any) -> None:
             if isinstance(value, dict):
                 for k, v in value.items():
                     field_lower = k.lower()
                     if any(s in field_lower for s in self.SECRET_FIELDS):
-                        if not value or value == "":
+                        if not value:
                             issues.append(
                                 ValidationIssue(
                                     severity="warning",
@@ -306,7 +306,7 @@ class EnvironmentVariablesValidator(ConfigValidator):
 
         env_vars: set[str] = set()
 
-        def find_vars(obj):
+        def find_vars(obj: Any) -> None:
             if isinstance(obj, dict):
                 for v in obj.values():
                     find_vars(v)

@@ -17,7 +17,7 @@ TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "project"
 PACKAGE_TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "package"
 
 
-def render_template(template_path: Path, output_path: Path, context: dict[str, Any]):
+def render_template(template_path: Path, output_path: Path, context: dict[str, Any]) -> None:
     env = Environment(loader=FileSystemLoader(str(template_path)))  # noqa: S701 — CLI scaffold templates, no HTML context
 
     for root, _dirs, files in os.walk(template_path):
@@ -67,7 +67,7 @@ def main(
         "-i",
         help="Run interactive mode",
     ),
-):
+) -> None:
     """
     Create a new Lexigram project.
     """
@@ -152,7 +152,7 @@ def package(
         help="Short description for the package",
     ),
     directory: str = typer.Option(".", "--directory", help="Target parent directory"),
-):
+) -> None:
     """Scaffold a new lexigram-* extension package.
 
     Creates lexigram-<name>/ with pyproject.toml, src/ layout, py.typed,

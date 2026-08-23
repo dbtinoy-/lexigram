@@ -15,11 +15,11 @@ class InspectionResult:
     """Result of an inspection."""
 
     success: bool
-    data: dict[str, Any] = None  # type: ignore[assignment]
+    data: dict[str, Any] | None = None
     message: str = ""
     error: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.data is None:
             self.data = {}
 

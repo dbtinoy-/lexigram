@@ -112,11 +112,13 @@ class CommandAssembler:
             result = adapter.generate(name, output_dir=resolved_output, **kwargs)
             output = OutputManager()
             if result.success:
-                for file_path in result.files_created:
+                created = result.files_created or []
+                updated = result.files_updated or []
+                for file_path in created:
                     output.success(f"Created: {file_path}")
-                for file_path in result.files_updated:
+                for file_path in updated:
                     output.warning(f"Overwrote: {file_path}")
-                if not result.files_created and not result.files_updated:
+                if not created and not updated:
                     output.info("No files generated")
                 return
 

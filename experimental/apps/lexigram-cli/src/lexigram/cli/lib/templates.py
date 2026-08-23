@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -16,7 +17,7 @@ class TemplateRenderer:
             lstrip_blocks=False,
         )
 
-    def render(self, template_name: str, context: dict) -> str:
+    def render(self, template_name: str, context: dict[str, Any]) -> str:
         """Render a template with context."""
         template = self.env.get_template(template_name)
         return template.render(context)
@@ -25,9 +26,9 @@ class TemplateRenderer:
         self,
         template_name: str,
         target_path: Path | str,
-        context: dict,
+        context: dict[str, Any],
         overwrite: bool = False,
-    ):
+    ) -> Path:
         """Render a template and write it to a file."""
         target_path = Path(target_path)
 

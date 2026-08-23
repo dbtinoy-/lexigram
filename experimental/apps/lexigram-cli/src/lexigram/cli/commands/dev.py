@@ -46,7 +46,7 @@ def main(
         str | None,
         typer.Option("--server", help="Server backend (uvicorn, hypercorn, granian)"),
     ] = None,
-):
+) -> None:
     """Start development server."""
     out = OutputManager()
 
@@ -117,7 +117,7 @@ def start(
         str | None,
         typer.Option("--server", help="Server backend (uvicorn, hypercorn, granian)"),
     ] = None,
-):
+) -> None:
     """Start production server."""
     out = OutputManager()
 

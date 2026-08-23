@@ -23,10 +23,10 @@ class ServerConfig:
     port: int = 8000
     workers: int = 1
     reload: bool = False
-    env: dict[str, str] = None  # type: ignore[assignment]
+    env: dict[str, str] | None = None
     factory: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.env is None:
             self.env = {}
 
@@ -262,7 +262,9 @@ class ServerRegistry:
 class ServerManager:
     """Manager for running ASGI servers."""
 
-    def __init__(self, backend: ServerBackend | str | None = None):
+    def __init__(
+        self, backend: ServerBackend | str | None = None
+    ) -> None:
         if backend is None:
             self.backend = ServerRegistry.get_default()
         elif isinstance(backend, str):
@@ -277,7 +279,7 @@ class ServerManager:
         """Start the server in production mode."""
         cmd = self.backend.build_start_command(config)
         env = os.environ.copy()
-        env.update(config.env)
+        env.update(config.env or {})
         env["LEX_ENV"] = "production"
 
         try:
@@ -290,7 +292,7 @@ class ServerManager:
         config.reload = True
         cmd = self.backend.build_dev_command(config)
         env = os.environ.copy()
-        env.update(config.env)
+        env.update(config.env or {})
         env["LEX_ENV"] = "development"
 
         try:

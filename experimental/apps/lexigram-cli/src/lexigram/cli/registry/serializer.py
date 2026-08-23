@@ -106,11 +106,12 @@ class MessagePackSerializer(AsyncStringSerializerProtocol):
 
     def serialize(self, data: Any) -> bytes:
         try:
-            import msgpack
+            import msgpack  # type: ignore[import-untyped]
         except ImportError:
             raise ImportError("msgpack not installed") from None
 
-        return msgpack.packb(data, use_bin_type=True)
+        packed: bytes = msgpack.packb(data, use_bin_type=True)
+        return packed
 
     def deserialize(self, data: str | bytes) -> Any:
         try:
@@ -120,7 +121,8 @@ class MessagePackSerializer(AsyncStringSerializerProtocol):
 
         if isinstance(data, str):
             data = data.encode("utf-8")
-        return msgpack.unpackb(data, raw=False)
+        unpacked: Any = msgpack.unpackb(data, raw=False)
+        return unpacked
 
 
 class CBORSerializer(AsyncStringSerializerProtocol):
@@ -136,7 +138,8 @@ class CBORSerializer(AsyncStringSerializerProtocol):
         except ImportError:
             raise ImportError("cbor2 not installed") from None
 
-        return cbor2.dumps(data)
+        dumped: bytes = cbor2.dumps(data)
+        return dumped
 
     def deserialize(self, data: str | bytes) -> Any:
         try:
@@ -146,7 +149,8 @@ class CBORSerializer(AsyncStringSerializerProtocol):
 
         if isinstance(data, str):
             data = data.encode("utf-8")
-        return cbor2.loads(data)
+        loaded: Any = cbor2.loads(data)
+        return loaded
 
 
 class TOMLSerializer(AsyncStringSerializerProtocol):

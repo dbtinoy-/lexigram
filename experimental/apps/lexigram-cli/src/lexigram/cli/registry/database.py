@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import re
 import shutil
 import subprocess
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 if TYPE_CHECKING:
@@ -431,11 +432,13 @@ class DatabaseRegistry:
 class DatabaseConnection:
     """Database connection manager using the registry pattern."""
 
-    def __init__(self, url: str | None = None, config_path: Path | None = None):
+    def __init__(
+        self, url: str | None = None, config_path: Path | None = None
+    ) -> None:
         self.url = url or self._get_url_from_env_or_config(config_path)
         self.backend = DatabaseRegistry.detect_from_url(self.url)
         self.params = self.backend.parse_url(self.url)
-        self._provider = None
+        self._provider: Any = None
         self._provider_async = None
 
     @staticmethod
@@ -450,10 +453,13 @@ class DatabaseConnection:
             import yaml
 
             with open(config_path) as f:
-                config = yaml.safe_load(f) or {}
+                config: dict[str, Any] = yaml.safe_load(f) or {}
 
-            db_url = config.get("database", {}).get("url")
-            if db_url:
+            database_cfg = config.get("database")
+            db_url = (
+                database_cfg.get("url") if isinstance(database_cfg, dict) else None
+            )
+            if db_url and isinstance(db_url, str):
                 return db_url
 
         return "sqlite:///./dev.db"
@@ -465,16 +471,16 @@ class DatabaseConnection:
 
             db_providers = importlib.import_module("lexigram.sql.providers")
             DatabaseService = db_providers.DatabaseService
-            self._provider = DatabaseService(config=self.url)
-            if self._provider is not None:
-                await self._provider.boot()
-            return self._provider
+            provider: Any = DatabaseService(config=self.url)
+            self._provider = provider
+            await provider.boot()
+            return provider
         except ImportError as e:
             raise RuntimeError(f"lexigram-sql not installed: {e}") from e
 
     async def disconnect(self) -> None:
         """Disconnect from the database."""
-        if self._provider:
+        if self._provider is not None:
             await self._provider.shutdown()
             self._provider = None
 
@@ -482,7 +488,12 @@ class DatabaseConnection:
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.disconnect()
 
     def open_shell(self) -> None:
@@ -495,18 +506,22 @@ class DatabaseConnection:
 
     async def get_tables(self) -> list[str]:
         """Get list of tables."""
-        if not self._provider:
+        if self._provider is None:
             await self.connect()
-        if self._provider:
-            return await self.backend.get_tables(self._provider)
+        if self._provider is not None:
+            tables: list[str] = await self.backend.get_tables(self._provider)
+            return tables
         return []
 
     async def get_columns(self, table: str) -> list[dict[str, Any]]:
         """Get columns for a table."""
-        if not self._provider:
+        if self._provider is None:
             await self.connect()
-        if self._provider:
-            return await self.backend.get_columns(self._provider, table)
+        if self._provider is not None:
+            columns: list[dict[str, Any]] = await self.backend.get_columns(
+                self._provider, table
+            )
+            return columns
         return []
 
 

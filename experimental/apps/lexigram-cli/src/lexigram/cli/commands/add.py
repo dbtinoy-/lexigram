@@ -16,7 +16,7 @@ app = typer.Typer()
 @app.callback(invoke_without_command=True)
 def main(
     provider: str = typer.Argument(..., help="Provider to add (e.g., database, auth)"),
-):
+) -> None:
     """Add a provider to the project."""
     out = OutputManager()
 
