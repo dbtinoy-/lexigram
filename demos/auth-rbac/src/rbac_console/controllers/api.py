@@ -1,4 +1,8 @@
-"""JSON API for the RBAC console — no HTML lives here."""
+"""JSON API for the RBAC console — no HTML lives here.
+
+Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
+and maps ``Err`` errors to ProblemDetail responses automatically.
+"""
 
 from __future__ import annotations
 
@@ -11,22 +15,15 @@ from starlette.requests import Request
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
-from lexigram.logging import get_logger
+from lexigram.contracts.exceptions.domain import (
+    AuthenticationError,
+    NotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
-
-
-def _problem(status: int, detail: str) -> JSONResponse:
-    """RFC-9457 style problem response."""
-    from lexigram.web.errors.problem_detail import ProblemDetail
-
-    body = ProblemDetail(
-        title="Request rejected", status=status, detail=detail
-    ).to_dict()
-    return JSONResponse(body, status_code=status)
-
-
-logger = get_logger(__name__)
 
 PERSONA_PASSWORD = "Demo-Password-1"
 # (action, resource) pairs the matrix renders; required permission is
@@ -40,8 +37,9 @@ MATRIX_CHECKS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _error(message: str, status: int) -> JSONResponse:
-    return _problem(status, message)
+def _granted(verdict: Result[bool, Any]) -> bool:
+    """Collapse an authorize() verdict to a plain boolean."""
+    return bool(verdict.unwrap()) if verdict.is_ok() else False
 
 
 class RbacApiController(Controller):
@@ -62,27 +60,36 @@ class RbacApiController(Controller):
         self._articles = articles
 
     @post("/api/login")
-    async def login(self, request: Request) -> JSONResponse:
+    async def login(self, request: Request) -> Result[JSONResponse, ValidationError]:
         """Log in as one of the seeded personas."""
         data = json_loads(await request.body())
         persona = str(data.get("persona", ""))
         if persona not in PERSONAS:
-            return _error(f"unknown persona {persona!r}", 400)
+            return Err(ValidationError(f"unknown persona {persona!r}"))
 
         user = self._personas.get(persona)
         if user is None:
-            return _error(f"unknown persona {persona!r}", 404)
+            return Err(NotFoundError(f"unknown persona {persona!r}"))
         response = JSONResponse(
             {"ok": True, "persona": persona, "roles": list(user.roles)}
         )
         await self._cookies.login(response, user.user_id)
-        return response
+        return Ok(response)
 
     @post("/api/logout")
     async def logout(self, request: Request) -> JSONResponse:
         response = JSONResponse({"ok": True})
         await self._cookies.logout(request, response)
         return response
+
+    async def _authenticated_user(
+        self, request: Request
+    ) -> Result[Any, AuthenticationError]:
+        """Authenticate via session cookie or fail with a 401-mapped error."""
+        user = await self._cookies.authenticate(request)
+        if user is None:
+            return Err(AuthenticationError("not authenticated"))
+        return Ok(user)
 
     def _effective(self, user: Any) -> set[str]:
         """Explicit user permissions ∪ role-derived patterns (inherited)."""
@@ -94,11 +101,15 @@ class RbacApiController(Controller):
         return effective
 
     @get("/api/me")
-    async def me(self, request: Request) -> JSONResponse:
-        user = await self._cookies.authenticate(request)
-        if user is None:
-            return _error("not authenticated", 401)
-        return JSONResponse(
+    async def me(
+        self,
+        request: Request,
+    ) -> Result[dict, AuthenticationError]:
+        user_result = await self._authenticated_user(request)
+        if user_result.is_err():
+            return Err(user_result.unwrap_err())
+        user = user_result.unwrap()
+        return Ok(
             {
                 "email": user.email,
                 "roles": list(user.roles),
@@ -115,9 +126,7 @@ class RbacApiController(Controller):
             row = {}
             for action, resource in MATRIX_CHECKS:
                 verdict = await self._authz.authorize(user, action, resource)
-                row[f"{resource}.{action}"] = (
-                    verdict.unwrap() if verdict.is_ok() else False
-                )
+                row[f"{resource}.{action}"] = _granted(verdict)
             cells[role] = row
 
         return JSONResponse(
@@ -131,19 +140,19 @@ class RbacApiController(Controller):
         )
 
     @post("/api/try")
-    async def try_check(self, request: Request) -> JSONResponse:
+    async def try_check(self, request: Request) -> Result[dict, ValidationError]:
         """Run one authorize() verdict for a persona/action/resource triple."""
         data = json_loads(await request.body())
         role = str(data.get("role", ""))
         action = str(data.get("action", ""))
         resource = str(data.get("resource", ""))
         if role not in PERSONAS:
-            return _error(f"unknown persona {role!r}", 400)
+            return Err(ValidationError(f"unknown persona {role!r}"))
 
         user = self._personas.get(role)
         verdict = await self._authz.authorize(user, action, resource)
-        granted = verdict.unwrap() if verdict.is_ok() else False
-        return JSONResponse(
+        granted = _granted(verdict)
+        return Ok(
             {
                 "granted": granted,
                 "required": f"{resource}.{action}",
@@ -152,11 +161,14 @@ class RbacApiController(Controller):
         )
 
     @get("/api/articles")
-    async def list_articles(self, request: Request) -> JSONResponse:
-        user = await self._cookies.authenticate(request)
-        if user is None:
-            return _error("not authenticated", 401)
-        return JSONResponse(
+    async def list_articles(
+        self,
+        request: Request,
+    ) -> Result[dict, AuthenticationError]:
+        user_result = await self._authenticated_user(request)
+        if user_result.is_err():
+            return Err(user_result.unwrap_err())
+        return Ok(
             {
                 "articles": [
                     {"id": a.id, "title": a.title, "body": a.body}
@@ -165,22 +177,24 @@ class RbacApiController(Controller):
             }
         )
 
-    @post("/api/articles")
-    async def create_article(self, request: Request) -> JSONResponse:
-        user = await self._cookies.authenticate(request)
-        if user is None:
-            return _error("not authenticated", 401)
+    @post("/api/articles", status_code=201)
+    async def create_article(
+        self,
+        request: Request,
+    ) -> Result[dict, AuthenticationError | PermissionDeniedError]:
+        user_result = await self._authenticated_user(request)
+        if user_result.is_err():
+            return Err(user_result.unwrap_err())
+        user = user_result.unwrap()
         allowed = await self._authz.authorize(user, "create", "articles")
-        if not (allowed.unwrap() if allowed.is_ok() else False):
-            return _error("forbidden: missing articles.create", 403)
+        if not _granted(allowed):
+            return Err(PermissionDeniedError("missing articles.create"))
         data = json_loads(await request.body())
         article = self._articles.create(
             title=str(data.get("title", "untitled")),
             body=str(data.get("body", "")),
         )
-        return JSONResponse(
-            {"ok": True, "article": {"id": article.id}}, status_code=201
-        )
+        return Ok({"ok": True, "article": {"id": article.id}})
 
 
 __all__ = ["RbacApiController"]

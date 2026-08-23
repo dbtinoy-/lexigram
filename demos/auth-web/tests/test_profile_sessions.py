@@ -74,7 +74,8 @@ async def test_change_password_wrong_current_is_error(
             "confirm_password": "Brand-New-Pass-1",
         },
     )
-    assert response.status_code == 400
+    # wrong current password → InvalidCredentialsError → 401
+    assert response.status_code == 401
 
 
 async def test_change_password_updates_and_relogin_works(

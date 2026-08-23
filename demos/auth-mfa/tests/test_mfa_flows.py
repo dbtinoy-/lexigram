@@ -6,7 +6,7 @@ import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.auth.authn.mfa import generate_totp_code
+from lexigram.auth.authn.mfa import DEFAULT_TOTP_PERIOD, generate_totp_code
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.mfa.manager import MFAManager
 
@@ -150,3 +150,64 @@ async def test_disable_requires_correct_password(
     assert right.status_code == 200
     status = await authed_plain.get("/api/mfa/status")
     assert status.json()["enabled"] is False
+
+
+async def test_stale_totp_code_is_rejected(
+    client: httpx.AsyncClient, app: Starlette
+) -> None:
+    """A code from a long-expired time step fails even within the +/-1 window."""
+    await login(client, MFA_USER)
+    stale = await generate_code_for_offset(app, "mfa@mfa.demo", offset_steps=5)
+
+    response = await client.post("/api/mfa/challenge", json={"code": stale})
+    assert response.status_code == 401
+    assert "invalid code" in response.json()["detail"]
+
+
+async def test_challenge_without_pending_cookie_is_401(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.post("/api/mfa/challenge", json={"code": "123456"})
+    assert response.status_code == 401
+    assert "no pending challenge" in response.json()["detail"]
+
+
+async def test_double_enroll_conflicts(authed_plain: httpx.AsyncClient) -> None:
+    await authed_plain.post("/api/mfa/enroll")
+    again = await authed_plain.post("/api/mfa/enroll")
+    assert again.status_code == 409
+
+
+async def test_me_requires_session(client: httpx.AsyncClient) -> None:
+    assert (await client.get("/api/me")).status_code == 401
+
+
+async def test_mfa_status_reports_backup_codes(
+    client: httpx.AsyncClient, app: Starlette
+) -> None:
+    await client.post("/api/login", json=PLAIN)
+    before = (await client.get("/api/mfa/status")).json()
+    assert before["enabled"] is False
+
+    enroll = await client.post("/api/mfa/enroll")
+    codes = enroll.json()["backup_codes"]
+
+    after = (await client.get("/api/mfa/status")).json()
+    assert after["enabled"] is True
+    assert after["backup_codes_left"] == len(codes)
+
+
+async def generate_code_for_offset(
+    app: Starlette,
+    email: str,
+    *,
+    offset_steps: int,
+) -> str:
+    """Compute the TOTP for a time `offset_steps` periods away from now."""
+    import time
+
+    secret = await current_secret(app, email)
+    return generate_totp_code(
+        secret,
+        for_time=int(time.time()) - offset_steps * DEFAULT_TOTP_PERIOD,
+    )

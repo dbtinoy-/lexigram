@@ -13,9 +13,8 @@ from lexigram.contracts.core.di import (
 )
 from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.contracts.core.provider import ProviderPriority
-from lexigram.contracts.events import EventBusProtocol
+from lexigram.contracts.events import CommandBusProtocol, EventBusProtocol
 from lexigram.di.provider import Provider
-from lexigram.events.buses.command import CommandBusImpl
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import OrderPaid, OrderPlaced, OrderShipped
 from orders.events import NotificationHandler, OrdersView
@@ -43,7 +42,7 @@ class OrdersProvider(Provider):
         """Register handlers/subscriptions, then assemble the facade."""
         repository = await resolver.resolve(OrderRepository)
         outbox = await resolver.resolve(Outbox)
-        command_bus = await resolver.resolve(CommandBusImpl)
+        command_bus = await resolver.resolve(CommandBusProtocol)
         command_bus.register(
             PlaceOrder,
             PlaceOrderHandler(repository=repository, outbox=outbox),

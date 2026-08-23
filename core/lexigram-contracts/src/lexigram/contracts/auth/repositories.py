@@ -58,11 +58,15 @@ class APIKeyRepositoryProtocol(Protocol):
         """
         ...
 
-    async def revoke(self, key_id: str) -> None:
+    async def revoke(self, key_id: str) -> bool:
         """Mark a key as permanently revoked.
 
         Args:
             key_id: Identifier of the key to revoke.
+
+        Returns:
+            ``True`` when a live key was revoked; ``False`` when the id is
+            unknown or already revoked.
         """
         ...
 

@@ -57,10 +57,13 @@ class InMemoryAPIKeyRepository(APIKeyRepositoryProtocol):
             row["last_used_at"] = "just-now"
             row["last_used_ip"] = ip_address
 
-    async def revoke(self, key_id: str) -> None:
+    async def revoke(self, key_id: str) -> bool:
+        """Mark a key revoked; return False when the id is unknown."""
         row = self._rows.get(key_id)
-        if row is not None:
-            row["revoked"] = True
+        if row is None or row.get("revoked"):
+            return False
+        row["revoked"] = True
+        return True
 
 
 __all__ = ["InMemoryAPIKeyRepository"]

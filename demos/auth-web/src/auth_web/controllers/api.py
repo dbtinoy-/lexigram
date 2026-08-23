@@ -1,4 +1,8 @@
-"""JSON API for the auth web demo — no HTML lives here."""
+"""JSON API for the auth web demo — no HTML lives here.
+
+Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
+and maps ``Err`` errors to ProblemDetail responses automatically.
+"""
 
 from __future__ import annotations
 
@@ -11,29 +15,26 @@ from starlette.requests import Request
 from lexigram.auth.authn.schemas.requests import RegisterRequest
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authz.service import AuthorizationService
+from lexigram.auth.exceptions import (
+    AccountLockedError,
+    EmailExistsError,
+    InvalidCredentialsError,
+    PasswordPolicyError,
+    TokenError,
+)
 from lexigram.auth.models.user import User
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.contracts.exceptions.domain import (
+    AuthenticationError,
+    NotFoundError,
+)
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 
-
-def _problem(status: int, detail: str) -> JSONResponse:
-    """RFC-9457 style problem response."""
-    from lexigram.web.errors.problem_detail import ProblemDetail
-
-    body = ProblemDetail(
-        title="Request rejected", status=status, detail=detail
-    ).to_dict()
-    return JSONResponse(body, status_code=status)
-
-
 logger = get_logger(__name__)
-
-
-def _error(message: str, status: int) -> JSONResponse:
-    return _problem(status, message)
 
 
 class AuthApiController(Controller):
@@ -54,7 +55,10 @@ class AuthApiController(Controller):
         self._password_changes = password_changes
 
     @post("/api/register")
-    async def register(self, request: Request) -> JSONResponse:
+    async def register(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, EmailExistsError | PasswordPolicyError]:
         """Create an account and start a session for it."""
         data = json_loads(await request.body())
         result = await self._authentication.register_user(
@@ -66,17 +70,20 @@ class AuthApiController(Controller):
             )
         )
         if result.is_err():
-            return _error(str(result.unwrap_err()), 400)
+            return Err(result.unwrap_err())
 
         user = result.unwrap()
         response = JSONResponse(
             {"ok": True, "user": {"email": user.email}}, status_code=201
         )
         await self._cookies.login(response, user.user_id)
-        return response
+        return Ok(response)
 
     @post("/api/login")
-    async def login(self, request: Request) -> JSONResponse:
+    async def login(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, InvalidCredentialsError | AccountLockedError]:
         """Verify credentials and set the session cookie."""
         data = json_loads(await request.body())
         email = str(data.get("email", ""))
@@ -85,7 +92,7 @@ class AuthApiController(Controller):
         user = await self._authentication.authenticate_user(email, password)
         if user.is_err():
             logger.warning("login_failed", email=email)
-            return _error(str(user.unwrap_err()), 401)
+            return Err(user.unwrap_err())
 
         authenticated = user.unwrap()
         response = JSONResponse(
@@ -99,7 +106,7 @@ class AuthApiController(Controller):
             }
         )
         await self._cookies.login(response, authenticated.user_id)
-        return response
+        return Ok(response)
 
     @post("/api/logout")
     async def logout(self, request: Request) -> JSONResponse:
@@ -109,26 +116,27 @@ class AuthApiController(Controller):
         return response
 
     @get("/api/me")
-    async def me(self, request: Request) -> JSONResponse:
+    async def me(self, request: Request) -> Result[dict, AuthenticationError]:
         """Return the session's identity, or 401 when anonymous."""
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
-        return JSONResponse(
-            {"user_id": user.user_id, "email": user.email, "name": user.name}
-        )
+            return Err(AuthenticationError("not authenticated"))
+        return Ok({"user_id": user.user_id, "email": user.email, "name": user.name})
 
     @get("/api/profile")
-    async def profile(self, request: Request) -> JSONResponse:
+    async def profile(
+        self,
+        request: Request,
+    ) -> Result[dict, AuthenticationError | TokenError]:
         """Identity + fresh JWT claims + active sessions for this user."""
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
 
         token = self._authentication.create_token(cast("User", user))
         verified = await self._authentication.verify_token(token.token)
         if verified.is_err():
-            return _error(str(verified.unwrap_err()), 500)
+            return Err(verified.unwrap_err())
         claims = verified.unwrap()
 
         sessions = await self._sessions.find_active_by_user(
@@ -141,7 +149,7 @@ class AuthApiController(Controller):
         for role in claims.roles:
             effective |= self._authz.get_role_permissions(role)
 
-        return JSONResponse(
+        return Ok(
             {
                 "user": {
                     "user_id": user.user_id,
@@ -169,11 +177,17 @@ class AuthApiController(Controller):
         )
 
     @post("/api/profile/password")
-    async def change_password(self, request: Request) -> JSONResponse:
+    async def change_password(
+        self,
+        request: Request,
+    ) -> Result[
+        dict,
+        AuthenticationError | InvalidCredentialsError | PasswordPolicyError,
+    ]:
         """Change the session user's password (requires current password)."""
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
 
         data = json_loads(await request.body())
         result = await self._password_changes.change(
@@ -182,24 +196,28 @@ class AuthApiController(Controller):
             new_password=str(data.get("new_password", "")),
         )
         if result.is_err():
-            return _error(str(result.unwrap_err()), 400)
-        return JSONResponse({"ok": True})
+            return Err(result.unwrap_err())
+        return Ok({"ok": True})
 
     @post("/api/sessions/{session_id}/revoke")
-    async def revoke_session(self, request: Request, session_id: str) -> JSONResponse:
+    async def revoke_session(
+        self,
+        request: Request,
+        session_id: str,
+    ) -> Result[dict, AuthenticationError | NotFoundError]:
         """Revoke one of the session user's active sessions."""
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
 
         rows = await self._sessions.find_active_by_user(
             user.user_id, cutoff=clock.now()
         )
         if session_id not in {row["session_id"] for row in rows}:
-            return _error("unknown session", 404)
+            return Err(NotFoundError(f"unknown session {session_id!r}"))
 
         await self._sessions.revoke(session_id)
-        return JSONResponse({"ok": True})
+        return Ok({"ok": True})
 
 
 __all__ = ["AuthApiController"]

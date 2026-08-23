@@ -10,8 +10,7 @@ from decimal import Decimal
 from typing import Any
 
 from lexigram.contracts.core.result import Err, Ok, Result
-from lexigram.contracts.events import EventBusProtocol
-from lexigram.events.buses.command import CommandBusImpl
+from lexigram.contracts.events import CommandBusProtocol, EventBusProtocol
 from lexigram.logging import get_logger
 from orders.commands import PayOrder, PlaceOrder, ShipOrder
 from orders.domain import OrderError, OrderItem
@@ -35,7 +34,7 @@ class OrdersApi:
 
     def __init__(
         self,
-        command_bus: CommandBusImpl,
+        command_bus: CommandBusProtocol,
         event_bus: EventBusProtocol,
         repository: OrderRepository,
         view: OrdersView,

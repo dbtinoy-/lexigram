@@ -1,30 +1,26 @@
-"""JSON API for the guardrails playground — no HTML lives here."""
+"""JSON API for the guardrails playground — no HTML lives here.
+
+Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
+and maps ``Err`` errors to ProblemDetail responses automatically.
+"""
 
 from __future__ import annotations
+
+from typing import Any
 
 from starlette.requests import Request
 
 from guard_gate.repository.acts import ACTS
 from guard_gate.services.guarded_assistant import GuardedAssistant
 from guard_gate.services.policy import PolicyToggle
+from lexigram.contracts.exceptions.domain import NotFoundError, ValidationError
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 
 
-def _problem(status: int, detail: str) -> JSONResponse:
-    """RFC-9457 style problem response."""
-    from lexigram.web.errors.problem_detail import ProblemDetail
-
-    body = ProblemDetail(
-        title="Request rejected", status=status, detail=detail
-    ).to_dict()
-    return JSONResponse(body, status_code=status)
-
-
-async def _body(request: Request) -> dict:
+async def _body(request: Request) -> dict[str, Any]:
     """Parse the request body through the framework serializer."""
-    from typing import Any
-
     raw = await request.body()
     if not raw:
         return {}
@@ -32,7 +28,7 @@ async def _body(request: Request) -> dict:
     return dict(parsed) if isinstance(parsed, dict) else {}
 
 
-def _serialize(outcome) -> JSONResponse:
+def _serialize(outcome: Any) -> JSONResponse:
     return JSONResponse(
         {
             "outcome": {
@@ -57,23 +53,35 @@ class GuardApiController(Controller):
         self._toggle = toggle
 
     @post("/api/ask")
-    async def ask(self, request: Request) -> JSONResponse:
+    async def ask(
+        self,
+        request: Request,
+    ) -> Result[dict, NotFoundError | ValidationError]:
         """Handle an act-keyed or raw-text request."""
         data = await _body(request)
         act_key = str(data.get("act", ""))
         act = ACTS.get(act_key) if act_key in ACTS else None
         if act_key and act is None:
-            return _problem(404, f"unknown act: {act_key!r}")
+            return Err(NotFoundError(f"unknown act: {act_key!r}"))
 
         text = str(data.get("text", act.text if act else "")).strip()
         model = str(data.get("model", act.model if act else "")).strip()
         user_id = str(data.get("user_id", "demo-user"))
 
         if not text or not model:
-            return _problem(422, "text and model are required")
+            return Err(ValidationError("text and model are required"))
 
         outcome = await self._assistant.handle(user_id, text, model)
-        return _serialize(outcome)
+        return Ok(
+            {
+                "outcome": {
+                    "kind": outcome.kind,
+                    "reply": outcome.reply,
+                    "reason": outcome.reason,
+                    "remaining_budget": outcome.remaining_budget,
+                },
+            },
+        )
 
     @post("/api/policy")
     async def policy(self, request: Request) -> JSONResponse:

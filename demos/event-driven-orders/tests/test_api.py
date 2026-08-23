@@ -78,16 +78,16 @@ async def test_unknown_order_maps_to_404(client: httpx.AsyncClient) -> None:
 
 async def test_place_validates_payload(client: httpx.AsyncClient) -> None:
     no_items = await client.post("/orders", json={"customer": "C"})
-    assert no_items.status_code == 400
+    assert no_items.status_code == 422
 
     bad_item = await client.post(
         "/orders",
         json={"customer": "C", "items": [{"qty": "x"}]},
     )
-    assert bad_item.status_code == 400
+    assert bad_item.status_code == 422
 
     no_customer = await client.post("/orders", json={"items": []})
-    assert no_customer.status_code == 400
+    assert no_customer.status_code == 422
 
 
 async def test_list_and_get_read_model(client: httpx.AsyncClient) -> None:

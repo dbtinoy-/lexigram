@@ -24,7 +24,7 @@ def mock_api_key_repo():
     repo.insert = AsyncMock(return_value="key-uuid")
     repo.find_by_prefix = AsyncMock(return_value=[])
     repo.update_last_used = AsyncMock()
-    repo.revoke = AsyncMock()
+    repo.revoke = AsyncMock(return_value=True)
     repo.find_by_user = AsyncMock(return_value=[])
     return repo
 

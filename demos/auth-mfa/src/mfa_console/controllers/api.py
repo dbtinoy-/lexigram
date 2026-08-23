@@ -1,4 +1,8 @@
-"""JSON API for the MFA console — no HTML lives here."""
+"""JSON API for the MFA console — no HTML lives here.
+
+Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
+and maps ``Err`` errors to ProblemDetail responses automatically.
+"""
 
 from __future__ import annotations
 
@@ -10,33 +14,24 @@ from starlette.requests import Request
 
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
+from lexigram.auth.exceptions import AccountLockedError, InvalidCredentialsError
 from lexigram.auth.mfa.manager import MFAManager
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.contracts.exceptions.domain import (
+    AuthenticationError,
+    ConflictError,
+)
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
-
-
-def _problem(status: int, detail: str) -> JSONResponse:
-    """RFC-9457 style problem response."""
-    from lexigram.web.errors.problem_detail import ProblemDetail
-
-    body = ProblemDetail(
-        title="Request rejected", status=status, detail=detail
-    ).to_dict()
-    return JSONResponse(body, status_code=status)
-
 
 logger = get_logger(__name__)
 
 PENDING_COOKIE = "mfa_pending"
 PENDING_TTL_SECONDS = 300
 MAX_CHALLENGE_ATTEMPTS = 3
-
-
-def _error(message: str, status: int) -> JSONResponse:
-    return _problem(status, message)
 
 
 def _mfa_enabled(user: Any) -> bool:
@@ -75,7 +70,10 @@ class MfaApiController(Controller):
         return user, pending_id, row
 
     @post("/api/login")
-    async def login(self, request: Request) -> JSONResponse:
+    async def login(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, InvalidCredentialsError | AccountLockedError]:
         """Password step; MFA-enabled users get a pending challenge cookie."""
         data = json_loads(await request.body())
         email = str(data.get("email", ""))
@@ -84,13 +82,13 @@ class MfaApiController(Controller):
         result = await self._authentication.authenticate_user(email, password)
         if result.is_err():
             logger.warning("login_failed", email=email)
-            return _error(str(result.unwrap_err()), 401)
+            return Err(result.unwrap_err())
 
         user = result.unwrap()
         if not _mfa_enabled(user):
             response = JSONResponse({"ok": True, "mfa_required": False})
             await self._cookies.login(response, user.user_id)
-            return response
+            return Ok(response)
 
         pending_id = f"pending-{user.user_id}-{clock.now().timestamp()}"
         await self._sessions.insert(
@@ -110,14 +108,17 @@ class MfaApiController(Controller):
             samesite="lax",
         )
         logger.info("mfa_challenge_issued", user_id=user.user_id)
-        return response
+        return Ok(response)
 
     @post("/api/mfa/challenge")
-    async def challenge(self, request: Request) -> JSONResponse:
+    async def challenge(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse | dict, AuthenticationError]:
         """Verify a TOTP/backup code and upgrade to a full session."""
         resolved = await self._user_from_pending(request)
         if resolved is None:
-            return _error("no pending challenge", 401)
+            return Err(AuthenticationError("no pending challenge"))
         user, pending_id, _row = resolved
 
         data = json_loads(await request.body())
@@ -128,52 +129,59 @@ class MfaApiController(Controller):
             self._attempts[pending_id] = attempts
             if attempts >= MAX_CHALLENGE_ATTEMPTS:
                 await self._sessions.revoke(pending_id)
-                response = _problem(401, "too many attempts; log in again")
+                response = JSONResponse(
+                    {"detail": "too many attempts; log in again"}, status_code=401
+                )
                 response.delete_cookie(PENDING_COOKIE)
                 return response
-            return _error("invalid code", 401)
+            return Err(AuthenticationError("invalid code"))
 
         self._attempts.pop(pending_id, None)
         await self._sessions.revoke(pending_id)
         response = JSONResponse({"ok": True})
         await self._cookies.login(response, user.user_id)
         logger.info("mfa_challenge_passed", user_id=user.user_id)
-        return response
+        return Ok(response)
 
     @get("/api/me")
-    async def me(self, request: Request) -> JSONResponse:
+    async def me(self, request: Request) -> Result[dict, AuthenticationError]:
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
-        return JSONResponse(
-            {"email": user.email, "name": user.name, "mfa_enabled": _mfa_enabled(user)}
+            return Err(AuthenticationError("not authenticated"))
+        return Ok(
+            {
+                "email": user.email,
+                "name": user.name,
+                "mfa_enabled": _mfa_enabled(user),
+            }
         )
 
     @get("/api/mfa/status")
-    async def mfa_status(self, request: Request) -> JSONResponse:
+    async def mfa_status(self, request: Request) -> Result[dict, AuthenticationError]:
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
         profile_mfa = (getattr(user, "profile", None) or {}).get("mfa") or {}
         remaining = len(profile_mfa.get("backup_codes") or [])
-        return JSONResponse(
-            {"enabled": _mfa_enabled(user), "backup_codes_left": remaining}
-        )
+        return Ok({"enabled": _mfa_enabled(user), "backup_codes_left": remaining})
 
     @post("/api/mfa/enroll")
-    async def enroll(self, request: Request) -> JSONResponse:
+    async def enroll(
+        self,
+        request: Request,
+    ) -> Result[dict, AuthenticationError | ConflictError]:
         """Enable TOTP; returns secret + provisioning URI + backup codes once."""
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
         if _mfa_enabled(user):
-            return _error("MFA already enabled", 400)
+            return Err(ConflictError("MFA already enabled"))
 
         secret, provisioning_uri, backup_codes = await self._mfa.enable_totp(
             user.user_id, issuer="auth-mfa-demo"
         )
         logger.info("mfa_enrolled", user_id=user.user_id)
-        return JSONResponse(
+        return Ok(
             {
                 "secret": secret,
                 "provisioning_uri": provisioning_uri,
@@ -182,21 +190,26 @@ class MfaApiController(Controller):
         )
 
     @post("/api/mfa/disable")
-    async def disable(self, request: Request) -> JSONResponse:
+    async def disable(
+        self,
+        request: Request,
+    ) -> Result[
+        dict, AuthenticationError | InvalidCredentialsError | AccountLockedError
+    ]:
         """Disable TOTP after re-verifying the password."""
         user = await self._cookies.authenticate(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
 
         data = json_loads(await request.body())
         recheck = await self._authentication.authenticate_user(
             user.email, str(data.get("password", ""))
         )
         if recheck.is_err():
-            return _error(str(recheck.unwrap_err()), 401)
+            return Err(recheck.unwrap_err())
 
         disabled = await self._mfa.disable_totp(user.user_id)
-        return JSONResponse({"ok": True, "disabled": disabled})
+        return Ok({"ok": True, "disabled": disabled})
 
 
 __all__ = ["MfaApiController"]

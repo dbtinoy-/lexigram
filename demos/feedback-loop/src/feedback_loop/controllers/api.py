@@ -11,6 +11,12 @@ from typing import Any
 
 from starlette.requests import Request
 
+from feedback_loop.errors import (
+    InvalidRatingError,
+    NoLowRatedError,
+    UnknownQuestionError,
+    UnknownTraceError,
+)
 from feedback_loop.services.loop_service import LoopService
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
@@ -33,7 +39,10 @@ class LoopApiController(Controller):
         self._service = service
 
     @post("/api/ask")
-    async def ask(self, request: Request) -> Result[dict, Exception]:
+    async def ask(
+        self,
+        request: Request,
+    ) -> Result[dict, UnknownQuestionError]:
         """Answer a canned question, issuing its stable trace id."""
         data = await _body(request)
         key = str(data.get("key", ""))
@@ -55,7 +64,7 @@ class LoopApiController(Controller):
     async def rate(
         self,
         request: Request,
-    ) -> Result[dict, Exception]:
+    ) -> Result[dict, UnknownTraceError | InvalidRatingError]:
         """Capture a 1..5 rating for a previously issued trace id."""
         data = await _body(request)
         trace_id = str(data.get("trace_id", ""))
@@ -84,7 +93,10 @@ class LoopApiController(Controller):
         return {"total": snap.total, "average": avg, "by_type": snap.by_type}
 
     @post("/api/regress")
-    async def regress(self, request: Request) -> Result[dict, Exception]:
+    async def regress(
+        self,
+        request: Request,
+    ) -> Result[dict, NoLowRatedError]:
         """Promote low-rated exchanges into a tracked regression run."""
         data = await _body(request)
         owner = str(data.get("owner", "")).strip() or "web-user"

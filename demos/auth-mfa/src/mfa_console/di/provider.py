@@ -118,13 +118,6 @@ class MfaProvider(Provider):
             created = await user_service.create_user(
                 name=name, email=email, password=DEMO_PASSWORD
             )
-        import sys
-
-        print(
-            "BUILD-API RAN; store:",
-            type(user_service.user_store).__name__,
-            file=sys.stderr,
-        )
         if created.is_err():
             logger.info("seed_user_present", email=email)
         probe_users = await user_service.list_users()

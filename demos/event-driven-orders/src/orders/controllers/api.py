@@ -10,21 +10,24 @@ from a browser or curl alongside the existing CLI:
 
 Lifecycle handlers return the facade's ``Result`` directly; the pipeline
 renders ``Ok`` payloads and maps domain errors to ProblemDetail responses
-using the registered mappings below (unknown order → 404, state conflicts
-→ 409, other order errors → 400).
+via their contracts base classes (validation → 422, state conflicts → 409,
+unknown order → 404).
 """
 
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
-from typing import Any
 
 from starlette.requests import Request
 
-from lexigram.result import Err, Result
+from lexigram.contracts.exceptions.domain import (
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
-from lexigram.web import Controller, JSONResponse, get, post
-from lexigram.web.routing.result_bridge import ResultResponseMapper
+from lexigram.web import Controller, get, post
 from orders.domain import (
     OrderAlreadyPaidError,
     OrderAlreadyShippedError,
@@ -36,39 +39,22 @@ from orders.domain import (
 from orders.services.orders_api import OrdersApi
 
 
-def _problem(status: int, detail: str) -> JSONResponse:
-    """RFC-9457 style problem response."""
-    from lexigram.web.errors.problem_detail import ProblemDetail
-
-    body = ProblemDetail(
-        title="Request rejected", status=status, detail=detail
-    ).to_dict()
-    return JSONResponse(body, status_code=status)
-
-
-# Domain error → HTTP status mappings (rendered as ProblemDetail bodies).
-# Base first: register() inserts at front, so leaves must be registered
-# AFTER the base to take precedence.
-ResultResponseMapper.register(OrderError, 400)
-ResultResponseMapper.register(OrderNotPaidError, 409)
-ResultResponseMapper.register(OrderAlreadyPaidError, 409)
-ResultResponseMapper.register(OrderAlreadyShippedError, 409)
-ResultResponseMapper.register(OrderNotFoundError, 404)
-
-
 class OrdersApiController(Controller):
     """Expose the order write/read sides over HTTP."""
 
     def __init__(self, api: OrdersApi) -> None:
         self.api = api
 
-    @post("/orders")
-    async def place_order(self, request: Request) -> JSONResponse:
+    @post("/orders", status_code=201)
+    async def place_order(
+        self,
+        request: Request,
+    ) -> Result[dict, ValidationError]:
         """Place a new order from a JSON customer/items payload."""
         body = json_loads(await request.body())
         customer = str(body.get("customer") or "").strip()
         if not customer:
-            return _problem(400, "customer is required")
+            return Err(ValidationError("customer is required"))
 
         parsed: list[OrderItem] = []
         for raw in body.get("items") or []:
@@ -83,37 +69,38 @@ class OrdersApiController(Controller):
                     )
                 )
             except (KeyError, InvalidOperation, ValueError, TypeError) as exc:
-                return _problem(400, f"invalid item: {exc}")
+                return Err(ValidationError(f"invalid item: {exc}"))
         if not parsed:
-            return JSONResponse(
-                {"error": "at least one item is required"}, status_code=400
-            )
+            return Err(ValidationError("at least one item is required"))
 
         placed = await self.api.place(customer=customer, items=parsed)
         if placed.is_err():
-            return JSONResponse({"error": str(placed.unwrap_err())}, status_code=409)
+            return Err(placed.unwrap_err())
         order_id = placed.unwrap()
-        return JSONResponse({"order_id": order_id, "status": "placed"}, status_code=201)
+        return Ok({"order_id": order_id, "status": "placed"})
 
     @get("/orders")
-    async def list_orders(self, request: Request | None = None) -> list[dict[str, Any]]:
+    async def list_orders(self, request: Request | None = None) -> list[dict]:
         """Return the projected read-model rows."""
         return self.api.list_orders()
 
     @get("/orders/{order_id}")
-    async def get_order(self, request: Request) -> JSONResponse:
+    async def get_order(
+        self,
+        request: Request,
+    ) -> Result[dict, NotFoundError]:
         """Return one projected order row."""
         order_id = request.path_params["order_id"]
         for row in self.api.list_orders():
             if row.get("order_id") == order_id:
-                return JSONResponse(row)
-        return JSONResponse({"error": f"unknown order {order_id}"}, status_code=404)
+                return Ok(row)
+        return Err(NotFoundError(f"unknown order {order_id}"))
 
     @post("/orders/{order_id}/pay")
     async def pay_order(
         self,
         request: Request,
-    ) -> Result[None, OrderError]:
+    ) -> Result[dict, OrderError | ConflictError | NotFoundError]:
         """Mark an order paid."""
         order_id = request.path_params["order_id"]
         body = json_loads(await request.body())
@@ -122,21 +109,30 @@ class OrdersApiController(Controller):
         except InvalidOperation:
             return Err(OrderError("invalid amount"))
         try:
-            return await self.api.pay(order_id=order_id, amount=amount)
+            paid = await self.api.pay(order_id=order_id, amount=amount)
         except OrderError as exc:
-            return Err(exc)
+            return Err(_conflict_or_not_found(exc))
+        if paid.is_err():
+            return Err(_conflict_or_not_found(paid.unwrap_err()))
+        return Ok({"ok": True})
 
     @post("/orders/{order_id}/ship")
-    async def ship_order(self, request: Request) -> Result[None, OrderError]:
+    async def ship_order(
+        self,
+        request: Request,
+    ) -> Result[dict, OrderError | ConflictError | NotFoundError]:
         """Mark an order shipped (requires the order to be paid)."""
         order_id = request.path_params["order_id"]
         try:
-            return await self.api.ship(order_id)
+            shipped = await self.api.ship(order_id)
         except OrderError as exc:
-            return Err(exc)
+            return Err(_conflict_or_not_found(exc))
+        if shipped.is_err():
+            return Err(_conflict_or_not_found(shipped.unwrap_err()))
+        return Ok({"ok": True})
 
     @get("/outbox")
-    async def list_outbox(self, request: Request | None = None) -> list[dict[str, Any]]:
+    async def list_outbox(self, request: Request | None = None) -> list[dict]:
         """Return staged outbox records in order."""
         return self.api.list_outbox()
 
@@ -147,6 +143,17 @@ class OrdersApiController(Controller):
         """Flush staged events through the event bus."""
         flushed = await self.api.flush_outbox()
         return flushed.map_sync(lambda count: {"ok": True, "flushed": count})
+
+
+def _conflict_or_not_found(err: OrderError) -> OrderError:
+    """Re-express facade errors as their semantic contracts base classes."""
+    if isinstance(err, OrderNotFoundError):
+        return NotFoundError(str(err))
+    if isinstance(
+        err, (OrderNotPaidError, OrderAlreadyPaidError, OrderAlreadyShippedError)
+    ):
+        return ConflictError(str(err))
+    return err
 
 
 __all__ = ["OrdersApiController"]

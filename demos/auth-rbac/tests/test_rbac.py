@@ -28,9 +28,9 @@ async def app_fixture(app: Starlette) -> Starlette:
     return app
 
 
-async def test_login_unknown_persona_400(client: httpx.AsyncClient) -> None:
+async def test_login_unknown_persona_422(client: httpx.AsyncClient) -> None:
     response = await client.post("/api/login", json={"persona": "root"})
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 @pytest.mark.parametrize("persona", ["viewer", "editor", "admin"])
@@ -113,3 +113,53 @@ async def test_articles_guarded_by_role(
     listing = await client.get("/api/articles")
     titles = [a["title"] for a in listing.json()["articles"]]
     assert "From editor" in titles
+
+
+async def test_me_without_session_is_401(client: httpx.AsyncClient) -> None:
+    response = await client.get("/api/me")
+    assert response.status_code == 401
+    assert "authenticated" in response.json()["detail"]
+
+
+async def test_articles_require_session(client: httpx.AsyncClient) -> None:
+    listing = await client.get("/api/articles")
+    assert listing.status_code == 401
+
+    created = await client.post(
+        "/api/articles", json={"title": "anon", "body": "nope"}
+    )
+    assert created.status_code == 401
+
+
+async def test_login_unknown_persona_problem_detail(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.post("/api/login", json={"persona": "ghost"})
+    assert response.status_code == 422
+    body = response.json()
+    assert "unknown persona" in body["detail"]
+
+
+async def test_try_unknown_persona_is_422(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/try",
+        json={"role": "ghost", "action": "view", "resource": "articles"},
+    )
+    assert response.status_code == 422
+
+
+async def test_viewer_cannot_update_or_delete(
+    client: httpx.AsyncClient,
+) -> None:
+    """Viewer reads articles but every write path stays closed."""
+    await login_as(client, "viewer")
+
+    matrix = (await client.get("/api/matrix")).json()["cells"]["viewer"]
+    assert matrix["articles.update"] is False
+    assert matrix["articles.delete"] is False
+
+    granted = await client.post(
+        "/api/try",
+        json={"role": "viewer", "action": "update", "resource": "articles"},
+    )
+    assert granted.json()["granted"] is False

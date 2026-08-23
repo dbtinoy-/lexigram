@@ -37,7 +37,7 @@ async def test_create_returns_raw_key_once(logged_in: httpx.AsyncClient) -> None
         json={"name": "ci-key", "scopes": ["read"]},
     )
 
-    assert created.status_code == 200
+    assert created.status_code == 201
     body = created.json()
     assert body["raw_key"].startswith("sk_live")
     assert body["prefix"] in body["raw_key"]
@@ -109,3 +109,59 @@ async def test_management_requires_cookie(app: Starlette) -> None:
     assert listing.status_code == 401
     assert create.status_code == 401
     await anon.aclose()
+
+
+async def test_revoked_key_cannot_revoke_again(
+    app: Starlette, logged_in: httpx.AsyncClient
+) -> None:
+    created = await logged_in.post(
+        "/api/keys/create", json={"name": "once", "scopes": ["read"]}
+    )
+    key_id = created.json()["key_id"]
+
+    first = await logged_in.post(f"/api/keys/{key_id}/revoke")
+    assert first.status_code == 200
+
+    second = await logged_in.post(f"/api/keys/{key_id}/revoke")
+    assert second.status_code == 404
+    assert "unknown key" in second.json()["detail"]
+
+
+async def test_revoke_unknown_key_is_404(
+    logged_in: httpx.AsyncClient,
+) -> None:
+    response = await logged_in.post("/api/keys/nope/revoke")
+    assert response.status_code == 404
+
+
+async def test_created_key_appears_in_listing(
+    app: Starlette, logged_in: httpx.AsyncClient
+) -> None:
+    created = await logged_in.post(
+        "/api/keys/create",
+        json={"name": "listed", "scopes": ["read", "write"]},
+    )
+    body = created.json()
+
+    keys = (await logged_in.get("/api/keys")).json()["keys"]
+    match = next(k for k in keys if k["key_id"] == body["key_id"])
+    assert match["name"] == "listed"
+    assert match["scopes"] == ["read", "write"]
+    # the raw secret never appears in listings — only the prefix
+    assert body["raw_key"].startswith(match["prefix"])
+    assert "raw_key" not in match
+    assert body["raw_key"] not in str(keys)
+
+
+async def test_expired_seed_key_is_401(app: Starlette) -> None:
+    machine = second_browser(app)
+    response = await machine.get("/api/me", headers={"X-API-Key": EXPIRED_RAW})
+    assert response.status_code == 401
+    await machine.aclose()
+
+
+async def test_login_bad_password_is_401(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/login", json={"email": DEMO_EMAIL, "password": "wrong"}
+    )
+    assert response.status_code == 401

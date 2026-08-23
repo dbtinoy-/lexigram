@@ -1,4 +1,8 @@
-"""JSON API for the API-keys console — management + machine endpoint."""
+"""JSON API for the API-keys console — management + machine endpoint.
+
+Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
+and maps ``Err`` errors to ProblemDetail responses automatically.
+"""
 
 from __future__ import annotations
 
@@ -8,27 +12,18 @@ from starlette.requests import Request
 
 from lexigram.auth.authn.apikeys import APIKeyManager
 from lexigram.auth.authn.services import AuthenticationService
+from lexigram.auth.exceptions import AccountLockedError, InvalidCredentialsError
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.contracts.exceptions.domain import (
+    AuthenticationError,
+    NotFoundError,
+)
 from lexigram.logging import get_logger
+from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, JSONResponse, get, post
 
-
-def _problem(status: int, detail: str) -> JSONResponse:
-    """RFC-9457 style problem response."""
-    from lexigram.web.errors.problem_detail import ProblemDetail
-
-    body = ProblemDetail(
-        title="Request rejected", status=status, detail=detail
-    ).to_dict()
-    return JSONResponse(body, status_code=status)
-
-
 logger = get_logger(__name__)
-
-
-def _error(message: str, status: int) -> JSONResponse:
-    return _problem(status, message)
 
 
 class KeysApiController(Controller):
@@ -48,18 +43,21 @@ class KeysApiController(Controller):
         return await self._cookies.authenticate(request)
 
     @post("/api/login")
-    async def login(self, request: Request) -> JSONResponse:
+    async def login(
+        self,
+        request: Request,
+    ) -> Result[JSONResponse, InvalidCredentialsError | AccountLockedError]:
         data = json_loads(await request.body())
         user = await self._authentication.authenticate_user(
             email=str(data.get("email", "")),
             password=str(data.get("password", "")),
         )
         if user.is_err():
-            return _error(str(user.unwrap_err()), 401)
+            return Err(user.unwrap_err())
         authenticated = user.unwrap()
         response = JSONResponse({"ok": True, "user": {"email": authenticated.email}})
         await self._cookies.login(response, authenticated.user_id)
-        return response
+        return Ok(response)
 
     @post("/api/logout")
     async def logout(self, request: Request) -> JSONResponse:
@@ -68,12 +66,15 @@ class KeysApiController(Controller):
         return response
 
     @get("/api/keys")
-    async def list_keys(self, request: Request) -> JSONResponse:
+    async def list_keys(
+        self,
+        request: Request,
+    ) -> Result[dict, AuthenticationError]:
         user = await self._require_session(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
         keys = await self._manager.list_keys(user.user_id)
-        return JSONResponse(
+        return Ok(
             {
                 "keys": [
                     {
@@ -90,12 +91,15 @@ class KeysApiController(Controller):
             }
         )
 
-    @post("/api/keys/create")
-    async def create_key(self, request: Request) -> JSONResponse:
+    @post("/api/keys/create", status_code=201)
+    async def create_key(
+        self,
+        request: Request,
+    ) -> Result[dict, AuthenticationError]:
         """Issue a key; the raw secret appears exactly once in this response."""
         user = await self._require_session(request)
         if user is None:
-            return _error("not authenticated", 401)
+            return Err(AuthenticationError("not authenticated"))
         data = json_loads(await request.body())
         raw_key, api_key = await self._manager.create_key(
             user_id=user.user_id,
@@ -104,27 +108,31 @@ class KeysApiController(Controller):
             expires_days=None,
         )
         logger.info("api_key_created", key_id=api_key.key_id, prefix=api_key.prefix)
-        return JSONResponse(
+        return Ok(
             {"raw_key": raw_key, "key_id": api_key.key_id, "prefix": api_key.prefix}
         )
 
     @post("/api/keys/{key_id}/revoke")
-    async def revoke_key(self, request: Request, key_id: str) -> JSONResponse:
+    async def revoke_key(
+        self,
+        request: Request,
+        key_id: str,
+    ) -> Result[dict, NotFoundError]:
         revoked = await self._manager.revoke_key(key_id)
         if not revoked:
-            return _error("unknown key", 404)
-        return JSONResponse({"ok": True})
+            return Err(NotFoundError(f"unknown key {key_id!r}"))
+        return Ok({"ok": True})
 
     @get("/api/me")
-    async def me(self, request: Request) -> JSONResponse:
+    async def me(self, request: Request) -> Result[dict, AuthenticationError]:
         """Machine authentication via ``X-API-Key`` header."""
         raw_key = request.headers.get("X-API-Key", "")
         if not raw_key:
-            return _error("missing X-API-Key header", 401)
+            return Err(AuthenticationError("missing X-API-Key header"))
         api_key = await self._manager.validate_key(raw_key)
         if api_key is None:
-            return _error("invalid api key", 401)
-        return JSONResponse(
+            return Err(AuthenticationError("invalid api key"))
+        return Ok(
             {
                 "user_id": api_key.user_id,
                 "name": api_key.name,

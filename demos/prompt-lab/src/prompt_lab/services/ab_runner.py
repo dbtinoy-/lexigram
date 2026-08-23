@@ -6,7 +6,10 @@ from dataclasses import dataclass, field
 
 from lexigram.ai.evaluation.evaluators.criteria import CriteriaEvaluator
 from lexigram.ai.evaluation.harness.runner import EvaluationHarness
-from lexigram.contracts.ai.evaluation import EvaluationDataset
+from lexigram.contracts.ai.evaluation import (
+    EvaluationDataset,
+    EvaluationHarnessProtocol,
+)
 from lexigram.logging import get_logger
 from prompt_lab.repository.cases import CASES, CRITERIA
 
@@ -30,7 +33,7 @@ class ABRunner:
     def __init__(
         self,
         versions,
-        harness: EvaluationHarness | None = None,
+        harness: EvaluationHarnessProtocol | None = None,
     ) -> None:
         self._versions = versions
         self._harness = harness or EvaluationHarness(pass_threshold=0.8)

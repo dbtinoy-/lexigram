@@ -155,11 +155,13 @@ class APIKeyManager:
             key_id: Identifier of the key to revoke.
 
         Returns:
-            ``True`` after successful revocation.
+            ``True`` when a live key was revoked; ``False`` when the id is
+            unknown or already revoked.
         """
-        await self._repo.revoke(key_id)
-        logger.info("Revoked API key: %s", key_id)
-        return True
+        revoked = await self._repo.revoke(key_id)
+        if revoked:
+            logger.info("Revoked API key: %s", key_id)
+        return revoked
 
     async def list_keys(self, user_id: str) -> list[APIKey]:
         """List all active, non-revoked API keys for a user.
