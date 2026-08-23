@@ -40,15 +40,15 @@ maintainers = [
 
 # Pure Python + stdlib only — no external I/O libraries required.
 dependencies = [
-    "lexigram-contracts>=0.1.0",
-    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.4",
+    "lexigram>=0.1.4",
 ]
 
 [project.optional-dependencies]
-idempotency-redis = ["lexigram-cache>=0.1.0"]
-idempotency-database = ["lexigram-sql>=0.1.0"]
+idempotency-redis = ["lexigram-cache>=0.1.4"]
+idempotency-database = ["lexigram-sql>=0.1.4"]
 test = [
-    "lexigram-testing>=0.1.1",
+    "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
@@ -85,7 +85,7 @@ resilience = "lexigram.resilience.module:ResilienceModule"
 
 [dependency-groups]
 test = [
-    "lexigram-testing>=0.1.1",
+    "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",

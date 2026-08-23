@@ -26,8 +26,8 @@ classifiers = [
 authors = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }]
 maintainers = [{ name = "Lexigram Framework Team", email = "team@lexigram.dev" }]
 dependencies = [
-    "lexigram-contracts>=0.1.0",
-    "lexigram>=0.1.1",
+    "lexigram-contracts>=0.1.4",
+    "lexigram>=0.1.4",
     "typing-extensions>=4.0.0",
     "aiofiles>=23.0.0",
     "numpy>=1.24.0",
@@ -54,7 +54,7 @@ clip = ["transformers>=4.30", "torch>=2.0", "pillow>=10.0.0"]
 compression = ["llmlingua>=0.2.0"]
 reranking = ["flashrank>=0.2.0"]
 test = [
-    "lexigram-testing>=0.1.1",
+    "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
@@ -66,7 +66,7 @@ all = ["lexigram-ai-rag[pdf,web,clip,compression,reranking]"]
 [dependency-groups]
 dev = ["ruff>=0.8.0", "mypy>=1.0.0"]
 test = [
-    "lexigram-testing>=0.1.1",
+    "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",

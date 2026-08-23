@@ -147,12 +147,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "lexigram>=0.1.1",
-    "lexigram-contracts>=0.1.0",
-    "lexigram-ai-llm>=0.1.0",
-    "lexigram-ai-rag>=0.1.0",
-    "lexigram-ai-feedback>=0.1.0",
-    "lexigram-ai-observability>=0.1.0",
+    "lexigram>=0.1.4",
+    "lexigram-contracts>=0.1.4",
+    "lexigram-ai-llm>=0.1.4",
+    "lexigram-ai-rag>=0.1.4",
+    "lexigram-ai-feedback>=0.1.4",
+    "lexigram-ai-observability>=0.1.4",
     "numpy>=1.25.0",
     "starlette>=0.28.0",
     "typer>=0.9.0",
@@ -169,14 +169,14 @@ text = "MIT"
 
 [project.optional-dependencies]
 llm = [
-    "lexigram-ai-llm>=0.1.0",
+    "lexigram-ai-llm>=0.1.4",
     "openai>=1.0.0",
     "anthropic>=0.20.0",
     "ollama>=0.1.0",
     "openrouter>=0.1.0",
 ]
 vector = [
-    "lexigram-vector>=0.2.0",
+    "lexigram-vector>=0.1.4",
     "chromadb>=0.4.0",
     "qdrant-client>=1.7.0",
     "pgvector>=0.2.0",
@@ -186,7 +186,7 @@ vector = [
     "milvus>=2.3.0",
 ]
 rag = [
-    "lexigram-ai-rag>=0.1.0",
+    "lexigram-ai-rag>=0.1.4",
     "pypdf>=3.0.0",
     "beautifulsoup4>=4.12.0",
     "markdown>=3.5.0",
@@ -195,10 +195,10 @@ rag = [
     "opencv-python-headless>=4.8.0",
 ]
 observability = [
-    "lexigram-ai-observability>=0.1.0",
+    "lexigram-ai-observability>=0.1.4",
 ]
 feedback = [
-    "lexigram-ai-feedback>=0.1.0",
+    "lexigram-ai-feedback>=0.1.4",
 ]
 llm-utils = [
     "tiktoken>=0.5.0",
@@ -215,7 +215,7 @@ ai = [
     "scikit-learn>=1.3.0",
 ]
 test = [
-    "lexigram-testing>=0.1.1",
+    "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
@@ -238,11 +238,11 @@ docs = [
     "mkdocs-material>=9.0.0",
 ]
 all = [
-    "lexigram-ai-llm>=0.1.0",
-    "lexigram-ai-rag>=0.1.0",
-    "lexigram-vector>=0.2.0",
-    "lexigram-ai-feedback>=0.1.0",
-    "lexigram-ai-observability>=0.1.0",
+    "lexigram-ai-llm>=0.1.4",
+    "lexigram-ai-rag>=0.1.4",
+    "lexigram-vector>=0.1.4",
+    "lexigram-ai-feedback>=0.1.4",
+    "lexigram-ai-observability>=0.1.4",
     "openai>=1.0.0",
     "anthropic>=0.20.0",
     "ollama>=0.1.0",
@@ -265,7 +265,7 @@ all = [
     "tiktoken>=0.5.0",
     "jinja2>=3.1.0",
     "redis>=5.0.0",
-    "lexigram-testing>=0.1.1",
+    "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
@@ -311,7 +311,7 @@ dev = [
     "types-requests>=2.31.0",
 ]
 test = [
-    "lexigram-testing>=0.1.1",
+    "lexigram-testing>=0.1.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",

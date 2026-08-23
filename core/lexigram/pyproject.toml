@@ -70,7 +70,7 @@ maintainers = [
 # lifecycle, or exception hierarchy literally cannot function without it.
 
 dependencies = [
-    "lexigram-contracts>=0.1.0",
+    "lexigram-contracts>=0.1.4",
     "orjson>=3.0.0",
     "structlog>=25.1.0",             # Structured logging foundation
     "pydantic>=2.10.0",               # Required: used unconditionally by config, validation
@@ -99,7 +99,7 @@ test = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
-    "lexigram-monitor>=0.1.1",
+    "lexigram-monitor>=0.1.4",
 ]
 
 docs = [
@@ -126,41 +126,41 @@ web = [
 # ── Data & Storage ────────────────────────────────────────────────────
 
 db = [
-    "lexigram-nosql>=0.1.2",
-    "lexigram-storage>=0.1.2",
-    "lexigram-search>=0.1.2",
+    "lexigram-nosql>=0.1.4",
+    "lexigram-storage>=0.1.4",
+    "lexigram-search>=0.1.4",
 ]
 
 cache = [
-    "lexigram-cache>=0.1.2",
+    "lexigram-cache>=0.1.4",
 ]
 
 # ── Auth & Security ───────────────────────────────────────────────────
 
 auth = [
-    "lexigram-auth>=0.1.2",
-    "lexigram-audit>=0.1.2",
+    "lexigram-auth>=0.1.4",
+    "lexigram-audit>=0.1.4",
 ]
 
 # ── Events & Tasks ────────────────────────────────────────────────────
 
 events = [
-    "lexigram-events>=0.1.2",
+    "lexigram-events>=0.1.4",
 ]
 
 tasks = [
-    "lexigram-tasks>=0.1.2",
+    "lexigram-tasks>=0.1.4",
 ]
 
 # ── Observability ─────────────────────────────────────────────────────
 
 monitor = [
-    "lexigram-monitor>=0.1.2",
+    "lexigram-monitor>=0.1.4",
 ]
 # ── GraphQL ───────────────────────────────────────────────────────────
 
 graphql = [
-    "lexigram-graphql>=0.1.2",
+    "lexigram-graphql>=0.1.4",
 ]
 
 # ── Everything ────────────────────────────────────────────────────────
@@ -168,59 +168,59 @@ graphql = [
 # Lexigram package in the workspace (core, AI, data, UI, admin, multimedia).
 
 all = [
-    "lexigram-admin>=0.1.0",
-    "lexigram-ai>=0.1.0",
-    "lexigram-ai-agents>=0.1.0",
-    "lexigram-ai-evaluation>=0.1.0",
-    "lexigram-ai-feedback>=0.1.0",
-    "lexigram-ai-governance>=0.1.0",
-    "lexigram-ai-guard>=0.1.0",
-    "lexigram-ai-llm>=0.1.0",
-    "lexigram-ai-mcp>=0.1.0",
-    "lexigram-ai-memory>=0.1.0",
-    "lexigram-ai-observability>=0.1.0",
-    "lexigram-ai-prompt>=0.1.0",
-    "lexigram-ai-rag>=0.1.0",
-    "lexigram-ai-relay>=0.1.0",
-    "lexigram-ai-relay-gateway>=0.1.0",
-    "lexigram-ai-session>=0.1.0",
-    "lexigram-ai-skills>=0.1.0",
-    "lexigram-ai-workers>=0.1.0",
-    "lexigram-audit>=0.1.0",
-    "lexigram-auth>=0.1.0",
-    "lexigram-cache>=0.1.0",
-    "lexigram-cli>=0.1.0",
-    "lexigram-contracts>=0.1.0",
-    "lexigram-events>=0.1.0",
-    "lexigram-features>=0.1.0",
-    "lexigram-graph>=0.1.0",
-    "lexigram-graphql>=0.1.0",
-    "lexigram-http>=0.1.0",
-    "lexigram-monitor>=0.1.0",
-    "lexigram-multimedia>=0.1.0",
-    "lexigram-multimedia-beat>=0.1.0",
-    "lexigram-multimedia-image>=0.1.0",
-    "lexigram-multimedia-interpolate>=0.1.0",
-    "lexigram-multimedia-music>=0.1.0",
-    "lexigram-multimedia-tts>=0.1.0",
-    "lexigram-multimedia-upscale>=0.1.0",
-    "lexigram-multimedia-video>=0.1.0",
-    "lexigram-nosql>=0.1.0",
-    "lexigram-notification>=0.1.0",
-    "lexigram-queue>=0.1.0",
-    "lexigram-resilience>=0.1.0",
-    "lexigram-search>=0.1.0",
-    "lexigram-secrets>=0.1.0",
-    "lexigram-sql>=0.1.0",
-    "lexigram-storage>=0.1.0",
-    "lexigram-tasks>=0.1.0",
-    "lexigram-tenancy>=0.1.0",
-    "lexigram-testing>=0.1.0",
-    "lexigram-ui>=0.1.0",
-    "lexigram-vector>=0.1.0",
-    "lexigram-web>=0.1.0",
-    "lexigram-webhook>=0.1.0",
-    "lexigram-workflow>=0.1.0",
+    "lexigram-admin>=0.1.4",
+    "lexigram-ai>=0.1.4",
+    "lexigram-ai-agents>=0.1.4",
+    "lexigram-ai-evaluation>=0.1.4",
+    "lexigram-ai-feedback>=0.1.4",
+    "lexigram-ai-governance>=0.1.4",
+    "lexigram-ai-guard>=0.1.4",
+    "lexigram-ai-llm>=0.1.4",
+    "lexigram-ai-mcp>=0.1.4",
+    "lexigram-ai-memory>=0.1.4",
+    "lexigram-ai-observability>=0.1.4",
+    "lexigram-ai-prompt>=0.1.4",
+    "lexigram-ai-rag>=0.1.4",
+    "lexigram-ai-relay>=0.1.4",
+    "lexigram-ai-relay-gateway>=0.1.4",
+    "lexigram-ai-session>=0.1.4",
+    "lexigram-ai-skills>=0.1.4",
+    "lexigram-ai-workers>=0.1.4",
+    "lexigram-audit>=0.1.4",
+    "lexigram-auth>=0.1.4",
+    "lexigram-cache>=0.1.4",
+    "lexigram-cli>=0.1.4",
+    "lexigram-contracts>=0.1.4",
+    "lexigram-events>=0.1.4",
+    "lexigram-features>=0.1.4",
+    "lexigram-graph>=0.1.4",
+    "lexigram-graphql>=0.1.4",
+    "lexigram-http>=0.1.4",
+    "lexigram-monitor>=0.1.4",
+    "lexigram-multimedia>=0.1.4",
+    "lexigram-multimedia-beat>=0.1.4",
+    "lexigram-multimedia-image>=0.1.4",
+    "lexigram-multimedia-interpolate>=0.1.4",
+    "lexigram-multimedia-music>=0.1.4",
+    "lexigram-multimedia-tts>=0.1.4",
+    "lexigram-multimedia-upscale>=0.1.4",
+    "lexigram-multimedia-video>=0.1.4",
+    "lexigram-nosql>=0.1.4",
+    "lexigram-notification>=0.1.4",
+    "lexigram-queue>=0.1.4",
+    "lexigram-resilience>=0.1.4",
+    "lexigram-search>=0.1.4",
+    "lexigram-secrets>=0.1.4",
+    "lexigram-sql>=0.1.4",
+    "lexigram-storage>=0.1.4",
+    "lexigram-tasks>=0.1.4",
+    "lexigram-tenancy>=0.1.4",
+    "lexigram-testing>=0.1.4",
+    "lexigram-ui>=0.1.4",
+    "lexigram-vector>=0.1.4",
+    "lexigram-web>=0.1.4",
+    "lexigram-webhook>=0.1.4",
+    "lexigram-workflow>=0.1.4",
 ]
 # =============================================================================
 # URLs
