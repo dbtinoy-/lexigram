@@ -17,15 +17,15 @@ from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authz.service import AuthorizationService
 from lexigram.auth.exceptions import (
     AccountLockedError,
+    AuthenticationError,
     EmailExistsError,
     InvalidCredentialsError,
     PasswordPolicyError,
-    TokenError,
 )
 from lexigram.auth.models.user import User
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
+from lexigram.contracts.auth.exceptions import TokenError
 from lexigram.contracts.exceptions.domain import (
-    AuthenticationError,
     NotFoundError,
 )
 from lexigram.logging import get_logger
