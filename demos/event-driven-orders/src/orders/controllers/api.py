@@ -56,7 +56,7 @@ class OrdersApiController(Controller):
     async def place_order(
         self,
         request: Request,
-    ) -> Result[dict, ValidationError]:
+    ) -> Result[dict, ValidationError | OrderError]:
         """Place a new order from a JSON customer/items payload."""
         body = json_loads(await request.body())
         customer = str(body.get("customer") or "").strip()
