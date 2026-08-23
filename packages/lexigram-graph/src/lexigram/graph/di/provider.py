@@ -13,7 +13,7 @@ from lexigram.graph.constants import BACKEND_MEMORY, BACKEND_NEO4J
 from lexigram.logging.factory import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (  # type: ignore[import-untyped]
+    from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
@@ -121,7 +121,7 @@ class GraphProvider(Provider):
         self._store = store
         await store.connect()
         self._store = await self._maybe_wrap_with_tenancy(self._store, container)
-        container.bind(GraphStoreProtocol, self._store)
+        container.bind(GraphStoreProtocol, self._store)  # type: ignore[type-abstract]
         logger.info("graph_store_connected", backend=self._config.backend)
 
     async def shutdown(self) -> None:

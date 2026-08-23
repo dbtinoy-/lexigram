@@ -1,7 +1,10 @@
 """{{ class_name }} provider for the Lexigram DI container."""
 from __future__ import annotations
 
-from lexigram.contracts.core.container import ContainerRegistrar, ContainerResolver
+from lexigram.contracts.core.di import (
+    ContainerRegistrarProtocol,
+    ContainerResolverProtocol,
+)
 from lexigram.contracts.core.provider import Provider, ProviderPriority
 
 
@@ -14,14 +17,14 @@ class {{ class_name }}Provider(Provider):
     name = "{{ package_name }}"
     priority = ProviderPriority.NORMAL
 
-    async def register(self, container: ContainerRegistrar) -> None:
+    async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register {{ package_name }} services.
 
         Args:
             container: The DI container registrar.
         """
 
-    async def boot(self, container: ContainerResolver) -> None:
+    async def boot(self, container: ContainerResolverProtocol) -> None:
         """Boot {{ package_name }} services after all providers are registered.
 
         Args:

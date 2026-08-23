@@ -21,9 +21,9 @@ class ScopedMiddleware:
     can use it for request-scoped dependency resolution.
 
     The ``container`` argument **must** satisfy the container protocol from
-    :mod:`lexigram.contracts.core.container` — specifically it must expose an
+    :mod:`lexigram.contracts.core.di` — specifically it must expose an
     async ``scope()`` context manager that yields a child
-    :class:`~lexigram.contracts.core.container.ContainerResolverProtocol`.  Passing a
+    :class:`~lexigram.contracts.core.di.ContainerResolverProtocol`.  Passing a
     plain object that does not implement ``scope()`` will raise
     :exc:`AttributeError` at call time.
 
@@ -35,7 +35,7 @@ class ScopedMiddleware:
     Args:
         container: A DI container that implements the ``scope()`` async
             context-manager protocol (see
-            :class:`~lexigram.contracts.core.container.ContainerRegistrarProtocol`).
+            :class:`~lexigram.contracts.core.di.ContainerRegistrarProtocol`).
 
     Example:
         ```python

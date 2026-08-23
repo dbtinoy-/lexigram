@@ -19,7 +19,7 @@ from lexigram.vector.constants import (
 )
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (  # type: ignore[import-untyped]
+    from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
@@ -257,7 +257,7 @@ class VectorProvider(Provider):
 
         await self._store.connect()
         self._store = await self._maybe_wrap_with_tenancy(self._store, container)
-        container.bind(VectorStoreProtocol, self._store)
+        container.bind(VectorStoreProtocol, self._store)  # type: ignore[type-abstract]
         logger.info("vector_store_connected", backend=backend)
 
     async def _boot_multi_backend(

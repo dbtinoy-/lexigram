@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (  # type: ignore[import-untyped]
-        ContainerResolverProtocol,
-    )
+    from lexigram.contracts.core.di import ContainerResolverProtocol
 
 
 class AdminWebContributor:
