@@ -38,6 +38,22 @@ def _place_payload(customer: str = "Alice") -> dict[str, object]:
     }
 
 
+async def test_ship_unpaid_problem_type_names_the_domain_error(
+    client: httpx.AsyncClient,
+) -> None:
+    # @error_status(OrderNotPaidError, 409) maps the demo's own error type:
+    # the ProblemDetail type URN derives from the domain class name, not the
+    # generic contracts conflict slug.
+    order_id = (
+        await client.post("/orders", json=_place_payload("Bob"))
+    ).json()["order_id"]
+
+    response = await client.post(f"/orders/{order_id}/ship")
+
+    assert response.status_code == 409
+    assert response.json()["type"] == "urn:lexigram:order-not-paid"
+
+
 async def test_place_pay_ship_over_http(client: httpx.AsyncClient) -> None:
     placed = await client.post("/orders", json=_place_payload())
     assert placed.status_code == 201

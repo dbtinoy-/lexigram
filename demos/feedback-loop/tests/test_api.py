@@ -24,6 +24,32 @@ async def test_ask_unknown_key_is_404(client: httpx.AsyncClient) -> None:
     assert "unknown question" in response.json()["detail"]
 
 
+async def test_ask_missing_body_field_is_framework_422(
+    client: httpx.AsyncClient,
+) -> None:
+    # The DTO's Field(min_length=1) rejects an empty key before the handler
+    # runs — the 422 comes from the binder, not from demo code.
+    response = await client.post("/api/ask", json={"key": ""})
+
+    assert response.status_code == 422
+    problem = response.json()
+    assert problem["type"] == "urn:lexigram:validation-error"
+    assert problem["errors"][0]["field"] == "payload.key"
+
+
+async def test_rate_non_numeric_rating_is_framework_422(
+    client: httpx.AsyncClient,
+) -> None:
+    # A non-numeric rating can no longer reach the domain as float("nan"):
+    # the typed DTO field rejects it during binding.
+    response = await client.post(
+        "/api/rate",
+        json={"trace_id": "t4", "rating": "high", "owner": "alice"},
+    )
+
+    assert response.status_code == 422
+
+
 async def test_rate_then_stats(client: httpx.AsyncClient) -> None:
     ask = await client.post("/api/ask", json={"key": "warranty", "owner": "alice"})
     trace = ask.json()["trace_id"]

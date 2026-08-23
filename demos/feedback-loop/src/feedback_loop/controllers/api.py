@@ -1,15 +1,18 @@
 """JSON API for the feedback-loop console — no HTML lives here.
 
-Handlers return ``Result`` values; the web pipeline renders ``Ok`` payloads
-and maps ``Err`` errors to ProblemDetail responses automatically (the demo's
-domain errors subclass contracts' NotFound/Validation/Conflict errors).
+Three framework features on display:
+
+- POST handlers take declarative ``DomainModel`` request DTOs — the pipeline
+  deserializes and validates the JSON body before the handler runs, so a
+  malformed payload answers 422 without touching demo code.
+- GET handlers declare path parameters as plain typed arguments; the binder
+  resolves them from the route pattern (no ``request.path_params`` digging).
+- All mutating handlers return ``Result`` values; the pipeline renders ``Ok``
+  payloads and maps ``Err`` errors to ProblemDetail responses automatically
+  (the demo's domain errors subclass contracts' NotFound/Validation/Conflict).
 """
 
 from __future__ import annotations
-
-from typing import Any
-
-from starlette.requests import Request
 
 from feedback_loop.errors import (
     InvalidRatingError,
@@ -17,19 +20,10 @@ from feedback_loop.errors import (
     UnknownQuestionError,
     UnknownTraceError,
 )
+from feedback_loop.schemas import AskRequest, RateRequest, RegressRequest
 from feedback_loop.services.loop_service import LoopService
 from lexigram.result import Err, Ok, Result
-from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
-
-
-async def _body(request: Request) -> dict[str, Any]:
-    """Parse the request body through the framework serializer."""
-    raw = await request.body()
-    if not raw:
-        return {}
-    parsed = json_loads(raw)
-    return dict(parsed) if isinstance(parsed, dict) else {}
 
 
 class LoopApiController(Controller):
@@ -41,14 +35,10 @@ class LoopApiController(Controller):
     @post("/api/ask")
     async def ask(
         self,
-        request: Request,
+        payload: AskRequest,
     ) -> Result[dict, UnknownQuestionError]:
         """Answer a canned question, issuing its stable trace id."""
-        data = await _body(request)
-        key = str(data.get("key", ""))
-        owner = str(data.get("owner", "")).strip()
-
-        inner = await self._service.ask(key, owner=owner or "web-user")
+        inner = await self._service.ask(payload.key, owner=payload.owner)
         if inner.is_err():
             return Err(inner.unwrap_err())
         answer = inner.unwrap()
@@ -63,45 +53,33 @@ class LoopApiController(Controller):
     @post("/api/rate")
     async def rate(
         self,
-        request: Request,
+        payload: RateRequest,
     ) -> Result[dict, UnknownTraceError | InvalidRatingError]:
-        """Capture a 1..5 rating for a previously issued trace id."""
-        data = await _body(request)
-        trace_id = str(data.get("trace_id", ""))
-        owner = str(data.get("owner", "")).strip()
-        comment = str(data.get("comment", "")) or None
-        try:
-            rating = float(data.get("rating", 0))
-        except (TypeError, ValueError):
-            rating = float("nan")  # out of bounds ⇒ InvalidRatingError path
-
+        """Capture a rating for a previously issued trace id."""
         inner = await self._service.rate(
-            trace_id,
-            rating,
-            owner=owner or "web-user",
-            comment=comment,
+            payload.trace_id,
+            payload.rating,
+            owner=payload.owner,
+            comment=payload.comment,
         )
         if inner.is_err():
             return Err(inner.unwrap_err())
         return Ok({"item_id": inner.unwrap()})
 
     @get("/api/stats/{owner}")
-    async def stats(self, request: Request) -> dict:
+    async def stats(self, owner: str) -> dict:
         """Aggregate this owner's captured ratings."""
-        snap = await self._service.stats(owner=request.path_params["owner"])
+        snap = await self._service.stats(owner=owner)
         avg = snap.average if snap.average is not None else "n/a"
         return {"total": snap.total, "average": avg, "by_type": snap.by_type}
 
     @post("/api/regress")
     async def regress(
         self,
-        request: Request,
+        payload: RegressRequest,
     ) -> Result[dict, NoLowRatedError]:
         """Promote low-rated exchanges into a tracked regression run."""
-        data = await _body(request)
-        owner = str(data.get("owner", "")).strip() or "web-user"
-
-        inner = await self._service.regress(owner=owner)
+        inner = await self._service.regress(owner=payload.owner)
         if inner.is_err():
             return Err(inner.unwrap_err())
         summary = inner.unwrap()
@@ -116,9 +94,8 @@ class LoopApiController(Controller):
         )
 
     @get("/api/report/{run_id}")
-    async def report(self, request: Request) -> dict:
+    async def report(self, run_id: str) -> dict:
         """Post-hoc error analysis for a tracked run."""
-        run_id = request.path_params["run_id"]
         analysis = await self._service.report(run_id)
         return {
             "run_id": run_id,

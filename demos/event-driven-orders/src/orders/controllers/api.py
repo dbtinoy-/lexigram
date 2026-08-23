@@ -8,10 +8,16 @@ from a browser or curl alongside the existing CLI:
 - ``POST /orders/{id}/pay|ship``         — lifecycle commands
 - ``GET /outbox`` / ``POST /outbox/flush`` — transactional outbox inspection
 
-Lifecycle handlers return the facade's ``Result`` directly; the pipeline
-renders ``Ok`` payloads and maps domain errors to ProblemDetail responses
-via their contracts base classes (validation → 422, state conflicts → 409,
-unknown order → 404).
+The controller registers the demo's own error vocabulary with the Result
+bridge via ``@error_status``, so lifecycle handlers surface facade errors
+as-is: unknown order → 404, state conflicts → 409, remaining ``OrderError``
+subclasses → 400 through the ``DomainError`` fallback. No handler re-expresses
+a domain error as a contracts base class just to pick an HTTP status.
+
+Payload parsing for ``place_order``/``pay`` is intentionally explicit rather
+than DTO-bound: prices and amounts are ``Decimal`` values, and the request
+binder does not coerce strings to ``Decimal`` (only to simple scalars), so
+the demo converts money at the boundary itself.
 """
 
 from __future__ import annotations
@@ -20,14 +26,11 @@ from decimal import Decimal, InvalidOperation
 
 from starlette.requests import Request
 
-from lexigram.contracts.exceptions.domain import (
-    ConflictError,
-    NotFoundError,
-    ValidationError,
-)
+from lexigram.contracts.exceptions.domain import ValidationError
 from lexigram.result import Err, Ok, Result
 from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
+from lexigram.web.routing.result_bridge import error_status
 from orders.domain import (
     OrderAlreadyPaidError,
     OrderAlreadyShippedError,
@@ -39,6 +42,10 @@ from orders.domain import (
 from orders.services.orders_api import OrdersApi
 
 
+@error_status(OrderNotFoundError, 404)
+@error_status(OrderNotPaidError, 409)
+@error_status(OrderAlreadyPaidError, 409)
+@error_status(OrderAlreadyShippedError, 409)
 class OrdersApiController(Controller):
     """Expose the order write/read sides over HTTP."""
 
@@ -80,80 +87,68 @@ class OrdersApiController(Controller):
         return Ok({"order_id": order_id, "status": "placed"})
 
     @get("/orders")
-    async def list_orders(self, request: Request | None = None) -> list[dict]:
+    async def list_orders(self) -> list[dict]:
         """Return the projected read-model rows."""
         return self.api.list_orders()
 
     @get("/orders/{order_id}")
     async def get_order(
         self,
-        request: Request,
-    ) -> Result[dict, NotFoundError]:
+        order_id: str,
+    ) -> Result[dict, OrderNotFoundError]:
         """Return one projected order row."""
-        order_id = request.path_params["order_id"]
         for row in self.api.list_orders():
             if row.get("order_id") == order_id:
                 return Ok(row)
-        return Err(NotFoundError(f"unknown order {order_id}"))
+        return Err(OrderNotFoundError(f"unknown order {order_id}"))
 
     @post("/orders/{order_id}/pay")
     async def pay_order(
         self,
+        order_id: str,
         request: Request,
-    ) -> Result[dict, OrderError | ConflictError | NotFoundError]:
+    ) -> Result[dict, OrderError]:
         """Mark an order paid."""
-        order_id = request.path_params["order_id"]
         body = json_loads(await request.body())
         try:
             amount = Decimal(str(body.get("amount", "0")))
         except InvalidOperation:
             return Err(OrderError("invalid amount"))
+        # The facade surfaces write-side rejections by raising; the
+        # boundary translates them into ``Err`` so the Result bridge —
+        # with the ``@error_status`` mappings above — renders them.
         try:
             paid = await self.api.pay(order_id=order_id, amount=amount)
         except OrderError as exc:
-            return Err(_conflict_or_not_found(exc))
+            return Err(exc)
         if paid.is_err():
-            return Err(_conflict_or_not_found(paid.unwrap_err()))
+            return Err(paid.unwrap_err())
         return Ok({"ok": True})
 
     @post("/orders/{order_id}/ship")
     async def ship_order(
         self,
-        request: Request,
-    ) -> Result[dict, OrderError | ConflictError | NotFoundError]:
+        order_id: str,
+    ) -> Result[dict, OrderError]:
         """Mark an order shipped (requires the order to be paid)."""
-        order_id = request.path_params["order_id"]
         try:
             shipped = await self.api.ship(order_id)
         except OrderError as exc:
-            return Err(_conflict_or_not_found(exc))
+            return Err(exc)
         if shipped.is_err():
-            return Err(_conflict_or_not_found(shipped.unwrap_err()))
+            return Err(shipped.unwrap_err())
         return Ok({"ok": True})
 
     @get("/outbox")
-    async def list_outbox(self, request: Request | None = None) -> list[dict]:
+    async def list_outbox(self) -> list[dict]:
         """Return staged outbox records in order."""
         return self.api.list_outbox()
 
     @post("/outbox/flush")
-    async def flush_outbox(
-        self, request: Request | None = None
-    ) -> Result[dict, Exception]:
+    async def flush_outbox(self) -> Result[dict, Exception]:
         """Flush staged events through the event bus."""
         flushed = await self.api.flush_outbox()
         return flushed.map_sync(lambda count: {"ok": True, "flushed": count})
-
-
-def _conflict_or_not_found(err: OrderError) -> OrderError:
-    """Re-express facade errors as their semantic contracts base classes."""
-    if isinstance(err, OrderNotFoundError):
-        return NotFoundError(str(err))
-    if isinstance(
-        err, (OrderNotPaidError, OrderAlreadyPaidError, OrderAlreadyShippedError)
-    ):
-        return ConflictError(str(err))
-    return err
 
 
 __all__ = ["OrdersApiController"]
