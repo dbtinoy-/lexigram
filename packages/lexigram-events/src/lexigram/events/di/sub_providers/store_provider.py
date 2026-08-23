@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.di import ContainerRegistrarProtocol
+    from lexigram.contracts.core.di import (
+        ContainerRegistrarProtocol,
+        ContainerResolverProtocol,
+    )
     from lexigram.events.config import EventsConfig
     from lexigram.events.stores.registry import EventStoreRegistry
 
@@ -29,7 +32,11 @@ class StoreSubProvider:
         self.snapshot_manager: Any = None
 
     async def setup(self, container: ContainerRegistrarProtocol | None = None) -> None:
-        """Create all stores based on configuration."""
+        """Create all stores based on configuration.
+
+        The container is forwarded to store factories, which resolve their
+        infrastructure dependencies (database providers) from it when present.
+        """
         from lexigram.events.constants import StoreType
         from lexigram.events.stores import InMemorySnapshotStore, SnapshotManager
         from lexigram.events.types import EventStoreBackend
@@ -37,8 +44,11 @@ class StoreSubProvider:
         backend_key = self._config.event_store_backend.value
 
         try:
-            self.event_store = self._registry.create(
-                backend_key, self._config, container
+            # Factories only resolve (never register); the runtime container
+            # always provides the resolver surface alongside the registrar.
+            factory_container = cast("ContainerResolverProtocol | None", container)
+            self.event_store = await self._registry.create(
+                backend_key, self._config, factory_container
             )
         except KeyError as exc:
             raise ValueError(f"Unknown event store backend: {backend_key!r}") from exc

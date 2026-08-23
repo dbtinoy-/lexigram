@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from lexigram.events.stores.registry import EventStoreRegistry
 
@@ -11,20 +11,22 @@ class TestEventStoreRegistry:
         registry = EventStoreRegistry()
         assert registry.keys() == []
 
-    def test_register_and_create(self) -> None:
+    @pytest.mark.asyncio
+    async def test_register_and_create(self) -> None:
         registry = EventStoreRegistry()
         mock_store = MagicMock()
-        mock_factory = MagicMock(return_value=mock_store)
+        mock_factory = AsyncMock(return_value=mock_store)
         registry.register("test", mock_factory)
 
-        result = registry.create("test", MagicMock(), MagicMock())
+        result = await registry.create("test", MagicMock(), MagicMock())
         assert result is mock_store
-        mock_factory.assert_called_once()
+        mock_factory.assert_awaited_once()
 
-    def test_create_unknown_key_raises_keyerror(self) -> None:
+    @pytest.mark.asyncio
+    async def test_create_unknown_key_raises_keyerror(self) -> None:
         registry = EventStoreRegistry()
         with pytest.raises(KeyError, match="unknown"):
-            registry.create("unknown", MagicMock(), MagicMock())
+            await registry.create("unknown", MagicMock(), MagicMock())
 
     def test_with_defaults_has_all_backends(self) -> None:
         registry = EventStoreRegistry.with_defaults()
@@ -34,10 +36,12 @@ class TestEventStoreRegistry:
         assert "mongodb" in keys
         assert "sqlite" in keys
 
-    def test_with_defaults_can_override(self) -> None:
+    @pytest.mark.asyncio
+    async def test_with_defaults_can_override(self) -> None:
         registry = EventStoreRegistry.with_defaults()
-        mock_factory = MagicMock(return_value=MagicMock())
+        mock_store = MagicMock()
+        mock_factory = AsyncMock(return_value=mock_store)
         registry.register("memory", mock_factory)
 
-        registry.create("memory", MagicMock(), MagicMock())
-        mock_factory.assert_called_once()
+        await registry.create("memory", MagicMock(), MagicMock())
+        mock_factory.assert_awaited_once()

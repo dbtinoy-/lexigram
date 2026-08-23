@@ -10,9 +10,7 @@ from typing import TYPE_CHECKING, Any
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (
-        ContainerResolverProtocol,
-    )
+    from lexigram.contracts.core.di import BootContainerProtocol
     from lexigram.events.config import EventsConfig
 
 logger = get_logger(__name__)
@@ -21,7 +19,7 @@ logger = get_logger(__name__)
 async def wire_kafka(
     config: EventsConfig,
     event_bus: Any,
-    container: ContainerResolverProtocol,
+    container: BootContainerProtocol,
 ) -> None:
     """Create a KafkaAdapter, connect it, and bridge it to the EventBusProtocol.
 
@@ -74,7 +72,7 @@ async def wire_kafka(
 async def wire_rabbitmq(
     config: EventsConfig,
     event_bus: Any,
-    container: ContainerResolverProtocol,
+    container: BootContainerProtocol,
 ) -> None:
     """Create a RabbitMQAdapter, connect it, and bridge it to the EventBusProtocol.
 

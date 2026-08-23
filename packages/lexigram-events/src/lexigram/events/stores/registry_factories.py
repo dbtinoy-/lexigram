@@ -3,16 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (
-        ContainerResolverProtocol,
-    )
+    from lexigram.contracts.core.di import ContainerResolverProtocol
     from lexigram.events.config import EventsConfig
     from lexigram.events.stores.base import AbstractEventStore
 
 
-def create_inmemory_store(
+async def create_inmemory_store(
     config: EventsConfig,
-    container: ContainerResolverProtocol,
+    container: ContainerResolverProtocol | None,
 ) -> AbstractEventStore:
     """Create an in-memory event store."""
     from lexigram.events.stores.memory import InMemoryEventStore
@@ -22,24 +20,29 @@ def create_inmemory_store(
     )
 
 
-def create_postgres_store(
+async def create_postgres_store(
     config: EventsConfig,
-    container: ContainerResolverProtocol,
+    container: ContainerResolverProtocol | None,
 ) -> AbstractEventStore:
     """Create a PostgreSQL event store using the injected DB provider."""
     from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
     from lexigram.events.stores.postgres.event_store import PostgresEventStore
 
-    provider = container.resolve_sync(DatabaseProviderProtocol)
+    if container is None:
+        raise ValueError(
+            "PostgreSQL backend requires a DI container to resolve the "
+            "database provider"
+        )
+    provider = await container.resolve(DatabaseProviderProtocol)
     pg_config = config.postgres
     if pg_config is None:
         raise ValueError("PostgreSQL backend selected but postgres config is missing")
     return PostgresEventStore(config=pg_config, provider=provider)
 
 
-def create_mongodb_store(
+async def create_mongodb_store(
     config: EventsConfig,
-    container: ContainerResolverProtocol,
+    container: ContainerResolverProtocol | None,
 ) -> AbstractEventStore:
     """Create a MongoDB event store."""
     from lexigram.contracts.data import DocumentStoreProtocol
@@ -48,15 +51,20 @@ def create_mongodb_store(
     mongo_config = config.mongodb
     if mongo_config is None:
         raise ValueError("MongoDB backend selected but mongodb config is missing")
-    document_store = container.resolve_sync(DocumentStoreProtocol)
+    if container is None:
+        raise ValueError(
+            "MongoDB backend requires a DI container to resolve the document store"
+        )
+    document_store = await container.resolve(DocumentStoreProtocol)
     return MongoDBEventStore(  # type: ignore[abstract]
-        document_store=document_store, config=mongo_config,
+        document_store=document_store,
+        config=mongo_config,
     )
 
 
-def create_sqlite_store(
+async def create_sqlite_store(
     config: EventsConfig,
-    container: ContainerResolverProtocol,
+    container: ContainerResolverProtocol | None,
 ) -> AbstractEventStore:
     """Create a SQLite event store.
 

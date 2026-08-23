@@ -1,33 +1,33 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
+from lexigram.events.stores.base import AbstractEventStore
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (
-        ContainerResolverProtocol,
-    )
+    from lexigram.contracts.core.di import ContainerResolverProtocol
     from lexigram.events.config import EventsConfig
-    from lexigram.events.stores.base import AbstractEventStore
 
 logger = get_logger(__name__)
 
-# Type alias for store factory callables
-_StoreFactoryCallable = Callable[..., Any]
+# Type alias for store factory callables (async-first: factories may resolve
+# their infrastructure dependencies from the container)
+_StoreFactoryCallable = Callable[..., Awaitable[AbstractEventStore]]
 
 
 class EventStoreRegistry:
-    """Registry that maps EventStoreBackend keys to store factory callables.
+    """Registry that maps EventStoreBackend keys to async store factories.
 
     Provides a clean alternative to if/elif chains for store dispatch.
-    Factories are callables that accept (config, container) and return an EventStoreBase.
+    Factories are async callables that accept (config, container) and
+    return an AbstractEventStore.
 
     Usage::
 
         registry = EventStoreRegistry.with_defaults()
-        store = registry.create("postgres", config, container)
+        store = await registry.create("postgres", config, container)
     """
 
     def __init__(self) -> None:
@@ -60,18 +60,19 @@ class EventStoreRegistry:
         """
         self._factories[key] = factory
 
-    def create(
+    async def create(
         self,
         key: str,
         config: EventsConfig,
-        container: ContainerResolverProtocol,
+        container: ContainerResolverProtocol | None,
     ) -> AbstractEventStore:
         """Create a store for the given backend key.
 
         Args:
             key: The EventStoreBackend value string.
             config: The EventsConfig instance.
-            container: The DI container resolver.
+            container: The DI container resolver; factories that resolve
+                infrastructure from it require it to be present.
 
         Returns:
             An AbstractEventStore instance.
@@ -87,7 +88,7 @@ class EventStoreRegistry:
                 f"Available: {available}"
             )
         logger.debug("creating_event_store", backend=key)
-        store: AbstractEventStore = factory(config, container)
+        store: AbstractEventStore = await factory(config, container)
         return store
 
     def keys(self) -> list[str]:

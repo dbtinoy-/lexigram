@@ -181,8 +181,12 @@ class EventsProvider(Provider):
         if event_bus is None:
             return
 
+        # Wirers register connected adapters as singletons, so they need the
+        # full boot container (the runtime object always provides it).
         registry = AdapterRegistry.with_defaults()
-        await registry.wire_all(self._config, event_bus, container)
+        await registry.wire_all(
+            self._config, event_bus, cast("BootContainerProtocol", container)
+        )
 
     async def shutdown(self) -> None:
         """Shutdown all components."""

@@ -12,15 +12,13 @@ from typing import TYPE_CHECKING, Any
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (
-        ContainerResolverProtocol,
-    )
+    from lexigram.contracts.core.di import BootContainerProtocol
     from lexigram.events.config import EventsConfig
 
 logger = get_logger(__name__)
 
 _AdapterWirer = Callable[
-    ["EventsConfig", Any, "ContainerResolverProtocol"], Coroutine[Any, Any, None]
+    ["EventsConfig", Any, "BootContainerProtocol"], Coroutine[Any, Any, None]
 ]
 
 
@@ -66,7 +64,7 @@ class AdapterRegistry:
         self,
         config: EventsConfig,
         event_bus: Any,
-        container: ContainerResolverProtocol,
+        container: BootContainerProtocol,
     ) -> None:
         """Wire all adapters whose config is present.
 
@@ -76,7 +74,8 @@ class AdapterRegistry:
         Args:
             config: The EventsConfig instance.
             event_bus: The resolved EventBusProtocol instance.
-            container: The DI container resolver.
+            container: The boot-phase DI container (wirers register the
+                connected adapter as a singleton).
         """
         for key, wirer in self._wirers.items():
             adapter_config = getattr(config, key, None)
