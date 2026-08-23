@@ -188,12 +188,23 @@ class TestValidationMiddleware:
 
 
 class TestCachingMiddleware:
-    """Tests for CachingMiddleware cache-aside behavior."""
+    """Tests for CachingMiddleware cache-aside behavior.
+
+    The fake caches honor the ``CacheBackendProtocol`` contract:
+    ``get()`` returns ``Result[Any | None, CacheError]`` — ``Ok(None)``
+    for a miss — and ``set()`` returns ``Result[None, CacheError]``.
+    """
+
+    @staticmethod
+    def _ok(value: object) -> Any:
+        from lexigram.result import Ok
+
+        return Ok(value)
 
     @pytest.mark.asyncio
     async def test_cache_miss_computes_and_stores(self) -> None:
         cache = AsyncMock()
-        cache.get = AsyncMock(return_value=None)
+        cache.get = AsyncMock(return_value=self._ok(None))
         cache.set = AsyncMock()
         handler = AsyncMock(return_value="computed")
 
@@ -208,10 +219,10 @@ class TestCachingMiddleware:
     @pytest.mark.asyncio
     async def test_cache_hit_skips_handler(self) -> None:
         cache = AsyncMock()
-        cache.get = AsyncMock(return_value="cached_value")
+        cache.get = AsyncMock(return_value=self._ok("cached_value"))
         handler = AsyncMock(return_value="fresh")
 
-        mw = CachingMiddleware(key_func=lambda ctx: "k", cache=cache)
+        mw = CachingMiddleware(key_func=lambda _ctx: "k", cache=cache)
         result = await mw("x", handler)
 
         assert result == "cached_value"
@@ -221,8 +232,10 @@ class TestCachingMiddleware:
     async def test_different_keys_separate_entries(self) -> None:
         cache_store: dict[str, object] = {}
 
-        async def mock_get(key: str) -> object | None:
-            return cache_store.get(key)
+        async def mock_get(key: str) -> Any:
+            from lexigram.result import Ok
+
+            return Ok(cache_store.get(key))
 
         async def mock_set(key: str, value: object, ttl: float = 60.0) -> None:
             cache_store[key] = value
@@ -251,10 +264,10 @@ class TestCachingMiddleware:
     @pytest.mark.asyncio
     async def test_custom_ttl(self) -> None:
         cache = AsyncMock()
-        cache.get = AsyncMock(return_value=None)
+        cache.get = AsyncMock(return_value=self._ok(None))
         cache.set = AsyncMock()
         handler = AsyncMock(return_value="v")
 
-        mw = CachingMiddleware(key_func=lambda c: "k", cache=cache, ttl=120.0)
+        mw = CachingMiddleware(key_func=lambda _c: "k", cache=cache, ttl=120.0)
         await mw("x", handler)
         cache.set.assert_called_once_with("k", "v", ttl=120.0)

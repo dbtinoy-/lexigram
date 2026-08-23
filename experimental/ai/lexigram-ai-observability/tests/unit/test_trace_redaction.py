@@ -62,7 +62,12 @@ class TestAITracerRedaction:
     async def test_on_agent_action_with_policy_redacts_nested_secrets(
         self, mock_tracer: MagicMock
     ) -> None:
-        """Test nested secret-shaped keys in agent actions are redacted."""
+        """Secret-shaped keys in agent actions are redacted.
+
+        ``credentials`` is itself a denylisted token, so the whole subtree
+        is masked (DefaultRedactor contract) — strictly stronger than
+        recursing and revealing the nested structure.
+        """
         span = MagicMock()
         mock_tracer.get_current_span.return_value = span
         tracer = AITracer(tracer=mock_tracer, redaction_policy=DefaultRedactor())
@@ -72,7 +77,7 @@ class TestAITracerRedaction:
 
         assert span.add_event.call_args[0] == (
             "agent.action",
-            {"tool": "search", "credentials": {"api_key": "<redacted>"}},
+            {"tool": "search", "credentials": "<redacted>"},
         )
 
     async def test_on_agent_finish_with_policy_redacts_list_items(

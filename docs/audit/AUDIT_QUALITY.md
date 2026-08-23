@@ -17,14 +17,14 @@
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 236 ms | `uv run ruff check .` |
-| `Mypy` | **PASS** | 0 | 44828 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 237 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 42770 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `236 ms`
+- Duration: `237 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -36,7 +36,7 @@ All checks passed!
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `44828 ms`
+- Duration: `42770 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
