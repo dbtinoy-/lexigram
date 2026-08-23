@@ -60,7 +60,9 @@ class RbacApiController(Controller):
         self._articles = articles
 
     @post("/api/login")
-    async def login(self, request: Request) -> Result[JSONResponse, ValidationError]:
+    async def login(
+        self, request: Request
+    ) -> Result[JSONResponse, ValidationError | NotFoundError]:
         """Log in as one of the seeded personas."""
         data = json_loads(await request.body())
         persona = str(data.get("persona", ""))
