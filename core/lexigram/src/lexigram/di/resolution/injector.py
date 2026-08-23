@@ -3,7 +3,7 @@ from __future__ import annotations
 """Dependency injector for class instantiation with DI."""
 
 import sys
-from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Union, cast, get_args, get_origin
 
 from lexigram.contracts.exceptions import (
     CircularDependencyError,
@@ -169,7 +169,7 @@ class DependencyInjector:
             # Filter out NoneType
             filtered = [arg for arg in args if arg is not type(None)]
             if len(filtered) == 1:
-                return filtered[0]
+                return cast("type", filtered[0])
         return t
 
 

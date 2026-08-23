@@ -2,15 +2,31 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any
 
-if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
-
+from lexigram.admin.controllers.resource.meta import ResourceMeta
 
 
 class ResourceRouteMixin:
     """Route registration."""
+
+    # Host attributes provided by sibling mixins on ResourceController.
+    meta: ResourceMeta
+
+    list_view: Any
+    create_form: Any
+    create: Any
+    bulk_action: Any
+    bulk_delete_confirm: Any
+    bulk_purge_confirm: Any
+    bulk_restore_confirm: Any
+    import_example: Any
+    import_report: Any
+    detail: Any
+    edit_form: Any
+    delete_confirm: Any
+    update: Any
+    delete: Any
 
     def get_routes(self) -> list:
         """Get Starlette routes for this controller."""

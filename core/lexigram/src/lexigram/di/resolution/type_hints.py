@@ -11,7 +11,15 @@ from collections import OrderedDict
 from dataclasses import dataclass
 import inspect
 import sys
-from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin, get_type_hints
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from lexigram.di.markers import Inject, Named, Qualifier
 
@@ -35,21 +43,25 @@ class InjectableParam:
         return self.has_default
 
 
-class BoundedCache(OrderedDict):
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
+
+
+class BoundedCache(OrderedDict[_KT, _VT]):
     """OrderedDict-based LRU cache with bounded size."""
 
     def __init__(self, maxsize: int = 1024) -> None:
         super().__init__()
         self.maxsize = maxsize
 
-    def __setitem__(self, key: Any, value: Any) -> None:
+    def __setitem__(self, key: _KT, value: _VT) -> None:
         if key in self:
             self.move_to_end(key)
         super().__setitem__(key, value)
         if len(self) > self.maxsize:
             self.popitem(last=False)
 
-    def get_or_compute(self, key: Any, compute_fn: Callable[[Any], Any]) -> Any:
+    def get_or_compute(self, key: _KT, compute_fn: Callable[[_KT], _VT]) -> _VT:
         """Get from cache or compute and store."""
         if key in self:
             self.move_to_end(key)
@@ -70,7 +82,7 @@ class TypeHintResolverImpl:
     Call :meth:`configure` once at application start if a custom size is needed.
     """
 
-    _global_cache: BoundedCache = BoundedCache(
+    _global_cache: BoundedCache[type, dict[str, InjectableParam]] = BoundedCache(
         maxsize=2048,
     )
 
@@ -84,7 +96,9 @@ class TypeHintResolverImpl:
         Args:
             cache_size: New maximum number of entries for the shared LRU cache.
         """
-        cls._global_cache = BoundedCache(maxsize=cache_size)
+        cls._global_cache = BoundedCache[type, dict[str, InjectableParam]](
+            maxsize=cache_size
+        )
 
     def __init__(self) -> None:
         """Initialize the resolver with the shared class-level cache."""

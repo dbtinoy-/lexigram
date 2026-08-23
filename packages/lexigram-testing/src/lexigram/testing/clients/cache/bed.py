@@ -53,7 +53,7 @@ class CacheTestBed(TestEnvironment):
                 return provider._backends["memory"]
             return original_get_backend(backend_name)
 
-        self._cache_provider.get_backend = get_backend_with_default  # type: ignore[method-assign]
+        self._cache_provider.get_backend = get_backend_with_default
 
         assert self._cache_provider is not None
         if self.container is not None:

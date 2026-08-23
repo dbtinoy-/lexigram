@@ -16,8 +16,17 @@ _log = get_logger(__name__)
 class AdminMountControllersMixin:
     """Resolves built-in admin controllers and wires their private services."""
 
+    # Host attributes provided by AdminProvider.
+    _config: Any
+    _resources: list[Any]
+    _controllers: list[Any]
+    _mount_failures: dict[str, str]
+    _authorizer_service: Any
+    _get_csrf_service: Any
+
+
     async def _mount_controllers(
-        self: AdminProvider, resolver: Any, ctx: MountContext
+        self, resolver: Any, ctx: MountContext
     ) -> None:
         """Resolve every built-in controller, best-effort per controller.
 

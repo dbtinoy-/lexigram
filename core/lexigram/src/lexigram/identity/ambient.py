@@ -39,12 +39,15 @@ try:
 except ImportError:
 
     class _FallbackContextVar:
-        _value = Uuid4Generator()
+        _value: IdGeneratorProtocol = Uuid4Generator()
 
-        def set(self, value):
+        def set(self, value: IdGeneratorProtocol) -> IdGeneratorProtocol:
             self._value = value
+            return value
 
-        def get(self, default=None):
+        def get(
+            self, default: IdGeneratorProtocol | None = None
+        ) -> IdGeneratorProtocol:
             return self._value
 
     _FallbackContextVar.__name__ = "FallbackContextVar"

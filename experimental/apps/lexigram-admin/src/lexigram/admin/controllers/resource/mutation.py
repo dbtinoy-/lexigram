@@ -12,20 +12,30 @@ from lexigram.admin.exceptions import AdminValidationError, NotFoundError
 from lexigram.admin.state.context import AdminContextManager
 
 if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
+    from lexigram.admin.controllers.resource.meta import ResourceMeta
 
 
 class ResourceMutationMixin:
     """Create, update, delete, restore."""
 
-    async def create_form(self: ResourceController, request: Request) -> Response:
+    # Host attributes provided by sibling mixins on ResourceController.
+    meta: ResourceMeta
+    soft_delete_enabled: bool
+
+    render_form: Any
+    render_form_partial: Any
+    get_data_source: Any
+    _emit_audit: Any
+    _record_revision: Any
+
+    async def create_form(self, request: Request) -> Response:
         """Show create form."""
         async with AdminContextManager(request) as ctx:
             if ctx.is_htmx:
                 return HTMLResponse(self.render_form_partial(ctx, None))
             return HTMLResponse(self.render_form(ctx, None))
 
-    async def create(self: ResourceController, request: Request) -> Response:
+    async def create(self, request: Request) -> Response:
         """Create new resource."""
         async with AdminContextManager(request) as ctx:
             form_data = request.scope.get("admin_form_data")
@@ -82,7 +92,7 @@ class ResourceMutationMixin:
     )
 
     @classmethod
-    def _model_type(cls: type[ResourceController]) -> type | None:
+    def _model_type(cls) -> type | None:
         """Extract the concrete model bound via ``ResourceController[Model]``."""
         for klass in cls.__mro__:
             for base in getattr(klass, "__orig_bases__", ()):
@@ -93,7 +103,7 @@ class ResourceMutationMixin:
 
     @classmethod
     def _validated_model_fields(
-        cls: type[ResourceController], data: dict[str, Any]
+        cls, data: dict[str, Any]
     ) -> dict[str, Any]:
         """Coerce HTML form strings against the model and drop unknown keys.
 
@@ -118,7 +128,7 @@ class ResourceMutationMixin:
         return {k: v for k, v in cleaned.items() if k in allowed}
 
     def validate_create(
-        self: ResourceController, data: dict[str, Any]
+        self, data: dict[str, Any]
     ) -> dict[str, Any]:
         """Coerce form values and keep only declared model fields.
 
@@ -128,7 +138,7 @@ class ResourceMutationMixin:
         """
         return self._validated_model_fields(data)
 
-    async def edit_form(self: ResourceController, request: Request) -> Response:
+    async def edit_form(self, request: Request) -> Response:
         """Show edit form."""
         async with AdminContextManager(request) as ctx:
             item_id = request.path_params.get("id")
@@ -143,7 +153,7 @@ class ResourceMutationMixin:
                 return HTMLResponse(self.render_form_partial(ctx, item))
             return HTMLResponse(self.render_form(ctx, item))
 
-    async def update(self: ResourceController, request: Request) -> Response:
+    async def update(self, request: Request) -> Response:
         """Update existing resource."""
         async with AdminContextManager(request) as ctx:
             item_id = request.path_params.get("id")
@@ -202,12 +212,12 @@ class ResourceMutationMixin:
             )
 
     def validate_update(
-        self: ResourceController, item_id: Any, data: dict[str, Any]
+        self, item_id: Any, data: dict[str, Any]
     ) -> dict[str, Any]:
         """Coerce form values and keep only declared model fields."""
         return self._validated_model_fields(data)
 
-    async def delete_confirm(self: ResourceController, request: Request) -> Response:
+    async def delete_confirm(self, request: Request) -> Response:
         """Render a delete confirmation slide-over panel.
 
         Called via HTMX GET from the Delete row action. Returns an
@@ -232,13 +242,15 @@ class ResourceMutationMixin:
             pass
 
         delete_url = f"{self.meta.prefix}/{self.meta.name}/{item_id}"
+        from lexigram.admin.ui.organisms.admin_slide_over import render_delete_confirm
+
         html = render_delete_confirm(
             record_label=record_label,
             delete_url=delete_url,
         )
         return HTMLResponse(html)
 
-    async def delete(self: ResourceController, request: Request) -> Response:
+    async def delete(self, request: Request) -> Response:
         """Delete resource (soft or hard depending on soft_delete_enabled)."""
         async with AdminContextManager(request) as ctx:
             item_id = request.path_params.get("id")
@@ -277,7 +289,7 @@ class ResourceMutationMixin:
                 status_code=302,
             )
 
-    async def restore(self: ResourceController, request: Request) -> Response:
+    async def restore(self, request: Request) -> Response:
         """Restore a soft-deleted resource (clears deleted_at).
 
         Only available when soft_delete_enabled is True.

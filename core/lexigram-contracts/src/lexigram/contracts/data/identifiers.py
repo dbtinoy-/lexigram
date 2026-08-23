@@ -391,8 +391,8 @@ __all__ = [
     "QualifiedTable",
     "Schema",
     "Table",
-    "validate_identifier",
     "column",
     "schema",
     "table",
+    "validate_identifier",
 ]

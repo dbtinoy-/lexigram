@@ -80,11 +80,11 @@ class Scope:
             return await self._root.resolve(service_type)
 
         if descriptor.scope == ServiceScope.TRANSIENT:
-            return await self._create_instance(descriptor)
+            return cast("T", await self._create_instance(descriptor))
 
         # Scoped — cache per scope
         if service_type in self._cache:
-            return self._cache[service_type]
+            return cast("T", self._cache[service_type])
 
         instance = await self._create_instance(descriptor)
         self._cache[service_type] = instance
@@ -96,7 +96,7 @@ class Scope:
         ):
             self._disposables.append(instance)
 
-        return instance
+        return cast("T", instance)
 
     def create_scope(self) -> Scope:
         """K-02: Create a child scope nested within this scope.
@@ -148,11 +148,14 @@ class Scope:
             This method is for **framework-internal use only**. Applications
             should use constructor injection instead of calling this directly.
         """
-        return await self._root._invoker.call(
-            func,
-            *args,
-            strategies=strategies,
-            **kwargs,
+        return cast(
+            "T",
+            await self._root._invoker.call(
+                func,
+                *args,
+                strategies=strategies,
+                **kwargs,
+            ),
         )
 
     async def call(

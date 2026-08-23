@@ -62,7 +62,7 @@ class GraphValidator:
 
         try:
             deps = self._type_hint_resolver.get_type_dependencies(
-                descriptor.implementation,  # type: ignore[arg-type]
+                descriptor.implementation,
             )
             if deps:
                 self._dependency_graph[descriptor.service_type] = list(deps)

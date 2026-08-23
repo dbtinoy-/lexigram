@@ -7,13 +7,13 @@ from concurrent.futures import ThreadPoolExecutor
 import contextvars
 import functools
 import inspect
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from lexigram.concurrency.config import DispatcherConfig
 from lexigram.concurrency.exceptions import DispatcherError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
 T = TypeVar("T")
 
@@ -89,7 +89,7 @@ class DispatcherImpl:
         coro = func(*args, **kwargs)
         if timeout is not None:
             return await asyncio.wait_for(coro, timeout=timeout)  # type: ignore[arg-type]
-        return await coro  # type: ignore[misc]
+        return await cast("Awaitable[T]", coro)
 
     async def _run_sync(
         self,

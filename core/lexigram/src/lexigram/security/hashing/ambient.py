@@ -40,12 +40,13 @@ try:
 except ImportError:
 
     class _FallbackContextVar:
-        _value = Sha256Hasher()
+        _value: HasherProtocol = Sha256Hasher()
 
-        def set(self, value):
+        def set(self, value: HasherProtocol) -> HasherProtocol:
             self._value = value
+            return value
 
-        def get(self, default=None):
+        def get(self, default: HasherProtocol | None = None) -> HasherProtocol:
             return self._value
 
     _FallbackContextVar.__name__ = "FallbackContextVar"

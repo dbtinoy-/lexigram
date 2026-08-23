@@ -40,7 +40,7 @@ class SyncBridge:
         else:
             raise TypeError(f"Expected coroutine or async function, got {type(coro)}")
 
-        return SyncBridge._run_coro(actual_coro)
+        return cast("T", SyncBridge._run_coro(actual_coro))
 
     @staticmethod
     def _run_coro(coro: Awaitable[T]) -> T:

@@ -12,7 +12,7 @@ from contextlib import contextmanager
 import contextvars
 from dataclasses import dataclass
 import time
-from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar, cast
 
 from lexigram.contracts.core.trace_context import (
     new_span_id,
@@ -56,7 +56,7 @@ class ContextVarRegistry(Registry[str, contextvars.ContextVar[Any]]):
 
     def _validate(self, key: str, value: contextvars.ContextVar[Any]) -> None:
         if not isinstance(value, contextvars.ContextVar):
-            msg = f"Expected ContextVar, got {type(value).__name__} for key '{key}'"
+            msg = f"Expected ContextVar, got {type(value).__name__} for key '{key}'"  # type: ignore[unreachable]
             raise TypeError(msg)
 
     # -- registration ------------------------------------------------------
@@ -74,7 +74,7 @@ class ContextVarRegistry(Registry[str, contextvars.ContextVar[Any]]):
     def get_typed(self, key: ContextKey[T], default: T | None = None) -> T | None:
         """Read the current value for a typed key."""
         effective = default if default is not None else key.default
-        return self._read(key.name, effective)
+        return cast("T | None", self._read(key.name, effective))
 
     def set_typed(self, key: ContextKey[T], value: T) -> contextvars.Token[T | None]:
         """Write a value for a typed key; returns a reset token."""

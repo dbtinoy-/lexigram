@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any, Generic
 
 from lexigram.admin.controllers.resource.meta import ResourceMeta, T
 from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
@@ -10,22 +10,24 @@ from starlette.requests import Request
 
 from lexigram.logging import get_logger
 
-if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
-
 logger = get_logger(__name__)
 
 
 
-class ResourceCoreMixin:
+class ResourceCoreMixin(Generic[T]):
     """Shared state, audit, and revisions."""
 
     meta: ResourceMeta
 
+    _data_source: DataSourceProtocol[T] | None
+    _audit_logger: Any
+    _revision_service: Any
+
     # When True, DELETE calls soft-delete (sets deleted_at) instead of hard-delete.
     # Use RepositoryDataSource(soft_delete_enabled=True) to filter them in queries.
     soft_delete_enabled: bool = False
-    def __init__(self: ResourceController,
+    def __init__(
+        self,
         data_source: DataSourceProtocol[T] | None = None,
         meta: ResourceMeta | None = None,
     ):
@@ -37,7 +39,7 @@ class ResourceCoreMixin:
         # Optional revision service — set via set_revision_service() or DI
         self._revision_service: Any = None
 
-    def set_audit_logger(self: ResourceController, audit_logger: Any) -> None:
+    def set_audit_logger(self, audit_logger: Any) -> None:
         """Attach an audit logger for CRUD event tracking.
 
         Args:
@@ -45,7 +47,7 @@ class ResourceCoreMixin:
         """
         self._audit_logger = audit_logger
 
-    def set_revision_service(self: ResourceController, revision_service: Any) -> None:
+    def set_revision_service(self, revision_service: Any) -> None:
         """Attach a :class:`~lexigram.admin.services.revisions.RevisionService`.
 
         When set, a snapshot is recorded after every successful create or
@@ -56,7 +58,7 @@ class ResourceCoreMixin:
             revision_service: ``RevisionService`` instance.
         """
         self._revision_service = revision_service
-    async def _record_revision(self: ResourceController,
+    async def _record_revision(self,
         request: Request,
         resource_id: str,
         data: dict[str, Any],
@@ -89,7 +91,7 @@ class ResourceCoreMixin:
                 getattr(self.meta, "name", ""),
                 resource_id,
             )
-    async def _emit_audit(self: ResourceController,
+    async def _emit_audit(self,
         request: Request,
         action: str,
         item_id: str = "",

@@ -16,8 +16,18 @@ _log = get_logger(__name__)
 class AdminMountCoreMixin:
     """Mount phases that resolve admin resources and settings plumbing."""
 
+    # Host attributes provided by AdminProvider.
+    _config: Any
+    _resources: list[Any]
+    _controllers: list[Any]
+    _mount_failures: dict[str, str]
+    _authorizer_service: Any
+
+    _get_csrf_service: Any
+
+
     async def _mount_resources(
-        self: AdminProvider, resolver: Any, ctx: MountContext
+        self, resolver: Any, ctx: MountContext
     ) -> None:
         """Resolve registered resource classes into named instances.
 
@@ -65,7 +75,7 @@ class AdminMountCoreMixin:
             )
 
     async def _mount_settings_service(
-        self: AdminProvider, resolver: Any, ctx: MountContext
+        self, resolver: Any, ctx: MountContext
     ) -> None:
         """Create the shared settings service for runtime theme overrides.
 

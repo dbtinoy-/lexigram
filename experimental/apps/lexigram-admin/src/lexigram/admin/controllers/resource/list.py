@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
-from lexigram.admin.controllers.resource.meta import T
+from lexigram.admin.controllers.resource.meta import ResourceMeta, T
 from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
 from lexigram.admin.data.data_source import QueryResult
 from lexigram.admin.data.query import QuerySpec
@@ -23,7 +23,12 @@ if TYPE_CHECKING:
 class ResourceListMixin:
     """List view, query building, and list rendering."""
 
-    async def list_view(self: ResourceController, request: Request) -> Response:
+    # Host attributes provided by sibling mixins on ResourceController.
+    meta: ResourceMeta
+
+    get_data_source: Any
+
+    async def list_view(self, request: Request) -> Response:
         """List resources with pagination and filtering."""
         async with AdminContextManager(request) as ctx:
             # Parse URL state
@@ -44,7 +49,7 @@ class ResourceListMixin:
             # Return full page
             return HTMLResponse(self.render_list(ctx, result, url_state))
 
-    def _build_query(self: ResourceController, state: URLState) -> QuerySpec:
+    def _build_query(self, state: URLState) -> QuerySpec:
         """Build QuerySpec from URL state."""
         qs = QuerySpec()
 
@@ -76,7 +81,7 @@ class ResourceListMixin:
                 qs = qs.with_where_eq(field, value)
 
         return qs
-    def render_list(self: ResourceController,
+    def render_list(self,
         ctx: AdminContext,
         result: QueryResult[T],
         state: URLState,
@@ -96,7 +101,7 @@ class ResourceListMixin:
 </html>
 """
 
-    def render_list_partial(self: ResourceController,
+    def render_list_partial(self,
         ctx: AdminContext,
         result: QueryResult[T],
         state: URLState,

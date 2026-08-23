@@ -147,7 +147,7 @@ class ServiceRegistry:
 
         self.add(
             ServiceDescriptor(
-                service_type=key,  # type: ignore[arg-type]
+                service_type=key,
                 implementation=implementation,
                 scope=ServiceScope.SINGLETON,
                 instance=instance if is_instantiated else None,
@@ -182,7 +182,7 @@ class ServiceRegistry:
             self._validate_registration(service_type, factory)
         self.add(
             ServiceDescriptor(
-                service_type=key,  # type: ignore[arg-type]
+                service_type=key,
                 implementation=factory,
                 scope=ServiceScope.SCOPED,
             ),

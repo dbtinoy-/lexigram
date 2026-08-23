@@ -2,24 +2,28 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
+from lexigram.admin.controllers.resource.meta import ResourceMeta
 from lexigram.admin.state.context import AdminContextManager
 from lexigram.admin.ui.organisms.admin_slide_over import render_bulk_delete_confirm
 from lexigram.ui import el, render_to_string
 
-if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
 
 
 
 class ResourceBulkMixin:
     """Bulk action confirmations and execution."""
 
-    async def bulk_delete_confirm(self: ResourceController, request: Request) -> Response:
+    # Host attributes provided by sibling mixins on ResourceController.
+    meta: ResourceMeta
+
+    get_data_source: Any
+
+    async def bulk_delete_confirm(self, request: Request) -> Response:
         """Render a bulk delete confirmation slide-over panel.
 
         Called via HTMX GET from a BulkAction button. Reads the selected
@@ -36,7 +40,7 @@ class ResourceBulkMixin:
         )
         return HTMLResponse(html)
 
-    async def bulk_purge_confirm(self: ResourceController, request: Request) -> Response:
+    async def bulk_purge_confirm(self, request: Request) -> Response:
         """Render a bulk purge confirmation slide-over panel.
 
         Called via HTMX GET from a PurgeBulkAction button. Reads the
@@ -64,7 +68,7 @@ class ResourceBulkMixin:
         )
         return HTMLResponse(html)
 
-    async def bulk_restore_confirm(self: ResourceController, request: Request) -> Response:
+    async def bulk_restore_confirm(self, request: Request) -> Response:
         """Render a bulk restore confirmation slide-over panel.
 
         Called via HTMX GET from a RestoreBulkAction button. Reads the
@@ -98,7 +102,7 @@ class ResourceBulkMixin:
             ),
         )
         return HTMLResponse(html)
-    async def bulk_action(self: ResourceController, request: Request) -> Response:
+    async def bulk_action(self, request: Request) -> Response:
         """Handle bulk actions."""
         async with AdminContextManager(request) as ctx:
             form_data = request.scope.get("admin_form_data")
@@ -127,7 +131,7 @@ class ResourceBulkMixin:
                 status_code=302,
             )
 
-    async def execute_bulk_action(self: ResourceController, action: str, ids: list[str]) -> str:
+    async def execute_bulk_action(self, action: str, ids: list[str]) -> str:
         """Execute bulk action. Override to add custom actions.
 
         When the record count meets or exceeds the configured
@@ -157,7 +161,7 @@ class ResourceBulkMixin:
 
         return f"Unknown action: {action}"
 
-    def _should_dispatch_via_tasks(self: ResourceController, count: int) -> bool:
+    def _should_dispatch_via_tasks(self, count: int) -> bool:
         """Check if the bulk count exceeds the tasks threshold."""
         from lexigram.admin.integrations import get as get_integration
 
@@ -168,7 +172,7 @@ class ResourceBulkMixin:
             return False
         return count >= tasks.threshold
 
-    async def _dispatch_via_tasks(self: ResourceController, action: str, ids: list[str]) -> str:
+    async def _dispatch_via_tasks(self, action: str, ids: list[str]) -> str:
         """Dispatch a bulk action through the tasks integration."""
         from lexigram.admin.integrations import get as get_integration
 

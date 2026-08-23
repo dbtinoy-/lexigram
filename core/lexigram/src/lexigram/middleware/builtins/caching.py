@@ -41,7 +41,8 @@ class CachingMiddleware:
     async def __call__(self, context: Any, next_handler: NextHandler) -> Any:
         """Return cached result if available, otherwise compute and cache."""
         cache_key = self._key_func(context)
-        cached = await self._cache.get(cache_key)
+        stored = await self._cache.get(cache_key)
+        cached = stored.unwrap() if stored.is_ok() else None
         if cached is not None:
             logger.debug("middleware_cache_hit", key=cache_key)
             return cached

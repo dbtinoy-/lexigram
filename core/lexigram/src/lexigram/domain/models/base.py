@@ -437,8 +437,12 @@ class DomainModel:
         if not _dc.is_dataclass(cls):
             return cls(**data)
 
+        # Intermediate variable keeps the except below reachable for mypy
+        # (it otherwise narrows get_type_hints() to non-raising after the
+        # dataclass guard, but forward refs raise NameError at runtime).
+        hints_cache = cls._cached_type_hints  # type: ignore[unreachable]  # noqa: ERA001
         try:
-            hints = cls._cached_type_hints or get_type_hints(cls)
+            hints = hints_cache or get_type_hints(cls)
         except (NameError, TypeError, ValueError):
             return cls(**data)
 

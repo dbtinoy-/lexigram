@@ -7,12 +7,9 @@ all information about a registered service in a single structure.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from lexigram.contracts.core.scopes import ServiceScope
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,8 +20,10 @@ class ServiceDescriptor:
     All services are stored as descriptors in the registry.
 
     Attributes:
-        service_type: The abstract type (interface/protocol)
-        implementation: The concrete type or factory callable
+        service_type: The abstract type (interface/protocol). Named
+            registrations store a ``(type, name)`` tuple as the key.
+        implementation: The concrete type, factory callable, or a
+            pre-built instance (stored by some named registrations)
         scope: How instances are managed (transient/singleton/scoped)
         instance: Cached instance for singletons (set after first resolution)
         module_owner: The name of the module that registered this service.
@@ -33,8 +32,8 @@ class ServiceDescriptor:
             module-aware visibility enforcement.
     """
 
-    service_type: type | str
-    implementation: type | Callable
+    service_type: type | str | tuple[type, str]
+    implementation: Any
     scope: ServiceScope
     instance: Any = field(default=None, compare=False)
     is_instantiated: bool = field(default=False, compare=False)

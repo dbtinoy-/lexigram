@@ -686,8 +686,8 @@ exclude = [
     "core/lexigram-contracts/src/lexigram/__init__.py",
     "experimental/ai/lexigram-ai/src/lexigram/__init__.py",
     "experimental/apps/lexigram-admin/src/lexigram/__init__.py",
-    "tests/.*",
-    "docs/.*",
+    "^tests/",
+    "^docs/",
     "alembic/.*",
 ]
 

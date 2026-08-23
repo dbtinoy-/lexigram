@@ -16,8 +16,17 @@ _log = get_logger(__name__)
 class AdminMountContributorsMixin:
     """Mount phases that wire contributors, the router and app state."""
 
+    # Host attributes provided by AdminProvider.
+    _config: Any
+    _resources: list[Any]
+    _controllers: list[Any]
+    _mount_failures: dict[str, str]
+    _authorizer_service: Any
+    _get_csrf_service: Any
+
+
     async def _mount_contributors(
-        self: AdminProvider, resolver: Any, ctx: MountContext
+        self, resolver: Any, ctx: MountContext
     ) -> None:
         """Discover contributor resources and wire their data sources.
 
@@ -159,7 +168,7 @@ class AdminMountContributorsMixin:
             _log.warning("admin.contributors_resource_collection_failed", exc_info=True)
 
     async def _mount_integration(
-        self: AdminProvider, container: Any, ctx: MountContext
+        self, container: Any, ctx: MountContext
     ) -> None:
         """Build the admin router and integrate contributor routes.
 
@@ -194,7 +203,7 @@ class AdminMountContributorsMixin:
             self._mount_failures["route_integrator"] = str(exc)
 
     async def _mount_sse_widgets(
-        self: AdminProvider, container: Any, ctx: MountContext
+        self, container: Any, ctx: MountContext
     ) -> None:
         """Register the SSE endpoint for live widget delivery.
 
@@ -234,7 +243,7 @@ class AdminMountContributorsMixin:
             _log.warning("admin.sse_widgets_route_skipped", reason=str(exc))
 
     async def _mount_app_state(
-        self: AdminProvider, app: Any, ctx: MountContext
+        self, app: Any, ctx: MountContext
     ) -> None:
         """Mount the router and expose nav/registry state on both apps.
 

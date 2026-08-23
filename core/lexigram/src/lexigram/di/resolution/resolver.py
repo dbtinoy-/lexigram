@@ -119,7 +119,9 @@ class ServiceResolver:
                 service=name,
             )
 
-        name = getattr(service_type, "__name__", repr(service_type))
+        # Defensive: ServiceScope has exactly three members, so this is
+        # statically unreachable — but guards against future enum additions.
+        name = getattr(service_type, "__name__", repr(service_type))  # type: ignore[unreachable]
         raise UnresolvableDependencyError(
             f"No handler for service scope {descriptor.scope!r} on '{name}'. "
             "This is a framework bug — please file an issue.",

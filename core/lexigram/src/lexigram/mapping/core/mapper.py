@@ -13,6 +13,7 @@ from typing import (
     Annotated,
     Any,
     TypeVar,
+    cast,
     get_args,
     get_origin,
     get_type_hints,
@@ -203,7 +204,7 @@ class ObjectMapperImpl:
         if validate:
             self._validate_result(result, validator)
 
-        return result
+        return cast("D", result)
 
     def map_many(
         self,
@@ -373,7 +374,7 @@ class ObjectMapperImpl:
         if validate:
             self._validate_result(result, validator)
 
-        return result
+        return cast("D", result)
 
     def auto_map_many(
         self,
@@ -454,10 +455,13 @@ class ObjectMapperImpl:
 
 def _extract_fields(obj: Any) -> dict[str, Any]:
     """Extract a dict of field values from an arbitrary object."""
+    result: dict[str, Any]
     if hasattr(obj, "model_dump"):
-        return obj.model_dump()
-    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        return dataclasses.asdict(obj)
-    if isinstance(obj, dict):
-        return obj
-    return vars(obj)
+        result = obj.model_dump()
+    elif dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        result = dataclasses.asdict(obj)
+    elif isinstance(obj, dict):
+        result = obj
+    else:
+        result = vars(obj)
+    return result

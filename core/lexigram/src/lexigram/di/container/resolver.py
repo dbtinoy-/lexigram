@@ -7,6 +7,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     TypeVar,
+    cast,
 )
 
 from lexigram.contracts.exceptions.provider import ModuleVisibilityError
@@ -130,7 +131,7 @@ class ContainerResolverImpl:
                     service_type=service_type.__name__,
                     hint=hint,
                 )
-        return await self._service_resolver.resolve(service_type)
+        return cast("T", await self._service_resolver.resolve(service_type))
 
     def resolve_sync(self, service_type: type[T]) -> T:
         """Synchronously resolve an already-instantiated singleton.
@@ -150,7 +151,7 @@ class ContainerResolverImpl:
 
         descriptor = self._registry.get(service_type)
         if descriptor is not None and descriptor.is_instantiated:
-            return descriptor.instance
+            return cast("T", descriptor.instance)
 
         if self._parent_resolver:
             return self._parent_resolver.resolve_sync(service_type)
@@ -226,7 +227,7 @@ class ContainerResolverImpl:
         **kwargs: Any,
     ) -> T:
         """Call a function with dependency injection (Protocol implementation)."""
-        return await self._call(func, *args, **kwargs)
+        return cast("T", await self._call(func, *args, **kwargs))
 
     async def _call(
         self,
@@ -236,11 +237,14 @@ class ContainerResolverImpl:
         **kwargs: Any,
     ) -> T:
         """Call a function with automatic dependency injection."""
-        return await self._invoker.call(
-            func,
-            *args,
-            strategies=strategies,
-            **kwargs,
+        return cast(
+            "T",
+            await self._invoker.call(
+                func,
+                *args,
+                strategies=strategies,
+                **kwargs,
+            ),
         )
 
     # -- Scoping -------------------------------------------------------------

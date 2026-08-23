@@ -21,7 +21,7 @@ Example::
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from lexigram.contracts import ServiceScope
 from lexigram.contracts.exceptions import ContainerBuildError, LexigramError
@@ -397,10 +397,14 @@ class ContainerBuilder(AbstractBuilder[Container]):
         Raises:
             ContainerBuildError: If validation fails.
         """
-        errors = []
+        errors: list[str] = []
         for registration in self._registrations:
             try:
-                if not callable(registration.implementation):
+                # Statically unreachable (implementations are callables by
+                # type), but kept as a runtime guard against misuse.
+                # Cast to object so the callable() guard stays live for mypy.
+                impl = cast("object", registration.implementation)
+                if not callable(impl):
                     errors.append(
                         f"Invalid implementation for "
                         f"{registration.interface}: "

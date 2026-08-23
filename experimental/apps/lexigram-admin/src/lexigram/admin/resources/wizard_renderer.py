@@ -14,7 +14,6 @@ from lexigram.ui import el, render_to_string
 logger = get_logger(__name__)
 
 if TYPE_CHECKING:
-    from lexigram.admin.auth.services.csrf_service import AdminCsrfService
     from lexigram.admin.config import AdminConfig
     from lexigram.admin.engine.renderer import AdminRenderer
 
@@ -25,7 +24,6 @@ class WizardRendererMixin:
     resource_name: str
     _config: AdminConfig
     _renderer: AdminRenderer
-    _csrf_service: AdminCsrfService | None
     _create_field_component: Any
 
     async def render_wizard(

@@ -19,7 +19,7 @@ class ResourceImportMixin:
         """Return the configured ImportAction, or None."""
         return getattr(self, "_import_action", None)
 
-    async def import_example(self: ResourceController, request: Request) -> Response:
+    async def import_example(self, request: Request) -> Response:
         """Serve the resource's import example CSV template as a download."""
         action = self._find_import_action()
         if action is None or not action.example_csv():
@@ -37,7 +37,7 @@ class ResourceImportMixin:
             },
         )
 
-    async def import_report(self: ResourceController, request: Request) -> Response:
+    async def import_report(self, request: Request) -> Response:
         """Serve a stored failed-import report as a CSV download."""
         action = self._find_import_action()
         report_id = request.query_params.get("report_id", "")

@@ -28,8 +28,8 @@ class ModuleMetadata:
 
     name: str
 
-    providers: list[type] = field(default_factory=list)
-    """Provider classes encompassed by this module."""
+    providers: list[type | Any] = field(default_factory=list)
+    """Provider classes or pre-constructed provider instances."""
 
     imports: list[type | Any] = field(default_factory=list)
     """Module classes or :class:`DynamicModule` descriptors this module depends on."""

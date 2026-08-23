@@ -10,6 +10,7 @@ from typing import (
     Any,
     Self,
     TypeVar,
+    cast,
     overload,
 )
 
@@ -419,7 +420,7 @@ class Container(ContainerRegistrarProtocol, ContainerResolverProtocol):
         """
         descriptor = self._registry.get(service_type)
         if descriptor is not None and descriptor.is_instantiated:
-            return descriptor.instance
+            return cast("T", descriptor.instance)
 
         if self._parent:
             return self._parent.resolve_sync(service_type)
@@ -578,11 +579,14 @@ class Container(ContainerRegistrarProtocol, ContainerResolverProtocol):
         **kwargs: Any,
     ) -> T:
         """Call a function with automatic dependency injection."""
-        return await self._invoker.call(
-            func,
-            *args,
-            strategies=strategies,
-            **kwargs,
+        return cast(
+            "T",
+            await self._invoker.call(
+                func,
+                *args,
+                strategies=strategies,
+                **kwargs,
+            ),
         )
 
     async def call(
