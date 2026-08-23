@@ -6,18 +6,18 @@
 
 ## Summary
 
-- Total passed tests: 31498
-- Total failed tests: 20
-- Total skipped tests: 233
-- Total warnings: 314
-- Aggregate code coverage: 76.15%
+- Total passed tests: 31626
+- Total failed tests: 0
+- Total skipped tests: 272
+- Total warnings: 335
+- Aggregate code coverage: 76.26%
 
 - Representative commands run: 54
-- Commands passing: 44
-- Commands failing: 10
+- Commands passing: 47
+- Commands failing: 7
 - Packages with tests: 54
-- Test files: 3066
-- Test functions: 31605
+- Test files: 3215
+- Test functions: 31739
 
 ### Exit Codes Reference
 
@@ -29,60 +29,60 @@
 
 | Label | Code Coverage | Pass/Total | Failed | Skipped | Warnings | Exit Code | Duration |
 |-------|---------------|------------|---------|----------|------|-----------|----------|
-| Package tests: core/lexigram-contracts | 34.0% | 1791/1792 | 1 | 0 | 4 | 1 | 11080 ms |
-| Package tests: core/lexigram | 38.0% | 2988/2996 | 2 | 6 | 2 | 1 | 52350 ms |
-| Package tests: experimental/ai/lexigram-ai-agents | 85.0% | 402/402 | 0 | 0 | 4 | 0 | 6073 ms |
-| Package tests: experimental/ai/lexigram-ai-evaluation | 97.0% | 166/166 | 0 | 0 | 4 | 0 | 1940 ms |
-| Package tests: experimental/ai/lexigram-ai-feedback | 96.0% | 260/260 | 0 | 0 | 4 | 0 | 2256 ms |
-| Package tests: experimental/ai/lexigram-ai-governance | 88.0% | 544/544 | 0 | 0 | 29 | 0 | 4747 ms |
-| Package tests: experimental/ai/lexigram-ai-guard | 87.0% | 242/242 | 0 | 0 | 7 | 0 | 2293 ms |
-| Package tests: experimental/ai/lexigram-ai-llm | 71.0% | 949/969 | 0 | 20 | 4 | 0 | 33206 ms |
-| Package tests: experimental/ai/lexigram-ai-mcp | 51.0% | 384/384 | 0 | 0 | 4 | 0 | 3702 ms |
-| Package tests: experimental/ai/lexigram-ai-memory | 83.0% | 240/240 | 0 | 0 | 4 | 0 | 2512 ms |
-| Package tests: experimental/ai/lexigram-ai-observability | 87.0% | 260/260 | 0 | 0 | 4 | 0 | 2756 ms |
-| Package tests: experimental/ai/lexigram-ai-prompt | 87.0% | 307/307 | 0 | 0 | 4 | 0 | 2547 ms |
-| Package tests: experimental/ai/lexigram-ai-rag | 62.0% | 528/535 | 0 | 7 | 4 | 0 | 7126 ms |
-| Package tests: experimental/ai/lexigram-ai-relay-gateway | 94.0% | 551/551 | 0 | 0 | 4 | 0 | 4267 ms |
-| Package tests: experimental/ai/lexigram-ai-relay | 91.0% | 539/539 | 0 | 0 | 4 | 0 | 6014 ms |
-| Package tests: experimental/ai/lexigram-ai-session | 88.0% | 210/210 | 0 | 0 | 4 | 0 | 2518 ms |
-| Package tests: experimental/ai/lexigram-ai-skills | 78.0% | 268/268 | 0 | 0 | 6 | 0 | 2662 ms |
-| Package tests: experimental/ai/lexigram-ai-workers | 87.0% | 328/328 | 0 | 0 | 4 | 0 | 3966 ms |
-| Package tests: experimental/ai/lexigram-ai | 0.0% | 450/469 | 0 | 19 | 4 | 1 | 5368 ms |
-| Package tests: experimental/apps/lexigram-admin | 76.0% | 4596/4615 | 8 | 11 | 18 | 1 | 61752 ms |
-| Package tests: experimental/apps/lexigram-cli | 78.0% | 845/852 | 6 | 1 | 6 | 1 | 13534 ms |
-| Package tests: experimental/apps/lexigram-ui | 73.0% | 1257/1335 | 0 | 78 | 12 | 0 | 6948 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia-beat | 71.0% | 18/18 | 0 | 0 | 4 | 0 | 2691 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia-image | 92.0% | 54/54 | 0 | 0 | 4 | 0 | 2162 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia-interpolate | 87.0% | 23/23 | 0 | 0 | 4 | 0 | 1900 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia-music | 86.0% | 43/46 | 3 | 0 | 4 | 1 | 2391 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia-tts | 78.0% | 63/63 | 0 | 0 | 4 | 0 | 2388 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia-upscale | 93.0% | 42/42 | 0 | 0 | 4 | 0 | 2177 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia-video | 86.0% | 182/182 | 0 | 0 | 4 | 0 | 5530 ms |
-| Package tests: experimental/multimedia/lexigram-multimedia | 55.0% | 86/86 | 0 | 0 | 5 | 0 | 4883 ms |
-| Package tests: packages/lexigram-audit | 85.0% | 287/287 | 0 | 0 | 4 | 0 | 2600 ms |
-| Package tests: packages/lexigram-auth | 68.0% | 614/618 | 0 | 4 | 5 | 1 | 28158 ms |
-| Package tests: packages/lexigram-cache | 80.0% | 867/880 | 0 | 13 | 6 | 0 | 11267 ms |
-| Package tests: packages/lexigram-events | 63.0% | 969/984 | 0 | 15 | 6 | 1 | 12400 ms |
-| Package tests: packages/lexigram-features | 80.0% | 248/248 | 0 | 0 | 17 | 0 | 3533 ms |
-| Package tests: packages/lexigram-graph | 79.0% | 257/258 | 0 | 1 | 4 | 0 | 2386 ms |
-| Package tests: packages/lexigram-graphql | 76.0% | 519/521 | 0 | 2 | 23 | 0 | 6088 ms |
-| Package tests: packages/lexigram-http | 77.0% | 450/450 | 0 | 0 | 4 | 0 | 2917 ms |
-| Package tests: packages/lexigram-monitor | 82.0% | 349/354 | 0 | 5 | 4 | 0 | 8744 ms |
-| Package tests: packages/lexigram-nosql | 91.0% | 536/536 | 0 | 0 | 4 | 0 | 3737 ms |
-| Package tests: packages/lexigram-notification | 83.0% | 289/289 | 0 | 0 | 4 | 0 | 4964 ms |
-| Package tests: packages/lexigram-queue | 84.0% | 228/228 | 0 | 0 | 4 | 0 | 4395 ms |
-| Package tests: packages/lexigram-resilience | 74.0% | 310/310 | 0 | 0 | 4 | 0 | 19709 ms |
-| Package tests: packages/lexigram-search | 65.0% | 813/817 | 0 | 4 | 4 | 0 | 4679 ms |
-| Package tests: packages/lexigram-secrets | 58.0% | 127/127 | 0 | 0 | 4 | 0 | 1762 ms |
-| Package tests: packages/lexigram-sql | 63.0% | 1387/1394 | 0 | 7 | 10 | 0 | 15616 ms |
-| Package tests: packages/lexigram-storage | 62.0% | 453/456 | 0 | 3 | 4 | 0 | 6906 ms |
-| Package tests: packages/lexigram-tasks | 73.0% | 525/540 | 0 | 15 | 4 | 1 | 11759 ms |
-| Package tests: packages/lexigram-tenancy | 83.0% | 360/360 | 0 | 0 | 4 | 0 | 3030 ms |
-| Package tests: packages/lexigram-testing | 17.0% | 436/451 | 0 | 15 | 4 | 1 | 8415 ms |
-| Package tests: packages/lexigram-vector | 77.0% | 546/546 | 0 | 0 | 4 | 0 | 4620 ms |
-| Package tests: packages/lexigram-web | 81.0% | 1422/1429 | 0 | 7 | 6 | 0 | 13431 ms |
-| Package tests: packages/lexigram-webhook | 86.0% | 334/334 | 0 | 0 | 4 | 0 | 2880 ms |
-| Package tests: packages/lexigram-workflow | 70.0% | 556/556 | 0 | 0 | 4 | 0 | 13787 ms |
+| Package tests: core/lexigram-contracts | 34.0% | 1792/1792 | 0 | 0 | 4 | 1 | 10323 ms |
+| Package tests: core/lexigram | 39.0% | 3028/3033 | 0 | 5 | 2 | 1 | 50520 ms |
+| Package tests: experimental/ai/lexigram-ai-agents | 85.0% | 402/402 | 0 | 0 | 4 | 0 | 5803 ms |
+| Package tests: experimental/ai/lexigram-ai-evaluation | 97.0% | 167/167 | 0 | 0 | 4 | 0 | 1894 ms |
+| Package tests: experimental/ai/lexigram-ai-feedback | 96.0% | 260/260 | 0 | 0 | 4 | 0 | 2141 ms |
+| Package tests: experimental/ai/lexigram-ai-governance | 88.0% | 544/544 | 0 | 0 | 46 | 0 | 4601 ms |
+| Package tests: experimental/ai/lexigram-ai-guard | 87.0% | 242/242 | 0 | 0 | 7 | 0 | 2126 ms |
+| Package tests: experimental/ai/lexigram-ai-llm | 71.0% | 949/969 | 0 | 20 | 4 | 0 | 32731 ms |
+| Package tests: experimental/ai/lexigram-ai-mcp | 51.0% | 384/384 | 0 | 0 | 4 | 0 | 3378 ms |
+| Package tests: experimental/ai/lexigram-ai-memory | 83.0% | 240/240 | 0 | 0 | 4 | 0 | 2364 ms |
+| Package tests: experimental/ai/lexigram-ai-observability | 87.0% | 260/260 | 0 | 0 | 4 | 0 | 2601 ms |
+| Package tests: experimental/ai/lexigram-ai-prompt | 87.0% | 307/307 | 0 | 0 | 4 | 0 | 2375 ms |
+| Package tests: experimental/ai/lexigram-ai-rag | 62.0% | 528/535 | 0 | 7 | 4 | 0 | 6839 ms |
+| Package tests: experimental/ai/lexigram-ai-relay-gateway | 94.0% | 579/579 | 0 | 0 | 4 | 0 | 4114 ms |
+| Package tests: experimental/ai/lexigram-ai-relay | 91.0% | 534/534 | 0 | 0 | 4 | 0 | 5792 ms |
+| Package tests: experimental/ai/lexigram-ai-session | 88.0% | 210/210 | 0 | 0 | 4 | 0 | 2332 ms |
+| Package tests: experimental/ai/lexigram-ai-skills | 78.0% | 268/268 | 0 | 0 | 6 | 0 | 2519 ms |
+| Package tests: experimental/ai/lexigram-ai-workers | 87.0% | 328/328 | 0 | 0 | 4 | 0 | 3799 ms |
+| Package tests: experimental/ai/lexigram-ai | 0.0% | 450/469 | 0 | 19 | 4 | 1 | 5165 ms |
+| Package tests: experimental/apps/lexigram-admin | 77.0% | 4694/4705 | 0 | 11 | 18 | 0 | 55528 ms |
+| Package tests: experimental/apps/lexigram-cli | 80.0% | 851/852 | 0 | 1 | 6 | 0 | 13649 ms |
+| Package tests: experimental/apps/lexigram-ui | 73.0% | 1257/1335 | 0 | 78 | 12 | 0 | 6483 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia-beat | 71.0% | 18/18 | 0 | 0 | 4 | 0 | 2528 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia-image | 92.0% | 54/54 | 0 | 0 | 4 | 0 | 2057 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia-interpolate | 87.0% | 23/23 | 0 | 0 | 4 | 0 | 1803 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia-music | 86.0% | 47/47 | 0 | 0 | 4 | 0 | 1990 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia-tts | 78.0% | 63/63 | 0 | 0 | 4 | 0 | 2149 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia-upscale | 93.0% | 42/42 | 0 | 0 | 4 | 0 | 2047 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia-video | 86.0% | 182/182 | 0 | 0 | 4 | 0 | 5409 ms |
+| Package tests: experimental/multimedia/lexigram-multimedia | 55.0% | 86/86 | 0 | 0 | 5 | 0 | 4698 ms |
+| Package tests: packages/lexigram-audit | 85.0% | 287/287 | 0 | 0 | 4 | 0 | 2281 ms |
+| Package tests: packages/lexigram-auth | 68.0% | 614/618 | 0 | 4 | 5 | 1 | 27744 ms |
+| Package tests: packages/lexigram-cache | 80.0% | 867/880 | 0 | 13 | 6 | 0 | 10870 ms |
+| Package tests: packages/lexigram-events | 63.0% | 969/984 | 0 | 15 | 6 | 1 | 12012 ms |
+| Package tests: packages/lexigram-features | 80.0% | 248/248 | 0 | 0 | 17 | 0 | 3361 ms |
+| Package tests: packages/lexigram-graph | 79.0% | 257/258 | 0 | 1 | 4 | 0 | 2211 ms |
+| Package tests: packages/lexigram-graphql | 76.0% | 519/521 | 0 | 2 | 23 | 0 | 5881 ms |
+| Package tests: packages/lexigram-http | 78.0% | 456/456 | 0 | 0 | 8 | 0 | 2760 ms |
+| Package tests: packages/lexigram-monitor | 82.0% | 351/356 | 0 | 5 | 4 | 0 | 8467 ms |
+| Package tests: packages/lexigram-nosql | 91.0% | 536/536 | 0 | 0 | 4 | 0 | 3373 ms |
+| Package tests: packages/lexigram-notification | 83.0% | 289/289 | 0 | 0 | 4 | 0 | 4313 ms |
+| Package tests: packages/lexigram-queue | 84.0% | 231/231 | 0 | 0 | 4 | 0 | 4357 ms |
+| Package tests: packages/lexigram-resilience | 74.0% | 310/310 | 0 | 0 | 4 | 0 | 20965 ms |
+| Package tests: packages/lexigram-search | 66.0% | 813/817 | 0 | 4 | 4 | 0 | 4298 ms |
+| Package tests: packages/lexigram-secrets | 58.0% | 127/127 | 0 | 0 | 4 | 0 | 1633 ms |
+| Package tests: packages/lexigram-sql | 62.0% | 1347/1394 | 0 | 47 | 10 | 0 | 11557 ms |
+| Package tests: packages/lexigram-storage | 62.0% | 453/456 | 0 | 3 | 4 | 0 | 6617 ms |
+| Package tests: packages/lexigram-tasks | 74.0% | 525/540 | 0 | 15 | 4 | 1 | 11649 ms |
+| Package tests: packages/lexigram-tenancy | 83.0% | 360/360 | 0 | 0 | 4 | 0 | 2865 ms |
+| Package tests: packages/lexigram-testing | 17.0% | 438/453 | 0 | 15 | 4 | 1 | 7806 ms |
+| Package tests: packages/lexigram-vector | 77.0% | 525/525 | 0 | 0 | 4 | 0 | 4012 ms |
+| Package tests: packages/lexigram-web | 81.0% | 1425/1432 | 0 | 7 | 6 | 0 | 12672 ms |
+| Package tests: packages/lexigram-webhook | 86.0% | 334/334 | 0 | 0 | 4 | 0 | 2733 ms |
+| Package tests: packages/lexigram-workflow | 70.0% | 556/556 | 0 | 0 | 4 | 0 | 13587 ms |
 
 ### Execution Scope Notes
 
@@ -94,14 +94,14 @@
 - Command: `uv run pytest core/lexigram-contracts/tests -q -m not integration --cov=core/lexigram.contracts`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `11080 ms`
-- Parsed summary: `1 failed, 1791 passed, 4 warnings in 9.65s`
-- Counters: passed=1791, total=1792, failed=1, skipped=0, warnings=4, coverage=34.0%
-- Example failures: `core/lexigram-contracts/tests/unit/test_tasks_protocols.py::TestTaskProviderProtocol::test_is_runtime_checkable`
+- Duration: `10323 ms`
+- Parsed summary: `1792 passed, 4 warnings in 8.98s`
+- Counters: passed=1792, total=1792, failed=0, skipped=0, warnings=4, coverage=34.0%
+- Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:13:19 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:36:31 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [  4%]
 ........................................................................ [  8%]
 ........................................................................ [ 12%]
@@ -118,19 +118,19 @@
 - Command: `uv run pytest core/lexigram/tests -q -m not integration --cov=core/lexigram`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `52350 ms`
-- Parsed summary: `2 failed, 2988 passed, 6 skipped, 19 deselected, 2 warnings in 49.67s`
-- Counters: passed=2988, total=2996, failed=2, skipped=6, warnings=2, coverage=38.0%
-- Example failures: `core/lexigram/tests/unit/concurrency/test_task_utils.py::TestCreateTrackedTask::test_exception_in_task_is_logged`, `core/lexigram/tests/unit/test_config_lexigram.py::TestConfigSystem::test_base_config_load_default`
+- Duration: `50520 ms`
+- Parsed summary: `3028 passed, 5 skipped, 19 deselected, 2 warnings in 47.95s`
+- Counters: passed=3028, total=3033, failed=0, skipped=5, warnings=2, coverage=39.0%
+- Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:13:30 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:36:41 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [  2%]
 ........................................................................ [  4%]
 ........................................................................ [  7%]
-..........................F............................................. [  9%]
-........................................................................ [ 12%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
 ........................................................................ [ 14%]
 ........................................................................ [ 16%]
 ....................................................
@@ -142,14 +142,14 @@
 - Command: `uv run pytest experimental/ai/lexigram-ai-agents/tests -q -m not integration --cov=experimental/ai/lexigram.ai.agents`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `6073 ms`
-- Parsed summary: `402 passed, 10 deselected, 4 warnings in 4.71s`
+- Duration: `5803 ms`
+- Parsed summary: `402 passed, 10 deselected, 4 warnings in 4.54s`
 - Counters: passed=402, total=402, failed=0, skipped=0, warnings=4, coverage=85.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:14:22 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:37:32 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 17%]
 ........................................................................ [ 35%]
 ........................................................................ [ 53%]
@@ -166,17 +166,17 @@
 - Command: `uv run pytest experimental/ai/lexigram-ai-evaluation/tests -q -m not integration --cov=experimental/ai/lexigram.ai.evaluation`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `1940 ms`
-- Parsed summary: `166 passed, 4 warnings in 0.73s`
-- Counters: passed=166, total=166, failed=0, skipped=0, warnings=4, coverage=97.0%
+- Duration: `1894 ms`
+- Parsed summary: `167 passed, 4 warnings in 0.71s`
+- Counters: passed=167, total=167, failed=0, skipped=0, warnings=4, coverage=97.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:14:28 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:37:38 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 43%]
 ........................................................................ [ 86%]
-......................                                                   [100%]
+.......................                                                  [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
   .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.cor
@@ -188,14 +188,14 @@
 - Command: `uv run pytest experimental/ai/lexigram-ai-feedback/tests -q -m not integration --cov=experimental/ai/lexigram.ai.feedback`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2256 ms`
-- Parsed summary: `260 passed, 4 warnings in 1.03s`
+- Duration: `2141 ms`
+- Parsed summary: `260 passed, 4 warnings in 0.96s`
 - Counters: passed=260, total=260, failed=0, skipped=0, warnings=4, coverage=96.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:14:30 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:37:40 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 27%]
 ........................................................................ [ 55%]
 ........................................................................ [ 83%]
@@ -211,14 +211,14 @@
 - Command: `uv run pytest experimental/ai/lexigram-ai-governance/tests -q -m not integration --cov=experimental/ai/lexigram.ai.governance`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `4747 ms`
-- Parsed summary: `544 passed, 7 deselected, 29 warnings in 3.47s`
-- Counters: passed=544, total=544, failed=0, skipped=0, warnings=29, coverage=88.0%
+- Duration: `4601 ms`
+- Parsed summary: `544 passed, 7 deselected, 46 warnings in 3.35s`
+- Counters: passed=544, total=544, failed=0, skipped=0, warnings=46, coverage=88.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:14:32 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:37:42 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 13%]
 ........................................................................ [ 26%]
 ........................................................................ [ 39%]
@@ -235,14 +235,14 @@
 - Command: `uv run pytest experimental/ai/lexigram-ai-guard/tests -q -m not integration --cov=experimental/ai/lexigram.ai.guard`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2293 ms`
-- Parsed summary: `242 passed, 17 deselected, 7 warnings in 1.07s`
+- Duration: `2126 ms`
+- Parsed summary: `242 passed, 17 deselected, 7 warnings in 0.96s`
 - Counters: passed=242, total=242, failed=0, skipped=0, warnings=7, coverage=87.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:14:37 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:37:46 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 29%]
 ........................................................................ [ 59%]
 ........................................................................ [ 89%]
@@ -258,14 +258,14 @@
 - Command: `uv run pytest experimental/ai/lexigram-ai-llm/tests -q -m not integration --cov=experimental/ai/lexigram.ai.llm`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `33206 ms`
-- Parsed summary: `949 passed, 20 skipped, 19 deselected, 4 warnings in 31.43s`
+- Duration: `32731 ms`
+- Parsed summary: `949 passed, 20 skipped, 19 deselected, 4 warnings in 30.96s`
 - Counters: passed=949, total=969, failed=0, skipped=20, warnings=4, coverage=71.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:14:39 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:37:48 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ssssssssssssssss........................................................ [  7%]
 ........................................................................ [ 14%]
 ........................................................................ [ 22%]
@@ -282,14 +282,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-mcp/tests -q -m not integration --cov=experimental/ai/lexigram.ai.mcp`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `3702 ms`
-- Parsed summary: `384 passed, 13 deselected, 4 warnings in 2.40s`
+- Duration: `3378 ms`
+- Parsed summary: `384 passed, 13 deselected, 4 warnings in 2.16s`
 - Counters: passed=384, total=384, failed=0, skipped=0, warnings=4, coverage=51.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:13 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:21 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 18%]
 ........................................................................ [ 37%]
 ........................................................................ [ 56%]
@@ -306,14 +306,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-memory/tests -q -m not integration --cov=experimental/ai/lexigram.ai.memory`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2512 ms`
-- Parsed summary: `240 passed, 16 deselected, 4 warnings in 1.26s`
+- Duration: `2364 ms`
+- Parsed summary: `240 passed, 16 deselected, 4 warnings in 1.18s`
 - Counters: passed=240, total=240, failed=0, skipped=0, warnings=4, coverage=83.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:16 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:24 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 30%]
 ........................................................................ [ 60%]
 ........................................................................ [ 90%]
@@ -329,14 +329,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-observability/tests -q -m not integration --cov=experimental/ai/lexigram.ai.observability`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2756 ms`
-- Parsed summary: `260 passed, 10 deselected, 4 warnings in 1.48s`
+- Duration: `2601 ms`
+- Parsed summary: `260 passed, 10 deselected, 4 warnings in 1.43s`
 - Counters: passed=260, total=260, failed=0, skipped=0, warnings=4, coverage=87.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:19 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:27 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 27%]
 ........................................................................ [ 55%]
 ........................................................................ [ 83%]
@@ -352,14 +352,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-prompt/tests -q -m not integration --cov=experimental/ai/lexigram.ai.prompt`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2547 ms`
-- Parsed summary: `307 passed, 4 warnings in 1.30s`
+- Duration: `2375 ms`
+- Parsed summary: `307 passed, 4 warnings in 1.20s`
 - Counters: passed=307, total=307, failed=0, skipped=0, warnings=4, coverage=87.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:22 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:29 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 23%]
 ........................................................................ [ 46%]
 ........................................................................ [ 70%]
@@ -376,14 +376,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-rag/tests -q -m not integration --cov=experimental/ai/lexigram.ai.rag`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `7126 ms`
-- Parsed summary: `528 passed, 7 skipped, 8 deselected, 4 warnings in 5.75s`
+- Duration: `6839 ms`
+- Parsed summary: `528 passed, 7 skipped, 8 deselected, 4 warnings in 5.53s`
 - Counters: passed=528, total=535, failed=0, skipped=7, warnings=4, coverage=62.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:24 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:32 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ...........................................................sss.......... [ 13%]
 .s..............ss...................................................... [ 26%]
 .........................................................s.............. [ 40%]
@@ -400,22 +400,22 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-relay-gateway/tests -q -m not integration --cov=experimental/ai/lexigram.ai.relay.gateway`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `4267 ms`
-- Parsed summary: `551 passed, 4 warnings in 2.89s`
-- Counters: passed=551, total=551, failed=0, skipped=0, warnings=4, coverage=94.0%
+- Duration: `4114 ms`
+- Parsed summary: `579 passed, 4 warnings in 2.84s`
+- Counters: passed=579, total=579, failed=0, skipped=0, warnings=4, coverage=94.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:31 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 13%]
-........................................................................ [ 26%]
-........................................................................ [ 39%]
-........................................................................ [ 52%]
-........................................................................ [ 65%]
-........................................................................ [ 78%]
-........................................................................ [ 91%]
-...............................................     
+2026-08-23 11:38:39 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+........................................................................ [ 12%]
+........................................................................ [ 24%]
+........................................................................ [ 37%]
+........................................................................ [ 49%]
+........................................................................ [ 62%]
+........................................................................ [ 74%]
+........................................................................ [ 87%]
+....................................................
 ```
 
 ### Package tests: experimental/ai/lexigram-ai-relay
@@ -424,20 +424,20 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-relay/tests -q -m not integration --cov=experimental/ai/lexigram.ai.relay`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `6014 ms`
-- Parsed summary: `539 passed, 4 warnings in 4.69s`
-- Counters: passed=539, total=539, failed=0, skipped=0, warnings=4, coverage=91.0%
+- Duration: `5792 ms`
+- Parsed summary: `534 passed, 4 warnings in 4.56s`
+- Counters: passed=534, total=534, failed=0, skipped=0, warnings=4, coverage=91.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:35 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-2026-08-21 00:15:36 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=RelayModule providers=0
+2026-08-23 11:38:43 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:43 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=RelayModule providers=0
 ........................................................................ [ 13%]
 ........................................................................ [ 26%]
 ........................................................................ [ 40%]
 ........................................................................ [ 53%]
-........................................................................ [ 66%]
+........................................................................ [ 67%]
 ..........................
 ```
 
@@ -447,14 +447,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-session/tests -q -m not integration --cov=experimental/ai/lexigram.ai.session`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2518 ms`
-- Parsed summary: `210 passed, 4 warnings in 1.24s`
+- Duration: `2332 ms`
+- Parsed summary: `210 passed, 4 warnings in 1.16s`
 - Counters: passed=210, total=210, failed=0, skipped=0, warnings=4, coverage=88.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:42 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:49 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 34%]
 ........................................................................ [ 68%]
 ..................................................................       [100%]
@@ -469,14 +469,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-skills/tests -q -m not integration --cov=experimental/ai/lexigram.ai.skills`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2662 ms`
-- Parsed summary: `268 passed, 6 warnings in 1.41s`
+- Duration: `2519 ms`
+- Parsed summary: `268 passed, 6 warnings in 1.35s`
 - Counters: passed=268, total=268, failed=0, skipped=0, warnings=6, coverage=78.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:44 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:51 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 26%]
 ........................................................................ [ 53%]
 ........................................................................ [ 80%]
@@ -492,14 +492,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai-workers/tests -q -m not integration --cov=experimental/ai/lexigram.ai.workers`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `3966 ms`
-- Parsed summary: `328 passed, 7 deselected, 4 warnings in 2.71s`
+- Duration: `3799 ms`
+- Parsed summary: `328 passed, 7 deselected, 4 warnings in 2.63s`
 - Counters: passed=328, total=328, failed=0, skipped=0, warnings=4, coverage=87.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:47 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:53 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 21%]
 ........................................................................ [ 43%]
 ........................................................................ [ 65%]
@@ -516,14 +516,14 @@ ssssssssssssssss........................................................ [  7%]
 - Command: `uv run pytest experimental/ai/lexigram-ai/tests -q -m not integration --cov=experimental/ai/lexigram.ai`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `5368 ms`
-- Parsed summary: `450 passed, 19 skipped, 15 deselected, 4 warnings in 3.62s`
+- Duration: `5165 ms`
+- Parsed summary: `450 passed, 19 skipped, 15 deselected, 4 warnings in 3.46s`
 - Counters: passed=450, total=469, failed=0, skipped=19, warnings=4, coverage=0.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:51 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:38:57 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ...ss..s................................................................ [ 15%]
 ........................................................................ [ 31%]
 ...........s.s.......................................................... [ 47%]
@@ -541,19 +541,19 @@ ERROR: Coverage failure: total of 0 is less than fa
 
 - Scope: `experimental/apps/lexigram-admin/tests`
 - Command: `uv run pytest experimental/apps/lexigram-admin/tests -q -m not integration --cov=experimental/apps/lexigram.admin`
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `61752 ms`
-- Parsed summary: `8 failed, 4596 passed, 11 skipped, 29 deselected, 18 warnings in 59.47s`
-- Counters: passed=4596, total=4615, failed=8, skipped=11, warnings=18, coverage=76.0%
-- Example failures: `experimental/apps/lexigram-admin/tests/e2e/test_admin_email_verify_http_e2e.py::test_profile_shows_verified_status`, `experimental/apps/lexigram-admin/tests/e2e/test_admin_email_verify_http_e2e.py::test_profile_shows_unverified_status`, `experimental/apps/lexigram-admin/tests/e2e/test_admin_mfa_http_e2e.py::test_mfa_profile_shows_setup_qr_when_disabled`, `experimental/apps/lexigram-admin/tests/e2e/test_admin_mfa_http_e2e.py::test_mfa_profile_shows_disable_form_when_enabled`, `experimental/apps/lexigram-admin/tests/e2e/test_admin_mfa_http_e2e.py::test_mfa_setup_confirm_redirects_notice`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `55528 ms`
+- Parsed summary: `4694 passed, 11 skipped, 29 deselected, 18 warnings in 53.32s`
+- Counters: passed=4694, total=4705, failed=0, skipped=11, warnings=18, coverage=77.0%
+- Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:15:56 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-ss..............................FFFFFF................ss................ [  1%]
-.............FF......................................................... [  3%]
-...............s..................ss.................................... [  4%]
+2026-08-23 11:39:02 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+ss....................................................ss................ [  1%]
+........................................................................ [  3%]
+.......................s..................ss............................ [  4%]
 ........................................................................ [  6%]
 ........................................................................ [  7%]
 ........................................................................ [  9%]
@@ -565,16 +565,16 @@ ss..............................FFFFFF................ss................ [  1%]
 
 - Scope: `experimental/apps/lexigram-cli/tests`
 - Command: `uv run pytest experimental/apps/lexigram-cli/tests -q -m not integration --cov=experimental/apps/lexigram.cli`
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `13534 ms`
-- Parsed summary: `6 failed, 845 passed, 1 skipped, 7 deselected, 6 warnings in 11.88s`
-- Counters: passed=845, total=852, failed=6, skipped=1, warnings=6, coverage=78.0%
-- Example failures: `experimental/apps/lexigram-cli/tests/unit/test_cli_contribution_system.py::TestCommandAssembler::test_definition_command_executes_registry_loaded_adapter`, `experimental/apps/lexigram-cli/tests/unit/test_cli_contribution_system.py::TestCommandAssemblerPackageLayout::test_definition_command_preserves_src_suffix_for_package_layout`, `experimental/apps/lexigram-cli/tests/unit/test_config_validate.py::TestConfigValidate::test_config_validate_success`, `experimental/apps/lexigram-cli/tests/unit/test_config_validate.py::TestConfigValidate::test_config_validate_failure`, `experimental/apps/lexigram-cli/tests/unit/test_db.py::TestDbCommand::test_db_init`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `13649 ms`
+- Parsed summary: `851 passed, 1 skipped, 7 deselected, 6 warnings in 11.93s`
+- Counters: passed=851, total=852, failed=0, skipped=1, warnings=6, coverage=80.0%
+- Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:16:58 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:39:58 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [  8%]
 ........................................................................ [ 16%]
 ........................................................................ [ 25%]
@@ -591,14 +591,14 @@ ss..............................FFFFFF................ss................ [  1%]
 - Command: `uv run pytest experimental/apps/lexigram-ui/tests -q -m not integration --cov=experimental/apps/lexigram.ui`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `6948 ms`
-- Parsed summary: `1257 passed, 78 skipped, 8 deselected, 12 warnings in 5.57s`
+- Duration: `6483 ms`
+- Parsed summary: `1257 passed, 78 skipped, 8 deselected, 12 warnings in 5.20s`
 - Counters: passed=1257, total=1335, failed=0, skipped=78, warnings=12, coverage=73.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:11 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:12 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [  5%]
 ........................................................................ [ 10%]
 ........................................................................ [ 16%]
@@ -615,14 +615,14 @@ ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [  5%]
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia-beat/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia.beat`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2691 ms`
-- Parsed summary: `18 passed, 12 deselected, 4 warnings in 1.25s`
+- Duration: `2528 ms`
+- Parsed summary: `18 passed, 12 deselected, 4 warnings in 1.15s`
 - Counters: passed=18, total=18, failed=0, skipped=0, warnings=4, coverage=71.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:18 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:18 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ..................                                                       [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
@@ -639,14 +639,14 @@ ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [  5%]
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia-image/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia.image`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2162 ms`
-- Parsed summary: `54 passed, 4 warnings in 0.77s`
+- Duration: `2057 ms`
+- Parsed summary: `54 passed, 4 warnings in 0.74s`
 - Counters: passed=54, total=54, failed=0, skipped=0, warnings=4, coverage=92.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:21 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:21 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ......................................................                   [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
@@ -663,14 +663,14 @@ ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [  5%]
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia-interpolate/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia.interpolate`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `1900 ms`
-- Parsed summary: `23 passed, 4 warnings in 0.48s`
+- Duration: `1803 ms`
+- Parsed summary: `23 passed, 4 warnings in 0.47s`
 - Counters: passed=23, total=23, failed=0, skipped=0, warnings=4, coverage=87.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:23 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:23 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 .......................                                                  [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
@@ -685,28 +685,24 @@ ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [  5%]
 
 - Scope: `experimental/multimedia/lexigram-multimedia-music/tests`
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia-music/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia.music`
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `2391 ms`
-- Parsed summary: `3 failed, 43 passed, 4 warnings in 0.98s`
-- Counters: passed=43, total=46, failed=3, skipped=0, warnings=4, coverage=86.0%
-- Example failures: `experimental/multimedia/lexigram-multimedia-music/tests/unit/providers/test_stability_audio.py::test_generate_sends_bearer_and_multipart_payload`, `experimental/multimedia/lexigram-multimedia-music/tests/unit/providers/test_stability_audio.py::test_generate_omits_extra_fields_when_absent`, `experimental/multimedia/lexigram-multimedia-music/tests/unit/test_config.py::test_music_config_has_no_stability_fields`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `1990 ms`
+- Parsed summary: `47 passed, 4 warnings in 0.66s`
+- Counters: passed=47, total=47, failed=0, skipped=0, warnings=4, coverage=86.0%
+- Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:25 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-.........................FF............F......                           [100%]
-=================================== FAILURES ===================================
-_______________ test_generate_sends_bearer_and_multipart_payload _______________
+2026-08-23 11:40:24 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+...............................................                          [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
+  .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885: PytestAssertRewriteWarning: Module already imported so cannot be rewritten; lexigram.testing.fixtures.core
+    self.import_plugin(import_spec)
 
-    @pytest.mark.asyncio
-    async def test_generate_sends_bearer_and_multipart_payload() -> None:
-        provider = StabilityAudioMusicProvider(api_key="sk-test")
-    
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.read = AsyncMock(return_value=b"audio-bytes")
-...
+.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
+  .v
 ```
 
 ### Package tests: experimental/multimedia/lexigram-multimedia-tts
@@ -715,14 +711,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia-tts/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia.tts`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2388 ms`
-- Parsed summary: `63 passed, 4 warnings in 0.89s`
+- Duration: `2149 ms`
+- Parsed summary: `63 passed, 4 warnings in 0.82s`
 - Counters: passed=63, total=63, failed=0, skipped=0, warnings=4, coverage=78.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:27 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:26 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ...............................................................          [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
@@ -739,14 +735,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia-upscale/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia.upscale`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2177 ms`
-- Parsed summary: `42 passed, 4 warnings in 0.75s`
+- Duration: `2047 ms`
+- Parsed summary: `42 passed, 4 warnings in 0.67s`
 - Counters: passed=42, total=42, failed=0, skipped=0, warnings=4, coverage=93.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:30 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:29 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ..........................................                               [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
@@ -763,14 +759,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia-video/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia.video`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `5530 ms`
-- Parsed summary: `182 passed, 4 warnings in 4.13s`
+- Duration: `5409 ms`
+- Parsed summary: `182 passed, 4 warnings in 4.08s`
 - Counters: passed=182, total=182, failed=0, skipped=0, warnings=4, coverage=86.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:32 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:31 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 39%]
 ........................................................................ [ 79%]
 ......................................                                   [100%]
@@ -785,14 +781,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest experimental/multimedia/lexigram-multimedia/tests -q -m not integration --cov=experimental/multimedia/lexigram.multimedia`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `4883 ms`
-- Parsed summary: `86 passed, 5 warnings in 3.52s`
+- Duration: `4698 ms`
+- Parsed summary: `86 passed, 5 warnings in 3.44s`
 - Counters: passed=86, total=86, failed=0, skipped=0, warnings=5, coverage=55.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:38 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:36 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 83%]
 ..............                                                           [100%]
 =============================== warnings summary ===============================
@@ -809,14 +805,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest packages/lexigram-audit/tests -q -m not integration --cov=packages/lexigram.audit`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2600 ms`
-- Parsed summary: `287 passed, 17 deselected, 4 warnings in 1.26s`
+- Duration: `2281 ms`
+- Parsed summary: `287 passed, 17 deselected, 4 warnings in 1.11s`
 - Counters: passed=287, total=287, failed=0, skipped=0, warnings=4, coverage=85.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:42 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:41 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 25%]
 ........................................................................ [ 50%]
 ........................................................................ [ 75%]
@@ -832,18 +828,18 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest packages/lexigram-auth/tests -q -m not integration --cov=packages/lexigram.auth`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `28158 ms`
-- Parsed summary: `614 passed, 4 skipped, 2 deselected, 5 warnings in 26.73s`
+- Duration: `27744 ms`
+- Parsed summary: `614 passed, 4 skipped, 2 deselected, 5 warnings in 26.46s`
 - Counters: passed=614, total=618, failed=0, skipped=4, warnings=5, coverage=68.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:17:45 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:40:43 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 11%]
-...................................................ssss................. [ 23%]
+........................................................................ [ 23%]
 ........................................................................ [ 34%]
-........................................................................ [ 46%]
+..................................................................ssss.. [ 46%]
 ........................................................................ [ 58%]
 ........................................................................ [ 69%]
 ........................................................................ [ 81%]
@@ -856,14 +852,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest packages/lexigram-cache/tests -q -m not integration --cov=packages/lexigram.cache`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `11267 ms`
-- Parsed summary: `867 passed, 13 skipped, 13 deselected, 6 warnings in 9.78s`
+- Duration: `10870 ms`
+- Parsed summary: `867 passed, 13 skipped, 13 deselected, 6 warnings in 9.48s`
 - Counters: passed=867, total=880, failed=0, skipped=13, warnings=6, coverage=80.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:18:13 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:41:11 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [  8%]
 .................................................ss..................... [ 16%]
 ........................................................................ [ 24%]
@@ -880,14 +876,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest packages/lexigram-events/tests -q -m not integration --cov=packages/lexigram.events`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `12400 ms`
-- Parsed summary: `969 passed, 15 skipped, 11 deselected, 6 warnings in 10.80s`
+- Duration: `12012 ms`
+- Parsed summary: `969 passed, 15 skipped, 11 deselected, 6 warnings in 10.48s`
 - Counters: passed=969, total=984, failed=0, skipped=15, warnings=6, coverage=63.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:18:24 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:41:22 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ...s.................................................................... [  7%]
 ........................................................................ [ 14%]
 ........................................................................ [ 22%]
@@ -904,14 +900,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest packages/lexigram-features/tests -q -m not integration --cov=packages/lexigram.features`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `3533 ms`
-- Parsed summary: `248 passed, 14 deselected, 17 warnings in 2.27s`
+- Duration: `3361 ms`
+- Parsed summary: `248 passed, 14 deselected, 17 warnings in 2.19s`
 - Counters: passed=248, total=248, failed=0, skipped=0, warnings=17, coverage=80.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:18:37 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:41:34 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 29%]
 ........................................................................ [ 58%]
 ........................................................................ [ 87%]
@@ -927,14 +923,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest packages/lexigram-graph/tests -q -m not integration --cov=packages/lexigram.graph`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2386 ms`
-- Parsed summary: `257 passed, 1 skipped, 7 deselected, 4 warnings in 1.14s`
+- Duration: `2211 ms`
+- Parsed summary: `257 passed, 1 skipped, 7 deselected, 4 warnings in 1.06s`
 - Counters: passed=257, total=258, failed=0, skipped=1, warnings=4, coverage=79.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:18:40 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:41:37 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 27%]
 ..................s..................................................... [ 55%]
 ........................................................................ [ 83%]
@@ -950,14 +946,14 @@ _______________ test_generate_sends_bearer_and_multipart_payload _______________
 - Command: `uv run pytest packages/lexigram-graphql/tests -q -m not integration --cov=packages/lexigram.graphql`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `6088 ms`
-- Parsed summary: `519 passed, 2 skipped, 11 deselected, 23 warnings in 4.47s`
+- Duration: `5881 ms`
+- Parsed summary: `519 passed, 2 skipped, 11 deselected, 23 warnings in 4.36s`
 - Counters: passed=519, total=521, failed=0, skipped=2, warnings=23, coverage=76.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:18:43 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:41:39 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 s....................................................................... [ 13%]
 ........................................................................ [ 27%]
 ................s....................................................... [ 41%]
@@ -974,21 +970,21 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-http/tests -q -m not integration --cov=packages/lexigram.http`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2917 ms`
-- Parsed summary: `450 passed, 9 deselected, 4 warnings in 1.63s`
-- Counters: passed=450, total=450, failed=0, skipped=0, warnings=4, coverage=77.0%
+- Duration: `2760 ms`
+- Parsed summary: `456 passed, 9 deselected, 8 warnings in 1.53s`
+- Counters: passed=456, total=456, failed=0, skipped=0, warnings=8, coverage=78.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:18:49 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
-........................................................................ [ 16%]
-........................................................................ [ 32%]
-........................................................................ [ 48%]
-........................................................................ [ 64%]
-........................................................................ [ 80%]
-........................................................................ [ 96%]
-..................                                                       [100%]
+2026-08-23 11:41:45 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+........................................................................ [ 15%]
+........................................................................ [ 31%]
+........................................................................ [ 47%]
+........................................................................ [ 63%]
+........................................................................ [ 78%]
+........................................................................ [ 94%]
+........................                                                 [100%]
 =============================== warnings summary ===
 ```
 
@@ -998,19 +994,19 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-monitor/tests -q -m not integration --cov=packages/lexigram.monitor`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `8744 ms`
-- Parsed summary: `349 passed, 5 skipped, 4 deselected, 4 warnings in 7.38s`
-- Counters: passed=349, total=354, failed=0, skipped=5, warnings=4, coverage=82.0%
+- Duration: `8467 ms`
+- Parsed summary: `351 passed, 5 skipped, 4 deselected, 4 warnings in 7.22s`
+- Counters: passed=351, total=356, failed=0, skipped=5, warnings=4, coverage=82.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:18:52 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:41:48 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 20%]
 ........................................................................ [ 40%]
-....sss.s............................................................... [ 61%]
-........................................................................ [ 81%]
-..........s.......................................................       [100%]
+......sss.s............................................................. [ 60%]
+........................................................................ [ 80%]
+............s.......................................................     [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
   .venv/lib/py
@@ -1022,14 +1018,14 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-nosql/tests -q -m not integration --cov=packages/lexigram.nosql`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `3737 ms`
-- Parsed summary: `536 passed, 10 deselected, 4 warnings in 2.38s`
+- Duration: `3373 ms`
+- Parsed summary: `536 passed, 10 deselected, 4 warnings in 2.15s`
 - Counters: passed=536, total=536, failed=0, skipped=0, warnings=4, coverage=91.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:01 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:41:56 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 13%]
 ........................................................................ [ 26%]
 ........................................................................ [ 40%]
@@ -1046,14 +1042,14 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-notification/tests -q -m not integration --cov=packages/lexigram.notification`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `4964 ms`
-- Parsed summary: `289 passed, 8 deselected, 4 warnings in 3.55s`
+- Duration: `4313 ms`
+- Parsed summary: `289 passed, 8 deselected, 4 warnings in 2.94s`
 - Counters: passed=289, total=289, failed=0, skipped=0, warnings=4, coverage=83.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:04 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:00 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 24%]
 ........................................................................ [ 49%]
 ........................................................................ [ 74%]
@@ -1070,18 +1066,18 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-queue/tests -q -m not integration --cov=packages/lexigram.queue`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `4395 ms`
-- Parsed summary: `228 passed, 20 deselected, 4 warnings in 3.13s`
-- Counters: passed=228, total=228, failed=0, skipped=0, warnings=4, coverage=84.0%
+- Duration: `4357 ms`
+- Parsed summary: `231 passed, 20 deselected, 4 warnings in 3.16s`
+- Counters: passed=231, total=231, failed=0, skipped=0, warnings=4, coverage=84.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:09 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:04 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 31%]
-........................................................................ [ 63%]
-........................................................................ [ 94%]
-............                                                             [100%]
+........................................................................ [ 62%]
+........................................................................ [ 93%]
+...............                                                          [100%]
 =============================== warnings summary ===============================
 .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885
   .venv/lib/python3.13/site-packages/_pytest/config/__init__.py:885: PytestAssertRewriteWarnin
@@ -1093,14 +1089,14 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-resilience/tests -q -m not integration --cov=packages/lexigram.resilience`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `19709 ms`
-- Parsed summary: `310 passed, 23 deselected, 4 warnings in 18.46s`
+- Duration: `20965 ms`
+- Parsed summary: `310 passed, 23 deselected, 4 warnings in 19.79s`
 - Counters: passed=310, total=310, failed=0, skipped=0, warnings=4, coverage=74.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:14 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:08 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 23%]
 ........................................................................ [ 46%]
 ........................................................................ [ 69%]
@@ -1117,14 +1113,14 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-search/tests -q -m not integration --cov=packages/lexigram.search`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `4679 ms`
-- Parsed summary: `813 passed, 4 skipped, 15 deselected, 4 warnings in 3.25s`
-- Counters: passed=813, total=817, failed=0, skipped=4, warnings=4, coverage=65.0%
+- Duration: `4298 ms`
+- Parsed summary: `813 passed, 4 skipped, 15 deselected, 4 warnings in 3.00s`
+- Counters: passed=813, total=817, failed=0, skipped=4, warnings=4, coverage=66.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:33 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:29 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [  8%]
 ........................................................................ [ 17%]
 ........................................................................ [ 26%]
@@ -1141,14 +1137,14 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-secrets/tests -q -m not integration --cov=packages/lexigram.secrets`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `1762 ms`
-- Parsed summary: `127 passed, 4 warnings in 0.52s`
+- Duration: `1633 ms`
+- Parsed summary: `127 passed, 4 warnings in 0.47s`
 - Counters: passed=127, total=127, failed=0, skipped=0, warnings=4, coverage=58.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:38 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:34 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 56%]
 .......................................................                  [100%]
 =============================== warnings summary ===============================
@@ -1165,22 +1161,22 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-sql/tests -q -m not integration --cov=packages/lexigram.sql`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `15616 ms`
-- Parsed summary: `1387 passed, 7 skipped, 9 deselected, 10 warnings in 13.90s`
-- Counters: passed=1387, total=1394, failed=0, skipped=7, warnings=10, coverage=63.0%
+- Duration: `11557 ms`
+- Parsed summary: `1347 passed, 47 skipped, 9 deselected, 10 warnings in 9.93s`
+- Counters: passed=1347, total=1394, failed=0, skipped=47, warnings=10, coverage=62.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:40 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:35 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................s............................... [  5%]
 ........................................................................ [ 10%]
 ........................................................................ [ 15%]
-......................................................ss................ [ 20%]
+...ss................................................................... [ 20%]
 ........................................................................ [ 25%]
 ........................................................................ [ 30%]
 ........................................................................ [ 36%]
-..................................s.................
+.s................s..........ss.....................
 ```
 
 ### Package tests: packages/lexigram-storage
@@ -1189,14 +1185,14 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-storage/tests -q -m not integration --cov=packages/lexigram.storage`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `6906 ms`
-- Parsed summary: `453 passed, 3 skipped, 22 deselected, 4 warnings in 5.59s`
+- Duration: `6617 ms`
+- Parsed summary: `453 passed, 3 skipped, 22 deselected, 4 warnings in 5.41s`
 - Counters: passed=453, total=456, failed=0, skipped=3, warnings=4, coverage=62.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:19:55 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:47 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 15%]
 ........................................................................ [ 31%]
 .........................................s.............................. [ 47%]
@@ -1213,14 +1209,14 @@ s....................................................................... [ 13%]
 - Command: `uv run pytest packages/lexigram-tasks/tests -q -m not integration --cov=packages/lexigram.tasks`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `11759 ms`
-- Parsed summary: `525 passed, 15 skipped, 9 deselected, 4 warnings in 10.27s`
-- Counters: passed=525, total=540, failed=0, skipped=15, warnings=4, coverage=73.0%
+- Duration: `11649 ms`
+- Parsed summary: `525 passed, 15 skipped, 9 deselected, 4 warnings in 10.28s`
+- Counters: passed=525, total=540, failed=0, skipped=15, warnings=4, coverage=74.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:20:02 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:42:53 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 13%]
 ........................................................................ [ 26%]
 ........................................................................ [ 40%]
@@ -1238,14 +1234,14 @@ ERROR: Coverage
 - Command: `uv run pytest packages/lexigram-tenancy/tests -q -m not integration --cov=packages/lexigram.tenancy`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `3030 ms`
-- Parsed summary: `360 passed, 4 deselected, 4 warnings in 1.76s`
+- Duration: `2865 ms`
+- Parsed summary: `360 passed, 4 deselected, 4 warnings in 1.66s`
 - Counters: passed=360, total=360, failed=0, skipped=0, warnings=4, coverage=83.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:20:14 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:43:05 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 20%]
 ........................................................................ [ 40%]
 ........................................................................ [ 60%]
@@ -1262,23 +1258,23 @@ ERROR: Coverage
 - Command: `uv run pytest packages/lexigram-testing/tests -q -m not integration --cov=packages/lexigram.testing`
 - Status: **FAIL**
 - Exit code: `1`
-- Duration: `8415 ms`
-- Parsed summary: `436 passed, 15 skipped, 13 deselected, 4 warnings in 7.06s`
-- Counters: passed=436, total=451, failed=0, skipped=15, warnings=4, coverage=17.0%
+- Duration: `7806 ms`
+- Parsed summary: `438 passed, 15 skipped, 13 deselected, 4 warnings in 6.53s`
+- Counters: passed=438, total=453, failed=0, skipped=15, warnings=4, coverage=17.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:20:17 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:43:08 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 .................s...................................................... [ 15%]
 ........................................................................ [ 31%]
 ........................................................................ [ 47%]
 ........................................................................ [ 63%]
 ............ssssssssssssss.............................................. [ 79%]
 ........................................................................ [ 95%]
-...................
+.....................
 ERROR: Coverage failure: total of 17 is less than fail-under=80
-                                                
+                                              
 ```
 
 ### Package tests: packages/lexigram-vector
@@ -1287,22 +1283,22 @@ ERROR: Coverage failure: total of 17 is less than fail-under=80
 - Command: `uv run pytest packages/lexigram-vector/tests -q -m not integration --cov=packages/lexigram.vector`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `4620 ms`
-- Parsed summary: `546 passed, 20 deselected, 4 warnings in 3.29s`
-- Counters: passed=546, total=546, failed=0, skipped=0, warnings=4, coverage=77.0%
+- Duration: `4012 ms`
+- Parsed summary: `525 passed, 20 deselected, 4 warnings in 2.76s`
+- Counters: passed=525, total=525, failed=0, skipped=0, warnings=4, coverage=77.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:20:25 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:43:16 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 13%]
-........................................................................ [ 26%]
-........................................................................ [ 39%]
-........................................................................ [ 52%]
-........................................................................ [ 65%]
-........................................................................ [ 79%]
-........................................................................ [ 92%]
-..........................................          
+........................................................................ [ 27%]
+........................................................................ [ 41%]
+........................................................................ [ 54%]
+........................................................................ [ 68%]
+........................................................................ [ 82%]
+........................................................................ [ 96%]
+.....................                               
 ```
 
 ### Package tests: packages/lexigram-web
@@ -1311,14 +1307,14 @@ ERROR: Coverage failure: total of 17 is less than fail-under=80
 - Command: `uv run pytest packages/lexigram-web/tests -q -m not integration --cov=packages/lexigram.web`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `13431 ms`
-- Parsed summary: `1422 passed, 7 skipped, 7 deselected, 6 warnings in 11.86s`
-- Counters: passed=1422, total=1429, failed=0, skipped=7, warnings=6, coverage=81.0%
+- Duration: `12672 ms`
+- Parsed summary: `1425 passed, 7 skipped, 7 deselected, 6 warnings in 11.19s`
+- Counters: passed=1425, total=1432, failed=0, skipped=7, warnings=6, coverage=81.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:20:30 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:43:20 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 sss..................................................................... [  5%]
 ........................................................................ [ 10%]
 ........................................................................ [ 15%]
@@ -1335,14 +1331,14 @@ sss..................................................................... [  5%]
 - Command: `uv run pytest packages/lexigram-webhook/tests -q -m not integration --cov=packages/lexigram.webhook`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `2880 ms`
-- Parsed summary: `334 passed, 4 warnings in 1.57s`
+- Duration: `2733 ms`
+- Parsed summary: `334 passed, 4 warnings in 1.50s`
 - Counters: passed=334, total=334, failed=0, skipped=0, warnings=4, coverage=86.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:20:44 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:43:32 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 21%]
 ........................................................................ [ 43%]
 ........................................................................ [ 64%]
@@ -1359,14 +1355,14 @@ sss..................................................................... [  5%]
 - Command: `uv run pytest packages/lexigram-workflow/tests -q -m not integration --cov=packages/lexigram.workflow`
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `13787 ms`
-- Parsed summary: `556 passed, 23 deselected, 4 warnings in 12.52s`
+- Duration: `13587 ms`
+- Parsed summary: `556 passed, 23 deselected, 4 warnings in 12.38s`
 - Counters: passed=556, total=556, failed=0, skipped=0, warnings=4, coverage=70.0%
 - Example failures: none
 - Output snippet:
 
 ```text
-2026-08-21 00:20:46 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
+2026-08-23 11:43:35 [debug    ] module_decorated               _logger_name=lexigram.di.module.decorator controllers=0 exports=0 imports=0 is_global=False module=TestingModule providers=0
 ........................................................................ [ 12%]
 ........................................................................ [ 25%]
 ........................................................................ [ 38%]
