@@ -569,4 +569,4 @@ def _idempotent_default_key(
         },
         sort_keys=True,
     )
-    return hashing.hash_hex(raw)
+    return str(hashing.hash_hex(raw))

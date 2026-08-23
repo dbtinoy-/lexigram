@@ -69,7 +69,8 @@ def _get_status(error: Exception) -> int:
     Checks:
     1. HTTPError.status_code attribute (web framework errors)
     2. Registry mapping by exception type
-    3. Default 400
+    3. ``DomainError`` subclasses → 400 (client fault);
+       anything else → 500 (server fault)
     """
     # Check for HTTPError.status_code attribute first (web framework errors)
     if hasattr(error, "status_code"):
@@ -80,7 +81,9 @@ def _get_status(error: Exception) -> int:
         if isinstance(error, error_type):
             return status
 
-    return 400
+    # Domain errors not in the registry are client faults; everything else
+    # is an unexpected server-side failure and must not read as 4xx.
+    return 400 if isinstance(error, DomainError) else 500
 
 
 def _exception_type_urn(exc: Exception) -> str:
@@ -109,7 +112,10 @@ class ResultResponseMapper:
     | ``ConflictError``        | 409    |
     | ``RateLimitError``       | 429    |
     | ``DomainError`` (base)   | 400    |
-    | other                    | 400    |
+    | other ``DomainError``    | 400 (client fault) |
+    | non-domain error         | 500 (server fault) |
+
+    Use :meth:`register` to override the status for a specific error type.
     """
 
     def to_response(self, result: Any, success_status: int = 200) -> Response:

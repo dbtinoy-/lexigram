@@ -4,6 +4,11 @@ Type-checker only: the top-level package resolves names lazily via
 ``__getattr__`` at runtime, so these imports never execute eagerly.
 """
 
+# File-level suppression: this module is an intentional lazy-re-export
+# manifest — imports live under TYPE_CHECKING on purpose.
+# ruff: noqa: TC004
+
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

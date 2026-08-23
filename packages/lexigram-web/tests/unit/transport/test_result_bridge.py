@@ -105,9 +105,18 @@ class TestResultResponseMapperToResponse:
 
         assert response.status_code == 404
 
-    def test_unknown_exception_returns_400(self) -> None:
-        """Unknown exception types should default to 400."""
+    def test_unknown_exception_returns_500(self) -> None:
+        """Non-domain exceptions are server faults and default to 500."""
         result = Err(ValueError("some error"))
+        response = self.mapper.to_response(result)
+
+        assert response.status_code == 500
+
+    def test_unregistered_domain_error_returns_400(self) -> None:
+        """DomainErrors outside the registry are client faults (400)."""
+        from lexigram.contracts.exceptions.domain import WebError
+
+        result = Err(WebError("routing"))
         response = self.mapper.to_response(result)
 
         assert response.status_code == 400
@@ -211,8 +220,8 @@ class TestResultBridgeCompatibilityWithMapping:
         # Case 4: Err with generic exception
         result4 = Err(RuntimeError("crash"))
         response4 = self.mapper.to_response(result4)
-        # RuntimeError not specifically mapped, should be 400
-        assert response4.status_code == 400
+        # RuntimeError is not a DomainError — server fault
+        assert response4.status_code == 500
 
         # Case 5: Err with string
         result5 = Err("string error")

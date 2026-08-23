@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (  # type: ignore[import-untyped]
+    from lexigram.contracts.core.container import (
         ContainerResolverProtocol,
     )
     from lexigram.events.config import EventsConfig
@@ -49,7 +49,9 @@ def create_mongodb_store(
     if mongo_config is None:
         raise ValueError("MongoDB backend selected but mongodb config is missing")
     document_store = container.resolve_sync(DocumentStoreProtocol)
-    return MongoDBEventStore(document_store=document_store, config=mongo_config)  # type: ignore[abstract]
+    return MongoDBEventStore(  # type: ignore[abstract]
+        document_store=document_store, config=mongo_config,
+    )
 
 
 def create_sqlite_store(

@@ -149,7 +149,7 @@ class QueryWhitelist:
         """
         # Normalize query (remove extra whitespace)
         normalized = " ".join(query.split())
-        return hashing.hash_hex(normalized)
+        return str(hashing.hash_hex(normalized))
 
 
 # Default whitelist instance

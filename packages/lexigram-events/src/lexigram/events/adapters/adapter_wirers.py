@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.contracts.core.container import (  # type: ignore[import-untyped]
+    from lexigram.contracts.core.container import (
         ContainerResolverProtocol,
     )
     from lexigram.events.config import EventsConfig

@@ -204,7 +204,7 @@ def compute_query_hash(query: str) -> str:
     Returns:
         Hex-encoded SHA256 hash.
     """
-    return hashing.hash_hex(query)
+    return str(hashing.hash_hex(query))
 
 
 class APQHandler:

@@ -75,6 +75,7 @@ lexigram-admin = { workspace = true }
 lexigram-testing = { workspace = true }
 
 [tool.mypy]
+ignore_missing_imports = true
 python_version = "3.11"
 namespace_packages = true
 explicit_package_bases = true

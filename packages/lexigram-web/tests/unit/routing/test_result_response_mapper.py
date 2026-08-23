@@ -93,10 +93,19 @@ class TestResultResponseMapperDefaults:
         body = json.loads(response.body)
         assert "not-found" in body["type"]
 
-    def test_unknown_exception_falls_back_to_400(self) -> None:
+    def test_unknown_exception_falls_back_to_500(self) -> None:
+        """Non-domain errors are server faults, not client errors."""
         error = ValueError("something unexpected")
 
         response = ResultResponseMapper.error_to_response(error)
+
+        assert response.status_code == 500
+
+    def test_unregistered_domain_error_falls_back_to_400(self) -> None:
+        """DomainErrors not in the registry are client faults."""
+        from lexigram.contracts.exceptions.domain import WebError
+
+        response = ResultResponseMapper.error_to_response(WebError("routing"))
 
         assert response.status_code == 400
 

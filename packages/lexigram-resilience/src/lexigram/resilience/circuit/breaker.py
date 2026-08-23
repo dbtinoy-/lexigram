@@ -402,7 +402,7 @@ class CircuitBreaker:
                 # A concurrent coroutine may have opened the circuit between
                 # our state check above and the lock acquisition here; the
                 # narrowing below is therefore not reachable-proof at runtime.
-                if self._state != CircuitState.OPEN:
+                if self._state != CircuitState.OPEN:  # type: ignore[comparison-overlap]
                     self._record_success(0.0)  # No response time for context manager
         except self.config.expected_exception as e:
             async with self._lock:

@@ -9,9 +9,9 @@ extension-to-core direction.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
-from typing import Any
+from typing import Any, cast
 
 from lexigram.events.messages.event import Event
 from lexigram.events.stores.base import AbstractEventStore
@@ -116,9 +116,12 @@ def retry_with_resilience(policy: Any) -> Op[Event, Event]:
     Returns:
         A core-compatible retry operator.
     """
-    return retry(
-        RetryOptions(
-            max_attempts=int(getattr(policy, "max_attempts", 3)),
-            should_retry=getattr(policy, "should_retry", None),
-        )
+    return cast(
+        "Callable[[EventStream[Event]], EventStream[Event]]",
+        retry(
+            RetryOptions(
+                max_attempts=int(getattr(policy, "max_attempts", 3)),
+                should_retry=getattr(policy, "should_retry", None),
+            )
+        ),
     )

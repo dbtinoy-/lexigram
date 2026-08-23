@@ -27,7 +27,6 @@ from lexigram.tasks.results.cache_backend import CacheBackendResultStore
 from lexigram.tasks.scheduling.scheduler import TaskScheduler
 
 if TYPE_CHECKING:
-
     from lexigram.contracts.core.di import (
         ContainerResolverProtocol,
     )
@@ -39,9 +38,9 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-
 class _TaskLifecycleMixin(_TaskAttrsMixin):
     """See TaskProvider."""
+
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Start the task provider.
 
@@ -302,5 +301,3 @@ async def _check_queue_health(queue: Any) -> HealthCheckResult:
             status=HealthStatus.UNHEALTHY,
             error=str(exc),
         )
-
-

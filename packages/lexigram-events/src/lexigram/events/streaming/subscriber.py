@@ -217,7 +217,7 @@ class EventSubscriber:
                             not self._running
                             or subscription.state != SubscriptionState.ACTIVE
                         ):
-                            break
+                            break  # type: ignore[unreachable]
 
                         # Filter by event type if specified
                         if (

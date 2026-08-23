@@ -18,7 +18,7 @@ from lexigram.ai.relay.mappers.claude.utils import (
 )
 from lexigram.contracts.ai.agents import ToolDefinition
 from lexigram.contracts.ai.exceptions import RelayError
-from lexigram.contracts.ai.llm import ChatMessage
+from lexigram.contracts.ai.llm import ChatMessage, ToolCall
 from lexigram.contracts.ai.multimodal import (
     ContentPart,
     ImageBase64Part,

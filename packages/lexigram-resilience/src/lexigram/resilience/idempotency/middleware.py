@@ -137,7 +137,7 @@ class IdempotencyMiddleware:
                 return await handler(*args, **kwargs)
             cached = cached_result.unwrap()
         else:
-            cached = cached_result
+            cached = cached_result  # type: ignore[unreachable]  # type: ignore[unreachable]
         if cached is not None:
             logger.debug("Idempotency cache hit for key %r; replaying.", key)
             try:

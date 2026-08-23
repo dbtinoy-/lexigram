@@ -43,10 +43,10 @@ class TestResultResponseMapperBackwardCompatibility:
         assert "detail" in body
 
     def test_err_with_generic_exception(self) -> None:
-        """Err with generic exception should default to 400."""
+        """Non-domain exceptions are server faults and default to 500."""
         result = Err(RuntimeError("crash"))
         response = self.mapper.to_response(result)
-        assert response.status_code == 400
+        assert response.status_code == 500
         body = json.loads(response.body.decode())
         assert "detail" in body
 

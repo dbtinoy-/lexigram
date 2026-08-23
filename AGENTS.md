@@ -1202,7 +1202,7 @@ Before writing or modifying code, verify:
 - [ ] Is `Result.unwrap()` only called after `is_ok()` check?
 - [ ] Are infrastructure failures raised as exceptions (not wrapped
       in `Result`)?
-- [ ] Is the file under 700 lines?
+- [ ] Is the file under 500 lines?
 - [ ] Do all functions have complete type annotations?
 - [ ] Are all enums using `class X(str, Enum):`?
 - [ ] Does every type/protocol/exception have exactly **one** definition

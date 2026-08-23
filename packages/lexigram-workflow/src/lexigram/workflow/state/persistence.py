@@ -137,7 +137,7 @@ class DatabaseStatePersistence(StatePersistenceProtocol):
             # Re-check under the lock: another coroutine may have completed
             # the DDL between the first check and the lock acquisition.
             if self._schema_ready:
-                return
+                return  # type: ignore[unreachable]
             await self._provider.execute(
                 f"CREATE TABLE IF NOT EXISTS {self._table_name} ("
                 "machine_id TEXT NOT NULL,"

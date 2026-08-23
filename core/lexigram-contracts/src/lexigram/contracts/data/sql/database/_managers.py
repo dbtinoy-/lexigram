@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from lexigram.contracts.core import HealthCheckResult
 from lexigram.contracts.data.sql.database._results import (
@@ -11,9 +11,6 @@ from lexigram.contracts.data.sql.database._results import (
     QueryResult,
     UpdateResult,
 )
-
-if TYPE_CHECKING:
-    from lexigram.contracts.data.sql.database._results import QueryResult
 
 
 class TransactionManagerProtocol(Protocol):
@@ -138,5 +135,3 @@ class DatabaseMetricsProtocol(Protocol):
             ``float`` values.
         """
         ...
-
-

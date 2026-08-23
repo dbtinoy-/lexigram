@@ -31,9 +31,9 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-
 class _TaskOperationsMixin(_TaskAttrsMixin):
     """See TaskProvider."""
+
     def register_handler(self, task_name: str, handler: Callable[..., Any]) -> None:
         """Register a task handler
 
@@ -115,7 +115,9 @@ class _TaskOperationsMixin(_TaskAttrsMixin):
     ) -> str | None:
         """Schedule a job with cron expression"""
         if self.scheduler:
-            return self.scheduler.schedule_job_sync(job_template, cron_expression, job_id)
+            return self.scheduler.schedule_job_sync(
+                job_template, cron_expression, job_id
+            )
         logger.warning("Scheduler not enabled")
         return None
 

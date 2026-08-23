@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar
 
 # Import from root config.py - Single source of truth
 from lexigram.cache.backends.registry import BackendRegistry
@@ -12,7 +13,9 @@ from lexigram.cache.config import (
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
+    from lexigram.cache.service.core import CacheService
     from lexigram.contracts import ContainerRegistrarProtocol
+    from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 
 logger = get_logger(__name__)
 
@@ -21,6 +24,12 @@ T = TypeVar("T")
 
 
 class _CacheRegistrationMixin:
+    config: Any
+    _initialize_serializers: Callable[..., None]
+    get_backend: Callable[..., CacheBackendProtocol]
+    get_default_service: Callable[..., CacheService]
+    get_service: Callable[..., CacheService]
+    _backends: dict[str, CacheBackendProtocol]
     """See :class:`CacheProvider`."""
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register cache services with the container.

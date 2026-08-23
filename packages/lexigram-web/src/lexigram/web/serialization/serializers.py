@@ -243,6 +243,10 @@ class ResponseSerializer:
         if isinstance(result, Result):
             if result.is_ok():
                 result = result.unwrap()
+                # An Ok that wraps a ready-made Response passes through
+                # untouched (cookie-setting endpoints need this).
+                if isinstance(result, Response):
+                    return result
                 # Continue to normal serialization for the inner value
             else:
                 # Let the DomainExceptionFilter handle the error by raising it

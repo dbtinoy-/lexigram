@@ -89,7 +89,7 @@ class SQSQueue:
     async def connect(self) -> None:
         """Establish connection to SQS."""
         try:
-            import aiobotocore.session  # type: ignore[import-not-found]
+            import aiobotocore.session
         except ImportError as exc:
             raise ImportError(
                 "aiobotocore required: pip install lexigram-queue[sqs]"

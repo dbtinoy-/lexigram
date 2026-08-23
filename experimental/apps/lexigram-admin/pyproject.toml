@@ -206,17 +206,6 @@ warn_unused_ignores = true
 warn_no_return = true
 strict_equality = true
 show_error_codes = true
-overrides = [
-    { module = "tests.*", ignore_errors = true },
-    { module = "docs.*", ignore_errors = true },
-]
-
-
-overrides = [
-    { module = "lexigram.admin.controllers.resource.*", ignore_errors = true },
-    { module = "lexigram.admin.di.mount.*", ignore_errors = true },
-    { module = "lexigram.admin.resources.form_renderer", ignore_errors = true },
-]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = ["--cov=lexigram.admin", "--cov-report=html", "--cov-report=term", "--cov-fail-under=60"]
