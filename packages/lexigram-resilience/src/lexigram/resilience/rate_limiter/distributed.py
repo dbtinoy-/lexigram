@@ -37,9 +37,7 @@ from lexigram.primitives import clock as ambient_clock
 from lexigram.serialization import dumps_str, loads_str
 
 if TYPE_CHECKING:
-    from lexigram.contracts.infra.state.protocols import (  # type: ignore[import-untyped]
-        StateStoreProtocol,
-    )
+    from lexigram.contracts.infra.state import StateStoreProtocol
 
 logger = get_logger(__name__)
 

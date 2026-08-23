@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from lexigram.contracts.resilience.protocols import (  # type: ignore[import-untyped]
-    CircuitBreakerProtocol,
-)
+from lexigram.contracts.infra.resilience.protocols import CircuitBreakerProtocol
 
 if TYPE_CHECKING:
     from lexigram.contracts.core.di import ContainerResolverProtocol
@@ -23,4 +21,7 @@ async def provide_resilience_pipeline(
     Returns:
         The resolved resilience pipeline instance.
     """
-    return await container.resolve(CircuitBreakerProtocol)
+    return cast(
+        "CircuitBreakerProtocol",
+        await container.resolve(CircuitBreakerProtocol),
+    )

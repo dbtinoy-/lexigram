@@ -197,9 +197,7 @@ class DatabaseService(_ConnectionMixin, _QueryMixin, _HealthMixin):
             The provider type string (e.g., "sqlite", "postgres").
         """
         if url.startswith(("mongodb://", "mongodb+srv://")):
-            from lexigram.contracts.core.exceptions import (  # type: ignore[import-untyped]
-                ConfigurationError,
-            )
+            from lexigram.contracts.exceptions.config import ConfigurationError
 
             raise ConfigurationError(
                 "MongoDB URLs are not supported by lexigram-sql. "

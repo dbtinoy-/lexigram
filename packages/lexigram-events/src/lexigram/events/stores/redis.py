@@ -20,9 +20,7 @@ from lexigram.logging import get_logger
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lexigram.contracts.infra.state.protocols import (
-        StateStoreProtocol,
-    )
+    from lexigram.contracts.infra.state import StateStoreProtocol
     from lexigram.events.messages.event import Event
 
 logger = get_logger(__name__)
