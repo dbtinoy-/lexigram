@@ -8,6 +8,7 @@ from typing import cast
 from apikey_console.controllers.api import KeysApiController
 from apikey_console.repository.keys_repository import InMemoryAPIKeyRepository
 from apikey_console.repository.session_repository import InMemorySessionRepository
+from apikey_console.services.seed import DEMO_EMAIL, DEMO_PASSWORD, DemoSeedService
 from apikey_console.ui.pages import PagesController
 from lexigram.auth.authn.apikeys import APIKeyManager
 from lexigram.auth.authn.services import AuthenticationService
@@ -26,9 +27,6 @@ from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
 
-DEMO_EMAIL = "admin@keys.demo"
-DEMO_PASSWORD = "Demo-Password-1"
-
 
 def build_auth_config() -> AuthConfig:
     """Offline demo config with an explicit dev secret."""
@@ -44,14 +42,14 @@ class ApiKeysProvider(Provider):
 
     name = "apikeys-console"
 
-    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report component readiness."""
-        return HealthCheckResult(component=self.name)
-
     def __init__(self) -> None:
         super().__init__()
         self._session_repository = InMemorySessionRepository()
         self._keys_repository = InMemoryAPIKeyRepository()
+
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report component readiness."""
+        return HealthCheckResult(component=self.name)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind builders; collaborators resolve lazily via the container."""
@@ -68,6 +66,7 @@ class ApiKeysProvider(Provider):
         container.singleton(APIKeyManager, factory=self._build_key_manager)
         container.singleton(KeysApiController, factory=self._build_api)
         container.singleton(PagesController, instance=PagesController())
+        container.singleton(DemoSeedService, factory=self._build_seed_service)
 
     async def _build_user_service(
         self, resolver: ContainerResolverProtocol
@@ -110,17 +109,15 @@ class ApiKeysProvider(Provider):
             authentication=authentication, cookies=cookies, manager=manager
         )
 
+    async def _build_seed_service(
+        self, resolver: ContainerResolverProtocol
+    ) -> DemoSeedService:
+        return DemoSeedService(users=await resolver.resolve(UserService))
+
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Seed the demo account. AuthConfig.users is inert today."""
-        users = await container.resolve(UserService)
-        created = await users.create_user(
-            name="Demo Admin",
-            email=DEMO_EMAIL,
-            password=DEMO_PASSWORD,
-            roles=["admin"],
-        )
-        if created.is_err():
-            logger.info("seed_user_present", email=DEMO_EMAIL)
+        """Seed the demo account; everything else wires lazily."""
+        seeder = await container.resolve(DemoSeedService)
+        await seeder.run()
 
 
 __all__ = ["DEMO_EMAIL", "DEMO_PASSWORD", "ApiKeysProvider"]
