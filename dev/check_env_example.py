@@ -49,7 +49,9 @@ SKIP_DIRS = {
     "mp",
 }
 # Path parts that mark a file as test/demo-scaffolding rather than source.
-SKIP_PARTS = {"tests", "test", "examples"}
+# Demos are excluded: they are not part of framework usage, and their
+# os.environ reads carry code defaults that need no documented override.
+SKIP_PARTS = {"tests", "test", "examples", "demos"}
 
 
 def _extract_names(text: str) -> set[str]:
