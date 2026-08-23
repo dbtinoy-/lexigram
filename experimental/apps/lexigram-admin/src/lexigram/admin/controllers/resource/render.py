@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from lexigram.admin.controllers.resource.meta import T
-from lexigram.admin.data.data_source import QueryResult
+from lexigram.admin.controllers.resource.meta import ResourceMeta, T
 from lexigram.admin.state.context import AdminContext
-from lexigram.admin.state.url import URLState
-from lexigram.ui import el, render_to_string
-
-if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
-
 
 
 class ResourceRenderMixin:
     """Form rendering hooks."""
 
-    def render_form(self: ResourceController,
+    # Host attributes provided by sibling mixins on ResourceController.
+    meta: ResourceMeta
+
+    def render_form(
+        self,
         ctx: AdminContext,
         item: T | None,
         data: dict[str, Any] | None = None,
@@ -37,7 +34,8 @@ class ResourceRenderMixin:
 </html>
 """
 
-    def render_form_partial(self: ResourceController,
+    def render_form_partial(
+        self,
         ctx: AdminContext,
         item: T | None,
         data: dict[str, Any] | None = None,
