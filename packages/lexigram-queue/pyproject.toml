@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-queue"
-version = "0.1.3007"
+version = "0.1.4"
 description = "Message bus and queue with Named DI multi-backend support for the Lexigram Framework"
 readme = "README.md"
 requires-python = ">=3.11"
