@@ -58,7 +58,7 @@ def test_quality_generator_includes_ruff_and_mypy_tool_evidence(
                 stderr="",
                 duration_ms=145,
             )
-        if command == ("uv", "run", "mypy", "lexigram/src/"):
+        if command == ("uv", "run", "mypy", "src") and cwd is not None and cwd.name == "lexigram":
             return CommandEvidence(
                 command=command,
                 cwd=cwd,
@@ -68,7 +68,7 @@ def test_quality_generator_includes_ruff_and_mypy_tool_evidence(
                 stderr="src/lexigram/demo.py:10: error: Example failure [attr-defined]\n",
                 duration_ms=200,
             )
-        if command == ("uv", "run", "mypy", "lexigram-ai-demo/src/"):
+        if command == ("uv", "run", "mypy", "src") and cwd is not None and cwd.name == "lexigram-ai-demo":
             return CommandEvidence(
                 command=command,
                 cwd=cwd,
@@ -113,10 +113,10 @@ def test_quality_generator_includes_ruff_and_mypy_tool_evidence(
     assert "[lexigram] 1 errors" in markdown
     assert observed_commands == [
         (("uv", "run", "ruff", "check", "."), tmp_path, 120.0),
-        (("uv", "run", "mypy", "lexigram/src/"), tmp_path, 60.0),
+        (("uv", "run", "mypy", "src"), tmp_path / "lexigram", 60.0),
         (
-            ("uv", "run", "mypy", "lexigram-ai-demo/src/"),
-            tmp_path,
+            ("uv", "run", "mypy", "src"),
+            tmp_path / "lexigram-ai-demo",
             60.0,
         ),
     ]
@@ -156,3 +156,50 @@ def test_quality_generator_writes_report_for_timeout_and_command_error(
     assert "(no output)" in markdown
     assert "mypy executable missing" in markdown
     assert "| `Mypy` | **FAIL** | error | 0 ms | `uv run mypy" in markdown
+
+
+def test_quality_generator_surfaces_mypy_crash_without_parseable_errors(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """A non-zero mypy exit with no ``error:`` lines reports a crash, not 0 errors."""
+    _write_sample_workspace(tmp_path)
+
+    def fake_run_command(command: tuple[str, ...], *, cwd: Path | None = None, timeout=None):
+        if command == ("uv", "run", "ruff", "check", "."):
+            return CommandEvidence(
+                command=command,
+                cwd=cwd,
+                timeout_seconds=timeout,
+                exit_code=0,
+                stdout="All checks passed!\n",
+                stderr="",
+                duration_ms=100,
+            )
+        if command[:3] == ("uv", "run", "mypy"):
+            return CommandEvidence(
+                command=command,
+                cwd=cwd,
+                timeout_seconds=timeout,
+                exit_code=2,
+                stdout="",
+                stderr=(
+                    "mypy: warning: missing library stubs\n"
+                    "{{ package_name }} contains __init__.py but is not a valid "
+                    "Python package name\n"
+                ),
+                duration_ms=150,
+            )
+        raise AssertionError(f"Unexpected command: {command!r}")
+
+    monkeypatch.setattr(quality, "run_command", fake_run_command)
+    generator = QualityAuditGenerator()
+
+    generator.run(root=tmp_path)
+    markdown = (tmp_path / "docs/audit" / "AUDIT_QUALITY.md").read_text(encoding="utf-8")
+
+    # The misleading "[pkg] 0 errors" line must not appear...
+    assert "0 errors" not in markdown
+    # ...replaced by an explicit crash report carrying the real stderr tail.
+    assert "crashed (exit 2, 0 parseable errors)" in markdown
+    assert "not a valid Python package name" in markdown

@@ -269,26 +269,39 @@ def _run_mypy_tool(*, root: Path, package_paths: tuple[Path, ...]) -> dict[str, 
 
         total_duration_ms += evidence.duration_ms
         output = evidence.stdout + evidence.stderr
-        
+
         # Count and categorize errors
         error_count = output.count(" error:")
         if error_count > 0:
             package_errors[package_name] = error_count
             packages_with_errors += 1
             total_errors += error_count
-            
+
             # Categorize by error code
             for match in re.finditer(r'\[([a-z0-9\-]+)\]', output):
                 error_code = match.group(1)
                 all_error_categories[error_code] += 1
-        
+
         if evidence.timed_out:
             has_timeout = True
             snippets.append(f"[{package_name}] Command timed out.")
         elif evidence.exit_code not in (None, 0):
             if first_nonzero_exit is None:
                 first_nonzero_exit = evidence.exit_code
-            snippets.append(f"[{package_name}] {error_count} errors")
+            if error_count > 0 or "Success:" in output:
+                snippets.append(f"[{package_name}] {error_count} errors")
+            else:
+                # Non-zero exit without parseable errors (mypy exit code 2 =
+                # crash: bad config, invalid package name, import failure).
+                # Surface the real reason instead of a misleading "0 errors".
+                tail_lines = [
+                    line for line in output.splitlines() if line.strip()
+                ]
+                tail = "\n".join(tail_lines[-3:]) if tail_lines else "(no output)"
+                snippets.append(
+                    f"[{package_name}] crashed (exit "
+                    f"{evidence.exit_code}, {error_count} parseable errors):\n{tail}"
+                )
 
     if has_command_error:
         exit_code = "error"
