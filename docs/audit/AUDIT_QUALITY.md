@@ -7,24 +7,24 @@
 ## Summary
 
 - Tool checks run: 2
-- Passing tools: 1
-- Failing tools: 1
+- Passing tools: 2
+- Failing tools: 0
 - Packages counted: 54
-- Total mypy errors: 106
-- Packages with errors: 4
+- Total mypy errors: 0
+- Packages with errors: 0
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 234 ms | `uv run ruff check .` |
-| `Mypy` | **FAIL** | 1 | 49306 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 236 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 44828 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `234 ms`
+- Duration: `236 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -34,47 +34,15 @@ All checks passed!
 
 ### Mypy
 
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `49306 ms`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `44828 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
-[lexigram] 35 errors
-[lexigram-admin] 69 errors
-[lexigram-ai] 1 errors
-[lexigram-cli] 0 errors
-[lexigram-testing] 1 errors
+All per-package mypy checks passed.
 ```
-
-### Mypy Error Breakdown
-
-#### By Error Code
-
-| Code | Count | Description |
-|------|-------|-------------|
-| `misc` | 42 | Miscellaneous type checking error |
-| `no-any-return` | 18 | Function returns Any when specific type declared |
-| `attr-defined` | 15 | Attribute not defined on type |
-| `unreachable` | 13 | Type checking error |
-| `var-annotated` | 9 | Variable missing type annotation |
-| `no-untyped-def` | 4 | Function missing return type annotation |
-| `func-returns-value` | 1 | Type checking error |
-| `name-defined` | 1 | Type checking error |
-| `return-value` | 1 | Type checking error |
-| `union-attr` | 1 | Type checking error |
-| `syntax` | 1 | Type checking error |
-| `unused-ignore` | 1 | Unused type: ignore comment |
-
-#### By Package (Top 10)
-
-| Package | Errors |
-|---------|--------|
-| `lexigram-admin` | 69 |
-| `lexigram` | 35 |
-| `lexigram-ai` | 1 |
-| `lexigram-testing` | 1 |
 
 ## Package Metrics
 
