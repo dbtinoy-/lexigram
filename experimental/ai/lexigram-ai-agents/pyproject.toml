@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-agents"
-version = "0.1.4"
+version = "0.1.5001"
 description = "Agent system for Lexigram Framework - AI agents with tools, strategies, and execution"
 readme = "README.md"
 requires-python = ">=3.11"

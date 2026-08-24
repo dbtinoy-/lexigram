@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-ai-session"
-version = "0.1.4"
+version = "0.1.5001"
 description = "AI session management for the Lexigram Framework — branching, checkpointing, multi-agent sessions"
 readme = "README.md"
 requires-python = ">=3.11"
