@@ -30,6 +30,15 @@ for _src in (
 # Also add special test helpers paths
 for _extra in [
     _ROOT / "experimental" / "ai" / "lexigram-ai-memory" / "tests" / "unit",
+    # Sibling support modules imported by bare name from tests running under
+    # --import-mode=importlib (root-level runs do not insert per-file dirs).
+    _ROOT / "packages" / "lexigram-web" / "tests" / "unit" / "security",
+    _ROOT / "experimental" / "ai" / "lexigram-ai-agents" / "tests" / "unit",
+    _ROOT / "experimental" / "ai" / "lexigram-ai" / "tests" / "unit",
+    _ROOT / "experimental" / "ai" / "lexigram-ai-rag" / "tests" / "unit",
+    # Admin app root so its `from tests.<subdir> import ...` namespace imports
+    # resolve when the suite runs from the monorepo root.
+    _ROOT / "experimental" / "apps" / "lexigram-admin",
 ]:
     _extra_str = str(_extra)
     if _extra.exists() and _extra_str not in sys.path:

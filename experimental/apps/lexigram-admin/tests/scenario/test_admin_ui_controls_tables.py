@@ -7,7 +7,7 @@ pytestmark = [pytest.mark.scenario]
 import httpx
 from starlette.applications import Starlette
 
-from tests.scenario.test_admin_ui_controls import (  # noqa: E402
+from tests.scenario.admin_ui_controls_support import (  # noqa: E402
     FakeDataSource,
     ScenarioController,
     _make_records,

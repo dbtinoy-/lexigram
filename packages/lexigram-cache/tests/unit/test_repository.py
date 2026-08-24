@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from lexigram.cache.repository.base import (
+from lexigram.cache.repository import (
     CacheRepository,
     CollectionRepository,
     ConfigurationRepository,
