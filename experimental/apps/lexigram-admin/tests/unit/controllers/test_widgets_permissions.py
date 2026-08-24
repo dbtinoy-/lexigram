@@ -1,12 +1,10 @@
-"""Tests for WidgetController routing logic."""
+"""Tests for WidgetController permission gates."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from starlette.routing import Route
 
 from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.widgets import WidgetController
@@ -19,172 +17,9 @@ from lexigram.contracts.admin.types import (
 )
 from lexigram.contracts.admin.widget_content import MessageContent
 from lexigram.contracts.core.health import HealthStatus
-from lexigram.result import Err, Ok
+from lexigram.result import Ok
 
-
-class TestWidgetController:
-    @pytest.fixture
-    def mock_registry(self) -> MagicMock:
-        return MagicMock()
-
-    @pytest.fixture
-    def mock_contributor(self) -> MagicMock:
-        return MagicMock()
-
-    @pytest.mark.asyncio
-    async def test_returns_200_with_error_card_when_contributor_not_found(
-        self, mock_registry: MagicMock
-    ) -> None:
-        mock_registry.get.return_value = None
-        controller = WidgetController(registry=mock_registry)
-        mock_request = MagicMock()
-        mock_request.query_params = {}
-        response = await controller.render_widget(
-            request=mock_request,
-            contributor_id="nonexistent",
-            widget_name="some_widget",
-        )
-        assert response.status_code == 200
-        assert b"widget-error-card" in response.body
-        assert b"Contributor" in response.body
-
-    @pytest.mark.asyncio
-    async def test_returns_html_on_ok_result(
-        self, mock_registry: MagicMock, mock_contributor: MagicMock
-    ) -> None:
-        mock_registry.get.return_value = mock_contributor
-        mock_contributor.render_widget = AsyncMock(
-            return_value=Ok(WidgetViewModel(content=MessageContent(text="ok")))
-        )
-        controller = WidgetController(registry=mock_registry)
-        mock_request = MagicMock()
-        mock_request.query_params = {}
-        response = await controller.render_widget(
-            request=mock_request,
-            contributor_id="sql",
-            widget_name="pool_utilization",
-        )
-        assert response.status_code == 200
-        assert b"ok" in response.body
-
-    @pytest.mark.asyncio
-    async def test_returns_200_with_error_card_on_widget_not_found(
-        self, mock_registry: MagicMock, mock_contributor: MagicMock
-    ) -> None:
-        from lexigram.contracts.admin.errors import WidgetNotFoundError
-
-        mock_registry.get.return_value = mock_contributor
-        mock_contributor.render_widget = AsyncMock(
-            return_value=Err(WidgetNotFoundError("sql", "unknown_widget"))
-        )
-        controller = WidgetController(registry=mock_registry)
-        mock_request = MagicMock()
-        mock_request.query_params = {}
-        response = await controller.render_widget(
-            request=mock_request,
-            contributor_id="sql",
-            widget_name="unknown_widget",
-        )
-        assert response.status_code == 200
-        assert b"widget-error-card" in response.body
-
-    @pytest.mark.asyncio
-    async def test_returns_200_with_error_card_on_domain_error(
-        self, mock_registry: MagicMock, mock_contributor: MagicMock
-    ) -> None:
-        from lexigram.contracts.admin.errors import AdminError
-
-        mock_registry.get.return_value = mock_contributor
-        mock_contributor.render_widget = AsyncMock(
-            return_value=Err(AdminError("data unavailable"))
-        )
-        controller = WidgetController(registry=mock_registry)
-        mock_request = MagicMock()
-        mock_request.query_params = {}
-        response = await controller.render_widget(
-            request=mock_request,
-            contributor_id="sql",
-            widget_name="pool_utilization",
-        )
-        assert response.status_code == 200
-        assert b"widget-error-card" in response.body
-
-
-class TestWidgetControllerGetRoutes:
-    """Tests for WidgetController.get_routes() method."""
-
-    @pytest.fixture
-    def mock_registry(self) -> MagicMock:
-        return MagicMock()
-
-    def test_get_routes_returns_list(self, mock_registry: MagicMock) -> None:
-        """Test that get_routes returns a list."""
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        assert isinstance(routes, list)
-
-    def test_get_routes_returns_starlette_routes(
-        self, mock_registry: MagicMock
-    ) -> None:
-        """Test that get_routes returns Starlette Route objects."""
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        for route in routes:
-            assert isinstance(route, Route)
-
-    def test_get_routes_includes_widget_route(self, mock_registry: MagicMock) -> None:
-        """Test that widget route is included."""
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        paths = [r.path for r in routes]
-        assert any("/{contributor_id}/widgets/{widget_name}" in p for p in paths)
-
-    def test_get_routes_includes_health_route(self, mock_registry: MagicMock) -> None:
-        """Test that health check route is included."""
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        paths = [r.path for r in routes]
-        assert any("/{contributor_id}/health/{check_name}" in p for p in paths)
-
-    def test_get_routes_path_no_admin_prefix(self, mock_registry: MagicMock) -> None:
-        """Test that route paths do not have duplicate /admin prefix.
-
-        Routes are mounted at /admin via Mount(), so get_routes() should
-        return paths like /{contributor_id}/widgets/{widget_name}, not
-        /admin/{contributor_id}/widgets/{widget_name}.
-        """
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        for route in routes:
-            assert not route.path.startswith("/admin"), (
-                f"Route path '{route.path}' should not include /admin prefix - "
-                "the Mount() provides that."
-            )
-
-    def test_get_routes_has_methods(self, mock_registry: MagicMock) -> None:
-        """Test that routes have correct HTTP methods."""
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        paths_to_methods = {r.path: r.methods for r in routes}
-        widget_route = next(p for p in paths_to_methods if "widgets" in p)
-        assert "GET" in paths_to_methods[widget_route]
-
-    def test_get_routes_endpoint_is_callable(self, mock_registry: MagicMock) -> None:
-        """Test that route endpoints are callable."""
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        for route in routes:
-            assert callable(route.endpoint)
-
-    def test_get_routes_endpoint_signature(self, mock_registry: MagicMock) -> None:
-        """Test that endpoints accept request parameter."""
-        controller = WidgetController(registry=mock_registry)
-        routes = controller.get_routes()
-        for route in routes:
-            import inspect
-
-            sig = inspect.signature(route.endpoint)
-            assert "request" in sig.parameters
+from tests.unit.controllers.widgets_test_support import _request_for, _user_with_permissions
 
 
 class TestWidgetControllerPermissionGate:
@@ -452,24 +287,6 @@ class TestWidgetConfigPopupPermissionGate:
         settings.get_widget_prefs.assert_awaited_once()
 
 
-def _user_with_permissions(*permissions: str) -> MagicMock:
-    """Build a user mock with the given permission set and no roles."""
-    user = MagicMock()
-    user.permissions = frozenset(permissions)
-    user.roles = frozenset()
-    return user
-
-
-def _request_for(user: MagicMock) -> MagicMock:
-    """Build a request mock carrying the given user on state."""
-    request = MagicMock()
-    request.query_params = {}
-    state = MagicMock()
-    state.user = user
-    request.state = state
-    return request
-
-
 class TestWidgetControllerWidgetPermissionGate:
     """Declared widget permissions gate render_widget dispatch."""
 
@@ -631,55 +448,3 @@ class TestWidgetControllerHealthPermissionGate:
         assert response.status_code == 200
         assert b"health-check-badge" in response.body
         contributor.render_health_check.assert_awaited_once()
-
-
-class TestWidgetControllerTenantScoping:
-    """D4: dashboard widget prefs must resolve the real tenant, not hardcode 'default'."""
-
-    @pytest.mark.asyncio
-    async def test_render_widget_uses_resolved_tenant(self) -> None:
-        mock_registry = MagicMock()
-        mock_contributor = MagicMock()
-        mock_registry.get.return_value = mock_contributor
-        mock_contributor.render_widget = AsyncMock(
-            return_value=Ok(WidgetViewModel(content=MessageContent(text="ok")))
-        )
-        settings_service = MagicMock()
-        settings_service.get_widget_prefs = AsyncMock(return_value={"configs": {}})
-        controller = WidgetController(registry=mock_registry)
-        controller._settings_service = settings_service
-
-        mock_request = MagicMock()
-        mock_request.query_params = {}
-        mock_request.state = SimpleNamespace(tenant_id="acme")
-
-        await controller.render_widget(
-            request=mock_request, contributor_id="c1", widget_name="w1"
-        )
-
-        settings_service.get_widget_prefs.assert_awaited_once_with("acme", "default")
-
-    @pytest.mark.asyncio
-    async def test_widget_config_popup_uses_resolved_tenant(self) -> None:
-        controller = WidgetController(registry=MagicMock())
-        controller._registry.get_all.return_value = []
-        mock_request = MagicMock()
-        mock_request.state = SimpleNamespace(tenant_id="acme")
-
-        import lexigram.admin.controllers.widgets as widgets_module
-        from lexigram.admin.multitenancy.adapter import resolve_tenant_id as original
-
-        captured: dict[str, str] = {}
-
-        async def spy(request, *, default):
-            resolved = await original(request, default=default)
-            captured["tenant_id"] = resolved
-            return resolved
-
-        widgets_module.resolve_tenant_id = spy
-        try:
-            await controller.widget_config_popup(request=mock_request, name="w1")
-        finally:
-            widgets_module.resolve_tenant_id = original
-
-        assert captured["tenant_id"] == "acme"
