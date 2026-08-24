@@ -215,7 +215,7 @@ class TokenOptimizedPipeline:
             logger.info("token_pipeline_stage_6_prompt_assembly")
             assembled_messages = self.assembler.assemble(
                 system=compressed_system,
-                tools=tools,  # type: ignore[arg-type]
+                tools=tools,
                 reference_docs=compressed_docs,
                 few_shot=few_shot,  # type: ignore[arg-type]
                 history=list(pruned_history or []),
