@@ -1,13 +1,25 @@
 # Demos
 
-> **Fourteen runnable, fully-gated demo apps** — each one is a living tutorial
+> **Fifteen runnable, fully-gated demo apps** — each one is a living tutorial
 > for Lexigram, built on the editable framework packages in this repository:
-> nine capability demos plus five auth consoles, all offline-deterministic
-> and gated like the framework itself.
+> a hub console plus nine capability demos plus five auth consoles, all
+> offline-deterministic and gated like the framework itself.
 
 ---
 
 ## The demos at a glance
+
+### [demo-hub](demo-hub/) — live status console for the whole fleet
+
+- **Hub API** — `GET /api/status` probes every running demo server
+  (`PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub`, :7000)
+
+The launchpad for visitors:
+
+- **Live health checks** — server-side concurrent probes of all 13 web demos,
+  no browser CORS involved
+- **Card grid** — green/red status dots, latency, one-click links per demo
+- **Filters** — All / Capability / Auth views over the fleet
 
 ### [resilient-rates](resilient-rates/) — resilience patterns end to end
 
@@ -180,6 +192,9 @@ API-key management UI plus an `X-API-Key`-guarded JSON endpoint:
 ## Running them
 
 ```bash
+# ── hub ───────────────────────────────────────────────────────────
+PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub                      # live demo hub (:7000)
+
 # ── capability demos ──────────────────────────────────────────────
 PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # resilience REST API (:7073)
 PYTHONPATH=demos/event-driven-orders/src uv run python -m orders demo        # full CQRS order lifecycle
