@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Event-Driven Orders</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Event-Driven Orders</h1>
+    <p class="muted">CQRS &amp; event sourcing &mdash; commands, projections, outbox</p>
+  </header>
+  <main>
+    <section id="place-panel">
+      <h2>Place Order</h2>
+      <form id="place-form">
+        <label>Customer <input id="customer" type="text" required placeholder="Alice Wonder"></label>
+        <fieldset id="items-fieldset">
+          <legend>Items</legend>
+          <div class="item-row">
+            <input class="item-sku" type="text" placeholder="SKU-1" required>
+            <input class="item-qty" type="number" value="1" min="1" required>
+            <input class="item-price" type="text" placeholder="9.99" required>
+            <button type="button" class="remove-item" disabled>&times;</button>
+          </div>
+        </fieldset>
+        <div class="form-actions">
+          <button type="button" id="add-item">+ Add item</button>
+          <button type="submit">Place Order</button>
+        </div>
+      </form>
+      <p id="place-error" class="error hidden"></p>
+    </section>
+
+    <section id="orders-panel">
+      <h2>Orders</h2>
+      <table id="orders-table">
+        <thead>
+          <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="orders-empty" class="muted">No orders yet.</p>
+    </section>
+
+    <section id="outbox-panel">
+      <h2>Outbox</h2>
+      <div id="outbox-actions">
+        <button id="flush-btn">Flush Outbox</button>
+        <button id="refresh-btn">Refresh</button>
+      </div>
+      <table id="outbox-table" class="hidden">
+        <thead>
+          <tr><th>Event Type</th><th>Status</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="outbox-empty" class="muted">Outbox is empty.</p>
+    </section>
+
+    <section id="log-panel">
+      <h2>Event Log</h2>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

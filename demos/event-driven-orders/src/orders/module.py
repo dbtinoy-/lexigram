@@ -21,6 +21,7 @@ from orders.events import NotificationHandler, OrdersView
 from orders.repository.order_repository import OrderRepository
 from orders.repository.outbox import Outbox
 from orders.services.orders_api import OrdersApi
+from orders.ui.pages import OrdersPageController
 
 
 @module()
@@ -37,7 +38,7 @@ class OrdersModule(Module):
             imports=[
                 EventsModule.configure(),
                 WebModule.configure(
-                    controllers=[OrdersApiController],
+                    controllers=[OrdersApiController, OrdersPageController],
                     web_config=WebConfig(
                         server=ServerConfig(host="127.0.0.1", port=selected_port),
                         # The API is meant for curl/external tools, not a

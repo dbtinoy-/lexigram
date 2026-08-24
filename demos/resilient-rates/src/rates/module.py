@@ -16,6 +16,7 @@ from rates.controllers.api import RatesApiController
 from rates.di.provider import RatesProvider
 from rates.repository.simulated_upstream import FaultController, SimulatedRatesProvider
 from rates.services.rates_service import RatesService
+from rates.ui.pages import RatesPageController
 
 
 def _memory_cache_config() -> CacheConfig:
@@ -46,7 +47,7 @@ class RatesModule(Module):
                 ResilienceModule.configure(),
                 CacheModule.configure(_memory_cache_config()),
                 WebModule.configure(
-                    controllers=[RatesApiController],
+                    controllers=[RatesApiController, RatesPageController],
                     web_config=WebConfig(
                         server=ServerConfig(
                             host="127.0.0.1",

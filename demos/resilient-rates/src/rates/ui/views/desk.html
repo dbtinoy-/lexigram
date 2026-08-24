@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Resilient Rates Desk</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Resilient Rates Desk</h1>
+    <p class="muted">Cache-aside + retry + circuit breaker + stale fallback</p>
+  </header>
+  <main>
+    <section id="controls">
+      <h2>Upstream Health</h2>
+      <div id="scenarios">
+        <button data-scenario="healthy" class="active">Healthy</button>
+        <button data-scenario="flaky">Flaky</button>
+        <button data-scenario="down">Down</button>
+        <button data-scenario="slow">Slow</button>
+      </div>
+      <button id="clear-cache" class="danger">Clear Cache</button>
+    </section>
+
+    <section id="pairs">
+      <h2>Currency Pairs</h2>
+      <div id="pair-cards"></div>
+    </section>
+
+    <section id="stats-panel">
+      <h2>Service Stats</h2>
+      <div id="stats-grid">
+        <div class="stat"><span class="stat-label">Hits</span><span id="s-hits" class="stat-value">0</span></div>
+        <div class="stat"><span class="stat-label">Misses</span><span id="s-misses" class="stat-value">0</span></div>
+        <div class="stat"><span class="stat-label">Upstream</span><span id="s-upstream" class="stat-value">0</span></div>
+        <div class="stat"><span class="stat-label">Retries</span><span id="s-retries" class="stat-value">0</span></div>
+        <div class="stat"><span class="stat-label">Stale</span><span id="s-stale" class="stat-value">0</span></div>
+      </div>
+    </section>
+
+    <section id="log-panel">
+      <h2>Activity Log</h2>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
