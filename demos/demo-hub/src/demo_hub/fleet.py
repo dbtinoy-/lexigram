@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 import sys
+from typing import TYPE_CHECKING
 
 from starlette.applications import Starlette
 
@@ -18,6 +19,9 @@ from demo_hub.subsite import SubsiteMiddleware
 from lexigram.app import create_app
 from lexigram.logging import get_logger
 from lexigram.web.di.provider import WebProvider
+
+if TYPE_CHECKING:
+    from lexigram.app import Application
 
 logger = get_logger(__name__)
 
