@@ -130,6 +130,7 @@ class AdminWebSocketManager:
     """Manager for admin WebSocket connections.
 
     Handles connection tracking, subscriptions, and message routing.
+    Delegates connection state management to ConnectionTracker.
 
     Example:
         >>> manager = AdminWebSocketManager()
@@ -138,25 +139,15 @@ class AdminWebSocketManager:
         >>> await manager.broadcast(message, resource="users")
     """
 
-    def __init__(self) -> None:
-        """Initialize the manager."""
-        self._connections: dict[str, Any] = {}  # connection_id -> websocket
-        self._user_connections: dict[Any, set[str]] = {}  # user_id -> connection_ids
-        self._resource_subscriptions: dict[
-            str,
-            set[str],
-        ] = {}  # resource -> connection_ids
-        self._connection_resources: dict[
-            str,
-            set[str],
-        ] = {}  # connection_id -> resources
-        self._connection_users: dict[str, Any] = {}  # connection_id -> user_id
+    def __init__(self, tracker: Any | None = None) -> None:
+        """Initialize the manager.
 
-    def _generate_connection_id(self) -> str:
-        """Generate unique connection ID."""
-        import uuid
+        Args:
+            tracker: Optional ConnectionTracker instance. Creates one if not provided.
+        """
+        from lexigram.admin.realtime.connection_tracker import ConnectionTracker
 
-        return str(uuid.uuid4())[:12]
+        self._tracker = tracker or ConnectionTracker()
 
     async def connect(
         self,
@@ -172,18 +163,7 @@ class AdminWebSocketManager:
         Returns:
             Connection ID
         """
-        connection_id = self._generate_connection_id()
-
-        self._connections[connection_id] = websocket
-        self._connection_resources[connection_id] = set()
-
-        if user_id:
-            self._connection_users[connection_id] = user_id
-            if user_id not in self._user_connections:
-                self._user_connections[user_id] = set()
-            self._user_connections[user_id].add(connection_id)
-
-        return connection_id
+        return await self._tracker.connect(websocket, user_id)
 
     async def disconnect(self, connection_id: str) -> None:
         """Unregister a connection.
@@ -191,22 +171,7 @@ class AdminWebSocketManager:
         Args:
             connection_id: Connection to remove
         """
-        # Remove from subscriptions
-        if connection_id in self._connection_resources:
-            for resource in self._connection_resources[connection_id]:
-                if resource in self._resource_subscriptions:
-                    self._resource_subscriptions[resource].discard(connection_id)
-            del self._connection_resources[connection_id]
-
-        # Remove from user connections
-        if connection_id in self._connection_users:
-            user_id = self._connection_users[connection_id]
-            if user_id in self._user_connections:
-                self._user_connections[user_id].discard(connection_id)
-            del self._connection_users[connection_id]
-
-        # Remove connection
-        self._connections.pop(connection_id, None)
+        await self._tracker.disconnect(connection_id)
 
     async def subscribe(
         self,
@@ -219,13 +184,7 @@ class AdminWebSocketManager:
             connection_id: Connection ID
             resources: List of resource types to subscribe to
         """
-        for resource in resources:
-            if resource not in self._resource_subscriptions:
-                self._resource_subscriptions[resource] = set()
-            self._resource_subscriptions[resource].add(connection_id)
-
-            if connection_id in self._connection_resources:
-                self._connection_resources[connection_id].add(resource)
+        await self._tracker.subscribe(connection_id, resources)
 
     async def unsubscribe(
         self,
@@ -236,14 +195,9 @@ class AdminWebSocketManager:
 
         Args:
             connection_id: Connection ID
-            resources: List of resources to unsubscribe from
+            resources: List of resource types to unsubscribe from
         """
-        for resource in resources:
-            if resource in self._resource_subscriptions:
-                self._resource_subscriptions[resource].discard(connection_id)
-
-            if connection_id in self._connection_resources:
-                self._connection_resources[connection_id].discard(resource)
+        await self._tracker.unsubscribe(connection_id, resources)
 
     async def send(
         self,
@@ -288,23 +242,12 @@ class AdminWebSocketManager:
         Returns:
             Number of connections that received the message
         """
-        exclude_connections = exclude_connections or []
-        target_connections: set[str] = set()
+        target_connections = self._tracker.resolve_targets(
+            resource=resource,
+            user_ids=user_ids,
+            exclude_connections=exclude_connections,
+        )
 
-        if user_ids:
-            for user_id in user_ids:
-                if user_id in self._user_connections:
-                    target_connections.update(self._user_connections[user_id])
-        elif resource:
-            if resource in self._resource_subscriptions:
-                target_connections.update(self._resource_subscriptions[resource])
-        else:
-            target_connections.update(self._connections.keys())
-
-        # Exclude specified connections
-        target_connections -= set(exclude_connections)
-
-        # Send to all targets
         sent = 0
         for conn_id in target_connections:
             if await self.send(conn_id, message):
@@ -331,11 +274,11 @@ class AdminWebSocketManager:
     @property
     def connection_count(self) -> int:
         """Get total number of connections."""
-        return len(self._connections)
+        return self._tracker.connection_count
 
     def get_user_connection_count(self, user_id: Any) -> int:
         """Get number of connections for a user."""
-        return len(self._user_connections.get(user_id, set()))
+        return self._tracker.get_user_connection_count(user_id)
 
 
 HAS_WEBSOCKET = True  # local placeholder is always available

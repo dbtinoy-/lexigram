@@ -3,13 +3,6 @@
 # limit become stale and must be removed in the same change.
 # Regenerate after review: uv run python dev/check_loc_limit.py --root . --write-baseline
 core/lexigram-contracts/src/lexigram/contracts/__init__.py
-core/lexigram-contracts/src/lexigram/contracts/ai/llm.py
-core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/gemini.py
-core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/openai_responses.py
-core/lexigram-contracts/src/lexigram/contracts/events/protocols.py
-core/lexigram-contracts/src/lexigram/contracts/graphql/protocols.py
-core/lexigram-contracts/src/lexigram/contracts/infra/tasks/protocols.py
-core/lexigram-contracts/src/lexigram/contracts/web/protocols.py
 
 core/lexigram/src/lexigram/app/base.py
 core/lexigram/src/lexigram/di/container/container.py
@@ -79,7 +72,6 @@ experimental/apps/lexigram-ui/src/lexigram/ui/state.py
 experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/processing/argv.py
 packages/lexigram-auth/src/lexigram/auth/authn/ldap.py
 packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py
-packages/lexigram-cache/src/lexigram/cache/repository/base.py
 packages/lexigram-events/src/lexigram/events/decorators/validation.py
 
 packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
@@ -96,7 +88,6 @@ packages/lexigram-tasks/src/lexigram/tasks/workflows/core.py
 packages/lexigram-testing/src/lexigram/testing/clients/auth/fixtures.py
 packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures.py
 packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures.py
-packages/lexigram-vector/src/lexigram/vector/search/hybrid.py
 packages/lexigram-vector/src/lexigram/vector/search/reranking.py
 packages/lexigram-web/src/lexigram/web/di/provider.py
 packages/lexigram-web/src/lexigram/web/errors/html_error_renderer.py
@@ -104,5 +95,3 @@ packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py
 packages/lexigram-web/src/lexigram/web/routing/validation.py
 
 packages/lexigram-workflow/src/lexigram/workflow/bulk/operation.py
-
-packages/lexigram-sql/src/lexigram/sql/migrations/manager/_alembic.py

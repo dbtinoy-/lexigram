@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from enum import StrEnum
-import os
 from pathlib import Path
 import sys
-import time
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from lexigram.app.exceptions import AppShutdownError
 from lexigram.app.invoker import Invoker
+from lexigram.app.lifecycle import ApplicationLifecycle
 from lexigram.app.pipeline import MiddlewarePipeline
 from lexigram.config import LexigramConfig
 from lexigram.contracts.core import MiddlewarePipelineProtocol, MiddlewareProtocol
@@ -93,7 +92,14 @@ class Application:
         self._container.singleton(Invoker, self._invoker)
 
         self._modules: list[type | DynamicModule] = []
-        self._start_time: float | None = None
+
+        self._lifecycle = ApplicationLifecycle(
+            container=self._container,
+            orchestrator=self._orchestrator,
+            config=self._config,
+            logger=self._logger,
+            app_name=self.name,
+        )
 
         # Secrets registered by the app for boot-time validation.
         # Populated via register_secrets() and register_secrets_from_store();
@@ -360,54 +366,51 @@ class Application:
             raise RuntimeError(f"Cannot start: state is {self._state.value}")
 
         self._state = AppState.STARTING
-        self._start_time = time.monotonic()
-        self._logger.info("application.starting", name=self.name)
-
-        # No longer setting global container as it's an anti-pattern
 
         try:
-            if self._config.discovery.auto_discover:
-                cfg = self._config.discovery
-                self.discover_modules(
-                    entry_point_group=cfg.entry_point_group,
-                    directories=cfg.directories or None,  # type: ignore[arg-type]
-                    enabled=cfg.enabled_modules or None,
-                    disabled=cfg.disabled_modules or None,
-                )
 
-            # If modules are registered, use ModuleCompiler to extract and order providers.
-            if self._modules:
-                from lexigram.di.module.compiler import ModuleCompiler
+            def _auto_discover_and_compile() -> None:
+                if self._config.discovery.auto_discover:
+                    cfg = self._config.discovery
+                    self.discover_modules(
+                        entry_point_group=cfg.entry_point_group,
+                        directories=cfg.directories or None,  # type: ignore[arg-type]
+                        enabled=cfg.enabled_modules or None,
+                        disabled=cfg.disabled_modules or None,
+                    )
 
-                compiler = ModuleCompiler()
+                if self._modules:
+                    from lexigram.di.module.compiler import ModuleCompiler
 
-                # Standalone providers are those added via add_provider()
-                standalone = self._orchestrator.providers
+                    compiler = ModuleCompiler()
 
-                graph = compiler.compile(
-                    root_modules=self._modules, standalone_providers=standalone
-                )
+                    standalone = self._orchestrator.providers
 
-                # Re-populate orchestrator with ordered providers from the graph.
-                # Clear existing to avoid duplication errors during re-registration.
-                self._orchestrator.clear_providers()
-                self._orchestrator.set_compiled_graph(graph)
-                for entry in graph.provider_order:
-                    # If it's an instance, add it directly.
-                    # If it's a class, DiProvider or CoreModule logic might need to handle it.
-                    # For now, we assume the compiler gives us what we need.
-                    p = entry.provider if entry.is_instance else entry.provider()
-                    self._orchestrator.add(p)  # type: ignore[arg-type]
+                    graph = compiler.compile(
+                        root_modules=self._modules, standalone_providers=standalone
+                    )
 
-            # Validate registered secrets BEFORE any provider boots.
-            if self._registered_secrets or self._secrets_from_stores:
-                self._validate_secrets()
+                    self._orchestrator.clear_providers()
+                    self._orchestrator.set_compiled_graph(graph)
+                    for entry in graph.provider_order:
+                        p = entry.provider if entry.is_instance else entry.provider()
+                        self._orchestrator.add(p)
 
-            await self._orchestrator.boot_all(self._container)
+            def _validate_secrets() -> None:
+                if self._registered_secrets or self._secrets_from_stores:
+                    self._validate_secrets()
+
+            await self._lifecycle.boot(
+                auto_discover=self._config.discovery.auto_discover,
+                discover_callback=_auto_discover_and_compile,
+                validate_secrets_callback=_validate_secrets,
+            )
 
             self._state = AppState.RUNNING
-            self._logger.info("application.started", name=self.name)
-            self._print_banner()
+            self._lifecycle.print_banner(
+                provider_count=len(self._orchestrator.providers),
+                module_count=len(self._modules),
+            )
         except BaseException:
             self._logger.exception("application.start_failed", name=self.name)
             import traceback
@@ -464,47 +467,6 @@ class Application:
         )
         validator.validate(all_secrets)
 
-    def _print_banner(self) -> None:
-        """Print a diagnostic startup banner when enabled.
-
-        Gated by ``app.show_banner`` config (default: ``True``) and the
-        ``LEX_QUIET`` environment variable. Does nothing in non-TTY
-        environments (e.g. CI, log aggregators).
-        """
-        if os.environ.get("LEX_QUIET", "").strip() in ("1", "true", "yes"):
-            return
-        show = getattr(self._config, "get", lambda _key, default: default)(
-            "app.show_banner", True
-        )
-        if not show:
-            return
-
-        try:
-            from importlib.metadata import PackageNotFoundError
-            from importlib.metadata import version as pkg_version
-
-            lx_version = pkg_version("lexigram")
-        except (ImportError, PackageNotFoundError):
-            lx_version = "dev"
-
-        py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-        provider_count = len(self._orchestrator.providers)
-        module_count = len(self._modules)
-        width = 60
-        sep = "═" * (width - 2)
-
-        lines = [
-            f"╔{sep}╗",
-            f"║  Lexigram {lx_version:<{width - 14}}║",
-            f"║  Python {py_version} {'':>{width - 17}}║",
-            "║" + " " * (width - 2) + "║",
-            f"║  Providers : {provider_count:<{width - 16}}║",
-            f"║  Modules   : {module_count:<{width - 16}}║",
-            f"╚{sep}╝",
-        ]
-        banner_text = "\n".join(lines)
-        self._logger.info("application.startup_banner", banner=banner_text)
-
     async def stop(self) -> None:
         """Shutdown all providers in reverse order.
 
@@ -522,11 +484,9 @@ class Application:
             return
 
         self._state = AppState.STOPPING
-        self._logger.info("application.stopping", name=self.name)
 
         try:
-            await self._orchestrator.shutdown()
-            await self._container.dispose()
+            await self._lifecycle.shutdown()
         except (RuntimeError, ExceptionGroup) as err:
             self._logger.exception(
                 "application.shutdown_error",
@@ -535,15 +495,7 @@ class Application:
             )
             raise AppShutdownError(f"Application shutdown failed: {self.name}") from err
         finally:
-            uptime = 0.0
-            if self._start_time is not None:
-                uptime = time.monotonic() - self._start_time
             self._state = AppState.STOPPED
-            self._logger.info(
-                "application.stopped",
-                name=self.name,
-                uptime_seconds=round(uptime, 3),
-            )
 
     async def health_check(self, timeout: float = 5.0) -> AggregateHealthResult:
         """Aggregate health check from all providers.
