@@ -1,5 +1,3 @@
-"""Tests for the spec-driven SettingsController."""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -7,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from starlette.requests import Request
 
-from lexigram.admin.auth.types import AdminSecurityEventType
 from lexigram.admin.controllers.settings import SettingsController
 from lexigram.admin.settings.panel import BooleanNode, ConfigSpec
 from lexigram.admin.settings.panel.registry import ConfigRegistry
@@ -35,8 +32,6 @@ def _mock_request(
 
 
 class _FakeUser:
-    """AdminUser stand-in with permissions."""
-
     def __init__(
         self,
         permissions: frozenset[str] | None = None,
@@ -47,9 +42,17 @@ class _FakeUser:
         self.user_id = "user-1"
         self.username = "admin"
 
-class TestSettingsController:
-    """Tests for SettingsController."""
 
+class GatedSpec(ConfigSpec):
+    namespace = "admin.gated"
+    label = "Gated"
+    icon = "lock"
+    description = ""
+    required_permissions = frozenset({"admin.settings.edit"})
+    flag = BooleanNode(label="Flag", default=True)
+
+
+class TestSettingsControllerUpdate:
     @pytest.fixture
     def renderer(self) -> MagicMock:
         renderer = MagicMock()
@@ -65,53 +68,6 @@ class TestSettingsController:
         self, renderer: MagicMock, registry: ConfigRegistry
     ) -> SettingsController:
         return SettingsController(renderer=renderer, registry=registry)
-
-    @pytest.mark.asyncio
-    async def test_index_redirects_to_first_spec(
-        self, controller: SettingsController
-    ) -> None:
-        resp = await controller.index(_mock_request(user=_FakeUser()))
-        assert resp.status_code == 302
-        assert resp.headers["location"] == "/admin/settings/admin.branding"
-
-    @pytest.mark.asyncio
-    async def test_spec_view_renders_form(
-        self, controller: SettingsController, renderer: MagicMock
-    ) -> None:
-        req = _mock_request(user=_FakeUser())
-        req.path_params = {"namespace": "admin.branding"}
-        await controller.spec_view(req)
-        renderer.render_page.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_spec_view_unknown_namespace_redirects(
-        self, controller: SettingsController
-    ) -> None:
-        req = _mock_request()
-        req.path_params = {"namespace": "admin.nope"}
-        resp = await controller.spec_view(req)
-        assert resp.status_code == 302
-
-    @pytest.mark.asyncio
-    async def test_index_superadmin_sees_gated_specs_without_permissions(
-        self,
-        controller: SettingsController,
-        registry: ConfigRegistry,
-    ) -> None:
-        class GatedSpec2(ConfigSpec):
-            namespace = "admin.gated2"
-            label = "Gated 2"
-            icon = "lock"
-            description = ""
-            required_permissions = frozenset({"admin.settings.edit"})
-            flag = BooleanNode(label="Flag", default=True)
-
-        registry.register_spec(GatedSpec2)
-        req = _mock_request(
-            user=_FakeUser(permissions=frozenset(), roles=["superadmin"]),
-        )
-        _, visible = controller._build_categories(req)
-        assert any(spec.namespace == "admin.gated2" for spec in visible)
 
     @pytest.mark.asyncio
     async def test_save_spec_superadmin_bypasses_permission_gate(
@@ -334,7 +290,6 @@ class TestSettingsController:
     async def test_save_spec_checked_toggle_wins_over_hidden_false(
         self, renderer: MagicMock
     ) -> None:
-        """Toggle + hidden-false submit both; the 'on' value must win."""
         from starlette.datastructures import FormData
 
         audit = AsyncMock()
@@ -410,136 +365,3 @@ class TestSettingsController:
         audit.log_event.assert_awaited_once()
         values = await registry.get_values("admin.security")
         assert values.get("hsts_max_age", 0) != 3600
-
-
-class GatedSpec(ConfigSpec):
-    """Spec requiring a permission."""
-
-    namespace = "admin.gated"
-    label = "Gated"
-    icon = "lock"
-    description = ""
-    required_permissions = frozenset({"admin.settings.edit"})
-    flag = BooleanNode(label="Flag", default=True)
-
-
-class UngatedSpec(ConfigSpec):
-    """Spec without a required permission."""
-
-    namespace = "admin.ungated"
-    label = "Ungated"
-    icon = "lock"
-    description = ""
-    flag = BooleanNode(label="Flag", default=True)
-
-
-class TestSettingsSpecViewPermissionGate:
-    """spec_view GET requires the spec's required_permissions."""
-
-    @pytest.fixture
-    def renderer(self) -> MagicMock:
-        renderer = MagicMock()
-        renderer.render_page = MagicMock(return_value=MagicMock(status_code=200))
-        return renderer
-
-    def _make_controller(
-        self, renderer: MagicMock, audit: MagicMock | None = None
-    ) -> tuple[SettingsController, ConfigRegistry]:
-        registry = ConfigRegistry.with_defaults()
-        registry.register_spec(GatedSpec)
-        controller = SettingsController(
-            renderer=renderer,
-            audit_service=audit,
-            registry=registry,
-        )
-        return controller, registry
-
-    @pytest.mark.asyncio
-    async def test_spec_view_denied_without_permission(
-        self, renderer: MagicMock
-    ) -> None:
-        audit = MagicMock()
-        audit.log_event = AsyncMock()
-        controller, registry = self._make_controller(renderer, audit)
-        registry.get_values = AsyncMock()
-        req = _mock_request(user=_FakeUser(permissions=frozenset({"admin.other"})))
-        req.path_params = {"namespace": "admin.gated"}
-        resp = await controller.spec_view(req)
-        assert resp.status_code == 302
-        assert resp.headers["location"] == "/admin/settings"
-        registry.get_values.assert_not_awaited()
-        audit.log_event.assert_awaited_once()
-        call_kwargs = audit.log_event.await_args
-        assert call_kwargs is not None
-        assert (
-            call_kwargs.kwargs["event_type"] == AdminSecurityEventType.PERMISSION_DENIED
-        )
-        assert call_kwargs.kwargs["success"] is False
-        assert call_kwargs.kwargs["metadata"] == {"reason": "permission_denied"}
-
-    @pytest.mark.asyncio
-    async def test_spec_view_allowed_with_permission(self, renderer: MagicMock) -> None:
-        controller, _ = self._make_controller(renderer)
-        req = _mock_request(user=_FakeUser())
-        req.path_params = {"namespace": "admin.gated"}
-        await controller.spec_view(req)
-        renderer.render_page.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_spec_view_superadmin_bypasses_permission_gate(
-        self, renderer: MagicMock
-    ) -> None:
-        controller, _ = self._make_controller(renderer)
-        req = _mock_request(
-            user=_FakeUser(
-                permissions=frozenset({"admin.other"}), roles=["superadmin"]
-            ),
-        )
-        req.path_params = {"namespace": "admin.gated"}
-        await controller.spec_view(req)
-        renderer.render_page.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_spec_view_ungated_spec_renders_without_permissions(
-        self, renderer: MagicMock
-    ) -> None:
-        registry = ConfigRegistry.with_defaults()
-        registry.register_spec(UngatedSpec)
-        controller = SettingsController(renderer=renderer, registry=registry)
-        req = _mock_request(user=_FakeUser(permissions=frozenset({"admin.other"})))
-        req.path_params = {"namespace": "admin.ungated"}
-        await controller.spec_view(req)
-        renderer.render_page.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_spec_view_denied_when_audit_fails(self, renderer: MagicMock) -> None:
-        audit = MagicMock()
-        audit.log_event = AsyncMock(side_effect=RuntimeError("audit down"))
-        controller, _ = self._make_controller(renderer, audit)
-        req = _mock_request(user=_FakeUser(permissions=frozenset({"admin.other"})))
-        req.path_params = {"namespace": "admin.gated"}
-        resp = await controller.spec_view(req)
-        assert resp.status_code == 302
-        assert resp.headers["location"] == "/admin/settings"
-
-
-class TestRenderedForm:
-    """Tests for actual rendered form output."""
-
-    def test_form_renders_real_html(self) -> None:
-        from lexigram.admin.settings.panel import BrandingSpec
-        from lexigram.admin.settings.panel.ui import ConfigDashboardUI
-        from lexigram.ui.core.base import render_to_string
-
-        ui = ConfigDashboardUI()
-        html = render_to_string(
-            ui.render_config_form(
-                spec=BrandingSpec.to_dict(),
-                values={},
-                action="/admin/settings/admin.branding",
-                csrf_token="tok123",
-            )
-        )
-        assert "<form" in html
-        assert 'name="csrf_token"' in html
-        assert 'value="tok123"' in html

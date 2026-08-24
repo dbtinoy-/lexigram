@@ -1,5 +1,3 @@
-"""Unit tests for AdminPasswordResetService with fake stores."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -7,12 +5,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from lexigram.admin.auth.errors import (
-    PasswordPolicyError,
-    PasswordResetTokenExpiredError,
-    PasswordResetTokenInvalidError,
-    RateLimitExceededError,
-)
 from lexigram.admin.auth.services.password_policy_service import (
     AdminPasswordPolicyService,
 )
@@ -27,8 +19,6 @@ from lexigram.result import Ok
 
 
 class FakeUserStore:
-    """In-memory AdminUserStoreProtocol with mutable user records."""
-
     def __init__(
         self, users: list[dict] | None = None, flow: list[str] | None = None
     ) -> None:
@@ -57,13 +47,6 @@ class _UserRecord:
 
 
 class FakeTokenStore:
-    """In-memory AdminPasswordResetTokenStoreProtocol.
-
-    With ``deny_second_consume``, reads after the first consume still
-    return an unconsumed record (a stale view) while ``mark_consumed``
-    refuses, simulating a row already consumed by a concurrent writer.
-    """
-
     def __init__(
         self,
         flow: list[str] | None = None,
@@ -113,8 +96,6 @@ class FakeTokenStore:
 
 
 class FakeHasher:
-    """Fast fake PasswordHasherProtocol."""
-
     async def hash(self, password: str) -> str:
         return f"fake-hash:{password}"
 
@@ -123,8 +104,6 @@ class FakeHasher:
 
 
 class FakeCache:
-    """In-memory CacheBackendProtocol (get/set with TTL)."""
-
     def __init__(self, *, fail: bool = False) -> None:
         self._store: dict[str, str] = {}
         self._fail = fail
@@ -190,7 +169,6 @@ def _notification(ok: bool = True) -> MagicMock:
 
 
 EMAIL = "admin@example.com"
-NEW_PASSWORD = "New-Str0ng-Passw0rd!"
 
 
 @pytest.mark.asyncio
@@ -229,13 +207,13 @@ async def test_request_reset_known_email_stores_hashed_token_and_notifies() -> N
     assert len(token_store.created) == 1
     created = token_store.created[0]
     assert created.email == EMAIL
-    assert created.token_hash != created.email  # hash stored, never raw
+    assert created.token_hash != created.email
     assert created.consumed_at is None
 
     notification.notify_password_reset.assert_awaited_once()
     kwargs = notification.notify_password_reset.await_args.kwargs
     assert kwargs["user_email"] == EMAIL
-    assert "/admin/password-reset/" in kwargs["reset_url"]  # embeds raw token
+    assert "/admin/password-reset/" in kwargs["reset_url"]
 
     audit.log_event.assert_awaited_once()
     event = audit.log_event.await_args.kwargs
@@ -262,182 +240,6 @@ async def test_request_reset_normalizes_email_case() -> None:
 
     assert result.is_ok()
     assert token_store.created[0].email == EMAIL
-
-
-@pytest.mark.asyncio
-async def test_confirm_reset_updates_password_consumes_token_invalidates_sessions() -> (
-    None
-):
-    notification = _notification()
-    service, user_store, token_store, audit, auth_service = _make_service(
-        users=[
-            {
-                "user_id": "u1",
-                "name": "Admin",
-                "email": EMAIL,
-                "hashed_password": "old",
-            }
-        ],
-        notification=notification,
-    )
-    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
-    raw_token = _raw_token_from(notification)
-
-    result = await service.confirm_reset(
-        raw_token, NEW_PASSWORD, ip_address="10.0.0.2", user_agent="agent"
-    )
-
-    assert result.is_ok()
-    assert user_store.updated[0]["hashed_password"] == f"fake-hash:{NEW_PASSWORD}"
-    stored = next(iter(token_store.tokens.values()))
-    assert stored.consumed_at is not None
-    auth_service.invalidate_all_user_sessions.assert_awaited_once_with("u1")
-    events = [c.kwargs["event_type"] for c in audit.log_event.await_args_list]
-    assert AdminSecurityEventType.PASSWORD_CHANGED in events
-
-
-def _raw_token_from(notification: MagicMock) -> str:
-    reset_url = notification.notify_password_reset.await_args.kwargs["reset_url"]
-    return reset_url.rsplit("/", 1)[-1]
-
-
-@pytest.mark.asyncio
-async def test_confirm_reset_invalid_token_returns_err() -> None:
-    service, _, _, _, _ = _make_service()
-
-    result = await service.confirm_reset("bogus", NEW_PASSWORD)
-
-    assert result.is_err()
-    assert isinstance(result.unwrap_err(), PasswordResetTokenInvalidError)
-
-
-@pytest.mark.asyncio
-async def test_confirm_reset_consumed_token_returns_err() -> None:
-    notification = _notification()
-    service, _, _, _, _ = _make_service(
-        users=[
-            {
-                "user_id": "u1",
-                "name": "Admin",
-                "email": EMAIL,
-                "hashed_password": "old",
-            }
-        ],
-        notification=notification,
-    )
-    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
-    raw_token = _raw_token_from(notification)
-    await service.confirm_reset(raw_token, NEW_PASSWORD)
-
-    result = await service.confirm_reset(raw_token, NEW_PASSWORD)
-
-    assert result.is_err()
-    assert isinstance(result.unwrap_err(), PasswordResetTokenInvalidError)
-
-
-@pytest.mark.asyncio
-async def test_confirm_reset_expired_token_returns_err() -> None:
-    notification = _notification()
-    service, _, _, _, _ = _make_service(
-        users=[
-            {
-                "user_id": "u1",
-                "name": "Admin",
-                "email": EMAIL,
-                "hashed_password": "old",
-            }
-        ],
-        notification=notification,
-        token_lifetime=-1,  # tokens already expired at creation
-    )
-    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
-    raw_token = _raw_token_from(notification)
-
-    result = await service.confirm_reset(raw_token, NEW_PASSWORD)
-
-    assert result.is_err()
-    assert isinstance(result.unwrap_err(), PasswordResetTokenExpiredError)
-
-
-@pytest.mark.asyncio
-async def test_confirm_reset_weak_password_returns_policy_error() -> None:
-    notification = _notification()
-    service, _, _, _, _ = _make_service(
-        users=[
-            {
-                "user_id": "u1",
-                "name": "Admin",
-                "email": EMAIL,
-                "hashed_password": "old",
-            }
-        ],
-        notification=notification,
-    )
-    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
-    raw_token = _raw_token_from(notification)
-
-    result = await service.confirm_reset(raw_token, "short")
-
-    assert result.is_err()
-    assert isinstance(result.unwrap_err(), PasswordPolicyError)
-
-
-@pytest.mark.asyncio
-async def test_confirm_reset_marks_consumed_before_user_update() -> None:
-    notification = _notification()
-    flow: list[str] = []
-    service, user_store, _, _, _ = _make_service(
-        users=[
-            {
-                "user_id": "u1",
-                "name": "Admin",
-                "email": EMAIL,
-                "hashed_password": "old",
-            }
-        ],
-        notification=notification,
-        flow=flow,
-    )
-    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
-    raw_token = _raw_token_from(notification)
-
-    result = await service.confirm_reset(raw_token, NEW_PASSWORD)
-
-    assert result.is_ok()
-    assert flow.index("consume") < flow.index("update")
-    assert len(user_store.updated) == 1
-
-
-@pytest.mark.asyncio
-async def test_confirm_reset_losing_racer_rejected_at_atomic_gate() -> None:
-    notification = _notification()
-    service, user_store, _, _, _ = _make_service(
-        users=[
-            {
-                "user_id": "u1",
-                "name": "Admin",
-                "email": EMAIL,
-                "hashed_password": "old",
-            }
-        ],
-        notification=notification,
-        deny_second_consume=True,
-    )
-    await service.request_reset(EMAIL, "10.0.0.1", "agent", "http://localhost")
-    raw_token = _raw_token_from(notification)
-
-    first = await service.confirm_reset(raw_token, NEW_PASSWORD)
-    second = await service.confirm_reset(raw_token, NEW_PASSWORD)
-
-    assert first.is_ok()
-    assert second.is_err()
-    assert isinstance(second.unwrap_err(), PasswordResetTokenInvalidError)
-    assert len(user_store.updated) == 1
-
-
-# ---------------------------------------------------------------------------
-# Request rate limiting
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
