@@ -1260,19 +1260,23 @@ Rules:
 ### History Discipline (MANDATORY)
 
 Build a **longer, verifiable commit history** with tests alongside features.
-`git_stats` shows `total_commits 1938` but `span_days 1` and `human_authors 1`,
-which reads as a single burst rather than sustained engineering; buyers weight
-history discipline highest.
 
 1. **Ship features together with their tests, in small focused commits.** Each
    new feature or bugfix commit includes its test file in the same change —
    e.g. `lexigram-features/src` plus `lexigram-features/tests/unit/test_*.py`
    together — so every commit is independently verifiable.
 2. **Push commits over multiple days/sessions** instead of one continuous
-   window, keeping the conventional commit prefixes (already at a 0.98 rate per
-   `git_stats`).
-3. **Tag intermediate releases** (`v0.1.4`, `v0.1.5`) as milestones land instead
-   of a single `v0.1.3` tag, to show cadence over time.
+   window, keeping the conventional commit prefixes.
+3. **Tag intermediate releases** (`v0.1.4`, `v0.1.5`), to show cadence over time.
+4. **Version every package incrementally and independently.** Each
+   `lexigram-*` package carries its own version (`0.<minor>.<patch><build>`
+   per §3.6) and bumps only when *that* package changes — a fix in
+   `lexigram-cache` never moves `lexigram-web` or `lexigram`. After a
+   package's feature/fix lands (with its tests, rule 1), bump it in the same
+   or immediately-following commit with `make version-bump PKG=<pkg>`
+   (`APPLY=--apply` to write; `make version-check` to see which packages
+   drifted). `make version-bump-all` is reserved for coordinated release
+   events, never routine work. Never hand-edit versions outside this flow.
 
 ### Git Working-Tree Safety (MANDATORY)
 
