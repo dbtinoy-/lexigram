@@ -119,37 +119,37 @@
   "lexigram.contracts.admin.widget_protocols.WidgetHandlerProtocol": [
     "get_data"
   ],
-  "lexigram.contracts.ai.agents.AgentExecutorProtocol": [
+  "lexigram.contracts.ai.agents.protocols.AgentExecutorProtocol": [
     "astream",
     "run"
   ],
-  "lexigram.contracts.ai.agents.AgentProtocol": [
+  "lexigram.contracts.ai.agents.protocols.AgentProtocol": [
     "name",
     "system_prompt",
     "tools"
   ],
-  "lexigram.contracts.ai.agents.AgentStrategyProtocol": [
+  "lexigram.contracts.ai.agents.protocols.AgentStrategyProtocol": [
     "name",
     "run"
   ],
-  "lexigram.contracts.ai.agents.MemoryProtocol": [
+  "lexigram.contracts.ai.agents.protocols.MemoryProtocol": [
     "add_message",
     "clear",
     "get_messages"
   ],
-  "lexigram.contracts.ai.agents.SkillComposerProtocol": [
+  "lexigram.contracts.ai.agents.protocols.SkillComposerProtocol": [
     "get_tools"
   ],
-  "lexigram.contracts.ai.agents.StrategyProtocol": [
+  "lexigram.contracts.ai.agents.protocols.StrategyProtocol": [
     "execute"
   ],
-  "lexigram.contracts.ai.agents.ToolProtocol": [
+  "lexigram.contracts.ai.agents.protocols.ToolProtocol": [
     "description",
     "execute",
     "name",
     "parameters_schema"
   ],
-  "lexigram.contracts.ai.agents.ToolRegistryProtocol": [
+  "lexigram.contracts.ai.agents.protocols.ToolRegistryProtocol": [
     "execute",
     "get",
     "list_tools",
@@ -242,58 +242,58 @@
     "astream_query",
     "query"
   ],
-  "lexigram.contracts.ai.llm.ChatMessageProtocol": [
+  "lexigram.contracts.ai.llm.protocols.ChatMessageProtocol": [
     "content",
     "role"
   ],
-  "lexigram.contracts.ai.llm.CompletionProtocol": [
+  "lexigram.contracts.ai.llm.protocols.CompletionProtocol": [
     "content",
     "model",
     "thinking",
     "usage"
   ],
-  "lexigram.contracts.ai.llm.CostEstimatorProtocol": [
+  "lexigram.contracts.ai.llm.protocols.CostEstimatorProtocol": [
     "estimate_cost"
   ],
-  "lexigram.contracts.ai.llm.EmbeddingClientProtocol": [
+  "lexigram.contracts.ai.llm.protocols.EmbeddingClientProtocol": [
     "close",
     "embed",
     "health_check"
   ],
-  "lexigram.contracts.ai.llm.LLMClientProtocol": [
+  "lexigram.contracts.ai.llm.protocols.LLMClientProtocol": [
     "close",
     "complete",
     "health_check",
     "stream_chat"
   ],
-  "lexigram.contracts.ai.llm.PromptAssemblerProtocol": [
+  "lexigram.contracts.ai.llm.protocols.PromptAssemblerProtocol": [
     "assemble"
   ],
-  "lexigram.contracts.ai.llm.PromptOptimizerProtocol": [
+  "lexigram.contracts.ai.llm.protocols.PromptOptimizerProtocol": [
     "optimize"
   ],
-  "lexigram.contracts.ai.llm.PromptRegistryProtocol": [
+  "lexigram.contracts.ai.llm.protocols.PromptRegistryProtocol": [
     "get",
     "list_names",
     "register"
   ],
-  "lexigram.contracts.ai.llm.PromptRendererProtocol": [
+  "lexigram.contracts.ai.llm.protocols.PromptRendererProtocol": [
     "render"
   ],
-  "lexigram.contracts.ai.llm.PromptTemplateProtocol": [
+  "lexigram.contracts.ai.llm.protocols.PromptTemplateProtocol": [
     "get_variables",
     "name",
     "render"
   ],
-  "lexigram.contracts.ai.llm.SemanticCacheProtocol": [
+  "lexigram.contracts.ai.llm.protocols.SemanticCacheProtocol": [
     "invalidate",
     "lookup",
     "store"
   ],
-  "lexigram.contracts.ai.llm.StructuredExtractorProtocol": [
+  "lexigram.contracts.ai.llm.protocols.StructuredExtractorProtocol": [
     "extract"
   ],
-  "lexigram.contracts.ai.llm.TokenCounterProtocol": [
+  "lexigram.contracts.ai.llm.protocols.TokenCounterProtocol": [
     "count",
     "count_messages",
     "model"
@@ -1123,7 +1123,35 @@
     "get_snapshot",
     "save_snapshot"
   ],
-  "lexigram.contracts.data.sql.database.ConnectionPoolProtocol": [
+  "lexigram.contracts.data.sql.database._connection.ConnectionProtocol": [
+    "close",
+    "execute",
+    "fetch",
+    "fetchrow"
+  ],
+  "lexigram.contracts.data.sql.database._managers.CrudOperationsProtocol": [
+    "execute_delete",
+    "execute_insert",
+    "execute_query",
+    "execute_update"
+  ],
+  "lexigram.contracts.data.sql.database._managers.DatabaseMetricsProtocol": [
+    "get_pool_stats"
+  ],
+  "lexigram.contracts.data.sql.database._managers.HealthMonitorProtocol": [
+    "health_check"
+  ],
+  "lexigram.contracts.data.sql.database._managers.SchemaManagerProtocol": [
+    "table_exists"
+  ],
+  "lexigram.contracts.data.sql.database._migration.MigrationManagerProtocol": [
+    "apply_migration",
+    "get_applied_migrations",
+    "get_pending_migrations",
+    "initialize_migration_table",
+    "rollback_migration"
+  ],
+  "lexigram.contracts.data.sql.database._pool.ConnectionPoolProtocol": [
     "connection_timeout",
     "get_connection",
     "get_pool_stats",
@@ -1134,60 +1162,6 @@
     "shutdown",
     "validate_connections",
     "warm"
-  ],
-  "lexigram.contracts.data.sql.database.ConnectionProtocol": [
-    "close",
-    "execute",
-    "fetch",
-    "fetchrow"
-  ],
-  "lexigram.contracts.data.sql.database.CrudOperationsProtocol": [
-    "execute_delete",
-    "execute_insert",
-    "execute_query",
-    "execute_update"
-  ],
-  "lexigram.contracts.data.sql.database.DatabaseMetricsProtocol": [
-    "get_pool_stats"
-  ],
-  "lexigram.contracts.data.sql.database.DatabaseProviderProtocol": [
-    "acquire",
-    "begin_transaction",
-    "commit_transaction",
-    "connect",
-    "disconnect",
-    "execute",
-    "execute_delete",
-    "execute_insert",
-    "execute_query",
-    "execute_update",
-    "get_primary_pool",
-    "get_scoped_connection",
-    "health_check",
-    "is_connected",
-    "release",
-    "rollback_transaction",
-    "scoped_context",
-    "table_exists",
-    "transaction"
-  ],
-  "lexigram.contracts.data.sql.database.HealthMonitorProtocol": [
-    "health_check"
-  ],
-  "lexigram.contracts.data.sql.database.MigrationManagerProtocol": [
-    "apply_migration",
-    "get_applied_migrations",
-    "get_pending_migrations",
-    "initialize_migration_table",
-    "rollback_migration"
-  ],
-  "lexigram.contracts.data.sql.database.SchemaManagerProtocol": [
-    "table_exists"
-  ],
-  "lexigram.contracts.data.sql.database.TransactionManagerProtocol": [
-    "begin_transaction",
-    "commit_transaction",
-    "rollback_transaction"
   ],
   "lexigram.contracts.data.sql.mapper.DataMapperProtocol": [
     "to_source",
@@ -1305,66 +1279,66 @@
   "lexigram.contracts.events.outbox.OutboxRelayProtocol": [
     "process_pending"
   ],
-  "lexigram.contracts.events.protocols.AggregateFactoryProtocol": [
-    "create"
-  ],
-  "lexigram.contracts.events.protocols.CommandBusProtocol": [
+  "lexigram.contracts.events.protocols.cqrs.CommandBusProtocol": [
     "dispatch"
   ],
-  "lexigram.contracts.events.protocols.CommandHandlerProtocol": [
+  "lexigram.contracts.events.protocols.cqrs.CommandHandlerProtocol": [
     "handle"
   ],
-  "lexigram.contracts.events.protocols.DomainEventPublisherProtocol": [
+  "lexigram.contracts.events.protocols.cqrs.QueryBusProtocol": [
+    "execute"
+  ],
+  "lexigram.contracts.events.protocols.cqrs.QueryHandlerProtocol": [
+    "handle"
+  ],
+  "lexigram.contracts.events.protocols.domain.DomainEventPublisherProtocol": [
     "publish"
   ],
-  "lexigram.contracts.events.protocols.EventBusProtocol": [
+  "lexigram.contracts.events.protocols.domain.EventBusProtocol": [
     "publish",
     "subscribe",
     "unsubscribe"
   ],
-  "lexigram.contracts.events.protocols.EventHandlerProtocol": [
+  "lexigram.contracts.events.protocols.domain.EventHandlerProtocol": [
     "handle"
   ],
-  "lexigram.contracts.events.protocols.EventMiddlewareProtocol": [],
-  "lexigram.contracts.events.protocols.EventSourcedReadRepositoryProtocol": [
+  "lexigram.contracts.events.protocols.domain.EventMiddlewareProtocol": [],
+  "lexigram.contracts.events.protocols.domain.MultiEventHandlerProtocol": [
+    "handle",
+    "handles"
+  ],
+  "lexigram.contracts.events.protocols.projection.IntegrationEventProtocol": [],
+  "lexigram.contracts.events.protocols.projection.ProjectionProtocol": [
+    "apply"
+  ],
+  "lexigram.contracts.events.protocols.projection.PubSubProtocol": [
+    "publish",
+    "subscribe",
+    "unsubscribe"
+  ],
+  "lexigram.contracts.events.protocols.projection.WebhookSignatureVerifierProtocol": [
+    "compute_signature",
+    "verify"
+  ],
+  "lexigram.contracts.events.protocols.store.AggregateFactoryProtocol": [
+    "create"
+  ],
+  "lexigram.contracts.events.protocols.store.EventSourcedReadRepositoryProtocol": [
     "exists",
     "get",
     "get_all"
   ],
-  "lexigram.contracts.events.protocols.EventSourcedRepositoryProtocol": [
+  "lexigram.contracts.events.protocols.store.EventSourcedRepositoryProtocol": [
     "save"
   ],
-  "lexigram.contracts.events.protocols.EventStoreProtocol": [
+  "lexigram.contracts.events.protocols.store.EventStoreProtocol": [
     "append",
     "read",
     "read_all"
   ],
-  "lexigram.contracts.events.protocols.IntegrationEventProtocol": [],
-  "lexigram.contracts.events.protocols.MultiEventHandlerProtocol": [
-    "handle",
-    "handles"
-  ],
-  "lexigram.contracts.events.protocols.ProjectionProtocol": [
-    "apply"
-  ],
-  "lexigram.contracts.events.protocols.PubSubProtocol": [
-    "publish",
-    "subscribe",
-    "unsubscribe"
-  ],
-  "lexigram.contracts.events.protocols.QueryBusProtocol": [
-    "execute"
-  ],
-  "lexigram.contracts.events.protocols.QueryHandlerProtocol": [
-    "handle"
-  ],
-  "lexigram.contracts.events.protocols.SnapshotStoreProtocol": [
+  "lexigram.contracts.events.protocols.store.SnapshotStoreProtocol": [
     "load",
     "save"
-  ],
-  "lexigram.contracts.events.protocols.WebhookSignatureVerifierProtocol": [
-    "compute_signature",
-    "verify"
   ],
   "lexigram.contracts.feature_flags.protocols.FlagManagerProtocol": [
     "add_provider",
@@ -1385,40 +1359,22 @@
     "set_variant",
     "set_variant_sync"
   ],
-  "lexigram.contracts.graphql.protocols.DataLoaderProtocol": [
+  "lexigram.contracts.graphql.protocols.execution.DataLoaderProtocol": [
     "load",
     "load_many",
     "prime"
   ],
-  "lexigram.contracts.graphql.protocols.DirectiveHandlerProtocol": [
-    "apply_directive"
-  ],
-  "lexigram.contracts.graphql.protocols.EntityResolverProtocol": [
+  "lexigram.contracts.graphql.protocols.execution.EntityResolverProtocol": [
     "resolve_reference"
   ],
-  "lexigram.contracts.graphql.protocols.ErrorFormatterProtocol": [
-    "format_error"
-  ],
-  "lexigram.contracts.graphql.protocols.GraphQLControllerProtocol": [],
-  "lexigram.contracts.graphql.protocols.GraphQLExecutorProtocol": [
+  "lexigram.contracts.graphql.protocols.execution.GraphQLControllerProtocol": [],
+  "lexigram.contracts.graphql.protocols.execution.GraphQLExecutorProtocol": [
     "execute"
   ],
-  "lexigram.contracts.graphql.protocols.GraphQLPrincipalResolverProtocol": [
-    "resolve_principal"
-  ],
-  "lexigram.contracts.graphql.protocols.GraphQLRequestProtocol": [
-    "json"
-  ],
-  "lexigram.contracts.graphql.protocols.IntrospectionHandlerProtocol": [
-    "introspect"
-  ],
-  "lexigram.contracts.graphql.protocols.MutationHandlerProtocol": [
-    "mutate"
-  ],
-  "lexigram.contracts.graphql.protocols.ResolverProtocol": [
+  "lexigram.contracts.graphql.protocols.execution.ResolverProtocol": [
     "resolve"
   ],
-  "lexigram.contracts.graphql.protocols.SchemaBuilderProtocol": [
+  "lexigram.contracts.graphql.protocols.execution.SchemaBuilderProtocol": [
     "add_dataloader",
     "add_extension",
     "add_type",
@@ -1427,17 +1383,35 @@
     "query",
     "subscription"
   ],
-  "lexigram.contracts.graphql.protocols.SubscriptionAuthHandlerProtocol": [
+  "lexigram.contracts.graphql.protocols.subscription.DirectiveHandlerProtocol": [
+    "apply_directive"
+  ],
+  "lexigram.contracts.graphql.protocols.subscription.MutationHandlerProtocol": [
+    "mutate"
+  ],
+  "lexigram.contracts.graphql.protocols.subscription.SubscriptionAuthHandlerProtocol": [
     "authorize"
   ],
-  "lexigram.contracts.graphql.protocols.SubscriptionHandlerProtocol": [
+  "lexigram.contracts.graphql.protocols.subscription.SubscriptionHandlerProtocol": [
     "subscribe"
   ],
-  "lexigram.contracts.graphql.protocols.ValidationRuleProtocol": [
-    "validate"
-  ],
-  "lexigram.contracts.graphql.protocols.WebSocketTransportProtocol": [
+  "lexigram.contracts.graphql.protocols.subscription.WebSocketTransportProtocol": [
     "handle"
+  ],
+  "lexigram.contracts.graphql.protocols.types.ErrorFormatterProtocol": [
+    "format_error"
+  ],
+  "lexigram.contracts.graphql.protocols.types.GraphQLPrincipalResolverProtocol": [
+    "resolve_principal"
+  ],
+  "lexigram.contracts.graphql.protocols.types.GraphQLRequestProtocol": [
+    "json"
+  ],
+  "lexigram.contracts.graphql.protocols.types.IntrospectionHandlerProtocol": [
+    "introspect"
+  ],
+  "lexigram.contracts.graphql.protocols.types.ValidationRuleProtocol": [
+    "validate"
   ],
   "lexigram.contracts.infra.cache.protocols.CacheBackendProtocol": [
     "clear",
@@ -1558,7 +1532,16 @@
     "subscribe",
     "update"
   ],
-  "lexigram.contracts.infra.tasks.protocols.DLQProtocol": [
+  "lexigram.contracts.infra.tasks.protocols.idempotency.IdempotencyManagerProtocol": [
+    "check_duplicate",
+    "generate_key",
+    "record_completion",
+    "record_submission"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.idempotency.IdempotentTaskManagerProtocol": [
+    "submit_task"
+  ],
+  "lexigram.contracts.infra.tasks.protocols.queue.DLQProtocol": [
     "add",
     "clear",
     "get",
@@ -1567,29 +1550,20 @@
     "retry",
     "size"
   ],
-  "lexigram.contracts.infra.tasks.protocols.IdempotencyManagerProtocol": [
-    "check_duplicate",
-    "generate_key",
-    "record_completion",
-    "record_submission"
-  ],
-  "lexigram.contracts.infra.tasks.protocols.IdempotentTaskManagerProtocol": [
-    "submit_task"
-  ],
-  "lexigram.contracts.infra.tasks.protocols.JobProtocol": [],
-  "lexigram.contracts.infra.tasks.protocols.JobTemplateProtocol": [],
-  "lexigram.contracts.infra.tasks.protocols.TaskExecutorProtocol": [
+  "lexigram.contracts.infra.tasks.protocols.queue.JobProtocol": [],
+  "lexigram.contracts.infra.tasks.protocols.queue.JobTemplateProtocol": [],
+  "lexigram.contracts.infra.tasks.protocols.queue.TaskExecutorProtocol": [
     "execute",
     "get_handler",
     "register_handler"
   ],
-  "lexigram.contracts.infra.tasks.protocols.TaskManagerProtocol": [
+  "lexigram.contracts.infra.tasks.protocols.queue.TaskManagerProtocol": [
     "pending_count",
     "shutdown",
     "track",
     "track_named"
   ],
-  "lexigram.contracts.infra.tasks.protocols.TaskProviderProtocol": [
+  "lexigram.contracts.infra.tasks.protocols.queue.TaskProviderProtocol": [
     "boot",
     "build_idempotency_manager",
     "build_idempotent_task_manager",
@@ -1604,7 +1578,7 @@
     "shutdown",
     "unschedule_job"
   ],
-  "lexigram.contracts.infra.tasks.protocols.TaskQueueProtocol": [
+  "lexigram.contracts.infra.tasks.protocols.queue.TaskQueueProtocol": [
     "ack",
     "clear",
     "close",
@@ -1616,7 +1590,7 @@
     "get_task_count",
     "nack"
   ],
-  "lexigram.contracts.infra.tasks.protocols.TaskWorkerProtocol": [
+  "lexigram.contracts.infra.tasks.protocols.queue.TaskWorkerProtocol": [
     "start",
     "stop"
   ],
@@ -1999,70 +1973,70 @@
     "send_text"
   ],
   "lexigram.contracts.web.middleware.protocols.ASGIMiddlewareProtocol": [],
-  "lexigram.contracts.web.protocols.BackgroundTaskRunnerProtocol": [
+  "lexigram.contracts.web.protocols.app.BackgroundTaskRunnerProtocol": [
     "add_task"
   ],
-  "lexigram.contracts.web.protocols.CORSPolicyProtocol": [
-    "get_allowed_headers",
-    "get_allowed_methods",
-    "get_max_age",
-    "is_origin_allowed"
-  ],
-  "lexigram.contracts.web.protocols.CRUDServiceProtocol": [
+  "lexigram.contracts.web.protocols.app.CRUDServiceProtocol": [
     "create",
     "delete",
     "get",
     "list_items",
     "update"
   ],
-  "lexigram.contracts.web.protocols.CSRFProtectionProtocol": [
+  "lexigram.contracts.web.protocols.app.CSRFProtectionProtocol": [
     "generate_token",
     "get_cookie_name",
     "get_header_name",
     "validate_token"
   ],
-  "lexigram.contracts.web.protocols.ConnectionManagerProtocol": [
+  "lexigram.contracts.web.protocols.app.ConnectionManagerProtocol": [
     "add",
     "broadcast",
     "count",
     "remove"
   ],
-  "lexigram.contracts.web.protocols.ExceptionFilterProtocol": [
-    "can_handle",
-    "handle"
-  ],
-  "lexigram.contracts.web.protocols.HTTPApplicationProtocol": [
+  "lexigram.contracts.web.protocols.app.HTTPApplicationProtocol": [
     "add_middleware",
     "add_route",
     "mount"
   ],
-  "lexigram.contracts.web.protocols.HttpRequestLoggerProtocol": [
-    "log_request"
-  ],
-  "lexigram.contracts.web.protocols.RequestProtocol": [
-    "body",
-    "json"
-  ],
-  "lexigram.contracts.web.protocols.ResponseFactoryProtocol": [
-    "html",
-    "json",
-    "redirect"
-  ],
-  "lexigram.contracts.web.protocols.ResponseProtocol": [
-    "delete_cookie",
-    "set_cookie"
-  ],
-  "lexigram.contracts.web.protocols.WebContributorProtocol": [
+  "lexigram.contracts.web.protocols.app.WebContributorProtocol": [
     "contributor_id",
     "get_controllers",
     "get_middleware",
     "mount_to_app"
   ],
-  "lexigram.contracts.web.protocols.WebMiddlewareProtocol": [],
-  "lexigram.contracts.web.protocols.WebProviderProtocol": [],
-  "lexigram.contracts.web.protocols.WebRateLimiterProtocol": [
+  "lexigram.contracts.web.protocols.app.WebProviderProtocol": [],
+  "lexigram.contracts.web.protocols.http.CORSPolicyProtocol": [
+    "get_allowed_headers",
+    "get_allowed_methods",
+    "get_max_age",
+    "is_origin_allowed"
+  ],
+  "lexigram.contracts.web.protocols.http.HttpRequestLoggerProtocol": [
+    "log_request"
+  ],
+  "lexigram.contracts.web.protocols.http.RequestProtocol": [
+    "body",
+    "json"
+  ],
+  "lexigram.contracts.web.protocols.http.ResponseFactoryProtocol": [
+    "html",
+    "json",
+    "redirect"
+  ],
+  "lexigram.contracts.web.protocols.http.ResponseProtocol": [
+    "delete_cookie",
+    "set_cookie"
+  ],
+  "lexigram.contracts.web.protocols.http.WebRateLimiterProtocol": [
     "check_rate_limit"
   ],
+  "lexigram.contracts.web.protocols.middleware.ExceptionFilterProtocol": [
+    "can_handle",
+    "handle"
+  ],
+  "lexigram.contracts.web.protocols.middleware.WebMiddlewareProtocol": [],
   "lexigram.contracts.web.sse.ReactiveSseBridgeProtocol": [],
   "lexigram.contracts.web.sse.SseResponseFactoryProtocol": [
     "create_response"
