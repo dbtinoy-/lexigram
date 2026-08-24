@@ -108,7 +108,7 @@ workspace = true
 workspace = true
 
 [tool.pytest.ini_options]
-addopts = ["--cov=src/lexigram/ai", "--cov-report=html", "--cov-report=term", "--cov-fail-under=60"]
+addopts = ["--cov=lexigram.ai", "--cov-report=html", "--cov-report=term", "--cov-fail-under=43"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [

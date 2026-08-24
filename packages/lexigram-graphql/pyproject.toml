@@ -173,7 +173,7 @@ workspace = true
 workspace = true
 
 [tool.pytest.ini_options]
-addopts = ["--cov=lexigram.graphql", "--cov-report=html", "--cov-report=term", "--cov-fail-under=60"]
+addopts = ["--cov=lexigram.graphql", "--cov-report=html", "--cov-report=term", "--cov-fail-under=75"]
 testpaths = ["tests"]
 pythonpath = ["tests"]
 markers = [

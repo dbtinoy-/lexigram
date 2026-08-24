@@ -121,7 +121,7 @@ addopts = [
     "--cov=lexigram.graph",
     "--cov-report=term",
     "--cov-report=html",
-    "--cov-fail-under=40",
+    "--cov-fail-under=78",
 ]
 markers = [
     "integration: mark a test as an integration test",

@@ -7,24 +7,24 @@
 ## Summary
 
 - Tool checks run: 2
-- Passing tools: 1
-- Failing tools: 1
+- Passing tools: 2
+- Failing tools: 0
 - Packages counted: 54
-- Total mypy errors: 8
-- Packages with errors: 2
+- Total mypy errors: 0
+- Packages with errors: 0
 
 ## Tool Results
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 244 ms | `uv run ruff check .` |
-| `Mypy` | **FAIL** | 1 | 87771 ms | `uv run mypy src/ (per-package across 54 packages)` |
+| `Ruff` | **PASS** | 0 | 240 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 44657 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `244 ms`
+- Duration: `240 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -34,33 +34,15 @@ All checks passed!
 
 ### Mypy
 
-- Status: **FAIL**
-- Exit code: `1`
-- Duration: `87771 ms`
+- Status: **PASS**
+- Exit code: `0`
+- Duration: `44657 ms`
 - Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
-[lexigram] 4 errors
-[lexigram-admin] 4 errors
+All per-package mypy checks passed.
 ```
-
-### Mypy Error Breakdown
-
-#### By Error Code
-
-| Code | Count | Description |
-|------|-------|-------------|
-| `unreachable` | 4 | Type checking error |
-| `name-defined` | 3 | Type checking error |
-| `attr-defined` | 1 | Attribute not defined on type |
-
-#### By Package (Top 10)
-
-| Package | Errors |
-|---------|--------|
-| `lexigram` | 4 |
-| `lexigram-admin` | 4 |
 
 ## Package Metrics
 
@@ -68,7 +50,7 @@ All checks passed!
 |---------|--------------|------------|
 | `lexigram` | 305 | 273 |
 | `lexigram-admin` | 521 | 477 |
-| `lexigram-ai` | 25 | 93 |
+| `lexigram-ai` | 25 | 101 |
 | `lexigram-ai-agents` | 57 | 44 |
 | `lexigram-ai-evaluation` | 22 | 24 |
 | `lexigram-ai-feedback` | 25 | 29 |

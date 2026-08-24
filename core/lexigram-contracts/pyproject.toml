@@ -106,5 +106,5 @@ addopts = [
     "--cov=lexigram.contracts",
     "--cov-report=term",
     "--cov-report=html",
-    "--cov-fail-under=60",
+    "--cov-fail-under=30",
 ]

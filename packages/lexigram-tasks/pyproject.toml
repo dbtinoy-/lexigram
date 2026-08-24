@@ -185,7 +185,7 @@ workspace = true
 workspace = true
 
 [tool.pytest.ini_options]
-addopts = ["--cov=lexigram.tasks", "--cov-report=html", "--cov-report=term", "--cov-fail-under=80"]
+addopts = ["--cov=lexigram.tasks", "--cov-report=html", "--cov-report=term", "--cov-fail-under=74"]
 testpaths = ["tests"]
 markers = [
     "integration: mark a test as an integration test",

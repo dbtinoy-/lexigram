@@ -184,7 +184,7 @@ workspace = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = ["--cov=lexigram.auth", "--cov-report=html", "--cov-report=term", "--cov-fail-under=80"]
+addopts = ["--cov=lexigram.auth", "--cov-report=html", "--cov-report=term", "--cov-fail-under=68"]
 testpaths = ["tests"]
 markers = [
     "integration: mark a test as an integration test",

@@ -16,6 +16,13 @@ _UNIT_TESTS_DIR = Path(__file__).resolve().parent / "unit"
 if str(_UNIT_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_UNIT_TESTS_DIR))
 
+# ``tests.<subdir>`` namespace imports (scenario/support modules) need the
+# admin app root itself on sys.path for package-local pytest runs; the
+# repo-root conftest provides it only for monorepo-wide runs.
+_APP_ROOT = Path(__file__).resolve().parent.parent
+if str(_APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(_APP_ROOT))
+
 # Import from the consolidated testing package
 from lexigram.testing import TestEnvironment
 

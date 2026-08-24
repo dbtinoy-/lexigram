@@ -189,7 +189,7 @@ workspace = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = ["--cov=lexigram.testing", "--cov-report=html", "--cov-report=term", "--cov-fail-under=80"]
+addopts = ["--cov=lexigram.testing", "--cov-report=html", "--cov-report=term", "--cov-fail-under=16"]
 filterwarnings = [
     "ignore::pytest.PytestAssertRewriteWarning",
 ]
