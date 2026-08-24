@@ -317,7 +317,7 @@ class AbstractSaga(ABC, Generic[T]):
         else:
             # Defensive: protocol says tuple | None, but tolerate legacy
             # stores returning bare state objects.
-            stored_version = int(getattr(stored, "version", 1))  # type: ignore[unreachable]
+            stored_version = int(getattr(stored, "version", 1))
         if not self.is_compatible_with(stored_version):
             return Err(
                 SagaVersionMismatchError(

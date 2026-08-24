@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from enum import StrEnum
 from pathlib import Path
 import sys
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from lexigram.app.exceptions import AppShutdownError
 from lexigram.app.invoker import Invoker
@@ -393,7 +393,13 @@ class Application:
                     self._orchestrator.clear_providers()
                     self._orchestrator.set_compiled_graph(graph)
                     for entry in graph.provider_order:
-                        p = entry.provider if entry.is_instance else entry.provider()
+                        # is_instance guarantees a pre-built Provider;
+                        # the class branch instantiates before add().
+                        p = (
+                            cast("Provider", entry.provider)
+                            if entry.is_instance
+                            else entry.provider()
+                        )
                         self._orchestrator.add(p)
 
             def _validate_secrets() -> None:

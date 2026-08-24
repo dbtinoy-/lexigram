@@ -56,7 +56,7 @@ class ContextVarRegistry(Registry[str, contextvars.ContextVar[Any]]):
 
     def _validate(self, key: str, value: contextvars.ContextVar[Any]) -> None:
         if not isinstance(value, contextvars.ContextVar):
-            msg = f"Expected ContextVar, got {type(value).__name__} for key '{key}'"  # type: ignore[unreachable]
+            msg = f"Expected ContextVar, got {type(value).__name__} for key '{key}'"
             raise TypeError(msg)
 
     # -- registration ------------------------------------------------------
