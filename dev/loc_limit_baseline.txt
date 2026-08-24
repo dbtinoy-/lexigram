@@ -95,7 +95,6 @@ experimental/apps/lexigram-cli/src/lexigram/cli/registry/provider.py
 experimental/apps/lexigram-ui/src/lexigram/ui/charts/static.py
 experimental/apps/lexigram-ui/src/lexigram/ui/state.py
 experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/processing/argv.py
-packages/lexigram-audit/tests/unit/test_sql_store.py
 packages/lexigram-auth/src/lexigram/auth/authn/ldap.py
 packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py
 packages/lexigram-cache/src/lexigram/cache/config.py
