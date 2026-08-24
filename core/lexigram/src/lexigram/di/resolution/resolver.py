@@ -102,13 +102,7 @@ class ServiceResolver:
                 return await self._parent.resolve(service_type)
             return await self._resolve_unregistered(service_type)
 
-        if descriptor.scope == ServiceScope.SINGLETON:
-            return await self._resolve_singleton(descriptor)
-
-        if descriptor.scope == ServiceScope.TRANSIENT:
-            return await self._create_instance(descriptor)
-
-        if descriptor.scope == ServiceScope.SCOPED:
+        if descriptor.scope is ServiceScope.SCOPED:
             name = getattr(service_type, "__name__", repr(service_type))
             from lexigram.contracts.exceptions.container import ScopedResolutionError
 
@@ -119,8 +113,18 @@ class ServiceResolver:
                 service=name,
             )
 
-        # Defensive: ServiceScope has exactly three members, so this is
-        # statically unreachable — but guards against future enum additions.
+        # Registry-style dispatch: a dict lookup never exhausts the enum,
+        # so the defensive tail below stays statically reachable.
+        handlers = {
+            ServiceScope.SINGLETON: self._resolve_singleton,
+            ServiceScope.TRANSIENT: self._create_instance,
+        }
+        handler = handlers.get(descriptor.scope)
+        if handler is not None:
+            return await handler(descriptor)
+
+        # Defensive: ServiceScope has exactly three members today; this
+        # guards against future enum additions slipping past dispatch.
         name = getattr(service_type, "__name__", repr(service_type))
         raise UnresolvableDependencyError(
             f"No handler for service scope {descriptor.scope!r} on '{name}'. "

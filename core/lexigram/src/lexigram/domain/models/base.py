@@ -434,13 +434,17 @@ class DomainModel:
         """Create an instance from a dictionary, coercing scalar types."""
         import dataclasses as _dc
 
-        if not _dc.is_dataclass(cls):
+        # Evaluate once: repeating an identical call after its early-return
+        # guard trips mypy's unreachable-statement analysis under
+        # --warn-unreachable.
+        is_dc = _dc.is_dataclass(cls)
+        if not is_dc:
             return cls(**data)
 
-        # Intermediate variable keeps the except below reachable for mypy
-        # (it otherwise narrows get_type_hints() to non-raising after the
-        # dataclass guard, but forward refs raise NameError at runtime).
-        hints_cache = cls._cached_type_hints  # noqa: ERA001
+        # getattr returns Any so the except below stays reachable: static
+        # narrowing assumes get_type_hints cannot raise, but forward refs
+        # raise NameError at runtime.
+        hints_cache: Any = getattr(cls, "_cached_type_hints", None)
         try:
             hints = hints_cache or get_type_hints(cls)
         except (NameError, TypeError, ValueError):
@@ -485,10 +489,13 @@ class DomainModel:
                         ) from exc
             else:
                 # SecretStr coercion from plain string (env vars, JSON)
+                _SecretStr: Any
                 try:
-                    from lexigram.validation import SecretStr as _SecretStr
+                    from lexigram.validation import SecretStr as _SecretStrMod
+
+                    _SecretStr = _SecretStrMod
                 except ImportError:
-                    _SecretStr = None  # type: ignore[misc]
+                    _SecretStr = None
 
                 if (
                     _SecretStr is not None

@@ -54,7 +54,12 @@ class ContextVarRegistry(Registry[str, contextvars.ContextVar[Any]]):
     def __init__(self, name: str = "ContextVarRegistry") -> None:
         super().__init__(name=name, allow_overwrite=False)
 
-    def _validate(self, key: str, value: contextvars.ContextVar[Any]) -> None:
+    def _validate(self, key: str, value: object) -> None:
+        """Validate a candidate registration value.
+
+        Typed as ``object`` (a widening override) so the defensive
+        isinstance guard stays statically reachable.
+        """
         if not isinstance(value, contextvars.ContextVar):
             msg = f"Expected ContextVar, got {type(value).__name__} for key '{key}'"
             raise TypeError(msg)

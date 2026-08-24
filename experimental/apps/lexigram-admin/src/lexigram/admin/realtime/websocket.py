@@ -213,7 +213,7 @@ class AdminWebSocketManager:
         Returns:
             True if sent successfully
         """
-        websocket = self._connections.get(connection_id)
+        websocket = self._tracker.get_connection(connection_id)
         if not websocket:
             return False
 

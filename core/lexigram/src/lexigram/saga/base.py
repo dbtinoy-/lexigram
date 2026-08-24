@@ -308,7 +308,9 @@ class AbstractSaga(ABC, Generic[T]):
         """
         if self._store is None:
             return Ok(None)
-        stored = await self._store.load(self.get_id())
+        # Untyped alias keeps the legacy-store branch statically reachable
+        # (the store protocol already narrows to tuple | None).
+        stored: Any = await self._store.load(self.get_id())
         if stored is None:
             return Ok(None)
         if isinstance(stored, tuple):

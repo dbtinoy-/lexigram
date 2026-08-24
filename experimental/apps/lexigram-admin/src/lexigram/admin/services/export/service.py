@@ -28,6 +28,7 @@ from lexigram.admin.services.export.scheduler import (
     ExportFormat,
     ExportJob,
     ExportSchedule,
+    ExportTemplate,
     ExportStatus,
 )
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity, AuditLoggerProtocol
@@ -192,9 +193,7 @@ class ExportService:
         limit: int = 50,
     ) -> list[ExportJob]:
         """List export jobs with optional filtering."""
-        return self._job_manager.list_jobs(
-            user_id=user_id, status=status, limit=limit
-        )
+        return self._job_manager.list_jobs(user_id=user_id, status=status, limit=limit)
 
     async def _record_export_audit(
         self,
