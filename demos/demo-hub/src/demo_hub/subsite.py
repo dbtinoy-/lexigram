@@ -20,6 +20,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _ATTR_RE = re.compile(rb"""(\b(?:href|src|action)\s*=\s*)(["'])/(?!/)""")
 _HEAD_RE = re.compile(rb"(<head\b[^>]*>)", re.IGNORECASE)
+_JS_NAV_RE = re.compile(rb"""(location(?:\.href)?\s*=\s*)(["'])/(?!/)""")
 
 _SHIM_TMPL = """<script>(function(){var B="__BASE__";function P(u){
 return typeof u==="string"&&u.charAt(0)==="/"&&u.charAt(1)!=="/"?B+u:u}
@@ -32,7 +33,15 @@ window.EventSource=function(u,c){return new E(P(u),c)};
 window.EventSource.prototype=E.prototype}
 if(window.WebSocket){var W=window.WebSocket;
 window.WebSocket=function(u,c){return new W(P(u),c)};
-window.WebSocket.prototype=W.prototype}})();
+window.WebSocket.prototype=W.prototype}
+document.addEventListener("click",function(e){
+var a=e.target&&e.target.closest&&e.target.closest("a");
+if(a){var h=a.getAttribute("href");
+if(h&&h.charAt(0)==="/"&&h.charAt(1)!=="/")a.setAttribute("href",B+h)}},true);
+document.addEventListener("submit",function(e){
+var f=e.target;if(f){var a=f.getAttribute("action");
+if(a&&a.charAt(0)==="/"&&a.charAt(1)!=="/")f.setAttribute("action",B+a)}},true);
+})();
 </script>"""
 
 
@@ -44,6 +53,13 @@ def rewrite_html(body: bytes, base: str) -> bytes:
     else:
         body = shim + body
     return _ATTR_RE.sub(lambda m: m.group(1) + m.group(2) + base.encode() + b"/", body)
+
+
+def rewrite_js(body: bytes, base: str) -> bytes:
+    """Rebase root-relative navigations inside JavaScript sources."""
+    return _JS_NAV_RE.sub(
+        lambda m: m.group(1) + m.group(2) + base.encode() + b"/", body
+    )
 
 
 def _rebase(value: str, base: str) -> str:
@@ -66,11 +82,11 @@ class SubsiteMiddleware:
 
         buffered_start: Message | None = None
         chunks: list[bytes] = []
-        is_html = False
+        rewrite: str | None = None  # "html" | "js"
         outer_send = send
 
         async def _send(message: Message) -> None:
-            nonlocal buffered_start, is_html
+            nonlocal buffered_start, rewrite
             if message["type"] == "http.response.start":
                 headers: Any = [(k.decode(), v.decode()) for k, v in message["headers"]]
                 headers = [
@@ -88,8 +104,15 @@ class SubsiteMiddleware:
                         )
                     fixed.append((k, v))
                 ctype = next((v for k, v in fixed if k.lower() == "content-type"), "")
-                is_html = ctype.split(";")[0].strip() == "text/html"
-                if is_html:
+                mime = ctype.split(";")[0].strip()
+                rewrite = (
+                    "html"
+                    if mime == "text/html"
+                    else "js"
+                    if mime in {"application/javascript", "text/javascript"}
+                    else None
+                )
+                if rewrite:
                     buffered_start = {
                         "type": "http.response.start",
                         "status": message["status"],
@@ -101,11 +124,16 @@ class SubsiteMiddleware:
                 await outer_send(message)
                 return
 
-            if message["type"] == "http.response.body" and is_html:
+            if message["type"] == "http.response.body" and rewrite:
                 chunks.append(message.get("body", b""))
                 if message.get("more_body", False):
                     return
-                out = rewrite_html(b"".join(chunks), self.base)
+                body = b"".join(chunks)
+                out = (
+                    rewrite_html(body, self.base)
+                    if rewrite == "html"
+                    else rewrite_js(body, self.base)
+                )
                 assert buffered_start is not None
                 buffered_start["headers"].append(
                     (b"content-length", str(len(out)).encode())
@@ -119,4 +147,4 @@ class SubsiteMiddleware:
         await self.app(scope, receive, _send)
 
 
-__all__ = ["SubsiteMiddleware", "rewrite_html"]
+__all__ = ["SubsiteMiddleware", "rewrite_html", "rewrite_js"]

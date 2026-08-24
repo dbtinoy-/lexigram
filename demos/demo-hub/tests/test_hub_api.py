@@ -46,6 +46,18 @@ def test_rewrite_html_prefixes_assets_and_injects_shim() -> None:
     assert b'var B="/demos/rates"' in out
 
 
+def test_rewrite_js_rebases_location_navigation() -> None:
+    js = b'if (x) { window.location.href = "/login"; }'
+    out = subsite_mod.rewrite_js(js, "/demos/auth-rbac")
+    assert b'window.location.href = "/demos/auth-rbac/login"' in out
+
+
+def test_rewrite_js_leaves_fetch_and_comments_alone() -> None:
+    js = b'fetch("/api/keys"); // location.href = "/keep"'
+    out = subsite_mod.rewrite_js(js, "/demos/x")
+    assert b'fetch("/api/keys")' in out
+
+
 def test_rewrite_html_leaves_external_urls() -> None:
     html = (
         b'<html><head></head><body>'
