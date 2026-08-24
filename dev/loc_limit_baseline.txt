@@ -68,7 +68,6 @@ experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/protocols.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/services/auth_service.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/store/direct_sql.py
-experimental/apps/lexigram-admin/src/lexigram/admin/config.py
 experimental/apps/lexigram-admin/src/lexigram/admin/controllers/base.py
 experimental/apps/lexigram-admin/src/lexigram/admin/controllers/widgets.py
 experimental/apps/lexigram-admin/src/lexigram/admin/dashboard/page_handlers.py
