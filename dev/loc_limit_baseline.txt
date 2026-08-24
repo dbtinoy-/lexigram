@@ -94,7 +94,6 @@ experimental/apps/lexigram-admin/tests/unit/auth/test_password_reset_service.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_dashboard_controller.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_settings_controller.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_widgets.py
-experimental/apps/lexigram-admin/tests/unit/test_filter_manager.py
 experimental/apps/lexigram-cli/src/lexigram/cli/commands/config.py
 experimental/apps/lexigram-cli/src/lexigram/cli/commands/db.py
 experimental/apps/lexigram-cli/src/lexigram/cli/registry/database.py
@@ -102,7 +101,6 @@ experimental/apps/lexigram-cli/src/lexigram/cli/registry/health.py
 experimental/apps/lexigram-cli/src/lexigram/cli/registry/provider.py
 experimental/apps/lexigram-ui/src/lexigram/ui/charts/static.py
 experimental/apps/lexigram-ui/src/lexigram/ui/state.py
-experimental/apps/lexigram-ui/tests/unit/test_atoms.py
 experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/processing/argv.py
 packages/lexigram-audit/tests/unit/test_sql_store.py
 packages/lexigram-auth/src/lexigram/auth/authn/ldap.py
