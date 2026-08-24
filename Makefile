@@ -138,28 +138,29 @@ smoke-demos: ## Execute demo entry points end-to-end
 	cd demos/auth-rbac && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import rbac_console.main" >/dev/null
 
 # Launch the whole live-demo fleet in the background (hub included).
-# dir:srcpath:module:port tuples; logs in .cache/demo-logs, pids in .cache/demo-pids.
-DEMOS_UP := demos/demo-hub:demos/demo-hub/src:demo_hub:7000 \
-	demos/realtime-monitor:demos/realtime-monitor/src:ops_console:7071 \
-	demos/resilient-rates:demos/resilient-rates/src:rates:7073 \
-	demos/event-driven-orders:demos/event-driven-orders/src:orders:7074 \
-	demos/rag-docs:demos/rag-docs/src:rag_docs:7075 \
-	demos/auth-web:demos/auth-web/src:auth_web:8081 \
-	demos/support-agent:demos/support-agent/src:support_agent:8082 \
-	demos/memory-chat:demos/memory-chat/src:memory_chat:8083 \
-	demos/ai-guardrails:demos/ai-guardrails/src:guard_gate:8084 \
-	demos/prompt-lab:demos/prompt-lab/src:prompt_lab:8085 \
-	demos/feedback-loop:demos/feedback-loop/src:feedback_loop:8086 \
-	demos/auth-rbac:demos/auth-rbac/src:rbac_console:8090 \
-	demos/auth-apikeys:demos/auth-apikeys/src:apikey_console:8091 \
-	demos/auth-mfa:demos/auth-mfa/src:mfa_console:8092
+# srcpath:module:port[:extra-arg] tuples; logs in .cache/demo-logs, pids in .cache/demo-pids.
+DEMOS_UP := demos/demo-hub/src:demo_hub:7000: \
+	demos/realtime-monitor/src:ops_console:7071: \
+	demos/resilient-rates/src:rates:7073:serve \
+	demos/event-driven-orders/src:orders:7074:serve \
+	demos/rag-docs/src:rag_docs:7075:serve \
+	demos/auth-web/src:auth_web:8081: \
+	demos/support-agent/src:support_agent:8082: \
+	demos/memory-chat/src:memory_chat:8083: \
+	demos/ai-guardrails/src:guard_gate:8084: \
+	demos/prompt-lab/src:prompt_lab:8085: \
+	demos/feedback-loop/src:feedback_loop:8086:serve \
+	demos/auth-rbac/src:rbac_console:8090: \
+	demos/auth-apikeys/src:apikey_console:8091: \
+	demos/auth-mfa/src:mfa_console:8092:
 
 .PHONY: demos-up
 demos-up: ## Start every live demo server in the background
 	@mkdir -p .cache/demo-logs .cache/demo-pids
-	@for entry in $(DEMOS_UP); do IFS=: read _dir srcpath mod port <<< "$$entry"; \
-		PYTHONPATH=$$srcpath nohup $(CURDIR)/.venv/bin/python -m $$mod >> .cache/demo-logs/$$mod.log 2>&1 & \
-		echo $$! > .cache/demo-pids/$$mod.pid; echo "started $$mod :$$port"; done
+	@for entry in $(DEMOS_UP); do \
+		echo "$$entry" | { IFS=: read -r srcpath mod port extra; \
+		PYTHONPATH=$$srcpath nohup $(CURDIR)/.venv/bin/python -m $$mod $$extra >> .cache/demo-logs/$$mod.log 2>&1 & \
+		echo $$! > .cache/demo-pids/$$mod.pid; echo "started $$mod :$$port"; }; done
 	@sleep 4 && $(MAKE) --no-print-directory demos-status
 
 .PHONY: demos-down
@@ -168,10 +169,11 @@ demos-down: ## Stop every backgrounded demo server
 		pid=$$(cat $$pidfile); kill $$pid 2>/dev/null && echo "stopped $$(basename $$pidfile .pid)"; rm -f $$pidfile; done
 
 .PHONY: demos-status
-demos-status: ## Probe every demo port once
-	@for entry in $(DEMOS_UP); do IFS=: read _dir srcpath mod port <<< "$$entry"; \
+demos-status: ## Probe every demo port once (2xx/3xx = up)
+	@for entry in $(DEMOS_UP); do \
+		echo "$$entry" | { IFS=: read -r _srcpath mod port _extra; \
 		code=$$(curl -so /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:$$port/); \
-		case $$code in 2*) echo "UP   $$mod :$$port";; *) echo "DOWN $$mod :$$port";; esac; done
+		case $$code in 2*|3*) echo "UP   $$mod :$$port";; *) echo "DOWN $$mod :$$port";; esac; }; done
 
 .PHONY: test-integration
 test-integration:  ## Run integration tests (requires Docker Compose services)
