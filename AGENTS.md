@@ -902,7 +902,7 @@ and anti-pattern table.
 ### 5.9 File Size
 
 - **Target**: under 500 lines.
-- **Hard limit**: 700 lines. If exceeded, decompose into a package - root files excluded.
+- **Hard limit**: 500 lines. If exceeded, decompose into a package - root files excluded.
 - **Enforcement**: `make lint-loc` fails CI for any `.py` file over 500 LOC that is absent from `dev/loc_limit_baseline.txt`, and for baseline entries whose file no longer exceeds the limit — the baseline can only shrink. Regenerate deliberately after review (`uv run python dev/check_loc_limit.py --root . --write-baseline`).
 
 ### 5.10 Docstring Formatting — Google Style
@@ -1148,7 +1148,7 @@ async def test_find_user_returns_err(self) -> None:
 
 ---
 
-## 8. Public Root files — exempt from the 700-line rule; these files should contain the actual contents and not re-exports
+## 8. Public Root files — exempt from the 500-line rule; these files should contain the actual contents and not re-exports
 
 - `__init__.py` — streamlined and lazy exports
 - `di/` — di submodules must be enriched and complete with di related files
