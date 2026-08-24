@@ -3,6 +3,11 @@
 Files accepted as permanently over the 500-line LOC limit. Each entry
 explains why decomposition would not improve maintainability.
 
+Coverage: every `dev/loc_limit_baseline.txt` entry is documented either
+here or, for the admin app, in the package-local register
+(`experimental/apps/lexigram-admin/docs/loc_debt.md`, 14 files) — see
+the Admin App section below.
+
 ## AI Extensions (Task 14 — W4 triage)
 
 | File | Lines | Rationale |
@@ -69,6 +74,64 @@ explains why decomposition would not improve maintainability.
 
 | File | Lines | Rationale |
 |------|-------|-----------|
+| `core/lexigram/.../app/base.py` | 621 | Application base class — lifecycle collaborator (`ApplicationLifecycle`) already extracted; residual is the state machine + boot sequence contract that subclasses extend. No second seam without breaking the template-method flow. |
 | `core/lexigram/.../di/container/container.py` | 668 | Container facade — already delegates to RegistrarImpl, ResolverImpl, Validator, Diagnostics. Resolution logic is in ServiceResolver. No clean seam for ContainerResolverCore extraction. |
 | `core/lexigram/.../domain/models/base.py` | 552 | DomainModel mixin — cohesive auto-dataclass with type hints, Pydantic compat, serialization, validation, field constraints. All tightly coupled; no mixin seam. |
 | `core/lexigram/.../primitives/context.py` | 546 | Context management — ContextKey, ContextVarRegistry, Context, RequestContext, factories. Complete self-contained subsystem; splitting creates unnecessary cross-module deps. |
+
+## Contracts Root Facade (Task 9)
+
+| File | Lines | Rationale |
+|------|-------|-----------|
+| `core/lexigram-contracts/.../contracts/__init__.py` | 637 | Root contracts facade — strict-mode re-exports of the entire public contract surface (§8 exempts root `__init__.py`; exports only, no logic). Splitting would scatter a single re-export list across files with no maintainability gain. |
+
+## AI LLM Clients (Task 14 addendum)
+
+| File | Lines | Rationale |
+|------|-------|-----------|
+| `lexigram-ai-llm/.../clients/anthropic.py` | 518 | Transport adapter for Anthropic Messages API — single-responsibility provider client (same rationale as documented `aws_bedrock.py`). |
+
+## AI Test Residuals (Tasks 5–6 follow-up)
+
+Partial splits were performed; each residual retains cohesive test
+families sharing fixtures and mocks.
+
+| File | Lines | Rationale |
+|------|-------|-----------|
+| `lexigram-ai-rag/tests/unit/test_chunking.py` | 595 | Split performed (`test_chunking_strategies.py` extracted); residual keeps 10 chunker-family test classes (Chunk, FixedSize, Recursive, Semantic, SlidingWindow, Token, Custom, Config, factory, integration) sharing chunk fixtures. |
+| `lexigram-ai-rag/tests/unit/test_graph_store_adapter.py` | 679 | Adapter test suite — CRUD, query, and transaction scenarios against one fake graph store; scenarios share store fixtures and seed helpers. |
+| `lexigram-ai-rag/tests/unit/test_rag_cache__testragcache.py` | 521 | Split performed (`test_rag_cache.py` extracted); residual covers TestRagCache internals sharing cache fixtures. |
+| `lexigram-ai-relay-gateway/tests/integration/test_admin_contributor.py` | 678 | Integration suite — contributor registration, widget routes, billing views against one app fixture; splitting breaks the shared app bootstrap. |
+| `lexigram-ai-relay-gateway/tests/unit/test_channels.py` | 558 | Channel resolution tests — per-channel families sharing gateway fixtures. |
+| `lexigram-ai-relay-gateway/tests/unit/test_stream.py` | 508 | Stream endpoint tests sharing SSE client fixture; just over limit. |
+| `lexigram-ai-relay/tests/unit/relay/test_engine.py` | 539 | Relay engine tests — dispatch/routing/settlement scenarios share engine harness. |
+| `lexigram-ai-relay/tests/unit/relay/test_stream_emitters.py` | 600 | Emitter tests — per-emitter families sharing event-bus fixtures. |
+
+## Admin App (Task 12 — W4 triage)
+
+14 Recipe D files are documented in the package-local register at
+`experimental/apps/lexigram-admin/docs/loc_debt.md`. The following 8
+admin residents are documented here (not covered there):
+
+| File | Lines | Rationale |
+|------|-------|-----------|
+| `lexigram-admin/.../dashboard/page_handlers.py` | 544 | Dashboard page handlers — HTMX partial handlers sharing permission checks and settings service. |
+| `lexigram-admin/.../realtime/websocket.py` | 536 | WS manager — `ConnectionTracker` already extracted; residual is auth/handshake + message routing inherent to the ASGI socket loop. |
+| `lexigram-admin/.../resources/base.py` | 631 | `Resource` base class — subclass-registration hooks (`__init_subclass__`), spec builders (cache/search/resilient), data-source binding, action-hook and table-config accessors; one extension surface every resource subclasses. |
+| `lexigram-admin/.../resources/field_renderer.py` | 603 | Field renderer — per-type render methods forming one coherent rendering surface. |
+| `lexigram-admin/.../resources/list_renderer.py` | 567 | List renderer — table/pagination/bulk-bar rendering coupled to column spec types. |
+| `lexigram-admin/.../services/export/service.py` | 537 | Export service — `ExportJobManager` already extracted; residual coordinates format writers + progress reporting. |
+| `lexigram-admin/.../services/filter_manager.py` | 511 | Filter manager — just over limit; query-string parsing + per-field filter application are one concern. |
+| `lexigram-admin/.../services/resource_manager.py` | 631 | Resource manager — registry + resolution + CRUD delegation; splitting scatters the resource lookup path. |
+
+## CLI & UI Apps
+
+| File | Lines | Rationale |
+|------|-------|-----------|
+| `lexigram-cli/.../commands/config.py` | 514 | Config command group — get/set/list/validate subcommands sharing config-load bootstrap. |
+| `lexigram-cli/.../commands/db.py` | 720 | DB command group — 18 click commands (migrate/seed/backup/restore/shell) sharing `_bootstrap_db_provider`/`_bootstrap_migration_runner`; command modules are flat by convention. |
+| `lexigram-cli/.../registry/database.py` | 541 | Database registry checks — provider/driver detection family sharing check scaffolding. |
+| `lexigram-cli/.../registry/health.py` | 696 | Health check registry — 12 `HealthCheck` plugin classes (40–60 LOC each) + registry + runner; splitting scatters a plugin set that shares `CheckResult`. |
+| `lexigram-cli/.../registry/provider.py` | 611 | Provider registry — package discovery + entry-point scanning for provider packages; cohesive introspection module. |
+| `lexigram-ui/.../charts/static.py` | 686 | Static SVG chart renderer — pure render functions; verbosity is SVG markup generation, not logic depth. |
+| `lexigram-ui/.../state.py` | 563 | UI state types — signals/stores/value types used together across UI components. |
