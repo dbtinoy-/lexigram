@@ -343,10 +343,11 @@ contracts and every extension package.
 ```python
 # ✅ Correct — string domain enum
 class Role(StrEnum):
-    SYSTEM = 'system'
-    USER = 'user'
-    ASSISTANT = 'assistant'
-    TOOL = 'tool'
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+
 
 # ✅ Correct — ordering enum that requires numeric comparison / arithmetic
 class HookPriority(int, Enum):
@@ -355,14 +356,16 @@ class HookPriority(int, Enum):
     LATE = 200
     # callers can write: HookPriority.EARLY + 10
 
+
 # ❌ Wrong — bare class with string attributes
 class Role:
-    SYSTEM = 'system'
-    USER = 'user'
+    SYSTEM = "system"
+    USER = "user"
+
 
 # ❌ Wrong — plain Enum without str or int base
 class Status(Enum):
-    ACTIVE = 'active'
+    ACTIVE = "active"
 ```
 
 #### Enums in Contracts (Cross-Package)
@@ -424,28 +427,37 @@ from lexigram.contracts.exceptions.domain import DomainError
 class AIError(DomainError):
     """Base exception for all AI-domain errors."""
 
+
 # -- Sub-domain bases (extended by leaf exceptions in extension packages) --
+
 
 class LLMError(AIError):
     """Base for LLM client errors. Extended in lexigram-ai-llm."""
 
+
 class RAGError(AIError):
     """Base for RAG pipeline errors. Extended in lexigram-ai-rag."""
+
 
 class MemoryError(AIError):
     """Base for memory system errors. Extended in lexigram-ai-memory."""
 
+
 class SkillError(AIError):
     """Base for skill execution errors. Extended in lexigram-ai-skills."""
+
 
 class GovernanceError(AIError):
     """Base for governance and policy errors."""
 
+
 class GuardError(AIError):
     """Base for input/output guard errors."""
 
+
 class SessionError(AIError):
     """Base for session management errors."""
+
 
 class ExtractionError(AIError):
     """Base for structured extraction errors. Extended in lexigram-ai-llm."""
@@ -594,7 +606,6 @@ expected, recoverable ways**.
 ```python
 from lexigram.result import Result
 from lexigram.result import Ok, Err
-
 ```
 
 | Use `Result[T, E]` | Use Exceptions |
@@ -616,6 +627,7 @@ async def find_user(self, user_id: str) -> Result[User, DomainError]:
     if not user:
         return Err(UserNotFound(user_id))
     return Ok(user)
+
 
 # ✅ Handle both cases explicitly
 result = await service.find_user("123")
@@ -733,6 +745,7 @@ Use modern syntax exclusively:
 def process(items: list[str], counts: dict[str, int]) -> str | None: ...
 async def find(self, id: str) -> Result[User, DomainError]: ...
 
+
 # ❌ Wrong — legacy typing
 def process(items: List[str], counts: Dict[str, int]) -> Optional[str]: ...
 ```
@@ -749,6 +762,7 @@ class SkillExecutor:
         cache: SkillResultCache | None = None,
         permission_checker: PermissionChecker | None = None,
     ): ...
+
 
 # ❌ Wrong — hides dependencies behind Any
 class SkillExecutor:
@@ -826,6 +840,7 @@ Services declare dependencies as typed constructor parameters:
 ```python
 from lexigram.contracts.cache import CacheBackendProtocol
 from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
+
 
 class UserService:
     @inject
@@ -1051,6 +1066,7 @@ class AgentsModule(Module):
     @classmethod
     def configure(cls, config: AgentConfig | None = None) -> DynamicModule:
         from lexigram.ai.agents.di.provider import AgentsProvider
+
         return DynamicModule(
             module=cls,
             providers=[AgentsProvider(config=config)],
@@ -1131,6 +1147,7 @@ async def test_find_user_returns_ok(self) -> None:
     result = await service.find_user("user-123")
     assert result.is_ok()
     assert result.unwrap().id == "user-123"
+
 
 @pytest.mark.asyncio
 async def test_find_user_returns_err(self) -> None:

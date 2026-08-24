@@ -59,7 +59,9 @@ class ApplicationLifecycle:
         self._start_time = time.monotonic()
         self._logger.info("application.starting", name=self._app_name)
 
-        if auto_discover and discover_callback is not None:
+        if discover_callback is not None:
+            # The callback itself guards auto-discovery on the app config;
+            # it must always run so explicitly-added modules are compiled.
             discover_callback()
 
         if validate_secrets_callback is not None:

@@ -49,9 +49,9 @@ _HOOK_PACKAGE_BY_NAME = {
 _HOOK_EVENT_COUNTER_NAME = "lexigram_hook_events_total"
 
 
-
 class _MonitorLifecycleMixin(_MonitorAttrsMixin):
     """See :class:`MonitorProvider`."""
+
     async def boot(self, container: BootContainerProtocol) -> None:
         """Start the monitoring provider and wire the observability facade.
 
@@ -258,4 +258,3 @@ class _MonitorLifecycleMixin(_MonitorAttrsMixin):
         if self._error_hook is not None:
             with contextlib.suppress(RuntimeError, Exception):
                 self._error_hook.uninstall()
-

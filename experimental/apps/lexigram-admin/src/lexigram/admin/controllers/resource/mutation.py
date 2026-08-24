@@ -102,9 +102,7 @@ class ResourceMutationMixin:
         return None
 
     @classmethod
-    def _validated_model_fields(
-        cls, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _validated_model_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Coerce HTML form strings against the model and drop unknown keys.
 
         Controllers without a bound model keep the historical raw
@@ -127,9 +125,7 @@ class ResourceMutationMixin:
         allowed -= cls._PROTECTED_FIELDS
         return {k: v for k, v in cleaned.items() if k in allowed}
 
-    def validate_create(
-        self, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def validate_create(self, data: dict[str, Any]) -> dict[str, Any]:
         """Coerce form values and keep only declared model fields.
 
         Unknown keys (potential mass-assignment vectors such as ``role`` or
@@ -211,9 +207,7 @@ class ResourceMutationMixin:
                 status_code=302,
             )
 
-    def validate_update(
-        self, item_id: Any, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def validate_update(self, item_id: Any, data: dict[str, Any]) -> dict[str, Any]:
         """Coerce form values and keep only declared model fields."""
         return self._validated_model_fields(data)
 

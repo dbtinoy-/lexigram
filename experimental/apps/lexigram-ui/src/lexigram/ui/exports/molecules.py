@@ -8,7 +8,6 @@ Type-checker only: the top-level package resolves names lazily via
 # manifest — imports live under TYPE_CHECKING on purpose.
 # ruff: noqa: TC004
 
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -117,4 +116,4 @@ if TYPE_CHECKING:
         "ToggleIcon",
         "InfiniteScrollTrigger",
         "VirtualScroll",
-)
+    )

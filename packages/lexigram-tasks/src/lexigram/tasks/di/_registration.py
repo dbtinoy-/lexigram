@@ -23,7 +23,6 @@ from lexigram.tasks.results.core import ResultStore
 from lexigram.tasks.scheduling.scheduler import TaskScheduler
 
 if TYPE_CHECKING:
-
     from lexigram.contracts.core.di import (
         ContainerRegistrarProtocol,
     )
@@ -35,9 +34,9 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-
 class _TaskRegistrationMixin(_TaskAttrsMixin):
     """See TaskProvider."""
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register task services with the DI container.
 
@@ -199,4 +198,3 @@ class _TaskRegistrationMixin(_TaskAttrsMixin):
         )
 
         logger.debug("tasks_admin_widgets_registered")
-

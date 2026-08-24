@@ -157,9 +157,7 @@ def etag(fn: F) -> F:
             return result
 
         # Generate weak ETag from response body
-        body: bytes | bytearray = (
-            bytes(result.body) if hasattr(result, "body") else b""
-        )
+        body: bytes | bytearray = bytes(result.body) if hasattr(result, "body") else b""
         etag_value = f'W/"{hashlib.md5(body, usedforsecurity=False).hexdigest()}"'
 
         result.headers["ETag"] = etag_value

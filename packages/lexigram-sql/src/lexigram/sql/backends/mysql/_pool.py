@@ -338,6 +338,7 @@ class MySQLConnectionPool(ConnectionPoolProtocol):
         """Get query stats"""
         return {}
 
+
 def create_mysql_pool(
     host: str = "localhost",
     port: int = 3306,

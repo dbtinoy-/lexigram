@@ -32,6 +32,7 @@ _RENDERERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "memory": render_memory,
 }
 
+
 def render_filters(dialect: str, filters: dict[str, Any]) -> Any:
     """Render a canonical filter dict for a named backend dialect.
 
@@ -55,5 +56,3 @@ def render_filters(dialect: str, filters: dict[str, Any]) -> Any:
     if renderer is None:
         raise FilterRenderError(f"unknown filter dialect {dialect!r}")
     return renderer(filters)
-
-

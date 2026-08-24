@@ -212,7 +212,6 @@ class CacheProvider(
             category=HealthCheckCategory.READINESS,
         )
 
-
     async def get_health_status(self) -> HealthCheckResult:
         """Return comprehensive health status of all cache services and backends.
 
@@ -237,5 +236,6 @@ def __getattr__(name: str) -> Any:
 
         return CacheService
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = ["CacheProvider"]

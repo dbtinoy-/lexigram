@@ -18,7 +18,6 @@ from lexigram.sql.monitoring.metrics import (
 logger = get_logger(__name__)
 
 
-
 class DatabaseHealthChecker:
     """Database health checker - avoids collision with lexigram.health.HealthChecker"""
 
@@ -311,5 +310,3 @@ class DatabaseHealthChecker:
                 )
 
         return health_checks
-
-

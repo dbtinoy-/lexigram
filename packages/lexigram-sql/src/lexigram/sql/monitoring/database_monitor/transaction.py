@@ -18,7 +18,6 @@ from lexigram.sql.monitoring.metrics import (
 logger = get_logger(__name__)
 
 
-
 class TransactionMonitor:
     """Monitors database transaction execution"""
 
@@ -95,5 +94,3 @@ class TransactionMonitor:
     async def get_stats(self, time_range_seconds: int = 3600) -> dict[str, Any]:
         """Get transaction monitoring statistics"""
         return await self.collector.get_transaction_stats(time_range_seconds)
-
-

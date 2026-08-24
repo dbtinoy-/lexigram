@@ -8,14 +8,16 @@ from __future__ import annotations
 from typing import Any
 
 from lexigram.admin.actions.base import BulkAction
-from lexigram.admin.actions.standard.utils import _extract_id, _resolve_data_source
 from lexigram.admin.actions.exceptions import ActionError
+from lexigram.admin.actions.standard.utils import _extract_id, _resolve_data_source
 from lexigram.admin.actions.types import (
     ActionColor,
     ActionContext,
     ConfirmationConfig,
 )
 from lexigram.result import Err, Ok, Result
+
+
 class DeleteBulkAction(BulkAction):
     """Delete multiple selected records."""
 
@@ -56,6 +58,8 @@ class DeleteBulkAction(BulkAction):
     async def execute(self, records: list[Any], ctx: ActionContext) -> Result[Any, Any]:
         count = len(records)
         return Ok({"message": f"Deleted {count} record(s)", "deleted_count": count})
+
+
 class PurgeBulkAction(BulkAction):
     """Permanently delete multiple selected records.
 
@@ -120,6 +124,8 @@ class PurgeBulkAction(BulkAction):
         for start in range(0, len(ids), chunk_size):
             purged += await data_source.bulk_delete(ids[start : start + chunk_size])
         return Ok({"message": f"Purged {purged} record(s)", "purged_count": purged})
+
+
 class RestoreBulkAction(BulkAction):
     """Restore multiple soft-deleted records."""
 

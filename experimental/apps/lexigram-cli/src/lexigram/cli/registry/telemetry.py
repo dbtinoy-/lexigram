@@ -6,11 +6,12 @@ This module provides opt-in telemetry for the CLI.
 from __future__ import annotations
 
 import abc
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 import platform
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 from lexigram import serialization as json
 from lexigram.logging import get_logger

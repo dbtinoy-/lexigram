@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
 from lexigram.admin.controllers.resource.meta import ResourceMeta, T
-from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
 from lexigram.admin.state.context import AdminContext, AdminContextManager
 from lexigram.ui import el, render_to_string
-
-if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
-
 
 
 class ResourceDetailMixin:
@@ -47,6 +42,7 @@ class ResourceDetailMixin:
                 return HTMLResponse(self.render_detail_partial(ctx, item))
 
             return HTMLResponse(self.render_detail(ctx, item))
+
     def render_detail(self, ctx: AdminContext, item: T) -> str:
         """Render full detail page. Override in subclass."""
         return f"""

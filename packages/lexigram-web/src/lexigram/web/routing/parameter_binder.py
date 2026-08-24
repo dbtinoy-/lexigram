@@ -169,9 +169,7 @@ class ParameterBinder:
         result = value
         for pipe in pipes:
             # If pipe is a class, instantiate it (simple DI could be added here later)
-            pipe_instance = (
-                cast("Any", pipe()) if inspect.isclass(pipe) else pipe
-            )
+            pipe_instance = cast("Any", pipe()) if inspect.isclass(pipe) else pipe
             result = await pipe_instance.transform(result, metadata)
 
         return result

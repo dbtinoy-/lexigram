@@ -15,8 +15,8 @@ import warnings
 
 from lexigram.admin.data.data_source import IDataSource
 from lexigram.admin.resources.archive_ops import ArchiveOperationsMixin
-from lexigram.admin.resources.layouts import apply_layout_config
 from lexigram.admin.resources.config import TableConfiguration
+from lexigram.admin.resources.layouts import apply_layout_config
 
 if TYPE_CHECKING:
     from lexigram.admin.actions.base import HeaderAction

@@ -24,8 +24,8 @@ logger = get_logger(__name__)
 
 from lexigram.admin.dashboard.page_handlers import (
     AdminPageHandler,
-    _placeholder_page,
     StructuredPageHandler,
+    _placeholder_page,
     _resolve_handler,
 )
 

@@ -372,5 +372,3 @@ class ContextFactory:
             principal=None,  # Legacy method doesn't resolve principal
             metadata=data.get("metadata", {}),
         )
-
-

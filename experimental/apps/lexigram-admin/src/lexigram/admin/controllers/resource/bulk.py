@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
@@ -11,8 +11,6 @@ from lexigram.admin.controllers.resource.meta import ResourceMeta
 from lexigram.admin.state.context import AdminContextManager
 from lexigram.admin.ui.organisms.admin_slide_over import render_bulk_delete_confirm
 from lexigram.ui import el, render_to_string
-
-
 
 
 class ResourceBulkMixin:
@@ -102,6 +100,7 @@ class ResourceBulkMixin:
             ),
         )
         return HTMLResponse(html)
+
     async def bulk_action(self, request: Request) -> Response:
         """Handle bulk actions."""
         async with AdminContextManager(request) as ctx:

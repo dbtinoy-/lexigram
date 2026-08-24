@@ -16,8 +16,10 @@ from lexigram.sql.providers.database_service import DatabaseService
 logger = get_logger(__name__)
 _alembic_warned = [False]
 
+
 class _DatabaseRegistrationMixin:
     """Mixin holding DI-registration logic."""
+
     config: Any
     _explicit_config: DatabaseConfig | None
     _backends: dict[str, Any]
@@ -26,6 +28,7 @@ class _DatabaseRegistrationMixin:
     _enable_migrations: bool | None
     _register_admin_widgets: Callable[..., Any]
     _migration_dir: str | Path
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register all database services (singletons/scoped) into the container."""
         # Resolve effective config: explicit arg → auto-injected → sqlite default
@@ -180,6 +183,7 @@ class _DatabaseRegistrationMixin:
                 self._db_provider.migration_manager = migration_manager
         except ImportError:
             from lexigram.sql.di.provider import _warn_alembic_missing  # noqa: PLC0415
+
             _warn_alembic_missing()
 
         # Database-backed search backends have moved to lexigram-search
@@ -359,5 +363,5 @@ class _DatabaseRegistrationMixin:
                 _db_ref.migration_manager = migration_manager
         except ImportError:
             from lexigram.sql.di.provider import _warn_alembic_missing  # noqa: PLC0415
-            _warn_alembic_missing()
 
+            _warn_alembic_missing()

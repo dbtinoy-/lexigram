@@ -32,11 +32,8 @@ from pathlib import Path
 from typing import Any
 
 from lexigram.contracts import (
-    DatabaseProviderProtocol,
-    MigrationManagerProtocol,
     MigrationRecord,
 )
-from lexigram.contracts.data.identifiers import Table
 from lexigram.logging import get_logger
 from lexigram.primitives import clock as ambient_clock
 from lexigram.sql.exceptions import DatabaseError, QueryError
@@ -57,6 +54,7 @@ try:
     ALEMBIC_AVAILABLE = True
 except ImportError:  # pragma: no cover - availability checked at runtime
     ALEMBIC_AVAILABLE = False
+
 
 class AlembicManager:
     """Alembic migration manager facade for Lexigram DB.
@@ -500,4 +498,3 @@ class AlembicManager:
                         "Rollback failed during migration apply",
                     )
             raise DatabaseError(f"Migration apply failed: {e}") from e
-

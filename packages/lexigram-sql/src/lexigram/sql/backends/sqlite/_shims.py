@@ -12,7 +12,6 @@ except ImportError:
     HAS_SQLITE = False
 
 
-
 HAS_MONITORING = False
 try:
     from lexigram.sql.monitoring import DatabaseMonitor as _RealDatabaseMonitor

@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-@dataclass
 
+@dataclass
 class SubscriptionConnection:
     """Manages active subscriptions for a WebSocket connection."""
 
@@ -40,4 +40,3 @@ class SubscriptionConnection:
     def get(self, subscription_id: str) -> SubscriptionInfo | None:
         """Get a subscription by ID."""
         return self.subscriptions.get(subscription_id)
-

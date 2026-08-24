@@ -362,7 +362,9 @@ def schema(name: str, *, dialect: SQLDialect = SQLDialect.POSTGRESQL) -> Schema:
     return Schema(name, dialect=dialect)
 
 
-def validate_identifier(name: str, *, dialect: SQLDialect = SQLDialect.POSTGRESQL) -> str:
+def validate_identifier(
+    name: str, *, dialect: SQLDialect = SQLDialect.POSTGRESQL
+) -> str:
     """Validate *name* as a safe SQL identifier and return it.
 
     Fail-closed guard for call sites that interpolate identifiers into raw

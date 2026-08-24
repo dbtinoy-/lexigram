@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.admin.di.bundle_provider import AdminProvider
     from lexigram.admin.di.mount.context import MountContext
 
 _log = get_logger(__name__)
@@ -25,10 +24,7 @@ class AdminMountCoreMixin:
 
     _get_csrf_service: Any
 
-
-    async def _mount_resources(
-        self, resolver: Any, ctx: MountContext
-    ) -> None:
+    async def _mount_resources(self, resolver: Any, ctx: MountContext) -> None:
         """Resolve registered resource classes into named instances.
 
         Failures are recorded in ``_mount_failures`` and re-raised only when
@@ -74,9 +70,7 @@ class AdminMountCoreMixin:
                 error=str(exc),
             )
 
-    async def _mount_settings_service(
-        self, resolver: Any, ctx: MountContext
-    ) -> None:
+    async def _mount_settings_service(self, resolver: Any, ctx: MountContext) -> None:
         """Create the shared settings service for runtime theme overrides.
 
         Best-effort: without a database provider the service falls back to an

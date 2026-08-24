@@ -6,20 +6,19 @@ Part of the ``lexigram.admin.actions.standard`` package.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-
 import inspect
 from typing import Any
 
 from lexigram.admin.actions.base import RowAction
-from lexigram.admin.actions.standard.utils import _extract_id, _resolve_data_source
 from lexigram.admin.actions.exceptions import ActionError
+from lexigram.admin.actions.standard.utils import _extract_id, _resolve_data_source
 from lexigram.admin.actions.types import (
     ActionColor,
     ActionContext,
     ConfirmationConfig,
 )
-from lexigram.ui import Zones
 from lexigram.result import Err, Ok, Result
+from lexigram.ui import Zones
 
 
 class EditAction(RowAction):
@@ -233,7 +232,7 @@ class CloneAction(RowAction):
             [dict[str, Any]], dict[str, Any] | Awaitable[dict[str, Any]]
         ]
         | None = None,
-        before_replica_saved: Callable[[dict[str, Any]], None | Awaitable[None]]
+        before_replica_saved: Callable[[dict[str, Any]], Awaitable[None] | None]
         | None = None,
     ) -> None:
         super().__init__(

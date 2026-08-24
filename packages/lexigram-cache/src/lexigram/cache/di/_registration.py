@@ -22,7 +22,6 @@ logger = get_logger(__name__)
 T = TypeVar("T")
 
 
-
 class _CacheRegistrationMixin:
     config: Any
     _initialize_serializers: Callable[..., None]
@@ -31,6 +30,7 @@ class _CacheRegistrationMixin:
     get_service: Callable[..., CacheService]
     _backends: dict[str, CacheBackendProtocol]
     """See :class:`CacheProvider`."""
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register cache services with the container.
 
@@ -194,7 +194,6 @@ class _CacheRegistrationMixin:
                     error=str(exc),
                 )
 
-
     def _register_semantic_cache(self, container: ContainerRegistrarProtocol) -> None:
         """Register semantic cache components if faiss is available.
 
@@ -283,6 +282,3 @@ class _CacheRegistrationMixin:
 
 
 __all__ = ["CacheProvider"]
-
-
-

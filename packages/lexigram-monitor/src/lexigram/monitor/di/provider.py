@@ -239,4 +239,3 @@ class MonitorProvider(
         finally:
             if hasattr(span, "end"):
                 cast("Any", span).end()
-

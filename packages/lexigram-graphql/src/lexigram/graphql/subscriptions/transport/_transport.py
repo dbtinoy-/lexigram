@@ -27,7 +27,6 @@ from lexigram.graphql.subscriptions.transport._messaging import _WSMessagingMixi
 
 
 @dataclass
-
 class GraphQLWSTransport(_WSMessagingMixin):
     """WebSocket transport for GraphQL subscriptions.
 
@@ -442,4 +441,3 @@ class GraphQLWSTransport(_WSMessagingMixin):
             yield result
 
         return _single_event()
-

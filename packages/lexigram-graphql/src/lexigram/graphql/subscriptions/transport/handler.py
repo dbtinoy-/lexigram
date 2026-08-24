@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+
 async def graphql_ws_endpoint(websocket: Any) -> None:
     """ASGI-compatible endpoint for GraphQL WebSocket connections.
 
@@ -48,6 +49,7 @@ async def graphql_ws_endpoint(websocket: Any) -> None:
     transport = GraphQLWSTransport()
     await transport.handle(websocket)
 
+
 def create_ws_route(path: str) -> Any:
     """Create a WebSocket route for GraphQL subscriptions.
 
@@ -63,6 +65,7 @@ def create_ws_route(path: str) -> Any:
     from starlette.routing import Route  # deferred — Starlette is optional
 
     return Route(path, graphql_ws_endpoint)
+
 
 class GraphQLWSHandler:
     """Handler class for GraphQL WebSocket subscriptions.
@@ -144,4 +147,3 @@ class GraphQLWSHandler:
             context_factory=context_factory,
             auth_handler=auth_handler,
         )
-

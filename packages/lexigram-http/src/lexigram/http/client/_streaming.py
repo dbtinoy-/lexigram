@@ -32,7 +32,6 @@ _CIRCUIT_OPEN_CODE = "LEX_ERR_RES_009"
 _RETRY_EXHAUSTED_CODE = "LEX_ERR_RES_008"
 
 
-
 class _HTTPStreamingMixin:
     request: Callable[..., Coroutine[Any, Any, HttpResponse]]
     _request_result: Callable[
@@ -45,6 +44,7 @@ class _HTTPStreamingMixin:
     _pool: Any
     _metrics: Any
     """See :class:`HTTPClient`."""
+
     async def post_multipart(
         self,
         url: str,

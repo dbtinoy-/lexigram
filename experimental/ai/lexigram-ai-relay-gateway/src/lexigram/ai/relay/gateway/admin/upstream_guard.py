@@ -47,5 +47,4 @@ def validate_upstream_url(
     return True, None
 
 
-
 __all__ = ["validate_upstream_url"]

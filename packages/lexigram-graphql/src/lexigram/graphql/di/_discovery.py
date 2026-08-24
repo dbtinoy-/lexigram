@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 
+
 def _require(instance: _T | None, name: str) -> _T:
     """Return *instance* or raise RuntimeError if ``boot()`` has not been called.
 
@@ -62,12 +63,14 @@ class _GraphQLDiscoveryMixin:
     """Mixin holding entry-point based backend discovery."""
 
     if TYPE_CHECKING:
+
         def __init__(
             self,
             *,
             config: Any = None,
             **kwargs: Any,
         ) -> None: ...
+
     @classmethod
     def auto_discover(
         cls,

@@ -60,9 +60,9 @@ _HOOK_PACKAGE_BY_NAME = {
 _HOOK_EVENT_COUNTER_NAME = "lexigram_hook_events_total"
 
 
-
 class _MonitorRegistrationMixin(_MonitorAttrsMixin):
     """See :class:`MonitorProvider`."""
+
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Register monitoring services with the container.
 
@@ -73,6 +73,7 @@ class _MonitorRegistrationMixin(_MonitorAttrsMixin):
         from lexigram.monitor.di.provider import (
             MonitorProvider,  # noqa: PLC0415 — breaks provider<->mixin cycle
         )
+
         container.singleton(MonitorProvider, lambda: self)
         container.singleton(MetricsCollectorProtocol, lambda: self.metrics_collector)
         container.singleton(_ConcreteMetricsCollector, lambda: self.metrics_collector)
@@ -183,4 +184,3 @@ class _MonitorRegistrationMixin(_MonitorAttrsMixin):
                     provider=candidate.__name__,
                     error=str(exc),
                 )
-

@@ -35,9 +35,9 @@ async def _bootstrap_migration_runner() -> Any:
     db_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
 
     try:
+        from lexigram.contracts.data.sql.migrations import MigrationRunnerProtocol
         from lexigram.di.container import Container
         from lexigram.di.orchestrator import ProviderOrchestrator
-        from lexigram.contracts.data.sql.migrations import MigrationRunnerProtocol
 
         sql_provider_mod = importlib.import_module("lexigram.sql.di.provider")
         DBDIProvider = sql_provider_mod.DatabaseProvider
@@ -77,9 +77,9 @@ async def _bootstrap_db_provider() -> tuple[Any, Any]:
 
     db_url = os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
     try:
+        from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
         from lexigram.di.container import Container
         from lexigram.di.orchestrator import ProviderOrchestrator
-        from lexigram.contracts.data.sql.database import DatabaseProviderProtocol
 
         sql_provider_mod = importlib.import_module("lexigram.sql.di.provider")
         DatabaseProvider = sql_provider_mod.DatabaseProvider

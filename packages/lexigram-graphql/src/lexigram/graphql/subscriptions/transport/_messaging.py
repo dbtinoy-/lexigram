@@ -23,14 +23,16 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-@dataclass
 
+@dataclass
 class _WSMessagingMixin:
     """Send/error/complete framing plus keepalive and cleanup."""
+
     _websocket: WebSocketProtocol | None
     _connection: SubscriptionConnection | None
     _connection_ack_sent: bool
     keepalive_interval: float
+
     async def _send_message(self, message: dict[str, Any]) -> None:
         """Send a message to the client.
 
@@ -122,4 +124,3 @@ class _WSMessagingMixin:
     # ------------------------------------------------------------------
     # SubscriptionHandler protocol implementation
     # ------------------------------------------------------------------
-

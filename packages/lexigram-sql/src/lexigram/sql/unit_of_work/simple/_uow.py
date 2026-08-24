@@ -25,8 +25,6 @@ from lexigram.sql.unit_of_work.simple._operations import (  # noqa: F401
 logger = get_logger(__name__)
 
 
-
-
 class SimpleUnitOfWork(AbstractUnitOfWork):
     """SQL-backed Unit of Work.
 

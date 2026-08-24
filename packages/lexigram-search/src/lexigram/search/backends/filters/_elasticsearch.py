@@ -98,5 +98,3 @@ def render_opensearch(filters: dict[str, Any]) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Meilisearch (filter-expression string)
 # ---------------------------------------------------------------------------
-
-

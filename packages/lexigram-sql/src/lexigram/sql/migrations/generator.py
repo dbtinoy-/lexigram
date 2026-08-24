@@ -1,4 +1,5 @@
 """Migration generation from Domain models for Lexigram Framework"""
+
 from __future__ import annotations
 
 from dataclasses import MISSING
@@ -9,8 +10,8 @@ from pathlib import Path
 import re
 from typing import Any, Union
 
-from lexigram.primitives import clock as ambient_clock
 from lexigram.domain import DomainModel
+from lexigram.primitives import clock as ambient_clock
 from lexigram.sql.migrations.base import MigrationError
 from lexigram.sql.types import ColumnDefinition, SchemaDiff, TableDefinition
 
@@ -44,6 +45,7 @@ class ModelAnalyzer:
         # Analyze fields using dataclass fields API
         columns = []
         from dataclasses import fields as dataclass_fields
+
         for f in dataclass_fields(model):  # type: ignore[arg-type]
             # Convert field name to snake_case for database column
             column_name = self._camel_to_snake(f.name)

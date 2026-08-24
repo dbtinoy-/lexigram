@@ -233,5 +233,3 @@ def render_sqlite(filters: dict[str, Any]) -> tuple[str, list[Any]]:
         expr=lambda field: f"json_extract(document, '$.{field}')",
         placeholder=lambda _: "?",
     )
-
-

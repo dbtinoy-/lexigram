@@ -6,8 +6,6 @@ sources that support structured where-clauses.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
-
 # ============================================================================
 # Filter SpecificationProtocol Types
 # ============================================================================

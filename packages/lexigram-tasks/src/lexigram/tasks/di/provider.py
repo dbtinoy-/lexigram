@@ -32,7 +32,6 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-
 from lexigram.tasks.di._lifecycle import (  # noqa: F401 — re-export
     _check_queue_health,  # noqa: F401 — re-export
     _connect_queue,  # noqa: F401 — re-export

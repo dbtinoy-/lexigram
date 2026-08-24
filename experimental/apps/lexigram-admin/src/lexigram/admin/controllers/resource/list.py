@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
 from lexigram.admin.controllers.resource.meta import ResourceMeta, T
-from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
 from lexigram.admin.data.data_source import QueryResult
 from lexigram.admin.data.query import QuerySpec
 from lexigram.admin.state.context import AdminContext, AdminContextManager
 from lexigram.admin.state.url import URLState
 from lexigram.ui import el, render_to_string
-
-if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
-
 
 
 class ResourceListMixin:
@@ -81,7 +76,9 @@ class ResourceListMixin:
                 qs = qs.with_where_eq(field, value)
 
         return qs
-    def render_list(self,
+
+    def render_list(
+        self,
         ctx: AdminContext,
         result: QueryResult[T],
         state: URLState,
@@ -101,7 +98,8 @@ class ResourceListMixin:
 </html>
 """
 
-    def render_list_partial(self,
+    def render_list_partial(
+        self,
         ctx: AdminContext,
         result: QueryResult[T],
         state: URLState,

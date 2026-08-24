@@ -134,5 +134,3 @@ class GraphQLContext:
             if inspect.isawaitable(result):
                 await result
             self.scope = None
-
-

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Generic, Literal, Self, TypeVar
+from typing import Any, Literal, Self, TypeVar
 
 T = TypeVar("T")
 
@@ -196,16 +196,16 @@ class QuerySpec:
         *,
         page: int | None = None,
         per_page: int | None = None,
-        cursor: str | None | object = _UNSET,
-        sort_by: str | None | object = _UNSET,
+        cursor: str | object | None = _UNSET,
+        sort_by: str | object | None = _UNSET,
         sort_order: Literal["asc", "desc"] | None = None,
-        search: str | None | object = _UNSET,
+        search: str | object | None = _UNSET,
         search_fields: list[str] | None = None,
         filters: dict[str, Any] | None = None,
         where: tuple[FilterCondition, ...] | None = None,
         select_fields: tuple[str, ...] | None = None,
         include: list[str] | None = None,
-        group_by: str | None | object = _UNSET,
+        group_by: str | object | None = _UNSET,
         include_deleted: bool | None = None,
     ) -> QuerySpec:
         """Internal helper: return a copy with selective overrides.
@@ -529,5 +529,3 @@ class QuerySpec:
             result["include_deleted"] = True
 
         return result
-
-

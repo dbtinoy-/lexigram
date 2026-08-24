@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
-
-if TYPE_CHECKING:
-    from lexigram.admin.controllers.resource import ResourceController
-
 
 
 class ResourceImportMixin:

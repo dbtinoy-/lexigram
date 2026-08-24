@@ -27,13 +27,13 @@ logger = get_logger(__name__)
 T = TypeVar("T")
 
 
-
 class _CacheServicesMixin:
     config: Any
     _backends: dict[str, CacheBackendProtocol]
     _protection: Any
     _services: dict[str, CacheService]
     """See :class:`CacheProvider`."""
+
     def _initialize_serializers(self) -> None:
         """Initialize available serializers.
 
@@ -207,5 +207,3 @@ class _CacheServicesMixin:
             Default CacheService instance
         """
         return self.get_service()
-
-

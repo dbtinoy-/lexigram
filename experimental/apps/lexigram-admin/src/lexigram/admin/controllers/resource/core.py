@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Generic
 
-from lexigram.admin.controllers.resource.meta import ResourceMeta, T
-from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
 from starlette.requests import Request
 
+from lexigram.admin.controllers.resource.meta import ResourceMeta, T
+from lexigram.admin.data.data_source import IDataSource as DataSourceProtocol
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
-
 
 
 class ResourceCoreMixin(Generic[T]):
@@ -26,6 +25,7 @@ class ResourceCoreMixin(Generic[T]):
     # When True, DELETE calls soft-delete (sets deleted_at) instead of hard-delete.
     # Use RepositoryDataSource(soft_delete_enabled=True) to filter them in queries.
     soft_delete_enabled: bool = False
+
     def __init__(
         self,
         data_source: DataSourceProtocol[T] | None = None,
@@ -58,7 +58,9 @@ class ResourceCoreMixin(Generic[T]):
             revision_service: ``RevisionService`` instance.
         """
         self._revision_service = revision_service
-    async def _record_revision(self,
+
+    async def _record_revision(
+        self,
         request: Request,
         resource_id: str,
         data: dict[str, Any],
@@ -91,7 +93,9 @@ class ResourceCoreMixin(Generic[T]):
                 getattr(self.meta, "name", ""),
                 resource_id,
             )
-    async def _emit_audit(self,
+
+    async def _emit_audit(
+        self,
         request: Request,
         action: str,
         item_id: str = "",
@@ -139,6 +143,7 @@ class ResourceCoreMixin(Generic[T]):
                 getattr(self.meta, "name", ""),
                 item_id,
             )
+
     def get_data_source(self) -> DataSourceProtocol[T]:
         """Get the data source for this resource."""
         if self._data_source is None:

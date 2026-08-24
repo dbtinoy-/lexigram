@@ -46,9 +46,9 @@ _HOOK_PACKAGE_BY_NAME = {
 _HOOK_EVENT_COUNTER_NAME = "lexigram_hook_events_total"
 
 
-
 class _MonitorMetricsMixin(_MonitorAttrsMixin):
     """See :class:`MonitorProvider`."""
+
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Check monitoring provider health"""
         details = {

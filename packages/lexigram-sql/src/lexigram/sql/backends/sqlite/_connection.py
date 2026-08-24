@@ -295,7 +295,4 @@ class SQLiteConnection(DatabaseConnection):
             pass
 
 
-
 # ...
-
-

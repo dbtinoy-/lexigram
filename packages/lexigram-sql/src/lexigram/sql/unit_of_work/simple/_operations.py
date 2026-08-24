@@ -13,7 +13,6 @@ from lexigram.sql.lib import entity_to_dict
 logger = get_logger(__name__)
 
 
-
 @dataclass
 class EntityOperation:
     """Represents a pending SQL operation on an entity."""

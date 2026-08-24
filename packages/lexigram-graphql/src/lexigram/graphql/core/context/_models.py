@@ -148,5 +148,3 @@ class GraphQLResponse(DomainModel, Generic[T]):
                 extensions=extensions or {},
             ),
         )
-
-

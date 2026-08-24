@@ -262,9 +262,7 @@ class ServerRegistry:
 class ServerManager:
     """Manager for running ASGI servers."""
 
-    def __init__(
-        self, backend: ServerBackend | str | None = None
-    ) -> None:
+    def __init__(self, backend: ServerBackend | str | None = None) -> None:
         if backend is None:
             self.backend = ServerRegistry.get_default()
         elif isinstance(backend, str):

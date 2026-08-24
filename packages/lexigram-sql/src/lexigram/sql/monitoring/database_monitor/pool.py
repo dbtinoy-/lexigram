@@ -19,7 +19,6 @@ from lexigram.sql.monitoring.metrics import (
 logger = get_logger(__name__)
 
 
-
 class ConnectionPoolMonitor:
     """Monitors database connection pool usage"""
 
@@ -176,5 +175,3 @@ class ConnectionPoolMonitor:
     async def get_stats(self, time_range_seconds: int = 3600) -> dict[str, Any]:
         """Get connection pool monitoring statistics"""
         return await self.collector.get_connection_stats(time_range_seconds)
-
-

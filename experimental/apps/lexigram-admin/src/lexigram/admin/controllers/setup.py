@@ -202,9 +202,7 @@ class SetupController(AdminController):
 
         # ── Optional setup-token guard ─────────────────────────────────
         required_token_str = (
-            required_token.get_secret_value()
-            if required_token is not None
-            else None
+            required_token.get_secret_value() if required_token is not None else None
         )
         if required_token_str and not hmac.compare_digest(
             setup_token_input, required_token_str

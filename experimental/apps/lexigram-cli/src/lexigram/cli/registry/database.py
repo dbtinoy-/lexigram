@@ -432,9 +432,7 @@ class DatabaseRegistry:
 class DatabaseConnection:
     """Database connection manager using the registry pattern."""
 
-    def __init__(
-        self, url: str | None = None, config_path: Path | None = None
-    ) -> None:
+    def __init__(self, url: str | None = None, config_path: Path | None = None) -> None:
         self.url = url or self._get_url_from_env_or_config(config_path)
         self.backend = DatabaseRegistry.detect_from_url(self.url)
         self.params = self.backend.parse_url(self.url)
@@ -456,9 +454,7 @@ class DatabaseConnection:
                 config: dict[str, Any] = yaml.safe_load(f) or {}
 
             database_cfg = config.get("database")
-            db_url = (
-                database_cfg.get("url") if isinstance(database_cfg, dict) else None
-            )
+            db_url = database_cfg.get("url") if isinstance(database_cfg, dict) else None
             if db_url and isinstance(db_url, str):
                 return db_url
 

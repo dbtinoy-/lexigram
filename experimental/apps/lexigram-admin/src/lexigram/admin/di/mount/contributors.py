@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.admin.di.bundle_provider import AdminProvider
     from lexigram.admin.di.mount.context import MountContext
 
 _log = get_logger(__name__)
@@ -24,10 +23,7 @@ class AdminMountContributorsMixin:
     _authorizer_service: Any
     _get_csrf_service: Any
 
-
-    async def _mount_contributors(
-        self, resolver: Any, ctx: MountContext
-    ) -> None:
+    async def _mount_contributors(self, resolver: Any, ctx: MountContext) -> None:
         """Discover contributor resources and wire their data sources.
 
         Contributor discovery is best-effort; failures are recorded in
@@ -167,9 +163,7 @@ class AdminMountContributorsMixin:
         except Exception:  # noqa: BLE001 — resource collection is non-fatal
             _log.warning("admin.contributors_resource_collection_failed", exc_info=True)
 
-    async def _mount_integration(
-        self, container: Any, ctx: MountContext
-    ) -> None:
+    async def _mount_integration(self, container: Any, ctx: MountContext) -> None:
         """Build the admin router and integrate contributor routes.
 
         Args:
@@ -202,9 +196,7 @@ class AdminMountContributorsMixin:
             _log.warning("admin.contributors_route_integration_failed", exc_info=True)
             self._mount_failures["route_integrator"] = str(exc)
 
-    async def _mount_sse_widgets(
-        self, container: Any, ctx: MountContext
-    ) -> None:
+    async def _mount_sse_widgets(self, container: Any, ctx: MountContext) -> None:
         """Register the SSE endpoint for live widget delivery.
 
         Args:
@@ -242,9 +234,7 @@ class AdminMountContributorsMixin:
         except Exception as exc:  # noqa: BLE001 — SSE is optional
             _log.warning("admin.sse_widgets_route_skipped", reason=str(exc))
 
-    async def _mount_app_state(
-        self, app: Any, ctx: MountContext
-    ) -> None:
+    async def _mount_app_state(self, app: Any, ctx: MountContext) -> None:
         """Mount the router and expose nav/registry state on both apps.
 
         The renderer looks up request.app.state.nav_builder; request.app is

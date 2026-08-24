@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from lexigram.admin.config.security import AdminPasswordPolicyConfig, AdminSecurityConfig
+from lexigram.admin.config.security import (
+    AdminPasswordPolicyConfig,
+    AdminSecurityConfig,
+)
 from lexigram.domain import DomainModel
 from lexigram.validation import (
     Field,

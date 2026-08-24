@@ -280,5 +280,5 @@ class MySQLConnection(DatabaseConnection):
         ):  # pragma: no cover - best-effort close
             logger.exception("Failed to close MySQL connection")
 
-# ...
 
+# ...
