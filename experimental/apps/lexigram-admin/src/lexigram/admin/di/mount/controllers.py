@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from lexigram.admin.di.bundle_provider import AdminProvider
     from lexigram.admin.di.mount.context import MountContext
 
 _log = get_logger(__name__)
@@ -24,10 +23,22 @@ class AdminMountControllersMixin:
     _authorizer_service: Any
     _get_csrf_service: Any
 
+    async def _resolve_audit_service(self, resolver: Any) -> Any | None:
+        """Best-effort resolution of the optional audit-log service."""
 
-    async def _mount_controllers(
-        self, resolver: Any, ctx: MountContext
-    ) -> None:
+        try:
+            from lexigram.admin.auth.protocols import (
+                AdminAuditLogServiceProtocol,
+            )
+
+            return await resolver.resolve(
+                AdminAuditLogServiceProtocol,
+                bypass_visibility=True,
+            )
+        except Exception:
+            return None
+
+    async def _mount_controllers(self, resolver: Any, ctx: MountContext) -> None:
         """Resolve every built-in controller, best-effort per controller.
 
         Failures are recorded in ``_mount_failures`` and only abort the mount
@@ -65,9 +76,6 @@ class AdminMountControllersMixin:
 
         # Resolve built-in WidgetController (best-effort)
         try:
-            from lexigram.admin.auth.protocols import (
-                AdminAuditLogServiceProtocol,
-            )
             from lexigram.admin.controllers.widgets import WidgetController
 
             widget_controller = await resolver.resolve(
@@ -79,13 +87,7 @@ class AdminMountControllersMixin:
                 widget_controller, "_settings_service"
             ):
                 widget_controller._settings_service = admin_settings_service
-            try:
-                audit_service = await resolver.resolve(
-                    AdminAuditLogServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception:
-                audit_service = None
+            audit_service = await self._resolve_audit_service(resolver)
             if audit_service is not None and hasattr(
                 widget_controller, "_audit_service"
             ):
@@ -105,9 +107,6 @@ class AdminMountControllersMixin:
 
         # Resolve built-in ImpersonationController (best-effort)
         try:
-            from lexigram.admin.auth.protocols import (
-                AdminAuditLogServiceProtocol,
-            )
             from lexigram.admin.controllers.impersonation import (
                 ImpersonationController,
             )
@@ -118,13 +117,7 @@ class AdminMountControllersMixin:
                 bypass_visibility=True,
             )
             if getattr(impersonation_service, "_audit", None) is None:
-                try:
-                    audit_service = await resolver.resolve(
-                        AdminAuditLogServiceProtocol,
-                        bypass_visibility=True,
-                    )
-                except Exception:  # noqa: BLE001 — audit wiring is optional
-                    audit_service = None
+                audit_service = await self._resolve_audit_service(resolver)
                 if audit_service is not None:
                     impersonation_service._audit = audit_service
 
@@ -145,9 +138,6 @@ class AdminMountControllersMixin:
 
         # Resolve built-in TenancyController (best-effort)
         try:
-            from lexigram.admin.auth.protocols import (
-                AdminAuditLogServiceProtocol,
-            )
             from lexigram.admin.controllers.tenancy import TenancyController
             from lexigram.admin.multitenancy.adapter import TenantProviderRegistry
 
@@ -164,13 +154,7 @@ class AdminMountControllersMixin:
                     )
                 except Exception:
                     tenancy_controller._registry = None
-            try:
-                audit_service = await resolver.resolve(
-                    AdminAuditLogServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception:
-                audit_service = None
+            audit_service = await self._resolve_audit_service(resolver)
             if audit_service is not None:
                 tenancy_controller._audit_service = audit_service
         except Exception as exc:
@@ -379,9 +363,6 @@ class AdminMountControllersMixin:
 
         # Mount SettingsController (theme & branding settings)
         try:
-            from lexigram.admin.auth.protocols import (
-                AdminAuditLogServiceProtocol,
-            )
             from lexigram.admin.controllers.settings import SettingsController
             from lexigram.admin.engine.renderer import AdminRenderer
             from lexigram.admin.settings.panel.registry import ConfigRegistry
@@ -397,14 +378,7 @@ class AdminMountControllersMixin:
             except Exception as exc:  # noqa: BLE001 — settings registry is optional
                 _log.warning("admin.config_registry_unavailable", reason=str(exc))
 
-            settings_audit: AdminAuditLogServiceProtocol | None = None
-            try:
-                settings_audit = await resolver.resolve(
-                    AdminAuditLogServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception as exc:  # noqa: BLE001 — audit service is optional
-                _log.warning("admin.audit_service_unavailable", reason=str(exc))
+            settings_audit = await self._resolve_audit_service(resolver)
 
             renderer = await resolver.resolve(
                 AdminRenderer,
@@ -472,22 +446,12 @@ class AdminMountControllersMixin:
 
         # Mount PluginsController (plugin listing & toggles) — best-effort.
         try:
-            from lexigram.admin.auth.protocols import (
-                AdminAuditLogServiceProtocol,
-            )
             from lexigram.admin.controllers.plugins import PluginsController
             from lexigram.admin.engine.renderer import AdminRenderer
 
             plugins_csrf_service = await self._get_csrf_service(resolver)
 
-            plugins_audit_service: AdminAuditLogServiceProtocol | None = None
-            try:
-                plugins_audit_service = await resolver.resolve(
-                    AdminAuditLogServiceProtocol,
-                    bypass_visibility=True,
-                )
-            except Exception as exc:  # noqa: BLE001 — audit service is optional
-                _log.warning("admin.audit_service_unavailable", reason=str(exc))
+            plugins_audit_service = await self._resolve_audit_service(resolver)
 
             plugins_renderer = await resolver.resolve(
                 AdminRenderer,
