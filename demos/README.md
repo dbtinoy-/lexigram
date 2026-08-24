@@ -9,17 +9,19 @@
 
 ## The demos at a glance
 
-### [demo-hub](demo-hub/) — live status console for the whole fleet
+### [demo-hub](demo-hub/) — one port for the whole fleet
 
-- **Hub API** — `GET /api/status` probes every running demo server
-  (`PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub`, :7000)
+- **Hub console** — `http://127.0.0.1:7000` lists every demo with live
+  status (`PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub`, :7000)
 
 The launchpad for visitors:
 
-- **Live health checks** — server-side concurrent probes of all 13 web demos,
-  no browser CORS involved
-- **Card grid** — green/red status dots, latency, one-click links per demo
-- **Filters** — All / Capability / Auth views over the fleet
+- **Single process** — the hub boots each demo's real `Application`
+  in-process and mounts it under `/demos/<slug>/`; no other ports needed
+- **Live health** — `/api/status` reports every embedded demo; cards turn
+  green as each child finishes booting
+- **Standalone preserved** — every demo still runs alone on its own port
+  exactly as documented below
 
 ### [resilient-rates](resilient-rates/) — resilience patterns end to end
 
@@ -192,10 +194,10 @@ API-key management UI plus an `X-API-Key`-guarded JSON endpoint:
 ## Running them
 
 ```bash
-# ── hub ───────────────────────────────────────────────────────────
-PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub                      # live demo hub (:7000)
+# ── hub: one port serves every demo ───────────────────────────────
+PYTHONPATH=demos/demo-hub/src uv run python -m demo_hub                      # fleet console (:7000)
 
-# ── capability demos ──────────────────────────────────────────────
+# ── standalone mode: any demo on its own port ─────────────────────
 PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # resilience REST API (:7073)
 PYTHONPATH=demos/event-driven-orders/src uv run python -m orders demo        # full CQRS order lifecycle
 PYTHONPATH=demos/event-driven-orders/src uv run python -m orders serve       # same lifecycle as REST API (:7074)

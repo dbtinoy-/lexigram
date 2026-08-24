@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from demo_hub.controllers.api import HubApiController
+from demo_hub.fleet import Fleet
 from demo_hub.services.registry import ServiceRegistry
 from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
@@ -25,11 +26,12 @@ class HubProvider(Provider):
         """Bind singletons."""
         registry = ServiceRegistry()
         container.singleton(ServiceRegistry, instance=registry)
+        container.singleton(Fleet, instance=Fleet(registry))
         container.singleton(HubApiController, factory=self._build_controller)
 
     async def _build_controller(
         self, resolver: ContainerResolverProtocol
     ) -> HubApiController:
         return HubApiController(
-            registry=await resolver.resolve(ServiceRegistry),
+            fleet=await resolver.resolve(Fleet),
         )

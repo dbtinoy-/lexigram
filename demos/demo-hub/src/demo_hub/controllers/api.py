@@ -4,17 +4,17 @@ from __future__ import annotations
 
 from starlette.requests import Request
 
-from demo_hub.services.registry import ServiceRegistry
+from demo_hub.fleet import Fleet
 from lexigram.web import Controller, JSONResponse, get
 
 
 class HubApiController(Controller):
-    """Expose the service catalog with live health status."""
+    """Expose the service catalog with embedded-fleet health status."""
 
-    def __init__(self, registry: ServiceRegistry) -> None:
-        self._registry = registry
+    def __init__(self, fleet: Fleet) -> None:
+        self._fleet = fleet
 
     @get("/api/status")
     async def status(self, request: Request) -> JSONResponse:
-        """Return the health status of every registered demo service."""
-        return JSONResponse({"services": await self._registry.statuses()})
+        """Return every demo plus its embedded-fleet boot state."""
+        return JSONResponse({"services": self._fleet.snapshot()})

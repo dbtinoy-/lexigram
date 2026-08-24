@@ -1,21 +1,25 @@
-"""Catalog of every live demo service the hub monitors."""
+"""Catalog of every demo the hub can host and monitor."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
 class DemoService:
-    """One monitorable demo entry.
+    """One hostable demo entry.
 
     Attributes:
-        slug: URL-safe identifier, also the tunnel subdomain prefix.
+        slug: URL-safe identifier; the demo is mounted at ``/demos/<slug>/``.
         name: Display name.
-        port: Local port the service binds on this host.
-        kind: ``web`` for live servers, ``cli`` for offline entries.
+        port: Port used when the demo runs standalone (informational only —
+            embedded mode serves everything from the hub's own port).
+        kind: ``web`` for live consoles, ``cli`` for offline entries.
         blurb: One-line description for the card grid.
-        check_path: Path used for the health GET.
+        demo_dir: Directory under ``demos/`` containing this demo.
+        module_path: Dotted path of the demo's root module.
+        module_name: Class name of the demo's root ``Module``.
+        check_path: Path probed when the demo is health-checked standalone.
     """
 
     slug: str
@@ -23,11 +27,15 @@ class DemoService:
     port: int
     kind: str
     blurb: str
+    demo_dir: str = ""
+    module_path: str = ""
+    module_name: str = ""
     check_path: str = "/"
+    errors: list[str] = field(default_factory=list)
 
 
 class ServiceRegistry:
-    """Static catalog plus async health probing of all live services."""
+    """Static catalog of all demos; fleet state is tracked by ``Fleet``."""
 
     def __init__(self) -> None:
         self.services: list[DemoService] = [
@@ -37,6 +45,9 @@ class ServiceRegistry:
                 7071,
                 "web",
                 "SSE replay + WebSocket operator channel",
+                "realtime-monitor",
+                "ops_console.module",
+                "RealtimeModule",
             ),
             DemoService(
                 "resilient-rates",
@@ -44,6 +55,9 @@ class ServiceRegistry:
                 7073,
                 "web",
                 "Retry, circuit breaker, stale fallback desk",
+                "resilient-rates",
+                "rates.module",
+                "RatesModule",
             ),
             DemoService(
                 "event-driven-orders",
@@ -51,6 +65,9 @@ class ServiceRegistry:
                 7074,
                 "web",
                 "CQRS lifecycle with transactional outbox",
+                "event-driven-orders",
+                "orders.module",
+                "OrdersModule",
             ),
             DemoService(
                 "rag-docs",
@@ -58,6 +75,9 @@ class ServiceRegistry:
                 7075,
                 "web",
                 "Cited answers over framework documentation",
+                "rag-docs",
+                "rag_docs.module",
+                "DocsAskModule",
             ),
             DemoService(
                 "support-agent",
@@ -65,6 +85,9 @@ class ServiceRegistry:
                 8082,
                 "web",
                 "ReAct agent with scripted LLM + tools",
+                "support-agent",
+                "support_agent.module",
+                "SupportAgentModule",
             ),
             DemoService(
                 "memory-chat",
@@ -72,6 +95,9 @@ class ServiceRegistry:
                 8083,
                 "web",
                 "Episodic + semantic memory, owner isolation",
+                "memory-chat",
+                "memory_chat.module",
+                "MemoryChatModule",
             ),
             DemoService(
                 "ai-guardrails",
@@ -79,6 +105,9 @@ class ServiceRegistry:
                 8084,
                 "web",
                 "Injection blocking, PII redaction, budgets",
+                "ai-guardrails",
+                "guard_gate.module",
+                "GuardrailsModule",
             ),
             DemoService(
                 "prompt-lab",
@@ -86,6 +115,9 @@ class ServiceRegistry:
                 8085,
                 "web",
                 "Prompt versioning with deterministic A/B",
+                "prompt-lab",
+                "prompt_lab.module",
+                "PromptLabModule",
             ),
             DemoService(
                 "feedback-loop",
@@ -93,6 +125,9 @@ class ServiceRegistry:
                 8086,
                 "web",
                 "Ratings promoted into regression suites",
+                "feedback-loop",
+                "feedback_loop.module",
+                "FeedbackLoopModule",
             ),
             DemoService(
                 "auth-web",
@@ -100,6 +135,9 @@ class ServiceRegistry:
                 8081,
                 "web",
                 "Cookie sessions, JWT claims, lockout",
+                "auth-web",
+                "auth_web.module",
+                "AuthWebModule",
             ),
             DemoService(
                 "auth-rbac",
@@ -107,6 +145,9 @@ class ServiceRegistry:
                 8090,
                 "web",
                 "Permission matrix with live authorize()",
+                "auth-rbac",
+                "rbac_console.module",
+                "RbacModule",
             ),
             DemoService(
                 "auth-apikeys",
@@ -114,6 +155,9 @@ class ServiceRegistry:
                 8091,
                 "web",
                 "Scoped machine keys, instant revocation",
+                "auth-apikeys",
+                "apikey_console.module",
+                "ApiKeysModule",
             ),
             DemoService(
                 "auth-mfa",
@@ -121,6 +165,9 @@ class ServiceRegistry:
                 8092,
                 "web",
                 "TOTP challenge flow with backup codes",
+                "auth-mfa",
+                "mfa_console.module",
+                "MfaModule",
             ),
             DemoService(
                 "llm-reproducibility",
@@ -128,45 +175,48 @@ class ServiceRegistry:
                 0,
                 "cli",
                 "Seeded digest-pinned experiment (CLI/notebook)",
+                "llm-reproducibility",
             ),
         ]
 
-    async def statuses(self) -> list[dict[str, object]]:
-        """Probe every web service concurrently; CLI entries pass through."""
-        import asyncio
-        import time
+    def web_services(self) -> list[DemoService]:
+        """Return entries that the fleet can boot and embed."""
+        return [s for s in self.services if s.kind == "web"]
 
-        import httpx
+    def snapshot(
+        self,
+        mounted: dict[str, bool],
+        failures: dict[str, str],
+    ) -> list[dict[str, object]]:
+        """Compose the status payload consumed by the hub console.
 
-        async def probe(svc: DemoService) -> dict[str, object]:
+        Args:
+            mounted: Slug → whether the demo booted and is mounted.
+            failures: Slug → error text for demos that failed to boot.
+
+        Returns:
+            One dict per service with a ``status`` of ``up``, ``down``
+            or ``cli``.
+        """
+        payload: list[dict[str, object]] = []
+        for svc in self.services:
             if svc.kind != "web":
-                return {
-                    "slug": svc.slug,
-                    "name": svc.name,
-                    "port": svc.port,
-                    "kind": svc.kind,
-                    "blurb": svc.blurb,
-                    "status": "cli",
-                    "latency_ms": None,
-                }
-            started = time.perf_counter()
-            try:
-                async with httpx.AsyncClient(timeout=1.5) as client:
-                    resp = await client.get(
-                        f"http://127.0.0.1:{svc.port}{svc.check_path}"
-                    )
-                ok = resp.status_code < 500
-            except Exception:  # noqa: BLE001 - probe must never raise
-                ok = False
-            latency = round((time.perf_counter() - started) * 1000, 1)
-            return {
+                status = "cli"
+            elif mounted.get(svc.slug):
+                status = "up"
+            else:
+                status = "down"
+            entry: dict[str, object] = {
                 "slug": svc.slug,
                 "name": svc.name,
                 "port": svc.port,
                 "kind": svc.kind,
                 "blurb": svc.blurb,
-                "status": "up" if ok else "down",
-                "latency_ms": latency,
+                "status": status,
+                "error": failures.get(svc.slug),
             }
+            payload.append(entry)
+        return payload
 
-        return list(await asyncio.gather(*(probe(s) for s in self.services)))
+
+__all__ = ["DemoService", "ServiceRegistry"]

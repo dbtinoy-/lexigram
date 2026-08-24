@@ -15,13 +15,17 @@ function dot(s) {
 }
 
 function card(s) {
+  const err = s.error ? ` title="${s.error.replace(/"/g, "&quot;")}"` : "";
   const href = s.kind === "web"
-    ? `${location.protocol}//${location.hostname}:${s.port}`
+    ? `/demos/${s.slug}/`
     : "https://docs.lexigram.dev";
+  const port = s.kind === "web"
+    ? `<code>standalone :${s.port}</code>`
+    : `<code>cli / notebook</code>`;
   return `<a class="card ${filter !== "all" && !matchFilter(s) ? "hidden" : ""}"
-    href="${href}" target="_blank" rel="noopener">
+    href="${href}" target="_blank" rel="noopener"${err}>
     ${dot(s)}<h3>${s.name}</h3><p>${s.blurb}</p>
-    <code>:${s.port}</code><span class="lat">${s.latency_ms ?? ""}</span></a>`;
+    ${port}</a>`;
 }
 
 const CAPABILITY = new Set(["realtime-monitor","resilient-rates","event-driven-orders",
