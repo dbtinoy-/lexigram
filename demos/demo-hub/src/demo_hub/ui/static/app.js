@@ -15,10 +15,9 @@ function dot(s) {
 }
 
 function card(s) {
-  const local = ["localhost", "127.0.0.1"].includes(location.hostname);
-  const href = s.kind !== "web" ? "https://docs.lexigram.dev"
-    : local ? `${location.protocol}//${location.hostname}:${s.port}`
-    : `${location.protocol}//${s.slug}.demos.lexigram.dev`;
+  const href = s.kind === "web"
+    ? `${location.protocol}//${location.hostname}:${s.port}`
+    : "https://docs.lexigram.dev";
   return `<a class="card ${filter !== "all" && !matchFilter(s) ? "hidden" : ""}"
     href="${href}" target="_blank" rel="noopener">
     ${dot(s)}<h3>${s.name}</h3><p>${s.blurb}</p>
