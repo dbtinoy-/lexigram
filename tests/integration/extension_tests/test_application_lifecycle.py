@@ -81,7 +81,8 @@ class TestContainerAwareApplication:
     def test_initial_state(self) -> None:
         app = Application(name="test")
         assert app.state == AppState.CREATED
-        assert app._start_time is None
+        # Boot timing moved into the ApplicationLifecycle collaborator.
+        assert app._lifecycle._start_time is None
 
     @pytest.mark.asyncio
     async def test_container_resolve_after_boot(self) -> None:
