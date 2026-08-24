@@ -6,9 +6,8 @@ This module provides individual worker implementation for task execution.
 from __future__ import annotations
 
 import asyncio
-import inspect
 import time
-from typing import TYPE_CHECKING, Any, get_type_hints
+from typing import TYPE_CHECKING, Any
 
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
@@ -22,6 +21,7 @@ from lexigram.tasks.exceptions import (
     TaskTimeoutError,
 )
 from lexigram.tasks.execution._concurrency import WorkerConcurrencyMixin
+from lexigram.tasks.execution._di_resolver import resolve_handler_dependencies
 from lexigram.tasks.execution._lifecycle import TaskWorkerServices, WorkerJobStats
 from lexigram.tasks.hooks import TaskCompletedHook, TaskFailedHook
 
@@ -420,8 +420,7 @@ class TaskWorker(WorkerConcurrencyMixin):
     ) -> tuple[list[Any], dict[str, Any]]:
         """Resolve handler dependencies from DI container.
 
-        Uses inspection to determine handler parameters, then resolves
-        any missing parameters from the container.
+        Delegates to :func:`~lexigram.tasks.execution._di_resolver.resolve_handler_dependencies`.
 
         Args:
             handler: Handler function to inspect
@@ -431,117 +430,14 @@ class TaskWorker(WorkerConcurrencyMixin):
         Returns:
             Tuple of (resolved_args, resolved_kwargs) to pass to handler
         """
-        # Unwrap handler to get the original function (needed for @task/@scheduled decorators)
-        original_handler = handler
-        while hasattr(handler, "_func"):
-            inner = handler._func
-            # Unwrap staticmethod if present
-            if hasattr(inner, "__func__"):
-                inner = inner.__func__
-            handler = inner
-
         container = getattr(self._services, "container", None)
-        if container is None:
-            self.logger.debug(
-                "No DI container available for handler %s", original_handler.__name__
-            )
-            return list(provided_args), provided_kwargs
-
-        self.logger.debug(
-            "DI container available for handler %s: %s",
-            original_handler.__name__,
-            type(container).__name__,
+        return await resolve_handler_dependencies(
+            handler,
+            provided_args,
+            provided_kwargs,
+            container,
+            logger_instance=self.logger,
         )
-
-        try:
-            sig = inspect.signature(handler)
-            self.logger.info("Handler %s signature: %s", original_handler.__name__, sig)
-        except (ValueError, TypeError) as e:
-            self.logger.error(
-                "Failed to get signature for handler %s: %s", handler.__name__, e
-            )
-            return list(provided_args), provided_kwargs
-
-        # Build a set of parameter names that are already provided
-        provided_param_names = set()
-        for param_name in list(sig.parameters.keys())[: len(provided_args)]:
-            provided_param_names.add(param_name)
-        provided_param_names.update(provided_kwargs.keys())
-
-        resolved_args: list[Any] = []
-        resolved_kwargs: dict[str, Any] = dict(provided_kwargs)
-
-        self.logger.info(
-            "Handler %s has %d parameters, provided args: %d, provided kwargs: %s",
-            original_handler.__name__,
-            len(sig.parameters),
-            len(provided_args),
-            list(provided_kwargs.keys()),
-        )
-
-        # Iterate through parameters and resolve missing ones from container
-        for param_name, param in sig.parameters.items():
-            if param_name in provided_param_names:
-                continue
-            if param.kind in (
-                inspect.Parameter.VAR_POSITIONAL,
-                inspect.Parameter.VAR_KEYWORD,
-            ):
-                continue
-
-            # Get annotation - handle forward references
-            annotation = param.annotation
-            if annotation is inspect.Parameter.empty:
-                self.logger.debug("Skipping param %s - no type annotation", param_name)
-                continue
-
-            # Handle string annotations (forward references)
-            if isinstance(annotation, str):
-                # Try to resolve the string to an actual type using get_type_hints
-                try:
-                    hints = get_type_hints(handler)
-                    if param_name in hints:
-                        annotation = hints[param_name]
-                    else:
-                        self.logger.debug("Could not find type hint for %s", param_name)
-                        continue
-                except Exception as e:
-                    self.logger.debug(
-                        "Could not resolve forward reference %s for %s: %s",
-                        annotation,
-                        param_name,
-                        e,
-                    )
-                    continue
-
-            # Try to resolve the type annotation
-            self.logger.info(
-                "Attempting to resolve dependency for handler %s: %s (type: %s)",
-                original_handler.__name__,
-                param_name,
-                annotation,
-            )
-
-            try:
-                resolved = await container.resolve(annotation)
-                if resolved is not None:
-                    resolved_kwargs[param_name] = resolved
-                    self.logger.debug(
-                        "Resolved dependency for handler %s: %s=%s",
-                        original_handler.__name__,
-                        param_name,
-                        type(resolved).__name__,
-                    )
-            except Exception as e:
-                self.logger.info(
-                    "Could not resolve dependency %s (type: %s) for handler %s: %s",
-                    param_name,
-                    annotation,
-                    original_handler.__name__,
-                    e,
-                )
-
-        return resolved_args, resolved_kwargs
 
     async def _run_handler(self, handler: Callable[..., Any], job: JobProtocol) -> Any:
         """Run the job handler function

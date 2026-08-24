@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from lexigram.cache.repository.base import (
     CacheRepository,
-    CollectionRepository,
-    ConfigurationRepository,
     EntityRepository,
     QueryRepository,
+)
+from lexigram.cache.repository.collections import (
+    CollectionRepository,
+    ConfigurationRepository,
 )
 
 __all__ = [

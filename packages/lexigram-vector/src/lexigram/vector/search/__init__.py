@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from lexigram.vector.search.hybrid import (
+from lexigram.vector.search.bm25 import (
     BM25Retriever,
     BM25Scorer,
+    SimpleTokenizer,
+    Tokenizer,
+)
+from lexigram.vector.search.hybrid import (
     HybridRetriever,
     HybridSearchConfig,
     RRFReranker,
-    SimpleTokenizer,
-    Tokenizer,
     VectorRetriever,
     create_hybrid_retriever,
 )

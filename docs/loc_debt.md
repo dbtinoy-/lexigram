@@ -34,3 +34,41 @@ explains why decomposition would not improve maintainability.
 - New violations fail CI; entries whose files drop under the limit become
   stale and must be removed in the same change.
 - Regenerate: `uv run python dev/check_loc_limit.py --root . --write-baseline`
+
+## Extension Packages (Task 13 — W4 triage)
+
+| File | Lines | Rationale |
+|------|-------|-----------|
+| `lexigram-auth/.../authn/ldap.py` | 509 | LDAP auth manager — cohesive single-backend authenticator with connection pooling, search, and bind |
+| `lexigram-auth/.../authn/oauth2.py` | 560 | OAuth2 authenticator — token exchange, session management, multiple grant types tightly coupled |
+| `lexigram-events/.../decorators/validation.py` | 530 | CQRS validation decorators — sync/async duplication is inherent to the decorator pattern |
+| `lexigram-resilience/.../circuit/breaker.py` | 509 | Circuit breaker + registry — cohesive protection pattern, thin delegation |
+| `lexigram-resilience/.../decorators.py` | 572 | Bulkhead/circuit/retry/timeout decorators — cohesive decorator module with shared retry logic |
+| `lexigram-search/.../elasticsearch/backend.py` | 602 | Elasticsearch backend — transport adapter with search, bulk, index management, health check |
+| `lexigram-sql/.../backup/backup_manager.py` | 542 | Backup/restore/validate/maintenance — cohesive backup lifecycle manager |
+| `lexigram-sql/.../migrations/generator.py` | 520 | Migration generation — ModelAnalyzer + MigrationGenerator tightly coupled to schema diff |
+| `lexigram-sql/.../migrations/manager/_alembic.py` | 503 | Alembic wrapper — vendored adapter, thin delegation layer |
+| `lexigram-sql/.../schema/model.py` | 590 | Declarative schema model — ORM-like system with type mapping, constraints, indexes |
+| `lexigram-storage/.../backends/azure.py` | 515 | Azure Blob storage driver — transport adapter |
+| `lexigram-storage/.../backends/s3.py` | 506 | S3 storage driver — transport adapter |
+| `lexigram-tasks/.../concurrency/compute.py` | 510 | ProcessPool with adaptive sizing — cohesive concurrency primitive |
+| `lexigram-tasks/.../execution/worker.py` | 553 | TaskWorker — worker loop with middleware, retry, DLQ, idempotency (DI resolver extracted) |
+| `lexigram-tasks/.../workflows/core.py` | 502 | Workflow composition — just barely over, cohesive orchestration |
+| `lexigram-testing/.../auth/fixtures.py` | 568 | Auth test fixtures — test helpers, not production code |
+| `lexigram-testing/.../cache/fixtures.py` | 508 | Cache test fixtures — test helpers |
+| `lexigram-testing/.../events/fixtures.py` | 644 | Events test fixtures — test helpers |
+| `lexigram-vector/.../search/reranking.py` | 536 | Reranking strategies — cohesive search component |
+| `lexigram-web/.../di/provider.py` | 584 | WebProvider DI — large but cohesive registration of routes, middleware, error handlers |
+| `lexigram-web/.../errors/html_error_renderer.py` | 540 | Debug HTML error renderer — template-heavy, cohesive UI component |
+| `lexigram-web/.../middleware/rate_limit.py` | 588 | Rate limiting middleware — sliding window + token bucket + fixed window strategies |
+| `lexigram-web/.../routing/validation.py` | 520 | Request param validation — cohesive middleware |
+| `lexigram-workflow/.../bulk/operation.py` | 503 | BulkOperation engine — just barely over, cohesive batch processing |
+| `lexigram-multimedia-video/.../processing/argv.py` | 551 | ffmpeg argv builders — pure functions, cohesive command assembly |
+
+## Framework Core (Task 11 — W4 triage)
+
+| File | Lines | Rationale |
+|------|-------|-----------|
+| `core/lexigram/.../di/container/container.py` | 668 | Container facade — already delegates to RegistrarImpl, ResolverImpl, Validator, Diagnostics. Resolution logic is in ServiceResolver. No clean seam for ContainerResolverCore extraction. |
+| `core/lexigram/.../domain/models/base.py` | 552 | DomainModel mixin — cohesive auto-dataclass with type hints, Pydantic compat, serialization, validation, field constraints. All tightly coupled; no mixin seam. |
+| `core/lexigram/.../primitives/context.py` | 546 | Context management — ContextKey, ContextVarRegistry, Context, RequestContext, factories. Complete self-contained subsystem; splitting creates unnecessary cross-module deps. |
