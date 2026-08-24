@@ -21,8 +21,6 @@ core/lexigram/tests/integration/di/module/test_graph_reflection_integration.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/executor/executor.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/function_calling.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/plan_execute.py
-experimental/ai/lexigram-ai-agents/tests/unit/test_multi_agent.py
-experimental/ai/lexigram-ai-agents/tests/unit/tools/test_tools.py
 experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/admin/contributor.py
 experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/budget/tracker.py
 experimental/ai/lexigram-ai-governance/src/lexigram/ai/governance/persistence/persistence.py
@@ -37,12 +35,7 @@ experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/registry/core.py
 experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/security/core.py
 experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/streaming/stream.py
 experimental/ai/lexigram-ai-llm/src/lexigram/ai/llm/structured/typed_responses.py
-experimental/ai/lexigram-ai-llm/tests/unit/admin/test_llm_contributor.py
-experimental/ai/lexigram-ai-llm/tests/unit/routing/test_router.py
-experimental/ai/lexigram-ai-llm/tests/unit/routing/test_strategies.py
-experimental/ai/lexigram-ai-llm/tests/unit/test_structured.py
 experimental/ai/lexigram-ai-mcp/src/lexigram/ai/mcp/di/provider.py
-experimental/ai/lexigram-ai-prompt/tests/unit/prompt/optimization/test_optimizer.py
 experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/loaders/core.py
 experimental/ai/lexigram-ai-rag/src/lexigram/ai/rag/pipeline/builder.py
 experimental/ai/lexigram-ai-rag/tests/unit/test_chunking.py

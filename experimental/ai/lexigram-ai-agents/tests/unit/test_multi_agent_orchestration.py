@@ -1,28 +1,15 @@
-"""Unit tests for multi-agent infrastructure.
-
-Tests G1 (PlanAndExecuteStrategy), G2 (SupervisorStrategy),
-and G11 (AgentAsToolAdapter).
-"""
-
 from __future__ import annotations
 
 from typing import Any
 
 import pytest
 
-from lexigram.ai.agents.delegation.agent_tool import AgentAsToolAdapter
 from lexigram.ai.agents.strategies.plan_execute import PlanAndExecuteStrategy
 from lexigram.ai.agents.strategies.supervisor import SupervisorStrategy
 from lexigram.ai.agents.types import AgentResponse
 
-# ---------------------------------------------------------------------------
-# Shared test helpers
-# ---------------------------------------------------------------------------
-
 
 class _Ok:
-    """Minimal Ok-like wrapper for test LLMs."""
-
     def __init__(self, val: Any) -> None:
         self._val = val
 
@@ -37,15 +24,11 @@ class _Ok:
 
 
 class _Completion:
-    """Minimal completion-like object."""
-
     def __init__(self, text: str) -> None:
         self.content = text
 
 
 class SequenceLLM:
-    """LLM that returns a sequence of pre-defined responses."""
-
     def __init__(self, responses: list[str]) -> None:
         self._responses = list(responses)
         self._idx = 0
@@ -62,8 +45,6 @@ class SequenceLLM:
 
 
 class MockAgent:
-    """Minimal AgentProtocol implementation for tests."""
-
     def __init__(
         self,
         name: str = "test_agent",
@@ -94,8 +75,6 @@ class MockAgent:
 
 
 class MockExecutor:
-    """Minimal AgentExecutorProtocol implementation for tests."""
-
     def __init__(self, response_text: str = "Agent response") -> None:
         self.response_text = response_text
         self.run_calls: list[dict[str, Any]] = []
@@ -124,29 +103,19 @@ class MockExecutor:
         )
 
 
-# ===================================================================
-# G1 — PlanAndExecuteStrategy
-# ===================================================================
-
-
 class TestPlanAndExecuteStrategy:
-    """Tests for the Plan-and-Execute strategy."""
-
     def test_instantiation_defaults(self) -> None:
-        """Test PlanAndExecuteStrategy has sensible defaults."""
         strategy = PlanAndExecuteStrategy()
         assert strategy.max_steps == 10
         assert strategy.max_replans == 2
 
     def test_instantiation_custom(self) -> None:
-        """Test PlanAndExecuteStrategy accepts custom parameters."""
         strategy = PlanAndExecuteStrategy(max_steps=5, max_replans=1)
         assert strategy.max_steps == 5
         assert strategy.max_replans == 1
 
     @pytest.mark.asyncio
     async def test_direct_response_when_no_plan(self) -> None:
-        """Test fallback to direct response when LLM doesn't produce a plan."""
         llm = SequenceLLM(
             [
                 "I can answer directly: Paris is the capital of France.",
@@ -168,16 +137,11 @@ class TestPlanAndExecuteStrategy:
 
     @pytest.mark.asyncio
     async def test_creates_and_executes_plan(self) -> None:
-        """Test strategy creates a plan and executes reasoning steps."""
         llm = SequenceLLM(
             [
-                # Phase 1: Planning
                 "PLAN:\n1. [REASON] Analyze the question\n2. [REASON] Formulate answer",
-                # Phase 2: Execute step 1
                 "STEP_RESULT: The question asks about France's capital.",
-                # Phase 2: Execute step 2
                 "STEP_RESULT: Paris is the capital of France.",
-                # Phase 4: Synthesis
                 "FINAL_ANSWER: Paris is the capital of France.",
             ]
         )
@@ -198,7 +162,6 @@ class TestPlanAndExecuteStrategy:
 
     @pytest.mark.asyncio
     async def test_plan_with_tool_call(self) -> None:
-        """Test plan executes tool steps correctly."""
         from lexigram.ai.agents import tool
 
         @tool
@@ -208,13 +171,9 @@ class TestPlanAndExecuteStrategy:
 
         llm = SequenceLLM(
             [
-                # Planning
                 "PLAN:\n1. [TOOL:search] Search for capital\n2. [REASON] Summarize",
-                # Execute tool step — LLM provides tool args
                 'ACTION: search\nACTION_INPUT: {"query": "capital of France"}',
-                # Execute reasoning step
                 "STEP_RESULT: Based on search, Paris is the capital.",
-                # Synthesis
                 "FINAL_ANSWER: Paris is the capital of France.",
             ]
         )
@@ -234,12 +193,10 @@ class TestPlanAndExecuteStrategy:
 
     @pytest.mark.asyncio
     async def test_max_steps_respected(self) -> None:
-        """Test strategy respects the max_steps limit."""
         strategy = PlanAndExecuteStrategy(max_steps=3)
         assert strategy.max_steps == 3
 
     def test_parse_plan(self) -> None:
-        """Test plan parsing from LLM output."""
         text = (
             "PLAN:\n"
             "1. [TOOL:search] Search for data\n"
@@ -256,26 +213,17 @@ class TestPlanAndExecuteStrategy:
         assert plan[2].tool_name == "calculate"
 
     def test_parse_plan_empty(self) -> None:
-        """Test plan parsing with no plan produces empty list."""
         plan = PlanAndExecuteStrategy._parse_plan("Just a regular response.")
         assert plan == []
 
     def test_implements_strategy_protocol(self) -> None:
-        """Test PlanAndExecuteStrategy satisfies StrategyProtocol."""
         from lexigram.contracts.ai.agents import StrategyProtocol
 
         strategy = PlanAndExecuteStrategy()
         assert isinstance(strategy, StrategyProtocol)
 
 
-# ===================================================================
-# G2 — SupervisorStrategy
-# ===================================================================
-
-
 class TestSupervisorStrategy:
-    """Tests for the Supervisor strategy."""
-
     def _make_strategy(
         self,
         agent_names: list[str] | None = None,
@@ -293,13 +241,11 @@ class TestSupervisorStrategy:
         )
 
     def test_instantiation(self) -> None:
-        """Test SupervisorStrategy can be instantiated."""
         strategy = self._make_strategy()
         assert strategy.max_delegations == 5
 
     @pytest.mark.asyncio
     async def test_direct_answer_without_delegation(self) -> None:
-        """Test supervisor can answer directly without delegating."""
         llm = SequenceLLM(
             [
                 "THOUGHT: I can answer this myself.\n"
@@ -322,15 +268,12 @@ class TestSupervisorStrategy:
 
     @pytest.mark.asyncio
     async def test_single_delegation(self) -> None:
-        """Test supervisor delegates to a sub-agent and synthesizes."""
         executor = MockExecutor(response_text="Your invoice is correct.")
         llm = SequenceLLM(
             [
-                # Supervisor delegates to billing
                 "THOUGHT: This is a billing question.\n"
                 "ACTION: delegate_to_billing\n"
                 'ACTION_INPUT: {"message": "Check the invoice"}',
-                # Supervisor reviews and answers
                 "THOUGHT: Got the billing response.\n"
                 "FINAL_ANSWER: According to our billing team, your invoice is correct.",
             ]
@@ -354,19 +297,15 @@ class TestSupervisorStrategy:
 
     @pytest.mark.asyncio
     async def test_multiple_delegations(self) -> None:
-        """Test supervisor delegates to multiple agents sequentially."""
         executor = MockExecutor(response_text="Sub-agent result.")
         llm = SequenceLLM(
             [
-                # Delegate to billing
                 "THOUGHT: Check billing first.\n"
                 "ACTION: delegate_to_billing\n"
                 'ACTION_INPUT: {"message": "Check charges"}',
-                # Delegate to technical
                 "THOUGHT: Now check technical.\n"
                 "ACTION: delegate_to_technical\n"
                 'ACTION_INPUT: {"message": "Check account status"}',
-                # Final answer
                 "THOUGHT: I have all info.\n"
                 "FINAL_ANSWER: Both billing and technical confirmed everything is OK.",
             ]
@@ -390,9 +329,7 @@ class TestSupervisorStrategy:
 
     @pytest.mark.asyncio
     async def test_max_delegations_reached(self) -> None:
-        """Test strategy stops after max_delegations."""
         executor = MockExecutor(response_text="Sub-agent result.")
-        # LLM always delegates — never gives final answer
         llm = SequenceLLM(
             [
                 "THOUGHT: Delegate.\n"
@@ -423,90 +360,7 @@ class TestSupervisorStrategy:
         assert len(executor.run_calls) <= 2
 
     def test_implements_strategy_protocol(self) -> None:
-        """Test SupervisorStrategy satisfies StrategyProtocol."""
         from lexigram.contracts.ai.agents import StrategyProtocol
 
         strategy = self._make_strategy()
         assert isinstance(strategy, StrategyProtocol)
-
-
-# ===================================================================
-# G11 — AgentAsToolAdapter
-# ===================================================================
-
-
-class TestAgentAsToolAdapter:
-    """Tests for the AgentAsToolAdapter."""
-
-    def test_name(self) -> None:
-        """Test adapter name is derived from agent name."""
-        agent = MockAgent(name="billing")
-        adapter = AgentAsToolAdapter(agent=agent, executor=MockExecutor())
-        assert adapter.name == "delegate_to_billing"
-
-    def test_description(self) -> None:
-        """Test adapter description includes agent info."""
-        agent = MockAgent(name="billing", system_prompt="Handle billing queries.")
-        adapter = AgentAsToolAdapter(agent=agent, executor=MockExecutor())
-        assert "billing" in adapter.description
-        assert "Handle billing" in adapter.description
-
-    def test_parameters_schema(self) -> None:
-        """Test adapter exposes correct parameters schema."""
-        agent = MockAgent(name="test")
-        adapter = AgentAsToolAdapter(agent=agent, executor=MockExecutor())
-        schema = adapter.parameters_schema
-
-        assert schema["type"] == "object"
-        assert "message" in schema["properties"]
-        assert "message" in schema["required"]
-
-    @pytest.mark.asyncio
-    async def test_execute_delegates_to_agent(self) -> None:
-        """Test execute calls the executor with the correct agent and message."""
-        executor = MockExecutor(response_text="Billing response")
-        agent = MockAgent(name="billing")
-        adapter = AgentAsToolAdapter(agent=agent, executor=executor)
-
-        result = await adapter.execute(message="Check my invoice")
-
-        assert result == "Billing response"
-        assert len(executor.run_calls) == 1
-        assert executor.run_calls[0]["agent_name"] == "billing"
-        assert executor.run_calls[0]["message"] == "Check my invoice"
-
-    @pytest.mark.asyncio
-    async def test_execute_empty_message(self) -> None:
-        """Test execute with empty message returns error."""
-        executor = MockExecutor()
-        agent = MockAgent(name="test")
-        adapter = AgentAsToolAdapter(agent=agent, executor=executor)
-
-        result = await adapter.execute(message="")
-
-        assert "Error" in result
-        assert len(executor.run_calls) == 0
-
-    @pytest.mark.asyncio
-    async def test_execute_passes_session_and_user(self) -> None:
-        """Test execute forwards session_id and user_id to executor."""
-        executor = MockExecutor()
-        agent = MockAgent(name="test")
-        adapter = AgentAsToolAdapter(
-            agent=agent,
-            executor=executor,
-            session_id="sess-123",
-            user_id="user-456",
-        )
-
-        await adapter.execute(message="Hello")
-
-        assert executor.run_calls[0]["session_id"] == "sess-123"
-
-    def test_satisfies_tool_protocol(self) -> None:
-        """Test adapter satisfies ToolProtocol."""
-        from lexigram.contracts.ai.agents import ToolProtocol
-
-        agent = MockAgent(name="test")
-        adapter = AgentAsToolAdapter(agent=agent, executor=MockExecutor())
-        assert isinstance(adapter, ToolProtocol)

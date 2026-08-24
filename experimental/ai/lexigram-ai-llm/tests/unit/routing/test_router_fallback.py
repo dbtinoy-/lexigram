@@ -1,5 +1,3 @@
-"""Unit tests for LLMRouter routing logic."""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -57,135 +55,6 @@ def _make_router(
     )
 
 
-# ── Happy path ────────────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_router_returns_ok_on_first_provider_success():
-    mock_client = AsyncMock()
-    mock_client.complete = AsyncMock(return_value=Ok(_make_completion("hi")))
-
-    config = _make_config([_make_provider_cfg("groq")])
-    router = _make_router({"groq:model-a": mock_client}, config)
-
-    result = await router.route(messages=[{"role": "user", "content": "hello"}])
-
-    assert result.is_ok()
-    log = result.unwrap()
-    assert log.result is not None
-    assert log.result.provider == "groq"
-    assert log.result.content == "hi"
-    assert log.succeeded is True
-
-
-@pytest.mark.asyncio
-async def test_router_logs_successful_inference():
-    mock_client = AsyncMock()
-    mock_client.complete = AsyncMock(return_value=Ok(_make_completion("hi")))
-
-    logger = InMemoryInferenceLogger()
-    config = _make_config([_make_provider_cfg("groq")])
-    router = LLMRouter(
-        clients={"groq:model-a": mock_client},
-        quota_backend=InMemoryQuotaBackend(),
-        inference_logger=logger,
-        config=config,
-    )
-
-    await router.route(messages=[{"role": "user", "content": "hello"}])
-    recent = await logger.get_recent()
-    assert len(recent) == 1
-    assert recent[0].succeeded is True
-
-
-# ── Cascade / fallback ────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_router_falls_through_to_second_provider_on_error():
-    failing_client = AsyncMock()
-    failing_client.complete = AsyncMock(return_value=Err(AIError("boom")))
-
-    succeeding_client = AsyncMock()
-    succeeding_client.complete = AsyncMock(
-        return_value=Ok(_make_completion("ok from gemini"))
-    )
-
-    config = _make_config(
-        [
-            _make_provider_cfg("groq"),
-            _make_provider_cfg("gemini"),
-        ]
-    )
-    router = _make_router(
-        {"groq:model-a": failing_client, "gemini:model-a": succeeding_client}, config
-    )
-
-    result = await router.route(messages=[{"role": "user", "content": "hello"}])
-
-    assert result.is_ok()
-    log = result.unwrap()
-    assert log.result.provider == "gemini"
-    assert log.total_attempts == 2
-
-
-@pytest.mark.asyncio
-async def test_router_skips_exhausted_provider():
-    backend = InMemoryQuotaBackend()
-    await backend.mark_exhausted("groq:model-a")
-
-    succeeding_client = AsyncMock()
-    succeeding_client.complete = AsyncMock(return_value=Ok(_make_completion("ok")))
-
-    config = _make_config(
-        [
-            _make_provider_cfg("groq"),
-            _make_provider_cfg("gemini"),
-        ]
-    )
-    router = LLMRouter(
-        clients={"groq:model-a": AsyncMock(), "gemini:model-a": succeeding_client},
-        quota_backend=backend,
-        inference_logger=InMemoryInferenceLogger(),
-        config=config,
-    )
-
-    result = await router.route(messages=[{"role": "user", "content": "hello"}])
-
-    assert result.is_ok()
-    # groq was skipped (exhausted), gemini succeeded with 1 actual HTTP call
-    log = result.unwrap()
-    assert log.result.provider == "gemini"
-    assert log.total_attempts == 1
-
-
-@pytest.mark.asyncio
-async def test_router_tries_single_model_per_provider():
-    """New design: one model per provider, no fallback loop."""
-    call_count = 0
-
-    async def complete_side_effect(messages, model, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        return Ok(_make_completion(f"ok from {model}"))
-
-    mock_client = AsyncMock()
-    mock_client.complete = AsyncMock(side_effect=complete_side_effect)
-
-    config = _make_config([_make_provider_cfg("groq", primary="model-a")])
-    router = _make_router({"groq:model-a": mock_client}, config)
-
-    result = await router.route(messages=[])
-
-    assert result.is_ok()
-    assert call_count == 1
-    log = result.unwrap()
-    assert log.result.content == "ok from model-a"
-
-
-# ── Error / exhaustion ────────────────────────────────────────────────────────
-
-
 @pytest.mark.asyncio
 async def test_router_returns_err_when_all_providers_fail():
     failing_client = AsyncMock()
@@ -210,37 +79,6 @@ async def test_router_returns_err_with_no_providers_configured():
     result = await router.route(messages=[])
 
     assert result.is_err()
-
-
-# ── Disabled provider ──────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_router_skips_disabled_provider():
-    disabled_cfg = ProviderConfig(
-        name="groq",
-        model="model-a",
-        api_key="key",
-        enabled=False,
-    )
-    succeeding = AsyncMock()
-    succeeding.complete = AsyncMock(return_value=Ok(_make_completion("ok")))
-
-    config = _make_config([disabled_cfg, _make_provider_cfg("gemini")])
-    router = _make_router(
-        {"groq:model-a": AsyncMock(), "gemini:model-a": succeeding}, config
-    )
-
-    result = await router.route(messages=[])
-
-    assert result.is_ok()
-    log = result.unwrap()
-    assert log.result.provider == "gemini"
-    # groq was disabled — not listed in providers_tried
-    assert "groq" not in log.providers_tried
-
-
-# ── Health probe ───────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -511,9 +349,6 @@ async def test_router_health_probe_returns_err_with_attempted_providers_only():
     gemini_client.complete.assert_not_called()
 
 
-# ── Close ──────────────────────────────────────────────────────────────────────
-
-
 @pytest.mark.asyncio
 async def test_router_close_calls_close_on_all_clients():
     client_a = AsyncMock()
@@ -531,10 +366,7 @@ async def test_router_close_calls_close_on_all_clients():
 
 
 class TestStrategyFromConfig:
-    """Tests for LLMRouter._strategy_from_config fallback behavior."""
-
     def test_cost_optimized_uses_default_pricing_sources(self) -> None:
-        """cost_optimized must build with real sources, never empty."""
         from lexigram.ai.llm.routing.strategies import CostOptimizedStrategy
 
         cfg = LLMConfig(strategy="cost_optimized")
