@@ -21,8 +21,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-from experiment.results import ExperimentResult, metrics_delta
-from experiment.runner import run_experiment
+from llm_reproducibility.results import ExperimentResult, metrics_delta
+from llm_reproducibility.runner import run_experiment
 
 from lexigram.ai.evaluation import AblationRunner, FileCheckpointStore
 from lexigram.contracts.ai.experiment import AblationResult
@@ -30,7 +30,7 @@ from lexigram.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
-DEFAULT_CONFIG = Path(__file__).parent / "experiment.yaml"
+DEFAULT_CONFIG = Path(__file__).parent / "config.yaml"
 DEFAULT_OUT = Path(__file__).parent / "runs"
 
 

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from experiment.metrics import JsonMetricsCollector
 from lexigram.contracts.core import ProviderPriority
 from lexigram.contracts.core.di import ContainerRegistrarProtocol
 from lexigram.di.provider import Provider
+from llm_reproducibility.metrics import JsonMetricsCollector
 
 
 class ExperimentProvider(Provider):

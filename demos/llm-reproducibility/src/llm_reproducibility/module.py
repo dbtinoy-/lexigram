@@ -1,11 +1,11 @@
-"""Module for the llm-experiment demo."""
+"""Module for the llm-reproducibility demo."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from experiment.di.provider import ExperimentProvider
 from lexigram.di.module import DynamicModule, Module, module
+from llm_reproducibility.di.provider import ExperimentProvider
 
 
 @module()

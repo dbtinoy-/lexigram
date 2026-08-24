@@ -3,8 +3,8 @@
 # Env override: LEXIGRAM_EXPERIMENT_SEED=<int> python run_experiment.py
 
 experiment:
-  name: llm-relay-probe
-  description: Deterministic conversion probe over the Claude relay mapper
+  name: llm-reproducibility
+  description: Deterministic reproducibility probe over the Claude relay mapper
   seed: 42
   iterations: 5
   provider: anthropic

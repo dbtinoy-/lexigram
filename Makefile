@@ -107,18 +107,18 @@ guard:  ## Verify all dirty paths belong to this lane: make guard ALLOWED="path/
 # Demos (living integration surfaces — gated like the framework)
 # ---------------------------------------------------------------------------
 # All six demos ship pytest suites and run from the repo root in the
-# workspace env. The llm-experiment harness imports opentelemetry,
+# workspace env. The llm-reproducibility harness imports opentelemetry,
 # which lives in the `tooling` dependency group.
 DEMO_PYTEST := $(UV) run --group tooling pytest
-DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests demos/auth-rbac/tests demos/auth-mfa/tests demos/auth-apikeys/tests demos/support-agent/tests demos/memory-chat/tests demos/ai-guardrails/tests demos/prompt-lab/tests demos/feedback-loop/tests
-DEMO_COMPILE_DIRS := demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates demos/rag-docs demos/auth-web demos/auth-rbac demos/auth-mfa demos/auth-apikeys demos/support-agent demos/memory-chat demos/ai-guardrails demos/prompt-lab demos/feedback-loop
+DEMO_TEST_DIRS := demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-reproducibility/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests demos/auth-rbac/tests demos/auth-mfa/tests demos/auth-apikeys/tests demos/support-agent/tests demos/memory-chat/tests demos/ai-guardrails/tests demos/prompt-lab/tests demos/feedback-loop/tests
+DEMO_COMPILE_DIRS := demos/llm-reproducibility demos/event-driven-orders demos/realtime-monitor demos/resilient-rates demos/rag-docs demos/auth-web demos/auth-rbac demos/auth-mfa demos/auth-apikeys demos/support-agent demos/memory-chat demos/ai-guardrails demos/prompt-lab demos/feedback-loop
 
 .PHONY: test-demos
-test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-experiment, resilient-rates, rag-docs, auth-web, auth-rbac, auth-mfa, auth-apikeys, support-agent, memory-chat, ai-guardrails, prompt-lab, feedback-loop)
+test-demos:  ## Run demo test suites (event-driven-orders, realtime-monitor, llm-reproducibility, resilient-rates, rag-docs, auth-web, auth-rbac, auth-mfa, auth-apikeys, support-agent, memory-chat, ai-guardrails, prompt-lab, feedback-loop)
 	$(DEMO_PYTEST) -q -m "not integration" --no-cov $(DEMO_TEST_DIRS)
 
 .PHONY: verify-demos
-verify-demos:  ## Compile-check demo entry points and scripts (incl. llm-experiment)
+verify-demos:  ## Compile-check demo entry points and scripts (incl. llm-reproducibility)
 	$(UV) run python -m compileall -q $(DEMO_COMPILE_DIRS)
 
 .PHONY: check-demos
@@ -131,7 +131,7 @@ smoke-demos: ## Execute demo entry points end-to-end
 	cd demos/resilient-rates && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m rates demo >/dev/null
 	cd demos/event-driven-orders && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m orders demo >/dev/null
 	cd demos/rag-docs && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python -m rag_docs demo >/dev/null
-	cd demos/llm-experiment && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python run_experiment.py --seed 42 >/dev/null
+	cd demos/llm-reproducibility && PYTHONPATH=src timeout 120 $(CURDIR)/.venv/bin/python run_experiment.py --seed 42 >/dev/null
 	cd demos/realtime-monitor && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import ops_console.main" >/dev/null
 	cd demos/auth-web && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import auth_web.main" >/dev/null
 	cd demos/auth-rbac && PYTHONPATH=src $(CURDIR)/.venv/bin/python -c "import rbac_console.main" >/dev/null
@@ -262,8 +262,8 @@ catalog-package:  ## Run all standalone catalog generators
 REPRO_OUT := $(CURDIR)/.cache/eval-reproduce
 
 .PHONY: eval-reproduce
-eval-reproduce:  ## Re-run the seeded llm-experiment; fails if same-seed digests diverge
-	$(UV) run python demos/llm-experiment/run_experiment.py --seed 7 --out $(REPRO_OUT)
+eval-reproduce:  ## Re-run the seeded llm-reproducibility; fails if same-seed digests diverge
+	$(UV) run python demos/llm-reproducibility/run_experiment.py --seed 7 --out $(REPRO_OUT)
 
 version-check:  ## Compare local versions vs PyPI (exit 1 if bumps needed)
 	$(UV) run python dev/check_version.py check

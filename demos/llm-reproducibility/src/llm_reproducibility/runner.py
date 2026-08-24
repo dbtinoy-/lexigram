@@ -16,8 +16,6 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 import yaml
 
-from experiment.metrics import JsonMetricsCollector
-from experiment.results import ExperimentResult, _canonical
 from lexigram.ai.evaluation.analysis import ErrorAnalysis
 from lexigram.ai.evaluation.checkpoints import FileCheckpointStore
 from lexigram.ai.evaluation.tracking import LocalTracker, make_run_id
@@ -38,6 +36,8 @@ from lexigram.contracts.ai.relay.dto import (
 from lexigram.contracts.observability.metrics import MetricsCollectorProtocol
 from lexigram.contracts.observability.tracing import TracerProtocol
 from lexigram.serialization import dumps_str
+from llm_reproducibility.metrics import JsonMetricsCollector
+from llm_reproducibility.results import ExperimentResult, _canonical
 
 T = TypeVar("T")
 

@@ -1,4 +1,4 @@
-# LLM Relay Experiment Demo
+# LLM Reproducibility Demo
 
 A tiny, fully reproducible ML-style experiment over the Lexigram LLM relay
 mapper — no API keys, no network, no external experiment-tracking service.
@@ -11,7 +11,7 @@ persists digest-verified checkpoints per iteration.
 
 ## Reproducibility path
 
-1. **Config-driven** — `experiment.yaml` holds every knob (seed, model,
+1. **Config-driven** — `config.yaml` holds every knob (seed, model,
    iterations, sampling, recording switches).
 2. **Seeded** — all synthetic payloads, latencies, and token counts come from
    `random.Random(seed)` (stdlib, stable).

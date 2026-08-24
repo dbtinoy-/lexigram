@@ -10,12 +10,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from experiment.results import ExperimentResult, metrics_delta
-from experiment.runner import run_experiment
+from llm_reproducibility.results import ExperimentResult, metrics_delta
+from llm_reproducibility.runner import run_experiment
 
 
 def make_config() -> dict[str, Any]:
-    """Return a minimal experiment config (mirrors experiment.yaml)."""
+    """Return a minimal experiment config (mirrors config.yaml)."""
     return {
         "experiment": {
             "name": "llm-relay-probe-test",

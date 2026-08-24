@@ -52,7 +52,7 @@ A live ops dashboard with zero frontend dependencies:
   or external tools
 - **Vanilla JS** `EventSource` client — no build step, no npm
 
-### [llm-experiment](llm-experiment/) — reproducible AI experiments
+### [llm-reproducibility](llm-reproducibility/) — reproducible AI experiments
 
 LLM evaluation with science-grade determinism:
 
@@ -194,7 +194,7 @@ PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop serve      # s
 PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs demo                 # cited answers from our own docs
 PYTHONPATH=demos/rag-docs/src uv run python -m rag_docs serve                # same corpus as an ask API (:7075)
 PYTHONPATH=demos/realtime-monitor/src uv run python -m ops_console           # realtime dashboard server (:7071)
-uv run python demos/llm-experiment/run_experiment.py                         # seeded experiment + rerun
+PYTHONPATH=demos/llm-reproducibility/src uv run python demos/llm-reproducibility/run_experiment.py  # seeded experiment + rerun
 
 # ── auth consoles ─────────────────────────────────────────────────
 PYTHONPATH=demos/auth-web/src uv run python -m auth_web                      # account lifecycle (:8081)

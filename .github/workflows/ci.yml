@@ -218,10 +218,10 @@ jobs:
         run: uv python install 3.11
 
       - name: test (demo suites, workspace env)
-        run: uv run --group tooling pytest -q -m "not integration" --no-cov demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-experiment/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests demos/auth-rbac/tests demos/auth-mfa/tests demos/auth-apikeys/tests
+        run: uv run --group tooling pytest -q -m "not integration" --no-cov demos/event-driven-orders/tests demos/realtime-monitor/tests demos/llm-reproducibility/tests demos/resilient-rates/tests demos/rag-docs/tests demos/auth-web/tests demos/auth-rbac/tests demos/auth-mfa/tests demos/auth-apikeys/tests
 
-      - name: compile (llm-experiment scripts)
-        run: uv run python -m compileall -q demos/llm-experiment demos/event-driven-orders demos/realtime-monitor demos/resilient-rates
+      - name: compile (llm-reproducibility scripts)
+        run: uv run python -m compileall -q demos/llm-reproducibility demos/event-driven-orders demos/realtime-monitor demos/resilient-rates
 
       - name: smoke (execute demo entry points)
         run: make smoke-demos
