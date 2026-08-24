@@ -108,9 +108,10 @@ def next_version(version: str, bump: str = "build") -> str:
         return format_version(minor + 1, 1, 1)
     if bump == "patch":
         return format_version(minor, patch + 1, 1)
-    # build (default): from a bare patch (build=0), promote the patch first
+    # build (default): a bare patch (build=0) starts its own build series
+    # at 001 — e.g. local 0.1.4 bumps to 0.1.4001, NOT to the next patch.
     if build == 0:
-        return format_version(minor, patch + 1, 1)
+        return format_version(minor, patch, 1)
     return format_version(minor, patch, build + 1)
 
 

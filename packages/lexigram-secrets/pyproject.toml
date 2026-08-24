@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-secrets"
-version = "0.1.5001"
+version = "0.1.4001"
 description = "Secret vaults with rotation, tenant scoping, and audit for Lexigram Framework"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-resilience"
-version = "0.1.5001"
+version = "0.1.4001"
 description = "Resilience patterns for the Lexigram Framework (circuit breaker, retry, bulkhead, rate limiting, throttle, fallback)"
 readme = "README.md"
 requires-python = ">=3.11"

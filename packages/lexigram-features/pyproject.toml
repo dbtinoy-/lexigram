@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-features"
-version = "0.1.5001"
+version = "0.1.4001"
 description = "Feature flag management for the Lexigram Framework"
 readme = "README.md"
 requires-python = ">=3.11"

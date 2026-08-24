@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-cli"
-version = "0.1.5001"
+version = "0.1.4001"
 description = "Command-line interface for Lexigram Framework - Project scaffolding, code generation, and development tools"
 readme = "README.md"
 requires-python = ">=3.11"

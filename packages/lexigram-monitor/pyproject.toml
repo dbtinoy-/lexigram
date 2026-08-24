@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-monitor"
-version = "0.1.5001"
+version = "0.1.4001"
 description = "Monitoring and observability for Lexigram Framework - Health checks, metrics, and system monitoring"
 readme = "README.md"
 requires-python = ">=3.11"
