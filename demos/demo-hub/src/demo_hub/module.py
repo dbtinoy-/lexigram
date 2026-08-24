@@ -7,6 +7,7 @@ import os
 from demo_hub.controllers.api import HubApiController
 from demo_hub.di.provider import HubProvider
 from demo_hub.services.registry import ServiceRegistry
+from demo_hub.ui.pages import HubPageController
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.web import WebConfig, WebModule
 from lexigram.web.config import ServerConfig
@@ -26,7 +27,7 @@ class DemoHubModule(Module):
             module=cls,
             imports=[
                 WebModule.configure(
-                    controllers=[HubApiController],
+                    controllers=[HubApiController, HubPageController],
                     web_config=WebConfig(
                         server=ServerConfig(
                             host="127.0.0.1",
