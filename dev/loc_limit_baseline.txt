@@ -87,8 +87,7 @@ experimental/apps/lexigram-admin/src/lexigram/admin/services/filter_manager.py
 experimental/apps/lexigram-admin/src/lexigram/admin/services/resource_manager.py
 experimental/apps/lexigram-admin/src/lexigram/admin/ui/organisms/table/views/tabular.py
 experimental/apps/lexigram-admin/src/lexigram/admin/ui/templates/shell.py
-experimental/apps/lexigram-admin/tests/e2e/test_admin_auth_http_e2e.py
-experimental/apps/lexigram-admin/tests/e2e/test_admin_email_verify_http_e2e.py
+
 experimental/apps/lexigram-admin/tests/scenario/test_admin_ui_controls.py
 experimental/apps/lexigram-admin/tests/unit/auth/test_password_reset_service.py
 experimental/apps/lexigram-admin/tests/unit/controllers/test_dashboard_controller.py

@@ -1,8 +1,6 @@
-"""E2E HTTP tests for admin email verification + email OTP factor flows.
+"""E2E HTTP tests for admin email OTP factor and profile verification status.
 
-Uses mock protocol implementations at the contract boundary.  The
-authenticated-user state normally provided by AuthGuardMiddleware is
-injected per-route, mirroring ``request.state.user``.
+Uses mock protocol implementations at the contract boundary.
 """
 
 from __future__ import annotations
@@ -37,7 +35,6 @@ def _auth_result(**overrides: object) -> AdminAuthResult:
 def _make_auth_service(
     *, verify_gate: bool = False, mfa_gate: bool = False, complete_ok: bool = True
 ) -> MagicMock:
-    """Return a mock AdminAuthServiceProtocol."""
     svc = MagicMock()
     if verify_gate:
         svc.authenticate = AsyncMock(
@@ -62,7 +59,6 @@ def _make_auth_service(
 
 
 def _make_csrf_service(*, valid: bool = True) -> MagicMock:
-    """Return a mock AdminCsrfServiceProtocol."""
     svc = MagicMock()
     svc.generate_token = MagicMock(return_value="csrf-test-token")
     svc.validate_token = MagicMock(return_value=valid)
@@ -70,7 +66,6 @@ def _make_csrf_service(*, valid: bool = True) -> MagicMock:
 
 
 def _make_mfa_service(*, factor: str = "totp") -> MagicMock:
-    """Return a mock AdminMfaServiceProtocol with a fixed factor."""
     svc = MagicMock()
     svc.get_factor = MagicMock(return_value=factor)
     svc.is_enabled = AsyncMock(return_value=factor == "totp")
@@ -86,7 +81,6 @@ def _make_verification_service(
     verify_ok: bool = True,
     email_verified: bool = True,
 ) -> MagicMock:
-    """Return a mock AdminEmailVerificationServiceProtocol."""
     svc = MagicMock()
     if send_err:
         from lexigram.admin.auth.errors import RateLimitExceededError
@@ -113,7 +107,6 @@ def _make_verification_service(
 
 
 def _make_otp_service(*, send_err: bool = False, verify_ok: bool = True) -> MagicMock:
-    """Return a mock AdminEmailOtpServiceProtocol."""
     svc = MagicMock()
     if send_err:
         from lexigram.admin.auth.errors import EmailOtpCooldownError
@@ -135,7 +128,6 @@ class _DummyRenderer:
 
 
 def _set_user(request) -> None:
-    """Mirror AuthGuardMiddleware: populate request.state.user from session."""
     if request.session.get("admin_user_id"):
         request.state.user = SimpleNamespace(
             user_id=request.session["admin_user_id"],
@@ -187,15 +179,6 @@ def create_app(
     async def challenge_resend(request):
         return await controller.mfa_challenge_resend(request)
 
-    async def verify_form(request):
-        return await controller.verify_email_form(request)
-
-    async def verify_resend(request):
-        return await controller.verify_email_resend(request)
-
-    async def verify_token(request):
-        return await controller.verify_email_token(request)
-
     async def profile_form(request):
         _set_user(request)
         return await controller.mfa_profile_form(request)
@@ -206,9 +189,6 @@ def create_app(
         Route("/admin/login/2fa", challenge_form, methods=["GET"]),
         Route("/admin/login/2fa", challenge_submit, methods=["POST"]),
         Route("/admin/login/2fa/resend", challenge_resend, methods=["POST"]),
-        Route("/admin/verify-email", verify_form, methods=["GET"]),
-        Route("/admin/verify-email/resend", verify_resend, methods=["POST"]),
-        Route("/admin/verify-email/{token}", verify_token, methods=["GET"]),
         Route("/admin/profile/mfa", profile_form, methods=["GET"]),
     ]
 
@@ -218,7 +198,6 @@ def create_app(
 
 
 async def _login(client: AsyncClient) -> None:
-    """Establish an authenticated session via the plain login flow."""
     await client.get("/admin/login")
     r = await client.post(
         "/admin/login",
@@ -232,141 +211,8 @@ async def _login(client: AsyncClient) -> None:
     assert r.status_code == 302
 
 
-# ---------------------------------------------------------------------------
-# Email verification gate
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_login_gated_on_unverified_email_redirects_to_verify() -> None:
-    """An unverified account is parked and redirected to /verify-email."""
-    app = create_app(verify_gate=True)
-    async with AsyncClient(
-        transport=ASGITransport(app),
-        base_url="http://testserver",
-        follow_redirects=False,
-    ) as client:
-        await client.get("/admin/login")
-        r = await client.post(
-            "/admin/login",
-            data={
-                "email": "admin@example.com",
-                "password": "MyStr0ng!Pass@word",
-                "csrf_token": "csrf-test-token",
-                "next": "/admin/",
-            },
-        )
-        assert r.status_code == 302
-        assert r.headers["location"] == "/admin/verify-email"
-
-
-@pytest.mark.asyncio
-async def test_verify_email_page_renders_with_resend_form() -> None:
-    """The verification landing page shows the resend form."""
-    app = create_app(verify_gate=True)
-    async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver"
-    ) as client:
-        await client.get("/admin/login")
-        await client.post(
-            "/admin/login",
-            data={
-                "email": "admin@example.com",
-                "password": "x",
-                "csrf_token": "csrf-test-token",
-                "next": "/admin/",
-            },
-        )
-        r = await client.get("/admin/verify-email")
-        assert r.status_code == 200
-        assert "Verify Your Email" in r.text
-        assert "/admin/verify-email/resend" in r.text
-
-
-@pytest.mark.asyncio
-async def test_verify_email_resend_redirects_notice() -> None:
-    """A resend request redirects with a notice."""
-    app = create_app(verify_gate=True)
-    async with AsyncClient(
-        transport=ASGITransport(app),
-        base_url="http://testserver",
-        follow_redirects=False,
-    ) as client:
-        await client.get("/admin/login")
-        await client.post(
-            "/admin/login",
-            data={"email": "a", "password": "b", "csrf_token": "csrf-test-token"},
-        )
-        r = await client.post(
-            "/admin/verify-email/resend",
-            data={
-                "email": "admin@example.com",
-                "csrf_token": "csrf-test-token",
-                "next": "/admin/",
-            },
-        )
-        assert r.status_code == 302
-        assert "notice=" in r.headers["location"]
-
-
-@pytest.mark.asyncio
-async def test_verify_email_resend_rate_limited_shows_error() -> None:
-    """A rate-limited resend surfaces the error message."""
-    app = create_app(verify_gate=True, send_err=True)
-    async with AsyncClient(
-        transport=ASGITransport(app),
-        base_url="http://testserver",
-        follow_redirects=False,
-    ) as client:
-        await client.get("/admin/login")
-        await client.post(
-            "/admin/login",
-            data={"email": "a", "password": "b", "csrf_token": "csrf-test-token"},
-        )
-        r = await client.post(
-            "/admin/verify-email/resend",
-            data={
-                "email": "admin@example.com",
-                "csrf_token": "csrf-test-token",
-                "next": "/admin/",
-            },
-        )
-        assert r.status_code == 302
-        assert "error=" in r.headers["location"]
-
-
-@pytest.mark.asyncio
-async def test_verify_email_token_success_renders_confirmation() -> None:
-    """A valid token renders the verified confirmation page."""
-    app = create_app(verify_gate=True)
-    async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver"
-    ) as client:
-        r = await client.get("/admin/verify-email/valid-token-123")
-        assert r.status_code == 200
-        assert "Email Verified" in r.text
-
-
-@pytest.mark.asyncio
-async def test_verify_email_token_failure_renders_error_page() -> None:
-    """An invalid/expired token renders the failure page."""
-    app = create_app(verify_gate=True, verify_ok=False)
-    async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver"
-    ) as client:
-        r = await client.get("/admin/verify-email/stale-token")
-        assert r.status_code == 200
-        assert "Verification Failed" in r.text
-
-
-# ---------------------------------------------------------------------------
-# Email OTP factor
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_login_email_factor_redirects_to_challenge_and_sends_otp() -> None:
-    """An email-factor challenge parks the session and emails a code."""
     app = create_app(mfa_gate=True, factor="email")
     async with AsyncClient(
         transport=ASGITransport(app),
@@ -389,7 +235,6 @@ async def test_login_email_factor_redirects_to_challenge_and_sends_otp() -> None
 
 @pytest.mark.asyncio
 async def test_email_factor_challenge_page_shows_resend_form() -> None:
-    """The email-factor challenge page includes the resend form."""
     app = create_app(mfa_gate=True, factor="email")
     async with AsyncClient(
         transport=ASGITransport(app), base_url="http://testserver"
@@ -411,7 +256,6 @@ async def test_email_factor_challenge_page_shows_resend_form() -> None:
 
 @pytest.mark.asyncio
 async def test_email_factor_challenge_submit_completes_login() -> None:
-    """A valid email code completes the login and creates a session."""
     app = create_app(mfa_gate=True, factor="email")
     async with AsyncClient(
         transport=ASGITransport(app),
@@ -439,7 +283,6 @@ async def test_email_factor_challenge_submit_completes_login() -> None:
 
 @pytest.mark.asyncio
 async def test_email_factor_challenge_submit_invalid_code_errors() -> None:
-    """An invalid email code re-shows the challenge with an error."""
     app = create_app(mfa_gate=True, factor="email", complete_ok=False)
     async with AsyncClient(
         transport=ASGITransport(app),
@@ -467,7 +310,6 @@ async def test_email_factor_challenge_submit_invalid_code_errors() -> None:
 
 @pytest.mark.asyncio
 async def test_email_factor_resend_redirects_notice() -> None:
-    """A resend for the email factor redirects with a notice."""
     app = create_app(mfa_gate=True, factor="email")
     async with AsyncClient(
         transport=ASGITransport(app),
@@ -494,7 +336,6 @@ async def test_email_factor_resend_redirects_notice() -> None:
 
 @pytest.mark.asyncio
 async def test_email_factor_resend_cooldown_shows_error() -> None:
-    """A cooldown-limited resend surfaces the wait message."""
     app = create_app(mfa_gate=True, factor="email", otp_send_err=True)
     async with AsyncClient(
         transport=ASGITransport(app),
@@ -519,14 +360,8 @@ async def test_email_factor_resend_cooldown_shows_error() -> None:
         assert "error=" in r.headers["location"]
 
 
-# ---------------------------------------------------------------------------
-# Profile verification status
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_profile_shows_verified_status() -> None:
-    """The profile page shows the verified badge when the email is verified."""
     app = create_app(email_verified=True)
     async with AsyncClient(
         transport=ASGITransport(app), base_url="http://testserver"
@@ -540,7 +375,6 @@ async def test_profile_shows_verified_status() -> None:
 
 @pytest.mark.asyncio
 async def test_profile_shows_unverified_status() -> None:
-    """The profile page flags an unverified email."""
     app = create_app(email_verified=False)
     async with AsyncClient(
         transport=ASGITransport(app), base_url="http://testserver"
