@@ -3,7 +3,6 @@
 # limit become stale and must be removed in the same change.
 # Regenerate after review: uv run python dev/check_loc_limit.py --root . --write-baseline
 core/lexigram-contracts/src/lexigram/contracts/__init__.py
-core/lexigram-contracts/src/lexigram/contracts/ai/agents.py
 core/lexigram-contracts/src/lexigram/contracts/ai/llm.py
 core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/gemini.py
 core/lexigram-contracts/src/lexigram/contracts/ai/relay/dto/openai_responses.py
@@ -11,13 +10,12 @@ core/lexigram-contracts/src/lexigram/contracts/events/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/graphql/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/infra/tasks/protocols.py
 core/lexigram-contracts/src/lexigram/contracts/web/protocols.py
-core/lexigram/benchmarks/benchmark_result_pattern.py
-core/lexigram/benchmarks/benchmark_service_resolution.py
+
 core/lexigram/src/lexigram/app/base.py
 core/lexigram/src/lexigram/di/container/container.py
 core/lexigram/src/lexigram/domain/models/base.py
 core/lexigram/src/lexigram/primitives/context.py
-core/lexigram/tests/integration/di/module/test_graph_reflection_integration.py
+
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/executor/executor.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/function_calling.py
 experimental/ai/lexigram-ai-agents/src/lexigram/ai/agents/strategies/plan_execute.py
@@ -48,17 +46,8 @@ experimental/ai/lexigram-ai-relay-gateway/tests/unit/test_stream.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_engine.py
 experimental/ai/lexigram-ai-relay/tests/unit/relay/test_stream_emitters.py
 experimental/ai/lexigram-ai-workers/src/lexigram/ai/workers/dlq/worker.py
-experimental/ai/lexigram-ai/docs/gifs/tools/app.py
-experimental/ai/lexigram-ai/tests/unit/test_ai_package.py
-experimental/ai/lexigram-ai/tests/unit/test_citations.py
-experimental/ai/lexigram-ai/tests/unit/test_context_compression.py
-experimental/ai/lexigram-ai/tests/unit/test_evaluation.py
-experimental/ai/lexigram-ai/tests/unit/test_hyde.py
-experimental/ai/lexigram-ai/tests/unit/test_knowledge_graph.py
-experimental/ai/lexigram-ai/tests/unit/test_preprocessing.py
-experimental/ai/lexigram-ai/tests/unit/test_selector.py
+
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/guards.py
-experimental/apps/lexigram-admin/src/lexigram/admin/auth/protocols.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/services/auth_service.py
 experimental/apps/lexigram-admin/src/lexigram/admin/auth/store/direct_sql.py
 experimental/apps/lexigram-admin/src/lexigram/admin/controllers/base.py
@@ -90,7 +79,6 @@ experimental/apps/lexigram-ui/src/lexigram/ui/state.py
 experimental/multimedia/lexigram-multimedia-video/src/lexigram/multimedia/video/processing/argv.py
 packages/lexigram-auth/src/lexigram/auth/authn/ldap.py
 packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py
-packages/lexigram-cache/src/lexigram/cache/config.py
 packages/lexigram-cache/src/lexigram/cache/repository/base.py
 packages/lexigram-events/src/lexigram/events/decorators/validation.py
 packages/lexigram-monitor/src/lexigram/monitor/config.py
@@ -110,7 +98,6 @@ packages/lexigram-testing/src/lexigram/testing/clients/cache/fixtures.py
 packages/lexigram-testing/src/lexigram/testing/clients/events/fixtures.py
 packages/lexigram-vector/src/lexigram/vector/search/hybrid.py
 packages/lexigram-vector/src/lexigram/vector/search/reranking.py
-packages/lexigram-web/src/lexigram/web/config.py
 packages/lexigram-web/src/lexigram/web/di/provider.py
 packages/lexigram-web/src/lexigram/web/errors/html_error_renderer.py
 packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py
