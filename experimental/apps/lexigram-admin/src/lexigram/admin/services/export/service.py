@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar
-import uuid
 
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
@@ -15,6 +14,7 @@ if TYPE_CHECKING:
     from lexigram.admin.data.data_source import (  # type: ignore[attr-defined]
         ExportColumn,
     )
+    from lexigram.admin.services.export.job_manager import ExportJobManager
     from lexigram.admin.services.session import SessionStateService
     from lexigram.contracts.core import TaskManagerProtocol
     from lexigram.contracts.infra.storage import BlobStoreProtocol
@@ -29,7 +29,6 @@ from lexigram.admin.services.export.scheduler import (
     ExportJob,
     ExportSchedule,
     ExportStatus,
-    ExportTemplate,
 )
 from lexigram.contracts.audit import AuditEntry, AuditEventSeverity, AuditLoggerProtocol
 from lexigram.result import Err, Ok, Result
@@ -106,6 +105,7 @@ class ExportService:
         self,
         storage: BlobStoreProtocol,
         task_manager: TaskManagerProtocol,
+        job_manager: ExportJobManager | None = None,
         messaging: MailerProtocol | None = None,
         session: SessionStateService | None = None,
         export_dir: str = "exports",
@@ -115,6 +115,7 @@ class ExportService:
         from lexigram.admin.services.export.adapters.csv import CsvExportBackend
         from lexigram.admin.services.export.adapters.excel import ExcelExportBackend
         from lexigram.admin.services.export.adapters.pdf import PdfExportBackend
+        from lexigram.admin.services.export.job_manager import ExportJobManager
 
         self.storage = storage
         self.task_manager = task_manager
@@ -124,8 +125,7 @@ class ExportService:
         self.max_file_age_days = max_file_age_days
         self.audit = audit
 
-        self._templates: dict[str, ExportTemplate] = {}
-        self._jobs: dict[str, ExportJob] = {}
+        self._job_manager = job_manager or ExportJobManager()
         self._background_tasks: dict[str, asyncio.Task] = {}
 
         # Register default backends
@@ -137,23 +137,23 @@ class ExportService:
         }
 
     # -------------------------------------------------------------------------
-    # Template Management
+    # Template Management (delegated to job manager)
     # -------------------------------------------------------------------------
 
     def register_template(self, template: ExportTemplate) -> None:
         """Register an export template."""
-        self._templates[template.name] = template
+        self._job_manager.register_template(template)
 
     def get_template(self, name: str) -> ExportTemplate | None:
         """Get a registered template."""
-        return self._templates.get(name)
+        return self._job_manager.get_template(name)
 
     def list_templates(self) -> list[ExportTemplate]:
         """List all registered templates."""
-        return list(self._templates.values())
+        return self._job_manager.list_templates()
 
     # -------------------------------------------------------------------------
-    # Export JobProtocol Management
+    # Export Job Management (delegated to job manager)
     # -------------------------------------------------------------------------
 
     def create_job(
@@ -169,27 +169,21 @@ class ExportService:
         email_recipients: list[str] | None = None,
     ) -> str:
         """Create a new export job."""
-        job_id = str(uuid.uuid4())
-
-        job = ExportJob(
-            job_id=job_id,
+        return self._job_manager.create_job(
             resource_name=resource_name,
-            format=file_format,
-            filters=filters or {},
-            columns=columns or [],
+            file_format=file_format,
+            filters=filters,
+            columns=columns,
             template_name=template_name,
             user_id=user_id,
             scheduled_for=scheduled_for,
             schedule_type=schedule_type,
-            email_recipients=email_recipients or [],
+            email_recipients=email_recipients,
         )
-
-        self._jobs[job_id] = job
-        return job_id
 
     def get_job(self, job_id: str) -> ExportJob | None:
         """Get export job by ID."""
-        return self._jobs.get(job_id)
+        return self._job_manager.get_job(job_id)
 
     def list_jobs(
         self,
@@ -198,18 +192,9 @@ class ExportService:
         limit: int = 50,
     ) -> list[ExportJob]:
         """List export jobs with optional filtering."""
-        jobs = list(self._jobs.values())
-
-        if user_id is not None:
-            jobs = list(filter(lambda j: j.user_id == user_id, jobs))
-
-        if status is not None:
-            jobs = list(filter(lambda j: j.status == status, jobs))
-
-        # Sort by creation time, newest first
-        jobs.sort(key=lambda j: j.created_at, reverse=True)
-
-        return jobs[:limit]
+        return self._job_manager.list_jobs(
+            user_id=user_id, status=status, limit=limit
+        )
 
     async def _record_export_audit(
         self,
@@ -486,10 +471,7 @@ class ExportService:
         task = self._background_tasks.get(job_id)
         if task and not task.done():
             task.cancel()
-            job = self.get_job(job_id)
-            if job:
-                job.status = ExportStatus.CANCELLED
-                job.completed_at = datetime.now(UTC)
+            self._job_manager.cancel_job(job_id)
             return True
         return False
 
@@ -549,29 +531,9 @@ class ExportService:
 
     async def cleanup_completed_jobs(self, max_age_days: int = 30) -> int:
         """Clean up old completed jobs from memory."""
-        cutoff_date = datetime.now(UTC) - timedelta(days=max_age_days)
-        jobs_to_remove = []
-
-        for job_id, job in self._jobs.items():
-            if (
-                job.status
-                in [
-                    ExportStatus.COMPLETED,
-                    ExportStatus.FAILED,
-                    ExportStatus.CANCELLED,
-                ]
-                and job.completed_at
-            ):
-                job_time = (
-                    job.completed_at
-                    if job.completed_at.tzinfo is not None
-                    else job.completed_at.replace(tzinfo=UTC)
-                )
-                if job_time < cutoff_date:
-                    jobs_to_remove.append(job_id)
-
-        for job_id in jobs_to_remove:
-            del self._jobs[job_id]
-            self._background_tasks.pop(job_id, None)
-
-        return len(jobs_to_remove)
+        removed = self._job_manager.cleanup_completed_jobs(max_age_days)
+        # Also clean up any background task references for removed jobs
+        for job_id in list(self._background_tasks.keys()):
+            if self._job_manager.get_job(job_id) is None:
+                self._background_tasks.pop(job_id, None)
+        return removed
