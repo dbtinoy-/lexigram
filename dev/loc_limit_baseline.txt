@@ -107,7 +107,6 @@ packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
 packages/lexigram-sql/src/lexigram/sql/backup/backup_manager.py
 packages/lexigram-sql/src/lexigram/sql/migrations/generator.py
 packages/lexigram-sql/src/lexigram/sql/schema/model.py
-packages/lexigram-sql/tests/unit/test_base_provider.py
 packages/lexigram-sql/tests/unit/test_protocols_unit_of_work.py
 packages/lexigram-storage/src/lexigram/storage/backends/azure.py
 packages/lexigram-storage/src/lexigram/storage/backends/s3.py
