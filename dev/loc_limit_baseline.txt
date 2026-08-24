@@ -81,7 +81,7 @@ packages/lexigram-auth/src/lexigram/auth/authn/ldap.py
 packages/lexigram-auth/src/lexigram/auth/authn/oauth2.py
 packages/lexigram-cache/src/lexigram/cache/repository/base.py
 packages/lexigram-events/src/lexigram/events/decorators/validation.py
-packages/lexigram-monitor/src/lexigram/monitor/config.py
+
 packages/lexigram-resilience/src/lexigram/resilience/circuit/breaker.py
 packages/lexigram-resilience/src/lexigram/resilience/decorators.py
 packages/lexigram-search/src/lexigram/search/backends/elasticsearch/backend.py
@@ -102,7 +102,7 @@ packages/lexigram-web/src/lexigram/web/di/provider.py
 packages/lexigram-web/src/lexigram/web/errors/html_error_renderer.py
 packages/lexigram-web/src/lexigram/web/middleware/rate_limit.py
 packages/lexigram-web/src/lexigram/web/routing/validation.py
-packages/lexigram-web/src/lexigram/web/security/config.py
+
 packages/lexigram-workflow/src/lexigram/workflow/bulk/operation.py
-packages/lexigram-notification/src/lexigram/notification/config.py
+
 packages/lexigram-sql/src/lexigram/sql/migrations/manager/_alembic.py
