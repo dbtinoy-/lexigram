@@ -349,15 +349,23 @@ logging:
   format: json
 """
 
-_ENV_EXAMPLE_TEMPLATE = """# Database
-DATABASE_URL=sqlite:///./dev.db
+_ENV_EXAMPLE_TEMPLATE = """# Lexigram environment overrides (LEX_<SECTION>__<FIELD> syntax).
+# Sections mirror application.yaml keys; env vars override matching keys.
+# Copy to .env and uncomment what you need.
 
-# Auth
-AUTH_SECRET_KEY=your-secret-key-here
+# Web server (web.server)
+# LEX_WEB__SERVER__HOST=127.0.0.1
+# LEX_WEB__SERVER__PORT=8000
 
-# Web
-WEB_HOST=0.0.0.0
-WEB_PORT=8000
+# Logging (logging.level): DEBUG | INFO | WARNING | ERROR
+# LEX_LEXIGRAM__LOGGING__LEVEL=DEBUG
+
+# Database URL (consumed by lexigram-sql's config_key="sql" provider section;
+# also set db.backend.url in application.yaml when adding SQL support)
+# LEX_SQL__BACKEND__URL=postgresql://localhost/mydb
+
+# Auth secret — set a real value before deploying with auth enabled
+# LEX_AUTH__SECRET_KEY=change-me-in-production
 """
 
 

@@ -151,8 +151,9 @@ def scan_config_classes_in_package(pkg_src: Path) -> dict[str, ConfigClass]:
     for pyfile in pkg_src.rglob("*.py"):
         if any(p in EXCLUDED_DIRS for p in pyfile.parts):
             continue
-        if "config" not in str(pyfile).lower() and pyfile.stem != "constants":
-            continue
+        # Scan every module: config classes live outside config.py too
+        # (e.g. graphql's RateLimitConfig in security/rate_limit.py) — a
+        # filename filter silently mis-resolves same-name cross-package refs.
 
         try:
             text = pyfile.read_text(encoding="utf-8")
@@ -174,6 +175,18 @@ def scan_config_classes_in_package(pkg_src: Path) -> dict[str, ConfigClass]:
 
             bases = get_base_names(node.bases)
             fields: list[ConfigField] = []
+            config_section: str | None = None
+
+            for item in node.body:
+                # config_section: ClassVar[str] = "<section>" marks a root
+                if (
+                    isinstance(item, ast.AnnAssign)
+                    and isinstance(item.target, ast.Name)
+                    and item.target.id == "config_section"
+                    and isinstance(item.value, ast.Constant)
+                    and isinstance(item.value.value, str)
+                ):
+                    config_section = item.value.value
 
             for item in node.body:
                 if isinstance(item, ast.Expr):
@@ -215,7 +228,9 @@ def scan_config_classes_in_package(pkg_src: Path) -> dict[str, ConfigClass]:
                                 )
                             fields.append(ConfigField(name=fname, type_str=type_str, default=default, description=desc))
 
-            pkg_classes[name] = ConfigClass(name=name, file_path=pyfile, bases=bases, fields=fields)
+            pkg_classes[name] = ConfigClass(
+                name=name, file_path=pyfile, bases=bases, fields=fields, config_section=config_section
+            )
 
     return pkg_classes
 

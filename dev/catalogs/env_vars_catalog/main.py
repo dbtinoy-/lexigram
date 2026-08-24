@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 import argparse
-import ast
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
 from dev.catalogs.env_vars_catalog._model import (
-    CONFIG_BASE_CLASSES,
     REPO_ROOT,
+    YAML_ONLY_FIELDS,
+    ConfigClass,
     _md,
 )
 from dev.catalogs.env_vars_catalog.env_paths import (
     build_field_paths,
-    find_env_prefixes,
     package_sort_key,
     scan_direct_env_vars,
 )
@@ -26,104 +25,188 @@ from dev.catalogs.env_vars_catalog.scan import (
 )
 
 
+class _Keyed:
+    """A config class registered under ``(owner_package, class_name)``."""
+
+    __slots__ = ("cls", "key", "name", "owner")
+
+    def __init__(self, cls: ConfigClass, owner: str) -> None:
+        self.cls = cls
+        self.owner = owner
+        self.name = cls.name
+        self.key = (owner, cls.name)
+
+
+def _build_registry(
+    pkg_classes_by_pkg: dict[str, dict[str, ConfigClass]],
+) -> dict[tuple[str, str], _Keyed]:
+    """Register every scanned class under its own package — no name merging."""
+    registry: dict[tuple[str, str], _Keyed] = {}
+    for pkg_name, pkg_classes in pkg_classes_by_pkg.items():
+        for name, cls in pkg_classes.items():
+            registry[(pkg_name, name)] = _Keyed(cls, pkg_name)
+    return registry
+
+
+def _resolve_ref(raw_type: str, registry: dict[tuple[str, str], _Keyed], home: str):
+    """Resolve a type annotation to a keyed class, preferring same package."""
+    from dev.catalogs.env_vars_catalog.scan import resolve_config_class
+
+    # Try within the home package first
+    home_names = {k[1] for k in registry if k[0] == home}
+    probe: dict[str, ConfigClass] = {}
+    for k, v in registry.items():
+        probe[k[1]] = v.cls  # last wins globally; overridden below per-home
+
+    # Build a resolver view: names unique globally use that class; ambiguous
+    # names resolve to the home package's definition when it has one.
+    global_by_name: dict[str, int] = {}
+    for k in registry:
+        global_by_name[k[1]] = global_by_name.get(k[1], 0) + 1
+    view: dict[str, ConfigClass] = {}
+    for k, v in registry.items():
+        if global_by_name[k[1]] == 1:
+            view[k[1]] = v.cls
+    for n, c in ((k[1], v.cls) for k, v in registry.items() if k[0] == home):
+        view[n] = c
+    return resolve_config_class(raw_type, view)
+
+
+def _select_roots(
+    registry: dict[tuple[str, str], _Keyed],
+) -> dict[tuple[str, str], _Keyed]:
+    """Pick active root configs and suppress child-consumed ones.
+
+    Runtime truth: env vars bind against a root's ``config_section`` namespace.
+    A section-carrying class that is reachable as a child config of ANOTHER
+    root never loads standalone in practice — it expands under the parent's
+    family instead (e.g. ``TTSConfig`` under ``MultimediaConfig``), so its
+    standalone family must not be documented.  Same-name collisions across
+    packages stay separate entries here, so e.g. core's ``SecurityConfig``
+    (section=security) is not suppressed by web's section-less child class of
+    the same name.  ``LexigramConfig`` is a root despite having no section
+    (its fold validator consumes ``LEX_LEXIGRAM__*``).
+    """
+    roots = {
+        key: entry
+        for key, entry in registry.items()
+        if entry.cls.config_section or entry.name == "LexigramConfig"
+    }
+
+    def _resolve_ref_keys(
+        cls: ConfigClass, home: str
+    ) -> list[tuple[str, str]]:
+        """Registry keys a class's field types resolve to (home package wins)."""
+        keys: list[tuple[str, str]] = []
+        for field in cls.fields:
+            raw = field.type_str.strip().replace('"', "").replace("'", "")
+            stripped = raw
+            # Mirror resolve_config_class's union splitting
+            import re as _re
+
+            for part in _re.split(r"\s*\|\s*", stripped):
+                part = part.strip()
+                home_key = (home, part)
+                if home_key in registry:
+                    keys.append(home_key)
+                    continue
+                owners = [k for k in registry if k[1] == part]
+                if len(owners) == 1:
+                    keys.append(owners[0])
+        return keys
+
+    suppressed: set[tuple[str, str]] = set()
+    for key in sorted(roots, key=lambda k: (k[1], k[0])):
+        if key in suppressed:
+            continue
+        stack, seen = [key], {key}
+        while stack:
+            current = stack.pop()
+            current_entry = registry.get(current)
+            if current_entry is None:
+                continue
+            for ref_key in _resolve_ref_keys(current_entry.cls, current_entry.owner):
+                if ref_key != current and ref_key in roots:
+                    suppressed.add(ref_key)
+                if ref_key not in seen:
+                    seen.add(ref_key)
+                    stack.append(ref_key)
+    return {key: entry for key, entry in roots.items() if key not in suppressed}
+
+
+def _referenced_class_names(
+    cls: ConfigClass, home: str, registry: dict[tuple[str, str], _Keyed]
+) -> set[str]:
+    """Names of known config classes referenced directly by ``cls``'s fields."""
+    refs: set[str] = set()
+    for field in cls.fields:
+        raw = field.type_str.strip().replace('"', "").replace("'", "")
+        resolved = _resolve_ref(raw, registry, home)
+        if resolved and resolved != cls.name:
+            refs.add(resolved)
+    return refs
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate REF_ENV_VARS.md")
     parser.add_argument("--all", action="store_true", help="Write generated docs to repo root (publish mode)")
     args = parser.parse_args()
 
     all_pkg_srcs = discover_packages(include_all=args.all)
-    total_pkg_classes = 0
 
-    env_prefixes = find_env_prefixes()
-    print(f"Env prefixes: {len(env_prefixes)}")
-    for p, pf in sorted(env_prefixes.items()):
-        print(f"  {p}: {pf}")
+    # Register classes per-package so cross-package name collisions
+    # (e.g. two different ``SecurityConfig`` classes) stay distinct.
+    pkg_classes_by_pkg: dict[str, dict[str, ConfigClass]] = {}
+    for pkg_src in all_pkg_srcs:
+        pkg_name = pkg_src.parent.name
+        pkg_classes_by_pkg[pkg_name] = scan_config_classes_in_package(pkg_src)
+
+    registry = _build_registry(pkg_classes_by_pkg)
+    roots = _select_roots(registry)
+    print(f"Root config classes ({len(roots)}):")
+    for key in sorted(roots, key=lambda k: (k[1], k[0])):
+        entry = roots[key]
+        print(f"  {key[0]}/{entry.name}: section={entry.cls.config_section}")
 
     pkg_entries: dict[str, list[dict]] = defaultdict(list)
 
-    # Process each package independently to avoid cross-package name collisions
-    for pkg_src in all_pkg_srcs:
-        pkg_name = pkg_src.parent.name
+    for root_key in sorted(roots, key=lambda k: (k[1], k[0])):
+        entry = roots[root_key]
+        owner_pkg, root_name = entry.owner, entry.name
+        section = entry.cls.config_section or "lexigram"
+        prefix = f"LEX_{section.upper()}__"
 
-        # Scan config classes in this package only
-        pkg_classes = scan_config_classes_in_package(pkg_src)
-        total_pkg_classes += len(pkg_classes)
+        # Home package's classes shadow same-named classes elsewhere during
+        # child resolution.
+        merged: dict[str, ConfigClass] = {}
+        for k, v in registry.items():
+            if k[0] == owner_pkg or sum(1 for kk in registry if kk[1] == k[1]) == 1:
+                merged[k[1]] = v.cls
+        field_paths = build_field_paths(entry.cls, merged)
 
-        if not pkg_classes:
-            continue
-
-        # Build within-package child reference map
-        within_child: dict[str, bool] = {}
-        for name in pkg_classes:
-            is_child = False
-            for other_name, other_cls in pkg_classes.items():
-                if other_name == name:
-                    continue
-                for f in other_cls.fields:
-                    if name in f.type_str.replace('"', "").replace("'", ""):
-                        is_child = True
-                        break
-                if is_child:
-                    break
-            within_child[name] = is_child
-
-        # Find all files that actually contain Config classes in this package
-        config_files = {cls.file_path for cls in pkg_classes.values()}
-        for cfg_file in sorted(config_files):
-            try:
-                text = cfg_file.read_text(encoding="utf-8")
-                tree = ast.parse(text, filename=str(cfg_file))
-            except (SyntaxError, Exception):
+        for type_str, field, file_path, dotted in field_paths:
+            upper_path = dotted.upper().replace(".", "__")
+            env_var = f"{prefix}{upper_path}"
+            if env_var in YAML_ONLY_FIELDS:
                 continue
+            source = f"{Path(file_path).relative_to(REPO_ROOT)}:{root_name}.{dotted}"
+            if len(source) > 100:
+                source = source[:55] + "..." + source[-40:]
 
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.ClassDef):
-                    continue
-                if not node.name.endswith("Config"):
-                    continue
-                if node.name not in pkg_classes:
-                    continue
-
-                cls = pkg_classes[node.name]
-                used_as_child = within_child.get(node.name, False)
-                has_base_config = any(b in CONFIG_BASE_CLASSES for b in cls.bases)
-
-                # BaseConfig subclasses are ALWAYS roots, even if referenced as children
-                if used_as_child and not has_base_config:
-                    continue
-
-                # Root config must: have BaseConfig base, have empty bases, or have config children
-                has_empty_bases = len(cls.bases) == 0
-                has_config_children = any(
-                    resolve_config_class(f.type_str, pkg_classes) for f in cls.fields
-                )
-
-                if not (has_base_config or has_empty_bases or has_config_children):
-                    continue
-
-                prefix = env_prefixes.get(pkg_name, f"LEX_{pkg_name.replace('lexigram-', '').upper().replace('-', '_')}__")
-                field_paths = build_field_paths(cls, pkg_classes)
-
-                for type_str, field, file_path, dotted in field_paths:
-                    upper_path = dotted.upper().replace(".", "__")
-                    env_var = f"{prefix}{upper_path}"
-                    source = f"{Path(file_path).relative_to(REPO_ROOT)}:{node.name}.{dotted}"
-                    if len(source) > 100:
-                        source = source[:55] + "..." + source[-40:]
-
-                    pkg_entries[pkg_name].append({
-                        "env_var": env_var,
-                        "type": type_str,
-                        "default": field.default,
-                        "description": field.description,
-                        "source": source,
-                    })
+            pkg_entries[owner_pkg].append({
+                "env_var": env_var,
+                "type": type_str,
+                "default": field.default,
+                "description": field.description,
+                "source": source,
+            })
 
     direct_entries = scan_direct_env_vars()
     for e in direct_entries:
         pkg_entries[e["package"]].append(e)
 
-    print(f"\nTotal config classes across all packages: {total_pkg_classes}")
+    total_classes = sum(len(m) for m in pkg_classes_by_pkg.values())
+    print(f"\nTotal config classes across all packages: {total_classes}")
 
     # Deduplicate within each package
     deduped: dict[str, list[dict]] = {}

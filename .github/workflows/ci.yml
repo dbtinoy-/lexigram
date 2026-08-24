@@ -106,6 +106,9 @@ jobs:
       - name: env.example coverage
         run: uv run python dev/check_env_example.py --root .
 
+      - name: env.example binding accuracy
+        run: uv run python dev/check_env_binding.py --example .env.example
+
       - name: typecheck
         run: uv run mypy core/lexigram/src/
 

@@ -6,7 +6,6 @@ import ast
 
 from dev.catalogs.env_vars_catalog._model import (
     DIRECT_ENV_RE,
-    ENV_PREFIX_RE,
     EXCLUDED_DIRS,
     ConfigClass,
     ConfigField,
@@ -15,41 +14,48 @@ from dev.catalogs.env_vars_catalog._model import (
 from dev.catalogs.env_vars_catalog.scan import (
     discover_packages,
     resolve_config_class,
+    scan_config_classes_in_package,
 )
 
 
 def find_env_prefixes() -> dict[str, str]:
-    """Find ENV_PREFIX defined in each package's constants.py."""
+    """Derive each package's true env prefix from its root config classes.
+
+    Runtime truth: an env var binds iff it matches
+    ``LEX_<config_section>__<field_path>`` where ``config_section`` is the
+    ClassVar on the consuming root config class.  This scans declared
+    ``config_section`` values statically and maps them to the canonical
+    ``LEX_<SECTION>__`` prefix per package.
+
+    Packages whose roots declare no section fall back to the historical
+    name-derived prefix.
+    """
     prefixes: dict[str, str] = {}
+    for pkg_name, sections in find_config_sections().items():
+        if sections:
+            # Several sections can exist per package (e.g. the multimedia
+            # umbrella plus its subsections); document the shortest — the
+            # most root-level — one as the package prefix.
+            primary = min(sections, key=len)
+            prefixes[pkg_name] = f"LEX_{primary.upper()}__"
+        else:
+            prefixes[pkg_name] = (
+                f"LEX_{pkg_name.replace('lexigram-', '').upper().replace('-', '_')}__"
+            )
+    return prefixes
+
+
+def find_config_sections() -> dict[str, set[str]]:
+    """Map package name -> every declared config_section value in it."""
+    result: dict[str, set[str]] = {}
     for pkg_src in discover_packages():
         pkg_name = pkg_src.parent.name
-        constants_file = pkg_src / pkg_name / "constants.py"
-        if constants_file.exists():
-            try:
-                tree = ast.parse(constants_file.read_text(encoding="utf-8"))
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.Assign):
-                        for target in node.targets:
-                            if isinstance(target, ast.Name) and target.id == "ENV_PREFIX":
-                                if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                                    prefixes[pkg_name] = node.value.value
-            except (SyntaxError, Exception):
-                pass
-
-        if pkg_name not in prefixes:
-            config_file = pkg_src / pkg_name / "config.py"
-            if config_file.exists():
-                try:
-                    text = config_file.read_text(encoding="utf-8")
-                    for m in ENV_PREFIX_RE.finditer(text):
-                        prefixes[pkg_name] = m.group(1)
-                except (OSError, Exception):
-                    pass
-
-        if pkg_name not in prefixes:
-            prefixes[pkg_name] = f"LEX_{pkg_name.replace('lexigram-', '').upper().replace('-', '_')}__"
-
-    return prefixes
+        sections: set[str] = set()
+        for cls in scan_config_classes_in_package(pkg_src).values():
+            if cls.config_section:
+                sections.add(cls.config_section)
+        result[pkg_name] = sections
+    return result
 
 
 def build_field_paths(
