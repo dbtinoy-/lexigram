@@ -1,0 +1,10 @@
+# Demo Hub — runtime configuration (Blueprint §3).
+# The hub is pure composition: it has no demo-specific knobs, so only the
+# framework ``web`` section is present. Profiles overlay as usual.
+web:
+  server:
+    host: 127.0.0.1
+    port: 7000
+  security:
+    csrf:
+      enabled: false # status API consumed by curl / external tooling
