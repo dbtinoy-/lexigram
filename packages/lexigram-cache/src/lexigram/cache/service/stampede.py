@@ -14,11 +14,11 @@ import random
 from typing import Any
 import weakref
 
-import json
 from lexigram.cache.types import CacheEntry
 from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 from lexigram.di.decorators import inject
 from lexigram.logging import get_logger
+from lexigram.serialization import dumps, loads
 
 logger = get_logger(__name__)
 
@@ -137,7 +137,7 @@ class StampedeProtectedCache:
             if not data:
                 return None
 
-            parsed = json.loads(data) if isinstance(data, (str, bytes)) else data
+            parsed = loads(data) if isinstance(data, (str, bytes)) else data
             if not isinstance(parsed, dict) or "value" not in parsed:
                 return None
             return CacheEntry(
@@ -199,7 +199,7 @@ class StampedeProtectedCache:
 
             await self.cache.set(
                 f"cache:{key}",
-                json.dumps(cache_data),
+                dumps(cache_data).decode(),
                 ttl=ttl,
             )
 
