@@ -19,8 +19,6 @@ Rationale: Auth orchestrator with tightly-coupled RBAC, session, and
 token logic. The methods share state (user lookup, permission checks)
 making extraction artificial. Accept as coherent service.
 
-## auth/store/direct_sql.py — 615 LOC
-
 Rationale: SQL user store implementing a single data-access interface.
 All methods operate on the same table schema. Decomposing per-method
 would scatter a cohesive store across files.
@@ -30,8 +28,6 @@ would scatter a cohesive store across files.
 Rationale: Base controller class with lifecycle hooks and routing
 helpers. All methods serve the same abstract controller role.
 Subclasses depend on the full interface.
-
-## controllers/widgets.py — 684 LOC
 
 Rationale: Widget controller routing HTMX requests. All endpoints share
 the same registry, permission checks, and settings service. The
@@ -49,8 +45,6 @@ single module.
 Rationale: QuerySpec/PagedResult value types. These are data carriers
 used together across the codebase. Separating would break import
 ergonomics without reducing complexity.
-
-## di/bundle_provider.py — 617 LOC
 
 Rationale: Admin DI provider orchestrator. Registers all sub-providers
 in a single coherent boot sequence. Splitting would scatter the
@@ -76,13 +70,9 @@ together. Accept as type module.
 Rationale: Standalone auth template rendering. Self-contained module
 with no internal collaborators to extract. Accept as leaf module.
 
-## ui/organisms/table/views/tabular.py — 657 LOC
-
 Rationale: Tabular data view rendering. All methods serve the single
 concern of rendering table rows/cells. The complexity is inherent to
 the rendering logic. Accept as focused renderer.
-
-## ui/templates/shell.py — 695 LOC
 
 Rationale: Admin shell template renderer. The render() method builds
 the full page layout including sidebar, topbar, search overlay, and
