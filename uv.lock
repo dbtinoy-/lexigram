@@ -9030,7 +9030,7 @@ test = [
 
 [[package]]
 name = "lexigram-web"
-version = "0.1.5004"
+version = "0.1.5005"
 source = { editable = "packages/lexigram-web" }
 dependencies = [
     { name = "aiofiles" },

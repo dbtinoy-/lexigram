@@ -11,34 +11,42 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="workflow_def",
-        title="Generate Workflow Definition",
-        description="Generate a workflow definition with steps and transitions",
-        contributor="workflow",
-        generator_path="lexigram.workflow.cli.generators.workflow_def:WorkflowDefinitionGenerator",
-        default_output_dir="src/workflows",
-        category="workflow",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "workflow_def",
+        "Generate a workflow definition with steps and transitions",
+        "lexigram.workflow.cli.generators.workflow_def:WorkflowDefinitionGenerator",
+        "src/workflows",
     ),
-    GeneratorDefinition(
-        name="pipeline",
-        title="Generate Pipeline",
-        description="Generate a pipeline with sequential processing stages",
-        contributor="workflow",
-        generator_path="lexigram.workflow.cli.generators.pipeline:PipelineGenerator",
-        default_output_dir="src/pipelines",
-        category="workflow",
+    (
+        "pipeline",
+        "Generate a pipeline with sequential processing stages",
+        "lexigram.workflow.cli.generators.pipeline:PipelineGenerator",
+        "src/pipelines",
     ),
-    GeneratorDefinition(
-        name="saga_step",
-        title="Generate Saga Step",
-        description="Generate a saga step with compensating transaction",
-        contributor="workflow",
-        generator_path="lexigram.workflow.cli.generators.saga_step:SagaStepGenerator",
-        default_output_dir="src/sagas",
-        category="workflow",
+    (
+        "saga_step",
+        "Generate a saga step with compensating transaction",
+        "lexigram.workflow.cli.generators.saga_step:SagaStepGenerator",
+        "src/sagas",
     ),
+)
+
+# Titles that make() cannot derive exactly.
+_TITLES: dict[str, str] = {"workflow_def": "Generate Workflow Definition"}
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="workflow",
+        category="workflow",
+        title=_TITLES.get(name),
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
