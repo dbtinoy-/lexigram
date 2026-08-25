@@ -1,36 +1,33 @@
-"""Configuration binding for the resilient-rates demo.
+"""Demo configuration bound from ``application.yaml``.
 
-Loads ``application.yaml`` from this package (``__file__``-anchored) so
-behavior never depends on the process working directory; ``LEX_``
-environment overrides and ``LEX_PROFILE`` overlays still apply through the
-loader.
+Framework convention (exemplar: ``lexigram-cache/config``): the config class
+declares its section and self-binds via ``from_yaml`` — no explicit
+``get_section`` calls anywhere. ``LEX_RATES__*`` overrides and
+``LEX_PROFILE`` overlays apply through the loader.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
-from lexigram.config.main import LexigramConfig
+from lexigram.config import BaseConfig
+from lexigram.validation import Field
 
 APP_YAML = Path(__file__).resolve().parents[2] / "application.yaml"
 
 
-@dataclass(frozen=True)
-class RatesConfig:
-    """Typed ``demo:`` section of the resilient-rates application.yaml.
+@dataclass(init=False)
+class RatesConfig(BaseConfig):
+    """Typed ``demo:`` section of the resilient-rates application.yaml."""
 
-    Attributes:
-        upstream_scenario: Initial upstream health scenario
-            (``healthy | flaky | down | slow``).
-    """
+    config_section: ClassVar[str] = "demo"
 
-    upstream_scenario: str = "healthy"
-
-
-def load_lex_config() -> LexigramConfig:
-    """Load the demo's full ``LexigramConfig`` from application.yaml."""
-    return LexigramConfig.from_yaml(APP_YAML)
+    upstream_scenario: str = Field(
+        "healthy",
+        description="Initial upstream scenario (healthy|flaky|down|slow)",
+    )
 
 
-__all__ = ["APP_YAML", "RatesConfig", "load_lex_config"]
+__all__ = ["APP_YAML", "RatesConfig"]
