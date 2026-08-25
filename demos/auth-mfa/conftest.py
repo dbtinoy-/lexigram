@@ -22,12 +22,16 @@ from lexigram.web.di.provider import WebProvider
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
+from mfa_console.config import load_lex_config  # noqa: E402
+
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
     """Boot the real module graph and expose its ASGI app."""
     async with Application.boot(
-        name="mfa-console-test", modules=[MfaModule.configure()]
+        name="mfa-console-test",
+        modules=[MfaModule.configure()],
+        config=load_lex_config(),
     ) as application:
         web = await application.container.resolve(WebProvider)
         yield web.starlette

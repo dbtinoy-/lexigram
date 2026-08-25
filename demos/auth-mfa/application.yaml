@@ -1,0 +1,14 @@
+# MFA Console — runtime configuration (Blueprint §3).
+web:
+  server:
+    host: 127.0.0.1
+    port: 8092
+  security:
+    csrf:
+      enabled: false # plain JSON posts over local http
+
+# lexigram-auth (config_key: "auth") — offline demo secret.
+auth:
+  secret_key: "mfa-console-demo-secret-key-0123456789abc"
+  token:
+    secret_key: "mfa-console-demo-secret-key-0123456789abc"

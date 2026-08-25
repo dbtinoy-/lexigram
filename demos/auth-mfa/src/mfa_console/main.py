@@ -2,39 +2,42 @@
 
 Run::
 
-    uv run python -m mfa_console            # starts the web server on :8092
+    uv run python -m mfa_console            # serves application.yaml (:8092)
+
+Server host/port come from ``application.yaml`` (``web.server``); override
+without editing the file via ``LEX_WEB__SERVER__PORT``.
 """
 
 from __future__ import annotations
 
-import argparse
 import asyncio
-import os
 import sys
 
 from lexigram.app import Application
-from lexigram.web.server.runner import run_server_async
+from mfa_console.config import bind_web, load_lex_config
 from mfa_console.module import MfaModule
 
 
-async def _serve(port: int) -> None:
+async def _serve() -> None:
+    from lexigram.web.di.provider import WebProvider
+    from lexigram.web.server.runner import run_server_async
+
+    web_config = bind_web()
     async with Application.boot(
         name="mfa-console",
-        modules=[MfaModule.configure(port=port)],
+        modules=[MfaModule.configure()],
+        config=load_lex_config(),
     ) as app:
-        from lexigram.web.di.provider import WebProvider
-
         web = await app.container.resolve(WebProvider)
-        await run_server_async(web.starlette, host="127.0.0.1", port=port)
+        await run_server_async(
+            web.starlette,
+            host=web_config.server.host,
+            port=web_config.server.port,
+        )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="MFA console demo")
-    parser.add_argument(
-        "--port", type=int, default=int(os.environ.get("MFA_PORT", "8092"))
-    )
-    args = parser.parse_args()
-    asyncio.run(_serve(args.port))
+    asyncio.run(_serve())
     return 0
 
 

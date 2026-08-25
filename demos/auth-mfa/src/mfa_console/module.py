@@ -1,16 +1,21 @@
-"""Module for the MFA console demo."""
+"""Module for the MFA console demo.
+
+Blueprint-aligned wiring: web and auth configuration come from
+``application.yaml`` — ``AuthModule.configure()`` is called without an
+explicit config so the auth provider receives its section via framework
+injection (the application boots with this demo's ``LexigramConfig``).
+"""
 
 from __future__ import annotations
 
-import os
+from dataclasses import replace
 
 from lexigram.auth.module import AuthModule
 from lexigram.di.module import DynamicModule, Module, module
-from lexigram.web import WebConfig, WebModule
-from lexigram.web.config import ServerConfig
-from lexigram.web.security import SecurityConfig
+from lexigram.web import WebModule
+from mfa_console.config import bind_web
 from mfa_console.controllers.api import MfaApiController
-from mfa_console.di.provider import MfaProvider, build_auth_config
+from mfa_console.di.provider import MfaProvider
 from mfa_console.ui.pages import PagesController
 
 
@@ -20,25 +25,22 @@ class MfaModule(Module):
 
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
-        selected_port = (
-            port if port is not None else int(os.environ.get("MFA_PORT", "8092"))
-        )
-        web_config = WebConfig(
-            server=ServerConfig(host="127.0.0.1", port=selected_port),
-            # Plain JSON posts over local http; no synchronizer token needed.
-            security=SecurityConfig(enable_csrf=False),
-        )
+        web_config = bind_web()
+        if port is not None:  # programmatic override (tests/embedding)
+            web_config = replace(
+                web_config, server=replace(web_config.server, port=port)
+            )
         return DynamicModule(
             module=cls,
             imports=[
-                AuthModule.configure(build_auth_config()),
+                AuthModule.configure(),
                 WebModule.configure(
                     controllers=[MfaApiController, PagesController],
                     web_config=web_config,
                 ),
             ],
-            providers=[MfaProvider],
-            exports=[],
+            # Intentionally private: a leaf console exports nothing.
+            providers=[MfaProvider()],
         )
 
 
