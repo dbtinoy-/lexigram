@@ -1,8 +1,8 @@
-"""Serve the API-keys console.
+"""Serve the MFA console demo.
 
 Run::
 
-    uv run python -m apikey_console            # serves application.yaml (:8091)
+    uv run python -m mfa_console            # serves application.yaml (:8092)
 
 Host/port come from ``application.yaml`` (``web.server``); override without
 editing the file via ``LEX_WEB__SERVER__PORT``.
@@ -13,6 +13,9 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from mfa_console.app import create_app
+from mfa_console.config import load_lex_config
+
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -20,19 +23,22 @@ logger = get_logger(__name__)
 
 async def serve() -> None:
     """Boot once and serve until interrupted; stop cleanly afterwards."""
+    from lexigram.web.config import WebConfig
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    app = create_app()
+    web_config = load_lex_config().get_section("web", WebConfig)
+    app = create_app(load_lex_config())
     try:
         await app.start()
         web = await app.container.resolve(WebProvider)
-        server = web.web_config.server  # resolved from application.yaml
         logger.info(
-            "server.listening", host=server.host, port=server.port
+            "server.listening", host=web_config.server.host, port=web_config.server.port
         )
         await run_server_async(
-            web.starlette, host=server.host, port=server.port
+            web.starlette,
+            host=web_config.server.host,
+            port=web_config.server.port,
         )
     finally:
         await app.stop()

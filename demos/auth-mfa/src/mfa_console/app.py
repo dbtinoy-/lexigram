@@ -8,7 +8,6 @@ from lexigram.auth.module import AuthModule
 from lexigram.config.main import LexigramConfig
 from lexigram.web.config import WebConfig
 from lexigram.web.module import WebModule
-from mfa_console.config import load_lex_config
 from mfa_console.controllers.api import MfaApiController
 from mfa_console.di.provider import MfaProvider
 from mfa_console.ui.pages import PagesController
@@ -26,9 +25,9 @@ def _coerce_auth_config(auth_config: AuthConfig) -> AuthConfig:
 
 def create_app(config: LexigramConfig | None = None) -> Application:
     """Create the configured (not yet started) application."""
-    config = config or load_lex_config()
+    config = config or LexigramConfig.from_yaml()
     auth_config = _coerce_auth_config(config.get_section("auth", AuthConfig))
-    web_config = config.get_section("web", WebConfig)
+    web_config = WebConfig.from_yaml()
 
     app = Application(name="mfa-console", config=config)
     app.add_modules(

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from apikey_console.config import load_lex_config
 from apikey_console.controllers.api import KeysApiController
 from apikey_console.di.provider import ApiKeysProvider
 from apikey_console.ui.pages import PagesController
@@ -26,7 +25,7 @@ def _coerce_auth_config(auth_config: AuthConfig) -> AuthConfig:
 
 def create_app(config: LexigramConfig | None = None) -> Application:
     """Create the configured (not yet started) application."""
-    config = config or load_lex_config()
+    config = config or LexigramConfig.from_yaml()
     auth_config = _coerce_auth_config(config.get_section("auth", AuthConfig))
     web_config = config.get_section("web", WebConfig)
 

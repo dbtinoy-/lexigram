@@ -41,6 +41,16 @@ class RetryingMailer:
         self._max_retries = max_retries
         self._base_delay = base_delay
 
+    @property
+    def backend(self) -> Any:
+        """The wrapped raw mail backend (for flush workers)."""
+        return self._backend
+
+    @property
+    def store(self) -> DeliveryStoreProtocol:
+        """The delivery-state store (for flush workers)."""
+        return self._store
+
     async def send(self, message: Any) -> Result[str, PermanentDeliveryFailure]:
         """Send a message, scheduling a retry on transient failure.
 

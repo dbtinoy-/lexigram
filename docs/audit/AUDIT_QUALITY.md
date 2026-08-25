@@ -9,7 +9,7 @@
 - Tool checks run: 2
 - Passing tools: 2
 - Failing tools: 0
-- Packages counted: 55
+- Packages counted: 54
 - Total mypy errors: 0
 - Packages with errors: 0
 
@@ -17,14 +17,14 @@
 
 | Tool | Status | Exit Code | Duration | Command |
 |------|--------|-----------|----------|---------|
-| `Ruff` | **PASS** | 0 | 243 ms | `uv run ruff check .` |
-| `Mypy` | **PASS** | 0 | 54219 ms | `uv run mypy src/ (per-package across 55 packages)` |
+| `Ruff` | **PASS** | 0 | 240 ms | `uv run ruff check .` |
+| `Mypy` | **PASS** | 0 | 46250 ms | `uv run mypy src/ (per-package across 54 packages)` |
 
 ### Ruff
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `243 ms`
+- Duration: `240 ms`
 - Command: `uv run ruff check .`
 - Output snippet:
 
@@ -36,8 +36,8 @@ All checks passed!
 
 - Status: **PASS**
 - Exit code: `0`
-- Duration: `54219 ms`
-- Command: `uv run mypy src/ (per-package across 55 packages)`
+- Duration: `46250 ms`
+- Command: `uv run mypy src/ (per-package across 54 packages)`
 - Output snippet:
 
 ```text
@@ -69,10 +69,9 @@ All per-package mypy checks passed.
 | `lexigram-ai-workers` | 35 | 34 |
 | `lexigram-audit` | 46 | 37 |
 | `lexigram-auth` | 137 | 86 |
-| `lexigram-builder` | 29 | 16 |
 | `lexigram-cache` | 94 | 72 |
 | `lexigram-cli` | 112 | 77 |
-| `lexigram-contracts` | 350 | 166 |
+| `lexigram-contracts` | 350 | 168 |
 | `lexigram-events` | 158 | 108 |
 | `lexigram-features` | 35 | 25 |
 | `lexigram-graph` | 25 | 32 |

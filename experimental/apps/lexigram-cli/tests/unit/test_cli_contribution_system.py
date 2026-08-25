@@ -5,7 +5,7 @@ import typer
 
 from lexigram.cli.assembly import CommandAssembler
 from lexigram.cli.contributors.base import BaseCliContributor
-from lexigram.cli.contributors.core import _CORE_GENERATOR_DATA, CoreCliContributor
+from lexigram.cli.contributors.core import _GENERATOR_SPECS, CoreCliContributor
 from lexigram.cli.contributors.registry import CliContributorRegistry
 from lexigram.cli.registry.generator import GeneratorRegistry
 from lexigram.contracts.cli.protocols import CliContributorProtocol
@@ -140,11 +140,11 @@ class TestCliContributorRegistry:
         assert r2.get_all() == []
 
 
-from lexigram.cli.contributors.core import _CORE_GENERATOR_DATA, CoreCliContributor
+from lexigram.cli.contributors.core import _GENERATOR_SPECS, CoreCliContributor
 
-# The set of generator names expected from _CORE_GENERATOR_DATA.
+# The set of generator names expected from _GENERATOR_SPECS.
 _EXPECTED_CORE_NAMES: frozenset[str] = frozenset(
-    name for name, _ in _CORE_GENERATOR_DATA
+    name for name, *_ in _GENERATOR_SPECS
 )
 
 

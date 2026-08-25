@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from lexigram.contracts.cli.contributions import (
     CommandContribution,
     DoctorCheckContribution,
@@ -8,8 +10,6 @@ from lexigram.contracts.cli.contributions import (
     SchemaSetupContribution,
     ShellContextContribution,
 )
-from collections.abc import Iterable
-
 from lexigram.contracts.cli.types import GeneratorDefinition
 
 

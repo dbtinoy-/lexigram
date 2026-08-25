@@ -1,39 +1,32 @@
-"""Demo configuration bound from ``application.yaml``.
+"""Demo configuration — ``demo:`` section of application.yaml.
 
-Blueprint reference wiring: knobs live in YAML next to the demo; Python binds
-them explicitly via ``LexigramConfig.get_section`` because provider
-auto-injection reads configuration from the current working directory and is
-therefore unreliable for demos run from a repository root.
+Framework convention: run the demo from its own directory so
+``LexigramConfig``/``from_yaml`` auto-discovers ``application.yaml``.
+``LEX_REALTIME__*`` overrides and ``LEX_PROFILE`` overlays apply via the loader.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from typing import ClassVar
 
-from lexigram.config.main import LexigramConfig
-
-APP_YAML = Path(__file__).resolve().parents[2] / "application.yaml"
-
-
-@dataclass(frozen=True)
-class RealtimeConfig:
-    """Typed ``demo:`` section of the realtime monitor application.yaml.
-
-    Attributes:
-        heartbeat_interval_seconds: Delay between synthetic heartbeat events.
-        history_size: Events retained for SSE replay.
-        queue_capacity: Per-subscriber buffer before oldest-event drop.
-    """
-
-    heartbeat_interval_seconds: float = 15.0
-    history_size: int = 100
-    queue_capacity: int = 100
+from lexigram.config import BaseConfig
+from lexigram.validation import Field
 
 
-def load_lex_config() -> LexigramConfig:
-    """Load the demo's full ``LexigramConfig`` from application.yaml."""
-    return LexigramConfig.from_yaml(APP_YAML)
+@dataclass(init=False)
+class RealtimeConfig(BaseConfig):
+    """Typed ``demo:`` section of the realtime monitor application.yaml."""
+
+    config_section: ClassVar[str] = "demo"
+
+    heartbeat_interval_seconds: float = Field(
+        15.0, description="Delay between synthetic heartbeat events"
+    )
+    history_size: int = Field(100, description="Events retained for SSE replay")
+    queue_capacity: int = Field(
+        100, description="Per-subscriber buffer before oldest-event drop"
+    )
 
 
-__all__ = ["APP_YAML", "RealtimeConfig", "load_lex_config"]
+__all__ = ["RealtimeConfig"]

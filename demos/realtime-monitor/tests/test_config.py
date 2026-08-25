@@ -6,27 +6,24 @@ import pathlib
 
 import pytest
 
-from ops_console.config import RealtimeConfig, load_lex_config
+from lexigram.web.config import WebConfig
+
+from ops_console.config import RealtimeConfig
 
 
-def test_load_reads_web_and_demo_sections() -> None:
-    config = load_lex_config()
-    assert config.has_section("web")
-    demo = config.get_section("demo", RealtimeConfig)
+def test_demo_section_self_binds_with_defaults() -> None:
+    demo = RealtimeConfig.from_yaml()
     assert demo.heartbeat_interval_seconds == 15
     assert demo.history_size == 100
     assert demo.queue_capacity == 100
 
 
 def test_env_overrides_win(monkeypatch: pytest.MonkeyPatch) -> None:
-    from lexigram.web.config import WebConfig
-
     monkeypatch.setenv("LEX_WEB__SERVER__PORT", "7099")
     monkeypatch.setenv("LEX_DEMO__HEARTBEAT_INTERVAL_SECONDS", "1.5")
 
-    config = load_lex_config()
-    web = config.get_section("web", WebConfig)
-    demo = config.get_section("demo", RealtimeConfig)
+    web = WebConfig.from_yaml()
+    demo = RealtimeConfig.from_yaml()
 
     assert web.server.port == 7099
     assert demo.heartbeat_interval_seconds == 1.5

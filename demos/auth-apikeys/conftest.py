@@ -21,6 +21,10 @@ from lexigram.web.di.provider import WebProvider
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
+import os  # noqa: E402
+
+os.chdir(Path(__file__).resolve().parent)
+
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:

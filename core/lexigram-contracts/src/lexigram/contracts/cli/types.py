@@ -49,7 +49,7 @@ class GeneratorDefinition:
         category: str = "general",
         options: tuple[GeneratorOption, ...] = (),
         title: str | None = None,
-    ) -> "GeneratorDefinition":
+    ) -> GeneratorDefinition:
         """Build a definition with conventional title derivation.
 
         The title defaults to ``"Generate <Title Case Of Name>"`` — e.g.
