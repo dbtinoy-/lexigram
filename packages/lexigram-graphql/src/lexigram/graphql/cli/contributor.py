@@ -4,6 +4,27 @@ from __future__ import annotations
 
 from lexigram.contracts.cli.types import GeneratorDefinition
 
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "dataloader",
+        "Generate a GraphQL DataLoaderProtocol to solve N+1 problems",
+        "lexigram.graphql.cli.generators.dataloader:DataLoaderGenerator",
+        "src/graphql/dataloaders",
+    ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="graphql",
+    )
+    for name, description, generator_path, output_dir in _SPECS
+)
+
 
 class GraphQLCliContributor:
     """CLI contributor for the lexigram-graphql package."""
@@ -15,16 +36,7 @@ class GraphQLCliContributor:
 
     def get_generators(self) -> list[GeneratorDefinition]:
         """Return generator definitions for GraphQL."""
-        return [
-            GeneratorDefinition(
-                name="dataloader",
-                title="Generate Dataloader",
-                description="Generate a GraphQL DataLoaderProtocol to solve N+1 problems",
-                contributor="graphql",
-                generator_path="lexigram.graphql.cli.generators.dataloader:DataLoaderGenerator",
-                default_output_dir="src/graphql/dataloaders",
-            )
-        ]
+        return list(_GENERATOR_DEFINITIONS)
 
 
 __all__ = ["GraphQLCliContributor"]
