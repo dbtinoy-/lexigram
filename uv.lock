@@ -4275,7 +4275,7 @@ wheels = [
 
 [[package]]
 name = "lexigram"
-version = "0.1.5002"
+version = "0.1.5003"
 source = { editable = "core/lexigram" }
 dependencies = [
     { name = "lexigram-contracts" },
@@ -8278,7 +8278,7 @@ test = [
 
 [[package]]
 name = "lexigram-sql"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-sql" }
 dependencies = [
     { name = "aiosqlite" },
@@ -9040,7 +9040,7 @@ test = [
 
 [[package]]
 name = "lexigram-web"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-web" }
 dependencies = [
     { name = "aiofiles" },

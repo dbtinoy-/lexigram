@@ -47,24 +47,6 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
         default_output_dir="src/health",
         category="database",
     ),
-    GeneratorDefinition(
-        name="model",
-        title="Generate Model",
-        description="Generate a SQLAlchemy model",
-        contributor="sql",
-        generator_path="lexigram.sql.cli.generators.model:ModelGenerator",
-        default_output_dir="src/models",
-        category="database",
-    ),
-    GeneratorDefinition(
-        name="service",
-        title="Generate Service",
-        description="Generate a service with unit of work",
-        contributor="sql",
-        generator_path="lexigram.sql.cli.generators.service:ServiceGenerator",
-        default_output_dir="src/services",
-        category="database",
-    ),
 )
 
 

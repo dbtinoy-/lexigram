@@ -18,7 +18,7 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
     GeneratorDefinition(
         name="resource",
         title="Generate Resource",
-        description="Generate a RESTful resource with CRUD endpoints",
+        description="Generate a resource controller slice",
         contributor="web",
         generator_path="lexigram.web.cli.generators.resource:ResourceGenerator",
         default_output_dir="src",

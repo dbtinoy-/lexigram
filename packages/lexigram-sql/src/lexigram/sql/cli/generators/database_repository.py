@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.contracts.cli.parsers import parse_fields
 from lexigram.sql.cli.generators.base import GenerationResult, GeneratorBase
-from lexigram.sql.cli.generators.field_parser import parse_fields
 
 
 class DatabaseRepositoryGenerator(GeneratorBase):
