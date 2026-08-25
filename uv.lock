@@ -6494,7 +6494,7 @@ test = [
 
 [[package]]
 name = "lexigram-contracts"
-version = "0.1.5004"
+version = "0.1.5005"
 source = { editable = "core/lexigram-contracts" }
 dependencies = [
     { name = "typing-extensions" },

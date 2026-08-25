@@ -46,6 +46,7 @@ import urllib.error
 import urllib.request
 
 
+from dev.core.bootstrap import REPO_ROOT as ROOT
 from dev.core.package_inventory import discover_package_paths
 
 PYPI_URL = "https://pypi.org/pypi/{name}/json"
