@@ -114,6 +114,25 @@ class JWTBlacklist:
         self._cache = resolved
         return self._cache
 
+    @staticmethod
+    def _flag(result: Any) -> bool:
+        """Normalise a cache operation to a plain boolean.
+
+        Backends return ``Result[bool, CacheError]``; treating that as a
+        bool makes ``Ok(False)`` truthy — historically flagging every token
+        as revoked the moment a cache was attached. Unwraps Results,
+        mapping ``Err`` to ``False`` (callers fail closed separately).
+        """
+        if result is None:
+            return False
+        unwrap = getattr(result, "unwrap", None)
+        if callable(unwrap):
+            try:
+                return bool(result.unwrap())
+            except Exception:  # noqa: BLE001 — Err branch
+                return False
+        return bool(result)
+
     # ── Public API ────────────────────────────────────────────────────────
 
     async def revoke(self, token: str) -> Result[None, ContractsTokenError]:
@@ -151,7 +170,7 @@ class JWTBlacklist:
                 return Ok(None)
 
             blacklist_key = f"jwt:blacklist:{token_hash}"
-            success = bool(await cache.set(key=blacklist_key, value="1", ttl=ttl))
+            success = self._flag(await cache.set(key=blacklist_key, value="1", ttl=ttl))
 
             if success and self._audit_logger is not None:
                 from lexigram.contracts.audit import AuditEntry
@@ -246,12 +265,17 @@ class JWTBlacklist:
             return token_hash in self._fallback
 
         try:
-            if await cache.exists(f"jwt:blacklist:{token_hash}"):
+            if self._flag(await cache.exists(f"jwt:blacklist:{token_hash}")):
                 return True
 
             unverified_payload = jwt.decode(token, options={"verify_signature": False})
             user_id = unverified_payload.get("sub")
-            return bool(user_id and await cache.exists(f"jwt:blacklist:user:{user_id}"))
+            return bool(
+                user_id
+                and self._flag(
+                    await cache.exists(f"jwt:blacklist:user:{user_id}")
+                )
+            )
 
         except (RuntimeError, OSError, ConnectionError, jwt.InvalidTokenError):
             logger.exception("token_blacklist_check_failed")
