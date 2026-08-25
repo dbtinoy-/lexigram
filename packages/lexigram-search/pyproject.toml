@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-search"
-version = "0.1.5001"
+version = "0.1.5002"
 description = "Full-text search and indexing for Lexigram Framework - Elasticsearch, Meilisearch, and Algolia"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -5,15 +5,25 @@ from __future__ import annotations
 from lexigram.contracts.cli.contributions import HealthCheckContribution
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="search_index",
-        title="Generate Search Index",
-        description="Generate a search index with backend registration",
-        contributor="search",
-        generator_path="lexigram.search.cli.generators.search_index:SearchIndexGenerator",
-        default_output_dir="src/search",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "search_index",
+        "Generate a search index with backend registration",
+        "lexigram.search.cli.generators.search_index:SearchIndexGenerator",
+        "src/search",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="search",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
