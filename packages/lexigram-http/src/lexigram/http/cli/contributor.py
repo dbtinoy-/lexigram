@@ -4,6 +4,27 @@ from __future__ import annotations
 
 from lexigram.contracts.cli.types import GeneratorDefinition
 
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "api_client",
+        "Generate an external API client",
+        "lexigram.http.cli.generators.api_client:APIClientGenerator",
+        "src/clients",
+    ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="http",
+    )
+    for name, description, generator_path, output_dir in _SPECS
+)
+
 
 class HttpCliContributor:
     """CLI contributor for the lexigram-http package."""
@@ -15,16 +36,7 @@ class HttpCliContributor:
 
     def get_generators(self) -> list[GeneratorDefinition]:
         """Return generator definitions for HTTP."""
-        return [
-            GeneratorDefinition(
-                name="api_client",
-                title="Generate Api Client",
-                description="Generate an external API client",
-                contributor="http",
-                generator_path="lexigram.http.cli.generators.api_client:APIClientGenerator",
-                default_output_dir="src/clients",
-            )
-        ]
+        return list(_GENERATOR_DEFINITIONS)
 
 
 __all__ = ["HttpCliContributor"]
