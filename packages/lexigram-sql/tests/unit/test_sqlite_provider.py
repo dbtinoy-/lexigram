@@ -424,3 +424,67 @@ class TestSQLiteProvider:
         assert stats["connected"]
         assert stats["connection_pool"]
         assert stats["query_logger"]
+
+
+class TestSQLiteProviderUrlSchemes:
+    """Any sqlite* scheme (sync or async driver) must normalize to a bare
+    path — never leak scheme fragments into the filesystem."""
+
+    def test_async_scheme_relative_path(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        provider = SQLiteProvider("sqlite+aiosqlite:///data/app.db")
+
+        assert provider.connection_string == "sqlite:///data/app.db"
+        assert provider.database == "data/app.db"
+        assert not (tmp_path / "sqlite+aiosqlite:").exists()
+
+    def test_async_scheme_absolute_path(self, tmp_path):
+        db = tmp_path / "abs" / "db.sqlite"
+
+        provider = SQLiteProvider(f"sqlite+aiosqlite:///{db}")
+
+        assert provider.connection_string == f"sqlite:///{db}"
+        assert provider.database == str(db).lstrip("/")
+        assert (tmp_path / "abs").is_dir()
+
+    def test_sync_scheme_unchanged(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        provider = SQLiteProvider("sqlite:///data/app.db")
+
+        assert provider.connection_string == "sqlite:///data/app.db"
+        assert provider.database == "data/app.db"
+
+    def test_async_scheme_memory(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        provider = SQLiteProvider("sqlite+aiosqlite:///:memory:")
+
+        assert provider.connection_string == "sqlite:///:memory:"
+        assert provider.database == ":memory:"
+        assert list(tmp_path.iterdir()) == []
+
+    def test_other_driver_variant(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        provider = SQLiteProvider("sqlite+pysqlite:///data/app.db")
+
+        assert provider.connection_string == "sqlite:///data/app.db"
+        assert provider.database == "data/app.db"
+
+    @pytest.mark.asyncio
+    @patch("aiosqlite.connect", new_callable=AsyncMock)
+    async def test_create_connection_bare_path(
+        self, mock_connect, tmp_path, monkeypatch
+    ):
+        """The connection layer must receive the bare path, not the URL."""
+        monkeypatch.chdir(tmp_path)
+        mock_connection = Mock()
+        mock_connect.return_value = mock_connection
+        mock_connection.execute = AsyncMock()
+
+        provider = SQLiteProvider("sqlite+aiosqlite:///data/app.db")
+        await provider._create_connection()
+
+        mock_connect.assert_called_once_with("data/app.db")

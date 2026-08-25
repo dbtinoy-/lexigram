@@ -5,6 +5,7 @@ SQLite database provider for community edition
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any
 
 aiosqlite: Any = None
@@ -46,35 +47,46 @@ class SQLiteProvider(DatabaseDriver):
             raise ImportError(
                 "aiosqlite is required for SQLiteProvider. Install it with: pip install aiosqlite",
             )
-        # Support either a raw database path (e.g., '/var/db/test.db') or a
-        # pre-constructed connection string (e.g., 'sqlite:///test.db' or
-        # 'sqlite:///:memory:').
-        if isinstance(database_path, str) and database_path.startswith("sqlite:///"):
-            # Already a connection string
-            connection_string = database_path
-            # If it's a file path, ensure parent directory exists
-            path_str = database_path.replace("sqlite:///", "")
-            if path_str and path_str != ":memory:":
-                Path(path_str).parent.mkdir(parents=True, exist_ok=True)
+        # Accept a raw filesystem path (e.g., '/var/db/test.db') or any
+        # sqlite connection string — the sync scheme ('sqlite:///') or any
+        # async driver variant ('sqlite+aiosqlite:///', 'sqlite+pysqlite:///',
+        # ...). All schemes normalize to a bare path + canonical
+        # 'sqlite:///' connection string, because the pool layer connects
+        # via aiosqlite directly from the extracted path.
+        path: str | None = None
+        if isinstance(database_path, str):
+            scheme_match = re.match(r"^sqlite(?:\+[a-zA-Z0-9_]+)?:", database_path)
+            if scheme_match:
+                rest = database_path[scheme_match.end() :]
+                if rest.startswith("///"):
+                    path = rest[3:]
+                elif rest.startswith("//"):
+                    path = ""  # authority-only form -> in-memory
+                else:
+                    path = rest
+                path = path or ":memory:"
+
+        if path is not None:
+            if path != ":memory:":
+                Path(path).parent.mkdir(parents=True, exist_ok=True)
+            connection_string = f"sqlite:///{path}"
+            self.database = path.lstrip("/") if path.startswith("/") else path
         elif database_path == ":memory:":
             connection_string = "sqlite:///:memory:"
+            self.database = ":memory:"
         else:
             # Treat as a filesystem path
             Path(database_path).parent.mkdir(parents=True, exist_ok=True)
             connection_string = f"sqlite:///{database_path}"
+            # Normalize stored database identifier (strip leading slash)
+            self.database = (
+                database_path.lstrip("/")
+                if isinstance(database_path, str) and database_path.startswith("/")
+                else database_path
+            )
 
-        # Expose connection_string and normalized database for compatibility with tests
+        # Expose for tests/consumers (base stores it on the connection manager)
         self.connection_string = connection_string
-        # Normalize stored database identifier for tests (strip leading slash for file paths)
-        if (
-            isinstance(database_path, str)
-            and database_path != ":memory:"
-            and database_path.startswith("/")
-        ):
-            self.database = database_path.lstrip("/")
-        else:
-            self.database = database_path
-
         super().__init__(connection_string, **kwargs)
 
     async def _create_connection(self) -> Any:
