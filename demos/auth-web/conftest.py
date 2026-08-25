@@ -12,25 +12,28 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 import sys
 
-from auth_web.module import AuthWebModule
 import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
+from auth_web.app import create_app  # noqa: E402
+from auth_web.config import load_lex_config  # noqa: E402
+
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
-    """Boot the real module graph and expose its ASGI app."""
-    async with Application.boot(
-        name="auth-web-test", modules=[AuthWebModule.configure()]
-    ) as application:
+    """Boot the real composition root and expose its ASGI app."""
+    application = create_app(load_lex_config())
+    await application.start()
+    try:
         web = await application.container.resolve(WebProvider)
         yield web.starlette
+    finally:
+        await application.stop()
 
 
 @pytest.fixture

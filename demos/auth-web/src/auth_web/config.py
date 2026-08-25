@@ -1,4 +1,9 @@
-"""Configuration binding — loads this demo's application.yaml."""
+"""Configuration binding for the auth web demo.
+
+Blueprint wiring: server and auth knobs live in ``application.yaml``; binding
+is explicit against this demo's own file (``__file__``-anchored) so behavior
+never depends on the current working directory.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +15,7 @@ APP_YAML = Path(__file__).resolve().parents[2] / "application.yaml"
 
 
 def load_lex_config() -> LexigramConfig:
-    """Load the demo's full ``LexigramConfig``."""
+    """Load the demo's full ``LexigramConfig`` (web + auth sections)."""
     return LexigramConfig.from_yaml(APP_YAML)
 
 

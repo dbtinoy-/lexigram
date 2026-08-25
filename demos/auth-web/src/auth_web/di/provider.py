@@ -13,7 +13,6 @@ from auth_web.ui.pages import PagesController
 from lexigram.auth.authn.services import AuthenticationService
 from lexigram.auth.authn.user_service import UserService
 from lexigram.auth.authz.service import AuthorizationService
-from lexigram.auth.config import AuthConfig, JWTConfig
 from lexigram.auth.session.cookie_backend import SessionCookieBackend
 from lexigram.contracts.auth import AuthenticatedUserProtocol
 from lexigram.contracts.auth.protocols import PasswordHasherProtocol
@@ -31,23 +30,7 @@ __all__ = [
     "DEMO_EMAIL",
     "DEMO_PASSWORD",
     "AuthWebProvider",
-    "build_auth_config",
 ]
-
-
-def build_auth_config() -> AuthConfig:
-    """Offline demo config: explicit dev secrets.
-
-    Note:
-        ``AuthConfig.users`` and ``AuthConfig.roles`` are inert today
-        (nothing consumes them at boot), so the demo account is seeded via
-        :class:`~auth_web.services.seed.DemoSeedService` in
-        :meth:`AuthWebProvider.boot`.
-    """
-    return AuthConfig(
-        secret_key=DEMO_SECRET,
-        token=JWTConfig(secret_key=DEMO_SECRET),
-    )
 
 
 class AuthWebProvider(Provider):

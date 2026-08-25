@@ -1,7 +1,4 @@
-auth:
-  secret_key: "auth-web-demo-secret-key-0123456789abcd"
-  token:
-    secret_key: "auth-web-demo-secret-key-0123456789abcd"
+# Auth Web — runtime configuration (Blueprint §3).
 web:
   server:
     host: 127.0.0.1
@@ -9,3 +6,9 @@ web:
   security:
     csrf:
       enabled: false # plain JSON posts over local http
+
+# lexigram-auth (config_key: "auth") — offline demo secret.
+auth:
+  secret_key: "auth-web-demo-secret-key-0123456789abcdef"
+  token:
+    secret_key: "auth-web-demo-secret-key-0123456789abcdef"
