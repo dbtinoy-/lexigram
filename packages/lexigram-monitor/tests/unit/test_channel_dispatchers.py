@@ -113,7 +113,7 @@ class TestSlackBusinessHoursDispatcher:
         dispatcher = SlackBusinessHoursDispatcher(
             webhook_url="https://hooks.slack.com/test",
             timezone="UTC",
-            business_hours=(23, 24),  # Very narrow window — always outside
+            business_hours=(0, 0),  # Empty window — always outside, clock-independent
             http_client=http_client,
         )
 
@@ -135,7 +135,7 @@ class TestSlackBusinessHoursDispatcher:
         dispatcher = SlackBusinessHoursDispatcher(
             webhook_url="https://hooks.slack.com/test",
             timezone="UTC",
-            business_hours=(23, 24),  # Always outside — queues everything
+            business_hours=(0, 0),  # Empty window — always outside, clock-independent
             http_client=http_client,
         )
 

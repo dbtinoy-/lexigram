@@ -104,6 +104,9 @@ def create_app(
     async def login_submit(request):
         return await controller.login_submit(request)
 
+    async def mfa_challenge_submit(request):
+        return await controller.mfa_challenge_submit(request)
+
     async def home(request):
         if request.session.get("admin_user_id"):
             from starlette.responses import PlainTextResponse
@@ -116,6 +119,7 @@ def create_app(
     routes = [
         Route("/admin/login", login_form, methods=["GET"]),
         Route("/admin/login", login_submit, methods=["POST"]),
+        Route("/admin/login/2fa", mfa_challenge_submit, methods=["POST"]),
         Route("/admin/", home, methods=["GET"]),
     ]
 

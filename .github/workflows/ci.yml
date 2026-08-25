@@ -143,9 +143,7 @@ jobs:
           # so node ids are <tier>/<package>/tests/...
           case "${{ matrix.group }}" in
             packages)
-              # Time-of-day dependent: fail only during the 23:00 UTC
-              # business-hours window
-              DESELECT="--deselect packages/lexigram-monitor/tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_queues_outside_business_hours --deselect packages/lexigram-monitor/tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_flush_queue_sends_queued --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_creates_file --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_no_force_skips_existing --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_with_fields_str --deselect packages/lexigram-queue/tests/unit/test_message_consumer_generator.py::test_message_consumer_generator_fields"
+              DESELECT="--deselect packages/lexigram-monitor/tests/unit/test_channel_dispatchers.py::TestSlackBusinessHoursDispatcher::test_queues_outside_business_hours --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_creates_file --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_no_force_skips_existing --deselect packages/lexigram-nosql/tests/unit/test_document_repository_generator.py::TestDocumentRepositoryGenerator::test_generate_with_fields_str --deselect packages/lexigram-queue/tests/unit/test_message_consumer_generator.py::test_message_consumer_generator_fields"
               ;;
             *)
               DESELECT=""
