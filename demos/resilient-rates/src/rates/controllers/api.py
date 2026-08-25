@@ -57,12 +57,12 @@ class RatesApiController(Controller):
         return JSONResponse(payload)
 
     @get("/stats")
-    async def stats(self, request: Request | None = None) -> dict[str, Any]:
+    async def stats(self, request: Request) -> dict[str, Any]:
         """Return the aggregate service counters."""
         return asdict(self.service.stats())
 
     @post("/cache/clear")
-    async def clear_cache(self, request: Request | None = None) -> dict[str, Any]:
+    async def clear_cache(self, request: Request) -> dict[str, Any]:
         """Drop all cached quotes."""
         await self.service.clear_cache()
         return {"ok": True}
