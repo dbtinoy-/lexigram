@@ -272,9 +272,7 @@ class JWTBlacklist:
             user_id = unverified_payload.get("sub")
             return bool(
                 user_id
-                and self._flag(
-                    await cache.exists(f"jwt:blacklist:user:{user_id}")
-                )
+                and self._flag(await cache.exists(f"jwt:blacklist:user:{user_id}"))
             )
 
         except (RuntimeError, OSError, ConnectionError, jwt.InvalidTokenError):

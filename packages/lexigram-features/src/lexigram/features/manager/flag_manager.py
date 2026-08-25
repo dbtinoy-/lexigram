@@ -224,7 +224,6 @@ class FlagManager:
         if not hasattr(self._provider, "get_all_flags"):
             return {}
 
-
         definitions: dict[str, Any] = await self._provider.get_all_flags()
         evaluations: dict[str, FlagEvaluation] = {}
         for name in definitions:
