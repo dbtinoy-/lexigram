@@ -44,8 +44,13 @@ class EventStreamService:
         history_size: Number of events retained for replay.
     """
 
-    def __init__(self, history_size: int = DEFAULT_HISTORY_SIZE) -> None:
+    def __init__(
+        self,
+        history_size: int = DEFAULT_HISTORY_SIZE,
+        queue_capacity: int = DEFAULT_QUEUE_CAPACITY,
+    ) -> None:
         self._history: deque[SystemEvent] = deque(maxlen=history_size)
+        self._queue_capacity = queue_capacity
         self._subscribers: set[asyncio.Queue[SystemEvent]] = set()
         self._lock = asyncio.Lock()
 
@@ -89,6 +94,32 @@ class EventStreamService:
         )
         return len(self._subscribers)
 
+    def build_manual(
+        self,
+        message: str,
+        severity_name: str,
+        source: str,
+    ) -> SystemEvent:
+        """Build a manual/console-published event without broadcasting.
+
+        Args:
+            message: Human-readable summary (empty becomes a placeholder).
+            severity_name: Severity member value; unknown names map to INFO.
+            source: Component that produced the event.
+
+        Returns:
+            The ready-to-publish event.
+        """
+        from ops_console.domain import Severity
+
+        return SystemEvent(
+            kind="manual",
+            message=message or "no message",
+            severity=Severity.from_name(severity_name),
+            source=source or "console",
+            payload={"operator": True},
+        )
+
     async def subscribe(self) -> AsyncIterator[SystemEvent]:
         """Iterate events: replay history, then live events until closed.
 
@@ -104,7 +135,7 @@ class EventStreamService:
         """
         async with self._lock:
             queue: asyncio.Queue[SystemEvent] = asyncio.Queue(
-                maxsize=DEFAULT_QUEUE_CAPACITY
+                maxsize=self._queue_capacity
             )
             self._subscribers.add(queue)
             history = list(self._history)

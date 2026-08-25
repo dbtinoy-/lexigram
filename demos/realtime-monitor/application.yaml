@@ -1,0 +1,14 @@
+# Realtime Monitor — every runtime knob lives here (Blueprint §3).
+# Profiles: application.<LEX_PROFILE>.yaml overlays on top of this file.
+web:
+  server:
+    host: 127.0.0.1
+    port: 7071
+  security:
+    csrf:
+      enabled: false # publish endpoint accepts curl / operator scripts
+
+demo:
+  heartbeat_interval_seconds: 15
+  history_size: 100
+  queue_capacity: 100

@@ -51,7 +51,7 @@ class OperatorHandler(Controller, AbstractWebSocketHandler):
         await websocket.send_json({"ok": True, "severity": event.severity.value})
 
     async def on_disconnect(self, websocket: WebSocket) -> None:
-        return
+        """No per-connection state to clean up (stream owns subscriptions)."""
 
 
 __all__ = ["OperatorHandler"]

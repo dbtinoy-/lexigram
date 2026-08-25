@@ -23,22 +23,24 @@ from typing import Any
 
 from starlette.requests import Request
 
-from lexigram.serialization import loads as json_loads
 from lexigram.web import Controller, get, post
 from lexigram.web.sse.handler import AbstractSSEHandler
-from ops_console.domain import Severity, SystemEvent
 from ops_console.services.event_stream import EventStreamService
 
 
 class EventsStreamHandler(AbstractSSEHandler):
     """SSE handler that replays history and then streams live events."""
 
-    heartbeat_interval = 15
     retry = 3000
 
-    def __init__(self, events: EventStreamService) -> None:
+    def __init__(
+        self,
+        events: EventStreamService,
+        heartbeat_interval: float = 15.0,
+    ) -> None:
         super().__init__()
         self.events = events
+        self.heartbeat_interval = int(heartbeat_interval)
 
     async def stream(self, request: Request) -> AsyncGenerator[dict[str, Any], None]:
         async for event in self.events.subscribe():
@@ -68,13 +70,11 @@ class ConsoleController(Controller):
 
     @post("/api/events")
     async def publish_event(self, request: Request) -> dict[str, Any]:
-        body = json_loads(await request.body())
-        event = SystemEvent(
-            kind="manual",
-            message=str(body.get("message") or "no message"),
-            severity=Severity.from_name(str(body.get("severity") or "info")),
+        body = await request.json()
+        event = self.events.build_manual(
+            message=str(body.get("message") or ""),
+            severity_name=str(body.get("severity") or "info"),
             source=str(body.get("source") or "console"),
-            payload={"operator": True},
         )
         subscribers = await self.events.publish(event)
         return {"ok": True, "subscribers": subscribers}

@@ -28,10 +28,19 @@ class Severity(str, Enum):
 
     @classmethod
     def from_name(cls, name: str) -> Severity:
-        """Resolve a severity from its string member value."""
-        if name in cls._value2member_map_:
+        """Resolve a severity from its string member value.
+
+        Args:
+            name: One of ``info | warn | critical`` (case-sensitive).
+
+        Returns:
+            The matching member; ``INFO`` for unknown names so a malformed
+            external payload can never abort the broadcast path.
+        """
+        try:
             return cls(name)
-        return cls.INFO
+        except ValueError:
+            return cls.INFO
 
 
 @dataclass(frozen=True)

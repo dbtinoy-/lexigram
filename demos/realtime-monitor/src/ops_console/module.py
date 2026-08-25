@@ -1,19 +1,19 @@
 """Realtime monitor demo module.
 
-Wires the web layer (dashboard, SSE, HTTP publish) together with the realtime
-provider (shared event stream, WS operator channel, heartbeat producer).
+Blueprint-aligned wiring: configuration is bound from ``application.yaml``
+via :func:`ops_console.config.bind_application` — no literal host/port/security
+values here. Wires the web layer (dashboard, SSE, HTTP publish) together with
+the realtime provider (shared event stream, WS operator channel, heartbeat).
 """
 
 from __future__ import annotations
 
-import os
+from dataclasses import replace
 
 from lexigram.di.module import DynamicModule, Module, module
-from lexigram.web import WebConfig, WebModule
-from lexigram.web.config import ServerConfig
-from lexigram.web.di.provider import WebProvider
-from lexigram.web.security import SecurityConfig
-from ops_console.controllers.api import ConsoleController, EventsStreamHandler
+from lexigram.web import WebModule
+from ops_console.config import bind_application
+from ops_console.controllers.api import ConsoleController
 from ops_console.controllers.operator import OperatorHandler
 from ops_console.di.provider import RealtimeProvider
 from ops_console.services.event_stream import EventStreamService
@@ -25,21 +25,12 @@ class RealtimeModule(Module):
     """Root module for the realtime monitor demo."""
 
     @classmethod
-    def configure(
-        cls,
-        port: int | None = None,
-        heartbeat_interval: float = 15.0,
-    ) -> DynamicModule:
-        selected_port = (
-            port if port is not None else int(os.environ.get("REALTIME_PORT", "7071"))
-        )
-        web_config = WebConfig(
-            server=ServerConfig(host="127.0.0.1", port=selected_port),
-            # The demo's publish endpoint is meant to accept events from
-            # external tools (curl, operator scripts) — protect it with a
-            # plain check instead of a browser synchronizer token.
-            security=SecurityConfig(enable_csrf=False),
-        )
+    def configure(cls, port: int | None = None) -> DynamicModule:
+        web_config, demo_config = bind_application()
+        if port is not None:  # embedded-hub override; children never serve
+            web_config = replace(
+                web_config, server=replace(web_config.server, port=port)
+            )
         return DynamicModule(
             module=cls,
             imports=[
@@ -48,14 +39,8 @@ class RealtimeModule(Module):
                     web_config=web_config,
                 ),
             ],
-            providers=[RealtimeProvider(heartbeat_interval=heartbeat_interval)],
-            exports=[
-                EventStreamService,
-                EventsStreamHandler,
-                OperatorHandler,
-                ConsoleController,
-                WebProvider,
-            ],
+            providers=[RealtimeProvider(config=demo_config)],
+            exports=[EventStreamService],
         )
 
 

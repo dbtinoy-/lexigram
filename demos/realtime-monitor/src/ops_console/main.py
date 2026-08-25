@@ -2,33 +2,47 @@
 
 Run::
 
-    uv run python -m ops_console            # starts the web server on :7071
+    uv run python -m ops_console            # serves application.yaml (:7071)
     uv run python -m ops_console --publish  # publish a sample event via HTTP
+
+Server host/port come from ``application.yaml`` (``web.server``); override
+without editing the file via ``LEX_WEB__SERVER__PORT``.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import sys
 
 import httpx
 
 from lexigram.app import Application
+from lexigram.config.main import LexigramConfig
+from lexigram.logging import get_logger
+from lexigram.web.config import WebConfig
 from lexigram.web.server.runner import run_server_async
+from ops_console.config import APP_YAML
 from ops_console.module import RealtimeModule
 
+logger = get_logger(__name__)
 
-async def _serve(port: int) -> None:
+
+async def _serve(config: LexigramConfig) -> None:
+    from lexigram.web.di.provider import WebProvider
+
+    web_config = config.get_section("web", WebConfig)
     async with Application.boot(
         name="realtime-monitor",
-        modules=[RealtimeModule.configure(port=port)],
+        modules=[RealtimeModule.configure()],
+        config=config,
     ) as app:
-        from lexigram.web.di.provider import WebProvider
-
         web = await app.container.resolve(WebProvider)
-        await run_server_async(web.starlette, host="127.0.0.1", port=port)
+        await run_server_async(
+            web.starlette,
+            host=web_config.server.host,
+            port=web_config.server.port,
+        )
 
 
 async def _publish(base_url: str, message: str) -> None:
@@ -37,14 +51,11 @@ async def _publish(base_url: str, message: str) -> None:
             f"{base_url}/api/events",
             json={"message": message, "severity": "info", "source": "cli"},
         )
-        print(response.text)
+    logger.info("publish.completed", status=response.status_code, body=response.text)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Realtime monitor demo")
-    parser.add_argument(
-        "--port", type=int, default=int(os.environ.get("REALTIME_PORT", "7071"))
-    )
     parser.add_argument(
         "--publish", action="store_true", help="publish a sample event and exit"
     )
@@ -56,10 +67,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    config = LexigramConfig.from_yaml(APP_YAML)
     if args.publish:
         asyncio.run(_publish(args.base_url, args.message))
     else:
-        asyncio.run(_serve(args.port))
+        asyncio.run(_serve(config))
     return 0
 
 
