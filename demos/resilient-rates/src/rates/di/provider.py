@@ -3,10 +3,8 @@
 Canonical shape (mirrors ``lexigram-auth`` + the boot-phase ``bind()``
 contract in ``lexigram.contracts.core.di``):
 
-- ``config_key``/``config_model`` declare the ``demo:`` section so the
-  framework injects a bound :class:`RatesConfig` when the application's
-  ``LexigramConfig`` carries it; an explicit ``config=`` from
-  ``RatesModule.configure`` (bound against the demo's own
+- ``config_key``/``config_model`` declare the ``demo:`` section; an explicit
+  ``config=`` from ``app.create_app`` (bound against this demo's own
   ``application.yaml``) takes precedence.
 - ``register()`` only *declares* bindings. Zero-arg factories cover purely
   config-derived services; dependency-full services are declared as
