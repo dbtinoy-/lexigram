@@ -26,8 +26,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
     """Boot the real module graph and expose its ASGI app."""
+    from apikey_console.config import load_lex_config
+
     async with Application.boot(
-        name="apikeys-console-test", modules=[ApiKeysModule.configure()]
+        name="apikeys-console-test",
+        modules=[ApiKeysModule.configure()],
+        config=load_lex_config(),
     ) as application:
         web = await application.container.resolve(WebProvider)
         yield web.starlette

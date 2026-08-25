@@ -1,0 +1,14 @@
+# API-Keys Console — runtime configuration (Blueprint §3).
+web:
+  server:
+    host: 127.0.0.1
+    port: 8091
+  security:
+    csrf:
+      enabled: false # plain JSON posts over local http
+
+# lexigram-auth (config_key: "auth") — offline demo secret.
+auth:
+  secret_key: "apikeys-console-demo-secret-key-01234567"
+  token:
+    secret_key: "apikeys-console-demo-secret-key-01234567"

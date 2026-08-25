@@ -1,17 +1,22 @@
-"""Module for the API-keys console demo."""
+"""Module for the API-keys console demo.
+
+Blueprint-aligned wiring: web and auth configuration come from
+``application.yaml`` — ``AuthModule.configure()`` is called without an
+explicit config so the auth provider receives its section via framework
+injection (the application boots with this demo's ``LexigramConfig``).
+"""
 
 from __future__ import annotations
 
-import os
+from dataclasses import replace
 
+from apikey_console.config import bind_web
 from apikey_console.controllers.api import KeysApiController
 from apikey_console.controllers.pages import PagesController
-from apikey_console.di.provider import ApiKeysProvider, build_auth_config
+from apikey_console.di.provider import ApiKeysProvider
 from lexigram.auth.module import AuthModule
 from lexigram.di.module import DynamicModule, Module, module
-from lexigram.web import WebConfig, WebModule
-from lexigram.web.config import ServerConfig
-from lexigram.web.security import SecurityConfig
+from lexigram.web import WebModule
 
 
 @module()
@@ -20,25 +25,22 @@ class ApiKeysModule(Module):
 
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
-        selected_port = (
-            port if port is not None else int(os.environ.get("APIKEYS_PORT", "8091"))
-        )
-        web_config = WebConfig(
-            server=ServerConfig(host="127.0.0.1", port=selected_port),
-            # Plain JSON posts over local http; no synchronizer token needed.
-            security=SecurityConfig(enable_csrf=False),
-        )
+        web_config = bind_web()
+        if port is not None:  # programmatic override (tests/embedding)
+            web_config = replace(
+                web_config, server=replace(web_config.server, port=port)
+            )
         return DynamicModule(
             module=cls,
             imports=[
-                AuthModule.configure(build_auth_config()),
+                AuthModule.configure(),
                 WebModule.configure(
                     controllers=[KeysApiController, PagesController],
                     web_config=web_config,
                 ),
             ],
-            providers=[ApiKeysProvider],
-            exports=[],
+            # Intentionally private: a leaf console exports nothing.
+            providers=[ApiKeysProvider()],
         )
 
 
