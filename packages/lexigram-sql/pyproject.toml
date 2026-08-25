@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lexigram-sql"
-version = "0.1.5003"
+version = "0.1.5004"
 description = "SQL database abstractions for Lexigram Framework — Postgres, MySQL, SQLite with migrations, repositories, and query building"
 readme = "README.md"
 requires-python = ">=3.11"

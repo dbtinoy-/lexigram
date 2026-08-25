@@ -6398,7 +6398,7 @@ test = [
 
 [[package]]
 name = "lexigram-cli"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "experimental/apps/lexigram-cli" }
 dependencies = [
     { name = "aiofiles" },
@@ -8278,7 +8278,7 @@ test = [
 
 [[package]]
 name = "lexigram-sql"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-sql" }
 dependencies = [
     { name = "aiosqlite" },
@@ -9040,7 +9040,7 @@ test = [
 
 [[package]]
 name = "lexigram-web"
-version = "0.1.5003"
+version = "0.1.5004"
 source = { editable = "packages/lexigram-web" }
 dependencies = [
     { name = "aiofiles" },

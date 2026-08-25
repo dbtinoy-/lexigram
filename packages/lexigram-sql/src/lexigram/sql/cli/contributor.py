@@ -8,7 +8,13 @@ from lexigram.contracts.cli.contributions import (
     HealthCheckContribution,
     ShellContextContribution,
 )
-from lexigram.contracts.cli.types import GeneratorDefinition
+from lexigram.contracts.cli.types import GeneratorDefinition, GeneratorOption
+
+_FIELDS_OPTION = GeneratorOption(
+    name="fields",
+    type_hint="str",
+    description="Field spec in name:type[?][!unique][!fk=Model][=default] format",
+)
 
 _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
     GeneratorDefinition(
@@ -18,6 +24,7 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
         contributor="sql",
         generator_path="lexigram.sql.cli.generators.database_repository:DatabaseRepositoryGenerator",
         default_output_dir="src/repositories",
+        options=(_FIELDS_OPTION,),
         category="database",
     ),
     GeneratorDefinition(
@@ -27,6 +34,14 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
         contributor="sql",
         generator_path="lexigram.sql.cli.generators.filter:FilterGenerator",
         default_output_dir="src/filters",
+        options=(
+            _FIELDS_OPTION,
+            GeneratorOption(
+                name="exception_type",
+                type_hint="str",
+                description="Base exception type",
+            ),
+        ),
         category="database",
     ),
     GeneratorDefinition(
@@ -36,6 +51,7 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
         contributor="sql",
         generator_path="lexigram.sql.cli.generators.seeder:SeederGenerator",
         default_output_dir="seeds",
+        options=(_FIELDS_OPTION,),
         category="database",
     ),
     GeneratorDefinition(
@@ -45,6 +61,13 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
         contributor="sql",
         generator_path="lexigram.sql.cli.generators.health_check:HealthCheckGenerator",
         default_output_dir="src/health",
+        options=(
+            GeneratorOption(
+                name="critical",
+                type_hint="bool",
+                description="Fail health checks on error",
+            ),
+        ),
         category="database",
     ),
 )

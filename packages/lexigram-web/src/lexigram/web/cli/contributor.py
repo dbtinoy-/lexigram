@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from lexigram.contracts.cli.contributions import DoctorCheckContribution
-from lexigram.contracts.cli.types import GeneratorDefinition
+from lexigram.contracts.cli.types import GeneratorDefinition, GeneratorOption
+
+_FIELDS_OPTION = GeneratorOption(
+    name="fields",
+    type_hint="str",
+    description="Field spec in name:type[?][!unique][!fk=Model][=default] format",
+)
 
 _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
     GeneratorDefinition(
@@ -13,6 +19,11 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
         contributor="web",
         generator_path="lexigram.web.cli.generators.controller:ControllerGenerator",
         default_output_dir="src/controllers",
+        options=(
+            _FIELDS_OPTION,
+            GeneratorOption(name="path", type_hint="str", description="Base API path"),
+            GeneratorOption(name="doc", type_hint="str", description="Class docstring"),
+        ),
         category="web",
     ),
     GeneratorDefinition(
@@ -22,6 +33,7 @@ _GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
         contributor="web",
         generator_path="lexigram.web.cli.generators.resource:ResourceGenerator",
         default_output_dir="src",
+        options=(_FIELDS_OPTION,),
         category="web",
     ),
     GeneratorDefinition(

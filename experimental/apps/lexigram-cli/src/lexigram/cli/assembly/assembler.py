@@ -126,7 +126,20 @@ class CommandAssembler:
             raise typer.Exit(1)
 
         _command.__name__ = generator_name.replace("-", "_")
-        app.command(generator_name, help=gen_def.description)(_command)
+        app.command(generator_name, help=_build_help_text(gen_def))(_command)
+
+
+def _build_help_text(gen_def: GeneratorDefinition) -> str:
+    """Compose command help: description plus any declared generator options."""
+    if not gen_def.options:
+        return gen_def.description
+    lines = [f"{gen_def.description}", "", "Options:"]
+    for option in gen_def.options:
+        default_note = f" [default: {option.default}]" if option.default else ""
+        lines.append(
+            f"  --{option.name} ({option.type_hint}){default_note} {option.description}".rstrip()
+        )
+    return "\n".join(lines)
 
 
 __all__ = ["CommandAssembler"]
