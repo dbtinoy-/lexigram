@@ -43,5 +43,3 @@ PYTHONPATH=demos/ai-guardrails/src uv run python -m guard_gate
 uv run pytest demos/ai-guardrails/tests -q
 ```
 
-Spec & plan: `.superpowers/specs/2026-08-22-ai-guardrails-design.md`,
-`.superpowers/plans/2026-08-22-ai-guardrails.md`.

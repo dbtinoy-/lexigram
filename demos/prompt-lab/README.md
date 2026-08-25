@@ -36,5 +36,3 @@ its score drop back to v1's baseline.
 uv run pytest demos/prompt-lab/tests -q
 ```
 
-Spec & plan: `.superpowers/specs/2026-08-22-prompt-lab-design.md`,
-`.superpowers/plans/2026-08-22-prompt-lab.md`.

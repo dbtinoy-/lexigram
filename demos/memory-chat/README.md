@@ -42,5 +42,3 @@ whole two-session story.
 uv run pytest demos/memory-chat/tests -q
 ```
 
-Spec & plan: `.superpowers/specs/2026-08-22-memory-chat-design.md`,
-`.superpowers/plans/2026-08-22-memory-chat.md`.

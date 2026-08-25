@@ -35,5 +35,3 @@ PYTHONPATH=demos/feedback-loop/src uv run python -m feedback_loop serve   # web 
 uv run pytest demos/feedback-loop/tests -q
 ```
 
-Spec & plan: `.superpowers/specs/2026-08-22-feedback-loop-design.md`,
-`.superpowers/plans/2026-08-22-feedback-loop.md`.

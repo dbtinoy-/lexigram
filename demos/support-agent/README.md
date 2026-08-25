@@ -43,5 +43,3 @@ Pick a scenario button, ask a question, read the answer + trace table.
 uv run pytest demos/support-agent/tests -q
 ```
 
-Spec & plan: `.superpowers/specs/2026-08-22-support-agent-design.md`,
-`.superpowers/plans/2026-08-22-support-agent.md`.
