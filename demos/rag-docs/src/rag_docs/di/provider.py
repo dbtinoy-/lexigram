@@ -11,7 +11,9 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
-from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.contracts.core.health import (
+    HealthCheckResult,
+)
 from lexigram.di.provider import Provider
 from rag_docs.controllers.api import DocsAskApiController
 from rag_docs.repository.embedder import HashingEmbedder

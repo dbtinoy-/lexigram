@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 
 from lexigram.contracts.ai.agents import AgentExecutorProtocol
 from lexigram.contracts.ai.llm import LLMClientProtocol
-from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.contracts.core.health import (
+    HealthCheckResult,
+)
 from lexigram.di.provider import Provider
 
 if TYPE_CHECKING:

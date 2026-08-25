@@ -20,7 +20,9 @@ from lexigram.contracts.ai.memory import (
     SemanticMemoryProtocol,
     WorkingMemoryProtocol,
 )
-from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.contracts.core.health import (
+    HealthCheckResult,
+)
 from lexigram.di.provider import Provider
 
 

@@ -11,7 +11,9 @@ from lexigram.contracts.core.di import (
     ContainerRegistrarProtocol,
     ContainerResolverProtocol,
 )
-from lexigram.contracts.core.health import HealthCheckResult
+from lexigram.contracts.core.health import (
+    HealthCheckResult,
+)
 from lexigram.contracts.core.provider import ProviderPriority
 from lexigram.contracts.events import CommandBusProtocol, EventBusProtocol
 from lexigram.di.provider import Provider
