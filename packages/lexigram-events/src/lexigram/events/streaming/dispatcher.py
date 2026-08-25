@@ -21,7 +21,6 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from lexigram.events.messages.event import Event
 
 
 @dataclass

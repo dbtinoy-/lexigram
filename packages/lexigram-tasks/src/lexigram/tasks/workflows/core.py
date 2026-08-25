@@ -473,30 +473,4 @@ class BranchStep(Workflow):
             return Err(WorkflowError(str(exc)))
 
 
-# ---------------------------------------------------------------------------
-# Factory helpers
-# ---------------------------------------------------------------------------
-
-
-def chain(*steps: TaskStep, stop_on_error: bool = True) -> TaskChain:
-    """Create a sequential :class:`TaskChain` from the given steps.
-
-    Each step receives the output of the previous step as its input.
-
-    Args:
-        *steps: One or more :class:`TaskStep` instances to chain.
-        stop_on_error: Whether to abort the pipeline on the first failure.
-            Defaults to ``True``.
-
-    Returns:
-        A configured :class:`TaskChain` ready to ``await .execute()``.
-
-    Example::
-
-        result = await chain(
-            TaskStep("validate", validate_input),
-            TaskStep("process", process_data),
-            TaskStep("persist", save_to_db),
-        ).execute(raw_data)
-    """
-    return TaskChain(list(steps), stop_on_error=stop_on_error)
+from lexigram.tasks.workflows.factories import chain as chain  # noqa: E402

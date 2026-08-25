@@ -19,8 +19,6 @@ from lexigram.contracts.core.lock import DistributedLockProtocol, LockInfo
 from lexigram.contracts.exceptions.components import LockAcquisitionError
 from lexigram.logging import get_logger
 
-if TYPE_CHECKING:
-    from types import TracebackType
 
 logger = get_logger(__name__)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 # Import formatting handled intentionally to match project grouping
 import asyncio
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 import os
 import time
 from typing import TYPE_CHECKING, Any, cast
@@ -30,6 +30,10 @@ except ImportError:
 
 from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.contracts.infra.storage import FileInfo, Uploadable
+from lexigram.storage.backends._s3_helpers import (
+    coerce_body_bytes,
+    parse_last_modified,
+)
 from lexigram.storage.backends._s3_upload_mixin import _S3UploadMixin
 from lexigram.storage.backends.base import AbstractDriver
 from lexigram.storage.config import EncryptionConfig
@@ -236,11 +240,7 @@ class S3Driver(_S3UploadMixin, AbstractDriver):
                     if inspect.isawaitable(res):
                         res = await res
 
-                    if isinstance(res, (bytes, bytearray)):
-                        return bytes(res)
-                    if isinstance(res, str):
-                        return res.encode("utf-8")
-                    return cast("bytes", res)
+                    return coerce_body_bytes(res)
 
             # Otherwise, attempt to call `read()` directly. Support both async and
             # sync read functions so tests and alternative clients work.
@@ -262,11 +262,7 @@ class S3Driver(_S3UploadMixin, AbstractDriver):
             if asyncio.iscoroutine(res):
                 res = await res
 
-            if isinstance(res, (bytes, bytearray)):
-                return bytes(res)
-            if isinstance(res, str):
-                return res.encode("utf-8")
-            return cast("bytes", res)
+            return coerce_body_bytes(res)
 
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchKey":
@@ -354,14 +350,7 @@ class S3Driver(_S3UploadMixin, AbstractDriver):
                 Bucket=self.bucket, Key=key
             )
 
-            # Parse last modified
-            last_modified = response.get("LastModified")
-            if isinstance(last_modified, str):
-                last_modified = datetime.fromisoformat(
-                    last_modified.replace("Z", "+00:00"),
-                )
-            elif not isinstance(last_modified, datetime):
-                last_modified = datetime.now(UTC)
+            last_modified = parse_last_modified(response.get("LastModified"))
 
             return FileInfo(
                 path=path,
@@ -393,14 +382,7 @@ class S3Driver(_S3UploadMixin, AbstractDriver):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
 
-                # Parse last modified
-                last_modified = obj.get("LastModified")
-                if isinstance(last_modified, str):
-                    last_modified = datetime.fromisoformat(
-                        last_modified.replace("Z", "+00:00"),
-                    )
-                elif not isinstance(last_modified, datetime):
-                    last_modified = datetime.now(UTC)
+                last_modified = parse_last_modified(obj.get("LastModified"))
 
                 yield FileInfo(
                     path=key,

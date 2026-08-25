@@ -25,6 +25,7 @@ from starlette.requests import Request
 
 from lexigram.web import Controller, get, post
 from lexigram.web.sse.handler import AbstractSSEHandler
+from ops_console.config import RealtimeConfig
 from ops_console.services.event_stream import EventStreamService
 
 
@@ -36,11 +37,11 @@ class EventsStreamHandler(AbstractSSEHandler):
     def __init__(
         self,
         events: EventStreamService,
-        heartbeat_interval: float = 15.0,
+        config: RealtimeConfig,
     ) -> None:
         super().__init__()
         self.events = events
-        self.heartbeat_interval = int(heartbeat_interval)
+        self.heartbeat_interval = int(config.heartbeat_interval_seconds)
 
     async def stream(self, request: Request) -> AsyncGenerator[dict[str, Any], None]:
         async for event in self.events.subscribe():

@@ -32,7 +32,7 @@ def create_app(config: LexigramConfig | None = None) -> Application:
             ),
         ]
     )
-    app.add_provider(RealtimeProvider(config=demo_config))
+    app.add_provider(RealtimeProvider())
     return app
 
 

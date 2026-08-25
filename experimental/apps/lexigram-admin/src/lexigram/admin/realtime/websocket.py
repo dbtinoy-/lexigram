@@ -8,19 +8,12 @@ INT-03: WebSocket support for real-time updates.
 
 from __future__ import annotations
 
-import contextlib
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from enum import StrEnum
 from typing import TYPE_CHECKING, Any
+
+from lexigram.admin.realtime.messages import WSMessage, WSMessageType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-
-def _utc_now() -> datetime:
-    """Return current UTC time."""
-    return datetime.now(UTC)
 
 
 # ============================================================================
@@ -61,64 +54,6 @@ class WebSocketHandler:
 
     async def on_message(self, websocket: WebSocket, message: str) -> None:
         """Called when a message is received."""
-
-
-# ============================================================================
-# Message Types
-# ============================================================================
-
-
-class WSMessageType(StrEnum):
-    """WebSocket message types."""
-
-    # Client -> Server
-    SUBSCRIBE = "subscribe"
-    UNSUBSCRIBE = "unsubscribe"
-    ACTION = "action"
-    PING = "ping"
-
-    # Server -> Client
-    EVENT = "event"
-    NOTIFICATION = "notification"
-    ERROR = "error"
-    PONG = "pong"
-    ACK = "ack"
-
-
-@dataclass
-class WSMessage:
-    """WebSocket message."""
-
-    type: WSMessageType | str
-    data: dict[str, Any] = field(default_factory=dict)
-    id: str | None = None
-    timestamp: datetime = field(default_factory=_utc_now)
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
-        return {
-            "type": str(
-                self.type.value if isinstance(self.type, WSMessageType) else self.type,
-            ),
-            "data": self.data,
-            "id": self.id,
-            "timestamp": self.timestamp.isoformat(),
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> WSMessage:
-        """Create from dictionary."""
-        msg_type = data.get("type", "")
-        with contextlib.suppress(
-            ValueError
-        ):  # Keep as string if not a valid WSMessageType
-            msg_type = WSMessageType(msg_type)
-
-        return cls(
-            type=msg_type,
-            data=data.get("data", {}),
-            id=data.get("id"),
-        )
 
 
 # ============================================================================

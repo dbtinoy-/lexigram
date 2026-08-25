@@ -24,7 +24,6 @@ if TYPE_CHECKING:
         ContainerRegistrarProtocol,
         ContainerResolverProtocol,
     )
-    from lexigram.contracts.core.health import HealthCheckResult
     from lexigram.contracts.infra.cache import CacheBackendProtocol
 
 from lexigram.ai.llm.config import ClientConfig

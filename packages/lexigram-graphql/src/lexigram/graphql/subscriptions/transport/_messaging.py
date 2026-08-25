@@ -16,9 +16,7 @@ from lexigram.graphql.types import SubscriptionInfo
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable
 
-    from lexigram.contracts.graphql.protocols import SubscriptionAuthHandlerProtocol
     from lexigram.contracts.web import WebSocketProtocol
 
 logger = get_logger(__name__)

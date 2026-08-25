@@ -2,8 +2,10 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
+from _test_rag_cache_support import MockCacheBackend
 import pytest
 
+from lexigram.ai.rag.cache import RAGCache, RAGCacheConfig
 from lexigram.ai.rag.knowledge_graph.adapter import GraphStoreAdapter
 from lexigram.ai.rag.knowledge_graph.types import (
     Entity,
@@ -139,3 +141,24 @@ def chunking_sample_text() -> str:
 def chunking_long_text() -> str:
     """Longer text for testing."""
     return " ".join(list(map(lambda i: f"Sentence number {i}.", range(100))))
+
+
+# ── RAG cache shared fixtures ───────────────────────────────────────────────
+# Used by the test_rag_cache__*.py modules.
+
+
+@pytest.fixture
+def cache() -> RAGCache:
+    """Create a cache instance for testing."""
+    return RAGCache(backend=MockCacheBackend())
+
+
+@pytest.fixture
+def custom_cache() -> RAGCache:
+    """Create a cache with custom config."""
+    config = RAGCacheConfig(
+        embedding_ttl=100,
+        retrieval_ttl=50,
+        key_prefix="test:",
+    )
+    return RAGCache(backend=MockCacheBackend(), config=config)

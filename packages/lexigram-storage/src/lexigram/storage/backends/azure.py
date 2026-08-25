@@ -26,6 +26,11 @@ except ImportError:
 
 from lexigram.contracts.core import HealthStatus
 from lexigram.contracts.infra.storage import FileInfo, Uploadable
+from lexigram.storage.backends._azure_helpers import (
+    coerce_last_modified,
+    is_blob_not_found,
+    to_bytes,
+)
 from lexigram.storage.backends.base import AbstractDriver
 from lexigram.storage.exceptions import StorageError, StorageFileNotFoundError
 from lexigram.storage.lib.content_type import get_content_type
@@ -104,24 +109,6 @@ class AzureDriver(AbstractDriver):
         """Return a sanitised Azure blob name from *path*."""
         return sanitize_path(path)
 
-    async def _to_bytes(self, data: Uploadable) -> bytes:
-        """Coerce *data* to :class:`bytes` for upload."""
-        if isinstance(data, bytes):
-            return data
-        if isinstance(data, str):
-            return data.encode("utf-8")
-        if hasattr(data, "read"):
-            raw = data.read()
-            return raw.encode("utf-8") if isinstance(raw, str) else bytes(raw)
-        if hasattr(data, "__aiter__"):
-            chunks: list[bytes] = []
-            async for chunk in data:
-                chunks.append(
-                    chunk.encode("utf-8") if isinstance(chunk, str) else bytes(chunk),
-                )
-            return b"".join(chunks)
-        raise ValueError(f"Unsupported data type: {type(data)}")
-
     # ------------------------------------------------------------------
     # AbstractDriver implementation
     # ------------------------------------------------------------------
@@ -148,7 +135,7 @@ class AzureDriver(AbstractDriver):
             StorageError: On any Azure SDK error.
         """
         key = self._normalize_path(path)
-        content = await self._to_bytes(data)
+        content = await to_bytes(data)
         resolved_content_type = content_type if content_type else get_content_type(key)
 
         try:
@@ -210,8 +197,7 @@ class AzureDriver(AbstractDriver):
             data: bytes = await downloader.readall()
             return data
         except Exception as exc:
-            exc_str = str(exc)
-            if "BlobNotFound" in exc_str or "404" in exc_str:
+            if is_blob_not_found(exc):
                 raise StorageFileNotFoundError(
                     f"File not found: {path!r}",
                     details={
@@ -251,8 +237,7 @@ class AzureDriver(AbstractDriver):
                 for i in range(0, len(chunk), chunk_size):
                     yield chunk[i : i + chunk_size]
         except Exception as exc:
-            exc_str = str(exc)
-            if "BlobNotFound" in exc_str or "404" in exc_str:
+            if is_blob_not_found(exc):
                 raise StorageFileNotFoundError(
                     f"File not found: {path!r}",
                     details={
@@ -283,8 +268,7 @@ class AzureDriver(AbstractDriver):
             blob_client = self._container_client.get_blob_client(key)
             await blob_client.delete_blob()
         except Exception as exc:
-            exc_str = str(exc)
-            if "BlobNotFound" in exc_str or "404" in exc_str:
+            if is_blob_not_found(exc):
                 raise StorageFileNotFoundError(
                     f"File not found: {path!r}",
                     details={
@@ -331,9 +315,7 @@ class AzureDriver(AbstractDriver):
             blob_client = self._container_client.get_blob_client(key)
             props = await blob_client.get_blob_properties()
 
-            last_modified = props.get("last_modified", datetime.now(UTC))
-            if not isinstance(last_modified, datetime):
-                last_modified = datetime.now(UTC)
+            last_modified = coerce_last_modified(props.get("last_modified"))
 
             content_settings = props.get("content_settings", {})
             content_type = (
@@ -351,8 +333,7 @@ class AzureDriver(AbstractDriver):
                 metadata=dict(props.get("metadata", {})) or None,
             )
         except Exception as exc:
-            exc_str = str(exc)
-            if "BlobNotFound" in exc_str or "404" in exc_str:
+            if is_blob_not_found(exc):
                 raise StorageFileNotFoundError(
                     f"File not found: {path!r}",
                     details={
@@ -385,9 +366,7 @@ class AzureDriver(AbstractDriver):
             async for item in self._container_client.list_blobs(
                 name_starts_with=normalized_prefix
             ):
-                last_modified = item.get("last_modified", datetime.now(UTC))
-                if not isinstance(last_modified, datetime):
-                    last_modified = datetime.now(UTC)
+                last_modified = coerce_last_modified(item.get("last_modified"))
 
                 yield FileInfo(
                     path=item["name"],

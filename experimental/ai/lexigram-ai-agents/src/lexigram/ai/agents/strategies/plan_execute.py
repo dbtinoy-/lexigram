@@ -35,6 +35,7 @@ from lexigram.ai.agents.strategies.plan_execute_planner import (
     format_plan,
     parse_plan,
 )
+from lexigram.ai.agents.strategies.plan_execute_synthesis import build_direct_response
 from lexigram.ai.agents.strategies.plan_execute_types import (
     PLANNING_PROMPT,
     PlanStep,
@@ -149,15 +150,11 @@ class PlanAndExecuteStrategy(AbstractStrategy):
         plan = self._parse_plan(plan_text)
         if not plan:
             # No structured plan — fall back to direct synthesis
-            return await self._direct_synthesis(
-                llm,
-                message,
-                plan_text,
-                history,
-                system_prompt,
-                steps,
-                tool_calls,
-                start_time,
+            return build_direct_response(
+                initial_response=plan_text,
+                steps=steps,
+                tool_calls=tool_calls,
+                start_time=start_time,
                 usage=usage,
             )
 
@@ -417,45 +414,6 @@ class PlanAndExecuteStrategy(AbstractStrategy):
             system_prompt=system_prompt,
             llm_timeout=self.llm_timeout,
             usage=usage,
-        )
-
-    async def _direct_synthesis(
-        self,
-        llm: LLMClientProtocol,
-        message: str,
-        initial_response: str,
-        history: list[dict[str, Any]],
-        system_prompt: str,
-        steps: list[ReasoningStep],
-        tool_calls: list[ToolExecutionRecord],
-        start_time: float,
-        usage: TokenAccumulator,
-    ) -> Result[AgentResponse, AgentError]:
-        """Fallback when no plan could be parsed — treat as direct response."""
-        final = self._extract_final_answer(initial_response)
-        answer = final if final else initial_response
-
-        steps.append(
-            ReasoningStep(
-                step_number=1,
-                thought="No structured plan generated — using direct response",
-                action="direct",
-                observation=answer,
-            )
-        )
-
-        elapsed = (time.monotonic() - start_time) * 1000
-        return Ok(
-            AgentResponse(
-                message=answer,
-                steps=steps,
-                tool_calls=tool_calls,
-                total_tokens=usage.total_tokens,
-                prompt_tokens=usage.prompt_tokens,
-                completion_tokens=usage.completion_tokens,
-                duration_ms=elapsed,
-                metadata={"strategy": "plan_and_execute", "direct_response": True},
-            )
         )
 
     # ------------------------------------------------------------------

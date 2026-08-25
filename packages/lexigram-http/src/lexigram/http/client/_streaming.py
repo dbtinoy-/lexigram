@@ -8,9 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Coroutine, Iterable
 
-    from lexigram.contracts.web.sse import ServerSentEvent
     from lexigram.http.client.http_client import HTTPClient  # noqa: F401
-    from lexigram.result import Result  # noqa: F401
 
 from lexigram.contracts.infra.resilience import (
     CircuitBreakerProtocol,

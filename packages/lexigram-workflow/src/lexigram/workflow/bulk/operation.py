@@ -1,4 +1,4 @@
-"""BulkOperation engine and convenience wrappers."""
+"""BulkOperation engine for batched, concurrency-controlled execution."""
 
 from __future__ import annotations
 
@@ -443,61 +443,6 @@ class BulkOperation(Generic[T, R]):
         await self.shutdown()
 
 
-async def bulk_map(
-    func: Callable[[T], R],
-    items: list[T] | AsyncIterable[T],
-    config: BulkOperationConfig | None = None,
-) -> list[R]:
-    """Apply a function to each item and return results."""
-
-    async def processor(batch: list[T]) -> list[R]:
-        return [func(item) for item in batch]
-
-    operation = BulkOperation(config, processor)
-    results = []
-    async for batch_result in operation.execute(items):
-        results.extend(batch_result.results)
-    return results
-
-
-async def bulk_filter(
-    items: list[T] | AsyncIterable[T],
-    predicate: Callable[[T], Awaitable[bool]],
-    config: BulkOperationConfig | None = None,
-) -> AsyncIterator[BulkBatchResult[T, T]]:
-    """Filter items using a predicate function in batches."""
-
-    async def processor(batch: list[T]) -> list[T]:
-        tasks = [predicate(item) for item in batch]
-        results = await asyncio.gather(*tasks)
-        return [item for item, keep in zip(batch, results, strict=False) if keep]
-
-    operation = BulkOperation(config, processor)
-    operation._allow_variable_results = True
-    async for result in operation.execute(items):
-        yield result
-
-
-async def bulk_reduce(
-    items: list[T] | AsyncIterable[T],
-    reducer: Callable[[R, T], Awaitable[R]],
-    initial: R,
-    config: BulkOperationConfig | None = None,
-) -> R:
-    """Reduce items using a reducer function sequentially."""
-    result = initial
-    if hasattr(items, "__aiter__"):
-        async for item in items:
-            result = await reducer(result, item)
-    else:
-        for item in items:
-            result = await reducer(result, item)
-    return result
-
-
 __all__ = [
     "BulkOperation",
-    "bulk_filter",
-    "bulk_map",
-    "bulk_reduce",
 ]

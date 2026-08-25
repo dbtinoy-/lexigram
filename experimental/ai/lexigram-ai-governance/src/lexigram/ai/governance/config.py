@@ -12,10 +12,6 @@ from lexigram.config import (
 from lexigram.contracts.core.config import ConfigIssue, Environment
 from lexigram.validation import ConfigDict, Field
 
-if TYPE_CHECKING:
-    from lexigram.contracts.ai.governance.resource_unit import (  # noqa: F401
-        ResourceUnit,
-    )
 
 
 @dataclass(init=False)

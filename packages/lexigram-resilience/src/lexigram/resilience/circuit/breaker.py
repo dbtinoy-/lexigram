@@ -23,6 +23,7 @@ from lexigram.resilience.circuit._metrics import (
     BucketedSlidingWindowCounter,
     CircuitBreakerMetrics,
 )
+from lexigram.resilience.circuit._presets import sensitive_config, tolerant_config
 
 # CircuitBreakerRegistry is defined below (depends on CircuitBreaker, defined above)
 from lexigram.resilience.exceptions import CircuitOpenError
@@ -457,39 +458,13 @@ class CircuitBreaker:
 
     @classmethod
     def sensitive(cls) -> CircuitBreaker:
-        """Trip quickly — for critical dependencies.
-
-        Opens after 3 consecutive failures or a 30 % failure rate.  Waits only
-        30 s before probing recovery, and requires just 1 probe success to close
-        again.  Use for primary databases, auth services, or any dependency
-        whose failure should be surfaced to callers as soon as possible.
-        """
-        return cls(
-            config=CircuitBreakerConfig(
-                failure_threshold=3,
-                recovery_timeout=30.0,
-                success_threshold=1,
-                failure_rate_threshold=0.3,
-            )
-        )
+        """Trip quickly — for critical dependencies."""
+        return cls(config=sensitive_config())
 
     @classmethod
     def tolerant(cls) -> CircuitBreaker:
-        """Trip slowly — for non-critical or high-volume dependencies.
-
-        Opens only after 10 consecutive failures or a 70 % failure rate.  Waits
-        120 s before probing recovery, and requires 5 consecutive probe successes
-        before closing.  Use for analytics sinks, notification services, or any
-        call whose failures should not immediately surface to callers.
-        """
-        return cls(
-            config=CircuitBreakerConfig(
-                failure_threshold=10,
-                recovery_timeout=120.0,
-                success_threshold=5,
-                failure_rate_threshold=0.7,
-            )
-        )
+        """Trip slowly — for non-critical or high-volume dependencies."""
+        return cls(config=tolerant_config())
 
 
 # Re-export decorator helpers defined in _decorators.py

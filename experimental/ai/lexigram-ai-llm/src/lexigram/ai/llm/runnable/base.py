@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Any
 from lexigram.ai.llm.runnable.sequence import RunnableSequence
 from lexigram.contracts.ai.runnable import RunnableProtocol
 
-if TYPE_CHECKING:
-    from lexigram.ai.llm.runnable.sequence import RunnableSequence
 
 
 class RunnableMixin(RunnableProtocol):

@@ -19,7 +19,6 @@ from lexigram.contracts.events import EventHandlerProtocol
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from contextlib import AbstractAsyncContextManager
 
     from lexigram.contracts.core import MiddlewarePipelineProtocol
     from lexigram.contracts.domain.events import DomainEvent

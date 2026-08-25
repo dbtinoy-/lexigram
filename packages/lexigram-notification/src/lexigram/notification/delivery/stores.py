@@ -392,7 +392,6 @@ class SqlDeliveryStore:
                     state["message"] = {}
             states.append(state)
         return states
-        return states
 
 
 __all__ = ["MemoryDeliveryStore", "SqlDeliveryStore"]

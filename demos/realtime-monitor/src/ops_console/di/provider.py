@@ -1,17 +1,10 @@
 """Provider for the realtime monitor demo.
 
-Canonical wiring shape (mirrors ``lexigram-auth`` and the resilient-rates
-reference retrofit):
-
-- ``config_key``/``config_model`` declare the ``demo:`` section; constructing
-  with an explicit ``config=`` (what ``RealtimeModule.configure`` does against
-  the demo's own ``application.yaml``) takes precedence.
-- ``register()`` binds a zero-arg factory for the pure-config-derived
-  :class:`EventStreamService` and class bindings for the controllers/handlers.
-- ``boot()`` resolves the stream and rebinds fully-built controller
-  instances (the router resolves controllers from the container).
-- A supervised heartbeat task keeps dashboards live without manual publishes;
-  it is cancelled cleanly in :meth:`shutdown`.
+Canonical shape: ``register()`` declares bindings (the event-stream factory
+derives its knobs from the injected ``demo:`` configuration); ``boot()``
+resolves the stream, starts the supervised heartbeat, and stops it in
+:meth:`shutdown`. Controllers are plain class bindings — the container
+constructs them from their type-hinted dependencies.
 """
 
 from __future__ import annotations
@@ -56,28 +49,15 @@ class RealtimeProvider(Provider):
     config_key: str | None = "demo"
     config_model: type | None = RealtimeConfig
 
-    def __init__(
-        self,
-        config: RealtimeConfig | None = None,
-        heartbeat_interval: float | None = None,
-    ) -> None:
+    def __init__(self, config: RealtimeConfig | None = None) -> None:
         super().__init__()
         self._config = config or RealtimeConfig()
-        resolved = (
-            heartbeat_interval
-            if heartbeat_interval is not None
-            else self._config.heartbeat_interval_seconds
-        )
-        self.heartbeat_interval = resolved
-        self.events = EventStreamService(
-            history_size=self._config.history_size,
-            queue_capacity=self._config.queue_capacity,
-        )
+        self._stream: EventStreamService | None = None
         self._heartbeat_task: asyncio.Task[None] | None = None
         self._stopping = False
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Declare bindings; concrete wiring happens in :meth:`boot`."""
+        """Declare bindings; the router constructs controllers itself."""
         cfg = self.config or RealtimeConfig()
 
         container.singleton(RealtimeConfig, instance=cfg)
@@ -93,29 +73,17 @@ class RealtimeProvider(Provider):
         container.singleton(OperatorHandler, OperatorHandler)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
-        """Resolve the stream, build the realtime endpoints, start heartbeat."""
-        self.events = await container.resolve(EventStreamService)
-        events = self.events
-
-        container.bind(
-            EventsStreamHandler,
-            EventsStreamHandler(events, heartbeat_interval=self.heartbeat_interval),
-        )
-        sse_handler = await container.resolve(EventsStreamHandler)
-        container.bind(
-            ConsoleController,
-            ConsoleController(events=events, sse=sse_handler),
-        )
-        container.bind(
-            OperatorHandler,
-            OperatorHandler(events),
-        )
-
+        """Resolve the shared stream and start the heartbeat producer."""
+        self._stream = await container.resolve(EventStreamService)
         self._start_heartbeat()
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Report stream liveness and volume."""
-        stats = self.events.stats()
+        stats = (
+            self._stream.stats()
+            if self._stream is not None
+            else EventStreamService().stats()
+        )
         return HealthCheckResult(
             component=self.name,
             status=HealthStatus.HEALTHY,
@@ -143,12 +111,13 @@ class RealtimeProvider(Provider):
 
     async def _heartbeat(self) -> None:
         """Emit a rotating heartbeat event every interval until shutdown."""
+        assert self._stream is not None  # booted before heartbeat starts
         index = 0
         while True:
-            await asyncio.sleep(self.heartbeat_interval)
+            await asyncio.sleep(self._config.heartbeat_interval_seconds)
             kind = HEARTBEAT_EVENTS[index % len(HEARTBEAT_EVENTS)]
             index += 1
-            await self.events.publish(
+            await self._stream.publish(
                 SystemEvent(
                     kind=kind[0],
                     message=kind[1],

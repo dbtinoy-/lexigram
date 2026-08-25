@@ -38,11 +38,6 @@ if TYPE_CHECKING:
     from PIL.Image import Image as PILImage
 
     PILImageType = PILImage
-    from lexigram.ai.rag.multimodal.types import (
-        ImageDocument,
-        ImageFormat,
-        ImageMetadata,
-    )
 else:
     PILImageType: Any = Any
 

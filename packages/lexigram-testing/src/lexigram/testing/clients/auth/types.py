@@ -6,9 +6,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    from lexigram.auth.authn.core import User
-    from lexigram.auth.models import AuthToken
 
 from lexigram.auth.authn.core import User
 from lexigram.auth.authn.security import PasswordHasher

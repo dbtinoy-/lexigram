@@ -480,59 +480,11 @@ class OpenRouterPricingSource(AbstractPricingSource):
         self._cache = None
 
 
-class StaticPricingSource(AbstractPricingSource):
-    """Pricing source from static dictionary.
+def __getattr__(name: str) -> Any:
+    """Get ``StaticPricingSource``, lazily imported from its sibling module."""
+    if name == "StaticPricingSource":
+        from lexigram.ai.llm.pricing.pricing_source_static import StaticPricingSource
 
-    Hardcoded pricing data as a fallback when other sources are unavailable.
-    Useful for custom internal models or as ultimate fallback.
-
-    Attributes:
-        pricing_map: Dictionary of model name to pricing.
-
-    Example:
-        >>> source = StaticPricingSource({
-        ...     "my-model": ModelPricing(
-        ...         model="my-model",
-        ...         prompt_per_1m=5.0,
-        ...         completion_per_1m=10.0,
-        ...         provider="custom"
-        ...     )
-        ... })
-
-    """
-
-    def __init__(self, pricing_map: dict[str, ModelPricing]):
-        """Initialize static pricing source.
-
-        Args:
-            pricing_map: Dictionary mapping model names to pricing.
-
-        """
-        # Normalize keys to lowercase
-        self.pricing_map = {k.lower(): v for k, v in pricing_map.items()}
-
-    async def get_pricing(self, model: str) -> ModelPricing | None:
-        """Get pricing for a specific model.
-
-        Args:
-            model: Model identifier.
-
-        Returns:
-            ModelPricing if found, None otherwise.
-
-        """
-        return self.pricing_map.get(model.lower())
-
-    async def get_all_pricing(self) -> dict[str, ModelPricing]:
-        """Get all pricing data.
-
-        Returns:
-            All static pricing data.
-
-        """
-        return self.pricing_map.copy()
-
-    @property
-    def source_name(self) -> str:
-        """Get source name."""
-        return f"Static ({len(self.pricing_map)} models)"
+        return StaticPricingSource
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)

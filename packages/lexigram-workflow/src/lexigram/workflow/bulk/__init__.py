@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from lexigram.workflow.bulk.combinators import (
+    bulk_filter,
+    bulk_map,
+    bulk_reduce,
+)
 from lexigram.workflow.bulk.models import (
     BulkBatchResult,
     BulkItemError,
@@ -13,9 +18,6 @@ from lexigram.workflow.bulk.models import (
 )
 from lexigram.workflow.bulk.operation import (
     BulkOperation,
-    bulk_filter,
-    bulk_map,
-    bulk_reduce,
 )
 
 __all__ = [

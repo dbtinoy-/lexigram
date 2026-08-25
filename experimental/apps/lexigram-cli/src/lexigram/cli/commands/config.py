@@ -12,6 +12,12 @@ import aiofiles
 import typer
 import yaml
 
+from lexigram.cli.commands.config_utils import (
+    _dict_diff as _dict_diff,
+)
+from lexigram.cli.commands.config_utils import (
+    _mask_secrets as _mask_secrets,
+)
 from lexigram.cli.lib import find_config, load_config_yaml_async, save_config_yaml_async
 from lexigram.cli.output import OutputManager
 from lexigram.cli.registry.config import (
@@ -22,25 +28,6 @@ from lexigram.cli.runtime import handle_errors
 from lexigram.contracts.exceptions.domain import ValidationError
 
 app = typer.Typer()
-
-
-def _mask_secrets(config: dict[str, object], reveal: bool = False) -> dict[str, object]:
-    if reveal:
-        return config
-
-    masked_config: dict[str, object] = {}
-    for key, value in config.items():
-        if isinstance(value, dict):
-            masked_config[key] = _mask_secrets(value, reveal)
-        elif isinstance(value, str):
-            if any(s in key.lower() for s in ["secret", "password", "key", "token"]):
-                masked_config[key] = "***"
-            else:
-                # Regex to find database URLs with passwords
-                masked_config[key] = re.sub(r"://[^@]+@", "://***:***@", value)
-        else:
-            masked_config[key] = value
-    return masked_config
 
 
 @app.command()
@@ -416,36 +403,6 @@ def diff(
                 out.print(f"  [yellow]~[/yellow] {key}: {old_val!r} → {new_val!r}")
 
     asyncio.run(_run())
-
-
-def _dict_diff(
-    base: dict,
-    compare: dict,
-    prefix: str = "",
-) -> tuple[dict, dict, dict]:
-    """Recursively diff two dicts, returning (added, removed, changed) flat dicts."""
-    added: dict = {}
-    removed: dict = {}
-    changed: dict = {}
-
-    all_keys = set(base) | set(compare)
-    for key in all_keys:
-        full_key = f"{prefix}.{key}" if prefix else key
-        if key not in base:
-            added[full_key] = compare[key]
-        elif key not in compare:
-            removed[full_key] = base[key]
-        elif isinstance(base[key], dict) and isinstance(compare[key], dict):
-            sub_added, sub_removed, sub_changed = _dict_diff(
-                base[key], compare[key], prefix=full_key
-            )
-            added.update(sub_added)
-            removed.update(sub_removed)
-            changed.update(sub_changed)
-        elif base[key] != compare[key]:
-            changed[full_key] = (base[key], compare[key])
-
-    return added, removed, changed
 
 
 @app.command("env-example")

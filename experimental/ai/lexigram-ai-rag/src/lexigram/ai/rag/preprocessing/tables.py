@@ -10,12 +10,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from lexigram.ai.rag.preprocessing.types import (
-        DocumentType,
-        ExtractedTable,
-        TableFormat,
-    )
 
 from lexigram.ai.rag.preprocessing.base import AbstractPreprocessor
 from lexigram.ai.rag.preprocessing.document import PreprocessedDocument

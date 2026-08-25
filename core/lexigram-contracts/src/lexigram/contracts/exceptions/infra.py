@@ -21,7 +21,9 @@ class CollidingFileError(InfrastructureError):
 
     _code = "LEX_ERR_CODEGEN_001"
 
-    def __init__(self, message: str = "Generated file collision", **kwargs: Any) -> None:
+    def __init__(
+        self, message: str = "Generated file collision", **kwargs: Any
+    ) -> None:
         super().__init__(message, **kwargs)
 
 

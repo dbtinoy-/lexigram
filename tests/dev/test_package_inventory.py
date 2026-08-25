@@ -10,6 +10,20 @@ from dev.core.package_inventory import discover_package_paths, discover_packages
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+def _workspace_member_count(root: Path) -> int:
+    """Expand the workspace member globs exactly like uv does."""
+    import tomllib
+
+    cfg = tomllib.loads((root / "pyproject.toml").read_text())
+    return sum(
+        1
+        for pattern in cfg["tool"]["uv"]["workspace"]["members"]
+        for candidate in sorted(root.glob(pattern))
+        if (candidate / "pyproject.toml").is_file()
+    )
+
+
+
 
 def _workspace(tmp_path: Path, members: list[str]) -> Path:
     body = ",".join(f'"{m}"' for m in members)
@@ -20,7 +34,8 @@ def _workspace(tmp_path: Path, members: list[str]) -> Path:
 
 
 def test_discover_packages_returns_every_workspace_member() -> None:
-    assert len(discover_packages(REPO_ROOT)) == 54
+    # Glob-derived, so adding a member (e.g. lexigram-builder) never breaks it.
+    assert len(discover_packages(REPO_ROOT)) == _workspace_member_count(REPO_ROOT)
 
 
 def test_discover_packages_is_sorted_and_unique() -> None:
@@ -42,7 +57,7 @@ def test_discover_packages_excludes_non_members() -> None:
 def test_discover_package_paths_returns_paths_relative_to_root() -> None:
     paths = discover_package_paths(REPO_ROOT)
 
-    assert len(paths) == 54
+    assert len(paths) == _workspace_member_count(REPO_ROOT)
     assert all(not p.is_absolute() for p in paths)
     assert all((REPO_ROOT / p / "pyproject.toml").exists() for p in paths)
 
