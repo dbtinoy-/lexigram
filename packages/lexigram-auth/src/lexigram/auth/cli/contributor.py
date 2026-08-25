@@ -12,34 +12,38 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="auth_guard",
-        title="Generate Auth Guard",
-        description="Generate an authentication/authorization guard",
-        contributor="auth",
-        generator_path="lexigram.auth.cli.generators.auth_guard:AuthGuardGenerator",
-        default_output_dir="src/guards",
-        category="auth",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "auth_guard",
+        "Generate an authentication/authorization guard",
+        "lexigram.auth.cli.generators.auth_guard:AuthGuardGenerator",
+        "src/guards",
     ),
-    GeneratorDefinition(
-        name="auth_policy",
-        title="Generate Auth Policy",
-        description="Generate an authorization policy",
-        contributor="auth",
-        generator_path="lexigram.auth.cli.generators.auth_policy:AuthPolicyGenerator",
-        default_output_dir="src/policies",
-        category="auth",
+    (
+        "auth_policy",
+        "Generate an authorization policy",
+        "lexigram.auth.cli.generators.auth_policy:AuthPolicyGenerator",
+        "src/policies",
     ),
-    GeneratorDefinition(
-        name="guard",
-        title="Generate Guard",
-        description="Generate an authorization guard",
-        contributor="auth",
-        generator_path="lexigram.auth.cli.generators.guard:AuthGuardGenerator",
-        default_output_dir="src/guards",
-        category="auth",
+    (
+        "guard",
+        "Generate an authorization guard",
+        "lexigram.auth.cli.generators.guard:AuthGuardGenerator",
+        "src/guards",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="auth",
+        category="auth",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
