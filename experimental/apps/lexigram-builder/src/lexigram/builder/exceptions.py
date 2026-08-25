@@ -60,3 +60,19 @@ class PreviewError(BuilderError):
 
     def __init__(self, message: str = "Preview error", **kwargs: object) -> None:
         super().__init__(message, **kwargs)
+
+
+class GenerationError(BuilderError):
+    """A generate-pipeline step failed."""
+
+    _code = "LEX_ERR_BUILDER_006"
+
+    def __init__(
+        self,
+        message: str = "Generation failed",
+        *,
+        detail_tail: str = "",
+        **kwargs: object,
+    ) -> None:
+        super().__init__(message, **kwargs)
+        self.detail_tail = detail_tail

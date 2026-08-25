@@ -13,6 +13,7 @@ from lexigram.builder.graph.models import (
     RouteConfig,
     ValidatedGraph,
 )
+from lexigram.builder.graph.parsing import document_to_dict, parse_document
 from lexigram.builder.graph.validation import validate
 
 __all__ = [
@@ -25,5 +26,7 @@ __all__ = [
     "Position",
     "RouteConfig",
     "ValidatedGraph",
+    "document_to_dict",
+    "parse_document",
     "validate",
 ]
