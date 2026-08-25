@@ -1,3 +1,4 @@
+# Prompt Lab — runtime configuration (Blueprint §3).
 web:
   server:
     host: 127.0.0.1

@@ -1,8 +1,4 @@
-"""Application composition root for the prompt-lab demo.
-
-``create_app`` is the only place that knows how the modules fit together;
-sections are bound inline from the demo's ``application.yaml``.
-"""
+"""Application composition root for the prompt-lab demo."""
 
 from __future__ import annotations
 
@@ -14,11 +10,11 @@ from lexigram.web.module import WebModule
 from prompt_lab.config import load_lex_config
 from prompt_lab.controllers.api import LabApiController
 from prompt_lab.di.provider import LabProvider
-from prompt_lab.pages import LabPageController
+from prompt_lab.ui.pages import LabPageController
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
+    """Create the configured (not yet started) prompt-lab application."""
     config = config or load_lex_config()
     web_config = config.get_section("web", WebConfig)
 
