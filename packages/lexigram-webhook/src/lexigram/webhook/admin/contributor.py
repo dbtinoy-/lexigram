@@ -109,8 +109,11 @@ class WebhookAdminContributor(BaseAdminContributor):
         )
         from lexigram.webhook.config import WebhookConfig
 
+        resolver = self._root_resolver or container
+        if resolver is None:  # narrowed above; keeps mypy honest
+            return
+
         try:
-            resolver = self._root_resolver or container
             self._subscription_store = await resolver.resolve(
                 WebhookSubscriptionStoreProtocol
             )
