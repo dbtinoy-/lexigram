@@ -26,38 +26,33 @@ Notes:
     ``ConverseStream``, which returns an event-stream that ``botocore``
     processes asynchronously via ``aiobotocore`` if available, or
     synchronously via a thread-pool executor otherwise.
+
+    Request mapping, response/stream parsing, error translation, and the
+    shared daemon-thread transport live in the sibling ``_bedrock_*``
+    modules.
 """
 
 from __future__ import annotations
 
 import asyncio
-import atexit
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures.thread import _threads_queues, _worker
-import threading
 from typing import TYPE_CHECKING, Any
-import weakref
 
+from lexigram.ai.llm.clients._bedrock_errors import error_to_result
 from lexigram.ai.llm.clients._bedrock_mappers import (
     bedrock_stream_chunks,
-    extract_system,
     parse_bedrock_response,
-    tool_to_bedrock,
 )
-from lexigram.ai.llm.clients._tools_utils import (
-    _tool_schema_fields,
-    parse_json_arguments,
+from lexigram.ai.llm.clients._bedrock_requests import (
+    apply_thinking,
+    build_converse_request,
+    content_to_text,
 )
+from lexigram.ai.llm.clients._bedrock_transport import get_thread_pool
+from lexigram.ai.llm.clients._tools_utils import parse_json_arguments
 from lexigram.ai.llm.clients.base import AbstractLLMClient
-from lexigram.ai.llm.exceptions import (
-    LLMAuthenticationError,
-    LLMContentFilterError,
-    LLMError,
-    LLMModelNotFoundError,
-    LLMRateLimitError,
-)
+from lexigram.ai.llm.exceptions import LLMError
 from lexigram.ai.llm.multimodal.fetcher import fetch_image_as_base64
-from lexigram.ai.llm.types import AIError, Completion, StreamChunk
+from lexigram.ai.llm.types import Completion, StreamChunk
 from lexigram.contracts.ai.multimodal import (
     ImageBase64Part,
     ImageUrlPart,
@@ -68,7 +63,7 @@ from lexigram.contracts.core import HealthCheckResult, HealthStatus
 from lexigram.logging import (
     get_logger,
 )
-from lexigram.result import Err, Ok, Result
+from lexigram.result import Ok, Result
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -78,73 +73,6 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 __all__ = ["BedrockClient"]
-
-_thread_pool: ThreadPoolExecutor | None = None
-
-
-class _DaemonThreadPoolExecutor(ThreadPoolExecutor):
-    """ThreadPoolExecutor whose workers are daemon threads.
-
-    Keeps the pool off the non-daemon thread list so it never blocks
-    interpreter shutdown or trips test teardown assertions. Mirrors the
-    CPython 3.13 worker-spawn logic with ``daemon=True``.
-    """
-
-    def _adjust_thread_count(self) -> None:
-        if self._idle_semaphore.acquire(timeout=0):
-            return
-
-        def weakref_cb(_: Any, q: Any = self._work_queue) -> None:
-            q.put(None)
-
-        num_threads = len(self._threads)
-        if num_threads < self._max_workers:
-            thread_name = f"{self._thread_name_prefix or self}_{num_threads}"
-            t = threading.Thread(
-                name=thread_name,
-                target=_worker,
-                args=(
-                    weakref.ref(self, weakref_cb),
-                    self._work_queue,
-                    self._initializer,
-                    self._initargs,
-                ),
-                daemon=True,
-            )
-            t.start()
-            self._threads.add(t)  # type: ignore[attr-defined]
-            _threads_queues[t] = self._work_queue  # type: ignore[index]
-
-
-def _get_thread_pool() -> ThreadPoolExecutor:
-    """Get the shared executor, creating it lazily on first use."""
-    global _thread_pool
-    if _thread_pool is None:
-        _thread_pool = _DaemonThreadPoolExecutor(
-            max_workers=4, thread_name_prefix="bedrock-sync"
-        )
-        atexit.register(_thread_pool.shutdown)
-    return _thread_pool
-
-
-def _content_to_text(content: Any) -> str:
-    """Extract plain text from message content for tool-result payloads.
-
-    Args:
-        content: Message content (string or list of content parts).
-
-    Returns:
-        Plain text string.
-    """
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return " ".join(
-            str(p.get("text", ""))
-            for p in content
-            if isinstance(p, dict) and p.get("type") == "text"
-        )
-    return str(content)
 
 
 class BedrockClient(AbstractLLMClient):
@@ -236,41 +164,24 @@ class BedrockClient(AbstractLLMClient):
         """
         active_model = model or self.config.model
         bedrock_messages = await self._to_bedrock_messages_async(messages)
-        request: dict[str, Any] = {
-            "modelId": active_model,
-            "messages": bedrock_messages,
-            "inferenceConfig": {},
-        }
-        # Extended thinking is incompatible with temperature on Bedrock Claude
-        self._apply_thinking(request)
-        if "additionalModelRequestFields" not in request:
-            request["inferenceConfig"]["temperature"] = temperature
-
-        if max_tokens is not None:
-            request["inferenceConfig"]["maxTokens"] = max_tokens
-
-        system = extract_system(messages)
-        if system:
-            request["system"] = [{"text": system}]
-
         tools = kwargs.pop("tools", None)
-        if tools:
-            converted_tools = [
-                tool_to_bedrock(t) for t in tools if _tool_schema_fields(t)[0]
-            ]
-            if converted_tools:
-                request["toolConfig"] = {
-                    "tools": converted_tools,
-                    "toolChoice": {"auto": {}},
-                }
+        request = build_converse_request(
+            model=active_model,
+            bedrock_messages=bedrock_messages,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            thinking=self.config.thinking,
+            tools=tools,
+        )
 
         try:
             raw = await asyncio.get_event_loop().run_in_executor(
-                _get_thread_pool(),
+                get_thread_pool(),
                 lambda: self._client.converse(**request),
             )
         except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
-            return self._handle_error_as_result(exc)
+            return error_to_result(exc)
 
         return Ok(parse_bedrock_response(raw, active_model))
 
@@ -302,32 +213,24 @@ class BedrockClient(AbstractLLMClient):
         """
         active_model = model or self.config.model
         bedrock_messages = await self._to_bedrock_messages_async(messages)
-        request: dict[str, Any] = {
-            "modelId": active_model,
-            "messages": bedrock_messages,
-            "inferenceConfig": {},
-        }
-        # Extended thinking is incompatible with temperature on Bedrock Claude
-        self._apply_thinking(request)
-        if "additionalModelRequestFields" not in request:
-            request["inferenceConfig"]["temperature"] = temperature
-
-        if max_tokens is not None:
-            request["inferenceConfig"]["maxTokens"] = max_tokens
-
-        system = extract_system(messages)
-        if system:
-            request["system"] = [{"text": system}]
+        request = build_converse_request(
+            model=active_model,
+            bedrock_messages=bedrock_messages,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            thinking=self.config.thinking,
+        )
 
         try:
             raw_stream = await asyncio.get_event_loop().run_in_executor(
-                _get_thread_pool(),
+                get_thread_pool(),
                 lambda: self._client.converse_stream(**request),
             )
         except Exception as exc:  # noqa: BLE001 - botocore raises dynamic provider exceptions
-            return self._handle_error_as_result(exc)
+            return error_to_result(exc)
 
-        return Ok(bedrock_stream_chunks(raw_stream, active_model, _get_thread_pool()))
+        return Ok(bedrock_stream_chunks(raw_stream, active_model, get_thread_pool()))
 
     async def _do_chat(
         self,
@@ -380,7 +283,7 @@ class BedrockClient(AbstractLLMClient):
 
             mgmt = boto3.client("bedrock", region_name=self._region)
             await asyncio.get_event_loop().run_in_executor(
-                _get_thread_pool(),
+                get_thread_pool(),
                 lambda: mgmt.list_foundation_models(maxResults=1),
             )
         except Exception as exc:  # noqa: BLE001 - boto3 exposes provider-specific exceptions
@@ -407,22 +310,12 @@ class BedrockClient(AbstractLLMClient):
     def _apply_thinking(self, request: dict[str, Any]) -> None:
         """Inject Bedrock extended-thinking parameters into the request payload.
 
-        Sets ``additionalModelRequestFields.thinking`` when ``config.thinking``
-        is configured.  Also removes ``temperature`` from ``inferenceConfig``
-        because Bedrock Claude rejects that combination.
+        Delegates to :func:`~lexigram.ai.llm.clients._bedrock_requests.apply_thinking`.
 
         Args:
             request: Mutable Bedrock request dict.
         """
-        if self.config.thinking is None:
-            return
-        request["additionalModelRequestFields"] = {
-            "thinking": {
-                "type": "enabled",
-                "budget_tokens": self.config.thinking.budget_tokens,
-            }
-        }
-        request.get("inferenceConfig", {}).pop("temperature", None)
+        apply_thinking(self.config.thinking, request)
 
     async def _build_content_blocks(
         self, content: MessageContent
@@ -528,9 +421,7 @@ class BedrockClient(AbstractLLMClient):
                             {
                                 "toolResult": {
                                     "toolUseId": tool_call_id,
-                                    "content": [
-                                        {"text": _content_to_text(content_raw)}
-                                    ],
+                                    "content": [{"text": content_to_text(content_raw)}],
                                 }
                             }
                         ],
@@ -561,32 +452,3 @@ class BedrockClient(AbstractLLMClient):
             bedrock_role = "assistant" if role_str == "assistant" else "user"
             result.append({"role": bedrock_role, "content": bedrock_content})
         return result
-
-    def _handle_error_as_result(self, error: Exception) -> Result[Any, LLMError]:
-        """Map a caught exception to ``Err`` or re-raise for infrastructure failures."""
-        err_str = str(error)
-        err_code = getattr(
-            getattr(error, "response", {}).get("Error", {}), "Code", None
-        )
-        if err_code is None and hasattr(error, "response"):
-            resp = error.response
-            if isinstance(resp, dict):
-                err_code = resp.get("Error", {}).get("Code", "")
-
-        if err_code in (
-            "AccessDeniedException",
-            "AuthorizationException",
-            "UnauthorizedException",
-        ):
-            raise LLMAuthenticationError(f"bedrock: auth failed: {error}") from error
-        if err_code in ("ThrottlingException", "TooManyRequestsException"):
-            return Err(LLMRateLimitError(f"bedrock: rate limit: {error}"))
-        if err_code in (
-            "ModelNotReadyException",
-            "ModelNotFoundException",
-            "ResourceNotFoundException",
-        ):
-            return Err(LLMModelNotFoundError(f"bedrock: model not found: {error}"))
-        if err_code == "ValidationException" and "content filter" in err_str.lower():
-            return Err(LLMContentFilterError(f"bedrock: content filtered: {error}"))
-        raise AIError(f"bedrock: infrastructure error: {error}") from error

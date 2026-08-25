@@ -13,7 +13,6 @@ Rationale: Focused auth guard middleware. All functions serve a single
 concern (request authentication/authorization). Decomposing would add
 indirection without reducing complexity.
 
-## auth/services/auth_service.py — 559 LOC
 
 Rationale: Auth orchestrator with tightly-coupled RBAC, session, and
 token logic. The methods share state (user lookup, permission checks)
@@ -34,7 +33,6 @@ the same registry, permission checks, and settings service. The
 controller is the natural unit for this concern. Consider splitting
 when widget types grow beyond current scope.
 
-## dashboard/widgets.py — 577 LOC
 
 Rationale: Dashboard widget type definitions and infrastructure.
 Coherent type hierarchy with shared rendering patterns. Accept as
@@ -50,7 +48,6 @@ Rationale: Admin DI provider orchestrator. Registers all sub-providers
 in a single coherent boot sequence. Splitting would scatter the
 registration graph.
 
-## di/sub_providers/auth.py — 562 LOC
 
 Rationale: Auth sub-provider. Registers auth-related services in a
 single coherent unit. Accept as DI infrastructure.
@@ -65,7 +62,6 @@ of building form schemas from models. Accept as focused module.
 Rationale: Form schema/component types. Coherent type definitions used
 together. Accept as type module.
 
-## lib/template/auth.py — 559 LOC
 
 Rationale: Standalone auth template rendering. Self-contained module
 with no internal collaborators to extract. Accept as leaf module.

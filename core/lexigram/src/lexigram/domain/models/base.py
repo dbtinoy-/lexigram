@@ -11,12 +11,10 @@ import re as _re
 from typing import (
     Any,
     ClassVar,
-    Union,
-    get_args,
-    get_origin,
     get_type_hints,
 )
 
+from lexigram.domain.models.coercion import coerce_and_build, resolve_type_hints
 from lexigram.identity import ambient as identity_ambient
 from lexigram.primitives.typing import type_allows_none
 
@@ -33,41 +31,6 @@ from lexigram.validation.schema import (
     collect_field_validators,
     collect_model_validators,
 )
-
-
-def _resolve_type_hints(cls: type) -> dict[str, Any]:
-    """Resolve type hints for a class, falling back to typing-augmented namespaces.
-
-    When ``from __future__ import annotations`` is used, annotations are strings
-    that ``get_type_hints()`` must evaluate. Some classes reference symbols like
-    ``ClassVar`` or ``Any`` that aren't in the class module's global namespace.
-    This helper retries with typing symbols injected.
-
-    Args:
-        cls: The class to resolve type hints for.
-
-    Returns:
-        A dict mapping field names to their resolved types. Empty dict on failure.
-    """
-    import sys
-    import typing
-
-    try:
-        return get_type_hints(cls)
-    except (NameError, AttributeError, TypeError):
-        pass
-
-    # Retry with typing symbols + class module globals
-    try:
-        module = sys.modules.get(cls.__module__)
-        module_ns = dict(vars(module)) if module else {}
-        typing_ns = {name: getattr(typing, name) for name in dir(typing)}
-        globalns = {**typing_ns, **module_ns}
-        return get_type_hints(cls, globalns=globalns)
-    except (NameError, AttributeError, TypeError):
-        pass
-
-    return {}
 
 
 def _coerce_value(fname: str, val: Any, type_hints: dict[str, Any], f: Any) -> Any:
@@ -189,7 +152,7 @@ class DomainModel:
 
         # Pre-resolve and cache type hints at class-creation time to avoid
         # repeated get_type_hints() calls on every __init__ invocation.
-        hints = _resolve_type_hints(cls)
+        hints = resolve_type_hints(cls)
         cls._cached_type_hints = hints if hints else None
 
     @staticmethod
@@ -257,7 +220,7 @@ class DomainModel:
         dc_fields = getattr(self.__class__, "__dataclass_fields__", {})
 
         try:
-            type_hints = self.__class__._cached_type_hints or _resolve_type_hints(
+            type_hints = self.__class__._cached_type_hints or resolve_type_hints(
                 self.__class__
             )
         except (NameError, AttributeError, TypeError):
@@ -432,82 +395,7 @@ class DomainModel:
     @classmethod
     def model_validate(cls, data: dict[str, Any], **kwargs: Any) -> Any:
         """Create an instance from a dictionary, coercing scalar types."""
-        import dataclasses as _dc
-
-        # Evaluate once: repeating an identical call after its early-return
-        # guard trips mypy's unreachable-statement analysis under
-        # --warn-unreachable.
-        is_dc = _dc.is_dataclass(cls)
-        if not is_dc:
-            return cls(**data)
-
-        # getattr returns Any so the except below stays reachable: static
-        # narrowing assumes get_type_hints cannot raise, but forward refs
-        # raise NameError at runtime.
-        hints_cache: Any = getattr(cls, "_cached_type_hints", None)
-        try:
-            hints = hints_cache or get_type_hints(cls)
-        except (NameError, TypeError, ValueError):
-            return cls(**data)
-
-        coerced: dict[str, Any] = {}
-        for key, value in data.items():
-            expected = hints.get(key)
-            if expected is None:
-                coerced[key] = value
-                continue
-
-            origin = get_origin(expected)
-            if origin is Union:
-                args = get_args(expected)
-                non_none = [a for a in args if a is not type(None)]
-                if value is None:
-                    coerced[key] = None
-                    continue
-                if len(non_none) == 1:
-                    expected = non_none[0]
-                    origin = get_origin(expected)
-
-            if (
-                origin is None
-                and isinstance(expected, type)
-                and expected in (int, float, str, bool)
-                and not isinstance(value, expected)
-            ):
-                if expected is bool:
-                    if isinstance(value, str):
-                        coerced[key] = value.lower() not in ("false", "0", "")
-                    else:
-                        coerced[key] = bool(value)
-                else:
-                    try:
-                        coerced[key] = expected(value)
-                    except (ValueError, TypeError) as exc:
-                        raise ValueError(
-                            f"Field '{key}': cannot coerce {value!r} "
-                            f"to {expected.__name__}"
-                        ) from exc
-            else:
-                # SecretStr coercion from plain string (env vars, JSON)
-                _SecretStr: Any
-                try:
-                    from lexigram.validation import SecretStr as _SecretStrMod
-
-                    _SecretStr = _SecretStrMod
-                except ImportError:
-                    _SecretStr = None
-
-                if (
-                    _SecretStr is not None
-                    and expected is _SecretStr
-                    and isinstance(value, str)
-                    and not isinstance(value, _SecretStr)
-                ):
-                    coerced[key] = _SecretStr(value)
-                else:
-                    coerced[key] = value
-
-        return cls(**coerced)
+        return coerce_and_build(cls, data)
 
     @classmethod
     def model_validate_json(cls, json_str: str, **kwargs: Any) -> Any:

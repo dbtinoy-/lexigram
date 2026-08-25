@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import contextvars
-from dataclasses import dataclass
 import time
-from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from lexigram.contracts.core.trace_context import (
     new_span_id,
@@ -21,167 +20,54 @@ from lexigram.contracts.core.trace_context import (
     trace_flags_var,
     trace_id_var,
 )
-from lexigram.primitives.registry import Registry
+from lexigram.primitives.context_keys import (
+    CAUSATION_ID as CAUSATION_ID,
+)
+from lexigram.primitives.context_keys import (
+    CORRELATION_ID as CORRELATION_ID,
+)
+from lexigram.primitives.context_keys import (
+    DEFAULT_KEYS as DEFAULT_KEYS,
+)
+from lexigram.primitives.context_keys import (
+    REQUEST_ID as REQUEST_ID,
+)
+from lexigram.primitives.context_keys import (
+    REQUEST_METHOD as REQUEST_METHOD,
+)
+from lexigram.primitives.context_keys import (
+    REQUEST_PATH as REQUEST_PATH,
+)
+from lexigram.primitives.context_keys import (
+    REQUEST_START_TIME as REQUEST_START_TIME,
+)
+from lexigram.primitives.context_keys import (
+    SPAN_ID as SPAN_ID,
+)
+from lexigram.primitives.context_keys import (
+    TENANT_ID as TENANT_ID,
+)
+from lexigram.primitives.context_keys import (
+    TRACE_FLAGS as TRACE_FLAGS,
+)
+from lexigram.primitives.context_keys import (
+    TRACE_ID as TRACE_ID,
+)
+from lexigram.primitives.context_keys import (
+    USER_ID as USER_ID,
+)
+from lexigram.primitives.context_keys import (
+    ContextKey as ContextKey,
+)
+from lexigram.primitives.context_registry import (
+    ContextVarRegistry as ContextVarRegistry,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     import types
 
 T = TypeVar("T")
-
-
-# ---------------------------------------------------------------------------
-# Typed Context Key  (pure data — zero coupling to any registry)
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class ContextKey(Generic[T]):
-    """Immutable, typed key for context-variable access (pure data)."""
-
-    name: str
-    default: T | None = None
-
-
-# ---------------------------------------------------------------------------
-# Context Variable Registry  (injectable storage backend)
-# ---------------------------------------------------------------------------
-
-
-class ContextVarRegistry(Registry[str, contextvars.ContextVar[Any]]):
-    """Manages ``contextvars.ContextVar`` instances keyed by name."""
-
-    def __init__(self, name: str = "ContextVarRegistry") -> None:
-        super().__init__(name=name, allow_overwrite=False)
-
-    def _validate(self, key: str, value: object) -> None:
-        """Validate a candidate registration value.
-
-        Typed as ``object`` (a widening override) so the defensive
-        isinstance guard stays statically reachable.
-        """
-        if not isinstance(value, contextvars.ContextVar):
-            msg = f"Expected ContextVar, got {type(value).__name__} for key '{key}'"
-            raise TypeError(msg)
-
-    # -- registration ------------------------------------------------------
-
-    def register_key(self, key: ContextKey[Any]) -> None:
-        """Create and register a ``ContextVar`` for *key* (idempotent)."""
-        if not self.has(key.name):
-            var: contextvars.ContextVar[Any] = contextvars.ContextVar(
-                key.name, default=key.default
-            )
-            self.register(key.name, var)
-
-    # -- typed accessors ---------------------------------------------------
-
-    def get_typed(self, key: ContextKey[T], default: T | None = None) -> T | None:
-        """Read the current value for a typed key."""
-        effective = default if default is not None else key.default
-        return cast("T | None", self._read(key.name, effective))
-
-    def set_typed(self, key: ContextKey[T], value: T) -> contextvars.Token[T | None]:
-        """Write a value for a typed key; returns a reset token."""
-        return self._write(key.name, value)
-
-    def reset_typed(
-        self,
-        key: ContextKey[T],
-        token: contextvars.Token[T | None],
-    ) -> None:
-        """Reset a typed key using a token from ``set_typed``."""
-        self._reset(key.name, token)
-
-    # -- string-keyed accessors (dynamic / runtime keys) -------------------
-
-    def get_value(self, key: str, default: Any = None) -> Any:
-        """Read the current value by string key."""
-        return self._read(key, default)
-
-    def set_value(self, key: str, value: Any) -> contextvars.Token[Any]:
-        """Write a value by string key; returns a reset token."""
-        return self._write(key, value)
-
-    def reset_value(self, key: str, token: contextvars.Token[Any]) -> None:
-        """Reset a context variable by string key."""
-        self._reset(key, token)
-
-    # -- introspection -----------------------------------------------------
-
-    def resolve_var(self, key: ContextKey[T]) -> contextvars.ContextVar[T | None]:
-        """Return the underlying ``ContextVar`` (advanced use)."""
-        if not self.has(key.name):
-            raise KeyError(f"Context key '{key.name}' is not registered.")
-        return self.get(key.name)
-
-    def snapshot(self) -> dict[str, Any]:
-        """Return a dict of all non-``None`` context values."""
-        result: dict[str, Any] = {}
-        for name, var in self.items():
-            try:
-                val = var.get()
-                if val is not None:
-                    result[name] = val
-            except LookupError:
-                pass
-        return result
-
-    # -- private helpers ---------------------------------------------------
-
-    def _read(self, key: str, default: Any) -> Any:
-        if not self.has(key):
-            return default
-        var = self.get(key)
-        try:
-            val = var.get()
-            return val if val is not None else default
-        except LookupError:
-            return default
-
-    def _write(self, key: str, value: Any) -> contextvars.Token[Any]:
-        if not self.has(key):
-            msg = (
-                f"Context key '{key}' is not registered. "
-                "Register a ContextKey before setting values."
-            )
-            raise RuntimeError(msg)
-        return self.get(key).set(value)
-
-    def _reset(self, key: str, token: contextvars.Token[Any]) -> None:
-        if self.has(key):
-            self.get(key).reset(token)
-
-
-# ---------------------------------------------------------------------------
-# Well-known Context Keys  (pure data constants — no side-effects)
-# ---------------------------------------------------------------------------
-
-REQUEST_ID: ContextKey[str] = ContextKey("request_id")
-REQUEST_START_TIME: ContextKey[float] = ContextKey("request_start_time")
-REQUEST_METHOD: ContextKey[str] = ContextKey("request_method")
-REQUEST_PATH: ContextKey[str] = ContextKey("request_path")
-CORRELATION_ID: ContextKey[str] = ContextKey("correlation_id")
-CAUSATION_ID: ContextKey[str] = ContextKey("causation_id")
-TENANT_ID: ContextKey[str] = ContextKey("tenant_id")
-USER_ID: ContextKey[str] = ContextKey("user_id")
-TRACE_ID: ContextKey[str] = ContextKey("trace_id")
-SPAN_ID: ContextKey[str] = ContextKey("span_id")
-TRACE_FLAGS: ContextKey[str] = ContextKey("trace_flags", default="01")
-
-DEFAULT_KEYS: tuple[ContextKey[Any], ...] = (
-    REQUEST_ID,
-    REQUEST_START_TIME,
-    REQUEST_METHOD,
-    REQUEST_PATH,
-    CORRELATION_ID,
-    CAUSATION_ID,
-    TENANT_ID,
-    USER_ID,
-    TRACE_ID,
-    SPAN_ID,
-    TRACE_FLAGS,
-)
 
 
 # ---------------------------------------------------------------------------

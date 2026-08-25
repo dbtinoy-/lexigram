@@ -117,3 +117,25 @@ def knows_edge() -> GraphEdge:
             "__kg_metadata": {"extractor": "llm"},
         },
     )
+
+
+# ── Chunking shared fixtures ────────────────────────────────────────────────
+# Used by the test_chunkers_*.py modules.
+
+
+@pytest.fixture
+def chunking_sample_text() -> str:
+    """Sample text for testing."""
+    return (
+        "This is the first sentence. This is the second sentence. "
+        "This is the third sentence.\n\n"
+        "This is a new paragraph with more content. It has multiple sentences. "
+        "Each sentence adds more information.\n\n"
+        "Finally, this is the last paragraph. It concludes the document."
+    )
+
+
+@pytest.fixture
+def chunking_long_text() -> str:
+    """Longer text for testing."""
+    return " ".join(list(map(lambda i: f"Sentence number {i}.", range(100))))

@@ -1,7 +1,11 @@
 """Admin authentication orchestrator service.
 
 Coordinates the complete login flow: IP rate limiting, account lockout,
-credential verification, session issuance, and audit logging.
+credential verification, MFA challenge gating, and audit logging.
+Session/token lifecycle is delegated to
+:class:`~lexigram.admin.auth.services.session_lifecycle.SessionLifecycleCoordinator`
+and the pre-login security gates to
+:class:`~lexigram.admin.auth.services.login_guards.LoginGuardPipeline`.
 """
 
 from __future__ import annotations
@@ -10,12 +14,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from lexigram.admin.auth.errors import (
-    AccountLockedError,
     AdminAuthError,
     InvalidCredentialsError,
     MfaNotEnabledError,
     MfaVerificationFailedError,
-    RateLimitExceededError,
 )
 from lexigram.admin.auth.protocols import (
     AdminAuditLogServiceProtocol,
@@ -24,6 +26,10 @@ from lexigram.admin.auth.protocols import (
     AdminLoginAttemptServiceProtocol,
     AdminMfaServiceProtocol,
     AdminSessionServiceProtocol,
+)
+from lexigram.admin.auth.services.login_guards import LoginGuardPipeline
+from lexigram.admin.auth.services.session_lifecycle import (
+    SessionLifecycleCoordinator,
 )
 from lexigram.admin.auth.store.protocols import AdminUserStoreProtocol
 from lexigram.admin.auth.types import AdminAuthResult, AdminSecurityEventType
@@ -89,6 +95,10 @@ class AdminAuthService:
         self._email_otp_service = email_otp_service
         self._mfa_factor = mfa_factor
         self._session_lifetime = session_lifetime
+        self._guards = LoginGuardPipeline(attempt_service, audit_service)
+        self._lifecycle = SessionLifecycleCoordinator(
+            attempt_service, session_service, audit_service, session_lifetime
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -137,47 +147,23 @@ class AdminAuthService:
             ``Err(InvalidCredentialsError)`` when credentials are invalid.
         """
         # Step 1 — IP rate limit
-        try:
-            await self._attempt_service.check_ip_rate_limit(ip_address)
-        except RateLimitExceededError as exc:
-            await self._attempt_service.record_attempt(
-                email=email,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                failure_reason="ip_rate_limited",
-            )
-            await self._audit_service.log_event(
-                event_type=AdminSecurityEventType.LOGIN_BLOCKED_IP,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                metadata={"email": email},
-            )
-            logger.warning(
-                "admin_login_blocked_ip",
-                ip_address=ip_address,
-                email=email,
-            )
-            return Err(exc)
+        blocked = await self._guards.check_ip_rate_limit(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            failure_reason="ip_rate_limited",
+        )
+        if blocked is not None:
+            return Err(blocked)
 
         # Step 2 — Account lockout
-        try:
-            await self._attempt_service.check_account_lockout(email)
-        except AccountLockedError as exc:
-            await self._audit_service.log_event(
-                event_type=AdminSecurityEventType.LOGIN_BLOCKED_LOCKOUT,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                metadata={"email": email},
-            )
-            logger.warning(
-                "admin_login_blocked_lockout",
-                email=email,
-                ip_address=ip_address,
-            )
-            return Err(exc)
+        locked = await self._guards.check_account_lockout(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        if locked is not None:
+            return Err(locked)
 
         # Step 3 — Credential verification
         user: Any | None = await self._user_store.authenticate(email, password)
@@ -276,51 +262,14 @@ class AdminAuthService:
                     )
                 )
 
-        # Step 4 — Record success and clear lockout
-        await self._attempt_service.record_attempt(
-            email=email,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            success=True,
-        )
-        await self._attempt_service.clear_lockout(email)
-
-        # Step 5 — Create session
+        # Steps 4-6 — Record success, create session, audit
         session_roles: list[str] = list(getattr(user, "roles", []) or [])
-        session_id: str = await self._session_service.create_session(
+        session_id, expires_at = await self._lifecycle.finalize_login(
             user_id=str(user.user_id),
             email=str(user.email),
             roles=session_roles,
             ip_address=ip_address,
             user_agent=user_agent,
-        )
-        await self._audit_service.log_event(
-            event_type=AdminSecurityEventType.SESSION_CREATED,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            success=True,
-            admin_user_id=str(user.user_id),
-            metadata={"email": str(user.email), "session_id": session_id},
-        )
-
-        expires_at: datetime = datetime.now(UTC) + timedelta(
-            seconds=self._session_lifetime
-        )
-
-        # Step 6 — Audit success
-        await self._audit_service.log_event(
-            event_type=AdminSecurityEventType.LOGIN_SUCCESS,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            success=True,
-            admin_user_id=str(user.user_id),
-            metadata={"email": str(user.email), "session_id": session_id},
-        )
-        logger.info(
-            "admin_login_success",
-            user_id=str(user.user_id),
-            email=str(user.email),
-            ip_address=ip_address,
         )
 
         return Ok(
@@ -369,37 +318,27 @@ class AdminAuthService:
             ``Err(AccountLockedError)`` when the account is locked.
         """
         # Step 0a — IP rate limit (mirrors authenticate()'s Step 1)
-        try:
-            await self._attempt_service.check_ip_rate_limit(ip_address)
-        except RateLimitExceededError as exc:
-            await self._attempt_service.record_attempt(
-                email=email,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                failure_reason="mfa_ip_rate_limited",
-            )
-            await self._audit_service.log_event(
-                event_type=AdminSecurityEventType.LOGIN_BLOCKED_IP,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                metadata={"email": email, "stage": "mfa"},
-            )
-            return Err(exc)
+        blocked = await self._guards.check_ip_rate_limit(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            failure_reason="mfa_ip_rate_limited",
+            extra_metadata={"stage": "mfa"},
+            warn=False,
+        )
+        if blocked is not None:
+            return Err(blocked)
 
         # Step 0b — Account lockout (mirrors authenticate()'s Step 2)
-        try:
-            await self._attempt_service.check_account_lockout(email)
-        except AccountLockedError as exc:
-            await self._audit_service.log_event(
-                event_type=AdminSecurityEventType.LOGIN_BLOCKED_LOCKOUT,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                metadata={"email": email, "stage": "mfa"},
-            )
-            return Err(exc)
+        locked = await self._guards.check_account_lockout(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            extra_metadata={"stage": "mfa"},
+            warn=False,
+        )
+        if locked is not None:
+            return Err(locked)
 
         if self._mfa_factor == "email":
             if self._email_otp_service is None:
@@ -459,50 +398,13 @@ class AdminAuthService:
             metadata={"email": email},
         )
 
-        # Step 2 — Record success and clear lockout
-        await self._attempt_service.record_attempt(
-            email=email,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            success=True,
-        )
-        await self._attempt_service.clear_lockout(email)
-
-        # Step 3 — Create session
-        session_id: str = await self._session_service.create_session(
+        # Steps 2-4 — Record success, create session, audit
+        session_id, expires_at = await self._lifecycle.finalize_login(
             user_id=user_id,
             email=email,
             roles=roles,
             ip_address=ip_address,
             user_agent=user_agent,
-        )
-        await self._audit_service.log_event(
-            event_type=AdminSecurityEventType.SESSION_CREATED,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            success=True,
-            admin_user_id=user_id,
-            metadata={"email": email, "session_id": session_id},
-        )
-
-        expires_at: datetime = datetime.now(UTC) + timedelta(
-            seconds=self._session_lifetime
-        )
-
-        # Step 4 — Audit success
-        await self._audit_service.log_event(
-            event_type=AdminSecurityEventType.LOGIN_SUCCESS,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            success=True,
-            admin_user_id=user_id,
-            metadata={"email": email, "session_id": session_id},
-        )
-        logger.info(
-            "admin_login_success",
-            user_id=user_id,
-            email=email,
-            ip_address=ip_address,
         )
 
         return Ok(
@@ -524,15 +426,7 @@ class AdminAuthService:
         Args:
             session_id: Identifier of the session to revoke.
         """
-        await self._session_service.revoke_session(session_id)
-        await self._audit_service.log_event(
-            event_type=AdminSecurityEventType.LOGOUT,
-            ip_address="",
-            user_agent="",
-            success=True,
-            metadata={"session_id": session_id},
-        )
-        logger.info("admin_session_invalidated", session_id=session_id)
+        await self._lifecycle.invalidate_session(session_id)
 
     async def invalidate_all_user_sessions(self, user_id: str) -> None:
         """Revoke all active sessions for an admin user.
@@ -544,16 +438,7 @@ class AdminAuthService:
         Args:
             user_id: UUID of the admin user whose sessions to revoke.
         """
-        await self._session_service.revoke_all_user_sessions(user_id)
-        await self._audit_service.log_event(
-            event_type=AdminSecurityEventType.SESSION_REVOKED,
-            ip_address="",
-            user_agent="",
-            success=True,
-            admin_user_id=user_id,
-            metadata={"reason": "all_sessions_revoked"},
-        )
-        logger.info("admin_all_sessions_invalidated", user_id=user_id)
+        await self._lifecycle.invalidate_all_user_sessions(user_id)
 
 
 __all__ = ["AdminAuthService"]

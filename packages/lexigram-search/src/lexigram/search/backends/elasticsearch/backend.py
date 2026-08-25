@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from lexigram.contracts.core import HealthCheckResult, HealthStatus
+from lexigram.contracts.core import HealthCheckResult
 from lexigram.logging import get_logger
 from lexigram.result import Err, Ok, Result
 from lexigram.search.backends.base import SearchBackendBase
-from lexigram.search.backends.filters import render_elasticsearch
+from lexigram.search.backends.elasticsearch import health, index_mgmt, search_ops
 from lexigram.search.config import ElasticsearchConfig
 from lexigram.search.exceptions import SearchError
-from lexigram.search.filterset import merge_filters, rule_to_filters
-from lexigram.search.types import SearchResponse, SearchResult
+from lexigram.search.types import SearchResponse
 
 logger = get_logger(__name__)
 
@@ -28,6 +27,10 @@ class ElasticsearchBackend(SearchBackendBase):
     - Highlighting with multiple strategies
     - Vector search support (dense_vector, kNN)
     - OpenSearch compatibility
+
+    Transport groups live in sibling modules consumed by this class:
+    ``search_ops`` (query building/parsing), ``index_mgmt`` (index and
+    bulk management), and ``health`` (cluster health).
     """
 
     def __init__(self, config: ElasticsearchConfig | dict[str, Any] | None = None):
@@ -125,47 +128,9 @@ class ElasticsearchBackend(SearchBackendBase):
 
             full_index = self._get_index_name(index)
 
-            # Build the search query
-            search_body = {
-                "query": {
-                    "multi_match": {
-                        "query": query,
-                        "fields": [
-                            "title^3",
-                            "name^2",
-                            "description",
-                            "content",
-                            "text",
-                            "body",
-                        ],
-                        "type": "best_fields",
-                        "fuzziness": "AUTO",
-                    },
-                },
-                "from": offset,
-                "size": limit,
-                "highlight": {
-                    "fields": {
-                        "title": {},
-                        "description": {},
-                        "content": {},
-                        "body": {},
-                    },
-                },
-            }
-
-            # Add filters if provided
-            if filters or rule:
-                filters = merge_filters(filters, rule_to_filters(rule))
-                filter_clauses = render_elasticsearch(filters)
-
-                if filter_clauses:
-                    search_body["query"] = {
-                        "bool": {
-                            "must": search_body["query"],
-                            "filter": filter_clauses,
-                        },
-                    }
+            # Build the search query and apply filterset filters
+            search_body = search_ops.build_search_body(query, offset, limit)
+            search_ops.apply_search_filters(search_body, filters, rule)
 
             # Execute search
             response = await self._client.search(
@@ -173,33 +138,7 @@ class ElasticsearchBackend(SearchBackendBase):
                 body=search_body,
             )
 
-            hits = response["hits"]["hits"]
-            results = []
-            for hit in hits:
-                results.append(
-                    SearchResult(
-                        id=str(hit["_id"]),
-                        score=float(hit["_score"] or 0.0),
-                        data={
-                            **hit["_source"],
-                            "_id": hit["_id"],
-                            "_score": hit["_score"],
-                        },
-                        highlights=hit.get("highlight"),
-                    )
-                )
-
-            total = response["hits"]["total"]["value"]
-
-            return Ok(
-                SearchResponse(
-                    results=results,
-                    total=total,
-                    page=offset // limit + 1 if limit else 1,
-                    per_page=limit,
-                    query=query,
-                )
-            )
+            return Ok(search_ops.parse_search_response(response, query, offset, limit))
         except Exception as exc:  # noqa: BLE001 — Elasticsearch backend boundary
             return Err(SearchError(f"Elasticsearch search failed: {exc}"))
 
@@ -229,47 +168,11 @@ class ElasticsearchBackend(SearchBackendBase):
 
     async def _ensure_index(self, index: str) -> None:
         """Ensure the index exists with proper mappings."""
-        full_index = self._get_index_name(index)
-
-        # Check if index exists
-        exists = await self._client.indices.exists(index=full_index)
-
-        if not exists:
-            # Create index with mappings
-            mappings = {
-                "properties": {
-                    "title": {"type": "text", "analyzer": "standard"},
-                    "name": {"type": "text", "analyzer": "standard"},
-                    "description": {"type": "text", "analyzer": "standard"},
-                    "content": {"type": "text", "analyzer": "standard"},
-                    "text": {"type": "text", "analyzer": "standard"},
-                    "body": {"type": "text", "analyzer": "standard"},
-                    "tags": {"type": "keyword"},
-                    "category": {"type": "keyword"},
-                    "created_at": {"type": "date"},
-                    "updated_at": {"type": "date"},
-                },
-            }
-
-            settings = {
-                "number_of_shards": self.es_config.number_of_shards,
-                "number_of_replicas": self.es_config.number_of_replicas,
-                "analysis": {
-                    "analyzer": {
-                        "custom_analyzer": {
-                            "type": "custom",
-                            "tokenizer": "standard",
-                            "filter": ["lowercase", "asciifolding"],
-                        },
-                    },
-                },
-            }
-
-            await self._client.indices.create(
-                index=full_index,
-                mappings=mappings,
-                settings=settings,
-            )
+        await index_mgmt.ensure_index(
+            self._client,
+            self._get_index_name(index),
+            self.es_config,
+        )
 
     async def bulk_index(
         self,
@@ -400,29 +303,8 @@ class ElasticsearchBackend(SearchBackendBase):
         Returns:
             Structured health check result with cluster status details.
         """
-        try:
-            client = await self._get_client()
-            info = await client.info()
-            cluster_name = info.get("cluster_name", "unknown")
-            version = info.get("version", {}).get("number", "unknown")
-            return HealthCheckResult(
-                component="elasticsearch",
-                status=HealthStatus.HEALTHY,
-                details={
-                    "backend": "elasticsearch",
-                    "cluster_name": cluster_name,
-                    "version": version,
-                    "hosts": self.es_config.hosts,
-                },
-            )
-        except Exception as e:  # noqa: BLE001 — health check boundary
-            logger.debug("Elasticsearch health check failed: %s", e)
-            return HealthCheckResult(
-                component="elasticsearch",
-                status=HealthStatus.UNHEALTHY,
-                error=str(e),
-                details={"backend": "elasticsearch", "hosts": self.es_config.hosts},
-            )
+        client = await self._get_client()
+        return await health.check_cluster_health(client, self.es_config.hosts)
 
     async def aggregate(
         self,
@@ -438,40 +320,14 @@ class ElasticsearchBackend(SearchBackendBase):
 
         full_index = self._get_index_name(index)
 
-        search_body = {
-            "query": {
-                "multi_match": {
-                    "query": query,
-                    "fields": [
-                        "title^3",
-                        "name^2",
-                        "description",
-                        "content",
-                        "text",
-                        "body",
-                    ],
-                },
-            },
-            "aggs": aggs,
-            "from": offset,
-            "size": limit,
-        }
+        search_body = search_ops.build_aggregate_body(query, aggs, offset, limit)
 
         response = await self._client.search(
             index=full_index,
             body=search_body,
         )
 
-        hits = response["hits"]["hits"]
-        results = [hit["_source"] for hit in hits]
-
-        return {
-            "hits": results,
-            "total": response["hits"]["total"]["value"],
-            "aggregations": response.get("aggregations", {}),
-            "limit": limit,
-            "offset": offset,
-        }
+        return search_ops.parse_aggregate_response(response, limit, offset)
 
     async def update_settings(
         self,
@@ -489,17 +345,12 @@ class ElasticsearchBackend(SearchBackendBase):
         Returns:
             Dictionary with the update result.
         """
-        full_index = self._get_index_name(index)
-
-        try:
-            response = await self._client.indices.put_settings(
-                index=full_index,
-                body=settings,
-            )
-            return {"acknowledged": response.get("acknowledged", True), "index": index}
-        except Exception as e:
-            logger.error("update_settings_failed", index=index, error=str(e))
-            raise
+        return await index_mgmt.update_index_settings(
+            self._client,
+            self._get_index_name(index),
+            index,
+            settings,
+        )
 
     async def bulk_delete(
         self,
@@ -526,34 +377,11 @@ class ElasticsearchBackend(SearchBackendBase):
         full_index = self._get_index_name(index)
 
         # Build bulk delete operations
-        operations = []
-        for doc_id in document_ids:
-            operations.append({"delete": {"_index": full_index, "_id": doc_id}})
+        operations = index_mgmt.build_bulk_delete_operations(full_index, document_ids)
 
         try:
             response = await self._client.bulk(operations=operations, **kwargs)
-
-            # Parse response to count successes/failures
-            successful = 0
-            failed = 0
-            errors: list[dict[str, Any]] = []
-
-            for item in response.get("items", []):
-                if "delete" in item:
-                    delete_result = item["delete"]
-                    if delete_result.get("status") in (200, 404):
-                        # 200 = deleted, 404 = not found (still considered success)
-                        successful += 1
-                    else:
-                        failed += 1
-                        errors.append(delete_result.get("error", {}))
-
-            return {
-                "successful": successful,
-                "failed": failed,
-                "total": len(document_ids),
-                "errors": errors if errors else None,
-            }
+            return index_mgmt.parse_bulk_delete_response(response, len(document_ids))
         except Exception as e:
             logger.error("bulk_delete_failed", index=index, error=str(e))
             raise
@@ -572,31 +400,13 @@ class ElasticsearchBackend(SearchBackendBase):
         Returns:
             True if successful.
         """
-        full_source = self._get_index_name(source)
-        full_target = self._get_index_name(target)
-
-        try:
-            # Use reindex API to copy documents
-            await self._client.reindex(
-                {
-                    "source": {"index": full_source},
-                    "dest": {"index": full_target},
-                },
-                wait_for_completion=True,
-            )
-
-            # Delete the source index
-            await self._client.indices.delete(index=full_source)
-
-            return True
-        except Exception as e:
-            logger.error(
-                "rename_index_failed",
-                source=source,
-                target=target,
-                error=str(e),
-            )
-            raise
+        return await index_mgmt.rename_index_via_reindex(
+            self._client,
+            self._get_index_name(source),
+            self._get_index_name(target),
+            source,
+            target,
+        )
 
 
 __all__ = ["ElasticsearchBackend"]

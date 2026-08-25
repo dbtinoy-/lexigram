@@ -7,20 +7,30 @@ kind, authorization, billing admission and settlement, and the upstream
 HTTP adapter — while skipping ``RelayConverterProtocol`` entirely: the
 wire format in is the wire format out, with the model alias
 substituted only when the channel config declares a suffix.
+
+Billing admission/settlement lives in
+:mod:`lexigram.ai.relay.gateway._passthrough_billing`; upstream transport
+lives in :mod:`lexigram.ai.relay.gateway._passthrough_transport`.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 import time
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING
 
+from lexigram.ai.relay.gateway._passthrough_billing import (
+    PassthroughBilling,
+    usage_from_response,
+)
+from lexigram.ai.relay.gateway._passthrough_transport import (
+    ENDPOINT_PATHS,
+    call_upstream,
+)
 from lexigram.ai.relay.gateway.channels import RelayChannelRegistry
 from lexigram.ai.relay.gateway.config import RelayGatewayConfig
 from lexigram.ai.relay.gateway.errors import (
     auth_denied,
-    billing_error_to_gateway,
     with_request_id,
 )
 from lexigram.ai.relay.gateway.passthrough_body import (
@@ -35,21 +45,10 @@ from lexigram.ai.relay.gateway.upstream import HTTPUpstreamAdapter
 from lexigram.contracts.ai.governance import (
     RelayBillingProtocol,
     RelayUsageReservation,
-    RelayUsageScope,
 )
 from lexigram.contracts.ai.relay import (
-    ConversionQuality,
-    JsonValue,
-    RelayChannel,
-    RelayConvertResult,
-    RelayFormat,
     RelayGatewayError,
     RelayGatewayRequest,
-    RelayGatewayResult,
-    RelayRequestPayload,
-    RelayUsage,
-    UpstreamRequest,
-    UpstreamResponse,
 )
 from lexigram.contracts.ai.relay.gateway import RelayGatewayErrorCode
 from lexigram.contracts.auth.guard import AuthorizerProtocol
@@ -57,42 +56,12 @@ from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.logging import get_logger
 from lexigram.serialization import dumps
 
+if TYPE_CHECKING:
+    from lexigram.contracts.ai.relay import RelayGatewayResult
+
 __all__ = ["PassthroughService"]
 
 logger = get_logger(__name__)
-
-_ENDPOINT_PATHS: dict[str, str] = {
-    "embeddings": "/v1/embeddings",
-}
-"""Endpoint kinds to upstream path segments served by this relay.
-
-Every registered kind uses the OpenAI-shaped ``/v1/<kind>`` path; future
-kinds with provider-specific shapes (multipart audio, binary images)
-extend this table in their own plans.
-"""
-
-
-@dataclass(frozen=True, slots=True)
-class _PassthroughPayloadCarrier:
-    """Billing-admission carrier for a passthrough request body.
-
-    Passthrough bodies do not belong to any chat wire DTO, so the
-    shared billing pipeline receives a transparent carrier: prompt
-    estimation counts the serialized body (same estimate function as the
-    chat path) and the requested output budget is unknown, so zero is
-    reserved. The carrier quacks like a ``RelayRequestPayload`` at the
-    only call site the billing pipeline uses (``to_dict``).
-    """
-
-    body: dict[str, Any]
-
-    def to_dict(self) -> dict[str, Any]:
-        """Return the passthrough body.
-
-        Returns:
-            A shallow copy of the forwarded request body.
-        """
-        return dict(self.body)
 
 
 class PassthroughService:
@@ -109,8 +78,8 @@ class PassthroughService:
         _upstream: HTTP transport adapter.
         _config: Gateway configuration (channel table and model suffixes).
         _authorizer: Optional authorization check before dispatch.
-        _billing: Optional billing lifecycle; when ``None`` admission and
-            settlement are skipped.
+        _billing: Optional billing collaborator; when ``None`` admission
+            and settlement are skipped.
     """
 
     def __init__(
@@ -138,7 +107,7 @@ class PassthroughService:
         self._upstream = upstream
         self._config = config
         self._authorizer = authorizer
-        self._billing = billing
+        self._billing = PassthroughBilling(billing) if billing is not None else None
 
     async def handle(
         self, kind: str, request: RelayGatewayRequest
@@ -205,7 +174,7 @@ class PassthroughService:
             name.  The channel name is ``""`` when selection failed
             before a channel was chosen.
         """
-        if kind not in _ENDPOINT_PATHS:
+        if kind not in ENDPOINT_PATHS:
             return (
                 Err(
                     RelayGatewayError(
@@ -246,7 +215,7 @@ class PassthroughService:
         billing = self._billing
         reservation: RelayUsageReservation | None = None
         if billing is not None:
-            admitted = await self._reserve(request, billing, channel)
+            admitted = await billing.reserve(request, channel)
             if admitted.is_err():
                 return Err(admitted.unwrap_err()), channel.name
             reservation = admitted.unwrap()
@@ -258,8 +227,13 @@ class PassthroughService:
         if isinstance(body_data, Mapping):
             outbound = dict(body_data)
             outbound["model"] = outbound_model
-            upstream_response = await self._call_upstream(
-                kind, channel, outbound, body.content_type, request
+            upstream_response = await call_upstream(
+                self._upstream,
+                kind,
+                channel,
+                outbound,
+                body.content_type,
+                request,
             )
         else:
             content_type = body.content_type
@@ -269,12 +243,17 @@ class PassthroughService:
                 outbound_raw = rewrite_multipart_form_field(
                     outbound_raw, boundary, "model", outbound_model
                 )
-            upstream_response = await self._call_upstream(
-                kind, channel, outbound_raw, content_type, request
+            upstream_response = await call_upstream(
+                self._upstream,
+                kind,
+                channel,
+                outbound_raw,
+                content_type,
+                request,
             )
         if upstream_response.is_err():
             if billing is not None and reservation is not None:
-                await self._settle_failed(billing, reservation)
+                await billing.settle_failed(reservation)
             return (
                 Err(
                     with_request_id(upstream_response.unwrap_err(), request.request_id)
@@ -287,11 +266,8 @@ class PassthroughService:
             resp.headers.get("content-type", _JSON_CONTENT_TYPE)
         ):
             if billing is not None and reservation is not None:
-                await self._settle(
-                    billing,
-                    reservation,
-                    self._usage_from_response(payload),
-                    status="completed",
+                await billing.settle_completed(
+                    reservation, usage_from_response(payload)
                 )
             return (
                 Ok(
@@ -311,7 +287,7 @@ class PassthroughService:
             )
         if isinstance(payload, bytes):
             if billing is not None and reservation is not None:
-                await self._settle(billing, reservation, None, status="completed")
+                await billing.settle_completed(reservation, None)
             return (
                 Ok(
                     RelayPassthroughResult(
@@ -327,7 +303,7 @@ class PassthroughService:
                 channel.name,
             )
         if billing is not None and reservation is not None:
-            await self._settle_failed(billing, reservation)
+            await billing.settle_failed(reservation)
         return (
             Err(
                 RelayGatewayError(
@@ -340,208 +316,6 @@ class PassthroughService:
             ),
             channel.name,
         )
-
-    async def _reserve(
-        self,
-        request: RelayGatewayRequest,
-        billing: RelayBillingProtocol,
-        channel: RelayChannel,
-    ) -> Result[RelayUsageReservation, RelayGatewayError]:
-        """Reserve billing capacity before the upstream call.
-
-        The passthrough body is wrapped in a transparent carrier so the
-        shared billing pipeline can estimate prompt tokens from the
-        serialized body; the output budget is unknown and reserved as
-        zero.  Billing denials short-circuit the pipeline and are
-        classified through :func:`billing_error_to_gateway`.
-
-        Args:
-            request: The passthrough request being dispatched.
-            billing: The billing lifecycle to reserve through.
-            channel: The selected channel.
-
-        Returns:
-            ``Ok(reservation)`` when admission is proven, or
-            ``Err(RelayGatewayError)`` carrying the classified failure.
-        """
-        scope = RelayUsageScope(
-            tenant_id=request.tenant_id,
-            model=request.model,
-            channel=channel.name,
-        )
-        body = _as_relay_body(request.payload)
-        body_data = body.data
-        if isinstance(body_data, Mapping):
-            carrier_body: dict[str, JsonValue] = dict(body_data)
-        else:
-            carrier_body = {}
-        carrier = _PassthroughPayloadCarrier(carrier_body)
-        admitted = await billing.pre_consume(
-            request.request_id,
-            scope,
-            cast("RelayRequestPayload", carrier),
-        )
-        if admitted.is_err():
-            error = admitted.unwrap_err()
-            logger.warning(
-                "relay_passthrough_billing_denied",
-                request_id=request.request_id,
-                channel=channel.name,
-                code=error.code,
-                error=error.message,
-            )
-            return Err(billing_error_to_gateway(error, request.request_id))
-        return Ok(admitted.unwrap())
-
-    async def _settle(
-        self,
-        billing: RelayBillingProtocol,
-        reservation: RelayUsageReservation,
-        usage: RelayUsage | None,
-        *,
-        status: Literal["completed", "failed", "cancelled", "truncated"],
-    ) -> None:
-        """Settle the reservation exactly once without failing the response.
-
-        Settlement failures are logged and never propagate: the response
-        path has already completed by the time accounting runs.
-
-        Args:
-            billing: The billing lifecycle to settle through.
-            reservation: The reservation granted by ``pre_consume``.
-            usage: The usage extracted from the upstream response, or
-                ``None`` when the response omits it.
-            status: Terminal lifecycle status of the attempt.
-        """
-        result = RelayConvertResult[Any](
-            value=None,
-            source=RelayFormat.OPENAI_CHAT,
-            target=RelayFormat.OPENAI_CHAT,
-            converter_id="passthrough",
-            quality=ConversionQuality.GOOD,
-            usage=usage,
-        )
-        settled = await billing.settle(reservation, result, status=status)
-        if settled.is_err():
-            error = settled.unwrap_err()
-            logger.warning(
-                "relay_passthrough_settle_failed",
-                request_id=reservation.request_id,
-                status=status,
-                code=error.code,
-                error=error.message,
-            )
-
-    async def _settle_failed(
-        self,
-        billing: RelayBillingProtocol,
-        reservation: RelayUsageReservation,
-    ) -> None:
-        """Settle a failed attempt without usage through the billing pipeline.
-
-        Args:
-            billing: The billing lifecycle to settle through.
-            reservation: The reservation granted by ``pre_consume``.
-        """
-        await self._settle(billing, reservation, None, status="failed")
-
-    async def _call_upstream(
-        self,
-        kind: str,
-        channel: RelayChannel,
-        payload: Mapping[str, JsonValue] | bytes,
-        content_type: str,
-        request: RelayGatewayRequest,
-    ) -> Result[UpstreamResponse, RelayGatewayError]:
-        """Send the passthrough body to the selected channel's endpoint.
-
-        Uses the same ``HTTPUpstreamAdapter`` as the chat path, so
-        channel-credential injection applies unchanged.  JSON bodies go
-        out as their decoded dict; raw bodies (multipart) travel through
-        the adapter's payload slot as opaque bytes with their content
-        type header intact, so the binary parts reach the provider
-        untouched.
-
-        Args:
-            kind: The endpoint kind being served, selecting the wire path.
-            channel: The selected channel.
-            payload: The caller's body with the model substituted; a
-                decoded JSON object or raw body bytes.
-            content_type: The outbound content type header value.
-            request: The original gateway request.
-
-        Returns:
-            ``Ok(UpstreamResponse)`` or ``Err`` as returned by the
-            adapter; the adapter already normalizes transport failures.
-        """
-        url = self._endpoint_url(kind, channel)
-        logger.info(
-            "relay_passthrough_upstream_started",
-            request_id=request.request_id,
-            channel=channel.name,
-            method="POST",
-            url=url,
-        )
-        upstream = await self._upstream.request(
-            UpstreamRequest(
-                request_id=request.request_id,
-                method="POST",
-                url=url,
-                headers={"content-type": content_type},
-                payload=cast("Mapping[str, JsonValue]", payload),
-                timeout_seconds=channel.timeout_seconds,
-                channel_name=channel.name,
-            )
-        )
-        if upstream.is_err():
-            err = upstream.unwrap_err()
-            logger.warning(
-                "relay_passthrough_upstream_failed",
-                request_id=request.request_id,
-                channel=channel.name,
-                code=err.code,
-                status_code=err.status_code,
-                error=str(err),
-            )
-        return upstream
-
-    def _endpoint_url(self, kind: str, channel: RelayChannel) -> str:
-        """Build the endpoint URL for *kind* on *channel*.
-
-        Args:
-            kind: The endpoint kind being served.
-            channel: The selected channel.
-
-        Returns:
-            ``<channel base>/v1/<kind>`` for a registered kind; the
-            kind was validated against ``_ENDPOINT_PATHS`` before the
-            channel call, so this never misses.
-        """
-        base = channel.upstream_base_url.rstrip("/")
-        return f"{base}{_ENDPOINT_PATHS[kind]}"
-
-    @staticmethod
-    def _usage_from_response(payload: Mapping[str, Any]) -> RelayUsage | None:
-        """Extract normalized usage from an OpenAI-shaped response body.
-
-        Args:
-            payload: The upstream response body.
-
-        Returns:
-            ``RelayUsage`` when the body carries an integer
-            ``prompt_tokens`` count, otherwise ``None`` (the billing
-            pipeline records usage as missing).
-        """
-        usage = payload.get("usage")
-        if not isinstance(usage, dict):
-            return None
-        prompt = usage.get("prompt_tokens")
-        if not isinstance(prompt, int):
-            return None
-        completion = usage.get("completion_tokens", 0)
-        if not isinstance(completion, int):
-            completion = 0
-        return RelayUsage(prompt_tokens=prompt, completion_tokens=completion)
 
     @staticmethod
     def _unexpected_error(request_id: str) -> RelayGatewayError:

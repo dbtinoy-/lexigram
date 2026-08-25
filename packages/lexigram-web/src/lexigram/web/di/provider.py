@@ -19,10 +19,10 @@ from lexigram.contracts.core.di import (
     ContainerResolverProtocol,
 )
 from lexigram.contracts.exceptions.config import ConfigurationError
-from lexigram.contracts.web import WebProviderProtocol
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
 from lexigram.web.config import WebConfig, WebProviderConfig
+from lexigram.web.di import provider_sections
 from lexigram.web.di.middleware_setup import MiddlewareSetup
 from lexigram.web.di.route_setup import RouteSetup
 from lexigram.web.docs.generator import OpenAPIGenerator
@@ -120,7 +120,7 @@ class WebProvider(Provider):
         # Web contributor registry for entry-point-based controller/middleware discovery
         from lexigram.web.contributors import WebContributorRegistry
 
-        self._contributor_registry = WebContributorRegistry()
+        self._contributor_registry: WebContributorRegistry = WebContributorRegistry()
 
     @property
     def contributor_registry(self) -> Any:
@@ -172,7 +172,12 @@ class WebProvider(Provider):
         return cls(controllers=controllers, web_config=web_config, **kwargs)
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Register web services in DI container"""
+        """Register web services in DI container.
+
+        Delegates each cohesive registration group to
+        :mod:`lexigram.web.di.provider_sections`, invoked at the same ordered
+        positions as the pre-extraction implementation.
+        """
 
         # GuardProtocol: debug routes with no protection would expose the entire DI graph.
         # Require at least one protection mechanism: a token or an auth callback.
@@ -187,210 +192,24 @@ class WebProvider(Provider):
                 "Set one to protect the debug endpoint."
             )
 
-        container.singleton(WebProvider, self)
-        container.singleton(WebProviderProtocol, self)
+        provider_sections.register_transport_services(self, container)
 
-        from lexigram.contracts.web.sse import ReactiveSseBridgeProtocol
-        from lexigram.web.transport.reactive import sse_from_stream
+        provider_sections.register_security_services(self, container)
 
-        container.singleton(ReactiveSseBridgeProtocol, sse_from_stream)
+        provider_sections.register_routing_services(container)
 
-        from lexigram.primitives.context import Context, create_default_context
+        provider_sections.register_admin_services(container)
 
-        container.singleton(Context, create_default_context())
+        provider_sections.merge_contributed_extensions(self, container)
 
-        from lexigram.web.security.config import (
-            CORSConfig,
-            CrossOriginConfig,
-            CSPConfig,
-            CSRFConfig,
-            HSTSConfig,
-            SecurityConfig,
-            SecurityHeadersConfig,
-        )
-        from lexigram.web.security.cors.middleware import CORSMiddlewareFactory
+        provider_sections.register_controller_singletons(container, self.controllers)
 
-        container.singleton(SecurityConfig, self.web_config.security)
-        container.singleton(CORSConfig, self.web_config.cors)
-        container.singleton(CSRFConfig, self.web_config.security.csrf)
-        container.singleton(SecurityHeadersConfig, self.web_config.security.headers)
-        container.singleton(HSTSConfig, self.web_config.security.hsts)
-        container.singleton(CSPConfig, self.web_config.security.csp)
-        container.singleton(CrossOriginConfig, self.web_config.security.cross_origin)
-        container.singleton(
-            CORSMiddlewareFactory,
-            CORSMiddlewareFactory(config=self.web_config.cors),
-        )
-
-        # Register the global route registry so DI resolution returns the same
-        # instance that @route decorators populated at import time.
-        from lexigram.web.routing.registry import RouteRegistry, route_registry
-
-        container.singleton(RouteRegistry, route_registry)
-
-        # Register the global controller registry so DI resolution returns the same
-        # instance that @controller decorators populated at import time.
-        from lexigram.web.routing.controller_registry import (
-            ControllerRegistry,
-            controller_registry,
-        )
-
-        container.singleton(ControllerRegistry, controller_registry)
-
-        # Register FilterPipeline and InterceptorPipeline as container singletons so
-        # they can be injected rather than accessed via module-level globals.
-        from lexigram.web.filters.pipeline import FilterPipeline, filter_pipeline
-
-        container.singleton(FilterPipeline, filter_pipeline)
-
-        from lexigram.web.interceptors.pipeline import InterceptorPipeline
-
-        container.singleton(InterceptorPipeline, InterceptorPipeline())
-
-        # Register Router for dependency injection (pre-instantiated so the DI
-        # framework does not inject the FilterPipeline singleton into it and
-        # accidentally pollute the global filter pipeline with Router-local filters).
-        container.singleton(Router, Router())
-
-        # Register ResponseFactoryProtocol
-        from lexigram.contracts.web import ResponseFactoryProtocol
-        from lexigram.web.responses import StarletteResponseAdapter
-
-        container.singleton(ResponseFactoryProtocol, StarletteResponseAdapter)
-
-        # Register ResponseSerializer so the router can resolve it per-request
-        # without hitting an UnresolvableDependencyError.
-        from lexigram.web.serialization.serializers import ResponseSerializer
-
-        container.singleton(ResponseSerializer, ResponseSerializer())
-
-        # Register BackgroundTaskRunnerProtocol — per-resolution (transient) so each
-        # caller gets an independent task accumulator bound to its own Starlette context.
-        # Background tasks are in-process only. Durable job submission uses explicit
-        # lexigram-tasks job APIs, not this web background-runner interface.
-        from lexigram.contracts.web.protocols import BackgroundTaskRunnerProtocol
-        from lexigram.web.background.tasks import StarletteBackgroundTaskRunner
-
-        container.transient(
-            cast("Any", BackgroundTaskRunnerProtocol),
-            cast("Any", StarletteBackgroundTaskRunner),
-        )
-
-        # Note: ObjectMapperProtocol is NOT auto-registered here because
-        # lexigram-mapping is a separate extension package. Register it
-        # explicitly via MappingModule.configure() in your application setup.
-
-        # Register admin widget handlers (transient for scope safety)
-        from lexigram.web.admin.contributor import WebAdminContributor
-        from lexigram.web.admin.handlers.active_connections import (
-            ActiveConnectionsWidgetHandler,
-        )
-        from lexigram.web.admin.handlers.request_rate import (
-            RequestRateWidgetHandler,
-        )
-        from lexigram.web.admin.handlers.server_status import (
-            ServerStatusWidgetHandler,
-        )
-
-        container.transient(ServerStatusWidgetHandler, ServerStatusWidgetHandler)
-        container.transient(
-            ActiveConnectionsWidgetHandler,
-            ActiveConnectionsWidgetHandler,
-        )
-        container.transient(RequestRateWidgetHandler, RequestRateWidgetHandler)
-        container.singleton(WebAdminContributor, WebAdminContributor)
-
-        # Register the web contributor registry as a singleton
-        from lexigram.web.contributors import WebContributorRegistry
-        from lexigram.web.contributors import discovery as contributor_discovery
-
-        container.singleton(WebContributorRegistry, self._contributor_registry)
-
-        # Discover and merge web contributors from entry-points
-        for contributor in contributor_discovery.load_web_contributors():
-            self._contributor_registry.register(contributor)
-
-            # Merge contributed middleware (avoid duplicates)
-            for middleware_cls in contributor.get_middleware():
-                if middleware_cls not in self.middleware:
-                    self.middleware.append(middleware_cls)
-
-            # Merge contributed controllers (avoid duplicates and
-            # subclass-takes-precedence — if a subclass of the contributed
-            # controller is already registered, skip the contributed one).
-            for controller_cls in contributor.get_controllers():
-                if controller_cls not in self.controllers:
-                    # Skip if a registered controller is a subclass — the
-                    # user-supplied override should take precedence over the
-                    # framework's own controller.
-                    if isinstance(controller_cls, type) and any(
-                        isinstance(ec, type)
-                        and ec is not controller_cls
-                        and issubclass(ec, controller_cls)
-                        for ec in self.controllers
-                    ):
-                        continue
-                    self.controllers.append(controller_cls)
-
-        # Register controllers as singletons if they are classes
-        for controller_cls in self.controllers:
-            if isinstance(controller_cls, type):
-                container.singleton(controller_cls, controller_cls)
-
-        # Expose the active middleware pipeline to admin pages and tooling.
-        # The registry mirrors exactly what the app runs: the always-present
-        # DIScopeMiddleware plus contributed and user-supplied middleware.
-        from lexigram.web.middleware.base import MiddlewareRegistry
-        from lexigram.web.middleware.di_scope import DIScopeMiddleware
-        from lexigram.web.middleware.registry import (
-            MiddlewareAdapterRegistry,
-        )
-
-        middleware_registry = MiddlewareRegistry()
-        middleware_registry.register_middleware(DIScopeMiddleware)
-        for middleware_cls in self.middleware:
-            cls = (
-                middleware_cls
-                if isinstance(middleware_cls, type)
-                else type(middleware_cls)
-            )
-            middleware_registry.register_middleware(cls)
-        container.singleton(MiddlewareRegistry, middleware_registry)
-        container.singleton(
-            MiddlewareAdapterRegistry,
-            MiddlewareAdapterRegistry(),
-        )
+        provider_sections.register_middleware_registries(self, container)
 
         # Auto-register user classes decorated with @singleton / @injectable.
         # Scan loaded non-framework modules so script-mode apps work without
         # manually calling container.singleton() for each service.
-        self._register_injectable_services(container)
-
-    def _register_injectable_services(
-        self, container: ContainerRegistrarProtocol
-    ) -> None:
-        """Register services explicitly provided via ``_extra_injectable_services``.
-
-        This replaces the former sys.modules scanning with explicit service lists,
-        making DI registration deterministic and order-independent. Services must be
-        explicitly provided to the provider at construction time.
-        """
-        from lexigram.contracts.core.scopes import ServiceScope
-
-        def _register_one(cls: type, scope: Any) -> None:
-            if container.has(cls):
-                return
-            if scope == ServiceScope.SINGLETON:
-                container.singleton(cls, cls)
-            elif scope == ServiceScope.SCOPED:
-                container.scoped(cls, cls)
-            else:
-                container.transient(cls, cls)
-            logger.debug("auto_registered_injectable", cls=cls.__name__, scope=scope)
-
-        # Register only explicitly provided services
-        for cls, scope in self._extra_injectable_services:
-            _register_one(cls, scope)
+        provider_sections.register_injectable_services(self, container)
 
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Initialize the web layer in five ordered phases.

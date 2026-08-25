@@ -22,12 +22,16 @@ from lexigram.tasks.exceptions import (
 )
 from lexigram.tasks.execution._concurrency import WorkerConcurrencyMixin
 from lexigram.tasks.execution._di_resolver import resolve_handler_dependencies
+from lexigram.tasks.execution._failure_handling import send_to_dlq
 from lexigram.tasks.execution._lifecycle import TaskWorkerServices, WorkerJobStats
+from lexigram.tasks.execution._middleware_chain import (
+    create_default_pipeline,
+    execute_handler_through_middleware,
+)
 from lexigram.tasks.hooks import TaskCompletedHook, TaskFailedHook
 
 # Import middleware pipeline components
 from lexigram.tasks.middleware.core import (
-    TaskExecutionContext,
     TaskMiddlewarePipeline,
 )
 from lexigram.tasks.models.job import JobProtocol, JobResult
@@ -103,7 +107,7 @@ class TaskWorker(WorkerConcurrencyMixin):
         self._task: asyncio.Task[Any] | None = None
 
         # Initialize middleware pipeline
-        self._middleware = middleware_pipeline or self._create_default_pipeline()
+        self._middleware = middleware_pipeline or create_default_pipeline(self.config)
 
         self.dlq = _svc.dead_letter_queue
         self.result_store = _svc.result_store
@@ -125,29 +129,6 @@ class TaskWorker(WorkerConcurrencyMixin):
             return
 
         await self._hooks.call_action(hook_name, payload=payload)
-
-    def _create_default_pipeline(self) -> TaskMiddlewarePipeline:
-        """Create default middleware pipeline with built-in middleware.
-
-        Returns:
-            TaskMiddlewarePipeline with default middleware
-        """
-        from lexigram.tasks.middleware.core import (
-            LoggingMiddleware,
-            MetricsMiddleware,
-            TimeoutMiddleware,
-        )
-
-        pipeline = TaskMiddlewarePipeline()
-        pipeline.add(LoggingMiddleware())
-        pipeline.add(MetricsMiddleware())
-        pipeline.add(
-            TimeoutMiddleware(
-                default_timeout=self.config.default_timeout,
-                max_timeout=self.config.max_timeout,
-            )
-        )
-        return pipeline
 
     @staticmethod
     def _stamp_result(job_result: JobResult, job: JobProtocol) -> None:
@@ -369,48 +350,20 @@ class TaskWorker(WorkerConcurrencyMixin):
     async def _send_to_dlq(self, job: JobProtocol, error_msg: str = "") -> None:
         """Send failed job to dead letter queue.
 
+        Delegates to :func:`~lexigram.tasks.execution._failure_handling.send_to_dlq`.
+
         Args:
             job: Failed job to send to DLQ
             error_msg: Optional error message from the failure
         """
-        if self.dlq is not None:
-            # Use the proper DeadLetterQueue class
-            self.dlq.add(
-                job=job,
-                error=error_msg or job.last_error or "Unknown error",
-                attempt_count=job.retry_count,
-            )
-            self.logger.info(
-                "Worker %s added job %s to DeadLetterQueue",
-                self.worker_id,
-                job.id,
-            )
-        else:
-            # Fallback: re-enqueue under a DLQ-prefixed name
-            dlq_name = f"dlq:{job.name}"
-            dlq_job = JobProtocol(
-                id=f"dlq:{job.id}",
-                name=dlq_name,
-                args=job.args,
-                kwargs=job.kwargs,
-                priority=job.priority,
-                max_retries=0,  # No retries in DLQ
-                status=job.status,
-                created_at=job.created_at,
-                retry_count=job.retry_count,
-                last_error=job.last_error,
-            )
-            # Prefer a dedicated DLQ enqueue method if the backend supports it
-            enqueue_dlq = getattr(self.queue, "enqueue_dlq", None)
-            if enqueue_dlq is not None and callable(enqueue_dlq):
-                await enqueue_dlq(dlq_job)
-            else:
-                await self.queue.enqueue(dlq_job)
-            self.logger.info(
-                "Worker %s sent job %s to dead letter queue",
-                self.worker_id,
-                job.id,
-            )
+        await send_to_dlq(
+            self.dlq,
+            self.queue,
+            job,
+            error_msg,
+            worker_id=self.worker_id,
+            logger_instance=self.logger,
+        )
 
     async def _resolve_dependencies(
         self,
@@ -460,6 +413,9 @@ class TaskWorker(WorkerConcurrencyMixin):
     ) -> JobResult:
         """Execute handler through the middleware pipeline.
 
+        Delegates to
+        :func:`~lexigram.tasks.execution._middleware_chain.execute_handler_through_middleware`.
+
         Args:
             handler: Handler function to execute
             job: JobProtocol to process
@@ -467,55 +423,12 @@ class TaskWorker(WorkerConcurrencyMixin):
         Returns:
             JobResult from handler execution through middleware
         """
-        # Create execution context for middleware
-        ctx = TaskExecutionContext(job=job)
-
-        # Before hooks - call all middleware before_execute
-        for mw in self._middleware._middleware:
-            await mw.before_execute(ctx)
-
-        # Check for timeout middleware and use it for execution
-        timeout_middleware = None
-        for mw in self._middleware._middleware:
-            if hasattr(mw, "execute_with_timeout"):
-                timeout_middleware = mw
-                break
-
-        # Resolve handler dependencies from container before execution
-        resolved_args, resolved_kwargs = await self._resolve_dependencies(
-            handler, job.args, job.kwargs
+        return await execute_handler_through_middleware(
+            self._middleware,
+            handler,
+            job,
+            self._resolve_dependencies,
         )
-        # Merge resolved kwargs with job kwargs (job kwargs take precedence)
-        final_kwargs = {**resolved_kwargs, **job.kwargs}
-
-        # Execute handler with timeout enforcement if available
-        ctx.start_time = time.monotonic()
-        try:
-            if timeout_middleware:
-                ctx.result = await timeout_middleware.execute_with_timeout(
-                    handler,
-                    job,
-                    ctx,
-                    resolved_args,
-                    final_kwargs,
-                )
-            elif asyncio.iscoroutinefunction(handler):
-                result_data = await handler(*resolved_args, **final_kwargs)
-                duration = time.monotonic() - ctx.start_time
-                ctx.result = JobResult.ok(result_data, duration)
-            else:
-                result_data = handler(*resolved_args, **final_kwargs)
-                duration = time.monotonic() - ctx.start_time
-                ctx.result = JobResult.ok(result_data, duration)
-        except (RuntimeError, TypeError, ValueError, OSError, LookupError) as exc:
-            duration = time.monotonic() - ctx.start_time
-            ctx.result = JobResult.fail(str(exc), job.retry_count, duration)
-
-        # After hooks - call all middleware after_execute
-        for mw in self._middleware._middleware:
-            await mw.after_execute(ctx)
-
-        return ctx.result
 
     def get_stats(self) -> WorkerJobStats:
         """Get worker statistics

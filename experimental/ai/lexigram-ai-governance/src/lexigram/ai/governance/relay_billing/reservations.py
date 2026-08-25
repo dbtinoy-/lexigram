@@ -20,9 +20,17 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from lexigram.ai.governance.budget import SlidingWindowCounter
+from lexigram.ai.governance.relay_billing._reservation_dimensions import (
+    DEFAULT_WINDOW_SECONDS,
+    RELAY_DIMENSIONS,
+    RelayReservationLimits,
+    RelayScopeLimit,
+    estimate_prompt_tokens,
+    requested_max_output_tokens,
+    scope_keys,
+)
 from lexigram.contracts.ai.governance import (
     RelayBillingError,
     RelayUsageReservation,
@@ -31,21 +39,10 @@ from lexigram.contracts.ai.governance import (
     quota_exhausted,
     reservation_expired,
 )
-from lexigram.contracts.ai.relay import (
-    ClaudeRequest,
-    GeminiRequest,
-    OpenAIChatRequest,
-    RelayRequestPayload,
-    ResponsesRequest,
-)
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.identity import ambient as identity
 from lexigram.logging import get_logger
 from lexigram.primitives import clock
-from lexigram.serialization import dumps_str
-
-if TYPE_CHECKING:
-    from lexigram.contracts.ai.llm import TokenCounterProtocol
 
 logger = get_logger(__name__)
 
@@ -61,55 +58,7 @@ __all__ = [
     "requested_max_output_tokens",
 ]
 
-RELAY_DIMENSIONS = ("tenant", "account", "user", "model", "provider", "channel")
-DEFAULT_WINDOW_SECONDS = 60.0
 DEFAULT_RESERVATION_TTL = 60.0
-_CHARS_PER_TOKEN = 4
-
-
-@dataclass(frozen=True, slots=True)
-class RelayScopeLimit:
-    """Admission quota for one scope dimension.
-
-    Attributes:
-        max_tokens: Maximum tokens admitted in the sliding window.
-        max_charge: Maximum charge admitted in the sliding window.
-        window_seconds: Sliding window size in seconds.
-    """
-
-    max_tokens: int
-    max_charge: Decimal
-    window_seconds: float = DEFAULT_WINDOW_SECONDS
-
-    def __post_init__(self) -> None:
-        """Reject negative token/charge limits or a non-positive window."""
-        if self.max_tokens < 0:
-            raise ValueError("max_tokens must be non-negative")
-        if self.max_charge < 0:
-            raise ValueError("max_charge must be non-negative")
-        if self.window_seconds <= 0:
-            raise ValueError("window_seconds must be positive")
-
-
-@dataclass(frozen=True, slots=True)
-class RelayReservationLimits:
-    """Configured per-dimension admission limits.
-
-    Attributes:
-        tenant: Tenant-scope limit, when enforced.
-        account: Account-scope limit, when enforced.
-        user: User-scope limit, when enforced.
-        model: Model-scope limit, when enforced.
-        provider: Provider-scope limit, when enforced.
-        channel: Channel-scope limit, when enforced.
-    """
-
-    tenant: RelayScopeLimit | None = None
-    account: RelayScopeLimit | None = None
-    user: RelayScopeLimit | None = None
-    model: RelayScopeLimit | None = None
-    provider: RelayScopeLimit | None = None
-    channel: RelayScopeLimit | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,57 +128,6 @@ class RelayQuotaSnapshot:
     channel: RelayQuotaEntry | None = None
 
 
-def _payload_text(payload: RelayRequestPayload) -> str:
-    """Serialize a request payload to a JSON text for estimation."""
-    return dumps_str(payload.to_dict())
-
-
-def estimate_prompt_tokens(
-    payload: RelayRequestPayload,
-    token_counter: TokenCounterProtocol | None = None,
-) -> int:
-    """Estimate the prompt token count for a request payload.
-
-    Args:
-        payload: Relay request payload to estimate.
-        token_counter: Optional model-aware token counter; when provided
-            it counts the serialized payload, otherwise the character
-            estimate (~4 chars per token) is used.
-
-    Returns:
-        A non-negative, admission-only token estimate.
-    """
-    text = _payload_text(payload)
-    if token_counter is not None:
-        return max(0, int(token_counter.count(text)))
-    return max(1, len(text) // _CHARS_PER_TOKEN)
-
-
-def requested_max_output_tokens(payload: RelayRequestPayload) -> int:
-    """Return the requested max output tokens, or 0 when not set.
-
-    Args:
-        payload: Relay request payload to inspect.
-
-    Returns:
-        The requested output budget, or 0 when the request does not
-        carry one.
-    """
-    if isinstance(payload, OpenAIChatRequest):
-        value = payload.max_completion_tokens or payload.max_tokens
-        return value or 0
-    if isinstance(payload, ResponsesRequest):
-        return payload.max_output_tokens or 0
-    if isinstance(payload, ClaudeRequest):
-        return payload.max_tokens
-    if isinstance(payload, GeminiRequest):
-        value = payload.generation_config.get("maxOutputTokens")
-        if value is None:
-            value = payload.generation_config.get("max_output_tokens")
-        return int(value) if value is not None else 0
-    return 0
-
-
 class RelayReservationManager:
     """In-memory admission reservations across configured scope quotas.
 
@@ -274,46 +172,6 @@ class RelayReservationManager:
             window = SlidingWindowCounter()
             self._charge_windows[key] = window
         return window
-
-    def _scope_value(self, scope: RelayUsageScope, dimension: str) -> str:
-        """Return the value of a dimension in *scope* (``""`` if unset)."""
-        if dimension == "tenant":
-            return scope.tenant_id
-        if dimension == "model":
-            return scope.model
-        if dimension == "provider":
-            return scope.provider
-        if dimension == "channel":
-            return scope.channel
-        if dimension == "account":
-            return scope.account_id or ""
-        return scope.user_id or ""
-
-    def _scope_keys(self, scope: RelayUsageScope) -> list[str]:
-        """Collect internal window keys for the configured scope.
-
-        Args:
-            scope: The scope to map onto configured dimensions.
-
-        Returns:
-            Window keys ``"<dim>:<value>"`` for every configured
-            dimension the scope carries a value for.
-        """
-        keys: list[str] = []
-        for dimension in RELAY_DIMENSIONS:
-            limit = getattr(self._limits, dimension)
-            if limit is None:
-                continue
-            value = self._scope_value(scope, dimension)
-            if not value:
-                logger.debug(
-                    "relay_reservation_scope_empty",
-                    dimension=dimension,
-                    tenant_id=scope.tenant_id,
-                )
-                continue
-            keys.append(f"{dimension}:{value}")
-        return keys
 
     async def reserve(
         self,
@@ -372,7 +230,7 @@ class RelayReservationManager:
             await self._release_expired(now)
 
             window_keys: list[str] = []
-            for key in self._scope_keys(scope):
+            for key in scope_keys(self._limits, scope):
                 dimension, _, _ = key.partition(":")
                 limit = getattr(self._limits, dimension)
                 if limit is None:

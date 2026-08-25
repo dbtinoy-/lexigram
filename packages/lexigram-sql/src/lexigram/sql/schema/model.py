@@ -18,18 +18,44 @@ Provides a Prisma/Django-inspired model definition system:
             soft_delete = True
             timestamps = True
             ordering = ["-created_at"]
+
+Supporting groups live in sibling modules composed into this one:
+``field_types`` (type mapping), ``descriptors`` (indexes/constraints/
+relationships), and ``hooks`` (lifecycle events). They are re-exported
+here so the public import path is unchanged.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
-from enum import StrEnum
 import re
 from typing import Any
-from uuid import UUID
 
 from lexigram.logging import get_logger
+from lexigram.sql.schema.descriptors import (
+    BelongsTo as BelongsTo,
+)
+from lexigram.sql.schema.descriptors import (
+    Constraint as Constraint,
+)
+from lexigram.sql.schema.descriptors import (
+    HasMany as HasMany,
+)
+from lexigram.sql.schema.descriptors import (
+    Index as Index,
+)
+from lexigram.sql.schema.descriptors import (
+    ManyToMany as ManyToMany,
+)
+from lexigram.sql.schema.field_types import _TYPE_MAP, _get_sql_type
+from lexigram.sql.schema.field_types import FieldType as FieldType
+from lexigram.sql.schema.hooks import _model_hooks as _model_hooks
+from lexigram.sql.schema.hooks import after_create as after_create
+from lexigram.sql.schema.hooks import after_delete as after_delete
+from lexigram.sql.schema.hooks import after_update as after_update
+from lexigram.sql.schema.hooks import before_create as before_create
+from lexigram.sql.schema.hooks import before_delete as before_delete
+from lexigram.sql.schema.hooks import before_update as before_update
+from lexigram.sql.schema.hooks import fire_hooks as fire_hooks
 
 logger = get_logger(__name__)
 
@@ -39,40 +65,6 @@ _SENTINEL = object()
 # ------------------------------------------------------------------
 # Field Descriptor
 # ------------------------------------------------------------------
-
-
-class FieldType(StrEnum):
-    """Supported database field types for cross-dialect mapping."""
-
-    STRING = "string"
-    TEXT = "text"
-    INTEGER = "integer"
-    BIGINT = "bigint"
-    FLOAT = "float"
-    DECIMAL = "decimal"
-    BOOLEAN = "boolean"
-    DATE = "date"
-    DATETIME = "datetime"
-    TIMESTAMP = "timestamp"
-    UUID = "uuid"
-    JSON = "json"
-    JSONB = "jsonb"
-    BINARY = "binary"
-    ARRAY = "array"
-
-
-# Python type → FieldType mapping
-_TYPE_MAP: dict[type, FieldType] = {
-    str: FieldType.STRING,
-    int: FieldType.INTEGER,
-    float: FieldType.FLOAT,
-    bool: FieldType.BOOLEAN,
-    datetime: FieldType.DATETIME,
-    UUID: FieldType.UUID,
-    bytes: FieldType.BINARY,
-    dict: FieldType.JSON,
-    list: FieldType.ARRAY,
-}
 
 
 class Field:
@@ -172,144 +164,6 @@ class Field:
             f"pk={self.primary_key}, "
             f"nullable={self.nullable})"
         )
-
-
-def _get_sql_type(
-    ft: FieldType,
-    max_length: int | None,
-    dialect: str,
-) -> str:
-    """Map FieldType to SQL type for a given dialect."""
-    pg_map = {
-        FieldType.STRING: f"VARCHAR({max_length or 255})",
-        FieldType.TEXT: "TEXT",
-        FieldType.INTEGER: "INTEGER",
-        FieldType.BIGINT: "BIGINT",
-        FieldType.FLOAT: "DOUBLE PRECISION",
-        FieldType.DECIMAL: "NUMERIC",
-        FieldType.BOOLEAN: "BOOLEAN",
-        FieldType.DATE: "DATE",
-        FieldType.DATETIME: "TIMESTAMP WITHOUT TIME ZONE",
-        FieldType.TIMESTAMP: "TIMESTAMP WITH TIME ZONE",
-        FieldType.UUID: "UUID",
-        FieldType.JSON: "JSON",
-        FieldType.JSONB: "JSONB",
-        FieldType.BINARY: "BYTEA",
-        FieldType.ARRAY: "TEXT[]",
-    }
-    mysql_map = {
-        FieldType.STRING: f"VARCHAR({max_length or 255})",
-        FieldType.TEXT: "TEXT",
-        FieldType.INTEGER: "INT",
-        FieldType.BIGINT: "BIGINT",
-        FieldType.FLOAT: "DOUBLE",
-        FieldType.DECIMAL: "DECIMAL",
-        FieldType.BOOLEAN: "TINYINT(1)",
-        FieldType.DATE: "DATE",
-        FieldType.DATETIME: "DATETIME",
-        FieldType.TIMESTAMP: "TIMESTAMP",
-        FieldType.UUID: "CHAR(36)",
-        FieldType.JSON: "JSON",
-        FieldType.JSONB: "JSON",
-        FieldType.BINARY: "BLOB",
-        FieldType.ARRAY: "JSON",
-    }
-    sqlite_map = {
-        FieldType.STRING: "TEXT",
-        FieldType.TEXT: "TEXT",
-        FieldType.INTEGER: "INTEGER",
-        FieldType.BIGINT: "INTEGER",
-        FieldType.FLOAT: "REAL",
-        FieldType.DECIMAL: "REAL",
-        FieldType.BOOLEAN: "INTEGER",
-        FieldType.DATE: "TEXT",
-        FieldType.DATETIME: "TEXT",
-        FieldType.TIMESTAMP: "TEXT",
-        FieldType.UUID: "TEXT",
-        FieldType.JSON: "TEXT",
-        FieldType.JSONB: "TEXT",
-        FieldType.BINARY: "BLOB",
-        FieldType.ARRAY: "TEXT",
-    }
-    type_map = {
-        "postgresql": pg_map,
-        "mysql": mysql_map,
-        "sqlite": sqlite_map,
-    }
-    d = type_map.get(dialect, pg_map)
-    return d.get(ft, "TEXT")
-
-
-# ------------------------------------------------------------------
-# Index & Constraint Descriptors
-# ------------------------------------------------------------------
-
-
-@dataclass
-class Index:
-    """Database index descriptor."""
-
-    name: str
-    columns: str | list[str] = ""
-    unique: bool = False
-    condition: str | None = None  # Partial index WHERE clause
-
-    def __post_init__(self) -> None:
-        if isinstance(self.columns, str):
-            self.columns = [self.columns]
-
-    def to_sql(self, table: str, dialect: str = "postgresql") -> str:
-        unique = "UNIQUE " if self.unique else ""
-        cols = ", ".join(self.columns)
-        sql = f"CREATE {unique}INDEX {self.name} ON {table} ({cols})"
-        if self.condition:
-            sql += f" WHERE {self.condition}"
-        return sql
-
-
-@dataclass
-class Constraint:
-    """Database constraint descriptor."""
-
-    name: str
-    expression: str
-    type: str = "CHECK"  # CHECK, UNIQUE, FOREIGN KEY
-
-    def to_sql(self) -> str:
-        return f"CONSTRAINT {self.name} {self.type} ({self.expression})"
-
-
-# ------------------------------------------------------------------
-# Relationship Descriptors
-# ------------------------------------------------------------------
-
-
-@dataclass
-class HasMany:
-    """One-to-many relationship descriptor."""
-
-    target: str  # Target model/repository name
-    foreign_key: str
-    local_key: str = "id"
-
-
-@dataclass
-class BelongsTo:
-    """Many-to-one relationship descriptor."""
-
-    target: str
-    foreign_key: str
-    owner_key: str = "id"
-
-
-@dataclass
-class ManyToMany:
-    """Many-to-many relationship via pivot table."""
-
-    target: str
-    pivot_table: str
-    foreign_key: str
-    related_key: str
 
 
 # ------------------------------------------------------------------
@@ -497,77 +351,6 @@ def _to_snake_case_plural(name: str) -> str:
     if s.endswith(("s", "sh", "ch", "x", "z")):
         return s + "es"
     return s + "s"
-
-
-# ------------------------------------------------------------------
-# Model Lifecycle Hooks
-# ------------------------------------------------------------------
-
-# Registry for model lifecycle hooks
-_model_hooks: dict[str, dict[str, list]] = {}
-
-
-def _register_hook(
-    model_name: str,
-    event: str,
-    handler: Any,
-) -> None:
-    """Register a lifecycle hook for a model."""
-    _model_hooks.setdefault(model_name, {}).setdefault(event, []).append(
-        handler,
-    )
-
-
-def before_create(func: Any) -> Any:
-    """Decorator: called before entity creation."""
-    func._hook_event = "before_create"
-    return func
-
-
-def after_create(func: Any) -> Any:
-    """Decorator: called after entity creation."""
-    func._hook_event = "after_create"
-    return func
-
-
-def before_update(func: Any) -> Any:
-    """Decorator: called before entity update."""
-    func._hook_event = "before_update"
-    return func
-
-
-def after_update(func: Any) -> Any:
-    """Decorator: called after entity update."""
-    func._hook_event = "after_update"
-    return func
-
-
-def before_delete(func: Any) -> Any:
-    """Decorator: called before entity deletion."""
-    func._hook_event = "before_delete"
-    return func
-
-
-def after_delete(func: Any) -> Any:
-    """Decorator: called after entity deletion."""
-    func._hook_event = "after_delete"
-    return func
-
-
-async def fire_hooks(
-    model_name: str,
-    event: str,
-    entity: Any,
-) -> None:
-    """Fire all registered hooks for a model event."""
-    hooks = _model_hooks.get(model_name, {}).get(event, [])
-    for hook in hooks:
-        import asyncio
-
-        if asyncio.iscoroutinefunction(hook):
-            await hook(entity)
-        else:
-            hook(entity)
 
 
 __all__ = [
