@@ -6,7 +6,8 @@ import contextlib
 import io
 from pathlib import Path
 
-from rag_docs.main import _build_parser, _run, resolve_default_docs_dir
+from rag_docs.cli import build_parser, run
+from rag_docs.di.provider import resolve_default_docs_dir
 
 
 def make_corpus(root: Path) -> Path:
@@ -22,12 +23,12 @@ def make_corpus(root: Path) -> Path:
 async def test_ask_captures_output(tmp_path: Path) -> None:
     docs = make_corpus(tmp_path)
     buffer = io.StringIO()
-    args = _build_parser().parse_args(
+    args = build_parser().parse_args(
         ["ask", "how do modules export services?", "--docs-dir", str(docs)]
     )
 
     with contextlib.redirect_stdout(buffer):
-        code = await _run(args)
+        code = exit_code = await run(args)
 
     out = buffer.getvalue()
     assert code == 0
@@ -40,12 +41,12 @@ async def test_unknown_strategy_prints_error_and_exits_nonzero(
 ) -> None:
     docs = make_corpus(tmp_path)
     buffer = io.StringIO()
-    args = _build_parser().parse_args(
+    args = build_parser().parse_args(
         ["ask", "anything", "--strategy", "bm25", "--docs-dir", str(docs)]
     )
 
     with contextlib.redirect_stdout(buffer):
-        code = await _run(args)
+        code = exit_code = await run(args)
 
     out = buffer.getvalue()
     assert code == 1
@@ -55,10 +56,10 @@ async def test_unknown_strategy_prints_error_and_exits_nonzero(
 async def test_demo_runs_canned_questions(tmp_path: Path) -> None:
     docs = make_corpus(tmp_path)
     buffer = io.StringIO()
-    args = _build_parser().parse_args(["demo", "--docs-dir", str(docs)])
+    args = build_parser().parse_args(["demo", "--docs-dir", str(docs)])
 
     with contextlib.redirect_stdout(buffer):
-        code = await _run(args)
+        code = exit_code = await run(args)
 
     out = buffer.getvalue()
     assert code == 0
@@ -69,10 +70,10 @@ async def test_demo_runs_canned_questions(tmp_path: Path) -> None:
 async def test_index_prints_stats(tmp_path: Path) -> None:
     docs = make_corpus(tmp_path)
     buffer = io.StringIO()
-    args = _build_parser().parse_args(["index", "--docs-dir", str(docs)])
+    args = build_parser().parse_args(["index", "--docs-dir", str(docs)])
 
     with contextlib.redirect_stdout(buffer):
-        code = await _run(args)
+        code = exit_code = await run(args)
 
     out = buffer.getvalue()
     assert code == 0

@@ -1,6 +1,6 @@
 """REST endpoint tests for the rag-docs demo.
 
-Boots ``DocsAskModule`` (web wiring included) through the real container —
+Boots the composition root (corpus ingestion at boot included) and
 which ingests the corpus at boot — and drives the real routes via an
 ``httpx.AsyncClient`` over the framework's ASGI app.
 """
@@ -12,24 +12,29 @@ from typing import AsyncIterator
 import httpx
 import pytest
 
-from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
+
+from rag_docs.app import create_app
 
 
 @pytest.fixture
 async def client() -> AsyncIterator[httpx.AsyncClient]:
-    async with Application.boot(
-        name="rag-api-test", modules=[DocsAskModule.configure()]
-    ) as app:
-        web = await app.container.resolve(WebProvider)
+    application = create_app()
+    await application.start()
+    try:
+        web = await application.container.resolve(WebProvider)
         transport = httpx.ASGITransport(app=web.starlette)
         async with httpx.AsyncClient(
             transport=transport, base_url="http://test"
         ) as http:
             yield http
+    finally:
+        await application.stop()
 
 
-from rag_docs.module import DocsAskModule  # noqa: E402  (after sys.path setup)
+from lexigram.web.di.provider import WebProvider
+
+from rag_docs.app import create_app  # noqa: E402  (after sys.path setup)
 
 
 async def test_ask_returns_answer_with_citations(

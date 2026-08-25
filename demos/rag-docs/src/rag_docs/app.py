@@ -1,8 +1,4 @@
-"""Application composition root for the rag-docs demo.
-
-``create_app`` is the only place that knows how the modules fit together;
-sections are bound inline from the demo's ``application.yaml``.
-"""
+"""Application composition root for the rag-docs demo."""
 
 from __future__ import annotations
 
@@ -13,11 +9,19 @@ from lexigram.web.module import WebModule
 from rag_docs.config import load_lex_config
 from rag_docs.controllers.api import DocsAskApiController
 from rag_docs.di.provider import DocsAskProvider
-from rag_docs.pages import DocsPageController
+from rag_docs.ui.pages import DocsPageController
 
 
-def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
+def create_app(
+    config: LexigramConfig | None = None,
+    docs_dir: Path | None = None,
+) -> Application:
+    """Create the configured (not yet started) rag-docs application.
+
+    Args:
+        config: Explicit configuration; defaults to the demo's yaml.
+        docs_dir: Optional corpus override forwarded to the provider.
+    """
     config = config or load_lex_config()
     web_config = config.get_section("web", WebConfig)
 
@@ -30,7 +34,7 @@ def create_app(config: LexigramConfig | None = None) -> Application:
             ),
         ]
     )
-    app.add_provider(DocsAskProvider())
+    app.add_provider(DocsAskProvider(docs_dir=docs_dir))
     return app
 
 
