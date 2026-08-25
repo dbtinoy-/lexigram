@@ -11,67 +11,73 @@ _FIELDS_OPTION = GeneratorOption(
     description="Field spec in name:type[?][!unique][!fk=Model][=default] format",
 )
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="controller",
-        title="Generate Controller",
-        description="Generate a web controller with route handlers",
-        contributor="web",
-        generator_path="lexigram.web.cli.generators.controller:ControllerGenerator",
-        default_output_dir="src/controllers",
-        options=(
-            _FIELDS_OPTION,
-            GeneratorOption(name="path", type_hint="str", description="Base API path"),
-            GeneratorOption(name="doc", type_hint="str", description="Class docstring"),
-        ),
-        category="web",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "controller",
+        "Generate a web controller with route handlers",
+        "lexigram.web.cli.generators.controller:ControllerGenerator",
+        "src/controllers",
     ),
-    GeneratorDefinition(
-        name="resource",
-        title="Generate Resource",
-        description="Generate a resource controller slice",
-        contributor="web",
-        generator_path="lexigram.web.cli.generators.resource:ResourceGenerator",
-        default_output_dir="src",
-        options=(_FIELDS_OPTION,),
-        category="web",
+    (
+        "resource",
+        "Generate a resource controller slice",
+        "lexigram.web.cli.generators.resource:ResourceGenerator",
+        "src",
     ),
-    GeneratorDefinition(
-        name="middleware",
-        title="Generate Middleware",
-        description="Generate a web middleware component",
-        contributor="web",
-        generator_path="lexigram.web.cli.generators.middleware:MiddlewareGenerator",
-        default_output_dir="src/middleware",
-        category="web",
+    (
+        "middleware",
+        "Generate a web middleware component",
+        "lexigram.web.cli.generators.middleware:MiddlewareGenerator",
+        "src/middleware",
     ),
-    GeneratorDefinition(
-        name="graphql",
-        title="Generate GraphQL",
-        description="Generate a GraphQL schema and resolvers",
-        contributor="web",
-        generator_path="lexigram.web.cli.generators.graphql:GraphQLGenerator",
-        default_output_dir="src/graphql",
-        category="web",
+    (
+        "graphql",
+        "Generate a GraphQL schema and resolvers",
+        "lexigram.web.cli.generators.graphql:GraphQLGenerator",
+        "src/graphql",
     ),
-    GeneratorDefinition(
-        name="webhook",
-        title="Generate Webhook",
-        description="Generate a webhook handler",
-        contributor="web",
-        generator_path="lexigram.web.cli.generators.webhook:WebhookGenerator",
-        default_output_dir="src/webhooks",
-        category="web",
+    (
+        "webhook",
+        "Generate a webhook handler",
+        "lexigram.web.cli.generators.webhook:WebhookGenerator",
+        "src/webhooks",
     ),
-    GeneratorDefinition(
-        name="websocket",
-        title="Generate WebSocket",
-        description="Generate a WebSocket handler",
-        contributor="web",
-        generator_path="lexigram.web.cli.generators.websocket:WebSocketHandlerGenerator",
-        default_output_dir="src/websocket",
-        category="web",
+    (
+        "websocket",
+        "Generate a WebSocket handler",
+        "lexigram.web.cli.generators.websocket:WebSocketHandlerGenerator",
+        "src/websocket",
     ),
+)
+
+_OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
+    "controller": (
+        _FIELDS_OPTION,
+        GeneratorOption(name="path", type_hint="str", description="Base API path"),
+        GeneratorOption(name="doc", type_hint="str", description="Class docstring"),
+    ),
+    "resource": (_FIELDS_OPTION,),
+}
+
+# Titles that make() cannot derive exactly.
+_TITLES: dict[str, str] = {
+    "graphql": "Generate GraphQL",
+    "websocket": "Generate WebSocket",
+}
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="web",
+        category="web",
+        options=_OPTIONS.get(name, ()),
+        title=_TITLES.get(name),
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
