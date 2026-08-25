@@ -9,21 +9,22 @@ from rates.di.provider import RatesProvider
 from rates.repository.simulated_upstream import FaultController, Scenario
 
 
-def test_bind_application_reads_web_and_demo_sections() -> None:
-    web_config, demo_config = bind_application()
+def test_bind_application_reads_web_cache_demo_sections() -> None:
+    web_config, cache_config, demo_config = bind_application()
     assert web_config.server.port == 7073
     assert web_config.server.host == "127.0.0.1"
     assert web_config.security.csrf.enabled is False
+    backend = next(b for b in cache_config.backends if b.default)
+    assert backend.default_ttl == 60
     assert demo_config.upstream_scenario == "healthy"
-    assert demo_config.cache_ttl_seconds == 60
 
 
 def test_env_overrides_win(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("LEX_DEMO__CACHE_TTL_SECONDS", "7")
     monkeypatch.setenv("LEX_WEB__SERVER__PORT", "7099")
-    web_config, demo_config = bind_application()
-    assert demo_config.cache_ttl_seconds == 7
+    monkeypatch.setenv("LEX_DEMO__UPSTREAM_SCENARIO", "down")
+    web_config, _cache_config, demo_config = bind_application()
     assert web_config.server.port == 7099
+    assert demo_config.upstream_scenario == "down"
 
 
 class _RecordingRegistrar:
@@ -41,12 +42,12 @@ def test_provider_wires_scenario_from_bound_config() -> None:
     import asyncio
 
     provider = RatesProvider(
-        config=RatesConfig(upstream_scenario="flaky", cache_ttl_seconds=5)
+        config=RatesConfig(upstream_scenario="flaky")
     )
     registrar = _RecordingRegistrar()
     asyncio.run(provider.register(registrar))
 
-    assert registrar.singletons[RatesConfig]["instance"].cache_ttl_seconds == 5
+    assert registrar.singletons[RatesConfig]["instance"].upstream_scenario == "flaky"
     factory = registrar.singletons[FaultController]["factory"]
     faults = factory()
     assert faults.current is Scenario.FLAKY

@@ -30,7 +30,6 @@ from rates.repository.simulated_upstream import FaultController, SimulatedRatesP
 logger = get_logger(__name__)
 
 _CACHE_PREFIX = "fx:"
-_TTL_SECONDS = 60
 
 
 @dataclass
@@ -70,10 +69,8 @@ class RatesService:
         pipeline_factory: ResiliencePipelineFactoryProtocol,
         provider: SimulatedRatesProvider,
         faults: FaultController,
-        cache_ttl_seconds: int = _TTL_SECONDS,
     ) -> None:
         self._cache = cache
-        self._cache_ttl_seconds = cache_ttl_seconds
         self._pipeline_factory = pipeline_factory
         self._pipeline = pipeline_factory(
             retry_config=RetryConfig(
@@ -218,7 +215,8 @@ class RatesService:
             "fetched_at": quote.fetched_at,
             "source": quote.source,
         }
-        result = await self._cache.set(key, payload, ttl=self._cache_ttl_seconds)
+        # TTL is owned by the backend (cache.backends[].default_ttl).
+        result = await self._cache.set(key, payload)
         if not isinstance(result, Ok):
             logger.warning("cache_set_failed", error=str(result.unwrap_err()))
 

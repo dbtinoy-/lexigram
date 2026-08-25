@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from lexigram.cache.config.top_level import CacheConfig
 from lexigram.config.main import LexigramConfig
 from lexigram.web.config import WebConfig
 
@@ -30,23 +31,26 @@ class RatesConfig:
     Attributes:
         upstream_scenario: Initial upstream health scenario
             (``healthy | flaky | down | slow``).
-        cache_ttl_seconds: TTL applied to cached quotes.
     """
 
     upstream_scenario: str = "healthy"
-    cache_ttl_seconds: int = 60
 
 
-def bind_application() -> tuple[WebConfig, RatesConfig]:
-    """Bind the web and demo sections from this demo's application.yaml.
+def bind_application() -> tuple[WebConfig, CacheConfig, RatesConfig]:
+    """Bind the web/cache/demo sections from this demo's application.yaml.
 
     Returns:
-        ``(web_config, demo_config)`` ready for module/provider wiring.
-        ``LEX_`` environment overrides and ``LEX_PROFILE`` overlays are
-        applied by the loader.
+        ``(web_config, cache_config, demo_config)`` ready for module and
+        provider wiring. ``LEX_`` environment overrides and ``LEX_PROFILE``
+        overlays are applied by the loader. Cache TTL is owned by the cache
+        package (``cache.backends[].default_ttl``), not by this demo.
     """
     lex = LexigramConfig.from_yaml(APP_YAML)
-    return lex.get_section("web", WebConfig), lex.get_section("demo", RatesConfig)
+    return (
+        lex.get_section("web", WebConfig),
+        lex.get_section("cache", CacheConfig),
+        lex.get_section("demo", RatesConfig),
+    )
 
 
 __all__ = ["APP_YAML", "RatesConfig", "bind_application"]

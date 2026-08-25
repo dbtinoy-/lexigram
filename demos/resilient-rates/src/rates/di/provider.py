@@ -91,7 +91,6 @@ class RatesProvider(Provider):
             pipeline_factory=await container.resolve(ResiliencePipelineFactoryProtocol),
             provider=await container.resolve(SimulatedRatesProvider),
             faults=faults,
-            cache_ttl_seconds=(self.config or RatesConfig()).cache_ttl_seconds,
         )
         container.bind(RatesService, service)
 

@@ -8,6 +8,13 @@ web:
     csrf:
       enabled: false
 
+# lexigram-cache (config_key: "cache") — backend owns TTL semantics
+cache:
+  backends:
+    - name: default
+      type: memory
+      default: true
+      default_ttl: 60
+
 demo:
   upstream_scenario: healthy # healthy | flaky | down | slow
-  cache_ttl_seconds: 60

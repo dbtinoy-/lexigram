@@ -10,9 +10,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from lexigram.cache.config import CacheBackendConfig, CacheConfig
 from lexigram.cache.module import CacheModule
-from lexigram.cache.types import BackendType
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.resilience.module import ResilienceModule
 from lexigram.web import WebModule
@@ -24,26 +22,13 @@ from rates.services.rates_service import RatesService
 from rates.ui.pages import RatesPageController
 
 
-def _memory_cache_config() -> CacheConfig:
-    """Return an offline memory-backend cache configuration."""
-    return CacheConfig(
-        backends=[
-            CacheBackendConfig(
-                name="default",
-                type=BackendType.MEMORY,
-                default=True,
-            )
-        ]
-    )
-
-
 @module()
 class RatesModule(Module):
     """Root module: resilience + cache + rate desk services."""
 
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
-        web_config, demo_config = bind_application()
+        web_config, cache_config, demo_config = bind_application()
         if port is not None:  # embedded-hub override; children never serve
             web_config = replace(
                 web_config, server=replace(web_config.server, port=port)
@@ -52,7 +37,7 @@ class RatesModule(Module):
             module=cls,
             imports=[
                 ResilienceModule.configure(),
-                CacheModule.configure(_memory_cache_config()),
+                CacheModule.configure(cache_config),
                 WebModule.configure(
                     controllers=[RatesApiController, RatesPageController],
                     web_config=web_config,
