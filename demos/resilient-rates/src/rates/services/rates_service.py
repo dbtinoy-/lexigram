@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from decimal import Decimal
-from typing import Any
 
 from lexigram.cache.service.stampede import StampedeProtectedCache
 from lexigram.contracts.core.result import Err, Ok, Result
@@ -121,10 +119,6 @@ class RatesService:
         if not isinstance(result, Ok):
             logger.warning("cache_clear_failed", error=str(result.unwrap_err()))
 
-    def stale_quote(self, pair: str) -> RateQuote | None:
-        """Return the last-known-good quote for a pair, if any."""
-        return self._stale.get(pair)
-
     async def fetch(self, pair: str) -> Result[RateQuote, RateUnavailableError]:
         """Return a quote for ``pair`` via cache-aside + resilience.
 
@@ -144,10 +138,10 @@ class RatesService:
         # (either a stored copy or a co-running leader).
         leader = {"computed": False}
 
-        async def compute() -> dict[str, Any]:
+        async def compute() -> dict[str, object]:
             leader["computed"] = True
             quote = await self._pipeline.execute(self._provider.fetch, pair)
-            return self._encode(quote)
+            return quote.to_payload()
 
         try:
             payload = await self._protection.get_or_compute(
@@ -169,7 +163,7 @@ class RatesService:
             logger.warning("stale_served", pair=pair, reason=str(exc))
             return Ok(replace(stale, source="stale"))
 
-        quote = self._decode(payload)
+        quote = RateQuote.from_payload(payload)
         if leader["computed"]:
             self._stats.misses += 1
             self._stats.upstream_calls += 1
@@ -180,26 +174,6 @@ class RatesService:
         self._stats.hits += 1
         logger.debug("cache_hit", pair=pair)
         return Ok(replace(quote, source="cache"))
-
-    @staticmethod
-    def _encode(quote: RateQuote) -> dict[str, Any]:
-        """Encode a quote into the JSON-safe payload the backend stores."""
-        return {
-            "pair": quote.pair,
-            "rate": str(quote.rate),
-            "fetched_at": quote.fetched_at,
-            "source": quote.source,
-        }
-
-    @staticmethod
-    def _decode(raw: dict[str, Any]) -> RateQuote:
-        """Reconstruct a quote from its stored payload."""
-        return RateQuote(
-            pair=str(raw["pair"]),
-            rate=Decimal(str(raw["rate"])),
-            fetched_at=float(raw["fetched_at"]),
-            source=str(raw["source"]),
-        )
 
 
 __all__ = ["RatesService", "ServiceStats"]

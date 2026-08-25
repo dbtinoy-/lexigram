@@ -18,6 +18,8 @@ from starlette.routing import Route
 
 from lexigram.web import JSONResponse
 
+from lexigram.web.routing.result_bridge import ResultResponseMapper
+
 from rates.app import create_app
 from rates.controllers.api import RatesApiController
 
@@ -34,6 +36,10 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
                 result = await handler(request)
                 if isinstance(result, JSONResponse):
                     return result
+                if hasattr(result, "is_ok"):
+                    return ResultResponseMapper.error_to_response(
+                        result.unwrap_err()
+                    )
                 return JSONResponse(result)
 
             return endpoint
