@@ -6685,7 +6685,6 @@ name = "lexigram-features"
 version = "0.1.5002"
 source = { editable = "packages/lexigram-features" }
 dependencies = [
-    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -6722,7 +6721,6 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -6995,7 +6993,6 @@ name = "lexigram-monitor"
 version = "0.1.5002"
 source = { editable = "packages/lexigram-monitor" }
 dependencies = [
-    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "starlette" },
@@ -7059,7 +7056,6 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
-    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-tasks", marker = "extra == 'test'", editable = "packages/lexigram-tasks" },
@@ -7823,7 +7819,6 @@ source = { editable = "packages/lexigram-notification" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiohttp" },
-    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "pywebpush" },
@@ -7886,7 +7881,6 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'slack'", specifier = ">=0.27.0" },
     { name = "httpx", marker = "extra == 'whatsapp'", specifier = ">=0.27.0" },
     { name = "httpx", extras = ["http2"], marker = "extra == 'apns'", specifier = ">=0.27.0" },
-    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -8613,7 +8607,6 @@ name = "lexigram-tenancy"
 version = "0.1.5002"
 source = { editable = "packages/lexigram-tenancy" }
 dependencies = [
-    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -8664,7 +8657,6 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-sql", marker = "extra == 'sql'", editable = "packages/lexigram-sql" },
@@ -8932,7 +8924,6 @@ version = "0.1.5002"
 source = { editable = "packages/lexigram-vector" }
 dependencies = [
     { name = "aiohttp" },
-    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -9000,7 +8991,6 @@ requires-dist = [
     { name = "aiohttp", marker = "extra == 'embed'", specifier = ">=3.9.0" },
     { name = "asyncpg", marker = "extra == 'pgvector'", specifier = ">=0.30.0" },
     { name = "chromadb", marker = "extra == 'chroma'", specifier = ">=0.4.0" },
-    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
@@ -9247,7 +9237,6 @@ name = "lexigram-workflow"
 version = "0.1.5002"
 source = { editable = "packages/lexigram-workflow" }
 dependencies = [
-    { name = "jinja2" },
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "typer" },
@@ -9282,7 +9271,6 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "lexigram", editable = "core/lexigram" },
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
