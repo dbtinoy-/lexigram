@@ -1,8 +1,8 @@
-"""Entry points for the RBAC console demo.
+"""Entry points for the auth-rbac console.
 
 Run::
 
-    uv run python -m rbac_console            # serves application.yaml (:8090)
+    uv run python -m rbac_console            # serves application.yaml
 
 Server host/port come from ``application.yaml`` (``web.server``); override
 without editing the file via ``LEX_WEB__SERVER__PORT``.
@@ -13,29 +13,41 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from lexigram.app import Application
-from rbac_console.config import bind_web, load_lex_config
-from rbac_console.module import RbacModule
+from lexigram.logging import get_logger
+from rbac_console.app import create_app
+from rbac_console.config import load_lex_config
+
+logger = get_logger(__name__)
 
 
-async def _serve() -> None:
+async def serve() -> None:
+    """Boot once and serve until interrupted; stop cleanly afterwards."""
+    from lexigram.web.config import WebConfig
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    web_config = bind_web()
-    async with Application.boot(
-        name="rbac-console",
-        modules=[RbacModule.configure()],
-        config=load_lex_config(),
-    ) as app:
+    config = load_lex_config()
+    web_config = config.get_section("web", WebConfig)
+    app = create_app(config)
+    try:
+        await app.start()
         web = await app.container.resolve(WebProvider)
+        logger.info("server.listening", host=web_config.server.host,
+                    port=web_config.server.port)
         await run_server_async(
-            web.starlette, host=web_config.server.host, port=web_config.server.port
+            web.starlette,
+            host=web_config.server.host,
+            port=web_config.server.port,
         )
+    finally:
+        await app.stop()
 
 
 def main() -> int:
-    asyncio.run(_serve())
+    try:
+        asyncio.run(serve())
+    except KeyboardInterrupt:
+        return 130
     return 0
 
 

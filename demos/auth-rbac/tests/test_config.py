@@ -19,15 +19,13 @@ def test_env_override_wins(monkeypatch: pytest.MonkeyPatch) -> None:
     assert bind_web().server.port == 7098
 
 
-def test_module_contains_no_literal_server_config() -> None:
-    import pathlib
-
-    module_src = (
+def test_composition_root_contains_no_literal_server_config() -> None:
+    app_src = (
         pathlib.Path(__file__).resolve().parents[1]
         / "src"
         / "rbac_console"
-        / "module.py"
+        / "app.py"
     ).read_text()
-    assert "ServerConfig(" not in module_src
-    assert "SecurityConfig(" not in module_src
-    assert "8090" not in module_src
+    assert "ServerConfig(" not in app_src
+    assert "SecurityConfig(" not in app_src
+    assert "8090" not in app_src

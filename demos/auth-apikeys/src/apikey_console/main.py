@@ -1,8 +1,8 @@
-"""Entry points for the API-keys console demo.
+"""Entry points for the auth-apikeys console.
 
 Run::
 
-    uv run python -m apikey_console            # serves application.yaml (:8091)
+    uv run python -m apikey_console            # serves application.yaml
 
 Server host/port come from ``application.yaml`` (``web.server``); override
 without editing the file via ``LEX_WEB__SERVER__PORT``.
@@ -13,31 +13,41 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from apikey_console.config import bind_web, load_lex_config
-from apikey_console.module import ApiKeysModule
-from lexigram.app import Application
+from apikey_console.app import create_app
+from apikey_console.config import load_lex_config
+from lexigram.logging import get_logger
+
+logger = get_logger(__name__)
 
 
-async def _serve() -> None:
+async def serve() -> None:
+    """Boot once and serve until interrupted; stop cleanly afterwards."""
+    from lexigram.web.config import WebConfig
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    web_config = bind_web()
-    async with Application.boot(
-        name="apikeys-console",
-        modules=[ApiKeysModule.configure()],
-        config=load_lex_config(),
-    ) as app:
+    config = load_lex_config()
+    web_config = config.get_section("web", WebConfig)
+    app = create_app(config)
+    try:
+        await app.start()
         web = await app.container.resolve(WebProvider)
+        logger.info("server.listening", host=web_config.server.host,
+                    port=web_config.server.port)
         await run_server_async(
             web.starlette,
             host=web_config.server.host,
             port=web_config.server.port,
         )
+    finally:
+        await app.stop()
 
 
 def main() -> int:
-    asyncio.run(_serve())
+    try:
+        asyncio.run(serve())
+    except KeyboardInterrupt:
+        return 130
     return 0
 
 

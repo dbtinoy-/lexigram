@@ -12,12 +12,11 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 import sys
 
-from apikey_console.module import ApiKeysModule
+from apikey_console.app import create_app
 import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
@@ -25,16 +24,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
-    """Boot the real module graph and expose its ASGI app."""
+    """Boot the real composition root and expose its ASGI app."""
     from apikey_console.config import load_lex_config
 
-    async with Application.boot(
-        name="apikeys-console-test",
-        modules=[ApiKeysModule.configure()],
-        config=load_lex_config(),
-    ) as application:
+    application = create_app(load_lex_config())
+    await application.start()
+    try:
         web = await application.container.resolve(WebProvider)
         yield web.starlette
+    finally:
+        await application.stop()
 
 
 @pytest.fixture

@@ -1,8 +1,8 @@
-"""Entry points for the MFA console demo.
+"""Entry points for the auth-mfa console.
 
 Run::
 
-    uv run python -m mfa_console            # serves application.yaml (:8092)
+    uv run python -m mfa_console            # serves application.yaml
 
 Server host/port come from ``application.yaml`` (``web.server``); override
 without editing the file via ``LEX_WEB__SERVER__PORT``.
@@ -13,31 +13,41 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from lexigram.app import Application
-from mfa_console.config import bind_web, load_lex_config
-from mfa_console.module import MfaModule
+from lexigram.logging import get_logger
+from mfa_console.app import create_app
+from mfa_console.config import load_lex_config
+
+logger = get_logger(__name__)
 
 
-async def _serve() -> None:
+async def serve() -> None:
+    """Boot once and serve until interrupted; stop cleanly afterwards."""
+    from lexigram.web.config import WebConfig
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    web_config = bind_web()
-    async with Application.boot(
-        name="mfa-console",
-        modules=[MfaModule.configure()],
-        config=load_lex_config(),
-    ) as app:
+    config = load_lex_config()
+    web_config = config.get_section("web", WebConfig)
+    app = create_app(config)
+    try:
+        await app.start()
         web = await app.container.resolve(WebProvider)
+        logger.info("server.listening", host=web_config.server.host,
+                    port=web_config.server.port)
         await run_server_async(
             web.starlette,
             host=web_config.server.host,
             port=web_config.server.port,
         )
+    finally:
+        await app.stop()
 
 
 def main() -> int:
-    asyncio.run(_serve())
+    try:
+        asyncio.run(serve())
+    except KeyboardInterrupt:
+        return 130
     return 0
 
 
