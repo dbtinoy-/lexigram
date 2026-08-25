@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import inspect
 import secrets
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
@@ -21,7 +22,6 @@ from lexigram.contracts.auth import PasswordHasherProtocol, PasswordPolicyProtoc
 from lexigram.contracts.core import HookRegistryProtocol
 from lexigram.contracts.core.config import Environment
 from lexigram.contracts.exceptions import ConfigurationError
-from lexigram.di.decorators import inject
 from lexigram.di.markers import Inject
 from lexigram.di.provider import Provider
 from lexigram.logging import get_logger
@@ -139,7 +139,27 @@ def _build_token_manager(
     )
 
 
-@inject
+def _resolve_default_cache_sync(container: Any) -> Any:
+    """Deferred best-effort lookup of the application default cache.
+
+    Auth boots before cache providers, so this runs lazily via
+    ``set_blacklist_resolver``.  Returns ``None`` while no cache backend
+    is registered (or when only async resolution is available); the
+    blacklist manager treats ``None`` as "no durable store yet".
+    """
+    if container is None or not hasattr(container, "resolve"):
+        return None
+    try:
+        from lexigram.contracts.cache import CacheBackendProtocol
+
+        resolved = container.resolve(CacheBackendProtocol)
+    except Exception:  # noqa: BLE001 — cache subsystem may not exist yet
+        return None
+    if inspect.isawaitable(resolved):
+        return None
+    return resolved
+
+
 class AuthenticationProvider(Provider):
     """User authentication ONLY (login/logout/validation).
 
@@ -282,6 +302,19 @@ class AuthenticationProvider(Provider):
             self.token_manager, "set_hook_registry"
         ):
             self.token_manager.set_hook_registry(hooks)
+
+        # Token revocation needs a cache backend; when none was supplied at
+        # construction, adopt the application default cache so
+        # ``logout_all_user_tokens`` works without extra wiring.
+        if self.token_manager is not None and hasattr(
+            self.token_manager, "set_blacklist_resolver"
+        ):
+            # Ordering-proof: auth boots before cache providers, so hand a
+            # deferred source over the root resolver instead of resolving now.
+            self.token_manager.set_blacklist_resolver(
+                lambda: _resolve_default_cache_sync(container)
+            )
+
         if container is not None and hasattr(container, "resolve"):
             with contextlib.suppress(
                 ImportError, AttributeError, RuntimeError, TypeError

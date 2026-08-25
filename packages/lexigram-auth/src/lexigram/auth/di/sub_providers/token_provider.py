@@ -227,6 +227,13 @@ class TokenProvider(Provider):
         hooks = await container.resolve_optional(HookRegistryProtocol)
         self.token_manager.set_hook_registry(hooks)
 
+        # Token revocation needs a cache backend; none is available during
+        # register(). Attach a deferred source over the root resolver so
+        # ``logout_all_user_tokens`` works once cache providers have booted,
+        # independent of provider ordering.
+        if hasattr(self.token_manager, "set_blacklist_resolver"):
+            self.token_manager.set_blacklist_resolver(container.resolve_optional)
+
     async def shutdown(self) -> None:
         """Shutdown token provider."""
         logger.info("TokenProvider shutdown")

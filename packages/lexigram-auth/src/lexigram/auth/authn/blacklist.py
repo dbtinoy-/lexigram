@@ -54,6 +54,7 @@ class JWTBlacklist:
         access_expiration_hours: int,
         refresh_expiration_days: int,
         audit_logger: AuditLoggerProtocol | None = None,
+        cache_resolver: Any = None,
     ) -> None:
         self._cache = cache
         self._algorithm = algorithm
@@ -62,6 +63,56 @@ class JWTBlacklist:
         self._refresh_expiration_days = refresh_expiration_days
         self._audit_logger = audit_logger
         self._fallback: set[str] = set()
+        # Optional late-binding source for the cache when none was supplied
+        # at construction (DI ordering: auth boots before cache providers).
+        self._cache_resolver: Any = cache_resolver
+
+    def attach_cache(self, cache: Any) -> None:
+        """Attach an explicit cache backend immediately."""
+        """Attach a cache backend after construction.
+
+        Lets DI providers supply the application cache during ``boot()``
+        when it was not available at construction time, enabling
+        cache-backed revocation without rebuilding the token manager.
+
+        Args:
+            cache: Cache backend implementing the blacklist operations used
+                here (``exists``/``set`` semantics of CacheBackendProtocol).
+        """
+        self._cache = cache
+
+    def attach_cache_resolver(self, resolver: Any) -> None:
+        """Attach a deferred cache source invoked on first revocation use.
+
+        Ordering-proof alternative to :meth:`attach_cache`: providers that
+        boot before the cache layer can hand over a zero-arg callable
+        returning the backend (or ``None``) once it exists.
+
+        Args:
+            resolver: Zero-argument callable returning a cache backend or
+                ``None``.
+        """
+        self._cache_resolver = resolver
+
+    async def _effective_cache(self) -> Any:
+        """Return the cache backend, resolving lazily when configured.
+
+        Delegates to the attached resolver with
+        ``CacheBackendProtocol`` on first use, caching the result.
+        """
+        if self._cache is not None:
+            return self._cache
+        if self._cache_resolver is None:
+            return None
+        try:
+            from lexigram.contracts.infra.cache import CacheBackendProtocol
+
+            resolved = await self._cache_resolver(CacheBackendProtocol)
+        except Exception as exc:  # noqa: BLE001 — fail closed below
+            logger.warning("blacklist_cache_resolve_failed", error=str(exc))
+            return None
+        self._cache = resolved
+        return self._cache
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -84,7 +135,7 @@ class JWTBlacklist:
         from lexigram.result import Err, Ok
 
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        cache = self._cache
+        cache = await self._effective_cache()
 
         if not cache:
             self._fallback.add(token_hash)
@@ -147,7 +198,7 @@ class JWTBlacklist:
         from lexigram.contracts.auth.exceptions import TokenError as ContractsTokenError
         from lexigram.result import Err, Ok
 
-        cache = self._cache
+        cache = await self._effective_cache()
         if not cache:
             raise RuntimeError(
                 "Cannot blacklist token: no cache backend configured. "
@@ -189,7 +240,7 @@ class JWTBlacklist:
             ``True`` if the token should be rejected, ``False`` otherwise.
         """
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        cache = self._cache
+        cache = await self._effective_cache()
 
         if not cache:
             return token_hash in self._fallback

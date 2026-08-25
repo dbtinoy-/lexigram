@@ -188,6 +188,7 @@ class JWTTokenManager(_JWTCreationMixin, _JWTLifecycleMixin):
         # and cache-backed revocation.
         self._blacklist_mgr = JWTBlacklist(
             cache=cache_service,
+            cache_resolver=getattr(self, "_blacklist_cache_resolver", None),
             algorithm=algorithm,
             current_key_id_fn=lambda: self._key_store.current_key_id,
             access_expiration_hours=access_expiration_hours,
@@ -231,6 +232,27 @@ class JWTTokenManager(_JWTCreationMixin, _JWTLifecycleMixin):
     def current_key_id(self, value: str) -> None:
         """Allow external callers to update the active key ID on the store."""
         self._key_store.current_key_id = value
+
+    def set_blacklist_resolver(self, resolver: Any) -> None:
+        """Attach a deferred blacklist-cache source.
+
+        Args:
+            resolver: Zero-arg callable returning a ``CacheBackendProtocol``
+                or ``None``; invoked lazily on first revocation use.
+        """
+        self._blacklist_cache_resolver = resolver
+        self._blacklist_mgr.attach_cache_resolver(resolver)
+
+    def set_blacklist_cache(self, cache: Any) -> None:
+        """Attach a cache backend to the blacklist for durable revocation.
+
+        Lets DI providers supply the application cache during ``boot()``
+        when it was not available at construction time.
+
+        Args:
+            cache: Cache backend used for token/user revocation entries.
+        """
+        self._blacklist_mgr.attach_cache(cache)
 
     def __repr__(self) -> str:
         """Return developer-friendly string representation."""
