@@ -16,6 +16,7 @@ import sys
 
 from lexigram.logging import get_logger
 from rates.app import create_app
+from rates.config import load_lex_config
 
 logger = get_logger(__name__)
 

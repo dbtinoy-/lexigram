@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from lexigram.config import BaseConfig
+from lexigram.config.main import LexigramConfig
 from lexigram.validation import Field
 
 APP_YAML = Path(__file__).resolve().parents[2] / "application.yaml"
