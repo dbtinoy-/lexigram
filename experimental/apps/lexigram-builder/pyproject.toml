@@ -32,6 +32,7 @@ dependencies = [
     "lexigram-contracts>=0.1.4",
     "lexigram-web>=0.1.2",
     "lexigram-sql>=0.1.4",
+    "lexigram-ui>=0.1.4",
 ]
 authors = [
     { name = "Lexigram Framework Team", email = "team@lexigram.dev" },

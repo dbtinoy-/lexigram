@@ -6289,6 +6289,7 @@ dependencies = [
     { name = "lexigram" },
     { name = "lexigram-contracts" },
     { name = "lexigram-sql" },
+    { name = "lexigram-ui" },
     { name = "lexigram-web" },
 ]
 
@@ -6335,6 +6336,7 @@ requires-dist = [
     { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
     { name = "lexigram-sql", editable = "packages/lexigram-sql" },
     { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-ui", editable = "experimental/apps/lexigram-ui" },
     { name = "lexigram-web", editable = "packages/lexigram-web" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
