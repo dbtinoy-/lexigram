@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lexigram.contracts.cli.generators import resolve_options
 from lexigram.contracts.cli.parsers import parse_fields
 from lexigram.sql.cli.generators.base import GenerationResult, GeneratorBase
 
@@ -40,13 +41,6 @@ class DatabaseRepositoryGenerator(GeneratorBase):
             fields = [{"name": "id", "type": "int", "required": True}]
 
         file_path = self.output_dir / f"{self._to_snake_case(name)}_repository.py"
-        result = GenerationResult()
-        dry_run = bool(options.get("dry_run", False))
-        force = bool(options.get("force", False))
-
-        if file_path.exists() and not force:
-            result.files_skipped.append(file_path)
-            return result
 
         content = self.env.get_template("database_repository.py.jinja2").render(
             repo_name=self._to_pascal_case(name),
@@ -56,14 +50,15 @@ class DatabaseRepositoryGenerator(GeneratorBase):
             entity_name=self._to_pascal_case(name),
         )
 
-        if dry_run:
-            result.files_created.append(file_path)
-            return result
-
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
-        result.files_created.append(file_path)
-        return result
+        self.stage(file_path, content)
+        return self.finalize(
+            self.commit(
+                resolve_options(
+                    dry_run=bool(options.get("dry_run", False)),
+                    force=bool(options.get("force", False)),
+                )
+            )
+        )
 
 
 __all__ = ["DatabaseRepositoryGenerator"]
