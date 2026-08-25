@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lexigram.builder.types import Diagnostic
 from lexigram.contracts.exceptions.domain import DomainError
 
 
@@ -33,14 +34,23 @@ class ProjectNotFoundError(BuilderError):
 
 
 class GraphValidationError(BuilderError):
-    """The graph document failed validation."""
+    """The graph document failed validation.
+
+    Attributes:
+        diagnostics: Node-scoped diagnostics describing every failure.
+    """
 
     _code = "LEX_ERR_BUILDER_004"
 
     def __init__(
-        self, message: str = "Graph validation failed", **kwargs: object
+        self,
+        message: str = "Graph validation failed",
+        *,
+        diagnostics: tuple[Diagnostic, ...] = (),
+        **kwargs: object,
     ) -> None:
         super().__init__(message, **kwargs)
+        self.diagnostics = diagnostics
 
 
 class PreviewError(BuilderError):
