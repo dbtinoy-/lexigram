@@ -50,7 +50,6 @@ if TYPE_CHECKING:
         DistributedCircuitBreakerBackend,
         InMemoryCircuitBreakerBackend,
         circuit_breaker,
-        timeout_context,
     )
     from lexigram.resilience.config import BulkheadConfig as BulkheadConfig
     from lexigram.resilience.decorators import (

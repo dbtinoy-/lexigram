@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from lexigram.ai.rag.query.base import (
-        AbstractQueryTransformer,
         TransformationConfig,
         TransformationStrategy,
         TransformedQuery,

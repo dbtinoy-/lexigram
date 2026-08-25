@@ -16,7 +16,7 @@ from lexigram.graphql.types import SubscriptionInfo
 from lexigram.logging import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable, Callable
+    from collections.abc import Awaitable, Callable
 
 
 logger = get_logger(__name__)

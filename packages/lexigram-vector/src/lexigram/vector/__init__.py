@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from lexigram.vector.backends.pinecone import PineconeStore
     from lexigram.vector.backends.qdrant import QdrantStore
     from lexigram.vector.config import (
-        ChromaConfig,
         MemoryConfig,
         NamedVectorConfig,
         PgVectorConfig,

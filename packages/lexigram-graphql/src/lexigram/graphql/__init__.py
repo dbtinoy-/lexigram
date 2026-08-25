@@ -136,7 +136,6 @@ if TYPE_CHECKING:
         union_type,
     )
     from lexigram.graphql.security.alias import (
-        AliasLimitExtension,
         AliasLimitValidator,
     )
 
