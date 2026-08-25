@@ -213,11 +213,24 @@ class FlagManager:
     async def get_all_flags(
         self,
         context: FlagContext | None = None,
-    ) -> dict[str, Any]:
-        """Return evaluations for all known flags."""
-        if hasattr(self._provider, "get_all_flags"):
-            return await self._provider.get_all_flags()
-        return {}
+    ) -> dict[str, FlagEvaluation]:
+        """Return evaluations for all known flags.
+
+        Definitions come from the provider; each is evaluated against
+        *context* here so the mapping honours the
+        ``dict[str, FlagEvaluation]`` contract instead of leaking raw
+        ``Flag`` definitions.
+        """
+        if not hasattr(self._provider, "get_all_flags"):
+            return {}
+
+
+        definitions: dict[str, Any] = await self._provider.get_all_flags()
+        evaluations: dict[str, FlagEvaluation] = {}
+        for name in definitions:
+            evaluation = await self._provider.evaluate(name, context)
+            evaluations[name] = evaluation
+        return evaluations
 
     # ------------------------------------------------------------------
     # Runtime overrides
