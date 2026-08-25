@@ -17,9 +17,8 @@ class DemoService:
         kind: ``web`` for live consoles, ``cli`` for offline entries.
         blurb: One-line description for the card grid.
         demo_dir: Directory under ``demos/`` containing this demo.
-        module_path: Dotted path of the demo's root module.
-        module_name: Class name of the demo's root ``Module``.
-        check_path: Path probed when the demo is health-checked standalone.
+        app_path: Dotted path of the demo's ``app`` module exposing
+            ``create_app()`` — the composition root (starter pattern).
     """
 
     slug: str
@@ -28,10 +27,14 @@ class DemoService:
     kind: str
     blurb: str
     demo_dir: str = ""
-    module_path: str = ""
-    module_name: str = ""
+    app_path: str = ""
     check_path: str = "/"
     errors: list[str] = field(default_factory=list)
+
+    @property
+    def is_hostable(self) -> bool:
+        """Whether the fleet can boot and embed this entry."""
+        return self.kind == "web"
 
 
 class ServiceRegistry:
@@ -46,8 +49,7 @@ class ServiceRegistry:
                 "web",
                 "SSE replay + WebSocket operator channel",
                 "realtime-monitor",
-                "ops_console.module",
-                "RealtimeModule",
+                "ops_console.app",
             ),
             DemoService(
                 "resilient-rates",
@@ -56,8 +58,7 @@ class ServiceRegistry:
                 "web",
                 "Retry, circuit breaker, stale fallback desk",
                 "resilient-rates",
-                "rates.module",
-                "RatesModule",
+                "rates.app",
             ),
             DemoService(
                 "event-driven-orders",
@@ -66,8 +67,7 @@ class ServiceRegistry:
                 "web",
                 "CQRS lifecycle with transactional outbox",
                 "event-driven-orders",
-                "orders.module",
-                "OrdersModule",
+                "orders.app",
             ),
             DemoService(
                 "rag-docs",
@@ -76,8 +76,7 @@ class ServiceRegistry:
                 "web",
                 "Cited answers over framework documentation",
                 "rag-docs",
-                "rag_docs.module",
-                "DocsAskModule",
+                "rag_docs.app",
             ),
             DemoService(
                 "support-agent",
@@ -86,8 +85,7 @@ class ServiceRegistry:
                 "web",
                 "ReAct agent with scripted LLM + tools",
                 "support-agent",
-                "support_agent.module",
-                "SupportAgentModule",
+                "support_agent.app",
             ),
             DemoService(
                 "memory-chat",
@@ -96,8 +94,7 @@ class ServiceRegistry:
                 "web",
                 "Episodic + semantic memory, owner isolation",
                 "memory-chat",
-                "memory_chat.module",
-                "MemoryChatModule",
+                "memory_chat.app",
             ),
             DemoService(
                 "ai-guardrails",
@@ -106,8 +103,7 @@ class ServiceRegistry:
                 "web",
                 "Injection blocking, PII redaction, budgets",
                 "ai-guardrails",
-                "guard_gate.module",
-                "GuardrailsModule",
+                "guard_gate.app",
             ),
             DemoService(
                 "prompt-lab",
@@ -116,8 +112,7 @@ class ServiceRegistry:
                 "web",
                 "Prompt versioning with deterministic A/B",
                 "prompt-lab",
-                "prompt_lab.module",
-                "PromptLabModule",
+                "prompt_lab.app",
             ),
             DemoService(
                 "feedback-loop",
@@ -126,8 +121,7 @@ class ServiceRegistry:
                 "web",
                 "Ratings promoted into regression suites",
                 "feedback-loop",
-                "feedback_loop.module",
-                "FeedbackLoopModule",
+                "feedback_loop.app",
             ),
             DemoService(
                 "auth-web",
@@ -136,8 +130,7 @@ class ServiceRegistry:
                 "web",
                 "Cookie sessions, JWT claims, lockout",
                 "auth-web",
-                "auth_web.module",
-                "AuthWebModule",
+                "auth_web.app",
             ),
             DemoService(
                 "auth-rbac",
@@ -146,8 +139,7 @@ class ServiceRegistry:
                 "web",
                 "Permission matrix with live authorize()",
                 "auth-rbac",
-                "rbac_console.module",
-                "RbacModule",
+                "rbac_console.app",
             ),
             DemoService(
                 "auth-apikeys",
@@ -156,8 +148,7 @@ class ServiceRegistry:
                 "web",
                 "Scoped machine keys, instant revocation",
                 "auth-apikeys",
-                "apikey_console.module",
-                "ApiKeysModule",
+                "apikey_console.app",
             ),
             DemoService(
                 "auth-mfa",
@@ -166,8 +157,7 @@ class ServiceRegistry:
                 "web",
                 "TOTP challenge flow with backup codes",
                 "auth-mfa",
-                "mfa_console.module",
-                "MfaModule",
+                "mfa_console.app",
             ),
             DemoService(
                 "llm-reproducibility",
@@ -181,7 +171,7 @@ class ServiceRegistry:
 
     def web_services(self) -> list[DemoService]:
         """Return entries that the fleet can boot and embed."""
-        return [s for s in self.services if s.kind == "web"]
+        return [s for s in self.services if s.is_hostable]
 
     def snapshot(
         self,
@@ -206,16 +196,17 @@ class ServiceRegistry:
                 status = "up"
             else:
                 status = "down"
-            entry: dict[str, object] = {
-                "slug": svc.slug,
-                "name": svc.name,
-                "port": svc.port,
-                "kind": svc.kind,
-                "blurb": svc.blurb,
-                "status": status,
-                "error": failures.get(svc.slug),
-            }
-            payload.append(entry)
+            payload.append(
+                {
+                    "slug": svc.slug,
+                    "name": svc.name,
+                    "port": svc.port,
+                    "kind": svc.kind,
+                    "blurb": svc.blurb,
+                    "status": status,
+                    "error": failures.get(svc.slug),
+                }
+            )
         return payload
 
 

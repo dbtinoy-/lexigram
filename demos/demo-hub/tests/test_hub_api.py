@@ -23,8 +23,7 @@ def test_registry_ports_are_unique_and_known() -> None:
 def test_every_web_demo_has_fleet_spec() -> None:
     for svc in registry_mod.ServiceRegistry().web_services():
         assert svc.demo_dir, svc.slug
-        assert svc.module_path, svc.slug
-        assert svc.module_name, svc.slug
+        assert svc.app_path.endswith(".app"), svc.slug
 
 
 def test_snapshot_reports_mounted_and_failed() -> None:

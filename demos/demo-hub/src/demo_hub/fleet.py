@@ -16,7 +16,6 @@ from starlette.applications import Starlette
 
 from demo_hub.services.registry import ServiceRegistry
 from demo_hub.subsite import SubsiteMiddleware
-from lexigram.app import create_app
 from lexigram.logging import get_logger
 from lexigram.web.di.provider import WebProvider
 
@@ -67,12 +66,10 @@ class Fleet:
         self._ensure_import_paths()
         for svc in self._registry.web_services():
             try:
-                module = importlib.import_module(svc.module_path)
-                mod_cls = getattr(module, svc.module_name)
-                app = create_app(name=f"hub-{svc.slug}")
-                app.add_modules([mod_cls.configure()])
-                await app.start()
-                web = await app.container.resolve(WebProvider)
+                module = importlib.import_module(svc.app_path)
+                child_app = module.create_app()
+                await child_app.start()
+                web = await child_app.container.resolve(WebProvider)
                 if web.starlette is None:
                     raise RuntimeError("child starlette app missing")
                 base = f"/demos/{svc.slug}"
@@ -80,7 +77,7 @@ class Fleet:
                     base,
                     app=SubsiteMiddleware(web.starlette, base=base),
                 )
-                self._apps[svc.slug] = app
+                self._apps[svc.slug] = child_app
                 logger.info("fleet_child_mounted", slug=svc.slug)
             except Exception as exc:  # noqa: BLE001 - isolate child faults
                 self._failures[svc.slug] = f"{type(exc).__name__}: {exc}"

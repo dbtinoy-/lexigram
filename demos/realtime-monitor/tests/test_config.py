@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from ops_console.config import RealtimeConfig, bind_application
@@ -25,12 +27,10 @@ def test_env_overrides_win(monkeypatch: pytest.MonkeyPatch) -> None:
     assert demo_config.heartbeat_interval_seconds == 1.5
 
 
-def test_module_contains_no_literal_server_config() -> None:
-    import pathlib
-
-    module_src = (
-        pathlib.Path(__file__).resolve().parents[1] / "src" / "ops_console" / "module.py"
+def test_composition_root_contains_no_literal_server_config() -> None:
+    app_src = (
+        pathlib.Path(__file__).resolve().parents[1] / "src" / "ops_console" / "app.py"
     ).read_text()
-    assert "ServerConfig(" not in module_src
-    assert "SecurityConfig(" not in module_src
-    assert "7071" not in module_src
+    assert "ServerConfig(" not in app_src
+    assert "SecurityConfig(" not in app_src
+    assert "7071" not in app_src

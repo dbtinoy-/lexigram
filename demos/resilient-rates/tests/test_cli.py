@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from structlog.testing import capture_logs
 
-from rates.main import _build_parser, _run
+from rates.cli import build_parser, run
 
 
 @pytest.fixture(autouse=True)
@@ -21,9 +21,9 @@ def _freeze_logging_config(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 async def test_fetch_logs_quote() -> None:
-    args = _build_parser().parse_args(["fetch", "EUR/USD"])
+    args = build_parser().parse_args(["fetch", "EUR/USD"])
     with capture_logs() as events:
-        await _run(args)
+        await run(args)
 
     event = next(e for e in events if e["event"] == "quote.fetched")
     assert event["pair"] == "EUR/USD"
@@ -31,17 +31,17 @@ async def test_fetch_logs_quote() -> None:
 
 
 async def test_scenario_command_sets_fault() -> None:
-    args = _build_parser().parse_args(["scenario", "flaky"])
+    args = build_parser().parse_args(["scenario", "flaky"])
     with capture_logs() as events:
-        await _run(args)
+        await run(args)
 
     assert any(e["event"] == "scenario.set" for e in events)
 
 
 async def test_demo_walks_all_five_acts() -> None:
-    args = _build_parser().parse_args(["demo"])
+    args = build_parser().parse_args(["demo"])
     with capture_logs() as events:
-        await _run(args)
+        await run(args)
 
     acts = {e["act"] for e in events if e["event"] == "act.start"}
     assert acts == {1, 2, 3, 4, 5}
@@ -58,8 +58,8 @@ async def test_demo_walks_all_five_acts() -> None:
     [("stats", "stats.reported"), ("clear-cache", "cache.cleared")],
 )
 async def test_utility_commands_log_events(command: str, event: str) -> None:
-    args = _build_parser().parse_args([command])
+    args = build_parser().parse_args([command])
     with capture_logs() as events:
-        await _run(args)
+        await run(args)
 
     assert any(e["event"] == event for e in events)

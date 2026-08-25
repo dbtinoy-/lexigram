@@ -1,8 +1,12 @@
-"""python -m rates entry."""
+"""Module entry point: default to the server; forward CLI args when given."""
 
 from __future__ import annotations
 
-from rates.main import main
+import sys
 
-if __name__ == "__main__":
-    main()
+from rates.cli import main as cli_main
+from rates.main import main as serve_main
+
+if len(sys.argv) > 1:
+    sys.exit(cli_main(sys.argv[1:]))
+serve_main()

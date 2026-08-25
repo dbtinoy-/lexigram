@@ -17,32 +17,29 @@ import sys
 
 import httpx
 
-from lexigram.app import Application
 from lexigram.logging import get_logger
-from lexigram.web.config import WebConfig
-from lexigram.web.server.runner import run_server_async
-from ops_console.config import bind_application, load_lex_config
-from ops_console.module import RealtimeModule
+from ops_console.app import create_app
+from ops_console.config import bind_web
 
 logger = get_logger(__name__)
 
 
 async def _serve() -> None:
     from lexigram.web.di.provider import WebProvider
+    from lexigram.web.server.runner import run_server_async
 
-    config = load_lex_config()
-    web_config = config.get_section("web", WebConfig)
-    async with Application.boot(
-        name="realtime-monitor",
-        modules=[RealtimeModule.configure()],
-        config=config,
-    ) as app:
+    web_config = bind_web()
+    app = create_app()
+    try:
+        await app.start()
         web = await app.container.resolve(WebProvider)
         await run_server_async(
             web.starlette,
             host=web_config.server.host,
             port=web_config.server.port,
         )
+    finally:
+        await app.stop()
 
 
 async def _publish(base_url: str, message: str) -> None:
@@ -56,22 +53,22 @@ async def _publish(base_url: str, message: str) -> None:
 
 def _default_base_url() -> str:
     """Default target derived from this demo's own application.yaml."""
-    web_config, _demo_config = bind_application()
+    web_config = bind_web()
     return f"http://{web_config.server.host}:{web_config.server.port}"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Realtime monitor demo")
     parser.add_argument(
-        "--base-url",
-        default=_default_base_url(),
-        help="server base URL (default: from application.yaml)",
-    )
-    parser.add_argument(
         "--publish", action="store_true", help="publish a sample event and exit"
     )
     parser.add_argument(
         "--message", default="Hello from CLI", help="message to publish"
+    )
+    parser.add_argument(
+        "--base-url",
+        default=_default_base_url(),
+        help="server base URL (default: from application.yaml)",
     )
     args = parser.parse_args()
 

@@ -1,4 +1,4 @@
-"""Integration tests: boot the real module graph and exercise reads."""
+"""Integration tests: boot the real composition root and exercise reads."""
 
 from __future__ import annotations
 
@@ -8,15 +8,19 @@ import pytest
 
 from lexigram.app import Application
 
-from rates.module import RatesModule
+from rates.app import create_app
 from rates.repository.simulated_upstream import FaultController, Scenario
 from rates.services.rates_service import RatesService
 
 
 @pytest.fixture
 async def app() -> AsyncIterator[Application]:
-    async with Application.boot(name="rates-test", modules=[RatesModule.configure()]) as instance:
+    instance = create_app()
+    await instance.start()
+    try:
         yield instance
+    finally:
+        await instance.stop()
 
 
 async def test_boots_and_resolves_services(app: Application) -> None:

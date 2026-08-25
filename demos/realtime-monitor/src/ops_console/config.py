@@ -32,6 +32,11 @@ class RealtimeConfig:
     queue_capacity: int = 100
 
 
+def load_lex_config() -> LexigramConfig:
+    """Load the demo's full ``LexigramConfig`` from application.yaml."""
+    return LexigramConfig.from_yaml(APP_YAML)
+
+
 def bind_application() -> tuple[WebConfig, RealtimeConfig]:
     """Bind the web and demo sections from this demo's application.yaml.
 
@@ -47,4 +52,9 @@ def bind_application() -> tuple[WebConfig, RealtimeConfig]:
     )
 
 
-__all__ = ["APP_YAML", "RealtimeConfig", "bind_application"]
+def bind_web() -> WebConfig:
+    """Bind the ``web`` section for server wiring."""
+    return LexigramConfig.from_yaml(APP_YAML).get_section("web", WebConfig)
+
+
+__all__ = ["APP_YAML", "RealtimeConfig", "bind_application", "bind_web"]

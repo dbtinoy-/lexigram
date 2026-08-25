@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from rates.config import RatesConfig, bind_application
@@ -53,12 +55,10 @@ def test_provider_wires_scenario_from_bound_config() -> None:
     assert faults.current is Scenario.FLAKY
 
 
-def test_module_contains_no_literal_server_config() -> None:
-    import pathlib
-
-    module_src = (
-        pathlib.Path(__file__).resolve().parents[1] / "src" / "rates" / "module.py"
+def test_composition_root_contains_no_literal_server_config() -> None:
+    app_src = (
+        pathlib.Path(__file__).resolve().parents[1] / "src" / "rates" / "app.py"
     ).read_text()
-    assert "ServerConfig(" not in module_src
-    assert "SecurityConfig(" not in module_src
-    assert "7073" not in module_src
+    assert "ServerConfig(" not in app_src
+    assert "SecurityConfig(" not in app_src
+    assert "7073" not in app_src

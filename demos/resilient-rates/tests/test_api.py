@@ -1,7 +1,7 @@
 """REST endpoint tests for the resilient rates demo.
 
-Boots ``RatesModule`` (resilience + cache + web wiring) through the real
-container, resolves ``RatesApiController``, and drives its routes via an
+Boots the real application via ``create_app()`` (resilience + cache + web
+wiring), resolves ``RatesApiController``, and drives its routes via an
 ``httpx.AsyncClient`` over a minimal Starlette app — mirroring how
 ``main.py serve`` mounts them.
 """
@@ -16,19 +16,18 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Route
 
-from lexigram.app import Application
 from lexigram.web import JSONResponse
 
+from rates.app import create_app
 from rates.controllers.api import RatesApiController
-from rates.module import RatesModule
 
 
 @pytest.fixture
 async def client() -> AsyncIterator[httpx.AsyncClient]:
-    async with Application.boot(
-        name="rates-api-test", modules=[RatesModule.configure()]
-    ) as app:
-        controller = await app.container.resolve(RatesApiController)
+    application = create_app()
+    await application.start()
+    try:
+        controller = await application.container.resolve(RatesApiController)
 
         def json(handler):
             async def endpoint(request: Request) -> JSONResponse:
@@ -64,6 +63,8 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
             transport=transport, base_url="http://test"
         ) as http:
             yield http
+    finally:
+        await application.stop()
 
 
 async def test_fetch_returns_quote_payload(client: httpx.AsyncClient) -> None:

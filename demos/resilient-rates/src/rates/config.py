@@ -53,4 +53,9 @@ def bind_application() -> tuple[WebConfig, CacheConfig, RatesConfig]:
     )
 
 
-__all__ = ["APP_YAML", "RatesConfig", "bind_application"]
+def bind_web() -> WebConfig:
+    """Bind the ``web`` section for server wiring."""
+    return LexigramConfig.from_yaml(APP_YAML).get_section("web", WebConfig)
+
+
+__all__ = ["APP_YAML", "RatesConfig", "bind_application", "bind_web"]

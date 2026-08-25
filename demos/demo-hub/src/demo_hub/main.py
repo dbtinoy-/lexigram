@@ -14,9 +14,8 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from demo_hub.config import bind_web, load_lex_config
-from demo_hub.module import DemoHubModule
-from lexigram.app import Application
+from demo_hub.app import create_app
+from demo_hub.config import bind_web
 from lexigram.logging import get_logger
 
 logger = get_logger(__name__)
@@ -28,11 +27,9 @@ async def _serve() -> None:
     from lexigram.web.server.runner import run_server_async
 
     web_config = bind_web()
-    async with Application.boot(
-        name="demo_hub",
-        modules=[DemoHubModule.configure()],
-        config=load_lex_config(),
-    ) as app:
+    app = create_app()
+    try:
+        await app.start()
         web = await app.container.resolve(WebProvider)
         if web.starlette is None:
             raise RuntimeError("hub starlette app missing")
@@ -45,6 +42,8 @@ async def _serve() -> None:
         )
         # server returned — release embedded children
         await fleet.aclose()
+    finally:
+        await app.stop()
 
 
 def main() -> None:
