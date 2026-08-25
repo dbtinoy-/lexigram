@@ -16,18 +16,20 @@ import sys
 
 from lexigram.logging import get_logger
 from rates.app import create_app
-from rates.config import bind_web
+from rates.config import load_lex_config
 
 logger = get_logger(__name__)
 
 
 async def serve() -> None:
     """Boot once and serve until interrupted; stop cleanly afterwards."""
+    from lexigram.web.config import WebConfig
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
-    web_config = bind_web()
-    app = create_app()
+    config = load_lex_config()
+    web_config = config.get_section("web", WebConfig)
+    app = create_app(config=config)
     try:
         await app.start()
         web = await app.container.resolve(WebProvider)

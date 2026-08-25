@@ -1,15 +1,9 @@
-"""Demo configuration bound from ``application.yaml``.
+"""Configuration binding for the resilient-rates demo.
 
-Blueprint reference example (Wave 0 Task A). Every runtime knob lives in
-YAML next to the demo; Python contains zero literal configuration.
-
-Why explicit binding instead of provider ``config_key`` auto-injection:
-the framework's ``ConfigProvider`` reads ``application.yaml`` from the
-**current working directory**, so auto-injection silently yields defaults
-whenever a demo runs from anywhere else (repo root, hub process, tests).
-Binding here against an ``__file__``-anchored absolute path keeps one load
-point, honors ``LEX_*`` overrides and ``LEX_PROFILE`` overlays, and works in
-standalone, embedded-hub, and test contexts alike.
+Loads ``application.yaml`` from this package (``__file__``-anchored) so
+behavior never depends on the process working directory; ``LEX_``
+environment overrides and ``LEX_PROFILE`` overlays still apply through the
+loader.
 """
 
 from __future__ import annotations
@@ -17,9 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from lexigram.cache.config.top_level import CacheConfig
 from lexigram.config.main import LexigramConfig
-from lexigram.web.config import WebConfig
 
 APP_YAML = Path(__file__).resolve().parents[2] / "application.yaml"
 
@@ -36,26 +28,9 @@ class RatesConfig:
     upstream_scenario: str = "healthy"
 
 
-def bind_application() -> tuple[WebConfig, CacheConfig, RatesConfig]:
-    """Bind the web/cache/demo sections from this demo's application.yaml.
-
-    Returns:
-        ``(web_config, cache_config, demo_config)`` ready for module and
-        provider wiring. ``LEX_`` environment overrides and ``LEX_PROFILE``
-        overlays are applied by the loader. Cache TTL is owned by the cache
-        package (``cache.backends[].default_ttl``), not by this demo.
-    """
-    lex = LexigramConfig.from_yaml(APP_YAML)
-    return (
-        lex.get_section("web", WebConfig),
-        lex.get_section("cache", CacheConfig),
-        lex.get_section("demo", RatesConfig),
-    )
+def load_lex_config() -> LexigramConfig:
+    """Load the demo's full ``LexigramConfig`` from application.yaml."""
+    return LexigramConfig.from_yaml(APP_YAML)
 
 
-def bind_web() -> WebConfig:
-    """Bind the ``web`` section for server wiring."""
-    return LexigramConfig.from_yaml(APP_YAML).get_section("web", WebConfig)
-
-
-__all__ = ["APP_YAML", "RatesConfig", "bind_application", "bind_web"]
+__all__ = ["APP_YAML", "RatesConfig", "load_lex_config"]

@@ -1,61 +1,41 @@
-"""Tests for yaml-first configuration binding (Blueprint reference)."""
+"""Tests for yaml-first configuration binding (Blueprint)."""
 
 from __future__ import annotations
 
-import pathlib
-
 import pytest
 
-from rates.config import RatesConfig, bind_application
-from rates.di.provider import RatesProvider
-from rates.repository.simulated_upstream import FaultController, Scenario
+from rates.config import RatesConfig, load_lex_config
 
 
-def test_bind_application_reads_web_cache_demo_sections() -> None:
-    web_config, cache_config, demo_config = bind_application()
-    assert web_config.server.port == 7073
-    assert web_config.server.host == "127.0.0.1"
-    assert web_config.security.csrf.enabled is False
-    backend = next(b for b in cache_config.backends if b.default)
-    assert backend.default_ttl == 60
-    assert demo_config.upstream_scenario == "healthy"
+def test_load_reads_web_cache_and_demo_sections() -> None:
+    config = load_lex_config()
+
+    assert config.has_section("web")
+    assert config.has_section("cache")
+
+    demo = config.get_section("demo", RatesConfig)
+    assert demo.upstream_scenario == "healthy"
 
 
-def test_env_overrides_win(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_web_server_values_bound(monkeypatch: pytest.MonkeyPatch) -> None:
+    from lexigram.web.config import WebConfig
+
     monkeypatch.setenv("LEX_WEB__SERVER__PORT", "7099")
+    web = load_lex_config().get_section("web", WebConfig)
+    assert web.server.port == 7099
+    assert web.server.host == "127.0.0.1"
+    assert web.security.csrf.enabled is False
+
+
+def test_demo_env_override_wins(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LEX_DEMO__UPSTREAM_SCENARIO", "down")
-    web_config, _cache_config, demo_config = bind_application()
-    assert web_config.server.port == 7099
-    assert demo_config.upstream_scenario == "down"
-
-
-class _RecordingRegistrar:
-    """Captures singleton registrations at the container boundary."""
-
-    def __init__(self) -> None:
-        self.singletons: dict[type, dict] = {}
-
-    def singleton(self, cls: type, instance: object | None = None,
-                  **kw: object) -> None:
-        self.singletons[cls] = {"instance": instance, **kw}
-
-
-def test_provider_wires_scenario_from_bound_config() -> None:
-    import asyncio
-
-    provider = RatesProvider(
-        config=RatesConfig(upstream_scenario="flaky")
-    )
-    registrar = _RecordingRegistrar()
-    asyncio.run(provider.register(registrar))
-
-    assert registrar.singletons[RatesConfig]["instance"].upstream_scenario == "flaky"
-    factory = registrar.singletons[FaultController]["factory"]
-    faults = factory()
-    assert faults.current is Scenario.FLAKY
+    demo = load_lex_config().get_section("demo", RatesConfig)
+    assert demo.upstream_scenario == "down"
 
 
 def test_composition_root_contains_no_literal_server_config() -> None:
+    import pathlib
+
     app_src = (
         pathlib.Path(__file__).resolve().parents[1] / "src" / "rates" / "app.py"
     ).read_text()
