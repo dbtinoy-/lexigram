@@ -28,7 +28,11 @@ from lexigram.builder.graph.parsing import document_to_dict, parse_document
 from lexigram.builder.services.generation import GenerationService
 from lexigram.builder.services.preview import PreviewService
 from lexigram.builder.services.projects import ProjectService
-from lexigram.contracts.exceptions.domain import ConflictError, NotFoundError
+from lexigram.contracts.exceptions.domain import (
+    ConflictError,
+    DomainError,
+    NotFoundError,
+)
 from lexigram.result import Err, Ok, Result
 from lexigram.web import Controller, delete, get, post, put
 from lexigram.web.routing.result_bridge import error_status
@@ -102,7 +106,7 @@ class BuilderController(Controller):
         return out
 
     @delete("/builder/projects/{name}")
-    async def delete_project(self, name: str) -> Result[bool, BuilderError]:
+    async def delete_project(self, name: str) -> Result[bool, DomainError]:
         if self.previews.info(name) is not None:
             return Err(ConflictError(f"project {name!r} has a live preview"))
         deleted = self.projects.delete(name)
@@ -111,16 +115,14 @@ class BuilderController(Controller):
         return Ok(True)
 
     @get("/builder/projects/{name}/graph")
-    async def get_graph(self, name: str) -> Result[dict, ProjectNotFoundError]:
+    async def get_graph(self, name: str) -> Result[dict[str, Any], BuilderError]:
         loaded = self.projects.load_graph(name)
         if loaded.is_err():
             return Err(loaded.unwrap_err())
         return Ok(document_to_dict(loaded.unwrap()))
 
     @put("/builder/projects/{name}/graph")
-    async def put_graph(
-        self, name: str, request: Request
-    ) -> Result[dict, BuilderError]:
+    async def put_graph(self, name: str, request: Request) -> Result[Any, BuilderError]:
         try:
             payload = stdjson.loads(await request.body())
         except ValueError as exc:
@@ -165,7 +167,7 @@ class BuilderController(Controller):
     # ── generation ────────────────────────────────────────────────────
 
     @post("/builder/projects/{name}/generate", status_code=202)
-    async def generate(self, name: str) -> Result[dict, ProjectNotFoundError]:
+    async def generate(self, name: str) -> Result[dict[str, Any], BuilderError]:
         if not self.projects.graph_path(name).is_file():
             return Err(ProjectNotFoundError(f"unknown project {name!r}"))
         task = asyncio.create_task(self._run_generation(name))

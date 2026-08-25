@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,7 +15,7 @@ from lexigram.result import Err, Ok, Result
 
 _logger = get_logger(__name__)
 
-HealthChecker = Callable[[str], "asyncio.Future[bool] | bool"]
+HealthChecker = Callable[[str], "bool | Awaitable[bool]"]
 
 
 @dataclass(frozen=True, slots=True)
