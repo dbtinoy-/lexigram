@@ -42,6 +42,7 @@ members = [
     "lexigram-ai-workers",
     "lexigram-audit",
     "lexigram-auth",
+    "lexigram-builder",
     "lexigram-cache",
     "lexigram-cli",
     "lexigram-contracts",
@@ -6278,6 +6279,82 @@ test = [
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=4.0.0" },
     { name = "pytest-mock", specifier = ">=3.10.0" },
+]
+
+[[package]]
+name = "lexigram-builder"
+version = "0.1.7001"
+source = { editable = "experimental/apps/lexigram-builder" }
+dependencies = [
+    { name = "lexigram" },
+    { name = "lexigram-contracts" },
+    { name = "lexigram-sql" },
+    { name = "lexigram-web" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "httpx" },
+    { name = "lexigram-testing" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+dev = [
+    { name = "mypy" },
+    { name = "ruff" },
+]
+test = [
+    { name = "httpx" },
+    { name = "lexigram-testing" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "ruff" },
+]
+test = [
+    { name = "httpx" },
+    { name = "lexigram-testing" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.27.0" },
+    { name = "lexigram", editable = "core/lexigram" },
+    { name = "lexigram-builder", extras = ["dev", "test"], marker = "extra == 'all'", editable = "experimental/apps/lexigram-builder" },
+    { name = "lexigram-contracts", editable = "core/lexigram-contracts" },
+    { name = "lexigram-sql", editable = "packages/lexigram-sql" },
+    { name = "lexigram-testing", marker = "extra == 'test'", editable = "packages/lexigram-testing" },
+    { name = "lexigram-web", editable = "packages/lexigram-web" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.0" },
+]
+provides-extras = ["dev", "test", "all"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.0.0" },
+    { name = "ruff", specifier = ">=0.11.0" },
+]
+test = [
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "lexigram-testing", editable = "packages/lexigram-testing" },
+    { name = "pytest", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
+    { name = "pytest-cov", specifier = ">=4.0.0" },
 ]
 
 [[package]]
