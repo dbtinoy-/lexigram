@@ -1,8 +1,4 @@
-"""Application composition root for the memory-chat demo.
-
-``create_app`` is the only place that knows how the modules fit together;
-sections are bound inline from the demo's ``application.yaml``.
-"""
+"""Application composition root for the memory-chat demo."""
 
 from __future__ import annotations
 
@@ -14,11 +10,11 @@ from lexigram.web.module import WebModule
 from memory_chat.config import load_lex_config
 from memory_chat.controllers.api import ConciergeApiController
 from memory_chat.di.provider import ConciergeProvider
-from memory_chat.pages import ChatPageController
+from memory_chat.ui.pages import ChatPageController
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
+    """Create the configured (not yet started) memory-chat application."""
     config = config or load_lex_config()
     web_config = config.get_section("web", WebConfig)
 

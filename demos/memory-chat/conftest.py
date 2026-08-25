@@ -19,21 +19,22 @@ import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
 
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
-    """Boot the real module graph and expose its ASGI app."""
-    from memory_chat.module import MemoryChatModule
+    """Boot the real composition root and expose its ASGI app."""
+    from memory_chat.app import create_app
+    from memory_chat.config import load_lex_config
 
-    async with Application.boot(
-        name="memory-chat-test",
-        modules=[MemoryChatModule.configure()],
-    ) as application:
+    application = create_app(load_lex_config())
+    await application.start()
+    try:
         web = await application.container.resolve(WebProvider)
         yield web.starlette
+    finally:
+        await application.stop()
 
 
 @pytest.fixture

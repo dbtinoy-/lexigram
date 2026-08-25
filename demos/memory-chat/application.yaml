@@ -1,7 +1,8 @@
+# Memory Chat — runtime configuration (Blueprint §3).
 web:
   server:
     host: 127.0.0.1
     port: 8083
   security:
     csrf:
-      enabled: false # two-owner console
+      enabled: false # two-owner console posts JSON

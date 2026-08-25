@@ -1,42 +1,54 @@
-"""Entry points for the memory-chat demo.
+"""Serve the memory-chat demo.
 
 Run::
 
     PYTHONPATH=demos/memory-chat/src uv run python -m memory_chat
+
+Host/port come from ``application.yaml`` (``web.server``); override without
+editing the file via ``LEX_WEB__SERVER__PORT``.
 """
 
 from __future__ import annotations
 
-import argparse
 import asyncio
-import os
 import sys
 
-from lexigram.app import Application
-from lexigram.web.server.runner import run_server_async
-from memory_chat.module import MemoryChatModule
+from lexigram.logging import get_logger
+from memory_chat.app import create_app
+from memory_chat.config import load_lex_config
+
+logger = get_logger(__name__)
 
 
-async def _serve(port: int) -> None:
-    async with Application.boot(
-        name="memory-chat",
-        modules=[MemoryChatModule.configure(port=port)],
-    ) as app:
-        from lexigram.web.di.provider import WebProvider
+async def serve() -> None:
+    """Boot once and serve until interrupted; stop cleanly afterwards."""
+    from lexigram.web.config import WebConfig
+    from lexigram.web.di.provider import WebProvider
+    from lexigram.web.server.runner import run_server_async
 
+    config = load_lex_config()
+    web_config = config.get_section("web", WebConfig)
+    app = create_app(config)
+    try:
+        await app.start()
         web = await app.container.resolve(WebProvider)
-        await run_server_async(web.starlette, host="127.0.0.1", port=port)
+        logger.info(
+            "server.listening", host=web_config.server.host, port=web_config.server.port
+        )
+        await run_server_async(
+            web.starlette,
+            host=web_config.server.host,
+            port=web_config.server.port,
+        )
+    finally:
+        await app.stop()
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Memory chat demo")
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.environ.get("MEMORY_CHAT_PORT", "8083")),
-    )
-    args = parser.parse_args()
-    asyncio.run(_serve(args.port))
+    try:
+        asyncio.run(serve())
+    except KeyboardInterrupt:
+        return 130
     return 0
 
 
