@@ -1,12 +1,32 @@
-"""Provider wiring for the resilient rates demo."""
+"""Provider wiring for the resilient rates demo.
+
+Canonical shape (mirrors ``lexigram-auth`` + the boot-phase ``bind()``
+contract in ``lexigram.contracts.core.di``):
+
+- ``config_key``/``config_model`` declare the ``demo:`` section so the
+  framework injects a bound :class:`RatesConfig` when the application's
+  ``LexigramConfig`` carries it; an explicit ``config=`` from
+  ``RatesModule.configure`` (bound against the demo's own
+  ``application.yaml``) takes precedence.
+- ``register()`` only *declares* bindings. Zero-arg factories cover purely
+  config-derived services; dependency-full services are declared as
+  class bindings and instantiated in :meth:`boot`.
+- ``boot()`` resolves cross-module dependencies (cache backend, resilience
+  pipeline) after every provider has registered and rebinds the concrete
+  instances via ``container.bind()``.
+- Controllers are constructed by the router from the container; ``boot``
+  binds their prebuilt instances so per-request resolution reuses them.
+"""
 
 from __future__ import annotations
 
-from lexigram.contracts.core.di import (
-    ContainerRegistrarProtocol,
-    ContainerResolverProtocol,
+from typing import TYPE_CHECKING
+
+from lexigram.contracts.core.health import (
+    HealthCheckCategory,
+    HealthCheckResult,
+    HealthStatus,
 )
-from lexigram.contracts.core.health import HealthCheckResult
 from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 from lexigram.contracts.infra.resilience.protocols import (
     ResiliencePipelineFactoryProtocol,
@@ -21,56 +41,69 @@ from rates.repository.simulated_upstream import (
 )
 from rates.services.rates_service import RatesService
 
+if TYPE_CHECKING:
+    from lexigram.contracts.core.di import (
+        ContainerRegistrarProtocol,
+        ContainerResolverProtocol,
+    )
+
+__all__ = ["RatesProvider"]
+
 
 class RatesProvider(Provider):
-    """Register the rate desk services as container-managed singletons.
-
-    Receives the bound ``RatesConfig`` from ``RatesModule.configure`` via the
-    framework's ``Provider(config=...)`` support.
-    """
+    """Bind the rate desk services as container-managed singletons."""
 
     name = "rates"
 
+    config_key: str | None = "demo"
+    config_model: type | None = RatesConfig
+
     def __init__(self, config: RatesConfig | None = None) -> None:
         super().__init__()
-        self._demo_config = config or RatesConfig()
-
-    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
-        """Report component readiness."""
-        return HealthCheckResult(component=self.name)
+        self._config = config or RatesConfig()
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
-        """Bind singletons; RatesService builds lazily from booted deps."""
-        faults = FaultController(initial=Scenario(self._demo_config.upstream_scenario))
-        container.singleton(RatesConfig, instance=self._demo_config)
-        container.singleton(FaultController, instance=faults)
+        """Declare bindings; concrete wiring happens in :meth:`boot`."""
+        cfg = self.config or RatesConfig()
+
+        container.singleton(RatesConfig, instance=cfg)
         container.singleton(
+            FaultController,
+            factory=lambda: FaultController(initial=Scenario(cfg.upstream_scenario)),
+        )
+        # Class bindings so the keys exist; boot() replaces them with
+        # fully-wired instances via container.bind().
+        container.singleton(SimulatedRatesProvider, SimulatedRatesProvider)
+        container.singleton(RatesService, RatesService)
+        container.singleton(RatesApiController, RatesApiController)
+
+    async def boot(self, container: ContainerResolverProtocol) -> None:
+        """Resolve cross-module dependencies and bind concrete instances."""
+        faults = await container.resolve(FaultController)
+
+        container.bind(
             SimulatedRatesProvider,
-            instance=SimulatedRatesProvider(faults=faults),
-        )
-        # Cache backend and resilience pipeline are wired by the imported
-        # modules' own providers; the lazy factory below resolves them at
-        # first use — after every provider has booted.
-        container.singleton(RatesService, factory=self._build_service)
-        container.singleton(RatesApiController, factory=self._build_controller)
-
-    async def _build_service(self, resolver: ContainerResolverProtocol) -> RatesService:
-        """Assemble ``RatesService`` from its booted collaborators."""
-        return RatesService(
-            cache=await resolver.resolve(CacheBackendProtocol),
-            pipeline_factory=await resolver.resolve(ResiliencePipelineFactoryProtocol),
-            provider=await resolver.resolve(SimulatedRatesProvider),
-            faults=await resolver.resolve(FaultController),
-            cache_ttl_seconds=self._demo_config.cache_ttl_seconds,
+            SimulatedRatesProvider(faults=faults),
         )
 
-    async def _build_controller(
-        self, resolver: ContainerResolverProtocol
-    ) -> RatesApiController:
-        return RatesApiController(
-            service=await resolver.resolve(RatesService),
-            faults=await resolver.resolve(FaultController),
+        service = RatesService(
+            cache=await container.resolve(CacheBackendProtocol),
+            pipeline_factory=await container.resolve(ResiliencePipelineFactoryProtocol),
+            provider=await container.resolve(SimulatedRatesProvider),
+            faults=faults,
+            cache_ttl_seconds=(self.config or RatesConfig()).cache_ttl_seconds,
+        )
+        container.bind(RatesService, service)
+
+        container.bind(
+            RatesApiController,
+            RatesApiController(service=service, faults=faults),
         )
 
-
-__all__ = ["RatesProvider"]
+    async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
+        """Report readiness of the rate desk."""
+        return HealthCheckResult(
+            component=self.name,
+            status=HealthStatus.HEALTHY,
+            category=HealthCheckCategory.READINESS,
+        )

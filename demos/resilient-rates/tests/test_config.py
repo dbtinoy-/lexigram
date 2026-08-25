@@ -6,7 +6,7 @@ import pytest
 
 from rates.config import RatesConfig, bind_application
 from rates.di.provider import RatesProvider
-from rates.repository.simulated_upstream import Scenario
+from rates.repository.simulated_upstream import FaultController, Scenario
 
 
 def test_bind_application_reads_web_and_demo_sections() -> None:
@@ -30,24 +30,25 @@ class _RecordingRegistrar:
     """Captures singleton registrations at the container boundary."""
 
     def __init__(self) -> None:
-        self.singletons: list[tuple[type, object]] = []
+        self.singletons: dict[type, dict] = {}
 
     def singleton(self, cls: type, instance: object | None = None,
-                  **_kw: object) -> None:
-        self.singletons.append((cls, instance))
+                  **kw: object) -> None:
+        self.singletons[cls] = {"instance": instance, **kw}
 
 
-def test_provider_wires_scenario_and_ttl_from_bound_config() -> None:
+def test_provider_wires_scenario_from_bound_config() -> None:
+    import asyncio
+
     provider = RatesProvider(
         config=RatesConfig(upstream_scenario="flaky", cache_ttl_seconds=5)
     )
     registrar = _RecordingRegistrar()
-    import asyncio
+    asyncio.run(provider.register(registrar))
 
-    asyncio.run(provider.register(registrar))  # sync driver; register is async
-
-    faults = next(inst for cls, inst in registrar.singletons
-                  if cls.__name__ == "FaultController")
+    assert registrar.singletons[RatesConfig]["instance"].cache_ttl_seconds == 5
+    factory = registrar.singletons[FaultController]["factory"]
+    faults = factory()
     assert faults.current is Scenario.FLAKY
 
 

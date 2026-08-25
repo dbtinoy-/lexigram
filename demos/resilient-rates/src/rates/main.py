@@ -84,7 +84,6 @@ async def _serve(config: LexigramConfig | None = None) -> None:
     async with Application.boot(
         name="rates", modules=[RatesModule.configure()], config=_resolved
     ) as app:
-        await app.container.resolve(RatesService)  # eager pipeline wiring
         web = await app.container.resolve(WebProvider)
         await run_server_async(
             web.starlette,
