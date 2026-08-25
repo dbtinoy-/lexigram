@@ -565,6 +565,16 @@ uv run ruff check . \
 #
 # After publishing 0.Y.Z, next version is 0.Y.<Z+1>001.
 # Example: 0.1.2 → 0.1.3001 → 0.1.3002
+#
+# Within an ACTIVE series, bump ONLY the build segment:
+#   0.1.5001 → 0.1.5002 → 0.1.5003 …
+# (never jump patches, never reset the series)
+# A new patch digit starts a fresh build series at 001: 0.1.4 → 0.1.4001.
+#
+# Version bumps are ALWAYS PER-PACKAGE:
+#   make version-bump PKG=<pkg> APPLY=--apply
+# Bulk bumps across packages are prohibited — a package's version moves
+# only when that package changes.
 
 # Set version (pyproject.toml only — __init__.py reads it from metadata)
 uvx yj set version "0.1.3001" < lexigram/pyproject.toml
@@ -1292,8 +1302,8 @@ Build a **longer, verifiable commit history** with tests alongside features.
    package's feature/fix lands (with its tests, rule 1), bump it in the same
    or immediately-following commit with `make version-bump PKG=<pkg>`
    (`APPLY=--apply` to write; `make version-check` to see which packages
-   drifted). `make version-bump-all` is reserved for coordinated release
-   events, never routine work. Never hand-edit versions outside this flow.
+   drifted). Bulk bumps (`version-bump-all`) are **prohibited** — versions
+   move per-package only, via `make version-bump PKG=<pkg>`. Never hand-edit versions outside this flow.
 
 ### Git Working-Tree Safety (MANDATORY)
 
