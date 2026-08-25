@@ -5,7 +5,6 @@ from __future__ import annotations
 from lexigram.builder.gen.emitters.context import (
     pascal_entity,
     python_type_for,
-    sql_type_for,
     table_name,
 )
 from lexigram.builder.graph.models import EntityConfig
@@ -35,7 +34,7 @@ def _model(name: str, entity: EntityConfig) -> str:
 
     model_fields = "\n".join(
         [
-            '    id: str = Field(default_factory=lambda: str(uuid.uuid4()))',
+            "    id: str = Field(default_factory=lambda: str(uuid.uuid4()))",
             "    created_at: datetime = Field(",
             "        default_factory=lambda: datetime.now(timezone.utc)",
             "    )",
@@ -210,7 +209,7 @@ def sql_sa_type(field_type: str) -> str:
 def _crud_test(name: str) -> str:
     pascal = pascal_entity(name)
     table = table_name(name)
-    return f'''{GENERATED_HEADER}
+    return f"""{GENERATED_HEADER}
 from __future__ import annotations
 
 import asyncio
@@ -267,4 +266,4 @@ async def test_create_get_roundtrip(controller) -> None:
 async def test_get_unknown_returns_err(controller) -> None:
     result = await controller.get("nope")
     assert result.is_err()
-'''
+"""

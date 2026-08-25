@@ -6283,7 +6283,7 @@ test = [
 
 [[package]]
 name = "lexigram-builder"
-version = "0.1.7002"
+version = "0.1.7003"
 source = { editable = "experimental/apps/lexigram-builder" }
 dependencies = [
     { name = "lexigram" },

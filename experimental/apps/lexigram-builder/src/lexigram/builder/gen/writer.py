@@ -2,17 +2,27 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 import shutil
 import subprocess
-from pathlib import Path
 
 from lexigram.builder.gen.emitters.controller_emitter import emit_controller_file
 from lexigram.builder.gen.emitters.entity_emitter import emit_entity_files
-from lexigram.builder.graph.models import ValidatedGraph
+from lexigram.builder.gen.emitters.scaffold import emit_scaffold_files
+from lexigram.builder.graph.models import (
+    AppSettingsConfig,
+    EntityConfig,
+    RouteConfig,
+    ValidatedGraph,
+)
 from lexigram.codegen import GenerationResult, GeneratorBase
 from lexigram.contracts.cli.generators import CollisionPolicy, GenerationOptions
 
 __all__ = ["ProjectWriter"]
+
+# Project dirs live at <pkg>/projects/<app>: five parent hops reach this
+# monorepo checkout root, used for generated [tool.uv.sources] paths.
+_REPO_ROOT_HOPS = 5
 
 
 class ProjectWriter(GeneratorBase):
@@ -21,64 +31,56 @@ class ProjectWriter(GeneratorBase):
     Stages every emitted file under ``<projects_root>/<app_name>`` and
     commits atomically with the OVERWRITE policy (regeneration wins —
     the canvas graph is the source of truth).
+
+    Args:
+        projects_root: Directory holding one subdirectory per project.
+        post_process: When True, run ``ruff format`` over the committed
+            project after a successful write (skipped when ruff absent).
     """
 
-    def __init__(
-        self,
-        projects_root: Path,
-        *,
-        post_process: bool = False,
-    ) -> None:
+    def __init__(self, projects_root: Path, *, post_process: bool = False) -> None:
         super().__init__(output_dir=projects_root)
         self._post_process = post_process
 
     def write_project(self, graph: ValidatedGraph) -> GenerationResult:
         """Emit, stage, and commit the full project for *graph*."""
         settings_config = graph.settings().config
-        app_name: str = settings_config.app_name  # type: ignore[union-attr]
+        assert isinstance(settings_config, AppSettingsConfig)
+        app_name = settings_config.app_name
 
-        files: dict[str, str] = {}
-        entities: list = []
-        bindings: list[tuple] = []
-        by_id = {n.id: n for n in graph.document.nodes}
+        entities: list[EntityConfig] = []
         for node in graph.entities():
-            config = node.config
-            assert isinstance(config, EntityConfig := type(config)) or True  # noqa: F841
-            break
-        for node in graph.entities():
-            from lexigram.builder.graph.models import EntityConfig
-
             assert isinstance(node.config, EntityConfig)
             entities.append(node.config)
+        by_id = {n.id: n for n in graph.document.nodes}
+        ops_by_entity: dict[str, list[str]] = {}
+        entity_by_name: dict[str, EntityConfig] = {}
         for route_node in graph.routes():
-            from lexigram.builder.graph.models import RouteConfig
-
+            dst_id = next(e.dst for e in graph.document.edges if e.src == route_node.id)
+            dst_config = by_id[dst_id].config
             assert isinstance(route_node.config, RouteConfig)
-            dst_id = next(
-                e.dst
-                for e in graph.document.edges
-                if e.src == route_node.id
-            )
-            dst_node = by_id[dst_id]
-            assert isinstance(dst_node.config, EntityConfig)
-            bindings.append((route_node.config, dst_node.config))
+            assert isinstance(dst_config, EntityConfig)
+            bucket = ops_by_entity.setdefault(dst_config.name, [])
+            bucket.extend(op for op in route_node.config.ops if op not in bucket)
+            entity_by_name[dst_config.name] = dst_config
 
-        from lexigram.builder.gen.emitters.scaffold import emit_scaffold_files
-
-        rel_root = self._relative_monorepo_root()
+        files: dict[str, str] = {}
         files.update(
             emit_scaffold_files(
                 app_name,
                 entities,
-                bindings,
-                relative_root=rel_root,
+                [(RouteConfig(ops=()), entity_by_name[name]) for name in ops_by_entity],
+                relative_root=self._relative_monorepo_root(),
             )
         )
+        assert all(isinstance(e, EntityConfig) for e in entities)
         for entity in entities:
             files.update(emit_entity_files(entity))
-        for route_cfg, entity_cfg in bindings:
-            rel, content = emit_controller_file(route_cfg, entity_cfg)
-            files[rel] = content
+        for entity_name, ops in sorted(ops_by_entity.items()):
+            rel_path, content = emit_controller_file(
+                entity_by_name[entity_name], tuple(ops)
+            )
+            files[rel_path] = content
 
         app_prefix = f"{app_name}/"
         for rel_path in sorted(files):
@@ -90,11 +92,8 @@ class ProjectWriter(GeneratorBase):
         return self.finalize(result)
 
     def _relative_monorepo_root(self) -> str:
-        """Relative path from a project dir back to this checkout root.
-
-        Projects live at ``<pkg>/projects/<app>`` → five levels up.
-        """
-        return "../../..".replace("..", "..") + "/../.."
+        """Relative path from a generated project dir back to this checkout root."""
+        return "/".join([".."] * _REPO_ROOT_HOPS)
 
     def _ruff_format(self, project_dir: Path) -> None:
         ruff = shutil.which("ruff")
