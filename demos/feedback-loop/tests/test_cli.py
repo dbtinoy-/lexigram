@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from feedback_loop.main import build_parser, run
+from feedback_loop.cli import build_parser, run
 
 
 class TestParser:

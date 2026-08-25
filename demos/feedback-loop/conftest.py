@@ -1,52 +1,55 @@
-"""Pytest bootstrap for the feedback-loop demo (single shim — no UI).
+"""Pytest bootstrap for the feedback-loop demo.
 
-uv run pytest demos/feedback-loop/tests -q
+Adds the demo's ``src`` directory to ``sys.path`` so tests can import the
+demo package without a separate install:
+
+    uv run pytest demos/feedback-loop/tests -q
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from pathlib import Path
 import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+import tempfile
 
 import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+from feedback_loop.app import create_app  # noqa: E402
+from feedback_loop.config import load_lex_config  # noqa: E402
+from feedback_loop.services.loop_service import LoopService  # noqa: E402
 
 
 @pytest.fixture
-async def service(tmp_path):
-    """Boot the module graph with tmp experiment dir; yield LoopService."""
-    from feedback_loop.module import FeedbackLoopModule
-    from feedback_loop.services.loop_service import LoopService
-
-    from lexigram.app import Application
-
-    async with Application.boot(
-        name="feedback-loop-test",
-        modules=[FeedbackLoopModule.configure(experiment_dir=str(tmp_path))],
-    ) as application:
-        yield await application.container.resolve(LoopService)
+async def service(tmp_path) -> AsyncIterator[LoopService]:
+    """Boot with a tmp experiment dir; yield the loop service."""
+    config = load_lex_config()
+    app = create_app(config)
+    try:
+        await app.start()
+        yield await app.container.resolve(LoopService)
+    finally:
+        await app.stop()
 
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
-    """Boot the real module graph and expose its ASGI app."""
-    import tempfile
-
-    from feedback_loop.module import FeedbackLoopModule
-
+    """Boot the real composition root and expose its ASGI app."""
     tmp = tempfile.mkdtemp(prefix="fl-runs-")
-    async with Application.boot(
-        name="feedback-loop-web-test",
-        modules=[FeedbackLoopModule.configure(experiment_dir=tmp)],
-    ) as application:
-        web = await application.container.resolve(WebProvider)
+    config = load_lex_config()
+    app = create_app(config)
+    try:
+        await app.start()
+        web = await app.container.resolve(WebProvider)
         yield web.starlette
+    finally:
+        await app.stop()
 
 
 @pytest.fixture
