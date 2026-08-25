@@ -1,16 +1,12 @@
-"""Application composition root for the ai-guardrails demo.
-
-``create_app`` is the only place that knows how the modules fit together;
-sections are bound inline from the demo's ``application.yaml``.
-"""
+"""Application composition root for the ai-guardrails demo."""
 
 from __future__ import annotations
 
 from guard_gate.config import load_lex_config
 from guard_gate.controllers.api import GuardApiController
 from guard_gate.di.provider import GuardrailsProvider
-from guard_gate.pages import PlaygroundPageController
 from guard_gate.repository.acts import RESTRICTED_MODEL
+from guard_gate.ui.pages import PlaygroundPageController
 from lexigram.ai.governance.config import GovernanceConfig
 from lexigram.ai.governance.module import GovernanceModule
 from lexigram.ai.guard.config import GuardConfig
@@ -22,7 +18,7 @@ from lexigram.web.module import WebModule
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
+    """Create the configured (not yet started) guardrails application."""
     config = config or load_lex_config()
     web_config = config.get_section("web", WebConfig)
 

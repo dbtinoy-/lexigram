@@ -18,21 +18,22 @@ import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
 
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
-    """Boot the real module graph and expose its ASGI app."""
-    from guard_gate.module import GuardrailsModule
+    """Boot the real composition root and expose its ASGI app."""
+    from guard_gate.app import create_app
+    from guard_gate.config import load_lex_config
 
-    async with Application.boot(
-        name="guard-gate-test",
-        modules=[GuardrailsModule.configure()],
-    ) as application:
+    application = create_app(load_lex_config())
+    await application.start()
+    try:
         web = await application.container.resolve(WebProvider)
         yield web.starlette
+    finally:
+        await application.stop()
 
 
 @pytest.fixture

@@ -1,7 +1,8 @@
+# AI Guardrails — runtime configuration (Blueprint §3).
 web:
   server:
     host: 127.0.0.1
     port: 8084
   security:
     csrf:
-      enabled: false # playground posts
+      enabled: false # playground posts JSON
