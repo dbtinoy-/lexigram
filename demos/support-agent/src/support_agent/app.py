@@ -1,8 +1,4 @@
-"""Application composition root for the support-agent demo.
-
-``create_app`` is the only place that knows how the modules fit together;
-sections are bound inline from the demo's ``application.yaml``.
-"""
+"""Application composition root for the support-agent demo."""
 
 from __future__ import annotations
 
@@ -14,11 +10,11 @@ from lexigram.web.module import WebModule
 from support_agent.config import load_lex_config
 from support_agent.controllers.api import AgentApiController
 from support_agent.di.provider import AgentSupportProvider
-from support_agent.pages import ConsolePageController
+from support_agent.ui.pages import ConsolePageController
 
 
 def create_app(config: LexigramConfig | None = None) -> Application:
-    """Create the configured (not yet started) application."""
+    """Create the configured (not yet started) support-agent application."""
     config = config or load_lex_config()
     web_config = config.get_section("web", WebConfig)
 

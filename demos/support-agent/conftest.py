@@ -19,21 +19,22 @@ import httpx
 import pytest
 from starlette.applications import Starlette
 
-from lexigram.app import Application
 from lexigram.web.di.provider import WebProvider
 
 
 @pytest.fixture
 async def app() -> AsyncIterator[Starlette]:
-    """Boot the real module graph and expose its ASGI app."""
-    from support_agent.module import SupportAgentModule
+    """Boot the real composition root and expose its ASGI app."""
+    from support_agent.app import create_app
+    from support_agent.config import load_lex_config
 
-    async with Application.boot(
-        name="support-agent-test",
-        modules=[SupportAgentModule.configure()],
-    ) as application:
+    application = create_app(load_lex_config())
+    await application.start()
+    try:
         web = await application.container.resolve(WebProvider)
         yield web.starlette
+    finally:
+        await application.stop()
 
 
 @pytest.fixture
