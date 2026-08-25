@@ -15,13 +15,14 @@ from starlette.testclient import TestClient
 
 from ops_console.controllers.api import ConsoleController, EventsStreamHandler
 from ops_console.domain import Severity, SystemEvent
+from ops_console.config import RealtimeConfig
 from ops_console.services.event_stream import EventStreamService
 from ops_console.ui.pages import PagesController
 
 
 def build_app() -> Starlette:
     events = EventStreamService()
-    sse = EventsStreamHandler(events)
+    sse = EventsStreamHandler(events, RealtimeConfig())
     controller = ConsoleController(events, sse)
 
     async def publish(request) -> None:
@@ -110,7 +111,7 @@ def test_dashboard_css_asset_is_served(client: TestClient) -> None:
 @pytest.mark.asyncio
 async def test_sse_replays_history_on_connect() -> None:
     events = EventStreamService()
-    handler = EventsStreamHandler(events)
+    handler = EventsStreamHandler(events, RealtimeConfig())
     await events.publish(
         SystemEvent(kind="deploy", message="v1.2.0 shipped", severity=Severity.INFO, source="ci")
     )

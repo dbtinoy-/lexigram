@@ -6,13 +6,14 @@ import asyncio
 
 import pytest
 
+from ops_console.config import RealtimeConfig
 from ops_console.di.provider import RealtimeProvider
 from ops_console.domain import SystemEvent
 
 
 @pytest.mark.asyncio
 async def test_heartbeat_survives_publish_crash_and_keeps_beating() -> None:
-    provider = RealtimeProvider(heartbeat_interval=0.01)
+    provider = RealtimeProvider(config=RealtimeConfig(heartbeat_interval_seconds=0.01))
     calls = {"count": 0}
     original_publish = provider.events.publish
 
@@ -37,7 +38,7 @@ async def test_heartbeat_survives_publish_crash_and_keeps_beating() -> None:
 
 @pytest.mark.asyncio
 async def test_shutdown_cancels_heartbeat_cleanly() -> None:
-    provider = RealtimeProvider(heartbeat_interval=0.01)
+    provider = RealtimeProvider(config=RealtimeConfig(heartbeat_interval_seconds=0.01))
     provider._start_heartbeat()
     await asyncio.sleep(0.05)
 
