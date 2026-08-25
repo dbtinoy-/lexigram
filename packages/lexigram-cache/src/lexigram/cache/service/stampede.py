@@ -14,7 +14,7 @@ import random
 from typing import Any
 import weakref
 
-from lexigram import serialization as json
+import json
 from lexigram.cache.types import CacheEntry
 from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 from lexigram.di.decorators import inject
@@ -127,7 +127,13 @@ class StampedeProtectedCache:
         from datetime import datetime
 
         try:
-            data = await self.cache.get(f"cache:{key}")
+            response = await self.cache.get(f"cache:{key}")
+            # Backends return Result[T | None, CacheError]; unwrap so the
+            # envelope below always sees the plain stored value.
+            if hasattr(response, "is_ok"):
+                data = response.unwrap() if response.is_ok() else None
+            else:
+                data = response
             if not data:
                 return None
 
@@ -139,7 +145,14 @@ class StampedeProtectedCache:
                 cached_at=datetime.fromisoformat(parsed["cached_at"]),
                 expires_at=datetime.fromisoformat(parsed["expires_at"]),
             )
-        except (OSError, ConnectionError, RuntimeError, ValueError, KeyError) as e:
+        except (
+            OSError,
+            ConnectionError,
+            RuntimeError,
+            ValueError,
+            KeyError,
+            TypeError,
+        ) as e:
             logger.error("cache_get_failed", key=key, error=str(e))
             return None
 
