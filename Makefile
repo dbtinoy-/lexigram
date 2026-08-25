@@ -58,6 +58,10 @@ lint-boundaries:  ## Run the namespace-aware import-linter contracts
 lint-loc:  ## Enforce the 500-LOC file limit (shrinking ratchet vs dev/loc_limit_baseline.txt)
 	$(UV) run python dev/check_loc_limit.py --root .
 
+.PHONY: dep-tree
+dep-tree:  ## Regenerate docs/reference/DEPENDENCY_TREE.md (sorted, fenced)
+	$(UV) run python dev/generate_dep_tree.py
+
 .PHONY: lint-fix
 lint-fix:  ## Run ruff check + format (auto-fix)
 	$(RUFF) check . --fix
