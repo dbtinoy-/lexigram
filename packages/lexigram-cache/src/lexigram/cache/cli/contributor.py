@@ -10,16 +10,30 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="cache_repo",
-        title="Generate Cache Repository",
-        description="Generate a cache-backed repository with TTL support",
-        contributor="cache",
-        generator_path="lexigram.cache.cli.generators.cache_repository:CacheRepositoryGenerator",
-        default_output_dir="src/repositories",
-        category="cache",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "cache_repo",
+        "Generate a cache-backed repository with TTL support",
+        "lexigram.cache.cli.generators.cache_repository:CacheRepositoryGenerator",
+        "src/repositories",
     ),
+)
+
+# Titles that make() cannot derive exactly.
+_TITLES: dict[str, str] = {"cache_repo": "Generate Cache Repository"}
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="cache",
+        category="cache",
+        title=_TITLES.get(name),
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 

@@ -6162,7 +6162,7 @@ test = [
 
 [[package]]
 name = "lexigram-auth"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-auth" }
 dependencies = [
     { name = "argon2-cffi" },
