@@ -165,16 +165,16 @@ SUPPLEMENTAL_HEADER = [
 
 
 def generate() -> None:
-    """Write .env.example from the env var catalog."""
+    """Write .env.full.example from the env var catalog."""
     sections = parse(CATALOG)
     lines = [
-        "# Lexigram Framework environment configuration example.",
+        "# Lexigram Framework full environment configuration example.",
         "#",
         "# Copy to .env and adjust values for your deployment:",
-        "#   cp .env.example .env",
+        "#   cp .env.full.example .env",
         "#",
         "# Generated from docs/reference/REF_ENV_VARS.md by",
-        "# scripts/catalogs/generate_env_example.py — do not edit by hand.",
+        "# dev/generators/env_example.py — do not edit by hand.",
         "#",
         "# All variables are optional unless noted: every config value carries a",
         "# code default, so an unset variable falls back to framework defaults.",
