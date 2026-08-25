@@ -1175,6 +1175,38 @@ async def test_find_user_returns_err(self) -> None:
 
 ---
 
+## 7.5 Generator System (Codegen)
+
+Scaffolding generators are **domain-owned**: each package ships its own
+generators + Jinja templates and contributes them to the central CLI via
+entry points (same contribution model as web contributors).
+
+```
+contracts    lexigram.contracts.cli.types.GeneratorDefinition / .make()
+core         lexigram.codegen.base.GeneratorBase   (jinja env, staging, collisions)
+packages     <pkg>/cli/generators/*.py  +  <pkg>/cli/templates/*.jinja2
+             <pkg>/cli/contributor.py  →  get_generators() → [GeneratorDefinition]
+central CLI  entry-point group "lexigram.cli.contributors" → `lexigram gen …`
+```
+
+### Adding a generator (checklist)
+
+1. **Template** — add `<name>.py.jinja2` under `<pkg>/cli/templates/`.
+2. **Generator module** — `<pkg>/cli/generators/<name>.py`, subclass
+   `GeneratorBase`, set `name`/`description`/`default_output_dir`, implement
+   `generate()`; render with `self.render_template("<name>.py.jinja2", context)`
+   — never hand-roll an `Environment(PackageLoader(...))`.
+3. **Spec** — in the package's `cli/contributor.py`, append to `_SPECS`:
+   `(name, description, generator_path, output_dir)`; titles derive
+   automatically (`auth_guard` → "Generate Auth Guard"); pass explicit
+   `title=` only when derivation reads poorly.
+4. **Entry point** — already declared once per package
+   (`[project.entry-points."lexigram.cli.contributors"]`); nothing to add.
+5. **Tests** — cover `generate()` into `tmp_path` (file created, no-collision
+   path, dry-run) via `patch.object(gen, "render_template", ...)` when content
+   control is needed.
+6. **Version bump** — per §3.6, build-segment increment of *that* package.
+
 ## 8. Public Root files — exempt from the 500-line rule; these files should contain the actual contents and not re-exports
 
 - `__init__.py` — streamlined and lazy exports
