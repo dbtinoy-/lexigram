@@ -7,16 +7,30 @@ from typing import Any
 from lexigram.contracts.cli.contributions import HealthCheckContribution
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="document_repo",
-        title="Generate Document Repository",
-        description="Generate a NoSQL document repository",
-        contributor="nosql",
-        generator_path="lexigram.nosql.cli.generators.document_repository:DocumentRepositoryGenerator",
-        default_output_dir="src/repositories",
-        category="database",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "document_repo",
+        "Generate a NoSQL document repository",
+        "lexigram.nosql.cli.generators.document_repository:DocumentRepositoryGenerator",
+        "src/repositories",
     ),
+)
+
+# Titles that make() cannot derive exactly.
+_TITLES: dict[str, str] = {"document_repo": "Generate Document Repository"}
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="nosql",
+        category="database",
+        title=_TITLES.get(name),
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
