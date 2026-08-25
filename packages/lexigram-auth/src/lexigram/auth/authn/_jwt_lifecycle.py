@@ -312,6 +312,29 @@ class _JWTLifecycleMixin:
 
             from datetime import UTC
 
+            # Surface application-defined claims; registered + known claims
+            # are already mapped to typed fields above.
+            _known = {
+                "sub",
+                "email",
+                "name",
+                "roles",
+                "permissions",
+                "exp",
+                "iat",
+                "nbf",
+                "iss",
+                "jti",
+                "aud",
+                "type",
+                "scope",
+            }
+            extra_claims = {
+                key: value
+                for key, value in payload.items()
+                if key not in _known and not key.startswith("_")
+            }
+
             return Ok(
                 VerifiedToken(
                     user_id=payload.get("sub", ""),
@@ -325,6 +348,7 @@ class _JWTLifecycleMixin:
                     key_id=kid,
                     token_type=token_type,
                     audience=effective_audience,
+                    extra_claims=extra_claims,
                 )
             )
 

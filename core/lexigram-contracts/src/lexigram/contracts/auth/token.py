@@ -5,7 +5,7 @@ Protocols for JWT token creation, validation, and refresh.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -45,6 +45,13 @@ class VerifiedToken:
     key_id: str
     token_type: str  # "access" or "refresh"
     audience: str | None = None
+    extra_claims: dict[str, Any] = field(default_factory=dict)
+    """Application-defined claims not covered by the typed fields above.
+
+    Standard registered claims (``iat``, ``exp``, ``iss``, ``nbf``, ``jti``,
+    ``aud``, ``sub``) are excluded. Populated by token verification so
+    callers never need to decode the raw JWT a second time.
+    """
 
 
 @runtime_checkable
