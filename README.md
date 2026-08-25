@@ -183,26 +183,26 @@ latest `main` run); each job has a local one-liner:
 - Test suite runs in local CI across packages
 
 #### short term (Q2 2026)
-- [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - in testing
-- [x] Reactive state and event wiring — streams, subjects, operators, retry, end-event signaling (`docs/reference/REF_REACTIVE.md`)
-- [x] Demos — runnable demo apps covering agents, memory, guardrails, resilience and more - in progress
+- [x] Extended AI capabilities — AI subsystem packages (agents, guard, memory, rag, …) - `in testing`
+- [x] Reactive state and event wiring — streams, subjects, operators, retry, end-event signaling - `in testing`
+- [x] Demos — runnable demo apps covering agents, memory, guardrails, resilience and more - `in progress`
 - [ ] Additional backend support
 
 #### medium term (Q3-Q4 2026)
-- [x] Enhanced security — audit remediation partially implemented (security lanes in progress)
-- [x] Production-grade Admin dashboard — `lexigram-admin` in active development
-- [x] Full-stack starter template — in progress
-- [x] CLI — `lexigram-cli` in active development
+- [x] Enhanced security — audit remediation - `in testing`
+- [x] Production-grade Admin dashboard — `in progress`
+- [x] Full-stack starter template — `in progress`
+- [x] CLI — in active development — `in progress`
 - [ ] Performance optimizations
-- [x] Reach 80% Unit Tests overall coverage (now 75% in progress)
-- [ ] Reach 80% test coverage overall (unit + integration; integration-only baseline ~35% — in progress)
+- [x] Reach 80% Unit Tests overall coverage — `in progress` now > 75%
+- [ ] Reach 70% test coverage overall (unit + integration; integration-only baseline ~35%)
 
 #### long term (2027)
 - [ ] Enterprise features
 - [ ] Distributed tracing
 - [ ] Advanced monitoring
 - [ ] Enhanced observability
-- [ ] Community expansion (if approved)
+- [ ] Community introduction
 
 #### → see [MILESTONE.md](./MILESTONE.md) 
 
