@@ -11,52 +11,50 @@ from lexigram.contracts.cli.contributions import (
 )
 from lexigram.contracts.cli.types import GeneratorDefinition
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="event_handler",
-        title="Generate Event Handler",
-        description="Generate an event handler with bus registration",
-        contributor="events",
-        generator_path="lexigram.events.cli.generators.event_handler:EventHandlerGenerator",
-        default_output_dir="src/handlers",
-        category="events",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "event_handler",
+        "Generate an event handler with bus registration",
+        "lexigram.events.cli.generators.event_handler:EventHandlerGenerator",
+        "src/handlers",
     ),
-    GeneratorDefinition(
-        name="saga",
-        title="Generate Saga",
-        description="Generate a saga orchestrator with compensating actions",
-        contributor="events",
-        generator_path="lexigram.events.cli.generators.saga:SagaGenerator",
-        default_output_dir="src/sagas",
-        category="events",
+    (
+        "saga",
+        "Generate a saga orchestrator with compensating actions",
+        "lexigram.events.cli.generators.saga:SagaGenerator",
+        "src/sagas",
     ),
-    GeneratorDefinition(
-        name="event",
-        title="Generate Event",
-        description="Generate a domain event class",
-        contributor="events",
-        generator_path="lexigram.events.cli.generators.event_generator:EventGenerator",
-        default_output_dir="src/events",
-        category="events",
+    (
+        "event",
+        "Generate a domain event class",
+        "lexigram.events.cli.generators.event_generator:EventGenerator",
+        "src/events",
     ),
-    GeneratorDefinition(
-        name="command",
-        title="Generate Command",
-        description="Generate a CQRS command handler",
-        contributor="events",
-        generator_path="lexigram.events.cli.generators.command_handler:CommandHandlerGenerator",
-        default_output_dir="src/commands",
-        category="events",
+    (
+        "command",
+        "Generate a CQRS command handler",
+        "lexigram.events.cli.generators.command_handler:CommandHandlerGenerator",
+        "src/commands",
     ),
-    GeneratorDefinition(
-        name="query",
-        title="Generate Query",
-        description="Generate a CQRS query handler",
-        contributor="events",
-        generator_path="lexigram.events.cli.generators.query_handler:QueryHandlerGenerator",
-        default_output_dir="src/queries",
-        category="events",
+    (
+        "query",
+        "Generate a CQRS query handler",
+        "lexigram.events.cli.generators.query_handler:QueryHandlerGenerator",
+        "src/queries",
     ),
+)
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="events",
+        category="events",
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 
