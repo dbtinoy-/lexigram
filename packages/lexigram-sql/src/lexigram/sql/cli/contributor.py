@@ -16,60 +16,69 @@ _FIELDS_OPTION = GeneratorOption(
     description="Field spec in name:type[?][!unique][!fk=Model][=default] format",
 )
 
-_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = (
-    GeneratorDefinition(
-        name="repository",
-        title="Generate Repository",
-        description="Generate a database repository with query methods",
-        contributor="sql",
-        generator_path="lexigram.sql.cli.generators.database_repository:DatabaseRepositoryGenerator",
-        default_output_dir="src/repositories",
-        options=(_FIELDS_OPTION,),
-        category="database",
+# (name, description, generator_path, output_dir) — titles derive via make()
+_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "repository",
+        "Generate a database repository with query methods",
+        "lexigram.sql.cli.generators.database_repository:DatabaseRepositoryGenerator",
+        "src/repositories",
     ),
-    GeneratorDefinition(
-        name="filter",
-        title="Generate Filter",
-        description="Generate a query filter for database models",
-        contributor="sql",
-        generator_path="lexigram.sql.cli.generators.filter:FilterGenerator",
-        default_output_dir="src/filters",
-        options=(
-            _FIELDS_OPTION,
-            GeneratorOption(
-                name="exception_type",
-                type_hint="str",
-                description="Base exception type",
-            ),
+    (
+        "filter",
+        "Generate a query filter for database models",
+        "lexigram.sql.cli.generators.filter:FilterGenerator",
+        "src/filters",
+    ),
+    (
+        "seeder",
+        "Generate a database seeder for test/dev data",
+        "lexigram.sql.cli.generators.seeder:SeederGenerator",
+        "seeds",
+    ),
+    (
+        "health",
+        "Generate a database health check",
+        "lexigram.sql.cli.generators.health_check:HealthCheckGenerator",
+        "src/health",
+    ),
+)
+
+_OPTIONS: dict[str, tuple[GeneratorOption, ...]] = {
+    "repository": (_FIELDS_OPTION,),
+    "filter": (
+        _FIELDS_OPTION,
+        GeneratorOption(
+            name="exception_type",
+            type_hint="str",
+            description="Base exception type",
         ),
-        category="database",
     ),
-    GeneratorDefinition(
-        name="seeder",
-        title="Generate Seeder",
-        description="Generate a database seeder for test/dev data",
-        contributor="sql",
-        generator_path="lexigram.sql.cli.generators.seeder:SeederGenerator",
-        default_output_dir="seeds",
-        options=(_FIELDS_OPTION,),
-        category="database",
-    ),
-    GeneratorDefinition(
-        name="health",
-        title="Generate Health Check",
-        description="Generate a database health check",
-        contributor="sql",
-        generator_path="lexigram.sql.cli.generators.health_check:HealthCheckGenerator",
-        default_output_dir="src/health",
-        options=(
-            GeneratorOption(
-                name="critical",
-                type_hint="bool",
-                description="Fail health checks on error",
-            ),
+    "seeder": (_FIELDS_OPTION,),
+    "health": (
+        GeneratorOption(
+            name="critical",
+            type_hint="bool",
+            description="Fail health checks on error",
         ),
-        category="database",
     ),
+}
+
+# Titles that make() cannot derive exactly.
+_TITLES: dict[str, str] = {"health": "Generate Health Check"}
+
+_GENERATOR_DEFINITIONS: tuple[GeneratorDefinition, ...] = tuple(
+    GeneratorDefinition.make(
+        name,
+        description=description,
+        generator_path=generator_path,
+        output_dir=output_dir,
+        contributor="sql",
+        category="database",
+        options=_OPTIONS.get(name, ()),
+        title=_TITLES.get(name),
+    )
+    for name, description, generator_path, output_dir in _SPECS
 )
 
 

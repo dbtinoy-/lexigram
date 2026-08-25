@@ -8040,7 +8040,7 @@ test = [
 
 [[package]]
 name = "lexigram-search"
-version = "0.1.5001"
+version = "0.1.5002"
 source = { editable = "packages/lexigram-search" }
 dependencies = [
     { name = "jinja2" },
