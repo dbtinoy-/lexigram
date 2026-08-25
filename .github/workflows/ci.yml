@@ -89,25 +89,25 @@ jobs:
         run: uv run ruff check .
 
       - name: Tier boundary
-        run: uv run python dev/check_tier_boundary.py --root .
+        run: uv run python dev/checks/tier_boundary.py --root .
 
       - name: Dependency pin guard
-        run: uv run python dev/check_dep_pins.py --root .
+        run: uv run python dev/checks/dep_pins.py --root .
 
       - name: LOC limit ratchet (500)
-        run: uv run python dev/check_loc_limit.py --root .
+        run: uv run python dev/checks/loc_limit.py --root .
 
       - name: Stub-shadow gate (MRO resolution)
-        run: uv run python dev/check_stub_shadows.py --root .
+        run: uv run python dev/checks/stub_shadows.py --root .
 
       - name: Contracts protocol-surface gate
-        run: uv run python dev/check_protocol_surface.py --root .
+        run: uv run python dev/checks/protocol_surface.py --root .
 
       - name: env.example coverage
-        run: uv run python dev/check_env_example.py --root .
+        run: uv run python dev/checks/env_example.py --root .
 
       - name: env.example binding accuracy
-        run: uv run python dev/check_env_binding.py --example .env.example
+        run: uv run python dev/checks/env_binding.py --example .env.example
 
       - name: typecheck
         run: uv run mypy core/lexigram/src/

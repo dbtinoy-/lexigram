@@ -1,4 +1,4 @@
-"""Unit tests for dev.check_version pure version math.
+"""Unit tests for dev.checks.version pure version math.
 
 Pins the §3.6 scheme: within an active series only the build segment
 moves (0.1.5001 → 0.1.5002); a bare patch starts a fresh series at 001
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from dev.check_version import format_version, next_version, split_version
+from dev.checks.version import format_version, next_version, split_version
 
 
 @pytest.mark.parametrize(

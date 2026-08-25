@@ -928,7 +928,7 @@ and anti-pattern table.
 
 - **Target**: under 500 lines.
 - **Hard limit**: 500 lines. If exceeded, decompose into a package - root files excluded.
-- **Enforcement**: `make lint-loc` fails CI for any `.py` file over 500 LOC that is absent from `dev/loc_limit_baseline.txt`, and for baseline entries whose file no longer exceeds the limit — the baseline can only shrink. Regenerate deliberately after review (`uv run python dev/check_loc_limit.py --root . --write-baseline`).
+- **Enforcement**: `make lint-loc` fails CI for any `.py` file over 500 LOC that is absent from `dev/checks/_data/loc_limit_baseline.txt`, and for baseline entries whose file no longer exceeds the limit — the baseline can only shrink. Regenerate deliberately after review (`uv run python dev/checks/loc_limit.py --root . --write-baseline`).
 
 ### 5.10 Docstring Formatting — Google Style
 

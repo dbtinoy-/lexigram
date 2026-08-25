@@ -2,7 +2,7 @@
 
 Every tracked ``*.py`` file must stay under 500 lines. Files that already
 exceed the limit at adoption time are recorded in the committed baseline
-(``dev/loc_limit_baseline.txt``); they remain allowed only while they stay
+(``dev/checks/_data/loc_limit_baseline.txt``); they remain allowed only while they stay
 unchanged in size. The gate fails on:
 
 1. **New violations** — any file over the limit that is absent from the
@@ -16,7 +16,7 @@ forcing it to shrink over time.
 
 Regenerate the baseline deliberately after review:
 
-    uv run python dev/check_loc_limit.py --root . --write-baseline
+    uv run python dev/checks/loc_limit.py --root . --write-baseline
 
 Note:
     Only physical line counts are compared (``len(text.splitlines())``).
@@ -37,7 +37,7 @@ BASELINE_HEADER = (
     "# Files currently over the {limit}-LOC limit.\n"
     "# Ratchet: new violations fail CI; entries whose files drop under the\n"
     "# limit become stale and must be removed in the same change.\n"
-    "# Regenerate after review: uv run python dev/check_loc_limit.py --root . --write-baseline\n"
+    "# Regenerate after review: uv run python dev/checks/loc_limit.py --root . --write-baseline\n"
 )
 
 # Directory names never scanned (caches, virtualenvs, artifacts) — matched
@@ -120,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="check_loc_limit")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
-    baseline_default = Path(__file__).resolve().with_name("loc_limit_baseline.txt")
+    baseline_default = Path(__file__).resolve().parent / "_data" / "loc_limit_baseline.txt"
     parser.add_argument(
         "--baseline",
         type=Path,
@@ -157,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
     if new_violations:
         print(
             "split the file or, only after review, regenerate: "
-            "uv run python dev/check_loc_limit.py --root . --write-baseline"
+            "uv run python dev/checks/loc_limit.py --root . --write-baseline"
         )
         return 1
     if stale_entries:

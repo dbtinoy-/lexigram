@@ -34,7 +34,7 @@ from __future__ import annotations
 import sys as _sys
 from pathlib import Path as _Path
 
-_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
 import argparse
 import json  # noqa: TID251 — standalone publish tool; runs before workspace imports
@@ -200,7 +200,7 @@ def cmd_check(names: list[str]) -> int:
     ]
     if needed:
         print(f"\n{len(needed)} package(s) need a bump: {', '.join(needed)}")
-        print("Run: uv run python scripts/check_version.py bump --pkg <name> --apply")
+        print("Run: uv run python dev/checks/version.py bump --pkg <name> --apply")
         return 1
     return 0
 

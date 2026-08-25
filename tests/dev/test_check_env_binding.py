@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dev.check_env_binding import documented_vars, run_check
+from dev.checks.env_binding import documented_vars, run_check
 
 
 def _write_example(path: Path, names: list[str]) -> None:
@@ -61,7 +61,7 @@ def test_run_check_skips_non_lex_variables() -> None:
 
 
 def test_full_repo_example_probes_live() -> None:
-    import dev.check_env_binding as check
+    import dev.checks.env_binding as check
 
     names = [n for n in documented_vars(check.EXAMPLE) if n.startswith("LEX_")]
     assert names, "expected LEX_ variables in the repo .env.example"
@@ -73,7 +73,7 @@ def test_full_repo_example_probes_live() -> None:
 
 
 def test_full_sweep_finds_no_dead_vars() -> None:
-    import dev.check_env_binding as check
+    import dev.checks.env_binding as check
 
     names = [n for n in documented_vars(check.EXAMPLE) if n.startswith("LEX_")]
 

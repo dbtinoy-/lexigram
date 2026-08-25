@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 from dev.audit.generators.base import MarkdownAuditGenerator
-from dev.check_dep_pins import iter_member_pyprojects, scan_unbounded_pins
+from dev.checks.dep_pins import iter_member_pyprojects, scan_unbounded_pins
 from dev.core.command_runner import run_command
 
 FRESHNESS_COMMAND = ("uv", "pip", "list", "--outdated")
@@ -58,7 +58,7 @@ class DependenciesAuditGenerator(MarkdownAuditGenerator):
         freshness_ok = freshness.exit_code == 0 and freshness.timed_out is False
 
         pin_guard = run_command(
-            ("uv", "run", "python", "dev/check_dep_pins.py", "--root", str(root)),
+            ("uv", "run", "python", "dev/checks/dep_pins.py", "--root", str(root)),
             cwd=root,
             timeout=60.0,
         )
@@ -71,7 +71,7 @@ class DependenciesAuditGenerator(MarkdownAuditGenerator):
         markdown = """# AUDIT_DEPENDENCIES.md — Lexigram Framework Dependency Freshness Snapshot
 
 > **Source**: Live command evidence from `uv pip list --outdated` and workspace
-> manifest scans against `dev/check_dep_pins.py`.
+> manifest scans against `dev/checks/dep_pins.py`.
 
 ---
 
@@ -120,7 +120,7 @@ class DependenciesAuditGenerator(MarkdownAuditGenerator):
             pin_count = len(pins.get(name, []))
             markdown += f"| `{name}` | yes | {pin_count} |\n"
         markdown += (
-            "\nBaseline guard: `dev/check_dep_pins.py` fails CI on unbounded "
+            "\nBaseline guard: `dev/checks/dep_pins.py` fails CI on unbounded "
             "third-party pins not covered by `dev/dep_pins_baseline.json`; "
             "regenerate deliberately with `--write-baseline`.\n"
         )

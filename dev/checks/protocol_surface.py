@@ -24,7 +24,7 @@ import sys
 
 from lexigram.serialization import dumps, loads
 
-MANIFEST = Path(__file__).parent / "protocol_surface.json"
+MANIFEST = Path(__file__).parent / "_data" / "protocol_surface.json"
 CONTRACTS_PKG = "lexigram.contracts"
 
 

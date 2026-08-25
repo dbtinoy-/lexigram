@@ -55,12 +55,12 @@ lint-boundaries:  ## Run the namespace-aware import-linter contracts
 	$(UV) run python tools/lint_imports.py
 
 .PHONY: lint-loc
-lint-loc:  ## Enforce the 500-LOC file limit (shrinking ratchet vs dev/loc_limit_baseline.txt)
-	$(UV) run python dev/check_loc_limit.py --root .
+lint-loc:  ## Enforce the 500-LOC file limit (shrinking ratchet vs dev/checks/_data/loc_limit_baseline.txt)
+	$(UV) run python dev/checks/loc_limit.py --root .
 
 .PHONY: dep-tree
 dep-tree:  ## Regenerate docs/reference/DEPENDENCY_TREE.md (sorted, fenced)
-	$(UV) run python dev/generate_dep_tree.py
+	$(UV) run python dev/generators/dep_tree.py
 
 .PHONY: lint-fix
 lint-fix:  ## Run ruff check + format (auto-fix)
@@ -105,7 +105,7 @@ ci:  ## Full CI pipeline: lint + type-check + tests with coverage gate
 
 .PHONY: guard
 guard:  ## Verify all dirty paths belong to this lane: make guard ALLOWED="path/a path/b"
-	$(UV) run python dev/check_tree_guard.py --allow $(ALLOWED)
+	$(UV) run python dev/checks/tree_guard.py --allow $(ALLOWED)
 
 # ---------------------------------------------------------------------------
 # Demos (living integration surfaces — gated like the framework)
@@ -279,13 +279,13 @@ audit:  ## Run dependency vulnerability scan
 
 .PHONY: catalog
 catalog:  ## Regenerate docs/reference/REF_ERROR_CODES.md from source
-	$(UV) run python dev/catalogs/generate_error_catalog.py
+	$(UV) run python dev/generators/error_catalog.py
 
 .PHONY: catalog-package
 catalog-package:  ## Run all standalone catalog generators
-	$(UV) run python dev/catalogs/generate_cli_commands_catalog.py
+	$(UV) run python dev/generators/cli_commands_catalog.py
 	$(UV) run python -m dev.catalogs.env_vars_catalog
-	$(UV) run python dev/catalogs/generate_error_catalog.py
+	$(UV) run python dev/generators/error_catalog.py
 
 REPRO_OUT := $(CURDIR)/.cache/eval-reproduce
 
@@ -294,13 +294,13 @@ eval-reproduce:  ## Re-run the seeded llm-reproducibility; fails if same-seed di
 	$(UV) run python demos/llm-reproducibility/run_experiment.py --seed 7 --out $(REPRO_OUT)
 
 version-check:  ## Compare local versions vs PyPI (exit 1 if bumps needed)
-	$(UV) run python dev/check_version.py check
+	$(UV) run python dev/checks/version.py check
 
 version-bump:  ## Show next version for PKG (add APPLY=--apply to write); all packages if PKG unset
-	$(UV) run python dev/check_version.py bump $(if $(PKG),--pkg $(PKG),) $(APPLY)
+	$(UV) run python dev/checks/version.py bump $(if $(PKG),--pkg $(PKG),) $(APPLY)
 
 version-bump-all:  ## Show next version for all packages
-	$(UV) run python dev/check_version.py bump
+	$(UV) run python dev/checks/version.py bump
 
 # ---------------------------------------------------------------------------
 # AUDIT File Generation (Test/Doc Audits)

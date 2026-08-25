@@ -246,7 +246,7 @@ After adding the package (and its `src/` entry to `[tool.mypy] mypy_path`),
 regenerate editor import paths so Pylance resolves it:
 
 ```bash
-uv run python dev/catalogs/generate_vscode_settings.py
+uv run python dev/generators/vscode_settings.py
 ```
 
 ### Update Import Boundaries

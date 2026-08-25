@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dev.check_tier_boundary import violations
+from dev.checks.tier_boundary import violations
 
 
 def _root_with_members(tmp_path: Path) -> Path:

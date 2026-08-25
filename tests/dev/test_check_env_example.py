@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dev.check_env_example import main
+from dev.checks.env_example import main
 
 
 def _write_example(path: Path, names: list[str]) -> None:
@@ -107,6 +107,6 @@ def test_check_fails_when_example_missing(tmp_path: Path) -> None:
 
 
 def test_check_matches_full_repo_example() -> None:
-    import dev.check_env_example as check
+    import dev.checks.env_example as check
 
     assert _run_check(check.ROOT, check.ROOT / ".env.full.example") == 0

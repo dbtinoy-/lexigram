@@ -172,7 +172,7 @@ latest `main` run); each job has a local one-liner:
   virtual manifest (`[tool.uv.workspace]` only, not a published distribution);
   each package's real dependency surface lives in its own `pyproject.toml`,
   surfaced in full in the locked tree above with pin hygiene enforced by
-  `dev/check_dep_pins.py` (ci). audits reading "0 direct deps at root" are
+  `dev/checks/dep_pins.py` (ci). audits reading "0 direct deps at root" are
   seeing this by design, not an undercount.
 
 ## roadmap

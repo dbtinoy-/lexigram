@@ -19,7 +19,7 @@ from pathlib import Path
 import re
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = ROOT / ".env.full.example"  # completeness target (superset of slim .env.example)
 
 _ENV_NAME = r"[A-Z][A-Z0-9_]{1,}"

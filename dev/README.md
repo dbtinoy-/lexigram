@@ -1,67 +1,49 @@
-# Lexigram Scripts
+# dev/ — Repository Tooling
 
-Unified tooling entrypoint for framework audits and script automation.
+Developer-facing tooling that is **not** part of any published package.
+Everything here runs via `uv run` from the repo root.
 
-## Run
-
-From repo root:
-
-```bash
-uv run python -m dev.cli audit list
-uv run python -m dev.cli audit run env_vars
-uv run python -m dev.cli audit run rules
-uv run python -m dev.cli audit run all
-uv run python -m dev.cli audit validate
+```
+dev/
+├── cli.py                 # python -m dev.cli …  (audit dispatcher)
+├── checks/                # CI quality gates — one module per gate, each with main()
+│   └── _data/             #   baselines/snapshots owned by specific gates
+├── generators/            # deterministic artifact emitters (catalogs, examples)
+│   └── env_vars_catalog/  #   support package for env_example
+├── ops/                   # operational scripts (publishing)
+│   └── publish_pypi.py
+├── core/                  # shared infrastructure used by checks/generators/audit
+│   ├── bootstrap.py       #   REPO_ROOT + import shim for standalone runs
+│   ├── package_inventory.py  #   workspace member discovery (single source of truth)
+│   ├── command_runner.py, context.py, evidence.py, models.py, registry.py
+│   └── rules_catalog/, rule_engine.py, validation.py   # audit rules subsystem
+└── audit/                 # report framework + per-report generators → docs/audit/
+    ├── base.py, index.py, registry.py, non_config_env_sources.py
+    └── generators/        #   overview, tests, security, quality, docs_*, …
 ```
 
-## Architecture
+## CI quality gates (`checks/`)
 
-- `dev/cli.py`: single command surface
-- `dev/core/`: shared runtime utilities (context, registry, models, validation)
-- `dev/audit/generators/`: modular audit generators
-- `dev/catalogs/`: standalone catalog generators (error codes, env vars, CLI commands)
+| Gate | Purpose |
+|------|---------|
+| `checks/tier_boundary.py` | Fails when a stable-tier package depends on an `experimental/` one |
+| `checks/dep_pins.py` | Dependency pin policy; baseline: `_data/dep_pins_baseline.json` |
+| `checks/stub_shadows.py` | Fails when a class attribute resolves to a `NotImplementedError` stub shadowing a real implementation later in its MRO. Run after any mixin/base refactor |
+| `checks/protocol_surface.py` | Fails when a `lexigram.contracts` runtime_checkable Protocol gains/loses public members. After an intentional protocol change run with `--update`, review `checks/_data/protocol_surface.json`, commit both together |
+| `checks/env_example.py` | env.example coverage vs referenced variables (completeness target: `.env.full.example`) |
+| `checks/env_binding.py` | Empirically verifies every documented `LEX_*` variable binds through its config family's real `from_yaml()` |
+| `checks/loc_limit.py` | 500-LOC ratchet; baseline: `_data/loc_limit_baseline.txt` |
+| `checks/version.py` | Per-package version scheme (§3.6): within an active series only the build segment moves (`0.1.5001 → 0.1.5002`) |
+| `checks/config_fields.py` | Config field catalog consistency |
+| `checks/tree_guard.py` | Workspace tree hygiene |
 
-No backward-compat script wrappers are maintained. Callers must use `dev.cli` directly.
+## Conventions
 
-## Standalone gates (invoked directly by CI)
-
-| Script | Purpose |
-| --- | --- |
-| `dev/check_tier_boundary.py` | Fails when a stable-tier package depends on an `experimental/` one |
-| `dev/check_dep_pins.py` | Dependency pin policy |
-| `dev/check_stub_shadows.py` | Fails when a class attribute resolves to a `NotImplementedError` stub shadowing a real implementation later in its MRO. Run after any mixin/base refactor |
-| `dev/check_protocol_surface.py` | Fails when a `lexigram.contracts` runtime_checkable Protocol gains/loses public members. After an intentional protocol change run with `--update`, review the `dev/protocol_surface.json` diff, and commit both together |
-| `dev/check_env_example.py` | env.example coverage |
-
-## Makefile
-
-Audit targets call the same CLI:
-
-- `make audit-overview`
-- `make audit-integrations`
-- `make audit-protocols`
-- `make audit-security`
-- `make audit-quality`
-- `make audit-rules`
-- `make audit-tests`
-- `make audit-docs-links`
-- `make scripts-audit`
-- `make scripts-audit-index`
-- `make scripts-audit-validate`
-- `make scripts-audit-rules`
-- `make audit-files`
-
-Quality and test audits are evidence-backed:
-
-- `AUDIT_QUALITY.md` records live `ruff check` and `mypy` command evidence.
-- `AUDIT_TESTS.md` records live `pytest` execution evidence plus parsed examples.
-- `AUDIT_RULES.md` records Lexigram architecture misalignments found by the rules scan.
-- `AUDIT_DOC_LINKS.md` records dead internal links inside `docs/` (missing targets, missing anchors, `/packages/` routes without a `docs/` folder). The `docs-links` audit fails when any dead link is found, so `make audit-package` catches link rot before merge.
-- `AUDIT_SECURITY.md` records live `pip-audit` (dependency) and `ruff check --select S` (SAST) evidence, framework security-rule findings, and open audit-tracker areas parsed from `docs/AUDIT_TRACKER.md`.
-
-## Testing
-
-```bash
-uv run pytest tests/scripts tests/test_env_audit_non_config_sources.py -v --no-cov
-uv run ruff check scripts tests/scripts
-```
+- **Standalone runnable:** every `checks/*` module has `main()` and works both as
+  `uv run python dev/checks/<name>.py` and as `from dev.checks.<name> import …`.
+- **Import bootstrap:** standalone execution inserts the repo root on `sys.path`
+  before any `dev.*` import — use `dev.core.bootstrap` for the canonical root.
+- **Adding a workspace package:** add its `src/` to `[tool.mypy] mypy_path`,
+  then run `uv run python dev/generators/vscode_settings.py`.
+- **Data lives with its gate:** baselines/snapshots belong in `checks/_data/`,
+  never loose in `dev/`.

@@ -3,7 +3,7 @@
 A specifier like ``starlette>=0.28.0`` declares only a lower bound and lets
 the dependency float to any future major version. This check fails CI when a
 member adds an unbounded pin that is not already covered by the committed
-baseline (``scripts/dep_pins_baseline.json``), keeping the existing debt
+baseline (``dev/checks/_data/dep_pins_baseline.json``), keeping the existing debt
 visible while preventing it from growing.
 
 Regenerate the baseline deliberately after review:
@@ -20,7 +20,7 @@ from __future__ import annotations
 import sys as _sys
 from pathlib import Path as _Path
 
-_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
 
 import argparse
 import json  # noqa: TID251 — standalone CI guard; runs before workspace serialization
@@ -152,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
         default=Path.cwd(),
         help="Workspace root containing lexigram-* member directories",
     )
-    baseline_default = Path(__file__).resolve().with_name("dep_pins_baseline.json")
+    baseline_default = Path(__file__).resolve().parent / "_data" / "dep_pins_baseline.json"
     parser.add_argument(
         "--baseline",
         type=Path,
