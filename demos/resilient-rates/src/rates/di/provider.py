@@ -12,15 +12,28 @@ from lexigram.contracts.infra.resilience.protocols import (
     ResiliencePipelineFactoryProtocol,
 )
 from lexigram.di.provider import Provider
+from rates.config import RatesConfig
 from rates.controllers.api import RatesApiController
-from rates.repository.simulated_upstream import FaultController, SimulatedRatesProvider
+from rates.repository.simulated_upstream import (
+    FaultController,
+    Scenario,
+    SimulatedRatesProvider,
+)
 from rates.services.rates_service import RatesService
 
 
 class RatesProvider(Provider):
-    """Register the rate desk services as container-managed singletons."""
+    """Register the rate desk services as container-managed singletons.
+
+    Receives the bound ``RatesConfig`` from ``RatesModule.configure`` via the
+    framework's ``Provider(config=...)`` support.
+    """
 
     name = "rates"
+
+    def __init__(self, config: RatesConfig | None = None) -> None:
+        super().__init__()
+        self._demo_config = config or RatesConfig()
 
     async def health_check(self, timeout: float = 5.0) -> HealthCheckResult:
         """Report component readiness."""
@@ -28,7 +41,8 @@ class RatesProvider(Provider):
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Bind singletons; RatesService builds lazily from booted deps."""
-        faults = FaultController()
+        faults = FaultController(initial=Scenario(self._demo_config.upstream_scenario))
+        container.singleton(RatesConfig, instance=self._demo_config)
         container.singleton(FaultController, instance=faults)
         container.singleton(
             SimulatedRatesProvider,
@@ -47,6 +61,7 @@ class RatesProvider(Provider):
             pipeline_factory=await resolver.resolve(ResiliencePipelineFactoryProtocol),
             provider=await resolver.resolve(SimulatedRatesProvider),
             faults=await resolver.resolve(FaultController),
+            cache_ttl_seconds=self._demo_config.cache_ttl_seconds,
         )
 
     async def _build_controller(

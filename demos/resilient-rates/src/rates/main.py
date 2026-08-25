@@ -7,17 +7,22 @@ Usage::
     uv run python -m rates stats
     uv run python -m rates stampede USD/JPY
     uv run python -m rates demo
+
+Server host/port come from ``application.yaml`` (``web.server``); override
+without editing the file via ``LEX_WEB__SERVER__PORT``.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import sys
 
 from lexigram.app import Application
+from lexigram.config.main import LexigramConfig
 from lexigram.logging import get_logger
+from lexigram.web.config import WebConfig
+from rates.config import APP_YAML
 from rates.module import RatesModule
 from rates.repository.simulated_upstream import FaultController, Scenario
 from rates.services.rates_service import RatesService
@@ -46,74 +51,99 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("demo", help="five-act guided walkthrough")
     p_serve = sub.add_parser(
-        "serve", help="serve the REST API (default :7073, RATES_PORT)"
+        "serve", help="serve the REST API (:7073 from application.yaml)"
     )
-    p_serve.add_argument("--port", type=int, default=None)
     return parser
 
 
-async def _fetch_and_print(service: RatesService, pair: str) -> int:
+def _bind(
+    config: LexigramConfig | None,
+) -> tuple[WebConfig, LexigramConfig]:
+    """Bind web/demo sections from the given or demo-default config."""
+    resolved = config or LexigramConfig.from_yaml(APP_YAML)
+    return resolved.get_section("web", WebConfig), resolved
+
+
+async def _fetch_and_log(service: RatesService, pair: str) -> int:
     result = await service.fetch(pair)
     if result.is_err():
-        print(f"unavailable: {result.unwrap_err()}")
+        logger.error("quote.unavailable", pair=pair, error=str(result.unwrap_err()))
         return 1
     quote = result.unwrap()
-    print(f"{quote.pair}\t{quote.rate}\tsource={quote.source}")
+    logger.info(
+        "quote.fetched", pair=quote.pair, rate=str(quote.rate), source=quote.source
+    )
     return 0
 
 
-async def _serve(port: int) -> None:
+async def _serve(config: LexigramConfig | None = None) -> None:
     from lexigram.web.di.provider import WebProvider
     from lexigram.web.server.runner import run_server_async
 
+    web_config, _resolved = _bind(config)
     async with Application.boot(
-        name="rates", modules=[RatesModule.configure(port=port)]
+        name="rates", modules=[RatesModule.configure()], config=_resolved
     ) as app:
         await app.container.resolve(RatesService)  # eager pipeline wiring
         web = await app.container.resolve(WebProvider)
-        await run_server_async(web.starlette, host="127.0.0.1", port=port)
+        await run_server_async(
+            web.starlette,
+            host=web_config.server.host,
+            port=web_config.server.port,
+        )
 
 
-async def _run(args: argparse.Namespace) -> None:
+async def _run(args: argparse.Namespace, config: LexigramConfig | None = None) -> None:
     if args.command == "serve":
-        port = args.port or int(os.environ.get("RATES_PORT", "7073"))
-        await _serve(port)
+        await _serve(config)
         return
-    async with Application.boot(name="rates", modules=[RatesModule.configure()]) as app:
+    _web_config, resolved = _bind(config)
+    async with Application.boot(
+        name="rates", modules=[RatesModule.configure()], config=resolved
+    ) as app:
         service = await app.container.resolve(RatesService)
         faults = await app.container.resolve(FaultController)
 
         if args.command == "fetch":
-            await _fetch_and_print(service, args.pair)
+            await _fetch_and_log(service, args.pair)
         elif args.command == "scenario":
             faults.set(Scenario(args.name))
-            print(f"scenario: {args.name}")
+            logger.info("scenario.set", name=args.name)
         elif args.command == "stats":
             s = service.stats()
-            print(
-                f"hits={s.hits} misses={s.misses} upstream={s.upstream_calls} retries={s.retries} stale={s.stale_served}"
+            logger.info(
+                "stats.reported",
+                hits=s.hits,
+                misses=s.misses,
+                upstream=s.upstream_calls,
+                retries=s.retries,
+                stale_served=s.stale_served,
             )
         elif args.command == "clear-cache":
             await service.clear_cache()
-            print("cache cleared")
+            logger.info("cache.cleared")
         elif args.command == "stampede":
-            await service.clear_cache()
-            results = await asyncio.gather(
-                *(service.fetch(args.pair) for _ in range(args.workers))
-            )
-            quotes = [r.unwrap() for r in results if r.is_ok()]
-            unique = {q.rate for q in quotes}
-            s = service.stats()
-            print(
-                f"{args.workers} concurrent fetchers saw {len(unique)} distinct rate(s)"
-            )
-            print(f"upstream calls: {s.upstream_calls}")
+            await _stampede(service, args.pair, args.workers)
         elif args.command == "demo":
             await _demo(service, faults)
 
 
+async def _stampede(service: RatesService, pair: str, workers: int) -> None:
+    """Collapse N concurrent fetches of one pair into a single upstream call."""
+    await service.clear_cache()
+    results = await asyncio.gather(*(service.fetch(pair) for _ in range(workers)))
+    quotes = [r.unwrap() for r in results if r.is_ok()]
+    s = service.stats()
+    logger.info(
+        "stampede.completed",
+        workers=workers,
+        distinct_rates=len({q.rate for q in quotes}),
+        upstream_calls=s.upstream_calls,
+    )
+
+
 def _banner(act: int, title: str) -> None:
-    print(f"\n=== act {act}: {title} ===")
+    logger.info("act.start", act=act, title=title)
 
 
 async def _demo(service: RatesService, faults: FaultController) -> None:
@@ -122,19 +152,19 @@ async def _demo(service: RatesService, faults: FaultController) -> None:
     await service.clear_cache()
 
     _banner(1, "healthy — cache-aside")
-    await _fetch_and_print(service, "EUR/USD")  # miss -> upstream
-    await _fetch_and_print(service, "EUR/USD")  # cache hit
+    await _fetch_and_log(service, "EUR/USD")  # miss -> upstream
+    await _fetch_and_log(service, "EUR/USD")  # cache hit
 
     _banner(2, "flaky — retries absorb timeouts")
     faults.set(Scenario.FLAKY)
     for _attempt in range(6):
         try:
-            await _fetch_and_print(service, "GBP/USD")
+            await _fetch_and_log(service, "GBP/USD")
         except Exception as exc:  # noqa: BLE001 — narration of terminal outcome
-            print(f"upstream exhausted: {type(exc).__name__}")
+            logger.warning("upstream.exhausted", error=type(exc).__name__)
         if service.stats().retries > 0:
             break
-    print(f"retry attempts absorbed by backoff: {service.stats().retries}")
+    logger.info("retries.absorbed", count=service.stats().retries)
 
     _banner(3, "down — breaker opens, stale serves reads")
     faults.set(Scenario.DOWN)
@@ -143,31 +173,36 @@ async def _demo(service: RatesService, faults: FaultController) -> None:
         try:
             (await service.fetch("EUR/USD")).unwrap()
         except Exception as exc:  # noqa: BLE001 — narration of terminal outcome
-            print(f"upstream exhausted: {type(exc).__name__}")
+            logger.warning("upstream.exhausted", error=type(exc).__name__)
     stale_result = await service.fetch("EUR/USD")
     if stale_result.is_err():
         # No stale tier exists yet — the outage surfaces to the caller.
-        print(f"unavailable: {stale_result.unwrap_err()}")
+        logger.error("quote.unavailable", error=str(stale_result.unwrap_err()))
         faults.set(Scenario.HEALTHY)
         return
     stale = stale_result.unwrap()
-    print(f"{stale.pair}\t{stale.rate}\tsource={stale.source}")
+    logger.info(
+        "quote.stale_served", pair=stale.pair, rate=str(stale.rate), source=stale.source
+    )
 
     _banner(4, "heal — HALF_OPEN probe closes the circuit")
     faults.set(Scenario.HEALTHY)
     await service.clear_cache()  # fresh read must probe the recovering circuit
     await asyncio.sleep(0.25)  # past the 0.2s recovery window
     healed = (await service.fetch("EUR/USD")).unwrap()
-    print(f"circuit CLOSED after HALF_OPEN probe; source={healed.source}")
+    logger.info("circuit.closed_after_probe", source=healed.source)
 
     _banner(5, "stampede — single-flight collapses 10 into 1")
     await service.clear_cache()
     service.reset_stats()
     results = await asyncio.gather(*(service.fetch("USD/JPY") for _ in range(10)))
     quotes = [r.unwrap() for r in results if r.is_ok()]
-    print(f"distinct rates seen: {len({q.rate for q in quotes})}")
-    print(f"upstream calls: {service.stats().upstream_calls}")
-    print("single-flight: 10 waiters, 1 leader")
+    logger.info(
+        "stampede.completed",
+        distinct_rates=len({q.rate for q in quotes}),
+        upstream_calls=service.stats().upstream_calls,
+        pattern="single-flight: 10 waiters, 1 leader",
+    )
 
     faults.set(Scenario.HEALTHY)
 

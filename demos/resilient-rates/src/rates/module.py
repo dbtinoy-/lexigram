@@ -1,17 +1,22 @@
-"""Module for the resilient rates demo."""
+"""Module for the resilient rates demo.
+
+Blueprint reference example (Wave 0 Task A): configuration is bound from
+``application.yaml`` via :func:`rates.config.bind_application` — this file
+contains no literal host/port/security values. See ``rates.config`` for why
+binding is explicit rather than relying on provider auto-injection.
+"""
 
 from __future__ import annotations
 
-import os
+from dataclasses import replace
 
 from lexigram.cache.config import CacheBackendConfig, CacheConfig
 from lexigram.cache.module import CacheModule
 from lexigram.cache.types import BackendType
 from lexigram.di.module import DynamicModule, Module, module
 from lexigram.resilience.module import ResilienceModule
-from lexigram.web import WebConfig, WebModule
-from lexigram.web.config import ServerConfig
-from lexigram.web.security import SecurityConfig
+from lexigram.web import WebModule
+from rates.config import bind_application
 from rates.controllers.api import RatesApiController
 from rates.di.provider import RatesProvider
 from rates.repository.simulated_upstream import FaultController, SimulatedRatesProvider
@@ -38,9 +43,11 @@ class RatesModule(Module):
 
     @classmethod
     def configure(cls, port: int | None = None) -> DynamicModule:
-        selected_port = (
-            port if port is not None else int(os.environ.get("RATES_PORT", "7073"))
-        )
+        web_config, demo_config = bind_application()
+        if port is not None:  # embedded-hub override; children never serve
+            web_config = replace(
+                web_config, server=replace(web_config.server, port=port)
+            )
         return DynamicModule(
             module=cls,
             imports=[
@@ -48,18 +55,10 @@ class RatesModule(Module):
                 CacheModule.configure(_memory_cache_config()),
                 WebModule.configure(
                     controllers=[RatesApiController, RatesPageController],
-                    web_config=WebConfig(
-                        server=ServerConfig(
-                            host="127.0.0.1",
-                            port=selected_port,
-                        ),
-                        # Scenario flips come from curl/external tools,
-                        # not a browser form — disable CSRF.
-                        security=SecurityConfig(enable_csrf=False),
-                    ),
+                    web_config=web_config,
                 ),
             ],
-            providers=[RatesProvider],
+            providers=[RatesProvider(config=demo_config)],
             exports=[FaultController, SimulatedRatesProvider, RatesService],
         )
 

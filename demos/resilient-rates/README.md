@@ -15,7 +15,7 @@ deterministic seeded random-walk provider whose faults you script live.
 ## REST API
 
 ```bash
-PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # :7073 (RATES_PORT)
+PYTHONPATH=demos/resilient-rates/src uv run python -m rates serve            # :7073 (override: LEX_WEB__SERVER__PORT)
 curl localhost:7073/rates/EUR/USD       # quote via cache → pipeline → stale
 curl -X POST localhost:7073/scenario/down   # flip upstream health live
 curl localhost:7073/stats               # hits/misses/retries/stale

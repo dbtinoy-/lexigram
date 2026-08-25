@@ -70,8 +70,10 @@ class RatesService:
         pipeline_factory: ResiliencePipelineFactoryProtocol,
         provider: SimulatedRatesProvider,
         faults: FaultController,
+        cache_ttl_seconds: int = _TTL_SECONDS,
     ) -> None:
         self._cache = cache
+        self._cache_ttl_seconds = cache_ttl_seconds
         self._pipeline_factory = pipeline_factory
         self._pipeline = pipeline_factory(
             retry_config=RetryConfig(
@@ -216,7 +218,7 @@ class RatesService:
             "fetched_at": quote.fetched_at,
             "source": quote.source,
         }
-        result = await self._cache.set(key, payload, ttl=_TTL_SECONDS)
+        result = await self._cache.set(key, payload, ttl=self._cache_ttl_seconds)
         if not isinstance(result, Ok):
             logger.warning("cache_set_failed", error=str(result.unwrap_err()))
 

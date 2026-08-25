@@ -33,8 +33,8 @@ class Scenario(str, Enum):
 class FaultController:
     """Container-managed holder of the active upstream scenario."""
 
-    def __init__(self) -> None:
-        self._scenario = Scenario.HEALTHY
+    def __init__(self, initial: Scenario = Scenario.HEALTHY) -> None:
+        self._scenario = initial
 
     @property
     def current(self) -> Scenario:
@@ -60,6 +60,8 @@ class SimulatedRatesProvider:
 
     def __init__(self, faults: FaultController, seed: int = 7) -> None:
         self._faults = faults
+        # deterministic-by-design: stdlib Random(seed) IS the reproducibility
+        # feature; ambient identity/clock do not apply to seeded draws.
         self._rng = random.Random(seed)
 
     async def fetch(self, pair: str) -> RateQuote:

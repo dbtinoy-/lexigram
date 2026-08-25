@@ -1,0 +1,13 @@
+# Resilient Rates — every runtime knob lives here (Blueprint §3).
+# Profiles: application.<LEX_PROFILE>.yaml overlays on top of this file.
+web:
+  server:
+    host: 127.0.0.1
+    port: 7073
+  security:
+    csrf:
+      enabled: false
+
+demo:
+  upstream_scenario: healthy # healthy | flaky | down | slow
+  cache_ttl_seconds: 60
