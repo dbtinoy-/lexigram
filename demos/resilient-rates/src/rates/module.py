@@ -43,7 +43,7 @@ class RatesModule(Module):
                     web_config=web_config,
                 ),
             ],
-            providers=[RatesProvider(config=demo_config)],
+            providers=[RatesProvider(config=demo_config, cache_config=cache_config)],
             exports=[FaultController, SimulatedRatesProvider, RatesService],
         )
 

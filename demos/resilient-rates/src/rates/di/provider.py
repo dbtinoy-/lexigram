@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lexigram.cache.config.top_level import CacheConfig
+from lexigram.cache.service.stampede import StampedeProtectedCache
 from lexigram.contracts.core.health import (
     HealthCheckCategory,
     HealthCheckResult,
@@ -58,15 +60,21 @@ class RatesProvider(Provider):
     config_key: str | None = "demo"
     config_model: type | None = RatesConfig
 
-    def __init__(self, config: RatesConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: RatesConfig | None = None,
+        cache_config: CacheConfig | None = None,
+    ) -> None:
         super().__init__()
         self._config = config or RatesConfig()
+        self._cache_config: CacheConfig = cache_config or CacheConfig()
 
     async def register(self, container: ContainerRegistrarProtocol) -> None:
         """Declare bindings; concrete wiring happens in :meth:`boot`."""
         cfg = self.config or RatesConfig()
 
         container.singleton(RatesConfig, instance=cfg)
+        container.singleton(StampedeProtectedCache, StampedeProtectedCache)
         container.singleton(
             FaultController,
             factory=lambda: FaultController(initial=Scenario(cfg.upstream_scenario)),
@@ -77,20 +85,33 @@ class RatesProvider(Provider):
         container.singleton(RatesService, RatesService)
         container.singleton(RatesApiController, RatesApiController)
 
+    def _default_ttl(self) -> int | None:
+        """Read ``default_ttl`` off the default backend, if configured."""
+        for backend in self._cache_config.backends:
+            if backend.default and backend.default_ttl is not None:
+                return backend.default_ttl
+        return None
+
     async def boot(self, container: ContainerResolverProtocol) -> None:
         """Resolve cross-module dependencies and bind concrete instances."""
         faults = await container.resolve(FaultController)
+        backend = await container.resolve(CacheBackendProtocol)
 
         container.bind(
             SimulatedRatesProvider,
             SimulatedRatesProvider(faults=faults),
         )
 
+        protection = StampedeProtectedCache(cache=backend)
+        container.bind(StampedeProtectedCache, protection)
+
         service = RatesService(
-            cache=await container.resolve(CacheBackendProtocol),
+            cache=backend,
+            protection=protection,
             pipeline_factory=await container.resolve(ResiliencePipelineFactoryProtocol),
             provider=await container.resolve(SimulatedRatesProvider),
             faults=faults,
+            cache_ttl=self._default_ttl(),
         )
         container.bind(RatesService, service)
 

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Any
 
+from lexigram.cache.service.stampede import StampedeProtectedCache
 from lexigram.contracts.core.result import Err, Ok, Result
 from lexigram.contracts.infra.cache.protocols import CacheBackendProtocol
 from lexigram.contracts.infra.resilience.models import (
@@ -55,6 +55,11 @@ class ServiceStats:
 class RatesService:
     """Cache-aside reader over a resilient simulated upstream.
 
+    Single-flight collapsing delegates to the framework's
+    :class:`StampedeProtectedCache`, which also owns storage of the cached
+    envelope; TTL ownership belongs to the cache backend configuration
+    (``cache.backends[].default_ttl`` in ``application.yaml``).
+
     Args:
         cache: The framework cache backend.
         pipeline_factory: Factory building the retry/circuit/timeout
@@ -66,11 +71,15 @@ class RatesService:
     def __init__(
         self,
         cache: CacheBackendProtocol,
+        protection: StampedeProtectedCache,
         pipeline_factory: ResiliencePipelineFactoryProtocol,
         provider: SimulatedRatesProvider,
         faults: FaultController,
+        cache_ttl: int | None = None,
     ) -> None:
         self._cache = cache
+        self._protection = protection
+        self._cache_ttl = cache_ttl if cache_ttl is not None else 300
         self._pipeline_factory = pipeline_factory
         self._pipeline = pipeline_factory(
             retry_config=RetryConfig(
@@ -92,7 +101,6 @@ class RatesService:
         self._provider = provider
         self._faults = faults
         self._stats = ServiceStats()
-        self._locks: dict[str, asyncio.Lock] = {}
         self._stale: dict[str, RateQuote] = {}
 
     def _note_retry(self, attempt: int, exc: Exception | None) -> None:
@@ -129,96 +137,69 @@ class RatesService:
             terminally (retries exhausted / circuit open) and no stale
             copy exists.
         """
-        key = f"{_CACHE_PREFIX}{pair}"
         logger.debug("fetch_started", pair=pair, scenario=self._faults.current.value)
-        cached = await self._cache_get(key)
-        if cached is not None:
-            self._stats.hits += 1
-            logger.debug("cache_hit", pair=pair)
-            return Ok(self._as_cache_hit(cached))
 
-        lock = self._locks.setdefault(pair, asyncio.Lock())
-        async with lock:
-            cached = await self._cache_get(key)
-            if cached is not None:
-                self._stats.hits += 1
-                logger.debug("cache_hit_after_wait", pair=pair)
-                return Ok(self._as_cache_hit(cached))
+        # The cell marks whether THIS call ran the compute coroutine; if it
+        # did not, the value came from the framework's single-flight gate
+        # (either a stored copy or a co-running leader).
+        leader = {"computed": False}
 
-            self._stats.misses += 1
-            try:
-                quote = await self._pipeline.execute(self._provider.fetch, pair)
-            except (CircuitOpenError, RetryExhaustedError) as exc:
-                # Any terminal pipeline failure falls back to the stale tier
-                # when a last-known-good copy exists; without one, the outage
-                # surfaces to the caller.
-                stale = self._stale.get(pair)
-                if stale is None:
-                    return Err(
-                        RateUnavailableError(
-                            f"upstream unavailable for {pair} and no stale copy"
-                        )
+        async def compute() -> dict[str, Any]:
+            leader["computed"] = True
+            quote = await self._pipeline.execute(self._provider.fetch, pair)
+            return self._encode(quote)
+
+        try:
+            payload = await self._protection.get_or_compute(
+                f"{_CACHE_PREFIX}{pair}",
+                compute,
+                ttl=self._cache_ttl,
+            )
+        except (CircuitOpenError, RetryExhaustedError) as exc:
+            # Terminal pipeline failure falls back to the stale tier when a
+            # last-known-good copy exists; without one, the outage surfaces.
+            stale = self._stale.get(pair)
+            if stale is None:
+                return Err(
+                    RateUnavailableError(
+                        f"upstream unavailable for {pair} and no stale copy"
                     )
-                self._stats.stale_served += 1
-                logger.warning("stale_served", pair=pair, reason=str(exc))
-                return Ok(replace(stale, source="stale"))
+                )
+            self._stats.stale_served += 1
+            logger.warning("stale_served", pair=pair, reason=str(exc))
+            return Ok(replace(stale, source="stale"))
 
+        quote = self._decode(payload)
+        if leader["computed"]:
+            self._stats.misses += 1
             self._stats.upstream_calls += 1
             self._stale[pair] = quote
-            await self._cache_set(key, quote)
+            logger.debug("upstream_served", pair=pair)
             return Ok(quote)
 
-    def _as_cache_hit(self, quote: RateQuote) -> RateQuote:
-        """Re-stamp a stored quote with its serve-time provenance.
+        self._stats.hits += 1
+        logger.debug("cache_hit", pair=pair)
+        return Ok(replace(quote, source="cache"))
 
-        Args:
-            quote: The quote decoded from the cache backend.
-
-        Returns:
-            An equal quote whose ``source`` reads ``"cache"``.
-        """
-        return replace(quote, source="cache")
-
-    async def _cache_get(self, key: str) -> RateQuote | None:
-        """Read a quote from the cache, decoding the JSON-safe payload.
-
-        Args:
-            key: Full cache key.
-
-        Returns:
-            The reconstructed quote, or None on miss.
-        """
-        result = await self._cache.get(key)
-        if isinstance(result, Ok) and result.unwrap() is not None:
-            raw: dict[str, Any] = result.unwrap()
-            return RateQuote(
-                pair=str(raw["pair"]),
-                rate=Decimal(str(raw["rate"])),
-                fetched_at=float(raw["fetched_at"]),
-                source=str(raw["source"]),
-            )
-        return None
-
-    async def _cache_set(self, key: str, quote: RateQuote) -> None:
-        """Write a quote to the cache as a JSON-safe payload.
-
-        Backends serialize values (the memory store round-trips through
-        JSON), so the service owns an explicit dict codec here.
-
-        Args:
-            key: Full cache key.
-            quote: The quote to encode and store.
-        """
-        payload = {
+    @staticmethod
+    def _encode(quote: RateQuote) -> dict[str, Any]:
+        """Encode a quote into the JSON-safe payload the backend stores."""
+        return {
             "pair": quote.pair,
             "rate": str(quote.rate),
             "fetched_at": quote.fetched_at,
             "source": quote.source,
         }
-        # TTL is owned by the backend (cache.backends[].default_ttl).
-        result = await self._cache.set(key, payload)
-        if not isinstance(result, Ok):
-            logger.warning("cache_set_failed", error=str(result.unwrap_err()))
+
+    @staticmethod
+    def _decode(raw: dict[str, Any]) -> RateQuote:
+        """Reconstruct a quote from its stored payload."""
+        return RateQuote(
+            pair=str(raw["pair"]),
+            rate=Decimal(str(raw["rate"])),
+            fetched_at=float(raw["fetched_at"]),
+            source=str(raw["source"]),
+        )
 
 
 __all__ = ["RatesService", "ServiceStats"]

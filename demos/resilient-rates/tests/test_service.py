@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from lexigram.cache.backends.memory.backend import MemoryCacheBackend
+from lexigram.cache.service.stampede import StampedeProtectedCache
 from lexigram.contracts.infra.resilience.models import (
     CircuitBreakerConfig,
     RetryConfig,
@@ -42,11 +43,14 @@ def make_service(scenario: Scenario = Scenario.HEALTHY, seed: int = 7) -> tuple[
     faults = FaultController()
     faults.set(scenario)
     provider = SimulatedRatesProvider(faults=faults, seed=seed)
+    cache = MemoryCacheBackend()
     service = RatesService(
-        cache=MemoryCacheBackend(),
+        cache=cache,
+        protection=StampedeProtectedCache(cache=cache),
         pipeline_factory=make_pipeline_factory(),
         provider=provider,
         faults=faults,
+        cache_ttl=60,
     )
     return service, faults
 
@@ -97,11 +101,14 @@ async def test_breaker_opens_then_serves_stale() -> None:
 
     faults = FaultController()
     provider = SimulatedRatesProvider(faults=faults, seed=7)
+    cache = MemoryCacheBackend()
     service = RatesService(
-        cache=MemoryCacheBackend(),
+        cache=cache,
+        protection=StampedeProtectedCache(cache=cache),
         pipeline_factory=single_fault_factory,
         provider=provider,
         faults=faults,
+        cache_ttl=60,
     )
 
     await service.fetch("EUR/USD")  # warm the stale store while healthy
@@ -124,11 +131,14 @@ async def test_production_breaker_stops_calling_upstream_while_serving_stale() -
     # plateauing while every read keeps being served from the stale tier.
     faults = FaultController()
     provider = SimulatedRatesProvider(faults=faults, seed=7)
+    cache = MemoryCacheBackend()
     service = RatesService(
-        cache=MemoryCacheBackend(),
+        cache=cache,
+        protection=StampedeProtectedCache(cache=cache),
         pipeline_factory=make_pipeline_factory(),
         provider=provider,
         faults=faults,
+        cache_ttl=60,
     )
 
     await service.fetch("EUR/USD")  # warm the stale tier while healthy
