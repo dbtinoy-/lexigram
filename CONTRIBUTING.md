@@ -241,6 +241,14 @@ cd packages/lexigram-newfeature
 2. Run `uv sync`
 3. Commit lock file changes
 
+### Add a Workspace Package
+After adding the package (and its `src/` entry to `[tool.mypy] mypy_path`),
+regenerate editor import paths so Pylance resolves it:
+
+```bash
+uv run python dev/catalogs/generate_vscode_settings.py
+```
+
 ### Update Import Boundaries
 Edit `.importlinter` to define new contracts before implementing the feature.
 
